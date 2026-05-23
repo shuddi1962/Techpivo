@@ -1,0 +1,6 @@
+"use strict";(()=>{var e={};e.id=3703,e.ids=[3703],e.modules={399:e=>{e.exports=require("next/dist/compiled/next-server/app-page.runtime.prod.js")},517:e=>{e.exports=require("next/dist/compiled/next-server/app-route.runtime.prod.js")},4930:(e,t,r)=>{r.r(t),r.d(t,{originalPathname:()=>c,patchFetch:()=>x,requestAsyncStorage:()=>u,routeModule:()=>p,serverHooks:()=>d,staticGenerationAsyncStorage:()=>l});var o={};r.r(o),r.d(o,{GET:()=>i});var s=r(9303),a=r(8716),n=r(670);async function i(){return new Response(`User-agent: *
+Allow: /
+Disallow: /admin
+Disallow: /api
+
+Sitemap: https://blizine.com/sitemap.xml`,{headers:{"Content-Type":"text/plain","Cache-Control":"public, max-age=3600"}})}let p=new s.AppRouteRouteModule({definition:{kind:a.x.APP_ROUTE,page:"/robots.txt/route",pathname:"/robots.txt",filename:"route",bundlePath:"app/robots.txt/route"},resolvedPagePath:"C:\\Users\\USER\\Desktop\\Blizine\\src\\app\\robots.txt\\route.ts",nextConfigOutput:"",userland:o}),{requestAsyncStorage:u,staticGenerationAsyncStorage:l,serverHooks:d}=p,c="/robots.txt/route";function x(){return(0,n.patchFetch)({serverHooks:d,staticGenerationAsyncStorage:l})}},9303:(e,t,r)=>{e.exports=r(517)}};var t=require("../../webpack-runtime.js");t.C(e);var r=e=>t(t.s=e),o=t.X(0,[8948],()=>r(4930));module.exports=o})();
