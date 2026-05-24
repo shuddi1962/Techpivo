@@ -1,8 +1,4 @@
-"use client"
-
-import { useEffect, useState } from "react"
 import Link from "next/link"
-import { createClient } from "@/lib/supabase/client"
 import type { Category, Subcategory } from "@/types/database"
 import { ChevronDown } from "lucide-react"
 import {
@@ -12,20 +8,11 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 
-export function Nav() {
-  const [categories, setCategories] = useState<(Category & { subcategories: Subcategory[] })[]>([])
+interface NavProps {
+  categories: (Category & { subcategories: Subcategory[] })[]
+}
 
-  useEffect(() => {
-    const supabase = createClient()
-    supabase
-      .from("categories")
-      .select("*, subcategories(*)")
-      .order("name")
-      .then(({ data }) => {
-        if (data) setCategories(data as any)
-      })
-  }, [])
-
+export function Nav({ categories }: NavProps) {
   return (
     <nav className="hidden lg:block border-b bg-background">
       <div className="container">

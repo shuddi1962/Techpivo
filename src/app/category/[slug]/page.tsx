@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server"
 import { notFound } from "next/navigation"
 import Link from "next/link"
 import { Badge } from "@/components/ui/badge"
+import { PostCard } from "@/components/post/post-card"
 import { Sidebar } from "@/components/layout/sidebar"
 import { formatDate } from "@/lib/utils"
 import type { Metadata } from "next"
@@ -30,11 +31,30 @@ export default async function CategoryPage({ params }: Props) {
 
   const { data: posts } = await supabase
     .from("posts")
-    .select("*, author:profiles(*)")
+    .select("*, category:categories(*), author:profiles(*)")
     .eq("status", "published")
     .eq("category_id", category.id)
     .order("published_at", { ascending: false })
     .limit(20)
+
+  const { data: popularPosts } = await supabase
+    .from("posts")
+    .select("*")
+    .eq("status", "published")
+    .order("views", { ascending: false })
+    .limit(5)
+
+  const { data: allCategories } = await supabase
+    .from("categories")
+    .select("*")
+    .order("name")
+
+  const { data: recentPosts } = await supabase
+    .from("posts")
+    .select("*")
+    .eq("status", "published")
+    .order("published_at", { ascending: false })
+    .limit(5)
 
   return (
     <div className="container py-6">
@@ -66,28 +86,9 @@ export default async function CategoryPage({ params }: Props) {
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
         <div className="lg:col-span-3">
           {posts && posts.length > 0 ? (
-            <div className="space-y-8">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
               {posts.map((post) => (
-                <Link key={post.id} href={`/${post.slug}`} className="flex gap-5 group">
-                  <div
-                    className="w-48 h-32 shrink-0 rounded-lg bg-cover bg-center"
-                    style={{ backgroundImage: `url(${post.featured_image || "/api/placeholder/300/200"})` }}
-                  />
-                  <div className="flex-1 min-w-0">
-                    <Badge variant="indigo" className="mb-2">{category.name}</Badge>
-                    <h2 className="text-xl font-bold group-hover:text-brand-indigo transition-colors line-clamp-2">
-                      {post.title}
-                    </h2>
-                    <p className="text-sm text-muted-foreground line-clamp-2 mt-1">{post.excerpt}</p>
-                    <div className="flex items-center gap-2 mt-2 text-xs text-muted-foreground">
-                      <span>{(post as any).author?.full_name || "Blizine"}</span>
-                      <span>·</span>
-                      <span>{post.published_at ? formatDate(post.published_at) : ""}</span>
-                      <span>·</span>
-                      <span>{post.reading_time} min read</span>
-                    </div>
-                  </div>
-                </Link>
+                <PostCard key={post.id} post={post as any} />
               ))}
             </div>
           ) : (
@@ -97,7 +98,11 @@ export default async function CategoryPage({ params }: Props) {
           )}
         </div>
         <div className="lg:col-span-1">
-          <Sidebar />
+          <Sidebar
+            popularPosts={popularPosts || []}
+            categories={allCategories || []}
+            recentPosts={recentPosts || []}
+          />
         </div>
       </div>
     </div>

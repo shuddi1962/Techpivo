@@ -164,30 +164,45 @@ export async function GET(req: Request) {
             }
           }
 
-          const slug = generateSlug(title)
+          const slug = generateSlug(title) + "-" + Date.now()
 
-          const { error: insertError } = await supabase.from("posts").insert({
-            title,
-            slug: slug + "-" + Date.now(),
-            content: finalContent,
-            excerpt: extractExcerpt(finalContent),
-            featured_image: featuredImage,
-            category_id: feed.category_id,
-            author_id: defaultAuthorId,
-            status: "published",
-            rss_source_url: feed.feed_url,
-            original_source_url: item.link || item.guid || "",
-            ai_rewritten: feed.auto_rewrite,
-            reading_time: calculateReadingTime(finalContent),
-            tags: item.categories?.slice(0, 5) || [],
-            published_at: item.isoDate
-              ? new Date(item.isoDate).toISOString()
-              : new Date().toISOString(),
-          })
+          const { data: newPost, error: insertError } = await supabase
+            .from("posts")
+            .insert({
+              title,
+              slug,
+              content: finalContent,
+              excerpt: extractExcerpt(finalContent),
+              featured_image: featuredImage,
+              category_id: feed.category_id,
+              author_id: defaultAuthorId,
+              status: "published",
+              rss_source_url: feed.feed_url,
+              original_source_url: item.link || item.guid || "",
+              ai_rewritten: feed.auto_rewrite,
+              reading_time: calculateReadingTime(finalContent),
+              tags: item.categories?.slice(0, 5) || [],
+              published_at: item.isoDate
+                ? new Date(item.isoDate).toISOString()
+                : new Date().toISOString(),
+            })
+            .select("id")
+            .single()
 
-          if (insertError) {
-            console.error("Insert failed: " + insertError.message)
+          if (insertError || !newPost) {
+            console.error("Insert failed: " + insertError?.message)
             continue
+          }
+
+          if (feed.auto_rewrite && process.env.OPENROUTER_API_KEY) {
+            fetch(process.env.NEXT_PUBLIC_SUPABASE_URL + "/functions/v1/rewrite-post", {
+              method: "POST",
+              headers: {
+                Authorization: "Bearer " + process.env.SUPABASE_SERVICE_ROLE_KEY,
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({ post_id: newPost.id }),
+            }).catch(() => {})
           }
 
           feedPostsCount++

@@ -1,45 +1,16 @@
-"use client"
-
-import { useEffect, useState } from "react"
 import Link from "next/link"
-import { createClient } from "@/lib/supabase/client"
 import type { Post, Category } from "@/types/database"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
 import { formatDate } from "@/lib/utils"
-import { ExternalLink } from "lucide-react"
 
-export function Sidebar() {
-  const [popularPosts, setPopularPosts] = useState<Post[]>([])
-  const [categories, setCategories] = useState<Category[]>([])
-  const [email, setEmail] = useState("")
+interface SidebarProps {
+  popularPosts: Post[]
+  categories: Category[]
+  recentPosts: Post[]
+}
 
-  useEffect(() => {
-    const supabase = createClient()
-    supabase
-      .from("posts")
-      .select("*")
-      .eq("status", "published")
-      .order("views", { ascending: false })
-      .limit(5)
-      .then(({ data }) => {
-        if (data) setPopularPosts(data)
-      })
-    supabase.from("categories").select("*").order("name").then(({ data }) => {
-      if (data) setCategories(data)
-    })
-  }, [])
-
-  const handleSubscribe = async () => {
-    if (!email) return
-    const supabase = createClient()
-    await supabase.from("subscribers").insert({ email })
-    setEmail("")
-    alert("Subscribed!")
-  }
-
+export function Sidebar({ popularPosts, categories, recentPosts }: SidebarProps) {
   return (
     <aside className="space-y-6">
       {/* Newsletter */}
@@ -51,15 +22,21 @@ export function Sidebar() {
           <p className="text-sm text-muted-foreground mb-3">
             Get the latest tech news delivered to your inbox.
           </p>
-          <div className="flex gap-2">
-            <Input
+          <form action="#" method="POST" className="flex gap-2">
+            <input
               type="email"
+              name="email"
               placeholder="your@email.com"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              required
+              className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
             />
-            <Button onClick={handleSubscribe} size="sm">Go</Button>
-          </div>
+            <button
+              type="submit"
+              className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground shadow hover:bg-primary/90 h-9 px-3"
+            >
+              Go
+            </button>
+          </form>
         </CardContent>
       </Card>
 
@@ -74,6 +51,31 @@ export function Sidebar() {
               <span className="text-2xl font-black text-muted-foreground/30 w-8 shrink-0">
                 {String(i + 1).padStart(2, "0")}
               </span>
+              <div>
+                <h4 className="text-sm font-medium line-clamp-2 group-hover:text-brand-indigo transition-colors">
+                  {post.title}
+                </h4>
+                <p className="text-xs text-muted-foreground mt-1">
+                  {post.published_at ? formatDate(post.published_at) : ""}
+                </p>
+              </div>
+            </Link>
+          ))}
+        </CardContent>
+      </Card>
+
+      {/* Recent Posts */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg">Recent Posts</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {recentPosts.map((post) => (
+            <Link key={post.id} href={`/${post.slug}`} className="flex gap-3 group">
+              <div
+                className="w-16 h-16 shrink-0 rounded-lg bg-cover bg-center"
+                style={{ backgroundImage: `url(${post.featured_image || "/api/placeholder/80/80"})` }}
+              />
               <div>
                 <h4 className="text-sm font-medium line-clamp-2 group-hover:text-brand-indigo transition-colors">
                   {post.title}

@@ -34,6 +34,16 @@ export default async function SubcategoryPage({ params }: Props) {
     .order("published_at", { ascending: false })
     .limit(20)
 
+  const [popularRes, categoriesRes, recentRes] = await Promise.all([
+    supabase.from("posts").select("*").eq("status", "published").order("views", { ascending: false }).limit(5),
+    supabase.from("categories").select("*").order("name"),
+    supabase.from("posts").select("*").eq("status", "published").order("published_at", { ascending: false }).limit(5),
+  ])
+
+  const popularPosts = popularRes.data || []
+  const sidebarCategories = categoriesRes.data || []
+  const recentPosts = recentRes.data || []
+
   return (
     <div className="container py-6">
       <div className="mb-8">
@@ -69,7 +79,7 @@ export default async function SubcategoryPage({ params }: Props) {
             <div className="text-center py-12 text-muted-foreground">No posts found.</div>
           )}
         </div>
-        <div className="lg:col-span-1"><Sidebar /></div>
+        <div className="lg:col-span-1"><Sidebar popularPosts={popularPosts} categories={sidebarCategories} recentPosts={recentPosts} /></div>
       </div>
     </div>
   )

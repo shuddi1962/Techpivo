@@ -1,133 +1,41 @@
-"use client"
-
 import Link from "next/link"
-import type { Post } from "@/types/database"
-import { Badge } from "@/components/ui/badge"
-import { Card, CardContent } from "@/components/ui/card"
-import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
-import { formatDate } from "@/lib/utils"
-import { cn } from "@/lib/utils"
 
-interface PostCardProps {
-  post: Post
-  variant?: "default" | "compact" | "horizontal" | "hero"
-  categoryName?: string
-  authorName?: string
-  authorAvatar?: string | null
+interface PostCardPost {
+  title: string
+  slug: string
+  excerpt: string
+  featured_image: string
+  category: { name: string } | null
+  author: { full_name: string } | null
+  published_at: string | null
+  reading_time: number
+  views: number
 }
 
-export function PostCard({ post, variant = "default", categoryName, authorName, authorAvatar }: PostCardProps) {
-  if (variant === "hero") {
-    return (
-      <Link
-        href={`/${post.slug}`}
-        className="relative group rounded-xl overflow-hidden min-h-[400px] block"
-      >
-        <div
-          className="absolute inset-0 bg-cover bg-center transition-transform duration-500 group-hover:scale-105"
-          style={{ backgroundImage: `url(${post.featured_image || "/api/placeholder/800/600"})` }}
-        />
-        <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/50 to-transparent" />
-        <div className="absolute bottom-0 left-0 right-0 p-6">
-          {categoryName && (
-            <Badge variant="indigo" className="mb-3">
-              {categoryName}
-            </Badge>
-          )}
-          <h2 className="text-2xl md:text-3xl font-bold text-white mb-2 line-clamp-2">
-            {post.title}
-          </h2>
-          <p className="text-sm text-gray-300 line-clamp-2 mb-3">{post.excerpt}</p>
-          <div className="flex items-center gap-3 text-sm text-gray-400">
-            <Avatar className="h-8 w-8">
-              <AvatarImage src={authorAvatar || undefined} />
-              <AvatarFallback>{authorName?.[0] || "A"}</AvatarFallback>
-            </Avatar>
-            <span>{authorName || "Blizine"}</span>
-            <span>·</span>
-            <span>{post.published_at ? formatDate(post.published_at) : ""}</span>
-            <span>·</span>
-            <span>{post.reading_time} min read</span>
-          </div>
-        </div>
-      </Link>
-    )
-  }
+interface PostCardProps {
+  post: PostCardPost
+}
 
-  if (variant === "horizontal") {
-    return (
-      <Link href={`/${post.slug}`} className="group flex gap-4">
-        <div
-          className="w-40 h-28 shrink-0 rounded-lg bg-cover bg-center"
-          style={{ backgroundImage: `url(${post.featured_image || "/api/placeholder/200/150"})` }}
-        />
-        <div className="flex-1 min-w-0">
-          {categoryName && (
-            <Badge variant="indigo" className="mb-1 text-[10px]">
-              {categoryName}
-            </Badge>
-          )}
-          <h3 className="font-semibold group-hover:text-brand-indigo transition-colors line-clamp-2">
-            {post.title}
-          </h3>
-          <p className="text-xs text-muted-foreground mt-1">
-            {authorName && <span>{authorName} · </span>}
-            {post.published_at ? formatDate(post.published_at) : ""} · {post.reading_time} min read
-          </p>
-        </div>
-      </Link>
-    )
-  }
-
-  if (variant === "compact") {
-    return (
-      <Link href={`/${post.slug}`} className="group flex gap-3 items-start">
-        <div
-          className="w-16 h-16 shrink-0 rounded-lg bg-cover bg-center"
-          style={{ backgroundImage: `url(${post.featured_image || "/api/placeholder/80/80"})` }}
-        />
-        <div className="min-w-0">
-          <h4 className="text-sm font-medium group-hover:text-brand-indigo transition-colors line-clamp-2">
-            {post.title}
-          </h4>
-          <p className="text-xs text-muted-foreground mt-1">
-            {post.published_at ? formatDate(post.published_at) : ""}
-          </p>
-        </div>
-      </Link>
-    )
-  }
-
+export function PostCard({ post }: PostCardProps) {
   return (
-    <Link href={`/${post.slug}`} className="group block">
-      <Card className="overflow-hidden border-0 shadow-sm hover:shadow-md transition-shadow">
-        <div
-          className="h-44 bg-cover bg-center"
-          style={{ backgroundImage: `url(${post.featured_image || "/api/placeholder/400/250"})` }}
-        />
-        <CardContent className="p-4">
-          {categoryName && (
-            <Badge variant="indigo" className="mb-2">
-              {categoryName}
-            </Badge>
-          )}
-          <h3 className="font-bold group-hover:text-brand-indigo transition-colors line-clamp-2 mb-1">
-            {post.title}
-          </h3>
-          <p className="text-sm text-muted-foreground line-clamp-2 mb-3">{post.excerpt}</p>
-          <div className="flex items-center gap-2 text-xs text-muted-foreground">
-            <Avatar className="h-6 w-6">
-              <AvatarImage src={authorAvatar || undefined} />
-              <AvatarFallback className="text-[10px]">{authorName?.[0] || "A"}</AvatarFallback>
-            </Avatar>
-            <span>{authorName || "Blizine"}</span>
-            <span>·</span>
-            <span>{post.published_at ? formatDate(post.published_at) : ""}</span>
-            <span>·</span>
-            <span>{post.reading_time} min read</span>
-          </div>
-        </CardContent>
-      </Card>
+    <Link href={`/${post.slug}`} className="group block rounded-lg border border-[#1F2937] bg-[#111827] overflow-hidden hover:border-[#6366F1] hover:-translate-y-0.5 transition-all duration-200">
+      <div className="relative aspect-[16/9] overflow-hidden">
+        <img src={post.featured_image || "/api/placeholder/400/225"} alt={post.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" loading="lazy" decoding="async" />
+        <span className="absolute top-3 left-3 px-2 py-1 text-xs font-medium rounded bg-[#6366F1]/20 text-[#6366F1]">{post.category?.name || "Tech"}</span>
+        <span className="absolute top-3 right-3 px-2 py-1 text-xs rounded bg-black/60 text-gray-300">{post.reading_time || 1} min</span>
+      </div>
+      <div className="p-4">
+        <h3 className="text-lg font-semibold text-[#F9FAFB] line-clamp-2 group-hover:text-[#6366F1] transition-colors mb-2">{post.title}</h3>
+        <p className="text-sm text-[#9CA3AF] line-clamp-2 mb-3">{post.excerpt}</p>
+        <div className="flex items-center gap-2 text-xs text-[#9CA3AF]">
+          <span className="w-6 h-6 rounded-full bg-[#6366F1] flex items-center justify-center text-white text-[10px] font-bold">{post.author?.full_name?.[0] || "B"}</span>
+          <span>{post.author?.full_name || "Blizine"}</span>
+          <span>·</span>
+          <span>{post.published_at ? new Date(post.published_at).toLocaleDateString("en-US", {month:"short", day:"numeric", year:"numeric"}) : ""}</span>
+          <span>·</span>
+          <span>{post.views || 0} views</span>
+        </div>
+      </div>
     </Link>
   )
 }
