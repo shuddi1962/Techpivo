@@ -27,7 +27,7 @@ export async function GET() {
     urlGroups.get(key)!.push(p)
   }
 
-  for (const [, group] of urlGroups) {
+  for (const [, group] of Array.from(urlGroups)) {
     if (group.length <= 1) continue
     // Keep the one with the longest content, remove the rest
     group.sort((a: any, b: any) => (b.content?.length || 0) - (a.content?.length || 0))
@@ -48,7 +48,7 @@ export async function GET() {
     titleGroups.get(key)!.push(p)
   }
 
-  for (const [, group] of titleGroups) {
+  for (const [, group] of Array.from(titleGroups)) {
     if (group.length <= 1) continue
     group.sort((a: any, b: any) => (b.content?.length || 0) - (a.content?.length || 0))
     const keep = group[0]
