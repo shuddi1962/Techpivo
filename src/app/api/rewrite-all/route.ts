@@ -12,7 +12,7 @@ export async function GET() {
       .from("posts")
       .select("id, title, content, quick_brief")
       .or("quick_brief.eq.[],quick_brief.is.null")
-      .limit(10)
+      .limit(20)
 
     if (fetchError) {
       return NextResponse.json({ error: fetchError.message }, { status: 500 })
