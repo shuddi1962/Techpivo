@@ -190,7 +190,7 @@ export async function GET(req: Request) {
           const content = item.content || item.contentSnippet || ""
           let featuredImage = extractFeaturedImage(item, content)
           if (!featuredImage && (item.link || item.guid)) {
-            featuredImage = await fetchOgImage(item.link || item.guid)
+            featuredImage = await fetchOgImage((item.link || item.guid || "") as string)
           }
           if (!featuredImage) {
             featuredImage = await searchPexels((title || "technology").split(" ").slice(0, 4).join(" "))
