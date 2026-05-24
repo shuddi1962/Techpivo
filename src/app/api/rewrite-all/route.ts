@@ -26,40 +26,17 @@ export async function GET() {
     let rewritten = 0
 
     for (const post of posts) {
-      try {
-        const response = await fetch(
-          process.env.NEXT_PUBLIC_SUPABASE_URL + "/functions/v1/rewrite-post",
-          {
-            method: "POST",
-            headers: {
-              Authorization: "Bearer " + process.env.SUPABASE_SERVICE_ROLE_KEY,
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({ post_id: post.id }),
-          }
-        )
-
-        if (response.ok) {
-          rewritten++
+      const localResponse = await fetch(
+        process.env.NEXT_PUBLIC_SITE_URL + "/api/rewrite-post",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ post_id: post.id }),
         }
-      } catch {
-        // fallback to local endpoint
-        try {
-          const localResponse = await fetch(
-            process.env.NEXT_PUBLIC_SITE_URL + "/api/rewrite-post",
-            {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ post_id: post.id }),
-            }
-          )
+      )
 
-          if (localResponse.ok) {
-            rewritten++
-          }
-        } catch {
-          // skip this post
-        }
+      if (localResponse.ok) {
+        rewritten++
       }
 
       await new Promise((resolve) => setTimeout(resolve, 1000))
