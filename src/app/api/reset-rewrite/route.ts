@@ -9,15 +9,19 @@ const supabase = createClient(
 )
 
 export async function GET() {
-  const { data, error } = await supabase
+  const { count } = await supabase
     .from("posts")
-    .update({ ai_rewritten: false })
-    .eq("ai_rewritten", true)
-    .select("id")
+    .select("id", { count: "exact", head: true })
+    .not("blizine_score", "is", null)
+
+  const { error } = await supabase
+    .from("posts")
+    .update({ ai_rewritten: false, blizine_score: null, quick_brief: [] })
+    .not("blizine_score", "is", null)
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
 
-  return NextResponse.json({ reset: data?.length || 0 })
+  return NextResponse.json({ reset: count || 0 })
 }

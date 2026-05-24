@@ -41,13 +41,48 @@ function stripHtml(html: string): string {
   return html.replace(/<[^>]*>/g, "").trim()
 }
 
-function extractFeaturedImage(item: any, content: string): string | null {
+function extractFeaturedImage(item: any, content: string, link?: string): string | null {
   if (item["media:content"]?.$?.url) return item["media:content"].$.url
   if (item.enclosure?.url) return item.enclosure.url
   if (item["media:thumbnail"]?.$?.url) return item["media:thumbnail"].$.url
   const fromContent = extractFirstImageFromHtml(content)
   if (fromContent) return fromContent
   return null
+}
+
+const PEXELS_API_KEY = "GH735sp9bohSxSm2PnTFewYGjsZvGS2UoE0JzLCMgFgG2bAV0UTihSVn"
+
+async function fetchOgImage(url: string): Promise<string | null> {
+  try {
+    const response = await fetch(url, {
+      signal: AbortSignal.timeout(8000),
+      headers: { "User-Agent": "Mozilla/5.0 (compatible; Blizine/1.0)" },
+    })
+    if (!response.ok) return null
+    const html = await response.text()
+    for (const p of [
+      /<meta\s+property=["']og:image["']\s+content=["']([^"']+)["']/i,
+      /<meta\s+name=["']twitter:image["']\s+content=["']([^"']+)["']/i,
+      /<meta\s+content=["']([^"']+)["']\s+property=["']og:image["']/i,
+      /<img[^>]+src=["']([^"']+\.(?:jpg|jpeg|png|webp))["']/i,
+    ]) {
+      const m = html.match(p)
+      if (m) return m[1].startsWith("//") ? "https:" + m[1] : m[1].split("?")[0]
+    }
+    return null
+  } catch { return null }
+}
+
+async function searchPexels(query: string): Promise<string | null> {
+  try {
+    const response = await fetch(
+      "https://api.pexels.com/v1/search?query=" + encodeURIComponent(query) + "&per_page=3",
+      { headers: { Authorization: PEXELS_API_KEY }, signal: AbortSignal.timeout(8000) }
+    )
+    if (!response.ok) return null
+    const data = await response.json()
+    return data.photos?.[0]?.src?.large || null
+  } catch { return null }
 }
 
 async function rewriteWithOpenRouter(title: string, content: string): Promise<string> {
@@ -153,7 +188,13 @@ export async function GET(req: Request) {
         for (const item of newItems) {
           const title = item.title || "Untitled"
           const content = item.content || item.contentSnippet || ""
-          const featuredImage = extractFeaturedImage(item, content)
+          let featuredImage = extractFeaturedImage(item, content)
+          if (!featuredImage && (item.link || item.guid)) {
+            featuredImage = await fetchOgImage(item.link || item.guid) || undefined
+          }
+          if (!featuredImage) {
+            featuredImage = await searchPexels((title || "technology").split(" ").slice(0, 4).join(" ")) || undefined
+          }
           let finalContent = content
 
           if (feed.auto_rewrite && content.length > 50 && process.env.OPENROUTER_API_KEY) {

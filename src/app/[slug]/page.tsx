@@ -76,7 +76,7 @@ export default async function PostPage({ params }: Props) {
       <ReadingProgress />
 
       {/* Hero Image */}
-      <div className="relative w-full h-[400px] md:h-[500px] lg:h-[600px] overflow-hidden">
+      <div className="relative w-full h-[250px] md:h-[350px] overflow-hidden">
         <div
           className="absolute inset-0 bg-cover bg-center"
           style={{ backgroundImage: `url(${post.featured_image || "/api/placeholder/1200/600"})` }}
@@ -84,7 +84,7 @@ export default async function PostPage({ params }: Props) {
         <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent" />
       </div>
 
-      <article className="container py-6 -mt-32 relative z-10">
+      <article className="container py-6 -mt-20 relative z-10">
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
           <div className="lg:col-span-3">
             {/* Post Header */}
@@ -137,10 +137,17 @@ export default async function PostPage({ params }: Props) {
             <Separator className="mb-8" />
 
             {/* Quick Brief */}
-            {quickBrief && (
+            {quickBrief && Array.isArray(quickBrief) && quickBrief.length > 0 && (
               <div className="mb-8 p-4 rounded-lg bg-[#1a1a3e] border border-[#2a2a5e]">
                 <h3 className="text-sm font-bold text-brand-amber uppercase tracking-wider mb-2">Quick Brief</h3>
-                <p className="text-sm text-gray-300">{quickBrief}</p>
+                <ul className="space-y-2">
+                  {quickBrief.map((item: { text: string }, i: number) => (
+                    <li key={i} className="text-sm text-gray-300 flex items-start gap-2">
+                      <span className="mt-1.5 h-1.5 w-1.5 rounded-full bg-brand-amber shrink-0" />
+                      {item.text}
+                    </li>
+                  ))}
+                </ul>
               </div>
             )}
 
