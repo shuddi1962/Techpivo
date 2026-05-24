@@ -10,9 +10,9 @@ export async function GET() {
   try {
     const { data: posts, error: fetchError } = await supabase
       .from("posts")
-      .select("id, title, content")
-      .eq("ai_rewritten", false)
-      .limit(50)
+      .select("id, title, content, quick_brief")
+      .or("quick_brief.eq.[],quick_brief.is.null")
+      .limit(10)
 
     if (fetchError) {
       return NextResponse.json({ error: fetchError.message }, { status: 500 })

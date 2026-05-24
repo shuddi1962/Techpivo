@@ -124,18 +124,21 @@ export async function POST(req: Request) {
     let blizineScore: number | null = null
 
     if (openRouterKey && textContent.length > 50) {
-      try {
-        const rewritePrompt =
-          "Rewrite the following tech article in an engaging, SEO-optimized style for the blog Blizine. " +
-          "Write a FULL, complete article - at least 500 words. Keep facts accurate. " +
-          "Add a compelling intro, structured H2/H3 subheadings, and a conclusion. " +
-          "The rewrite must be complete so readers don't need to visit the original source. " +
-          "Output HTML only, no markdown. Article title: " + sourceTitle + ". Original content: " + textContent
+      // Skip full rewrite if content is already substantial
+      if (textContent.length < 500) {
+        try {
+          const rewritePrompt =
+            "Rewrite the following tech article in an engaging, SEO-optimized style for the blog Blizine. " +
+            "Write a FULL, complete article - at least 500 words. Keep facts accurate. " +
+            "Add a compelling intro, structured H2/H3 subheadings, and a conclusion. " +
+            "The rewrite must be complete so readers don't need to visit the original source. " +
+            "Output HTML only, no markdown. Article title: " + sourceTitle + ". Original content: " + textContent
 
-        const result = await callOpenRouter(rewritePrompt, openRouterKey)
-        if (result) rewrittenContent = result
-      } catch (err: any) {
-        console.error("Rewrite failed: " + err.message)
+          const result = await callOpenRouter(rewritePrompt, openRouterKey)
+          if (result) rewrittenContent = result
+        } catch (err: any) {
+          console.error("Rewrite failed: " + err.message)
+        }
       }
 
       try {
