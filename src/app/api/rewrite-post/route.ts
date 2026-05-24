@@ -37,7 +37,7 @@ async function callOpenRouter(prompt: string, apiKey: string): Promise<string> {
       Authorization: "Bearer " + apiKey,
     },
     body: JSON.stringify({
-      model: "mistralai/mistral-7b-instruct",
+      model: "deepseek/deepseek-chat",
       messages: [{ role: "user", content: prompt }],
       max_tokens: 4096,
     }),
