@@ -3,4 +3,7 @@ node_modules
 .next
 *.tsbuildinfo
 .env.local
+.env.vercel
+dev_output.txt
+dev_errors.txt
 supabase/.temp
