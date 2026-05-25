@@ -4,7 +4,8 @@ import { useState, useMemo } from "react"
 import { usePostEditor } from "../post-editor-provider"
 import { CollapsibleSection } from "../collapsible-section"
 import { calculateSeoScore, generateSerpPreview } from "@/lib/seo-utils"
-import { Search, CheckCircle2, XCircle, Globe, MessageCircle, Image, Sparkles, ChevronDown, ChevronRight, Loader2 } from "lucide-react"
+import { Search, CheckCircle2, XCircle, Globe, MessageCircle, Image, Sparkles, ChevronDown, ChevronRight, Loader2, TrendingUp } from "lucide-react"
+import { KeywordSuggest } from "../keyword-suggest"
 
 const schemaTypes = [
   "Article", "NewsArticle", "BlogPosting", "TechArticle",
@@ -126,16 +127,18 @@ Only provide fields that need changes. Return valid JSON only.`
         <div>
           <label className="block text-xs font-medium text-gray-500 dark:text-[#9CA3AF] mb-1">Focus Keyword</label>
           <div className="relative">
-            <input
+            <KeywordSuggest
               value={seoKeyword}
-              onChange={(e) => setSeoKeyword(e.target.value)}
+              onChange={setSeoKeyword}
               placeholder="Enter focus keyword..."
-              className="w-full bg-gray-50 dark:bg-[#0A0F1E] border-2 border-gray-300 dark:border-[#374151] rounded-lg px-3 py-2 text-sm text-gray-900 dark:text-[#F9FAFB] focus:outline-none focus:ring-2 focus:ring-[#6366F1] focus:border-transparent pr-14"
+              className="pr-14"
+              rightElement={
+                <span className="flex items-center gap-0.5">
+                  <span className={`text-lg font-bold ${getScoreColor(score)}`}>{score}</span>
+                  <span className="text-[10px] text-gray-400 dark:text-[#6B7280] font-medium">/100</span>
+                </span>
+              }
             />
-            <span className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-0.5">
-              <span className={`text-lg font-bold ${getScoreColor(score)}`}>{score}</span>
-              <span className="text-[10px] text-gray-400 dark:text-[#6B7280] font-medium">/100</span>
-            </span>
           </div>
         </div>
 
@@ -232,18 +235,15 @@ Only provide fields that need changes. Return valid JSON only.`
                   </span>
                 ))}
               </div>
-              <input
-                placeholder="Type keyword and press Enter"
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") {
-                    const value = (e.target as HTMLInputElement).value.trim()
-                    if (value && !post.secondary_keywords.includes(value)) {
-                      updatePost({ secondary_keywords: [...post.secondary_keywords, value] })
-                    }
-                    (e.target as HTMLInputElement).value = ""
+              <KeywordSuggest
+                value=""
+                onChange={() => {}}
+                onSelect={(kw) => {
+                  if (kw && !post.secondary_keywords.includes(kw)) {
+                    updatePost({ secondary_keywords: [...post.secondary_keywords, kw] })
                   }
                 }}
-                className="w-full bg-gray-50 dark:bg-[#0A0F1E] border-2 border-gray-300 dark:border-[#374151] rounded-lg px-3 py-2 text-sm text-gray-900 dark:text-[#F9FAFB] focus:outline-none focus:ring-2 focus:ring-[#6366F1] focus:border-transparent"
+                placeholder="Type keyword and press Enter or select from suggestions..."
               />
             </div>
 
