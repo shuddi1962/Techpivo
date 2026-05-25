@@ -32,7 +32,7 @@ async function callOpenRouter(prompt: string, apiKey: string): Promise<string> {
       Authorization: `Bearer ${apiKey}`,
     },
     body: JSON.stringify({
-      model: "mistralai/mistral-7b-instruct",
+      model: "meta-llama/llama-3.3-70b-instruct:free",
       messages: [{ role: "user", content: prompt }],
       max_tokens: 4096,
     }),

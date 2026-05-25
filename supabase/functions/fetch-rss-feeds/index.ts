@@ -1,214 +1,341 @@
-import { createClient } from "@supabase/supabase-js";
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
 
-const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-const openRouterKey = Deno.env.get("OPENROUTER_API_KEY")!;
+const supabase = createClient(
+  Deno.env.get('SUPABASE_URL')!,
+  Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+)
 
-const supabase = createClient(supabaseUrl, supabaseKey);
-
-function generateSlug(title: string): string {
-  return title
-    .toLowerCase()
-    .replace(/[^\w\s-]/g, "")
-    .replace(/[\s_]+/g, "-")
-    .replace(/^-+|-+$/g, "")
-    .slice(0, 200) || `post-${Date.now()}`;
+const BOT_HEADERS = {
+  'User-Agent': 'Mozilla/5.0 (compatible; Blizine/1.0; +https://blizine.com/bot)',
+  'Accept': 'text/html,application/xhtml+xml,*/*'
 }
 
-function calculateReadingTime(html: string): number {
-  const text = html.replace(/<[^>]*>/g, "");
-  const wordCount = text.split(/\s+/).filter(Boolean).length;
-  return Math.max(1, Math.ceil(wordCount / 200));
-}
+function extractImageFromItem(item: Record<string, any>): string | null {
+  const mediaContent = item['media:content']
+  if (mediaContent?.['$']?.url) return mediaContent['$'].url
+  if (Array.isArray(mediaContent) && mediaContent[0]?.['$']?.url) return mediaContent[0]['$'].url
 
-function extractExcerpt(html: string, maxLength = 300): string {
-  const text = html.replace(/<[^>]*>/g, "").trim();
-  if (text.length <= maxLength) return text;
-  const truncated = text.slice(0, maxLength);
-  const lastSpace = truncated.lastIndexOf(" ");
-  return (lastSpace > 0 ? truncated.slice(0, lastSpace) : truncated) + "...";
-}
+  const mediaThumbnail = item['media:thumbnail']
+  if (mediaThumbnail?.['$']?.url) return mediaThumbnail['$'].url
+  if (Array.isArray(mediaThumbnail) && mediaThumbnail[0]?.['$']?.url) return mediaThumbnail[0]['$'].url
 
-function extractFirstImageFromHtml(html: string): string | null {
-  const match = html.match(/<img[^>]+src=["']([^"']+)["']/i);
-  return match ? match[1] : null;
-}
+  const enclosure = item['enclosure']
+  const encUrl = enclosure?.['$']?.url || (enclosure as any)?.url
+  if (encUrl && /\.(jpg|jpeg|png|webp|gif)/i.test(encUrl)) return encUrl
 
-function stripHtml(html: string): string {
-  return html.replace(/<[^>]*>/g, "").trim();
-}
-
-function extractFeaturedImage(item: any, content: string): string | null {
-  if (item["media:content"]?.$?.url) return item["media:content"].$.url;
-  if (item.enclosure?.url) return item.enclosure.url;
-  if (item["media:thumbnail"]?.$?.url) return item["media:thumbnail"].$.url;
-  const fromContent = extractFirstImageFromHtml(content);
-  if (fromContent) return fromContent;
-  return null;
-}
-
-async function rewriteWithOpenRouter(title: string, content: string): Promise<string> {
-  const textContent = stripHtml(content);
-  const prompt = "Rewrite the following tech article in an engaging, SEO-optimized style for the blog Blizine. Write a FULL complete article - at least 500 words. Keep facts accurate. Add a compelling intro, structured H2/H3 subheadings, and a conclusion. The rewrite must be complete so readers don't need to visit the original source. Output HTML only, no markdown. Article title: " + title + ". Original content: " + textContent;
-
-  const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${openRouterKey}`,
-    },
-    body: JSON.stringify({
-      model: "mistralai/mistral-7b-instruct",
-      messages: [{ role: "user", content: prompt }],
-      max_tokens: 4096,
-    }),
-  });
-
-  if (!response.ok) {
-    const errorBody = await response.text();
-    throw new Error(`OpenRouter API error (${response.status}): ${errorBody}`);
+  const encoded = (item['content:encoded'] || item['content'] || '') as string
+  if (encoded) {
+    const imgMatch = encoded.match(/<img[^>]+src=["'](https?:\/\/[^"']+\.(?:jpg|jpeg|png|webp|gif)[^"']*)["']/i)
+    if (imgMatch?.[1]) return imgMatch[1]
   }
 
-  const data = await response.json();
-  return data.choices?.[0]?.message?.content?.trim() || content;
+  const desc = (item['description'] || '') as string
+  if (desc) {
+    const imgMatch = desc.match(/<img[^>]+src=["'](https?:\/\/[^"']+\.(?:jpg|jpeg|png|webp)[^"']*)["']/i)
+    if (imgMatch?.[1]) return imgMatch[1]
+  }
+
+  return null
 }
 
-Deno.serve(async (req) => {
+async function fetchOgImage(url: string): Promise<string | null> {
   try {
-    const { data: feeds, error: fetchError } = await supabase
-      .from("rss_feeds")
-      .select("id, category_id, feed_url, feed_name, auto_rewrite, is_active, last_fetched_at, posts_fetched")
-      .eq("is_active", true);
+    const res = await fetch(url, {
+      headers: BOT_HEADERS,
+      signal: AbortSignal.timeout(8000)
+    })
+    const html = await res.text()
+    const match = html.match(/<meta[^>]+property=["']og:image["'][^>]+content=["']([^"']+)["']/i)
+      || html.match(/<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:image["']/i)
+    return match?.[1] || null
+  } catch {
+    return null
+  }
+}
 
-    if (fetchError) {
-      throw new Error(`Failed to fetch feeds: ${fetchError.message}`);
+async function fetchArticleText(url: string): Promise<string> {
+  try {
+    const res = await fetch(url, {
+      headers: BOT_HEADERS,
+      signal: AbortSignal.timeout(5000)
+    })
+    const html = await res.text()
+    const patterns = [
+      /<article[^>]*>([\s\S]*?)<\/article>/i,
+      /<div[^>]+class=["'][^"']*(?:article-body|post-content|entry-content|story-body|article__body)[^"']*["'][^>]*>([\s\S]{500,}?)<\/div>/i,
+      /<main[^>]*>([\s\S]*?)<\/main>/i,
+    ]
+    for (const p of patterns) {
+      const m = html.match(p)
+      if (m?.[1]) {
+        const text = m[1]
+          .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '')
+          .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
+          .replace(/<[^>]+>/g, ' ')
+          .replace(/\s+/g, ' ').trim()
+        if (text.length > 300) return text.slice(0, 2000)
+      }
+    }
+    return html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 1000)
+  } catch {
+    return ''
+  }
+}
+
+function parseRSSItems(xml: string): Array<Record<string, any>> {
+  const items: Array<Record<string, any>> = []
+  const itemMatches = xml.matchAll(/<item>([\s\S]*?)<\/item>/g)
+
+  for (const match of itemMatches) {
+    const xml = match[1]
+    const get = (tag: string) =>
+      xml.match(new RegExp(`<${tag}[^>]*><!\\[CDATA\\[([\\s\\S]*?)\\]\\]><\/${tag}>`, 'i'))?.[1]?.trim()
+      || xml.match(new RegExp(`<${tag}[^>]*>([^<]*)<\/${tag}>`, 'i'))?.[1]?.trim()
+      || ''
+
+    const item: Record<string, any> = {
+      title: get('title').replace(/&amp;/g,'&').replace(/&lt;/g,'<').replace(/&gt;/g,'>'),
+      link: get('link') || get('guid'),
+      pubDate: get('pubDate') || get('published') || get('dc:date') || '',
+      description: get('description').replace(/<[^>]+>/g, '').trim().slice(0, 300),
+      'content:encoded': get('content:encoded') || get('content'),
+      'dc:creator': get('dc:creator') || get('author') || '',
     }
 
-    if (!feeds?.length) {
-      return new Response(JSON.stringify({ message: "No active feeds" }), {
-        status: 200,
-        headers: { "Content-Type": "application/json" },
-      });
+    const mediaContent = xml.match(/<media:content[^>]+url=["']([^"']+)["'][^>]*\/?>/i)
+    if (mediaContent) {
+      item['media:content'] = { '$': { url: mediaContent[1] } }
     }
 
-    // Get default admin profile for author_id
-    const { data: profiles } = await supabase
-      .from("profiles")
-      .select("id")
-      .limit(1);
-
-    const defaultAuthorId = profiles?.[0]?.id;
-    if (!defaultAuthorId) {
-      throw new Error("No author profile found. Create an admin user first.");
+    const mediaThumbnail = xml.match(/<media:thumbnail[^>]+url=["']([^"']+)["'][^>]*\/?>/i)
+    if (mediaThumbnail) {
+      item['media:thumbnail'] = { '$': { url: mediaThumbnail[1] } }
     }
 
-    const parser = new (await import("npm:rss-parser")).default();
-    let totalNewPosts = 0;
+    const enclosure = xml.match(/<enclosure[^>]+url=["']([^"']+)["'][^>]*\/?>/i)
+    if (enclosure) {
+      item['enclosure'] = { '$': { url: enclosure[1] } }
+    }
 
-    for (const feed of feeds) {
+    if (item.title && item.link) items.push(item)
+  }
+
+  return items
+}
+
+function makeSlug(title: string): string {
+  return title.toLowerCase()
+    .replace(/[^a-z0-9\s-]/g, '')
+    .replace(/\s+/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '')
+    .slice(0, 80) + '-' + Date.now().toString(36)
+}
+
+function autoCategory(title: string, feedCategoryId: string, categories: Array<{id:string;slug:string}>): string {
+  const t = title.toLowerCase()
+  const rules: Array<{words: string[]; slug: string}> = [
+    { words: ['hack','vulnerability','breach','malware','ransomware','cve','exploit','phishing','zero-day','cyber'], slug: 'cybersecurity' },
+    { words: [' ai ','artificial intelligence','machine learning','chatgpt','gemini','openai','gpt-','llm ','deep learning','copilot','claude'], slug: 'ai-automation' },
+    { words: ['iphone','android','smartphone','macbook','galaxy','pixel ','tablet','wearable','headphone','airpods','smartwatch','drone','camera lens','console','playstation','xbox','nintendo switch'], slug: 'gadgets' },
+    { words: ['javascript','python','rust ','golang','typescript','react ','node.js','vue ','angular','django','flask','api ','sdk ','open source','github','npm '], slug: 'programming' },
+    { words: ['css ','html ','frontend','next.js','tailwind','wordpress','web design','web app','svelte','htmx'], slug: 'web-development' },
+    { words: ['startup','funding','raises','series a','series b','ipo','acquisition','unicorn','venture capital','revenue','valuation','ceo appointed'], slug: 'digital-business' },
+    { words: ['how to','tutorial','guide','step by step','beginners','getting started','walkthrough','tips for','learn '], slug: 'tutorials' },
+    { words: ['review:','reviewed:','best laptops','best phones','buying guide','vs ','compared','rated','tested','ranked'], slug: 'reviews' },
+    { words: ['cloud ','kubernetes','docker','devops','aws ','azure ','gcp ','server ','network ','vpn ','infrastructure'], slug: 'networking-it' },
+  ]
+  for (const r of rules) {
+    if (r.words.some(w => t.includes(w))) {
+      const cat = categories.find(c => c.slug === r.slug)
+      if (cat) return cat.id
+    }
+  }
+  return feedCategoryId
+}
+
+const CATEGORY_SEARCH: Record<string, string> = {
+  'ai-automation':   'artificial intelligence technology',
+  'cybersecurity':   'cybersecurity data protection',
+  'gadgets':         'modern technology gadget',
+  'programming':     'computer programming code',
+  'web-development': 'web development design',
+  'tutorials':       'learning education technology',
+  'digital-business':'business technology startup',
+  'networking-it':   'server network technology',
+  'reviews':         'product review technology',
+  'tech-news':       'technology innovation',
+}
+
+const CATEGORY_FALLBACKS: Record<string, string> = {
+  'tech-news':       'https://images.unsplash.com/photo-1518770660439-4636190af475?w=1200&q=80',
+  'ai-automation':   'https://images.unsplash.com/photo-1677442136019-21780ecad995?w=1200&q=80',
+  'cybersecurity':   'https://images.unsplash.com/photo-1550751827-4bd374c3f58b?w=1200&q=80',
+  'gadgets':         'https://images.unsplash.com/photo-1491933382434-500287f9b54b?w=1200&q=80',
+  'programming':     'https://images.unsplash.com/photo-1555066931-4365d14bab8c?w=1200&q=80',
+  'web-development': 'https://images.unsplash.com/photo-1547658719-da2b51169166?w=1200&q=80',
+  'tutorials':       'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=1200&q=80',
+  'digital-business':'https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=1200&q=80',
+  'networking-it':   'https://images.unsplash.com/photo-1558494949-ef010cbdcc31?w=1200&q=80',
+  'reviews':         'https://images.unsplash.com/photo-1496181133206-80ce9b88a853?w=1200&q=80',
+}
+
+async function pexelsSearch(query: string): Promise<string | null> {
+  const key = Deno.env.get('PEXELS_API_KEY')
+  if (!key) return null
+  try {
+    const res = await fetch(
+      `https://api.pexels.com/v1/search?query=${encodeURIComponent(query)}&per_page=1&orientation=landscape`,
+      { headers: { 'Authorization': key }, signal: AbortSignal.timeout(5000) }
+    )
+    if (!res.ok) return null
+    const data = await res.json()
+    return data.photos?.[0]?.src?.large2x || null
+  } catch {
+    return null
+  }
+}
+
+async function processFeed(feed: any, categories: Array<{id:string;slug:string}>, authorId: string): Promise<{new: number; errors: string[]}> {
+  let newCount = 0
+  const errs: string[] = []
+  try {
+    const res = await fetch(feed.feed_url, {
+      headers: { ...BOT_HEADERS, 'Accept': 'application/rss+xml,application/xml,text/xml,*/*' },
+      signal: AbortSignal.timeout(10000)
+    })
+    if (!res.ok) throw new Error(`HTTP ${res.status}`)
+    const xml = await res.text()
+    const items = parseRSSItems(xml)
+
+    for (const item of items.slice(0, 5)) {
       try {
-        const parsed = await parser.parseURL(feed.feed_url);
-        if (!parsed.items?.length) continue;
+        const title = (item.title as string)?.trim()
+        const link = (item.link as string)?.trim()
+        if (!title || !link) continue
 
-        const feedItemUrls = parsed.items
-          .map((item: any) => item.link || item.guid)
-          .filter(Boolean) as string[];
+        const { data: exists } = await supabase
+          .from('posts')
+          .select('id')
+          .or(`original_source_url.eq.${link},title.ilike.${title.slice(0, 80).replace(/[%_]/g, '\\$&')}%`)
+          .limit(1)
+        if (exists?.length) continue
 
-        const { data: existingPosts } = await supabase
-          .from("posts")
-          .select("original_source_url")
-          .in("original_source_url", feedItemUrls);
-
-        const existingUrls = new Set(
-          (existingPosts || []).map((p: any) => p.original_source_url)
-        );
-
-        const newItems = parsed.items.filter(
-          (item: any) => !existingUrls.has(item.link || item.guid)
-        );
-
-        if (!newItems.length) {
-          await supabase
-            .from("rss_feeds")
-            .update({ last_fetched_at: new Date().toISOString() })
-            .eq("id", feed.id);
-          continue;
+        let image = extractImageFromItem(item)
+        if (!image) image = await fetchOgImage(link)
+        if (!image || !image.startsWith('http')) {
+          const catSlug = (feed.categories as {slug:string})?.slug || 'tech-news'
+          const searchTerm = CATEGORY_SEARCH[catSlug] || 'technology'
+          image = await pexelsSearch(searchTerm)
+        }
+        if (!image || !image.startsWith('http')) {
+          const catSlug = (feed.categories as {slug:string})?.slug || 'tech-news'
+          image = CATEGORY_FALLBACKS[catSlug] || CATEGORY_FALLBACKS['tech-news']
         }
 
-        for (const item of newItems) {
-          const title = item.title || "Untitled";
-          const content = item.content || item.contentSnippet || "";
-          const featuredImage = extractFeaturedImage(item, content);
-          let finalContent = content;
+        const articleText = await fetchArticleText(link)
+        const categoryId = autoCategory(title, feed.category_id, categories)
 
-          if (feed.auto_rewrite && content.length > 50 && openRouterKey) {
-            try {
-              finalContent = await rewriteWithOpenRouter(title, content);
-            } catch (err: any) {
-              console.error(`[${feed.feed_name}] Rewrite failed: ${err.message}`);
-            }
-          }
-
-          const slug = generateSlug(title);
-
-          const post = {
+        const { data: post, error } = await supabase
+          .from('posts')
+          .insert({
             title,
-            slug,
-            content: finalContent,
-            excerpt: extractExcerpt(finalContent),
-            featured_image: featuredImage,
-            category_id: feed.category_id,
-            author_id: defaultAuthorId,
-            status: "published",
+            slug: makeSlug(title),
+            excerpt: (item.description as string) || title.slice(0, 200),
+            content: articleText
+              ? `<article><p>${articleText.slice(0, 2000)}</p></article>`
+              : `<article><p>${title}</p></article>`,
+            featured_image: image,
+            category_id: categoryId,
+            author_id: authorId,
+            source_name: feed.feed_name,
+            status: 'draft',
             rss_source_url: feed.feed_url,
-            original_source_url: item.link || item.guid || "",
-            ai_rewritten: feed.auto_rewrite,
-            reading_time: calculateReadingTime(finalContent),
-            tags: item.categories?.slice(0, 5) || [],
-            published_at: item.isoDate
-              ? new Date(item.isoDate).toISOString()
-              : new Date().toISOString(),
-          };
+            original_source_url: link,
+            ai_rewritten: false,
+            published_at: new Date(item.pubDate as string || Date.now()).toISOString(),
+            reading_time: Math.max(1, Math.round((articleText.split(' ').length || 50) / 200)),
+            views: 0,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          })
+          .select('id')
+          .single()
 
-          const { error: insertError } = await supabase
-            .from("posts")
-            .insert(post);
+        if (error) { errs.push(error.message); continue }
 
-          if (insertError) {
-            console.error(`[${feed.feed_name}] Insert failed: ${insertError.message}`);
-            continue;
-          }
+        newCount++
 
-          totalNewPosts++;
-
-          await supabase
-            .from("rss_feeds")
-            .update({ posts_fetched: (feed.posts_fetched || 0) + 1 })
-            .eq("id", feed.id);
+        if (feed.auto_rewrite) {
+          fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/rewrite-post`, {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`,
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              post_id: post.id,
+              article_content: articleText,
+              source_name: feed.feed_name
+            })
+          }).catch(() => {})
         }
-
-        await supabase
-          .from("rss_feeds")
-          .update({ last_fetched_at: new Date().toISOString(), last_error: null })
-          .eq("id", feed.id);
-      } catch (err: any) {
-        await supabase
-          .from("rss_feeds")
-          .update({ last_error: err.message?.slice(0, 500), last_fetched_at: new Date().toISOString() })
-          .eq("id", feed.id);
-        console.error(`[${feed.feed_name}] Error: ${err.message}`);
+      } catch (e) {
+        errs.push(`Item: ${e instanceof Error ? e.message : String(e)}`)
       }
     }
 
-    return new Response(
-      JSON.stringify({ message: `Processed ${feeds.length} feeds, imported ${totalNewPosts} new posts` }),
-      { status: 200, headers: { "Content-Type": "application/json" } }
-    );
-  } catch (err: any) {
-    console.error(`Fatal: ${err.message}`);
-    return new Response(JSON.stringify({ error: err.message }), {
-      status: 500,
-      headers: { "Content-Type": "application/json" },
-    });
+    await supabase.from('rss_feeds')
+      .update({ last_fetched_at: new Date().toISOString() })
+      .eq('id', feed.id)
+
+  } catch (e) {
+    errs.push(`Feed ${feed.feed_name}: ${e instanceof Error ? e.message : String(e)}`)
   }
-});
+  return { new: newCount, errors: errs }
+}
+
+serve(async () => {
+  const { data: feeds } = await supabase
+    .from('rss_feeds')
+    .select('*, categories(slug)')
+    .eq('is_active', true)
+
+  const { data: categories } = await supabase
+    .from('categories')
+    .select('id, slug')
+
+  if (!feeds?.length || !categories?.length) {
+    return new Response(JSON.stringify({ error: 'No feeds or categories' }), { status: 500 })
+  }
+
+  const { data: profiles } = await supabase
+    .from('profiles')
+    .select('id')
+    .limit(1)
+
+  const defaultAuthorId = profiles?.[0]?.id
+  if (!defaultAuthorId) {
+    return new Response(JSON.stringify({ error: 'No author profile found' }), { status: 500 })
+  }
+
+  let totalNew = 0
+  const errors: string[] = []
+  const CONCURRENCY = 5
+
+  for (let i = 0; i < feeds.length; i += CONCURRENCY) {
+    const batch = feeds.slice(i, i + CONCURRENCY)
+    const results = await Promise.all(
+      batch.map(f => processFeed(f, categories, defaultAuthorId))
+    )
+    for (const r of results) {
+      totalNew += r.new
+      errors.push(...r.errors)
+    }
+  }
+
+  return new Response(JSON.stringify({ new_posts: totalNew, errors }), {
+    headers: { 'Content-Type': 'application/json' }
+  })
+})

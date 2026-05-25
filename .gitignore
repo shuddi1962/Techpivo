@@ -2,3 +2,5 @@ node_modules
 .vercel
 .next
 *.tsbuildinfo
+.env.local
+supabase/.temp
