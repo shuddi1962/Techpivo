@@ -211,31 +211,27 @@ export function RichTextEditor() {
         onWebImageSearch={() => setShowWebImage(true)}
       />
 
-      <EditorContent editor={editor} />
+      <div className="relative">
+        <EditorContent editor={editor} />
 
-      {selectedImage && (
-        <div className="px-6 py-3 border-t-2 border-gray-200 dark:border-[#1F2937] bg-gray-50 dark:bg-[#0A0F1E]">
-          <div className="flex items-center gap-3 flex-wrap">
-            <div className="flex items-center gap-2">
-              <label className="text-xs font-medium text-gray-600 dark:text-gray-300">Width:</label>
-              <select value={imageWidth} onChange={(e) => setImageWidth(e.target.value)} className="text-xs border-2 border-gray-300 dark:border-[#374151] rounded-md px-2 py-1 bg-white dark:bg-[#0A0F1E] text-gray-900 dark:text-white">
+        {selectedImage && (
+          <div className="absolute top-2 left-2 right-2 z-20 bg-white dark:bg-[#111827] border-2 border-gray-200 dark:border-[#374151] rounded-xl shadow-2xl p-3">
+            <div className="flex items-center gap-2 flex-wrap">
+              <select value={imageWidth} onChange={(e) => setImageWidth(e.target.value)} className="text-xs border-2 border-gray-300 dark:border-[#374151] rounded-md px-2 py-1 bg-gray-50 dark:bg-[#0A0F1E] text-gray-900 dark:text-white">
                 <option value="100%">Full</option>
                 <option value="75%">75%</option>
                 <option value="50%">Half</option>
                 <option value="25%">Quarter</option>
               </select>
+              <input value={imageLink} onChange={(e) => setImageLink(e.target.value)} placeholder="Link URL..." className="flex-1 min-w-[140px] text-xs border-2 border-gray-300 dark:border-[#374151] rounded-md px-2 py-1 bg-gray-50 dark:bg-[#0A0F1E] text-gray-900 dark:text-white placeholder:text-gray-400" />
+              <button onClick={applyImageTransform} className="text-xs font-semibold text-white bg-[#6366F1] hover:bg-[#4F46E5] px-2.5 py-1.5 rounded-md">Resize</button>
+              <button onClick={insertLinkedImage} disabled={!imageLink} className="text-xs font-semibold text-white bg-green-600 hover:bg-green-700 disabled:opacity-50 px-2.5 py-1.5 rounded-md">Link</button>
+              <button onClick={() => { editor.chain().focus().deleteSelection().run(); setSelectedImage(null) }} className="text-xs font-semibold text-red-600 hover:text-red-700 px-2 py-1">Remove</button>
+              <button onClick={() => setSelectedImage(null)} className="text-xs text-gray-400 hover:text-gray-600 px-2 py-1">Done</button>
             </div>
-            <div className="flex items-center gap-2 flex-1 min-w-[200px]">
-              <label className="text-xs font-medium text-gray-600 dark:text-gray-300 shrink-0">Link:</label>
-              <input value={imageLink} onChange={(e) => setImageLink(e.target.value)} placeholder="https://..." className="flex-1 text-xs border-2 border-gray-300 dark:border-[#374151] rounded-md px-2 py-1 bg-white dark:bg-[#0A0F1E] text-gray-900 dark:text-white" />
-            </div>
-            <button onClick={applyImageTransform} className="text-xs font-semibold text-white bg-[#6366F1] hover:bg-[#4F46E5] px-3 py-1.5 rounded-md">Resize</button>
-            <button onClick={insertLinkedImage} disabled={!imageLink} className="text-xs font-semibold text-white bg-green-600 hover:bg-green-700 disabled:opacity-50 px-3 py-1.5 rounded-md">Add Link</button>
-            <button onClick={() => { editor.chain().focus().deleteSelection().run(); setSelectedImage(null) }} className="text-xs font-semibold text-red-600 hover:text-red-700 px-2 py-1">Remove</button>
-            <button onClick={() => setSelectedImage(null)} className="text-xs text-gray-400 hover:text-gray-600 px-2 py-1">Done</button>
           </div>
-        </div>
-      )}
+        )}
+      </div>
 
       <div className="flex items-center justify-between px-6 py-2.5 border-t-2 border-gray-200 dark:border-[#1F2937] text-xs font-semibold text-gray-500 dark:text-[#9CA3AF]">
         <span>{wordCount} words</span>

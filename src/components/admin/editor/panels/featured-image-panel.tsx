@@ -1,9 +1,10 @@
 "use client"
 
-import { useRef, useState } from "react"
+import { useRef, useState, useCallback } from "react"
 import { usePostEditor } from "../post-editor-provider"
 import { CollapsibleSection } from "../collapsible-section"
 import { Image, Upload, X, Search, Loader2 } from "lucide-react"
+import { createClient } from "@/lib/supabase/client"
 
 export function FeaturedImagePanel() {
   const { post, setField, uploadImage } = usePostEditor()
@@ -13,14 +14,16 @@ export function FeaturedImagePanel() {
   const [searching, setSearching] = useState(false)
   const [source, setSource] = useState<"pexels" | "google">("pexels")
 
-  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileUpload = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
-    if (file) {
-      const url = await uploadImage(file)
-      if (url) setField("featured_image", url)
-    }
+    if (!file) return
+    const blobUrl = URL.createObjectURL(file)
+    setField("featured_image", blobUrl)
+    const url = await uploadImage(file)
+    if (url) setField("featured_image", url)
+    URL.revokeObjectURL(blobUrl)
     e.target.value = ""
-  }
+  }, [setField, uploadImage])
 
   const searchImages = async () => {
     if (!query) return
