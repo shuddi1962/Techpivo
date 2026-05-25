@@ -75,92 +75,88 @@ export default async function PostPage({ params }: Props) {
     <>
       <ReadingProgress />
 
-      {/* Hero Section */}
-      <div className="relative w-full h-[400px] md:h-[500px] lg:h-[560px] overflow-hidden">
-        <div
-          className="absolute inset-0 bg-cover bg-center bg-no-repeat scale-105"
-          style={{ backgroundImage: `url(${post.featured_image || "/api/placeholder/1200/600"})` }}
-        />
-        <div className="absolute inset-0 bg-gradient-to-t from-[#0a0a1a] via-[#0a0a1a]/60 to-[#0a0a1a]/20" />
-        <div className="absolute inset-0 bg-gradient-to-r from-black/40 to-transparent" />
-
-        {/* Back link */}
-        <div className="relative z-10 container pt-6">
-          <Link
-            href="/"
-            className="inline-flex items-center gap-1.5 text-sm text-white/70 hover:text-white transition-colors"
-          >
-            <ArrowLeft className="h-4 w-4" />
-            Back to Home
-          </Link>
-        </div>
-      </div>
-
-      {/* Post Content */}
-      <article className="container relative z-20 -mt-32">
+      <article className="container py-8">
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-10">
           <div className="lg:col-span-3">
-            {/* Post Header Card */}
-            <div className="bg-card border rounded-2xl p-6 md:p-8 mb-8 shadow-xl">
-              <div className="flex items-center gap-2 mb-4">
-                <Link href={`/category/${(post as any).category?.slug}`}>
-                  <Badge variant="indigo" className="px-3 py-1 text-xs uppercase tracking-wider font-semibold">
-                    {(post as any).category?.name}
-                  </Badge>
-                </Link>
-                {post.is_sponsored && (
-                  <Badge variant="amber" className="px-3 py-1 text-xs uppercase tracking-wider font-semibold">
-                    Sponsored
-                  </Badge>
-                )}
+            {/* Back link */}
+            <Link
+              href="/"
+              className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors mb-6"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              Back to Home
+            </Link>
+
+            {/* Featured Image Card */}
+            <div className="bg-card border rounded-2xl overflow-hidden mb-8 shadow-xl">
+              <div className="relative w-full aspect-[2/1] md:aspect-[21/9] bg-muted">
+                <div
+                  className="absolute inset-0 bg-cover bg-center"
+                  style={{ backgroundImage: `url(${post.featured_image || "/api/placeholder/1200/600"})` }}
+                />
               </div>
 
-              <h1 className="text-3xl md:text-4xl lg:text-5xl font-extrabold leading-tight mb-4 text-foreground">
-                {post.title}
-              </h1>
+              <div className="p-6 md:p-8">
+                <div className="flex items-center gap-2 mb-4">
+                  <Link href={`/category/${(post as any).category?.slug}`}>
+                    <Badge variant="indigo" className="px-3 py-1 text-xs uppercase tracking-wider font-semibold">
+                      {(post as any).category?.name}
+                    </Badge>
+                  </Link>
+                  {post.is_sponsored && (
+                    <Badge variant="amber" className="px-3 py-1 text-xs uppercase tracking-wider font-semibold">
+                      Sponsored
+                    </Badge>
+                  )}
+                </div>
 
-              <p className="text-lg text-muted-foreground leading-relaxed mb-6">{post.excerpt}</p>
+                <h1 className="text-3xl md:text-4xl lg:text-5xl font-extrabold leading-tight mb-4 text-foreground">
+                  {post.title}
+                </h1>
 
-              <div className="flex items-center justify-between flex-wrap gap-4 pb-2">
-                <div className="flex items-center gap-3">
-                  <Avatar className="h-11 w-11 ring-2 ring-primary/20">
-                    <AvatarImage src={(post as any).author?.avatar_url} />
-                    <AvatarFallback className="bg-primary/10 text-primary font-semibold">
-                      {(post as any).author?.full_name?.[0] || "B"}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div>
-                    <Link
-                      href={`/author/${(post as any).author?.username}`}
-                      className="font-semibold text-foreground hover:text-primary transition-colors"
-                    >
-                      {(post as any).author?.full_name || "Blizine"}
-                    </Link>
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <time dateTime={post.published_at}>
-                        {post.published_at ? formatDateFull(post.published_at) : ""}
-                      </time>
-                      <span className="text-muted-foreground/40">·</span>
-                      <Clock className="h-3.5 w-3.5" />
-                      <span>{post.reading_time || readingTime(post.content || "")} min read</span>
-                      <span className="text-muted-foreground/40">·</span>
-                      <Eye className="h-3.5 w-3.5" />
-                      <span>{post.views || 0} views</span>
+                <p className="text-lg text-muted-foreground leading-relaxed mb-6">{post.excerpt}</p>
+
+                <div className="flex items-center justify-between flex-wrap gap-4 pb-2">
+                  <div className="flex items-center gap-3">
+                    <Avatar className="h-11 w-11 ring-2 ring-primary/20">
+                      <AvatarImage src={(post as any).author?.avatar_url} />
+                      <AvatarFallback className="bg-primary/10 text-primary font-semibold">
+                        {(post as any).author?.full_name?.[0] || "B"}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div>
+                      <Link
+                        href={`/author/${(post as any).author?.username}`}
+                        className="font-semibold text-foreground hover:text-primary transition-colors"
+                      >
+                        {(post as any).author?.full_name || "Blizine"}
+                      </Link>
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                        <time dateTime={post.published_at}>
+                          {post.published_at ? formatDateFull(post.published_at) : ""}
+                        </time>
+                        <span className="text-muted-foreground/40">·</span>
+                        <Clock className="h-3.5 w-3.5" />
+                        <span>{post.reading_time || readingTime(post.content || "")} min read</span>
+                        <span className="text-muted-foreground/40">·</span>
+                        <Eye className="h-3.5 w-3.5" />
+                        <span>{post.views || 0} views</span>
+                      </div>
                     </div>
                   </div>
-                </div>
-                <div className="flex items-center gap-1">
-                  <button
-                    className="p-2.5 rounded-full hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
-                    title="Save"
-                  >
-                    <Bookmark className="h-5 w-5" />
-                  </button>
-                  <ShareButtons
-                    title={post.title}
-                    url={`${SITE_URL}/${post.slug}`}
-                    excerpt={post.excerpt}
-                  />
+                  <div className="flex items-center gap-1">
+                    <button
+                      className="p-2.5 rounded-full hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
+                      title="Save"
+                    >
+                      <Bookmark className="h-5 w-5" />
+                    </button>
+                    <ShareButtons
+                      title={post.title}
+                      url={`${SITE_URL}/${post.slug}`}
+                      excerpt={post.excerpt}
+                    />
+                  </div>
                 </div>
               </div>
             </div>
