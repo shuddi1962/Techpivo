@@ -18,6 +18,7 @@ import CodeBlockLowlightExtension from "@tiptap/extension-code-block-lowlight"
 import { common, createLowlight } from "lowlight"
 import { usePostEditor } from "./post-editor-provider"
 import { EditorToolbar } from "./editor-toolbar"
+import { createClient } from "@/lib/supabase/client"
 import { Search, Loader2, X } from "lucide-react"
 
 const lowlight = createLowlight(common)
@@ -38,17 +39,20 @@ export function RichTextEditor() {
 
   const handleImageUpload = useCallback(async (file: File) => {
     if (!editor) return
-    const formData = new FormData()
-    formData.append("file", file)
-    try {
-      const res = await fetch("/api/upload", { method: "POST", body: formData })
-      const data = await res.json()
-      if (data.url) {
-        editor.chain().focus().setImage({ src: data.url }).run()
-      }
-    } catch {
-      const url = URL.createObjectURL(file)
-      editor.chain().focus().setImage({ src: url }).run()
+    const supabase = createClient()
+    const ext = file.name.split(".").pop() || "jpg"
+    const fileName = `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`
+    const blobUrl = URL.createObjectURL(file)
+    editor.chain().focus().setImage({ src: blobUrl }).run()
+    const { error } = await supabase.storage.from("post-images").upload(fileName, file, {
+      contentType: file.type,
+      cacheControl: "3600",
+      upsert: false,
+    })
+    if (!error) {
+      const { data: { publicUrl } } = supabase.storage.from("post-images").getPublicUrl(fileName)
+      editor.commands.updateAttributes("image", { src: publicUrl })
+      URL.revokeObjectURL(blobUrl)
     }
   }, [])
 

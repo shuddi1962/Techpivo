@@ -15,7 +15,7 @@ export function CollapsibleSection({ title, icon, defaultOpen = true, children, 
   const [open, setOpen] = useState(defaultOpen)
 
   return (
-    <div className={`bg-white dark:bg-[#111827] border-2 border-gray-300 dark:border-[#374151] rounded-xl shadow-sm overflow-hidden ${className}`}>
+    <div className={`bg-white dark:bg-[#111827] border-2 border-gray-300 dark:border-[#374151] rounded-xl shadow-sm ${className}`}>
       <button
         onClick={() => setOpen(!open)}
         className="w-full flex items-center justify-between px-5 py-3.5 text-sm font-semibold text-gray-700 dark:text-[#F9FAFB] hover:bg-gray-50 dark:hover:bg-[#1a2235] transition-colors"
