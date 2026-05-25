@@ -93,26 +93,28 @@ export async function GET() {
         let blizineScore: number | null = null
         let quickBrief: { text: string }[] = []
 
-        // Full rewrite with improved prompt
-        const rewritePrompt =
-          "You are a professional tech journalist writing for Blizine, a technology news blog. " +
-          "Rewrite the following article in a compelling, authoritative, and engaging style. " +
-          "Requirements:\n" +
-          "- Write a complete article (minimum 800 words) that covers all key facts from the original\n" +
-          "- Start with a hook that grabs the reader's attention\n" +
-          "- Use clear H2 and H3 subheadings to structure the piece\n" +
-          "- Include specific details, data points, and quotes from the original\n" +
-          "- Maintain a professional yet accessible tone\n" +
-          "- End with a conclusion that provides context or takeaways\n" +
-          "- Output ONLY valid HTML (no markdown, no code fences)\n" +
-          "- Use <p> for paragraphs, <h2>/<h3> for headings, <strong> for emphasis\n" +
-          "- The article must be self-contained so readers never need the original source\n\n" +
-          "Title: " + post.title + "\n\nOriginal content:\n" + textContent
+        // Full rewrite with improved prompt (wrapped in try/catch so failures don't block score update)
+        try {
+          const rewritePrompt =
+            "You are a professional tech journalist writing for Blizine, a technology news blog. " +
+            "Rewrite the following article in a compelling, authoritative, and engaging style. " +
+            "Requirements:\n" +
+            "- Write a complete article (minimum 800 words) that covers all key facts from the original\n" +
+            "- Start with a hook that grabs the reader's attention\n" +
+            "- Use clear H2 and H3 subheadings to structure the piece\n" +
+            "- Include specific details, data points, and quotes from the original\n" +
+            "- Maintain a professional yet accessible tone\n" +
+            "- End with a conclusion that provides context or takeaways\n" +
+            "- Output ONLY valid HTML (no markdown, no code fences)\n" +
+            "- Use <p> for paragraphs, <h2>/<h3> for headings, <strong> for emphasis\n" +
+            "- The article must be self-contained so readers never need the original source\n\n" +
+            "Title: " + post.title + "\n\nOriginal content:\n" + textContent
 
-        const result = await callOpenRouter(rewritePrompt, openRouterKey, 8192)
-        if (result && result.length > 500) {
-          await supabase.from("posts").update({ content: result, ai_rewritten: true }).eq("id", post.id)
-        }
+          const result = await callOpenRouter(rewritePrompt, openRouterKey, 8192)
+          if (result && result.length > 500) {
+            await supabase.from("posts").update({ content: result, ai_rewritten: true }).eq("id", post.id)
+          }
+        } catch { /* rewrite failed but continue to set score */ }
 
         // Quick brief
         try {
