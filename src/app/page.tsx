@@ -15,7 +15,12 @@ import { Footer } from "@/components/layout/Footer"
 export const revalidate = 300
 
 export default async function HomePage() {
-  const supabase = createClient()
+  let supabase: ReturnType<typeof createClient> | null = null
+  try {
+    supabase = createClient()
+  } catch (e) {
+    console.error("Failed to create Supabase client", e)
+  }
 
   const sevenDaysAgo = new Date(Date.now() - 7 * 86400000).toISOString()
 
@@ -32,77 +37,79 @@ export default async function HomePage() {
   let subcategories: any[] | null = null
   let allTags: any[] | null = null
 
-  try {
-    const results = await Promise.allSettled([
-      supabase.from("posts").select("*, categories(name,slug,color)")
-        .eq("status", "published")
-        .not("featured_image", "is", null)
-        .order("published_at", { ascending: false }).limit(3),
+  if (supabase) {
+    try {
+      const results = await Promise.allSettled([
+        supabase.from("posts").select("*, categories(name,slug,color)")
+          .eq("status", "published")
+          .not("featured_image", "is", null)
+          .order("published_at", { ascending: false }).limit(3),
 
-      supabase.from("posts").select("*, categories(name,slug,color)")
-        .eq("status", "published")
-        .order("published_at", { ascending: false }).range(3, 12),
+        supabase.from("posts").select("*, categories(name,slug,color)")
+          .eq("status", "published")
+          .order("published_at", { ascending: false }).range(3, 12),
 
-      supabase.from("posts").select("title,slug")
-        .eq("status", "published")
-        .order("published_at", { ascending: false }).limit(10),
+        supabase.from("posts").select("title,slug")
+          .eq("status", "published")
+          .order("published_at", { ascending: false }).limit(10),
 
-      supabase.from("posts").select("id,title,slug,views,categories(name,slug,color)")
-        .eq("status", "published")
-        .gte("published_at", sevenDaysAgo)
-        .order("views", { ascending: false }).limit(5),
+        supabase.from("posts").select("id,title,slug,views,categories(name,slug,color)")
+          .eq("status", "published")
+          .gte("published_at", sevenDaysAgo)
+          .order("views", { ascending: false }).limit(5),
 
-      supabase.from("posts").select("id,title,slug,featured_image,views,categories(name,slug,color)")
-        .eq("status", "published")
-        .not("featured_image", "is", null)
-        .order("views", { ascending: false }).limit(5),
+        supabase.from("posts").select("id,title,slug,featured_image,views,categories(name,slug,color)")
+          .eq("status", "published")
+          .not("featured_image", "is", null)
+          .order("views", { ascending: false }).limit(5),
 
-      supabase.from("categories").select("id,name,slug,color,icon").order("name"),
+        supabase.from("categories").select("id,name,slug,color,icon").order("name"),
 
-      supabase.from("posts").select("*, categories!inner(name,slug,color)")
-        .eq("status", "published").eq("categories.slug", "ai-automation")
-        .not("featured_image", "is", null)
-        .order("published_at", { ascending: false }).limit(4),
+        supabase.from("posts").select("*, categories!inner(name,slug,color)")
+          .eq("status", "published").eq("categories.slug", "ai-automation")
+          .not("featured_image", "is", null)
+          .order("published_at", { ascending: false }).limit(4),
 
-      supabase.from("posts").select("*, categories!inner(name,slug,color)")
-        .eq("status", "published").eq("categories.slug", "cybersecurity")
-        .not("featured_image", "is", null)
-        .order("published_at", { ascending: false }).limit(4),
+        supabase.from("posts").select("*, categories!inner(name,slug,color)")
+          .eq("status", "published").eq("categories.slug", "cybersecurity")
+          .not("featured_image", "is", null)
+          .order("published_at", { ascending: false }).limit(4),
 
-      supabase.from("posts").select("*, categories!inner(name,slug,color)")
-        .eq("status", "published").eq("categories.slug", "gadgets")
-        .not("featured_image", "is", null)
-        .order("published_at", { ascending: false }).limit(4),
+        supabase.from("posts").select("*, categories!inner(name,slug,color)")
+          .eq("status", "published").eq("categories.slug", "gadgets")
+          .not("featured_image", "is", null)
+          .order("published_at", { ascending: false }).limit(4),
 
-      supabase.from("posts").select("*, categories!inner(name,slug,color)")
-        .eq("status", "published").eq("categories.slug", "tech-news")
-        .not("featured_image", "is", null)
-        .order("published_at", { ascending: false }).limit(4),
+        supabase.from("posts").select("*, categories!inner(name,slug,color)")
+          .eq("status", "published").eq("categories.slug", "tech-news")
+          .not("featured_image", "is", null)
+          .order("published_at", { ascending: false }).limit(4),
 
-      supabase.from("subcategories").select("*, categories(name,slug,color)")
-        .order("name"),
+        supabase.from("subcategories").select("*, categories(name,slug,color)")
+          .order("name"),
 
-      supabase.from("posts").select("seo_keywords")
-        .eq("status", "published").limit(100),
-    ])
+        supabase.from("posts").select("seo_keywords")
+          .eq("status", "published").limit(100),
+      ])
 
-    const extract = (r: any, i: number) =>
-      results[i]?.status === "fulfilled" ? results[i].value.data : null
+      const extract = (r: any, i: number) =>
+        results[i]?.status === "fulfilled" ? results[i].value.data : null
 
-    heroPosts = extract(results[0], 0)
-    latestPosts = extract(results[1], 1)
-    tickerPosts = extract(results[2], 2)
-    trendingPosts = extract(results[3], 3)
-    popularPosts = extract(results[4], 4)
-    categories = extract(results[5], 5)
-    aiPosts = extract(results[6], 6)
-    cyberPosts = extract(results[7], 7)
-    gadgetPosts = extract(results[8], 8)
-    techNewsPosts = extract(results[9], 9)
-    subcategories = extract(results[10], 10)
-    allTags = extract(results[11], 11)
-  } catch (e) {
-    console.error("Homepage data fetch failed", e)
+      heroPosts = extract(results[0], 0)
+      latestPosts = extract(results[1], 1)
+      tickerPosts = extract(results[2], 2)
+      trendingPosts = extract(results[3], 3)
+      popularPosts = extract(results[4], 4)
+      categories = extract(results[5], 5)
+      aiPosts = extract(results[6], 6)
+      cyberPosts = extract(results[7], 7)
+      gadgetPosts = extract(results[8], 8)
+      techNewsPosts = extract(results[9], 9)
+      subcategories = extract(results[10], 10)
+      allTags = extract(results[11], 11)
+    } catch (e) {
+      console.error("Homepage data fetch failed", e)
+    }
   }
 
   const tags = Array.from(new Set(
