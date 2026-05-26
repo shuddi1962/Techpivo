@@ -12,6 +12,7 @@ import { ReadingProgress } from "@/components/post/reading-progress"
 import { ShareButtons } from "@/components/social/share-buttons"
 import { PostComments } from "@/components/post/post-comments"
 import { ViewTracker } from "@/components/post/view-tracker"
+import { LiveViewCount } from "@/components/post/live-view-count"
 import { SITE_URL } from "@/lib/constants"
 
 export const dynamic = "force-dynamic"
@@ -143,7 +144,7 @@ export default async function PostPage({ params }: Props) {
                         <span>{post.reading_time || readingTime(post.content || "")} min read</span>
                         <span className="text-muted-foreground/40">·</span>
                         <Eye className="h-3.5 w-3.5" />
-                        <span>{post.views || 0} views</span>
+                        <LiveViewCount postId={post.id} initialViews={post.views || 0} />
                       </div>
                     </div>
                   </div>

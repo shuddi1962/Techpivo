@@ -55,7 +55,7 @@ export default function AdminPostsPage() {
 
   useEffect(() => {
     fetchPosts()
-    const interval = setInterval(fetchPosts, 5000)
+    const interval = setInterval(fetchPosts, 3000)
     const supabase = createClient()
     const channel = supabase
       .channel("posts-realtime")

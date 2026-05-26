@@ -10,18 +10,7 @@ export async function POST(req: Request) {
 
     const supabase = createClient()
 
-    const { data: existing } = await supabase
-      .from("posts")
-      .select("views")
-      .eq("id", postId)
-      .single()
-
-    if (existing) {
-      await supabase
-        .from("posts")
-        .update({ views: (existing.views || 0) + 1 })
-        .eq("id", postId)
-    }
+    await supabase.rpc("increment_post_views", { post_id: postId })
 
     await supabase.from("analytics_events").insert({
       event_type: "page_view",
