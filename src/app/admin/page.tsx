@@ -32,89 +32,92 @@ export default function AdminDashboard() {
   const [loading, setLoading] = useState(true)
 
   const fetchData = useCallback(async () => {
-    const supabase = supabaseRef.current
+    try {
+      const supabase = supabaseRef.current
 
-    const [
-      postsCount, postsViews, draftCount, rssFeeds,
-      topPostsRes, dailyViewsRes, statusCounts,
-      regionRes, pageRes, referrerRes,
-    ] = await Promise.all([
-      supabase.from("posts").select("*", { count: "exact", head: true }).eq("status", "published"),
-      supabase.from("posts").select("views"),
-      supabase.from("posts").select("*", { count: "exact", head: true }).eq("status", "draft"),
-      supabase.from("rss_feeds").select("*").eq("is_active", true),
-      supabase.from("posts").select("id, title, slug, views").eq("status", "published").order("views", { ascending: false }).limit(5),
-      supabase.from("analytics_events").select("created_at").eq("event_type", "page_view").gte("created_at", new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()),
-      Promise.all([
+      const [
+        postsCount, postsViews, draftCount, rssFeeds,
+        topPostsRes, dailyViewsRes, statusCounts,
+        regionRes, pageRes, referrerRes,
+      ] = await Promise.all([
         supabase.from("posts").select("*", { count: "exact", head: true }).eq("status", "published"),
+        supabase.from("posts").select("views"),
         supabase.from("posts").select("*", { count: "exact", head: true }).eq("status", "draft"),
-        supabase.from("posts").select("*", { count: "exact", head: true }).eq("status", "scheduled"),
-        supabase.from("posts").select("*", { count: "exact", head: true }).eq("status", "archived"),
-      ]),
-      supabase.from("analytics_events").select("country").eq("event_type", "page_view").not("country", "is", null).limit(500),
-      supabase.from("analytics_events").select("page_url").eq("event_type", "page_view").not("page_url", "is", null).limit(500),
-      supabase.from("analytics_events").select("referrer").eq("event_type", "page_view").not("referrer", "is", null).limit(500),
-    ])
+        supabase.from("rss_feeds").select("*").eq("is_active", true),
+        supabase.from("posts").select("id, title, slug, views").eq("status", "published").order("views", { ascending: false }).limit(5),
+        supabase.from("analytics_events").select("created_at").eq("event_type", "page_view").gte("created_at", new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()),
+        Promise.all([
+          supabase.from("posts").select("*", { count: "exact", head: true }).eq("status", "published"),
+          supabase.from("posts").select("*", { count: "exact", head: true }).eq("status", "draft"),
+          supabase.from("posts").select("*", { count: "exact", head: true }).eq("status", "scheduled"),
+          supabase.from("posts").select("*", { count: "exact", head: true }).eq("status", "archived"),
+        ]),
+        supabase.from("analytics_events").select("country").eq("event_type", "page_view").not("country", "is", null).limit(500),
+        supabase.from("analytics_events").select("page_url").eq("event_type", "page_view").not("page_url", "is", null).limit(500),
+        supabase.from("analytics_events").select("referrer").eq("event_type", "page_view").not("referrer", "is", null).limit(500),
+      ])
 
-    const totalV = (postsViews.data || []).reduce((s: number, p: any) => s + (p.views || 0), 0)
-    const prevV = prevViewsRef.current
-    const viewDiff = totalV - prevV
-    prevViewsRef.current = totalV
+      const totalV = (postsViews.data || []).reduce((s: number, p: any) => s + (p.views || 0), 0)
+      const prevV = prevViewsRef.current
+      const viewDiff = totalV - prevV
+      prevViewsRef.current = totalV
 
-    setStats(prev => {
-      const updated = [...prev]
-      updated[0] = { ...updated[0], value: postsCount.count || 0, change: `+${(postsCount.count || 0) - (prev[0].value || 0)}` }
-      updated[1] = { ...updated[1], value: totalV, change: viewDiff >= 0 ? `+${viewDiff}` : `${viewDiff}` }
-      updated[2] = { ...updated[2], value: rssFeeds.data?.length || 0 }
-      return updated
-    })
+      setStats(prev => {
+        const updated = [...prev]
+        updated[0] = { ...updated[0], value: postsCount.count || 0, change: `+${(postsCount.count || 0) - (prev[0].value || 0)}` }
+        updated[1] = { ...updated[1], value: totalV, change: viewDiff >= 0 ? `+${viewDiff}` : `${viewDiff}` }
+        updated[2] = { ...updated[2], value: rssFeeds.data?.length || 0 }
+        return updated
+      })
 
-    if (topPostsRes.data) setTopPosts(topPostsRes.data)
+      if (topPostsRes.data) setTopPosts(topPostsRes.data)
 
-    const dailyMap: Record<string, number> = {}
-    const now = new Date()
-    for (let i = 6; i >= 0; i--) {
-      const d = new Date(now)
-      d.setDate(d.getDate() - i)
-      dailyMap[d.toLocaleDateString("en-US", { month: "short", day: "numeric" })] = 0
+      const dailyMap: Record<string, number> = {}
+      const now = new Date()
+      for (let i = 6; i >= 0; i--) {
+        const d = new Date(now)
+        d.setDate(d.getDate() - i)
+        dailyMap[d.toLocaleDateString("en-US", { month: "short", day: "numeric" })] = 0
+      }
+      ;(dailyViewsRes.data || []).forEach((e: any) => {
+        const key = new Date(e.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric" })
+        if (dailyMap[key] !== undefined) dailyMap[key]++
+      })
+      setViewsOverTime(Object.entries(dailyMap).map(([date, views]) => ({ date, views })))
+
+      const [pubC, draftC, schC, archC] = statusCounts
+      setStatusDist([
+        { name: "Published", value: pubC.count || 0 },
+        { name: "Draft", value: draftC.count || 0 },
+        { name: "Scheduled", value: schC.count || 0 },
+        { name: "Archived", value: archC.count || 0 },
+      ])
+
+      const regionMap: Record<string, number> = {}
+      ;(regionRes.data || []).forEach((r: any) => {
+        const name = r.country || "Unknown"
+        regionMap[name] = (regionMap[name] || 0) + 1
+      })
+      setRegions(Object.entries(regionMap).sort((a, b) => b[1] - a[1]).slice(0, 6).map(([name, value]) => ({ name, value })))
+
+      const pageMap: Record<string, number> = {}
+      ;(pageRes.data || []).forEach((r: any) => {
+        const name = r.page_url || "/"
+        pageMap[name] = (pageMap[name] || 0) + 1
+      })
+      setPages(Object.entries(pageMap).sort((a, b) => b[1] - a[1]).slice(0, 6).map(([name, value]) => ({ name, value })))
+
+      const refMap: Record<string, number> = {}
+      ;(referrerRes.data || []).forEach((r: any) => {
+        let name = r.referrer || "Direct"
+        if (!name || name === "") name = "Direct"
+        try { name = new URL(name).hostname } catch { name = "Direct" }
+        refMap[name] = (refMap[name] || 0) + 1
+      })
+      setReferrers(Object.entries(refMap).sort((a, b) => b[1] - a[1]).slice(0, 6).map(([name, value]) => ({ name, value })))
+    } catch (err) {
+      console.error("Dashboard fetch error:", err)
     }
-    ;(dailyViewsRes.data || []).forEach((e: any) => {
-      const key = new Date(e.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric" })
-      if (dailyMap[key] !== undefined) dailyMap[key]++
-    })
-    setViewsOverTime(Object.entries(dailyMap).map(([date, views]) => ({ date, views })))
-
-    const [pubC, draftC, schC, archC] = statusCounts
-    setStatusDist([
-      { name: "Published", value: pubC.count || 0 },
-      { name: "Draft", value: draftC.count || 0 },
-      { name: "Scheduled", value: schC.count || 0 },
-      { name: "Archived", value: archC.count || 0 },
-    ])
-
-    const regionMap: Record<string, number> = {}
-    ;(regionRes.data || []).forEach((r: any) => {
-      const name = r.country || "Unknown"
-      regionMap[name] = (regionMap[name] || 0) + 1
-    })
-    setRegions(Object.entries(regionMap).sort((a, b) => b[1] - a[1]).slice(0, 6).map(([name, value]) => ({ name, value })))
-
-    const pageMap: Record<string, number> = {}
-    ;(pageRes.data || []).forEach((r: any) => {
-      const name = r.page_url || "/"
-      pageMap[name] = (pageMap[name] || 0) + 1
-    })
-    setPages(Object.entries(pageMap).sort((a, b) => b[1] - a[1]).slice(0, 6).map(([name, value]) => ({ name, value })))
-
-    const refMap: Record<string, number> = {}
-    ;(referrerRes.data || []).forEach((r: any) => {
-      let name = r.referrer || "Direct"
-      if (!name || name === "") name = "Direct"
-      try { name = new URL(name).hostname } catch { name = "Direct" }
-      refMap[name] = (refMap[name] || 0) + 1
-    })
-    setReferrers(Object.entries(refMap).sort((a, b) => b[1] - a[1]).slice(0, 6).map(([name, value]) => ({ name, value })))
-
     setLoading(false)
   }, [])
 
