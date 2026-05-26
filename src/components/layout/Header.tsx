@@ -1,17 +1,15 @@
 "use client"
 
 import Link from "next/link"
-import { useState, useRef, useEffect } from "react"
+import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { useTheme } from "next-themes"
 
 export function Header() {
-  const [searchOpen, setSearchOpen] = useState(false)
   const [searchQ, setSearchQ] = useState("")
   const [loginOpen, setLoginOpen] = useState(false)
   const [scrolled, setScrolled] = useState(false)
   const [mounted, setMounted] = useState(false)
-  const inputRef = useRef<HTMLInputElement>(null)
   const router = useRouter()
   const { theme, setTheme } = useTheme()
 
@@ -23,10 +21,6 @@ export function Header() {
     return () => window.removeEventListener("scroll", fn)
   }, [])
 
-  useEffect(() => {
-    if (searchOpen) inputRef.current?.focus()
-  }, [searchOpen])
-
   return (
     <>
       <header className={`site-header${scrolled ? " scrolled" : ""}`}>
@@ -35,10 +29,19 @@ export function Header() {
             <span className="logo-text">Blizine</span>
           </Link>
 
+          <div className="header-search-box">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="search-box-icon"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+            <input
+              type="text"
+              placeholder="Search articles..."
+              value={searchQ}
+              onChange={(e) => setSearchQ(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && router.push(`/search?q=${encodeURIComponent(searchQ)}`)}
+              className="search-box-input"
+            />
+          </div>
+
           <div className="header-controls">
-            <button className="icon-btn" onClick={() => setSearchOpen(s => !s)} aria-label="Search">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-            </button>
             {mounted && (
               <button className="icon-btn" onClick={() => setTheme(theme === "dark" ? "light" : "dark")} aria-label="Toggle theme">
                 {theme === "dark" ? (
@@ -52,21 +55,6 @@ export function Header() {
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" x2="3" y1="12" y2="12"/></svg>
               Sign In
             </button>
-          </div>
-        </div>
-
-        <div className={`search-dropdown${searchOpen ? " open" : ""}`}>
-          <div className="search-inner">
-            <input
-              ref={inputRef}
-              type="text"
-              placeholder="Search articles..."
-              value={searchQ}
-              onChange={(e) => setSearchQ(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && router.push(`/search?q=${encodeURIComponent(searchQ)}`)}
-              className="search-input"
-            />
-            <button className="search-close-btn" onClick={() => { setSearchOpen(false); setSearchQ("") }}>✕</button>
           </div>
         </div>
       </header>

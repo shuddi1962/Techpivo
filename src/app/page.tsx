@@ -144,20 +144,6 @@ export default async function HomePage() {
       <MainNav categories={cats} subcategories={subcategories || []} />
       <BreakingTicker posts={tickerPosts || []} />
 
-      {trendingPosts && trendingPosts.length > 0 && (
-        <div className="trending-now-strip">
-          <span className="trending-now-label">Trending Now</span>
-          <div className="trending-now-track">
-            {trendingPosts.slice(0, 5).map((p, i) => (
-              <a key={p.id} href={`/${p.slug}`} className="trending-now-item">
-                <span className="trending-now-rank">{i + 1}</span>
-                <span>{p.title}</span>
-              </a>
-            ))}
-          </div>
-        </div>
-      )}
-
       <div className="site-main">
         <div className="main-layout">
           <div className="content-col">

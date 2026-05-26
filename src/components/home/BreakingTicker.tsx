@@ -3,18 +3,18 @@
 import Link from "next/link"
 
 export function BreakingTicker({ posts }: { posts: { title: string; slug: string }[] }) {
-  const items = posts.length ? posts.map(p => p.title) : ["Loading latest news..."]
+  if (posts.length === 0) return null
 
   return (
     <div className="breaking-ticker">
       <span className="ticker-badge">BREAKING</span>
       <div className="ticker-track">
         <div className="ticker-scroll">
-          {[...items, ...items].map((item, i) => (
-            <span key={i} className="ticker-item">
-              {item}
+          {[...posts, ...posts].map((post, i) => (
+            <Link key={`${post.slug}-${i}`} href={`/${post.slug}`} className="ticker-item">
+              {post.title}
               <span className="ticker-sep">◆</span>
-            </span>
+            </Link>
           ))}
         </div>
       </div>

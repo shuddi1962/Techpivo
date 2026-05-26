@@ -16,15 +16,10 @@ export function Sidebar({ trending, popular, categories, tags }: SidebarProps) {
   return (
     <aside className="sidebar">
       <TrendingWidget posts={trending} />
-
       <SocialWidget />
-
       <NewsletterWidget />
-
       <PopularWidget posts={popular} />
-
       <CategoriesWidget categories={categories} />
-
       <TagsWidget tags={tags} />
     </aside>
   )
