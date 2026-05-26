@@ -44,7 +44,7 @@ export default async function HomePage() {
         supabase.from("posts").select("*, categories(name,slug,color)")
           .eq("status", "published")
           .not("featured_image", "is", null)
-          .order("published_at", { ascending: false }).limit(3),
+          .order("published_at", { ascending: false }).limit(6),
 
         supabase.from("posts").select("*, categories(name,slug,color)")
           .eq("status", "published")
@@ -128,7 +128,7 @@ export default async function HomePage() {
   }))
 
   const featuredPost = (heroPosts || [])[0] || null
-  const heroSecondary = (heroPosts || []).slice(1, 3)
+  const heroSecondary = (heroPosts || []).slice(1, 5)
 
   const subcatsByCat: Record<string, any[]> = {}
   for (const sub of (subcategories || [])) {
@@ -154,7 +154,11 @@ export default async function HomePage() {
 
             <CategoryTabSection categories={cats} posts={latestPosts || []} />
 
+            <AdSlot position="Between Tabs And Latest" width={728} height={90} className="ad-mid" />
+
             <LatestGrid posts={latestPosts || []} />
+
+            <AdSlot position="Between Latest And Categories" width={728} height={90} className="ad-mid" />
 
             <CategoryStrip
               categoryName="AI & Automation"
@@ -164,6 +168,8 @@ export default async function HomePage() {
               subcategories={subcatsByCat["ai-automation"] || []}
             />
 
+            <AdSlot position="Between AI And Cybersecurity" width={728} height={90} className="ad-mid" />
+
             <CategoryStrip
               categoryName="Cybersecurity"
               categorySlug="cybersecurity"
@@ -171,6 +177,8 @@ export default async function HomePage() {
               posts={cyberPosts || []}
               subcategories={subcatsByCat["cybersecurity"] || []}
             />
+
+            <AdSlot position="Between Cyber And Gadgets" width={728} height={90} className="ad-mid" />
 
             <CategoryStrip
               categoryName="Gadgets"
@@ -180,6 +188,8 @@ export default async function HomePage() {
               subcategories={subcatsByCat["gadgets"] || []}
             />
 
+            <AdSlot position="Between Gadgets And Tech News" width={728} height={90} className="ad-mid" />
+
             <CategoryStrip
               categoryName="Tech News"
               categorySlug="tech-news"
@@ -187,6 +197,8 @@ export default async function HomePage() {
               posts={techNewsPosts || []}
               subcategories={subcatsByCat["tech-news"] || []}
             />
+
+            <AdSlot position="Between Tech News And Desktops" width={728} height={90} className="ad-mid" />
 
             <CategoryStrip
               categoryName="Desktops"

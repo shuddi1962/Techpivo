@@ -19,8 +19,6 @@ export function TrendingWidget({ posts }: { posts: any[] }) {
               <Link href={`/${post.slug}`} className="trending-title">{post.title}</Link>
               <div className="trending-meta">
                 <CategoryBadge name={post.categories?.name} color={post.categories?.color} size="xs" />
-                <span className="sep">·</span>
-                <span>{post.views?.toLocaleString()} views</span>
               </div>
             </div>
           </li>

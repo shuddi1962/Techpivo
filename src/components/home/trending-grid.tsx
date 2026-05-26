@@ -40,9 +40,7 @@ export function TrendingGrid() {
             <h3 className="font-semibold group-hover:text-brand-indigo transition-colors line-clamp-2">
               {post.title}
             </h3>
-            <p className="text-xs text-muted-foreground mt-1">
-              {post.published_at ? formatDate(post.published_at) : ""} · {post.reading_time} min read
-            </p>
+            <p className="text-xs text-muted-foreground mt-1"></p>
           </Link>
         ))}
       </div>

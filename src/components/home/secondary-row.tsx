@@ -38,9 +38,7 @@ export function SecondaryRow() {
               {post.title}
             </h3>
             <p className="text-sm text-muted-foreground line-clamp-2 mt-1">{post.excerpt}</p>
-            <p className="text-xs text-muted-foreground mt-2">
-              {post.published_at ? formatDate(post.published_at) : ""} · {post.reading_time} min read
-            </p>
+            <p className="text-xs text-muted-foreground mt-2"></p>
           </Link>
         ))}
       </div>

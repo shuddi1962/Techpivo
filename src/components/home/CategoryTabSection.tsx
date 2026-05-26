@@ -53,11 +53,7 @@ export function CategoryTabSection({ categories, posts }: { categories: any[]; p
             <div className="tab-big-body">
               <h3 className="tab-big-title">{bigPost.title}</h3>
               <p className="tab-big-excerpt">{bigPost.excerpt}</p>
-              <div className="tab-big-meta">
-                <span>{bigPost.published_at ? new Date(bigPost.published_at).toLocaleDateString("en-US", { month: "short", day: "numeric" }) : ""}</span>
-                <span className="sep">·</span>
-                <span>{bigPost.reading_time} min read</span>
-              </div>
+              <div className="tab-big-meta"></div>
             </div>
           </Link>
         )}
@@ -77,11 +73,7 @@ export function CategoryTabSection({ categories, posts }: { categories: any[]; p
               <div className="tab-list-body">
                 <CategoryBadge name={post.categories?.name} color={post.categories?.color} size="xs" />
                 <h4 className="tab-list-title">{post.title}</h4>
-                <div className="tab-list-meta">
-                  <span>{post.published_at ? new Date(post.published_at).toLocaleDateString("en-US", { month: "short", day: "numeric" }) : ""}</span>
-                  <span className="sep">·</span>
-                  <span>{post.reading_time} min</span>
-                </div>
+                <div className="tab-list-meta"></div>
               </div>
             </Link>
           ))}

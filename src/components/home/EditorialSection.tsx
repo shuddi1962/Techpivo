@@ -30,11 +30,7 @@ export function EditorialSection({ posts }: { posts: any[] }) {
             <div className="cat-strip-body">
               <CategoryBadge name={post.categories?.name} color={post.categories?.color} size="xs" />
               <h3 className="cat-strip-title">{post.title}</h3>
-              <div className="cat-strip-meta">
-                <span>{post.published_at ? new Date(post.published_at).toLocaleDateString("en-US", { month: "short", day: "numeric" }) : ""}</span>
-                <span className="sep">·</span>
-                <span>{post.reading_time} min</span>
-              </div>
+              <div className="cat-strip-meta"></div>
             </div>
           </Link>
         ))}

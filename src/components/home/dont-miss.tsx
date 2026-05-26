@@ -74,9 +74,7 @@ export function DontMiss({ categories }: DontMissProps) {
               {main.title}
             </h3>
             <p className="text-sm text-muted-foreground line-clamp-2 mt-1">{main.excerpt}</p>
-            <p className="text-xs text-muted-foreground mt-2">
-              {main.published_at ? formatDate(main.published_at) : ""} · {main.reading_time} min read
-            </p>
+            <p className="text-xs text-muted-foreground mt-2"></p>
           </Link>
         )}
 
@@ -92,9 +90,7 @@ export function DontMiss({ categories }: DontMissProps) {
                   {post.title}
                 </h4>
                 <p className="text-sm text-muted-foreground line-clamp-1 mt-1">{post.excerpt}</p>
-                <p className="text-xs text-muted-foreground mt-1">
-                  {post.published_at ? formatDate(post.published_at) : ""} · {post.reading_time} min read
-                </p>
+                <p className="text-xs text-muted-foreground mt-1"></p>
               </div>
             </Link>
           ))}

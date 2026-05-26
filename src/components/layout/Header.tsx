@@ -26,6 +26,7 @@ export function Header() {
       <header className={`site-header${scrolled ? " scrolled" : ""}`}>
         <div className="header-inner">
           <Link href="/" className="logo">
+            <span className="logo-icon">⚡</span>
             <span className="logo-text">Blizine</span>
           </Link>
 
@@ -38,7 +39,9 @@ export function Header() {
               onKeyDown={(e) => e.key === "Enter" && router.push(`/search?q=${encodeURIComponent(searchQ)}`)}
               className="search-box-input"
             />
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="search-box-icon"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+            <button className="search-box-btn" onClick={() => searchQ.trim() && router.push(`/search?q=${encodeURIComponent(searchQ)}`)} aria-label="Search">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+            </button>
           </div>
 
           <div className="header-controls">

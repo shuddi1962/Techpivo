@@ -28,16 +28,11 @@ export function LatestGrid({ posts }: { posts: any[] }) {
               <div className="post-card-img-overlay" />
               <div className="post-card-img-top">
                 <CategoryBadge name={post.categories?.name} color={post.categories?.color} size="xs" />
-                <span className="post-card-readtime">{post.reading_time} min</span>
               </div>
             </div>
             <div className="post-card-body">
               <h3 className="post-card-title">{post.title}</h3>
-              <div className="post-card-meta">
-                <span>{post.published_at ? new Date(post.published_at).toLocaleDateString("en-US", { month: "short", day: "numeric" }) : ""}</span>
-                <span className="sep">·</span>
-                <span>{post.views?.toLocaleString()} views</span>
-              </div>
+              <div className="post-card-meta"></div>
             </div>
           </Link>
         ))}

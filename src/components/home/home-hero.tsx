@@ -45,10 +45,6 @@ export function HomeHero({ posts }: HomeHeroProps) {
               <AvatarFallback>{main.author?.full_name?.[0] || "A"}</AvatarFallback>
             </Avatar>
             <span>{main.author?.full_name || "Blizine"}</span>
-            <span>·</span>
-            <span>{main.published_at ? formatDate(main.published_at) : ""}</span>
-            <span>·</span>
-            <span>{main.reading_time} min read</span>
           </div>
         </div>
       </Link>
@@ -73,11 +69,7 @@ export function HomeHero({ posts }: HomeHeroProps) {
                 {post.category?.name || "Tech"}
               </Badge>
               <h3 className="text-lg font-bold text-white line-clamp-2">{post.title}</h3>
-              <div className="flex items-center gap-2 mt-2 text-xs text-gray-400">
-                <span>{post.published_at ? formatDate(post.published_at) : ""}</span>
-                <span>·</span>
-                <span>{post.reading_time} min read</span>
-              </div>
+              <div className="flex items-center gap-2 mt-2 text-xs text-gray-400"></div>
             </div>
           </Link>
         ))}
