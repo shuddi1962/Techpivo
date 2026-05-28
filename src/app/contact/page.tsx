@@ -12,7 +12,7 @@ export default function ContactPage() {
     <div className="w-full">
       {/* Hero */}
       <div className="relative overflow-hidden mb-12 min-h-[320px] flex items-center">
-        <Image src="https://images.pexels.com/photos/6393340/pexels-photo-6393340.jpeg" alt="Contact us" fill className="object-cover" sizes="100vw" priority />
+        <Image src="https://images.pexels.com/photos/3777573/pexels-photo-3777573.jpeg" alt="Customer support" fill className="object-cover" sizes="100vw" priority />
         <div className="absolute inset-0 bg-black/40" />
         <div className="relative z-10 px-6 md:px-12 lg:px-16 py-16 text-white max-w-4xl">
           <div className="text-5xl mb-4">✉️</div>
