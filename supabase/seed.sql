@@ -28,17 +28,17 @@ INSERT INTO rss_feeds (id, feed_name, feed_url, category_id, is_active, auto_rew
 (gen_random_uuid(), 'Ars Technica', 'https://feeds.arstechnica.com/arstechnica/index', cat('tech-news'), true, true, true, 60, now()),
 (gen_random_uuid(), 'CNET', 'https://www.cnet.com/rss/all/', cat('tech-news'), true, true, true, 60, now()),
 (gen_random_uuid(), 'Wired', 'https://www.wired.com/feed/rss', cat('tech-news'), true, true, true, 60, now()),
-(gen_random_uuid(), 'Tom''s Guide', 'https://www.tomsguide.com/feeds/rss2/news.xml', cat('tech-news'), true, true, true, 60, now()),
-(gen_random_uuid(), 'TechRadar', 'https://www.techradar.com/feeds/rss/all', cat('tech-news'), true, true, true, 60, now()),
+(gen_random_uuid(), 'Tom''s Guide', 'https://www.tomsguide.com/feeds.xml', cat('tech-news'), true, true, true, 60, now()),
+(gen_random_uuid(), 'TechRadar', 'https://www.techradar.com/feeds.xml', cat('tech-news'), true, true, true, 60, now()),
 (gen_random_uuid(), 'ZDNet', 'https://www.zdnet.com/news/rss.xml', cat('tech-news'), true, true, true, 60, now()),
-(gen_random_uuid(), 'Mashable Tech', 'https://mashable.com/feeds/rss/tech.xml', cat('tech-news'), true, true, true, 60, now()),
+(gen_random_uuid(), 'Mashable Tech', 'https://mashable.com/feeds/rss/tech', cat('tech-news'), true, true, true, 60, now()),
 (gen_random_uuid(), 'MIT Tech Review', 'https://www.technologyreview.com/stories.rss', cat('tech-news'), true, true, true, 120, now());
 
 -- AI & AUTOMATION (5 feeds)
 INSERT INTO rss_feeds (id, feed_name, feed_url, category_id, is_active, auto_rewrite, auto_publish, fetch_interval_minutes, created_at) VALUES
 (gen_random_uuid(), 'VentureBeat AI', 'https://venturebeat.com/category/ai/feed/', cat('ai-automation'), true, true, true, 30, now()),
 (gen_random_uuid(), 'TechCrunch AI', 'https://techcrunch.com/category/artificial-intelligence/feed/', cat('ai-automation'), true, true, true, 30, now()),
-(gen_random_uuid(), 'Wired AI', 'https://www.wired.com/feed/tag/artificial-intelligence/rss', cat('ai-automation'), true, true, true, 60, now()),
+(gen_random_uuid(), 'Wired AI', 'https://www.wired.com/feed/tag/artificial-intelligence/rss', cat('ai-automation'), false, true, true, 60, now()),
 (gen_random_uuid(), 'MIT Tech Review AI', 'https://www.technologyreview.com/topic/artificial-intelligence/feed/', cat('ai-automation'), true, true, true, 120, now()),
 (gen_random_uuid(), 'Ars Technica AI', 'https://feeds.arstechnica.com/arstechnica/ai', cat('ai-automation'), true, true, true, 60, now());
 
@@ -90,7 +90,7 @@ INSERT INTO rss_feeds (id, feed_name, feed_url, category_id, is_active, auto_rew
 INSERT INTO rss_feeds (id, feed_name, feed_url, category_id, is_active, auto_rewrite, auto_publish, fetch_interval_minutes, created_at) VALUES
 (gen_random_uuid(), 'The Register', 'https://www.theregister.com/headlines.atom', cat('networking-it'), true, true, true, 60, now()),
 (gen_random_uuid(), 'AWS Blog', 'https://aws.amazon.com/blogs/aws/feed/', cat('networking-it'), true, true, true, 120, now()),
-(gen_random_uuid(), 'Cloudflare Blog', 'https://blog.cloudflare.com/feed/', cat('networking-it'), true, true, true, 60, now());
+(gen_random_uuid(), 'Cloudflare Blog', 'https://blog.cloudflare.com/rss/', cat('networking-it'), true, true, true, 60, now());
 
 -- REVIEWS (3 feeds)
 INSERT INTO rss_feeds (id, feed_name, feed_url, category_id, is_active, auto_rewrite, auto_publish, fetch_interval_minutes, created_at) VALUES
@@ -100,7 +100,7 @@ INSERT INTO rss_feeds (id, feed_name, feed_url, category_id, is_active, auto_rew
 
 -- DESKTOPS (1 feed)
 INSERT INTO rss_feeds (id, feed_name, feed_url, category_id, is_active, auto_rewrite, auto_publish, fetch_interval_minutes, created_at) VALUES
-(gen_random_uuid(), 'AnandTech', 'https://www.anandtech.com/feed/', cat('desktops'), true, true, true, 60, now());
+(gen_random_uuid(), 'PCWorld', 'https://www.pcworld.com/feed', cat('desktops'), true, true, true, 60, now());
 
 -- Drop the helper function
 DROP FUNCTION IF EXISTS cat(TEXT);

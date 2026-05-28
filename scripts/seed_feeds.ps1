@@ -13,16 +13,16 @@ $feeds = @(
   @{feed_name = "Ars Technica"; feed_url = "https://feeds.arstechnica.com/arstechnica/index"; category_id = "fc85c0a2-f418-42b6-94c4-25b533a24250"; is_active = $true; auto_rewrite = $true; auto_publish = $true; fetch_interval_minutes = 60; created_at = $now}
   @{feed_name = "CNET"; feed_url = "https://www.cnet.com/rss/all/"; category_id = "fc85c0a2-f418-42b6-94c4-25b533a24250"; is_active = $true; auto_rewrite = $true; auto_publish = $true; fetch_interval_minutes = 60; created_at = $now}
   @{feed_name = "Wired"; feed_url = "https://www.wired.com/feed/rss"; category_id = "fc85c0a2-f418-42b6-94c4-25b533a24250"; is_active = $true; auto_rewrite = $true; auto_publish = $true; fetch_interval_minutes = 60; created_at = $now}
-  @{feed_name = 'Tom''s Guide'; feed_url = "https://www.tomsguide.com/feeds/rss2/news.xml"; category_id = "fc85c0a2-f418-42b6-94c4-25b533a24250"; is_active = $true; auto_rewrite = $true; auto_publish = $true; fetch_interval_minutes = 60; created_at = $now}
-  @{feed_name = "TechRadar"; feed_url = "https://www.techradar.com/feeds/rss/all"; category_id = "fc85c0a2-f418-42b6-94c4-25b533a24250"; is_active = $true; auto_rewrite = $true; auto_publish = $true; fetch_interval_minutes = 60; created_at = $now}
+  @{feed_name = 'Tom''s Guide'; feed_url = "https://www.tomsguide.com/feeds.xml"; category_id = "fc85c0a2-f418-42b6-94c4-25b533a24250"; is_active = $true; auto_rewrite = $true; auto_publish = $true; fetch_interval_minutes = 60; created_at = $now}
+  @{feed_name = "TechRadar"; feed_url = "https://www.techradar.com/feeds.xml"; category_id = "fc85c0a2-f418-42b6-94c4-25b533a24250"; is_active = $true; auto_rewrite = $true; auto_publish = $true; fetch_interval_minutes = 60; created_at = $now}
   @{feed_name = "ZDNet"; feed_url = "https://www.zdnet.com/news/rss.xml"; category_id = "fc85c0a2-f418-42b6-94c4-25b533a24250"; is_active = $true; auto_rewrite = $true; auto_publish = $true; fetch_interval_minutes = 60; created_at = $now}
-  @{feed_name = "Mashable Tech"; feed_url = "https://mashable.com/feeds/rss/tech.xml"; category_id = "fc85c0a2-f418-42b6-94c4-25b533a24250"; is_active = $true; auto_rewrite = $true; auto_publish = $true; fetch_interval_minutes = 60; created_at = $now}
+  @{feed_name = "Mashable Tech"; feed_url = "https://mashable.com/feeds/rss/tech"; category_id = "fc85c0a2-f418-42b6-94c4-25b533a24250"; is_active = $true; auto_rewrite = $true; auto_publish = $true; fetch_interval_minutes = 60; created_at = $now}
   @{feed_name = "MIT Tech Review"; feed_url = "https://www.technologyreview.com/stories.rss"; category_id = "fc85c0a2-f418-42b6-94c4-25b533a24250"; is_active = $true; auto_rewrite = $true; auto_publish = $true; fetch_interval_minutes = 120; created_at = $now}
 
   # AI & Automation (5 feeds)
   @{feed_name = "VentureBeat AI"; feed_url = "https://venturebeat.com/category/ai/feed/"; category_id = "b5777693-9029-4921-81c4-191b47e8fef2"; is_active = $true; auto_rewrite = $true; auto_publish = $true; fetch_interval_minutes = 30; created_at = $now}
   @{feed_name = "TechCrunch AI"; feed_url = "https://techcrunch.com/category/artificial-intelligence/feed/"; category_id = "b5777693-9029-4921-81c4-191b47e8fef2"; is_active = $true; auto_rewrite = $true; auto_publish = $true; fetch_interval_minutes = 30; created_at = $now}
-  @{feed_name = "Wired AI"; feed_url = "https://www.wired.com/feed/tag/artificial-intelligence/rss"; category_id = "b5777693-9029-4921-81c4-191b47e8fef2"; is_active = $true; auto_rewrite = $true; auto_publish = $true; fetch_interval_minutes = 60; created_at = $now}
+  @{feed_name = "Wired AI"; feed_url = "https://www.wired.com/feed/tag/artificial-intelligence/rss"; category_id = "b5777693-9029-4921-81c4-191b47e8fef2"; is_active = $false; auto_rewrite = $true; auto_publish = $true; fetch_interval_minutes = 60; created_at = $now}
   @{feed_name = "MIT Tech Review AI"; feed_url = "https://www.technologyreview.com/topic/artificial-intelligence/feed/"; category_id = "b5777693-9029-4921-81c4-191b47e8fef2"; is_active = $true; auto_rewrite = $true; auto_publish = $true; fetch_interval_minutes = 120; created_at = $now}
   @{feed_name = "Ars Technica AI"; feed_url = "https://feeds.arstechnica.com/arstechnica/ai"; category_id = "b5777693-9029-4921-81c4-191b47e8fef2"; is_active = $true; auto_rewrite = $true; auto_publish = $true; fetch_interval_minutes = 60; created_at = $now}
 
@@ -67,7 +67,7 @@ $feeds = @(
   # Networking & IT (3 feeds)
   @{feed_name = "The Register"; feed_url = "https://www.theregister.com/headlines.atom"; category_id = "0d47e0c3-ba2b-46fb-a117-77c9330ce603"; is_active = $true; auto_rewrite = $true; auto_publish = $true; fetch_interval_minutes = 60; created_at = $now}
   @{feed_name = "AWS Blog"; feed_url = "https://aws.amazon.com/blogs/aws/feed/"; category_id = "0d47e0c3-ba2b-46fb-a117-77c9330ce603"; is_active = $true; auto_rewrite = $true; auto_publish = $true; fetch_interval_minutes = 120; created_at = $now}
-  @{feed_name = "Cloudflare Blog"; feed_url = "https://blog.cloudflare.com/feed/"; category_id = "0d47e0c3-ba2b-46fb-a117-77c9330ce603"; is_active = $true; auto_rewrite = $true; auto_publish = $true; fetch_interval_minutes = 60; created_at = $now}
+  @{feed_name = "Cloudflare Blog"; feed_url = "https://blog.cloudflare.com/rss/"; category_id = "0d47e0c3-ba2b-46fb-a117-77c9330ce603"; is_active = $true; auto_rewrite = $true; auto_publish = $true; fetch_interval_minutes = 60; created_at = $now}
 
   # Reviews (3 feeds)
   @{feed_name = "PCMag Reviews"; feed_url = "https://www.pcmag.com/feeds/rss/reviews"; category_id = "792e438f-aedf-4f3d-9fcb-f216bdfc4293"; is_active = $true; auto_rewrite = $true; auto_publish = $true; fetch_interval_minutes = 60; created_at = $now}
@@ -75,7 +75,7 @@ $feeds = @(
   @{feed_name = "Wirecutter"; feed_url = "https://www.nytimes.com/wirecutter/feed/"; category_id = "792e438f-aedf-4f3d-9fcb-f216bdfc4293"; is_active = $true; auto_rewrite = $true; auto_publish = $true; fetch_interval_minutes = 120; created_at = $now}
 
   # Desktops (1 feed)
-  @{feed_name = "AnandTech"; feed_url = "https://www.anandtech.com/feed/"; category_id = "d3e9ece5-d49f-440a-90ee-2ab6aa66d653"; is_active = $true; auto_rewrite = $true; auto_publish = $true; fetch_interval_minutes = 60; created_at = $now}
+  @{feed_name = "PCWorld"; feed_url = "https://www.pcworld.com/feed"; category_id = "d3e9ece5-d49f-440a-90ee-2ab6aa66d653"; is_active = $true; auto_rewrite = $true; auto_publish = $true; fetch_interval_minutes = 60; created_at = $now}
 )
 
 $json = $feeds | ConvertTo-Json -Depth 10 -Compress
