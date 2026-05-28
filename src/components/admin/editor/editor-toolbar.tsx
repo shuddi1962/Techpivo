@@ -14,7 +14,7 @@ interface EditorToolbarProps {
   onWebImageSearch: () => void
 }
 
-const btn = "p-2 rounded-lg border-2 border-gray-200 dark:border-[#374151] hover:bg-gray-100 dark:hover:bg-[#1F2937] text-gray-600 dark:text-gray-300 transition-colors disabled:opacity-40 data-[active=true]:bg-[#6366F1] data-[active=true]:text-white data-[active=true]:border-[#6366F1]"
+const btn = "p-2 rounded-lg border-2 border-gray-200 dark:border-[#374151] hover:bg-gray-100 dark:hover:bg-[#1F2937] text-gray-600 dark:text-gray-300 transition-colors disabled:opacity-40 data-[active=true]:bg-[#F59E0B] data-[active=true]:text-white data-[active=true]:border-[#F59E0B]"
 
 export function EditorToolbar({ editor, onImageUpload, onWebImageSearch }: EditorToolbarProps) {
   const fileRef = useRef<HTMLInputElement>(null)

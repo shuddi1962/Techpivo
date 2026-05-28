@@ -34,7 +34,7 @@ export function SecondaryRow() {
               className="rounded-xl overflow-hidden h-52 bg-cover bg-center mb-3"
               style={{ backgroundImage: `url(${post.featured_image || "/api/placeholder/600/350"})` }}
             />
-            <h3 className="text-xl font-bold group-hover:text-brand-indigo transition-colors line-clamp-2">
+            <h3 className="text-xl font-bold group-hover:text-brand-amber transition-colors line-clamp-2">
               {post.title}
             </h3>
             <p className="text-sm text-muted-foreground line-clamp-2 mt-1">{post.excerpt}</p>

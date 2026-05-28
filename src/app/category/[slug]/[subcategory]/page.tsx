@@ -55,7 +55,7 @@ export default async function SubcategoryPage({ params }: Props) {
     <div className="container py-6">
       <div className="mb-8">
         <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
-          <Link href={`/category/${category.slug}`} className="hover:text-brand-indigo">{category.name}</Link>
+          <Link href={`/category/${category.slug}`} className="hover:text-brand-amber">{category.name}</Link>
           <span>/</span>
           <span className="text-foreground font-medium">{subcategory.name}</span>
         </div>
@@ -71,7 +71,7 @@ export default async function SubcategoryPage({ params }: Props) {
                 style={{ backgroundImage: `url(${post.featured_image || "/api/placeholder/300/200"})` }} />
               <div className="flex-1 min-w-0">
                 <Badge variant="indigo" className="mb-2">{category.name}</Badge>
-                <h2 className="text-xl font-bold group-hover:text-brand-indigo transition-colors line-clamp-2">{post.title}</h2>
+                <h2 className="text-xl font-bold group-hover:text-brand-amber transition-colors line-clamp-2">{post.title}</h2>
                 <p className="text-sm text-muted-foreground line-clamp-2 mt-1">{post.excerpt}</p>
                 <div className="flex items-center gap-2 mt-2 text-xs text-muted-foreground">
                   <span>{(post as any).author?.full_name || "Blizine"}</span>

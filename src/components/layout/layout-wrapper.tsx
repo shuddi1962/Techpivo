@@ -20,11 +20,23 @@ export function LayoutWrapper({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     const supabase = createClient()
-    supabase.from("categories").select("*, subcategories(*)").order("name").then(({ data }) => {
-      if (data) setCategories(data)
-    })
-    supabase.from("posts").select("id,title,slug,featured_image").eq("status","published").order("published_at",{ascending:false}).limit(6).then(({ data }) => {
-      if (data) setRecentPosts(data)
+    Promise.all([
+      supabase.from("posts").select("category_id, subcategory_id").eq("status", "published"),
+      supabase.from("categories").select("*, subcategories(*)").order("name"),
+      supabase.from("posts").select("id,title,slug,featured_image").eq("status","published").order("published_at",{ascending:false}).limit(6),
+    ]).then(([postsRes, catsRes, recentRes]) => {
+      const catIds = new Set((postsRes.data || []).map((p: any) => p.category_id).filter(Boolean) as string[])
+      const subcatIds = new Set((postsRes.data || []).map((p: any) => p.subcategory_id).filter(Boolean) as string[])
+      if (catsRes.data) {
+        const filtered = catsRes.data
+          .filter((cat: any) => catIds.has(cat.id))
+          .map((cat: any) => ({
+            ...cat,
+            subcategories: (cat.subcategories || []).filter((sub: any) => subcatIds.has(sub.id)),
+          }))
+        setCategories(filtered)
+      }
+      if (recentRes.data) setRecentPosts(recentRes.data)
     })
   }, [])
 

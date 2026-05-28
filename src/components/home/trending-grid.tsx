@@ -37,7 +37,7 @@ export function TrendingGrid() {
                 #{i + 1}
               </span>
             </div>
-            <h3 className="font-semibold group-hover:text-brand-indigo transition-colors line-clamp-2">
+            <h3 className="font-semibold group-hover:text-brand-amber transition-colors line-clamp-2">
               {post.title}
             </h3>
             <p className="text-xs text-muted-foreground mt-1"></p>

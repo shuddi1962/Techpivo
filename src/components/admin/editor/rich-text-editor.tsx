@@ -67,7 +67,7 @@ export function RichTextEditor() {
       UnderlineExtension,
       LinkExtension.configure({
         openOnClick: false,
-        HTMLAttributes: { class: "text-[#6366F1] underline underline-offset-2 hover:text-[#818CF8] font-medium" },
+        HTMLAttributes: { class: "text-[#F59E0B] underline underline-offset-2 hover:text-[#818CF8] font-medium" },
       }),
       ImageExtension.configure({
         HTMLAttributes: { class: "max-w-full h-auto rounded-lg cursor-pointer" },
@@ -224,7 +224,7 @@ export function RichTextEditor() {
                 <option value="25%">Quarter</option>
               </select>
               <input value={imageLink} onChange={(e) => setImageLink(e.target.value)} placeholder="Link URL..." className="flex-1 min-w-[140px] text-xs border-2 border-gray-300 dark:border-[#374151] rounded-md px-2 py-1 bg-gray-50 dark:bg-[#0A0F1E] text-gray-900 dark:text-white placeholder:text-gray-400" />
-              <button onClick={applyImageTransform} className="text-xs font-semibold text-white bg-[#6366F1] hover:bg-[#4F46E5] px-2.5 py-1.5 rounded-md">Resize</button>
+              <button onClick={applyImageTransform} className="text-xs font-semibold text-white bg-[#F59E0B] hover:bg-[#D97706] px-2.5 py-1.5 rounded-md">Resize</button>
               <button onClick={insertLinkedImage} disabled={!imageLink} className="text-xs font-semibold text-white bg-green-600 hover:bg-green-700 disabled:opacity-50 px-2.5 py-1.5 rounded-md">Link</button>
               <button onClick={() => { editor.chain().focus().deleteSelection().run(); setSelectedImage(null) }} className="text-xs font-semibold text-red-600 hover:text-red-700 px-2 py-1">Remove</button>
               <button onClick={() => setSelectedImage(null)} className="text-xs text-gray-400 hover:text-gray-600 px-2 py-1">Done</button>
@@ -247,12 +247,12 @@ export function RichTextEditor() {
             </div>
             <div className="p-6 space-y-4">
               <div className="flex gap-2">
-                <button onClick={() => setWebSource("pexels")} className={`px-4 py-2 text-sm font-semibold rounded-lg border-2 transition-colors ${webSource === "pexels" ? "bg-[#6366F1] text-white border-[#6366F1]" : "bg-white dark:bg-[#0A0F1E] text-gray-600 dark:text-gray-300 border-gray-300 dark:border-[#374151] hover:border-[#6366F1]"}`}>Pexels</button>
-                <button onClick={() => setWebSource("google")} className={`px-4 py-2 text-sm font-semibold rounded-lg border-2 transition-colors ${webSource === "google" ? "bg-[#6366F1] text-white border-[#6366F1]" : "bg-white dark:bg-[#0A0F1E] text-gray-600 dark:text-gray-300 border-gray-300 dark:border-[#374151] hover:border-[#6366F1]"}`}>Google</button>
+                <button onClick={() => setWebSource("pexels")} className={`px-4 py-2 text-sm font-semibold rounded-lg border-2 transition-colors ${webSource === "pexels" ? "bg-[#F59E0B] text-white border-[#F59E0B]" : "bg-white dark:bg-[#0A0F1E] text-gray-600 dark:text-gray-300 border-gray-300 dark:border-[#374151] hover:border-[#F59E0B]"}`}>Pexels</button>
+                <button onClick={() => setWebSource("google")} className={`px-4 py-2 text-sm font-semibold rounded-lg border-2 transition-colors ${webSource === "google" ? "bg-[#F59E0B] text-white border-[#F59E0B]" : "bg-white dark:bg-[#0A0F1E] text-gray-600 dark:text-gray-300 border-gray-300 dark:border-[#374151] hover:border-[#F59E0B]"}`}>Google</button>
               </div>
               <div className="flex gap-2">
-                <input value={webQuery} onChange={(e) => setWebQuery(e.target.value)} onKeyDown={(e) => e.key === "Enter" && searchWebImages()} placeholder={`Search ${webSource === "pexels" ? "free stock photos" : "the web"}...`} className="flex-1 bg-gray-50 dark:bg-[#0A0F1E] border-2 border-gray-300 dark:border-[#374151] rounded-lg px-4 py-2.5 text-sm text-gray-900 dark:text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#6366F1] focus:border-transparent" />
-                <button onClick={searchWebImages} disabled={webSearching} className="bg-[#6366F1] hover:bg-[#4F46E5] disabled:bg-gray-300 text-white px-4 py-2 rounded-lg transition-colors shadow-sm">
+                <input value={webQuery} onChange={(e) => setWebQuery(e.target.value)} onKeyDown={(e) => e.key === "Enter" && searchWebImages()} placeholder={`Search ${webSource === "pexels" ? "free stock photos" : "the web"}...`} className="flex-1 bg-gray-50 dark:bg-[#0A0F1E] border-2 border-gray-300 dark:border-[#374151] rounded-lg px-4 py-2.5 text-sm text-gray-900 dark:text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#F59E0B] focus:border-transparent" />
+                <button onClick={searchWebImages} disabled={webSearching} className="bg-[#F59E0B] hover:bg-[#D97706] disabled:bg-gray-300 text-white px-4 py-2 rounded-lg transition-colors shadow-sm">
                   {webSearching ? <Loader2 className="h-5 w-5 animate-spin" /> : <Search className="h-5 w-5" />}
                 </button>
               </div>
@@ -260,7 +260,7 @@ export function RichTextEditor() {
                 <div className="grid grid-cols-3 gap-3 max-h-60 overflow-y-auto">
                   {webResults.map((img, i) => (
                     <button key={i} onClick={() => insertWebImage(img.src)}
-                      className="relative group rounded-xl overflow-hidden border-2 border-gray-200 dark:border-[#374151] hover:border-[#6366F1] transition-all">
+                      className="relative group rounded-xl overflow-hidden border-2 border-gray-200 dark:border-[#374151] hover:border-[#F59E0B] transition-all">
                       <img src={img.src} alt={img.alt} className="w-full h-24 object-cover" />
                       <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors" />
                     </button>

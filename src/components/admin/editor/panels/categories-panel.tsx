@@ -20,7 +20,7 @@ export function CategoriesPanel() {
               setField("category_id", e.target.value)
               setField("subcategory_id", "")
             }}
-            className="w-full bg-gray-50 dark:bg-[#0A0F1E] border-2 border-gray-300 dark:border-[#374151] rounded-lg px-3 py-2 text-sm text-gray-900 dark:text-[#F9FAFB] focus:outline-none focus:ring-2 focus:ring-[#6366F1] focus:border-transparent"
+            className="w-full bg-gray-50 dark:bg-[#0A0F1E] border-2 border-gray-300 dark:border-[#374151] rounded-lg px-3 py-2 text-sm text-gray-900 dark:text-[#F9FAFB] focus:outline-none focus:ring-2 focus:ring-[#F59E0B] focus:border-transparent"
           >
             <option value="">Select category...</option>
             {categories.map((cat) => (
@@ -35,7 +35,7 @@ export function CategoriesPanel() {
             <select
               value={post.subcategory_id}
               onChange={(e) => setField("subcategory_id", e.target.value)}
-              className="w-full bg-gray-50 dark:bg-[#0A0F1E] border-2 border-gray-300 dark:border-[#374151] rounded-lg px-3 py-2 text-sm text-gray-900 dark:text-[#F9FAFB] focus:outline-none focus:ring-2 focus:ring-[#6366F1] focus:border-transparent"
+              className="w-full bg-gray-50 dark:bg-[#0A0F1E] border-2 border-gray-300 dark:border-[#374151] rounded-lg px-3 py-2 text-sm text-gray-900 dark:text-[#F9FAFB] focus:outline-none focus:ring-2 focus:ring-[#F59E0B] focus:border-transparent"
             >
               <option value="">None</option>
               {filteredSubs.map((sub) => (

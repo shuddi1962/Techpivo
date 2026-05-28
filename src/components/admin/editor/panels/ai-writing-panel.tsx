@@ -111,7 +111,7 @@ export function AiWritingPanel() {
             onClick={() => { setMode("topic"); setInput(""); setError("") }}
             className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 text-xs font-semibold transition-all ${
               mode === "topic"
-                ? "bg-[#6366F1] text-white shadow-sm"
+                ? "bg-[#F59E0B] text-white shadow-sm"
                 : "text-gray-500 dark:text-[#6B7280] hover:text-gray-700 dark:hover:text-[#F9FAFB] bg-transparent"
             }`}
           >
@@ -122,7 +122,7 @@ export function AiWritingPanel() {
             onClick={() => { setMode("url"); setInput(""); setError("") }}
             className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 text-xs font-semibold transition-all ${
               mode === "url"
-                ? "bg-[#6366F1] text-white shadow-sm"
+                ? "bg-[#F59E0B] text-white shadow-sm"
                 : "text-gray-500 dark:text-[#6B7280] hover:text-gray-700 dark:hover:text-[#F9FAFB] bg-transparent"
             }`}
           >
@@ -138,7 +138,7 @@ export function AiWritingPanel() {
               onChange={(e) => setInput(e.target.value)}
               placeholder="e.g. OpenAI releases GPT-5 with real-time web browsing"
               onKeyDown={(e) => e.key === "Enter" && handleGenerate()}
-              className="w-full bg-gray-50 dark:bg-[#0A0F1E] border-2 border-gray-300 dark:border-[#374151] rounded-xl px-3 py-2.5 text-sm text-gray-900 dark:text-[#F9FAFB] placeholder:text-gray-400 dark:placeholder:text-[#4B5563] focus:outline-none focus:ring-2 focus:ring-[#6366F1] focus:border-transparent"
+              className="w-full bg-gray-50 dark:bg-[#0A0F1E] border-2 border-gray-300 dark:border-[#374151] rounded-xl px-3 py-2.5 text-sm text-gray-900 dark:text-[#F9FAFB] placeholder:text-gray-400 dark:placeholder:text-[#4B5563] focus:outline-none focus:ring-2 focus:ring-[#F59E0B] focus:border-transparent"
             />
           ) : (
             <input
@@ -146,7 +146,7 @@ export function AiWritingPanel() {
               onChange={(e) => setInput(e.target.value)}
               placeholder="Paste a news article URL..."
               onKeyDown={(e) => e.key === "Enter" && handleGenerate()}
-              className="w-full bg-gray-50 dark:bg-[#0A0F1E] border-2 border-gray-300 dark:border-[#374151] rounded-xl px-3 py-2.5 text-sm text-gray-900 dark:text-[#F9FAFB] placeholder:text-gray-400 dark:placeholder:text-[#4B5563] focus:outline-none focus:ring-2 focus:ring-[#6366F1] focus:border-transparent"
+              className="w-full bg-gray-50 dark:bg-[#0A0F1E] border-2 border-gray-300 dark:border-[#374151] rounded-xl px-3 py-2.5 text-sm text-gray-900 dark:text-[#F9FAFB] placeholder:text-gray-400 dark:placeholder:text-[#4B5563] focus:outline-none focus:ring-2 focus:ring-[#F59E0B] focus:border-transparent"
             />
           )}
         </div>
@@ -160,7 +160,7 @@ export function AiWritingPanel() {
         <button
           onClick={handleGenerate}
           disabled={loading}
-          className="w-full flex items-center justify-center gap-2 bg-[#6366F1] hover:bg-[#4F46E5] disabled:bg-gray-200 dark:disabled:bg-[#374151] disabled:text-gray-400 dark:disabled:text-[#6B7280] text-white text-sm font-semibold py-2.5 rounded-xl transition-all shadow-sm shadow-[#6366F1]/20"
+          className="w-full flex items-center justify-center gap-2 bg-[#F59E0B] hover:bg-[#D97706] disabled:bg-gray-200 dark:disabled:bg-[#374151] disabled:text-gray-400 dark:disabled:text-[#6B7280] text-white text-sm font-semibold py-2.5 rounded-xl transition-all shadow-sm shadow-[#F59E0B]/20"
         >
           {loading ? (
             <>

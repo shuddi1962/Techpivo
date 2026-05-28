@@ -67,7 +67,7 @@ export function FeaturedImagePanel() {
         ) : (
           <button
             onClick={() => fileInputRef.current?.click()}
-            className="w-full h-36 border-2 border-dashed border-gray-300 dark:border-[#374151] rounded-xl flex flex-col items-center justify-center gap-2 text-gray-400 dark:text-[#6B7280] hover:border-[#6366F1] hover:text-[#6366F1] transition-all bg-gray-50 dark:bg-[#0A0F1E] group"
+            className="w-full h-36 border-2 border-dashed border-gray-300 dark:border-[#374151] rounded-xl flex flex-col items-center justify-center gap-2 text-gray-400 dark:text-[#6B7280] hover:border-[#F59E0B] hover:text-[#F59E0B] transition-all bg-gray-50 dark:bg-[#0A0F1E] group"
           >
             <Upload className="h-7 w-7 group-hover:scale-110 transition-transform" />
             <span className="text-sm font-medium">Click to upload image</span>
@@ -78,8 +78,8 @@ export function FeaturedImagePanel() {
 
         <div className="border-t-2 border-gray-100 dark:border-[#1F2937] pt-3">
           <div className="flex gap-2 mb-2">
-            <button onClick={() => { setSource("pexels"); setResults([]) }} className={`px-3 py-1.5 text-xs font-semibold rounded-lg border-2 transition-colors ${source === "pexels" ? "bg-[#6366F1] text-white border-[#6366F1]" : "bg-white dark:bg-[#0A0F1E] text-gray-600 dark:text-gray-300 border-gray-300 dark:border-[#374151] hover:border-[#6366F1]"}`}>Pexels</button>
-            <button onClick={() => { setSource("google"); setResults([]) }} className={`px-3 py-1.5 text-xs font-semibold rounded-lg border-2 transition-colors ${source === "google" ? "bg-[#6366F1] text-white border-[#6366F1]" : "bg-white dark:bg-[#0A0F1E] text-gray-600 dark:text-gray-300 border-gray-300 dark:border-[#374151] hover:border-[#6366F1]"}`}>Google</button>
+            <button onClick={() => { setSource("pexels"); setResults([]) }} className={`px-3 py-1.5 text-xs font-semibold rounded-lg border-2 transition-colors ${source === "pexels" ? "bg-[#F59E0B] text-white border-[#F59E0B]" : "bg-white dark:bg-[#0A0F1E] text-gray-600 dark:text-gray-300 border-gray-300 dark:border-[#374151] hover:border-[#F59E0B]"}`}>Pexels</button>
+            <button onClick={() => { setSource("google"); setResults([]) }} className={`px-3 py-1.5 text-xs font-semibold rounded-lg border-2 transition-colors ${source === "google" ? "bg-[#F59E0B] text-white border-[#F59E0B]" : "bg-white dark:bg-[#0A0F1E] text-gray-600 dark:text-gray-300 border-gray-300 dark:border-[#374151] hover:border-[#F59E0B]"}`}>Google</button>
           </div>
           <div className="flex gap-2">
             <input
@@ -87,12 +87,12 @@ export function FeaturedImagePanel() {
               onChange={(e) => setQuery(e.target.value)}
               placeholder={`Search ${source === "pexels" ? "free stock photos" : "the web"}...`}
               onKeyDown={(e) => e.key === "Enter" && searchImages()}
-              className="flex-1 bg-gray-50 dark:bg-[#0A0F1E] border-2 border-gray-300 dark:border-[#374151] rounded-lg px-3 py-2 text-sm text-gray-900 dark:text-[#F9FAFB] placeholder:text-gray-400 dark:placeholder:text-[#4B5563] focus:outline-none focus:ring-2 focus:ring-[#6366F1] focus:border-transparent"
+              className="flex-1 bg-gray-50 dark:bg-[#0A0F1E] border-2 border-gray-300 dark:border-[#374151] rounded-lg px-3 py-2 text-sm text-gray-900 dark:text-[#F9FAFB] placeholder:text-gray-400 dark:placeholder:text-[#4B5563] focus:outline-none focus:ring-2 focus:ring-[#F59E0B] focus:border-transparent"
             />
             <button
               onClick={searchImages}
               disabled={searching}
-              className="bg-[#6366F1] hover:bg-[#4F46E5] disabled:bg-gray-300 dark:disabled:bg-[#374151] text-white px-3 py-2 rounded-lg transition-colors shadow-sm"
+              className="bg-[#F59E0B] hover:bg-[#D97706] disabled:bg-gray-300 dark:disabled:bg-[#374151] text-white px-3 py-2 rounded-lg transition-colors shadow-sm"
             >
               {searching ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
             </button>

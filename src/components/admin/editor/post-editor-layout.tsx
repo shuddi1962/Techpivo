@@ -40,7 +40,7 @@ export function PostEditorLayout() {
     return (
       <div className="flex items-center justify-center h-96">
         <div className="flex flex-col items-center gap-3">
-          <Loader2 className="h-8 w-8 animate-spin text-[#6366F1]" />
+          <Loader2 className="h-8 w-8 animate-spin text-[#F59E0B]" />
           <p className="text-sm text-gray-500 dark:text-[#6B7280]">Loading editor...</p>
         </div>
       </div>
@@ -97,7 +97,7 @@ export function PostEditorLayout() {
           <button
             onClick={publish}
             disabled={isSaving}
-            className="flex items-center gap-2 px-5 py-2 text-sm font-semibold text-white bg-[#6366F1] hover:bg-[#4F46E5] disabled:bg-gray-300 dark:disabled:bg-[#374151] disabled:text-gray-500 dark:disabled:text-[#6B7280] rounded-lg transition-all shadow-sm shadow-[#6366F1]/20"
+            className="flex items-center gap-2 px-5 py-2 text-sm font-semibold text-white bg-[#F59E0B] hover:bg-[#D97706] disabled:bg-gray-300 dark:disabled:bg-[#374151] disabled:text-gray-500 dark:disabled:text-[#6B7280] rounded-lg transition-all shadow-sm shadow-[#F59E0B]/20"
           >
             <Send className="h-4 w-4" />
             <span className="hidden sm:inline">Publish</span>

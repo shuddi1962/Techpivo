@@ -41,10 +41,10 @@ export default async function SeriesPage({ params }: Props) {
                   {i + 1}
                 </span>
                 <div className="flex-1 min-w-0">
-                  <h2 className="font-semibold group-hover:text-brand-indigo transition-colors">{post.title}</h2>
+                  <h2 className="font-semibold group-hover:text-brand-amber transition-colors">{post.title}</h2>
                   <p className="text-sm text-muted-foreground">{post.published_at ? formatDate(post.published_at) : ""}</p>
                 </div>
-                <ArrowRight className="h-5 w-5 text-muted-foreground group-hover:text-brand-indigo transition-colors" />
+                <ArrowRight className="h-5 w-5 text-muted-foreground group-hover:text-brand-amber transition-colors" />
               </Link>
             ))
           ) : (

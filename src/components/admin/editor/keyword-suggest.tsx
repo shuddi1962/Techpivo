@@ -123,11 +123,11 @@ export function KeywordSuggest({
           onKeyDown={handleKeyDown}
           onFocus={() => { if (suggestions.length > 0) setShowDropdown(true) }}
           placeholder={placeholder}
-          className={`w-full bg-gray-50 dark:bg-[#0A0F1E] border-2 border-gray-300 dark:border-[#374151] rounded-lg px-3 py-2 text-sm text-gray-900 dark:text-[#F9FAFB] placeholder:text-gray-400 dark:placeholder:text-[#4B5563] focus:outline-none focus:ring-2 focus:ring-[#6366F1] focus:border-transparent ${className}`}
+          className={`w-full bg-gray-50 dark:bg-[#0A0F1E] border-2 border-gray-300 dark:border-[#374151] rounded-lg px-3 py-2 text-sm text-gray-900 dark:text-[#F9FAFB] placeholder:text-gray-400 dark:placeholder:text-[#4B5563] focus:outline-none focus:ring-2 focus:ring-[#F59E0B] focus:border-transparent ${className}`}
         />
         {loading && (
           <div className="absolute right-3 top-1/2 -translate-y-1/2">
-            <Loader2 className="h-4 w-4 animate-spin text-[#6366F1]" />
+            <Loader2 className="h-4 w-4 animate-spin text-[#F59E0B]" />
           </div>
         )}
         {rightElement && !loading && (
@@ -152,7 +152,7 @@ export function KeywordSuggest({
               onMouseEnter={() => setSelectedIndex(i)}
               className={`w-full flex items-center justify-between px-4 py-2.5 text-left transition-colors border-b border-gray-50 dark:border-[#1F2937] last:border-0 ${
                 i === selectedIndex
-                  ? "bg-[#6366F1]/10 dark:bg-[#6366F1]/20"
+                  ? "bg-[#F59E0B]/10 dark:bg-[#F59E0B]/20"
                   : "hover:bg-gray-50 dark:hover:bg-[#1a2235]"
               }`}
             >

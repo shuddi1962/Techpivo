@@ -49,7 +49,7 @@ export function QuickBriefPanel() {
                 value={item.label}
                 onChange={(e) => updateItem(i, "label", e.target.value)}
                 placeholder="Label"
-                className="flex-1 bg-gray-50 dark:bg-[#0A0F1E] border-2 border-gray-300 dark:border-[#374151] rounded-lg px-3 py-1.5 text-xs font-medium text-gray-900 dark:text-[#F9FAFB] placeholder:text-gray-400 dark:placeholder:text-[#4B5563] focus:outline-none focus:ring-2 focus:ring-[#6366F1] focus:border-transparent"
+                className="flex-1 bg-gray-50 dark:bg-[#0A0F1E] border-2 border-gray-300 dark:border-[#374151] rounded-lg px-3 py-1.5 text-xs font-medium text-gray-900 dark:text-[#F9FAFB] placeholder:text-gray-400 dark:placeholder:text-[#4B5563] focus:outline-none focus:ring-2 focus:ring-[#F59E0B] focus:border-transparent"
               />
               {items.length > 1 && (
                 <button onClick={() => removeItem(i)} className="text-gray-400 hover:text-red-500 p-1 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors">
@@ -61,13 +61,13 @@ export function QuickBriefPanel() {
               value={item.value}
               onChange={(e) => updateItem(i, "value", e.target.value)}
               placeholder="Enter value..."
-              className="w-full bg-gray-50 dark:bg-[#0A0F1E] border-2 border-gray-300 dark:border-[#374151] rounded-lg px-3 py-1.5 text-sm text-gray-900 dark:text-[#F9FAFB] placeholder:text-gray-400 dark:placeholder:text-[#4B5563] focus:outline-none focus:ring-2 focus:ring-[#6366F1] focus:border-transparent"
+              className="w-full bg-gray-50 dark:bg-[#0A0F1E] border-2 border-gray-300 dark:border-[#374151] rounded-lg px-3 py-1.5 text-sm text-gray-900 dark:text-[#F9FAFB] placeholder:text-gray-400 dark:placeholder:text-[#4B5563] focus:outline-none focus:ring-2 focus:ring-[#F59E0B] focus:border-transparent"
             />
           </div>
         ))}
         <button
           onClick={addItem}
-          className="flex items-center gap-1.5 text-xs font-medium text-[#6366F1] hover:text-[#4F46E5] px-3 py-2 rounded-lg hover:bg-[#6366F1]/10 transition-colors w-full justify-center"
+          className="flex items-center gap-1.5 text-xs font-medium text-[#F59E0B] hover:text-[#D97706] px-3 py-2 rounded-lg hover:bg-[#F59E0B]/10 transition-colors w-full justify-center"
         >
           <Plus className="h-3.5 w-3.5" />
           Add Field

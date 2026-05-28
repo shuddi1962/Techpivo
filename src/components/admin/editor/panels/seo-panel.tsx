@@ -167,7 +167,7 @@ Only provide fields that need changes. Return valid JSON only.`
               onClick={() => setActiveTab(tab.id)}
               className={`px-3 py-1.5 text-xs font-semibold border-b-2 transition-colors ${
                 activeTab === tab.id
-                  ? "text-[#6366F1] border-[#6366F1]"
+                  ? "text-[#F59E0B] border-[#F59E0B]"
                   : "text-gray-400 dark:text-[#6B7280] border-transparent hover:text-gray-600 dark:hover:text-[#9CA3AF]"
               }`}
             >
@@ -187,7 +187,7 @@ Only provide fields that need changes. Return valid JSON only.`
                 value={post.seo_title || ""}
                 onChange={(e) => updatePost({ seo_title: e.target.value })}
                 placeholder={post.title || "SEO title..."}
-                className="w-full bg-gray-50 dark:bg-[#0A0F1E] border-2 border-gray-300 dark:border-[#374151] rounded-lg px-3 py-2 text-sm text-gray-900 dark:text-[#F9FAFB] focus:outline-none focus:ring-2 focus:ring-[#6366F1] focus:border-transparent"
+                className="w-full bg-gray-50 dark:bg-[#0A0F1E] border-2 border-gray-300 dark:border-[#374151] rounded-lg px-3 py-2 text-sm text-gray-900 dark:text-[#F9FAFB] focus:outline-none focus:ring-2 focus:ring-[#F59E0B] focus:border-transparent"
               />
               <div className="w-full bg-gray-100 dark:bg-[#1F2937] rounded-full h-1 mt-1.5 overflow-hidden">
                 <div
@@ -210,7 +210,7 @@ Only provide fields that need changes. Return valid JSON only.`
                 onChange={(e) => updatePost({ seo_description: e.target.value })}
                 placeholder={post.excerpt || "Meta description..."}
                 rows={3}
-                className="w-full bg-gray-50 dark:bg-[#0A0F1E] border-2 border-gray-300 dark:border-[#374151] rounded-lg px-3 py-2 text-sm text-gray-900 dark:text-[#F9FAFB] focus:outline-none focus:ring-2 focus:ring-[#6366F1] focus:border-transparent resize-none"
+                className="w-full bg-gray-50 dark:bg-[#0A0F1E] border-2 border-gray-300 dark:border-[#374151] rounded-lg px-3 py-2 text-sm text-gray-900 dark:text-[#F9FAFB] focus:outline-none focus:ring-2 focus:ring-[#F59E0B] focus:border-transparent resize-none"
               />
               <div className="w-full bg-gray-100 dark:bg-[#1F2937] rounded-full h-1 mt-1.5 overflow-hidden">
                 <div
@@ -255,7 +255,7 @@ Only provide fields that need changes. Return valid JSON only.`
                 <button
                   onClick={autoFixSeo}
                   disabled={aiFixing}
-                  className="flex items-center gap-1.5 text-xs font-semibold text-[#6366F1] hover:text-[#4F46E5] disabled:text-gray-300 dark:disabled:text-[#6B7280] px-2.5 py-1.5 rounded-lg hover:bg-[#6366F1]/10 transition-colors"
+                  className="flex items-center gap-1.5 text-xs font-semibold text-[#F59E0B] hover:text-[#D97706] disabled:text-gray-300 dark:disabled:text-[#6B7280] px-2.5 py-1.5 rounded-lg hover:bg-[#F59E0B]/10 transition-colors"
                 >
                   {aiFixing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
                   {aiFixing ? "Fixing..." : "Auto-Fix"}
@@ -263,8 +263,8 @@ Only provide fields that need changes. Return valid JSON only.`
               </div>
 
               {fixResult && (
-                <div className="bg-[#6366F1]/10 border-2 border-[#6366F1]/20 rounded-xl p-3 mb-3">
-                  <p className="text-xs text-[#6366F1] font-medium whitespace-pre-wrap">{fixResult}</p>
+                <div className="bg-[#F59E0B]/10 border-2 border-[#F59E0B]/20 rounded-xl p-3 mb-3">
+                  <p className="text-xs text-[#F59E0B] font-medium whitespace-pre-wrap">{fixResult}</p>
                 </div>
               )}
 
@@ -336,14 +336,14 @@ Only provide fields that need changes. Return valid JSON only.`
                 value={post.og_title || ""}
                 onChange={(e) => updatePost({ og_title: e.target.value })}
                 placeholder="OG Title"
-                className="w-full bg-gray-50 dark:bg-[#0A0F1E] border-2 border-gray-300 dark:border-[#374151] rounded-lg px-3 py-2 text-sm text-gray-900 dark:text-[#F9FAFB] focus:outline-none focus:ring-2 focus:ring-[#6366F1] focus:border-transparent mb-2"
+                className="w-full bg-gray-50 dark:bg-[#0A0F1E] border-2 border-gray-300 dark:border-[#374151] rounded-lg px-3 py-2 text-sm text-gray-900 dark:text-[#F9FAFB] focus:outline-none focus:ring-2 focus:ring-[#F59E0B] focus:border-transparent mb-2"
               />
               <textarea
                 value={post.og_description || ""}
                 onChange={(e) => updatePost({ og_description: e.target.value })}
                 placeholder="OG Description"
                 rows={2}
-                className="w-full bg-gray-50 dark:bg-[#0A0F1E] border-2 border-gray-300 dark:border-[#374151] rounded-lg px-3 py-2 text-sm text-gray-900 dark:text-[#F9FAFB] focus:outline-none focus:ring-2 focus:ring-[#6366F1] focus:border-transparent mb-2 resize-none"
+                className="w-full bg-gray-50 dark:bg-[#0A0F1E] border-2 border-gray-300 dark:border-[#374151] rounded-lg px-3 py-2 text-sm text-gray-900 dark:text-[#F9FAFB] focus:outline-none focus:ring-2 focus:ring-[#F59E0B] focus:border-transparent mb-2 resize-none"
               />
               <div className="bg-gray-50 dark:bg-[#1a1f2e] rounded-xl p-3 flex items-center gap-3 border-2 border-gray-200 dark:border-[#1F2937]">
                 {post.og_image || post.featured_image ? (
@@ -369,14 +369,14 @@ Only provide fields that need changes. Return valid JSON only.`
                 value={post.twitter_title || ""}
                 onChange={(e) => updatePost({ twitter_title: e.target.value })}
                 placeholder="Twitter Title"
-                className="w-full bg-gray-50 dark:bg-[#0A0F1E] border-2 border-gray-300 dark:border-[#374151] rounded-lg px-3 py-2 text-sm text-gray-900 dark:text-[#F9FAFB] focus:outline-none focus:ring-2 focus:ring-[#6366F1] focus:border-transparent mb-2"
+                className="w-full bg-gray-50 dark:bg-[#0A0F1E] border-2 border-gray-300 dark:border-[#374151] rounded-lg px-3 py-2 text-sm text-gray-900 dark:text-[#F9FAFB] focus:outline-none focus:ring-2 focus:ring-[#F59E0B] focus:border-transparent mb-2"
               />
               <textarea
                 value={post.twitter_description || ""}
                 onChange={(e) => updatePost({ twitter_description: e.target.value })}
                 placeholder="Twitter Description"
                 rows={2}
-                className="w-full bg-gray-50 dark:bg-[#0A0F1E] border-2 border-gray-300 dark:border-[#374151] rounded-lg px-3 py-2 text-sm text-gray-900 dark:text-[#F9FAFB] focus:outline-none focus:ring-2 focus:ring-[#6366F1] focus:border-transparent resize-none"
+                className="w-full bg-gray-50 dark:bg-[#0A0F1E] border-2 border-gray-300 dark:border-[#374151] rounded-lg px-3 py-2 text-sm text-gray-900 dark:text-[#F9FAFB] focus:outline-none focus:ring-2 focus:ring-[#F59E0B] focus:border-transparent resize-none"
               />
             </div>
           </div>
@@ -389,7 +389,7 @@ Only provide fields that need changes. Return valid JSON only.`
               <select
                 value={post.schema_type}
                 onChange={(e) => updatePost({ schema_type: e.target.value })}
-                className="w-full bg-gray-50 dark:bg-[#0A0F1E] border-2 border-gray-300 dark:border-[#374151] rounded-lg px-3 py-2 text-sm text-gray-900 dark:text-[#F9FAFB] focus:outline-none focus:ring-2 focus:ring-[#6366F1] focus:border-transparent"
+                className="w-full bg-gray-50 dark:bg-[#0A0F1E] border-2 border-gray-300 dark:border-[#374151] rounded-lg px-3 py-2 text-sm text-gray-900 dark:text-[#F9FAFB] focus:outline-none focus:ring-2 focus:ring-[#F59E0B] focus:border-transparent"
               >
                 {schemaTypes.map((t) => (
                   <option key={t} value={t}>{t}</option>
@@ -421,7 +421,7 @@ Only provide fields that need changes. Return valid JSON only.`
                 value={post.canonical_url || ""}
                 onChange={(e) => updatePost({ canonical_url: e.target.value })}
                 placeholder="https://..."
-                className="w-full bg-gray-50 dark:bg-[#0A0F1E] border-2 border-gray-300 dark:border-[#374151] rounded-lg px-3 py-2 text-sm text-gray-900 dark:text-[#F9FAFB] focus:outline-none focus:ring-2 focus:ring-[#6366F1] focus:border-transparent"
+                className="w-full bg-gray-50 dark:bg-[#0A0F1E] border-2 border-gray-300 dark:border-[#374151] rounded-lg px-3 py-2 text-sm text-gray-900 dark:text-[#F9FAFB] focus:outline-none focus:ring-2 focus:ring-[#F59E0B] focus:border-transparent"
               />
             </div>
 
@@ -431,7 +431,7 @@ Only provide fields that need changes. Return valid JSON only.`
                 value={post.breadcrumb_title || ""}
                 onChange={(e) => updatePost({ breadcrumb_title: e.target.value })}
                 placeholder={post.title || "Breadcrumb title..."}
-                className="w-full bg-gray-50 dark:bg-[#0A0F1E] border-2 border-gray-300 dark:border-[#374151] rounded-lg px-3 py-2 text-sm text-gray-900 dark:text-[#F9FAFB] focus:outline-none focus:ring-2 focus:ring-[#6366F1] focus:border-transparent"
+                className="w-full bg-gray-50 dark:bg-[#0A0F1E] border-2 border-gray-300 dark:border-[#374151] rounded-lg px-3 py-2 text-sm text-gray-900 dark:text-[#F9FAFB] focus:outline-none focus:ring-2 focus:ring-[#F59E0B] focus:border-transparent"
               />
             </div>
 
@@ -441,7 +441,7 @@ Only provide fields that need changes. Return valid JSON only.`
                   type="checkbox"
                   checked={post.robots_noindex}
                   onChange={(e) => updatePost({ robots_noindex: e.target.checked })}
-                  className="w-4 h-4 rounded border-2 border-gray-300 dark:border-[#374151] text-[#6366F1] focus:ring-[#6366F1] bg-gray-50 dark:bg-[#0A0F1E]"
+                  className="w-4 h-4 rounded border-2 border-gray-300 dark:border-[#374151] text-[#F59E0B] focus:ring-[#F59E0B] bg-gray-50 dark:bg-[#0A0F1E]"
                 />
                 <span className="text-xs font-medium text-gray-600 dark:text-[#9CA3AF] group-hover:text-gray-900 dark:group-hover:text-[#F9FAFB] transition-colors">No Index (robots noindex)</span>
               </label>
@@ -450,7 +450,7 @@ Only provide fields that need changes. Return valid JSON only.`
                   type="checkbox"
                   checked={post.robots_nofollow}
                   onChange={(e) => updatePost({ robots_nofollow: e.target.checked })}
-                  className="w-4 h-4 rounded border-2 border-gray-300 dark:border-[#374151] text-[#6366F1] focus:ring-[#6366F1] bg-gray-50 dark:bg-[#0A0F1E]"
+                  className="w-4 h-4 rounded border-2 border-gray-300 dark:border-[#374151] text-[#F59E0B] focus:ring-[#F59E0B] bg-gray-50 dark:bg-[#0A0F1E]"
                 />
                 <span className="text-xs font-medium text-gray-600 dark:text-[#9CA3AF] group-hover:text-gray-900 dark:group-hover:text-[#F9FAFB] transition-colors">No Follow (robots nofollow)</span>
               </label>

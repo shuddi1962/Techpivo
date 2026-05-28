@@ -3,7 +3,7 @@
 import Link from "next/link"
 import { useState, useEffect } from "react"
 
-export function MainNav({ categories, subcategories }: { categories: any[]; subcategories?: any[] }) {
+export function MainNav({ categories }: { categories: any[] }) {
   const [sticky, setSticky] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
 
@@ -13,15 +13,6 @@ export function MainNav({ categories, subcategories }: { categories: any[]; subc
     return () => window.removeEventListener("scroll", fn)
   }, [])
 
-  const subcatsByCat: Record<string, any[]> = {}
-  if (subcategories) {
-    for (const sub of subcategories) {
-      const catSlug = sub.categories?.slug
-      if (!subcatsByCat[catSlug]) subcatsByCat[catSlug] = []
-      subcatsByCat[catSlug].push(sub)
-    }
-  }
-
   return (
     <>
       <div className={`main-nav${sticky ? " nav-sticky" : ""}`}>
@@ -29,32 +20,15 @@ export function MainNav({ categories, subcategories }: { categories: any[]; subc
           <div className="nav-links">
             <Link href="/" className="nav-link nav-home">Home</Link>
             {categories.map((cat: any) => (
-              <div key={cat.id} className="nav-item">
-                <Link
-                  href={`/category/${cat.slug}`}
-                  className="nav-link"
-                  style={{ "--hover-color": cat.color || "var(--accent)" } as React.CSSProperties}
-                >
-                  {cat.name}
-                  {cat.icon && <span>{cat.icon}</span>}
-                </Link>
-                <div className="nav-dropdown">
-                  <div className="dropdown-head" style={{ borderColor: cat.color || "var(--accent)" }}>{cat.name}</div>
-                  {(subcatsByCat[cat.slug] || []).length > 0 ? (
-                    subcatsByCat[cat.slug].map((sub: any) => (
-                      <Link key={sub.id} href={`/category/${cat.slug}/${sub.slug}`} className="dropdown-item">
-                        {sub.name}
-                      </Link>
-                    ))
-                  ) : (
-                    ["Latest", "Popular"].map((label) => (
-                      <Link key={label} href={`/category/${cat.slug}`} className="dropdown-item">
-                        {label}
-                      </Link>
-                    ))
-                  )}
-                </div>
-              </div>
+              <Link
+                key={cat.id}
+                href={`/category/${cat.slug}`}
+                className="nav-link"
+                style={{ "--hover-color": cat.color || "var(--accent)" } as React.CSSProperties}
+              >
+                {cat.name}
+                {cat.icon && <span>{cat.icon}</span>}
+              </Link>
             ))}
           </div>
           <div className="nav-right">

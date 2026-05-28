@@ -19,7 +19,6 @@ const config: Config = {
       colors: {
         brand: {
           navy: "#0F172A",
-          indigo: "#6366F1",
           amber: "#F59E0B",
         },
         border: "hsl(var(--border))",

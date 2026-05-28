@@ -33,7 +33,7 @@ export function NewsletterSection() {
               onChange={(e) => setEmail(e.target.value)}
               className="bg-white/10 border-white/20 text-white placeholder:text-gray-500"
             />
-            <Button onClick={handleSubscribe} className="shrink-0 bg-brand-indigo hover:bg-brand-indigo/90">
+            <Button onClick={handleSubscribe} className="shrink-0 bg-brand-amber hover:bg-brand-amber/90">
               Subscribe
             </Button>
           </div>

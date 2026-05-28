@@ -70,7 +70,7 @@ export function DontMiss({ categories }: DontMissProps) {
             <Badge variant="indigo" className="mb-2">
               {categories.find((c) => c.id === main.category_id)?.name}
             </Badge>
-            <h3 className="text-xl font-bold group-hover:text-brand-indigo transition-colors line-clamp-2">
+            <h3 className="text-xl font-bold group-hover:text-brand-amber transition-colors line-clamp-2">
               {main.title}
             </h3>
             <p className="text-sm text-muted-foreground line-clamp-2 mt-1">{main.excerpt}</p>
@@ -86,7 +86,7 @@ export function DontMiss({ categories }: DontMissProps) {
                 style={{ backgroundImage: `url(${post.featured_image || "/api/placeholder/120/120"})` }}
               />
               <div className="flex-1 min-w-0">
-                <h4 className="font-semibold group-hover:text-brand-indigo transition-colors line-clamp-2">
+                <h4 className="font-semibold group-hover:text-brand-amber transition-colors line-clamp-2">
                   {post.title}
                 </h4>
                 <p className="text-sm text-muted-foreground line-clamp-1 mt-1">{post.excerpt}</p>

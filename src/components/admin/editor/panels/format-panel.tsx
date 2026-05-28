@@ -28,11 +28,11 @@ export function FormatPanel() {
               onClick={() => setField("post_format", f.value)}
               className={`flex flex-col items-center gap-1.5 p-3 rounded-xl text-xs font-medium transition-all ${
                 active
-                  ? "bg-[#6366F1]/15 text-[#6366F1] border-2 border-[#6366F1]/40 shadow-sm"
+                  ? "bg-[#F59E0B]/15 text-[#F59E0B] border-2 border-[#F59E0B]/40 shadow-sm"
                   : "text-gray-500 dark:text-[#9CA3AF] hover:text-gray-700 dark:hover:text-[#F9FAFB] hover:bg-gray-50 dark:hover:bg-[#1F2937] border-2 border-transparent"
               }`}
             >
-              <Icon className={`h-5 w-5 ${active ? "text-[#6366F1]" : ""}`} />
+              <Icon className={`h-5 w-5 ${active ? "text-[#F59E0B]" : ""}`} />
               {f.label}
             </button>
           )

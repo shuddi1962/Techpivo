@@ -11,7 +11,7 @@ export default function GlobalError({
     <html lang="en">
       <body className="min-h-screen flex items-center justify-center bg-[#080D1A] px-4">
         <div className="text-center max-w-md">
-          <div className="text-6xl mb-4" style={{ fontFamily: "'Syne', sans-serif", fontWeight: 800, color: "#6366F1" }}>
+          <div className="text-6xl mb-4" style={{ fontFamily: "'Syne', sans-serif", fontWeight: 800, color: "#F59E0B" }}>
             500
           </div>
           <h1 className="text-2xl font-bold mb-2 text-white" style={{ fontFamily: "'Syne', sans-serif" }}>
@@ -23,7 +23,7 @@ export default function GlobalError({
           <button
             onClick={reset}
             style={{
-              background: "#6366F1", color: "white", border: "none",
+              background: "#F59E0B", color: "white", border: "none",
               padding: "10px 24px", borderRadius: 8, fontSize: 14, fontWeight: 600,
               cursor: "pointer", fontFamily: "'DM Sans', sans-serif"
             }}

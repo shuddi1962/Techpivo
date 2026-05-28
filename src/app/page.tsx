@@ -123,7 +123,11 @@ export default async function HomePage() {
     (allTags || []).flatMap((p: any) => p.seo_keywords || [])
   )).slice(0, 20) as string[]
 
-  const cats = (categories || []).map((cat: any) => ({
+  const postCatSlugs = new Set<string>()
+  for (const post of [...(heroPosts||[]), ...(latestPosts||[]), ...(trendingPosts||[]), ...(popularPosts||[])]) {
+    if (post.categories?.slug) postCatSlugs.add(post.categories.slug)
+  }
+  const cats = (categories || []).filter((cat: any) => postCatSlugs.has(cat.slug)).map((cat: any) => ({
     ...cat,
   }))
 
@@ -141,7 +145,7 @@ export default async function HomePage() {
     <div>
       <TopBar />
       <Header />
-      <MainNav categories={cats} subcategories={subcategories || []} />
+      <MainNav categories={cats} />
       <BreakingTicker posts={tickerPosts || []} />
 
       <div className="site-main">
@@ -163,7 +167,7 @@ export default async function HomePage() {
             <CategoryStrip
               categoryName="AI & Automation"
               categorySlug="ai-automation"
-              categoryColor="#8B5CF6"
+              categoryColor="#F59E0B"
               posts={aiPosts || []}
               subcategories={subcatsByCat["ai-automation"] || []}
             />

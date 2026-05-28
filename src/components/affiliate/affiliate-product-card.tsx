@@ -71,7 +71,7 @@ export function AffiliateProductCard({ product, compact }: AffiliateProductCardP
             <div className="flex items-center gap-2">
               {onSale ? (
                 <>
-                  <span className="font-bold text-brand-indigo">
+                  <span className="font-bold text-brand-amber">
                     ${product.sale_price!.toFixed(2)}
                   </span>
                   <span className="text-sm text-muted-foreground line-through">

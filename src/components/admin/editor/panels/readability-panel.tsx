@@ -65,7 +65,7 @@ export function ReadabilityPanel() {
 
         <div className="grid grid-cols-2 gap-3 border-t-2 border-gray-100 dark:border-[#1F2937] pt-4">
           {[
-            { label: "Words", value: stats.words.toLocaleString(), color: "text-[#6366F1]" },
+            { label: "Words", value: stats.words.toLocaleString(), color: "text-[#F59E0B]" },
             { label: "Sentences", value: stats.sentences, color: "text-green-600 dark:text-green-400" },
             { label: "Words/Sentence", value: stats.avgWordsPerSentence, color: "text-amber-600 dark:text-amber-400" },
             { label: "Long Sentences", value: stats.longSentences, color: stats.longSentences > 0 ? "text-orange-600 dark:text-orange-400" : "text-gray-600 dark:text-gray-400" },

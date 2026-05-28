@@ -3,18 +3,18 @@ export const SITE_TAGLINE = "Tech, decoded. Fast."
 export const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://www.blizine.com"
 export const SITE_LOGO = "Blizine"
 export const PRIMARY_COLOR = "#0F172A"
-export const ACCENT_COLOR = "#6366F1"
+export const ACCENT_COLOR = "#F59E0B"
 export const HIGHLIGHT_COLOR = "#F59E0B"
 
 export const CATEGORY_COLORS: Record<string, string> = {
   "tech-news": "#3B82F6",
-  "web-development": "#8B5CF6",
+  "web-development": "#F59E0B",
   programming: "#10B981",
   cybersecurity: "#EF4444",
   "ai-automation": "#F59E0B",
   gadgets: "#EC4899",
   tutorials: "#14B8A6",
-  "digital-business": "#6366F1",
+  "digital-business": "#F59E0B",
   "networking-it-support": "#F97316",
   reviews: "#06B6D4",
 }

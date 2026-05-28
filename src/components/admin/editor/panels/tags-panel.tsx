@@ -47,11 +47,11 @@ export function TagsPanel() {
             onChange={(e) => setTagInput(e.target.value)}
             placeholder="Enter tag..."
             onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), addTag())}
-            className="bg-gray-50 dark:bg-[#0A0F1E] border-2 border-gray-300 dark:border-[#374151] text-gray-900 dark:text-[#F9FAFB] placeholder:text-gray-400 dark:placeholder:text-[#4B5563] focus:ring-2 focus:ring-[#6366F1] focus:border-transparent h-9 text-sm"
+            className="bg-gray-50 dark:bg-[#0A0F1E] border-2 border-gray-300 dark:border-[#374151] text-gray-900 dark:text-[#F9FAFB] placeholder:text-gray-400 dark:placeholder:text-[#4B5563] focus:ring-2 focus:ring-[#F59E0B] focus:border-transparent h-9 text-sm"
           />
           <button
             onClick={addTag}
-            className="px-3 py-1.5 bg-[#6366F1] hover:bg-[#4F46E5] text-white text-sm font-medium rounded-lg transition-colors shrink-0 shadow-sm"
+            className="px-3 py-1.5 bg-[#F59E0B] hover:bg-[#D97706] text-white text-sm font-medium rounded-lg transition-colors shrink-0 shadow-sm"
           >
             <Plus className="h-4 w-4" />
           </button>

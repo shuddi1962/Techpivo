@@ -30,11 +30,11 @@ export function LeftColumn() {
             value={post.slug}
             onChange={(e) => setField("slug", e.target.value)}
             placeholder="post-slug"
-            className="bg-gray-50 dark:bg-[#0A0F1E] border-2 border-gray-300 dark:border-[#374151] rounded-lg px-3 py-1.5 text-gray-900 dark:text-[#F9FAFB] flex-1 focus:outline-none focus:ring-2 focus:ring-[#6366F1] focus:border-transparent font-mono text-sm"
+            className="bg-gray-50 dark:bg-[#0A0F1E] border-2 border-gray-300 dark:border-[#374151] rounded-lg px-3 py-1.5 text-gray-900 dark:text-[#F9FAFB] flex-1 focus:outline-none focus:ring-2 focus:ring-[#F59E0B] focus:border-transparent font-mono text-sm"
           />
           <button
             onClick={() => setField("slug", slugify(post.title))}
-            className="text-xs font-medium text-[#6366F1] hover:text-[#4F46E5] whitespace-nowrap px-2 py-1 rounded-md hover:bg-[#6366F1]/10 transition-colors"
+            className="text-xs font-medium text-[#F59E0B] hover:text-[#D97706] whitespace-nowrap px-2 py-1 rounded-md hover:bg-[#F59E0B]/10 transition-colors"
           >
             Generate
           </button>
@@ -50,7 +50,7 @@ export function LeftColumn() {
           onChange={(e) => setField("excerpt", e.target.value)}
           placeholder="Write a brief excerpt..."
           rows={3}
-          className="w-full bg-gray-50 dark:bg-[#0A0F1E] border-2 border-gray-300 dark:border-[#374151] rounded-lg px-3 py-2 text-gray-900 dark:text-[#F9FAFB] placeholder:text-gray-400 dark:placeholder:text-[#4B5563] focus:outline-none focus:ring-2 focus:ring-[#6366F1] focus:border-transparent resize-y text-sm"
+          className="w-full bg-gray-50 dark:bg-[#0A0F1E] border-2 border-gray-300 dark:border-[#374151] rounded-lg px-3 py-2 text-gray-900 dark:text-[#F9FAFB] placeholder:text-gray-400 dark:placeholder:text-[#4B5563] focus:outline-none focus:ring-2 focus:ring-[#F59E0B] focus:border-transparent resize-y text-sm"
         />
         <div className="flex items-center justify-between mt-1.5">
           <div className="flex items-center gap-2 flex-1">
@@ -74,13 +74,13 @@ export function LeftColumn() {
             value={post.source_name}
             onChange={(e) => setField("source_name", e.target.value)}
             placeholder="Source name (e.g., TechCrunch)"
-            className="w-full bg-gray-50 dark:bg-[#0A0F1E] border-2 border-gray-300 dark:border-[#374151] rounded-lg px-3 py-2 text-gray-900 dark:text-[#F9FAFB] placeholder:text-gray-400 dark:placeholder:text-[#4B5563] focus:outline-none focus:ring-2 focus:ring-[#6366F1] focus:border-transparent text-sm"
+            className="w-full bg-gray-50 dark:bg-[#0A0F1E] border-2 border-gray-300 dark:border-[#374151] rounded-lg px-3 py-2 text-gray-900 dark:text-[#F9FAFB] placeholder:text-gray-400 dark:placeholder:text-[#4B5563] focus:outline-none focus:ring-2 focus:ring-[#F59E0B] focus:border-transparent text-sm"
           />
           <input
             value={post.original_source_url}
             onChange={(e) => setField("original_source_url", e.target.value)}
             placeholder="Original source URL"
-            className="w-full bg-gray-50 dark:bg-[#0A0F1E] border-2 border-gray-300 dark:border-[#374151] rounded-lg px-3 py-2 text-gray-900 dark:text-[#F9FAFB] placeholder:text-gray-400 dark:placeholder:text-[#4B5563] focus:outline-none focus:ring-2 focus:ring-[#6366F1] focus:border-transparent text-sm"
+            className="w-full bg-gray-50 dark:bg-[#0A0F1E] border-2 border-gray-300 dark:border-[#374151] rounded-lg px-3 py-2 text-gray-900 dark:text-[#F9FAFB] placeholder:text-gray-400 dark:placeholder:text-[#4B5563] focus:outline-none focus:ring-2 focus:ring-[#F59E0B] focus:border-transparent text-sm"
           />
         </div>
       </div>

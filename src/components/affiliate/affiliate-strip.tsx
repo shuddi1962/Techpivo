@@ -67,7 +67,7 @@ export function AffiliateStrip() {
 
                 {/* Details */}
                 <div className="p-3 space-y-1">
-                  <h3 className="text-sm font-medium leading-tight line-clamp-2 group-hover:text-brand-indigo transition-colors">
+                  <h3 className="text-sm font-medium leading-tight line-clamp-2 group-hover:text-brand-amber transition-colors">
                     {product.product_name}
                   </h3>
                   <div className="flex items-center gap-1.5">
@@ -80,7 +80,7 @@ export function AffiliateStrip() {
                       </span>
                     )}
                   </div>
-                  <span className="inline-flex items-center text-xs font-medium text-brand-indigo group-hover:underline">
+                  <span className="inline-flex items-center text-xs font-medium text-brand-amber group-hover:underline">
                     Shop <span aria-hidden="true" className="ml-0.5">→</span>
                   </span>
                 </div>

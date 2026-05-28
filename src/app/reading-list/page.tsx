@@ -34,7 +34,7 @@ export default function ReadingListPage() {
   return (
     <div className="container py-6">
       <div className="flex items-center gap-3 mb-8">
-        <Bookmark className="h-6 w-6 text-brand-indigo" />
+        <Bookmark className="h-6 w-6 text-brand-amber" />
         <h1 className="text-3xl font-bold">Reading List</h1>
       </div>
 

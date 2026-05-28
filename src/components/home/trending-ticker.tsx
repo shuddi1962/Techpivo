@@ -23,7 +23,7 @@ export function TrendingTicker({ posts }: TrendingTickerProps) {
               <Link
                 key={`${post.id}-${i}`}
                 href={`/${post.slug}`}
-                className="text-sm text-gray-300 hover:text-brand-indigo transition-colors inline-flex items-center gap-2"
+                className="text-sm text-gray-300 hover:text-brand-amber transition-colors inline-flex items-center gap-2"
               >
                 <span className="text-brand-amber font-bold">#{(i % posts.length) + 1}</span>
                 {post.title}

@@ -90,11 +90,11 @@ export default function AdminPostsPage() {
           <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Manage your blog content</p>
         </div>
         <div className="flex items-center gap-2">
-          <button onClick={fetchPosts} className="p-2 text-gray-400 hover:text-[#6366F1] hover:bg-gray-100 dark:hover:bg-[#1F2937] rounded-lg transition-colors">
+          <button onClick={fetchPosts} className="p-2 text-gray-400 hover:text-[#F59E0B] hover:bg-gray-100 dark:hover:bg-[#1F2937] rounded-lg transition-colors">
             <RefreshCw className="h-4 w-4" />
           </button>
           <Link href="/admin/posts/new">
-            <Button className="bg-[#6366F1] hover:bg-[#4F46E5] text-white shadow-sm shadow-[#6366F1]/20 font-medium px-5">
+            <Button className="bg-[#F59E0B] hover:bg-[#D97706] text-white shadow-sm shadow-[#F59E0B]/20 font-medium px-5">
               <Plus className="h-4 w-4 mr-2" />
               New Post
             </Button>
@@ -104,7 +104,7 @@ export default function AdminPostsPage() {
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {[
-          { label: "Total Posts", value: counts.total, color: "text-[#6366F1]", bg: "bg-[#6366F1]/10" },
+          { label: "Total Posts", value: counts.total, color: "text-[#F59E0B]", bg: "bg-[#F59E0B]/10" },
           { label: "Published", value: counts.published, color: "text-green-600", bg: "bg-green-50 dark:bg-green-900/20" },
           { label: "Drafts", value: counts.drafts, color: "text-amber-600", bg: "bg-amber-50 dark:bg-amber-900/20" },
           { label: "Total Views", value: counts.views.toLocaleString(), color: "text-blue-600", bg: "bg-blue-50 dark:bg-blue-900/20" },
@@ -131,13 +131,13 @@ export default function AdminPostsPage() {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search posts..."
-              className="pl-9 pr-4 py-2 text-sm border-2 border-gray-200 dark:border-[#374151] rounded-lg bg-gray-50 dark:bg-[#0A0F1E] text-gray-900 dark:text-gray-100 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#6366F1] focus:border-transparent w-64"
+              className="pl-9 pr-4 py-2 text-sm border-2 border-gray-200 dark:border-[#374151] rounded-lg bg-gray-50 dark:bg-[#0A0F1E] text-gray-900 dark:text-gray-100 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#F59E0B] focus:border-transparent w-64"
             />
           </div>
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
-            className="text-sm border-2 border-gray-200 dark:border-[#374151] rounded-lg bg-gray-50 dark:bg-[#0A0F1E] text-gray-700 dark:text-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#6366F1]"
+            className="text-sm border-2 border-gray-200 dark:border-[#374151] rounded-lg bg-gray-50 dark:bg-[#0A0F1E] text-gray-700 dark:text-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#F59E0B]"
           >
             <option value="all">All Status</option>
             <option value="published">Published</option>
@@ -178,7 +178,7 @@ export default function AdminPostsPage() {
                     </p>
                     {!search && statusFilter === "all" && (
                       <Link href="/admin/posts/new">
-                        <Button className="mt-3 bg-[#6366F1] hover:bg-[#4F46E5] text-white">
+                        <Button className="mt-3 bg-[#F59E0B] hover:bg-[#D97706] text-white">
                           <Plus className="h-4 w-4 mr-2" />
                           Create your first post
                         </Button>
@@ -201,7 +201,7 @@ export default function AdminPostsPage() {
                         <div className="min-w-0">
                           <Link
                             href={`/admin/posts/${post.id}/edit`}
-                            className="text-sm font-semibold text-gray-900 dark:text-white hover:text-[#6366F1] dark:hover:text-[#818CF8] transition-colors line-clamp-1 block"
+                            className="text-sm font-semibold text-gray-900 dark:text-white hover:text-[#F59E0B] dark:hover:text-[#818CF8] transition-colors line-clamp-1 block"
                           >
                             {post.title}
                           </Link>

@@ -12,13 +12,13 @@ import {
   Tooltip, ResponsiveContainer, PieChart as RePie, Pie, Cell,
 } from "recharts"
 
-const COLORS = ["#6366F1", "#10B981", "#F59E0B", "#EF4444", "#8B5CF6", "#EC4899", "#06B6D4", "#84CC16"]
+const COLORS = ["#F59E0B", "#10B981", "#F59E0B", "#EF4444", "#F59E0B", "#EC4899", "#06B6D4", "#84CC16"]
 
 export default function AdminDashboard() {
   const supabaseRef = useRef(createClient())
   const prevViewsRef = useRef(0)
   const [stats, setStats] = useState([
-    { label: "Published Posts", value: 0, change: "+0", icon: FileText, color: "#6366F1", href: "/admin/posts" },
+    { label: "Published Posts", value: 0, change: "+0", icon: FileText, color: "#F59E0B", href: "/admin/posts" },
     { label: "Total Views", value: 0, change: "+0", icon: Eye, color: "#10B981", href: "/admin/analytics" },
     { label: "Active RSS Feeds", value: 0, change: "", icon: Rss, color: "#F59E0B", href: "/admin/rss-feeds" },
     { label: "Subscribers", value: 0, change: "", icon: Users, color: "#EC4899", href: "/admin/newsletter" },
@@ -186,7 +186,7 @@ export default function AdminDashboard() {
         <div className="lg:col-span-4 bg-white dark:bg-[#111827] border-2 border-gray-200 dark:border-[#374151] rounded-xl p-6">
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center gap-2.5">
-              <Activity className="h-5 w-5 text-[#6366F1]" />
+              <Activity className="h-5 w-5 text-[#F59E0B]" />
               <h2 className="text-base font-bold text-gray-900 dark:text-white">Views This Week</h2>
             </div>
             {!loading && (
@@ -204,7 +204,7 @@ export default function AdminDashboard() {
                 <XAxis dataKey="date" tick={{ fill: "#6B7280", fontSize: 12 }} axisLine={{ stroke: "#374151" }} tickLine={false} />
                 <YAxis tick={{ fill: "#6B7280", fontSize: 12 }} axisLine={false} tickLine={false} />
                 <Tooltip contentStyle={{ background: "#111827", border: "2px solid #374151", borderRadius: "12px", color: "#F9FAFB" }} labelStyle={{ color: "#9CA3AF" }} />
-                <Line type="monotone" dataKey="views" stroke="#6366F1" strokeWidth={3} dot={{ fill: "#6366F1", stroke: "#111827", strokeWidth: 2, r: 4 }} activeDot={{ r: 6, fill: "#818CF8" }} />
+                <Line type="monotone" dataKey="views" stroke="#F59E0B" strokeWidth={3} dot={{ fill: "#F59E0B", stroke: "#111827", strokeWidth: 2, r: 4 }} activeDot={{ r: 6, fill: "#818CF8" }} />
               </LineChart>
             </ResponsiveContainer>
           )}
@@ -269,7 +269,7 @@ export default function AdminDashboard() {
 
         <div className="bg-white dark:bg-[#111827] border-2 border-gray-200 dark:border-[#374151] rounded-xl p-6">
           <div className="flex items-center gap-2.5 mb-6">
-            <Globe className="h-5 w-5 text-[#8B5CF6]" />
+            <Globe className="h-5 w-5 text-[#F59E0B]" />
             <h2 className="text-base font-bold text-gray-900 dark:text-white">Top Regions</h2>
           </div>
           {loading ? (

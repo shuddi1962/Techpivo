@@ -76,7 +76,7 @@ function SearchContent() {
                   style={{ backgroundImage: `url(${post.featured_image || "/api/placeholder/200/150"})` }}
                 />
                 <div>
-                  <h2 className="font-semibold group-hover:text-brand-indigo line-clamp-2">{post.title}</h2>
+                  <h2 className="font-semibold group-hover:text-brand-amber line-clamp-2">{post.title}</h2>
                   <p className="text-sm text-muted-foreground line-clamp-1 mt-1">{post.excerpt}</p>
                   <p className="text-xs text-muted-foreground mt-1">
                     {post.published_at ? formatDate(post.published_at) : ""} · {post.reading_time} min read

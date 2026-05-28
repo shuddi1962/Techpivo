@@ -79,7 +79,7 @@ export function AffiliateWidget({ categoryId }: AffiliateWidgetProps) {
 
         {/* Price */}
         <div className="flex items-center gap-2">
-          <span className="font-bold text-brand-indigo">
+          <span className="font-bold text-brand-amber">
             ${displayPrice.toFixed(2)}
           </span>
           {onSale && (
