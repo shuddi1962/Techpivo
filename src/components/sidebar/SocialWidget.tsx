@@ -1,4 +1,8 @@
+"use client"
+
 import Link from "next/link"
+import { useTheme } from "next-themes"
+import { useEffect, useState } from "react"
 
 const platforms = [
   {
@@ -32,6 +36,11 @@ const platforms = [
 ]
 
 export function SocialWidget() {
+  const { theme } = useTheme()
+  const [mounted, setMounted] = useState(false)
+  useEffect(() => { setMounted(true) }, [])
+  const isDark = mounted && (theme === "dark" || (!theme && window.matchMedia("(prefers-color-scheme: dark)").matches))
+
   return (
     <div className="sidebar-card">
       <div className="sidebar-card-header">
@@ -46,7 +55,7 @@ export function SocialWidget() {
           <div className="social-info">
             <div className="social-name">{p.name}</div>
           </div>
-          <Link href={p.href} className="social-btn" style={{ border: `1px solid ${p.color}`, color: p.color }}>
+          <Link href={p.href} className="social-btn" style={{ border: `1px solid ${isDark ? "white" : p.color}`, color: isDark ? "white" : p.color }}>
             {p.label}
           </Link>
         </div>
