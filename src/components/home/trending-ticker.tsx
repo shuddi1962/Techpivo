@@ -12,7 +12,7 @@ export function TrendingTicker({ posts }: TrendingTickerProps) {
   if (posts.length === 0) return null
 
   return (
-    <section className="border-y border-[#1F2937] bg-[#111827] py-3 overflow-hidden">
+    <section className="border-y border-[#333333] bg-[#1a1a1a] py-3 overflow-hidden">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center gap-4">
         <span className="text-sm font-bold text-brand-amber uppercase tracking-wider shrink-0">
           Trending
