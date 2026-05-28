@@ -19,23 +19,35 @@ export async function middleware(request: NextRequest) {
 
   const { data: { user } } = await supabase.auth.getUser()
 
-  if (!user && request.nextUrl.pathname.startsWith("/admin")) {
-    const url = request.nextUrl.clone()
-    url.pathname = "/login"
-    return NextResponse.redirect(url)
-  }
+  const isAdminPath = request.nextUrl.pathname.startsWith("/admin")
+  const isAdminLogin = request.nextUrl.pathname === "/admin/login"
 
-  if (user && request.nextUrl.pathname.startsWith("/admin")) {
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("role")
-      .eq("id", user.id)
-      .single()
-
-    if (!profile || !["admin", "editor", "author"].includes(profile.role)) {
+  if (!user) {
+    if (isAdminPath && !isAdminLogin) {
       const url = request.nextUrl.clone()
-      url.pathname = "/"
+      url.pathname = "/admin/login"
       return NextResponse.redirect(url)
+    }
+  } else {
+    if (isAdminPath) {
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("role")
+        .eq("id", user.id)
+        .single()
+
+      const hasAccess = profile && ["admin", "editor", "author"].includes(profile.role)
+      if (isAdminLogin) {
+        if (hasAccess) {
+          const url = request.nextUrl.clone()
+          url.pathname = "/admin"
+          return NextResponse.redirect(url)
+        }
+      } else if (!hasAccess) {
+        const url = request.nextUrl.clone()
+        url.pathname = "/"
+        return NextResponse.redirect(url)
+      }
     }
   }
 
