@@ -20,7 +20,7 @@ export async function POST(request: NextRequest) {
     password,
     options: {
       data: { full_name: fullName },
-      emailRedirectTo: `${request.nextUrl.origin}/auth/callback`,
+      emailRedirectTo: `${process.env.NEXT_PUBLIC_SITE_URL || "https://blizine.com"}/auth/callback`,
     },
   })
 
