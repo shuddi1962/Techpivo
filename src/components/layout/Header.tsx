@@ -13,17 +13,25 @@ export function Header() {
   const [scrolled, setScrolled] = useState(false)
   const [mounted, setMounted] = useState(false)
   const [user, setUser] = useState<User | null>(null)
+  const [profileName, setProfileName] = useState<string | null>(null)
   const router = useRouter()
   const { theme, setTheme } = useTheme()
   const supabase = createClient()
+
+  const loadProfile = async (userId: string) => {
+    const { data } = await supabase.from("profiles").select("full_name").eq("id", userId).single()
+    setProfileName(data?.full_name || null)
+  }
 
   useEffect(() => {
     setMounted(true)
     supabase.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user ?? null)
+      if (session?.user) loadProfile(session.user.id)
     })
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user ?? null)
+      if (session?.user) loadProfile(session.user.id)
     })
     return () => subscription.unsubscribe()
   }, [])
@@ -77,7 +85,7 @@ export function Header() {
                 ) : (
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
                 )}
-                <span className="header-user-name">{user.user_metadata?.full_name || user.email?.split("@")[0] || "Account"}</span>
+                <span className="header-user-name">{profileName || user.user_metadata?.full_name || user.email?.split("@")[0] || "Account"}</span>
               </Link>
             ) : (
               <button className="login-btn" onClick={() => setLoginOpen(true)}>
