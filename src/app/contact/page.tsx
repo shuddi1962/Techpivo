@@ -9,17 +9,19 @@ export const metadata: Metadata = {
 
 export default function ContactPage() {
   return (
-    <div className="w-full px-4 md:px-12 py-12 max-w-[1400px] mx-auto">
+    <div className="w-full">
       {/* Hero */}
-      <div className="relative rounded-2xl overflow-hidden mb-12 min-h-[300px] flex items-center">
-        <Image src="https://images.pexels.com/photos/695853/pexels-photo-695853.jpeg" alt="Contact us" fill className="object-cover" sizes="100vw" />
-        <div className="relative z-10 px-8 py-16 text-white max-w-3xl">
+      <div className="relative overflow-hidden mb-12 min-h-[320px] flex items-center">
+        <Image src="https://images.pexels.com/photos/6393340/pexels-photo-6393340.jpeg" alt="Contact us" fill className="object-cover" sizes="100vw" priority />
+        <div className="absolute inset-0 bg-black/40" />
+        <div className="relative z-10 px-6 md:px-12 lg:px-16 py-16 text-white max-w-4xl">
           <div className="text-5xl mb-4">✉️</div>
           <h1 className="text-4xl font-bold mb-2">Contact Us</h1>
           <p className="text-lg text-white/80">We value your feedback and inquiries. Here is how you can reach the right team.</p>
         </div>
       </div>
 
+      <div className="px-4 md:px-12 lg:px-16 pb-12">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-12">
         <div className="bg-card border rounded-2xl p-6">
           <div className="w-12 h-12 rounded-xl bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center text-xl mb-4">📰</div>
@@ -77,6 +79,7 @@ export default function ContactPage() {
 
       <div className="text-center text-sm text-muted-foreground">
         You can also write to us at: <span className="font-medium text-foreground">Blizine Media, 123 Innovation Drive, San Francisco, CA 94105</span>
+      </div>
       </div>
     </div>
   )

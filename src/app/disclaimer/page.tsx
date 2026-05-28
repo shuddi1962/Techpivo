@@ -13,7 +13,7 @@ export default function DisclaimerPage() {
     <div className="w-full">
       {/* Hero */}
       <div className="relative overflow-hidden mb-12 min-h-[320px] flex items-center">
-        <Image src="https://images.pexels.com/photos/5632403/pexels-photo-5632403.jpeg" alt="Legal disclaimer" fill className="object-cover" sizes="100vw" priority />
+        <Image src="https://images.pexels.com/photos/6863515/pexels-photo-6863515.jpeg" alt="Legal disclaimer" fill className="object-cover" sizes="100vw" priority />
         <div className="absolute inset-0 bg-black/40" />
         <div className="relative z-10 px-6 md:px-12 lg:px-16 py-16 text-white max-w-4xl">
           <div className="text-5xl mb-4">⚖️</div>
@@ -27,7 +27,7 @@ export default function DisclaimerPage() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         <section className="bg-card border rounded-2xl p-6">
           <div className="relative h-36 rounded-xl overflow-hidden mb-4">
-            <Image src="https://images.pexels.com/photos/546819/pexels-photo-546819.jpeg" alt="Affiliate" fill className="object-cover" sizes="(max-width: 768px) 100vw, 33vw" />
+            <Image src="https://images.pexels.com/photos/4476377/pexels-photo-4476377.jpeg" alt="Affiliate" fill className="object-cover" sizes="(max-width: 768px) 100vw, 33vw" />
           </div>
           <div className="w-12 h-12 rounded-xl bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center text-xl mb-3">🔗</div>
           <h2 className="text-xl font-bold mb-2">Affiliate Disclosure</h2>

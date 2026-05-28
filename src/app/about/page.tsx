@@ -73,7 +73,7 @@ export default function AboutPage() {
       {/* Team */}
       <section className="mb-12 grid md:grid-cols-2 gap-8 items-center">
         <div className="relative h-64 rounded-xl overflow-hidden md:order-2">
-          <Image src="https://images.pexels.com/photos/1714208/pexels-photo-1714208.jpeg" alt="Team meeting" fill className="object-cover" sizes="(max-width: 768px) 100vw, 448px" />
+          <Image src="https://images.pexels.com/photos/3184418/pexels-photo-3184418.jpeg" alt="Team meeting" fill className="object-cover" sizes="(max-width: 768px) 100vw, 448px" />
         </div>
         <div className="md:order-1">
           <h2 className="text-2xl font-bold mb-4">Our Team</h2>
