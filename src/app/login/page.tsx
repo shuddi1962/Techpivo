@@ -18,9 +18,14 @@ export default function LoginPage() {
     e.preventDefault()
     setLoading(true)
     setError("")
-    const { error } = await supabase.auth.signInWithPassword({ email, password })
-    if (error) {
-      setError(error.message)
+    const res = await fetch("/api/auth/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, password }),
+    })
+    const data = await res.json()
+    if (!res.ok) {
+      setError(data.error || "Login failed")
     } else {
       router.push("/account")
       router.refresh()

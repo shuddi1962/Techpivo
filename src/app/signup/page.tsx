@@ -21,29 +21,17 @@ export default function SignupPage() {
     setLoading(true)
     setError("")
 
-    const { data, error: signUpError } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        data: { full_name: fullName },
-        emailRedirectTo: `${location.origin}/auth/callback`,
-      },
+    const res = await fetch("/api/auth/signup", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, password, fullName }),
     })
+    const data = await res.json()
 
-    if (signUpError) {
-      setError(signUpError.message)
+    if (!res.ok) {
+      setError(data.error || "Signup failed")
       setLoading(false)
       return
-    }
-
-    if (data.user) {
-      const { error: profileError } = await supabase.from("profiles").insert({
-        id: data.user.id,
-        full_name: fullName,
-        username: email.split("@")[0],
-        role: "contributor",
-      })
-      if (profileError) console.error("Profile creation error:", profileError)
     }
 
     setSuccess(true)
