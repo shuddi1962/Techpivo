@@ -11,4 +11,5 @@ jobs:
     steps:
       - name: Call fetch-rss API
         run: |
-          curl -s -o /dev/null -w "%{http_code}" "${{ secrets.SITE_URL || 'https://www.blizine.com' }}/api/fetch-rss"
+          SITE="${{ secrets.SITE_URL || 'https://www.blizine.com' }}"
+          curl -s -o /dev/null -w "%{http_code}" "$SITE/api/fetch-rss"
