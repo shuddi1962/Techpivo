@@ -412,7 +412,7 @@ async function run(req: NextRequest) {
         }
 
         await supabase.rpc('increment_daily_count')
-        await supabase.rpc('increment_rss_feed_count', { p_feed_name: feed.name }).catch(() => {})
+        try { await supabase.rpc('increment_rss_feed_count', { p_feed_name: feed.name }) } catch {}
 
         runUrls.add(item.link)
         if (fp) runFingerprints.add(fp)
