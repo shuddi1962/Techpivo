@@ -344,11 +344,11 @@ async function run(req: NextRequest) {
           break
         }
         const categoryId = autoCategory(item.title, feed.category, catMap)
-        const ai = await rewriteArticle(item.title, sourceText, feed.name, feed.category, 'rss_auto')
+        const { article: ai, debug: aiDebug } = await rewriteArticle(item.title, sourceText, feed.name, feed.category, 'rss_auto')
 
         if (!ai) {
           failed++
-          log.push(`[AI FAIL] ${item.title.slice(0,50)}`)
+          log.push(`[AI FAIL] ${item.title.slice(0, 45)} (${aiDebug})`)
           continue
         }
 

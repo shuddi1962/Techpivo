@@ -297,16 +297,16 @@ let lastGeminiCallTime = 0
 async function geminiGrounded(
   prompt:  string,
   usedFor: string
-): Promise<BlizineArticle | null> {
+): Promise<{ article: BlizineArticle | null; debug: string }> {
   if (!process.env.GEMINI_API_KEY) {
     console.log('[Blizine AI] No GEMINI_API_KEY set')
-    return null
+    return { article: null, debug: 'no_key' }
   }
 
   const todayCount = await getGeminiTodayCount()
   if (todayCount >= GEMINI_DAILY_CAP) {
     console.log(`[Blizine AI] Gemini daily cap reached (${todayCount}/${GEMINI_DAILY_CAP}) — skipping`)
-    return null
+    return { article: null, debug: 'cap_reached' }
   }
 
   const now = Date.now()
@@ -328,11 +328,9 @@ async function geminiGrounded(
     })
 
     const raw = result.candidates?.[0]?.content?.parts?.[0]?.text || ''
-
     if (!raw || raw.length < 100) {
       const reason = result.candidates?.[0]?.finishReason || 'NO_CANDIDATE'
-      console.log(`[DBG] Gemini empty/short (${reason}, len=${raw.length})`)
-      return null
+      return { article: null, debug: `empty:${reason}/len=${raw.length}` }
     }
 
     const article = validate(raw, 'gemini-grounded')
@@ -340,20 +338,17 @@ async function geminiGrounded(
     if (article) {
       await logGeminiUsage(article.headline, usedFor)
       console.log(`[✓ Gemini+Search ${todayCount + 1}/${GEMINI_DAILY_CAP}] ${article.headline.slice(0, 60)}`)
-    } else {
-      console.log(`[DBG] validate() rejected (len=${raw.length}, h2=${raw.includes('<h2')}, end=${raw.slice(-100).replace(/\n/g,' ')})`)
+      return { article, debug: 'ok' }
     }
 
-    return article
+    return { article: null, debug: `validate_fail:len=${raw.length}` }
 
   } catch (e: any) {
     const msg = String(e)
     if (msg.includes('429') || msg.includes('quota') || msg.includes('RATE_LIMIT')) {
-      console.log(`[AI 429] Gemini quota exhausted`)
-    } else {
-      console.log(`[AI ERR] ${msg.slice(0, 120)}`)
+      return { article: null, debug: '429_quota' }
     }
-    return null
+    return { article: null, debug: `error:${msg.slice(0, 150)}` }
   }
 }
 
@@ -365,18 +360,13 @@ export async function rewriteArticle(
   sourceName:    string,
   category:      string,
   usedFor:       'rss_auto' | 'manual' = 'rss_auto'
-): Promise<BlizineArticle | null> {
-  if (!title || title.trim().length < 5)            return null
-  if (!sourceContent || sourceContent.trim().length < 40) return null
+): Promise<{ article: BlizineArticle | null; debug: string }> {
+  if (!title || title.trim().length < 5)            return { article: null, debug: 'short_title' }
+  if (!sourceContent || sourceContent.trim().length < 40) return { article: null, debug: 'short_source' }
 
   const prompt = buildPrompt(title, sourceContent, sourceName, category)
 
-  const article = await geminiGrounded(prompt, usedFor)
-
-  if (article) return article
-
-  console.log(`[Blizine] Gemini cap reached or failed — skipping article: ${title.slice(0, 60)}`)
-  return null
+  return await geminiGrounded(prompt, usedFor)
 }
 
 // ── QUOTA STATUS ──────────────────────────────────────────────────────────
