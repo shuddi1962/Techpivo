@@ -322,17 +322,26 @@ async function geminiGrounded(
       contents: [{ role: 'user', parts: [{ text: prompt }] }],
       config: {
         temperature:     0.45,
-        maxOutputTokens: 2200,
+        maxOutputTokens: 4096,
         tools:           [{ googleSearch: {} }],
       },
     })
 
     const raw = result.candidates?.[0]?.content?.parts?.[0]?.text || ''
+
+    if (!raw || raw.length < 100) {
+      const reason = result.candidates?.[0]?.finishReason || 'NO_CANDIDATE'
+      console.warn(`[Blizine AI] Gemini returned empty/short response (${reason}, len=${raw.length})`)
+      return null
+    }
+
     const article = validate(raw, 'gemini-grounded')
 
     if (article) {
       await logGeminiUsage(article.headline, usedFor)
       console.log(`[✓ Gemini+Search ${todayCount + 1}/${GEMINI_DAILY_CAP}] ${article.headline.slice(0, 60)}`)
+    } else {
+      console.warn(`[Blizine AI] validate() rejected response (len=${raw.length}, h2=${raw.includes('<h2')}, start=${raw.slice(0,80).replace(/\n/g,' ')})`)
     }
 
     return article
