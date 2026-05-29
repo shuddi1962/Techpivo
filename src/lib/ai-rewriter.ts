@@ -1,7 +1,4 @@
-import { GoogleGenAI } from '@google/genai'
 import { createClient } from '@/lib/supabase/admin'
-
-const genai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || '' })
 
 const GEMINI_DAILY_CAP = 20
 const GEMINI_RATE_MS = 10_000
@@ -317,19 +314,32 @@ async function geminiGrounded(
   lastGeminiCallTime = Date.now()
 
   try {
-    const result = await genai.models.generateContent({
-      model:    'gemini-2.5-flash',
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`
+    const body = {
       contents: [{ role: 'user', parts: [{ text: prompt }] }],
-      config: {
+      generationConfig: {
         temperature:     0.45,
         maxOutputTokens: 8192,
-        tools:           [{ googleSearch: {} }],
       },
+      tools: [{ googleSearch: {} }],
+    }
+
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+      signal: AbortSignal.timeout(25000),
     })
 
-    const raw = result.candidates?.[0]?.content?.parts?.[0]?.text || ''
+    if (!res.ok) {
+      const errText = await res.text().catch(() => '')
+      return { article: null, debug: `http_${res.status}:${errText.slice(0, 150)}` }
+    }
+
+    const data = await res.json()
+    const raw = data?.candidates?.[0]?.content?.parts?.[0]?.text || ''
     if (!raw || raw.length < 100) {
-      const reason = result.candidates?.[0]?.finishReason || 'NO_CANDIDATE'
+      const reason = data?.candidates?.[0]?.finishReason || 'NO_CANDIDATE'
       return { article: null, debug: `empty:${reason}/len=${raw.length}` }
     }
 
@@ -345,9 +355,6 @@ async function geminiGrounded(
 
   } catch (e: any) {
     const msg = String(e)
-    if (msg.includes('429') || msg.includes('quota') || msg.includes('RATE_LIMIT') || msg.includes('RESOURCE_EXHAUSTED')) {
-      return { article: null, debug: `429:${msg.slice(0, 120)}` }
-    }
     return { article: null, debug: `error:${msg.slice(0, 150)}` }
   }
 }
@@ -555,12 +562,19 @@ export async function geminiRewriteContent(title: string, content: string): Prom
 
   if (process.env.GEMINI_API_KEY) {
     try {
-      const res = await genai.models.generateContent({
-        model:    "gemini-2.5-flash",
-        contents: [{ role: "user", parts: [{ text: rewritePrompt }] }],
-        config:   { temperature: 0.5, maxOutputTokens: 4096 },
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ role: "user", parts: [{ text: rewritePrompt }] }],
+          generationConfig: { temperature: 0.5, maxOutputTokens: 4096 },
+        }),
+        signal: AbortSignal.timeout(15000),
       })
-      const text = res.candidates?.[0]?.content?.parts?.[0]?.text || ""
+      if (!res.ok) { console.warn('[Blizine] Gemini rewrite HTTP', res.status); return content }
+      const data = await res.json()
+      const text = data?.candidates?.[0]?.content?.parts?.[0]?.text || ""
       if (text.length > 300) {
         console.log(`[✓ Gemini Rewrite] ${title.slice(0, 40)}`)
         return text
