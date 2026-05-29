@@ -8,7 +8,10 @@ const DAILY_CAP = 20
 const BOT_UA = 'Mozilla/5.0 (compatible; Blizine/1.0; +https://blizine.com/bot)'
 
 function isAuthorised(req: NextRequest): boolean {
-  return true
+  const auth = req.headers.get('Authorization')
+  if (!auth || !auth.startsWith('Bearer ')) return false
+  const token = auth.slice(7)
+  return token === process.env.CRON_SECRET
 }
 
 async function validateImageUrl(url: string | null | undefined): Promise<string | null> {
@@ -115,14 +118,14 @@ interface RawItem {
 }
 
 async function parseFeed(url: string): Promise<RawItem[]> {
-  for (let attempt = 1; attempt <= 3; attempt++) {
+  for (let attempt = 1; attempt <= 2; attempt++) {
     try {
       const res = await fetch(url, {
         headers: {
           'User-Agent': BOT_UA,
           'Accept':     'application/rss+xml, application/xml, application/atom+xml, text/xml, */*',
         },
-        signal: AbortSignal.timeout(8000),
+        signal: AbortSignal.timeout(5000),
       })
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
       const xml = await res.text()
@@ -231,6 +234,11 @@ async function run(req: NextRequest) {
   const url = new URL(req.url)
   const feedLimit = parseInt(url.searchParams.get('limit') || '0', 10) || 0
 
+  // Vercel Hobby serverless timeout is 10s — stop after 8s to return cleanly
+  const startedAt = Date.now()
+  const DEADLINE_MS = 8000
+  function isOutOfTime() { return Date.now() - startedAt >= DEADLINE_MS }
+
   const supabase = createClient()
 
   const { data: todayRow } = await supabase
@@ -294,6 +302,11 @@ async function run(req: NextRequest) {
       break
     }
 
+    if (isOutOfTime()) {
+      log.push(`[TIME] Deadline approaching, waiting for next run`)
+      break
+    }
+
     const items = await parseFeed(feed.url)
     if (!items.length) {
       log.push(`[EMPTY] ${feed.name}`)
@@ -326,6 +339,10 @@ async function run(req: NextRequest) {
       }
 
       try {
+        if (isOutOfTime()) {
+          log.push(`[TIME] Out of time before processing ${item.title.slice(0, 40)}`)
+          break
+        }
         const categoryId = autoCategory(item.title, feed.category, catMap)
         const ai = await rewriteArticle(item.title, sourceText, feed.name, feed.category, 'rss_auto')
 
