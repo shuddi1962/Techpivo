@@ -193,7 +193,7 @@ const BANNED_PHRASES = [
 ]
 
 function validate(raw: string, model: BlizineArticle['modelUsed']): BlizineArticle | null {
-  if (!raw || raw.length < 100) return null
+  if (!raw || raw.length < 100) { console.log('[VAL] too short'); return null }
 
   const clean = raw
     .replace(/^```(?:json)?\s*/im, '')
@@ -205,15 +205,15 @@ function validate(raw: string, model: BlizineArticle['modelUsed']): BlizineArtic
     p = JSON.parse(clean)
   } catch {
     const jsonMatch = clean.match(/\{[\s\S]*\}/)
-    if (!jsonMatch) return null
+    if (!jsonMatch) { console.log('[VAL] no JSON match'); return null }
     try { p = JSON.parse(jsonMatch[0]) }
-    catch { return null }
+    catch { console.log('[VAL] JSON parse fail'); return null }
   }
 
-  if (!p.headline || !p.content) return null
-  if (typeof p.content !== 'string' || p.content.length < 100) return null
+  if (!p.headline || !p.content) { console.log(`[VAL] missing headline=${!!p.headline} content=${!!p.content}`); return null }
+  if (typeof p.content !== 'string' || p.content.length < 100) { console.log(`[VAL] content too short (${p.content?.length})`); return null }
 
-  if (!p.content.includes('<h2')) return null
+  if (!p.content.includes('<h2')) { console.log('[VAL] no h2'); return null }
 
   const contentLower = (p.content + ' ' + p.headline).toLowerCase()
   if (BANNED_PHRASES.some(b => contentLower.includes(b))) {
@@ -231,13 +231,13 @@ function validate(raw: string, model: BlizineArticle['modelUsed']): BlizineArtic
         .filter((f: any) => f.question.length > 5 && f.answer.length > 10)
     : []
 
-  if (faq.length < 1) return null
+  if (faq.length < 1) { console.log(`[VAL] faq short (${faq.length})`); return null }
 
   const keyPoints = Array.isArray(p.keyPoints)
     ? (p.keyPoints as string[]).slice(0, 5).map(String).filter(k => k.length > 10)
     : []
 
-  if (keyPoints.length < 1) return null
+  if (keyPoints.length < 1) { console.log(`[VAL] keyPoints short (${keyPoints.length})`); return null }
 
   return {
     headline:          String(p.headline).trim().slice(0, 150),
@@ -299,7 +299,7 @@ async function geminiGrounded(
   usedFor: string
 ): Promise<BlizineArticle | null> {
   if (!process.env.GEMINI_API_KEY) {
-    console.warn('[Blizine AI] No GEMINI_API_KEY set')
+    console.log('[Blizine AI] No GEMINI_API_KEY set')
     return null
   }
 
@@ -331,7 +331,7 @@ async function geminiGrounded(
 
     if (!raw || raw.length < 100) {
       const reason = result.candidates?.[0]?.finishReason || 'NO_CANDIDATE'
-      console.warn(`[Blizine AI] Gemini returned empty/short response (${reason}, len=${raw.length})`)
+      console.log(`[DBG] Gemini empty/short (${reason}, len=${raw.length})`)
       return null
     }
 
@@ -341,7 +341,7 @@ async function geminiGrounded(
       await logGeminiUsage(article.headline, usedFor)
       console.log(`[✓ Gemini+Search ${todayCount + 1}/${GEMINI_DAILY_CAP}] ${article.headline.slice(0, 60)}`)
     } else {
-      console.warn(`[Blizine AI] validate() rejected response (len=${raw.length}, h2=${raw.includes('<h2')}, start=${raw.slice(0,80).replace(/\n/g,' ')})`)
+      console.log(`[DBG] validate() rejected (len=${raw.length}, h2=${raw.includes('<h2')}, end=${raw.slice(-100).replace(/\n/g,' ')})`)
     }
 
     return article
@@ -349,9 +349,9 @@ async function geminiGrounded(
   } catch (e: any) {
     const msg = String(e)
     if (msg.includes('429') || msg.includes('quota') || msg.includes('RATE_LIMIT')) {
-      console.warn(`[Blizine AI] Gemini 429 hit — quota exhausted for today`)
+      console.log(`[AI 429] Gemini quota exhausted`)
     } else {
-      console.warn('[Blizine AI] Gemini Grounded error:', msg.slice(0, 120))
+      console.log(`[AI ERR] ${msg.slice(0, 120)}`)
     }
     return null
   }
