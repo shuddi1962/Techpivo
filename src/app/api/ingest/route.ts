@@ -379,6 +379,7 @@ async function run(req: NextRequest) {
           seo_description:     ai.seoDescription,
           seo_keywords:        ai.seoKeywords,
           featured_image:      finalImage,
+          author_id:           '3916aa7d-197c-47f8-bdf3-cd6b6f910a37',
           category_id:         categoryId,
           source_name:         feed.name,
           source_url:          item.link,
