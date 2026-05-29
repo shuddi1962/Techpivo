@@ -370,6 +370,29 @@ async function run(req: NextRequest) {
           finalImage = CATEGORY_FALLBACKS[catSlug] || CATEGORY_FALLBACKS['tech-news']
         }
 
+        // Upload image to Supabase Storage to prevent hotlink breakage
+        try {
+          const imgRes = await fetch(finalImage, {
+            headers: { 'User-Agent': BOT_UA },
+            signal: AbortSignal.timeout(10000),
+          })
+          if (imgRes.ok) {
+            const imgBuf = await imgRes.arrayBuffer()
+            const ext = finalImage.includes('.png') ? '.png' : '.jpg'
+            const filename = `post-${Date.now()}-${Math.random().toString(36).slice(2, 8)}${ext}`
+            const { error: upErr } = await supabase.storage
+              .from('post-images')
+              .upload(filename, Buffer.from(imgBuf), {
+                contentType: imgRes.headers.get('content-type') || 'image/jpeg',
+                upsert: true,
+              })
+            if (!upErr) {
+              const { data: pub } = supabase.storage.from('post-images').getPublicUrl(filename)
+              finalImage = pub.publicUrl
+            }
+          }
+        } catch {}
+
         const slug = makeSlug(ai.headline)
         const { error: insertError } = await supabase.from('posts').insert({
           slug,
