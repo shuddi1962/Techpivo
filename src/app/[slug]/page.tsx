@@ -32,10 +32,10 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
   return {
     title: post.seo_title || post.title,
-    description: post.seo_description || post.excerpt,
+    description: post.seo_description || post.content?.replace(/<[^>]+>/g,'').slice(0,155),
     openGraph: {
       title: post.title,
-      description: post.excerpt,
+      description: post.seo_description || post.content?.replace(/<[^>]+>/g,'').slice(0,155),
       images: post.og_image || post.featured_image ? [{ url: post.og_image || post.featured_image || "" }] : [],
     },
   }
@@ -72,7 +72,10 @@ export default async function PostPage({ params }: Props) {
   ])
 
   const quickBrief = (post as any).quick_brief
-  const sourceUrl = post.original_source_url
+  const keyPoints = (post as any).key_points
+  const faq = (post as any).faq
+  const sourceUrl = post.source_url || (post as any).original_source_url
+  const sourceName = post.source_name
   const popularPosts = popularRes.data || []
   const sidebarCategories = categoriesRes.data || []
   const recentPosts = recentRes.data || []
@@ -125,8 +128,6 @@ export default async function PostPage({ params }: Props) {
                   {post.title}
                 </h1>
 
-                <p className="text-lg text-muted-foreground leading-relaxed mb-6">{post.excerpt}</p>
-
                 <div className="flex items-center justify-between flex-wrap gap-4 pb-2">
                   <div className="flex items-center gap-3">
                     <Avatar className="h-11 w-11 ring-2 ring-primary/20">
@@ -174,26 +175,41 @@ export default async function PostPage({ params }: Props) {
 
             {/* Quick Brief */}
             {quickBrief && Array.isArray(quickBrief) && quickBrief.length > 0 && (
-              <div className="mb-8 p-6 rounded-xl bg-gradient-to-r from-primary/5 to-primary/10 border border-primary/20">
-                <h3 className="text-sm font-bold text-primary uppercase tracking-widest mb-3 flex items-center gap-2">
-                  <span className="h-1.5 w-1.5 rounded-full bg-primary" />
-                  Key Takeaways
-                </h3>
-                <ul className="space-y-3">
-                  {quickBrief.map((item: { text: string }, i: number) => (
-                    <li key={i} className="text-[15px] leading-relaxed text-foreground/90 flex items-start gap-3">
-                      <span className="mt-1.5 h-2 w-2 rounded-full bg-primary shrink-0" />
-                      {item.text}
-                    </li>
+              <div className="quick-brief-widget">
+                <div className="qb-header">
+                  <span className="qb-icon">⚡</span>
+                  <span className="qb-title">Quick Brief</span>
+                </div>
+                <ul className="qb-list">
+                  {quickBrief.map((point: string, i: number) => (
+                    <li key={i} className="qb-item">{point}</li>
                   ))}
                 </ul>
+              </div>
+            )}
+
+            {/* Key Points */}
+            {keyPoints && Array.isArray(keyPoints) && keyPoints.length > 0 && (
+              <div className="key-points-widget">
+                <div className="kp-header">
+                  <span className="kp-icon">📌</span>
+                  <span className="kp-title">Key Points</span>
+                </div>
+                <div className="kp-list">
+                  {keyPoints.map((point: string, i: number) => (
+                    <div key={i} className="kp-item">
+                      <span className="kp-bullet">{i + 1}</span>
+                      {point}
+                    </div>
+                  ))}
+                </div>
               </div>
             )}
 
             {/* Post Content */}
             <div className="mb-10">
               <div
-                className="prose prose-lg max-w-none
+                className="article-content prose prose-lg max-w-none
                   prose-headings:text-foreground prose-headings:font-bold prose-headings:tracking-tight
                   prose-h2:text-3xl prose-h2:mt-10 prose-h2:mb-5
                   prose-h3:text-2xl prose-h3:mt-8 prose-h3:mb-4
@@ -209,6 +225,24 @@ export default async function PostPage({ params }: Props) {
                 dangerouslySetInnerHTML={{ __html: post.content }}
               />
             </div>
+
+            {/* FAQ */}
+            {faq && Array.isArray(faq) && faq.length > 0 && (
+              <div className="faq-widget">
+                <h3 className="faq-title">
+                  <span className="faq-icon">❓</span>
+                  Frequently Asked Questions
+                </h3>
+                <div className="faq-list">
+                  {faq.map((item: { question: string; answer: string }, i: number) => (
+                    <details key={i} className="faq-item">
+                      <summary className="faq-question">{item.question}</summary>
+                      <div className="faq-answer">{item.answer}</div>
+                    </details>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* Tags */}
             {post.tags && post.tags.length > 0 && (
@@ -231,7 +265,7 @@ export default async function PostPage({ params }: Props) {
               <div className="mb-8 p-5 rounded-xl bg-muted/50 border border-border">
                 <p className="text-sm text-muted-foreground flex items-center gap-2">
                   <span className="text-lg">📰</span>
-                  Originally published at{" "}
+                  {sourceName ? `${sourceName} — ` : "Originally published at "}
                   <a
                     href={sourceUrl}
                     target="_blank"

@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from "react"
 import Link from "next/link"
 import { createClient } from "@/lib/supabase/client"
+import { GeminiQuotaWidget } from "@/components/admin/GeminiQuotaWidget"
 import {
   FileText, Eye, Users, Rss, RefreshCw, TrendingUp, TrendingDown,
   BarChart3, PieChart, Activity, Globe, MousePointerClick, Smartphone,
@@ -155,31 +156,8 @@ export default function AdminDashboard() {
         </button>
       </div>
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        {stats.map((stat) => {
-          const Icon = stat.icon
-          const isUp = stat.change.startsWith("+")
-          return (
-            <Link key={stat.label} href={stat.href}
-              className="bg-white dark:bg-[#111827] border-2 border-gray-200 dark:border-[#374151] rounded-xl p-5 hover:shadow-lg transition-all group">
-              <div className="flex items-start justify-between mb-3">
-                <div className="w-11 h-11 rounded-xl flex items-center justify-center" style={{ backgroundColor: `${stat.color}15` }}>
-                  <Icon className="h-5 w-5" style={{ color: stat.color }} />
-                </div>
-                {stat.change && (
-                  <span className={`flex items-center gap-0.5 text-xs font-semibold px-2 py-1 rounded-lg ${
-                    isUp ? "bg-green-50 text-green-600 dark:bg-green-900/20 dark:text-green-400" : "text-gray-400 dark:text-gray-500 bg-gray-50 dark:bg-[#1F2937]"
-                  }`}>
-                    {isUp ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
-                    {stat.change}
-                  </span>
-                )}
-              </div>
-              <p className="text-2xl font-bold text-gray-900 dark:text-white">{stat.value.toLocaleString()}</p>
-              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{stat.label}</p>
-            </Link>
-          )
-        })}
+      <div className="grid grid-cols-1">
+        <GeminiQuotaWidget />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-7 gap-6">
