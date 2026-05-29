@@ -158,8 +158,8 @@ async function parseFeed(url: string): Promise<RawItem[]> {
           title:       get('title').replace(/<[^>]+>/g,'').trim(),
           link,
           pubDate:     get('pubDate') || get('published') || get('updated') || new Date().toISOString(),
-          description: description.replace(/<[^>]+>/g,'').trim().slice(0, 300),
-          content:     plainText.slice(0, 5000),
+          description: description.replace(/<[^>]+>/g,'').replace(/<!\[CDATA\[|\]\]>/g,'').trim().slice(0, 300),
+          content:     plainText.replace(/<!\[CDATA\[|\]\]>/g,'').slice(0, 5000),
           rawImage:    extractRawImage(x),
         })
       }
@@ -332,7 +332,7 @@ async function run(req: NextRequest) {
       }
 
       const sourceText = item.content.length > 80 ? item.content : item.description
-      if (!sourceText || sourceText.length < 50) {
+      if (!sourceText || sourceText.length < 30) {
         skipped++
         log.push(`[THIN] ${item.title.slice(0,50)}`)
         continue
