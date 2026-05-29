@@ -473,7 +473,7 @@ export async function manualWriteFromTopic(topic: string): Promise<BlizineArticl
   console.log(`[Blizine Manual] Writing from topic: ${topic.slice(0, 60)}`)
 
   const prompt = buildBlizinePrompt(topic, "topic")
-  const article = await geminiGrounded(prompt, 'manual')
+  const { article } = await geminiGrounded(prompt, 'manual')
   if (article) {
     console.log(`[✓ Gemini+Search] ${article.headline.slice(0, 55)}`)
     return article
@@ -523,7 +523,7 @@ export async function manualWriteFromUrl(url: string): Promise<BlizineArticle | 
   const inputType = sourceContent.length > 200 ? "content" : "url"
 
   const prompt = buildBlizinePrompt(input, inputType, sourceName)
-  const article = await geminiGrounded(prompt, 'manual')
+  const { article } = await geminiGrounded(prompt, 'manual')
   if (article) {
     console.log(`[✓ Gemini+Search] ${article.headline.slice(0, 55)}`)
     return article
