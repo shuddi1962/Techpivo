@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse }      from 'next/server'
 import { RSS_FEEDS }                       from '@/lib/rss-feeds'
-import { rewriteArticle }                  from '@/lib/ai-rewriter'
+import { rewriteArticle, type BlizineArticle }      from '@/lib/ai-rewriter'
 import { createClient }                    from '@/lib/supabase/admin'
 
 const DAILY_CAP = 20
@@ -344,7 +344,9 @@ async function run(req: NextRequest) {
           break
         }
         const categoryId = autoCategory(item.title, feed.category, catMap)
-        const { article: ai, debug: aiDebug } = await rewriteArticle(item.title, sourceText, feed.name, feed.category, 'rss_auto')
+        const result_ai = await rewriteArticle(item.title, sourceText, feed.name, feed.category, 'rss_auto')
+        const ai: BlizineArticle | null = result_ai.article
+        const aiDebug = result_ai.debug
 
         if (!ai) {
           failed++
