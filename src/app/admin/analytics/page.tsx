@@ -76,6 +76,50 @@ function ErrorCard({ message, onRetry }: { message: string; onRetry: () => void 
   )
 }
 
+function ServiceConfigPlaceholder({
+  icon, name, envVars, color,
+}: {
+  icon: React.ReactNode; name: string; envVars: string[]; color: string
+}) {
+  return (
+    <div className="bg-white border border-gray-200 rounded-xl shadow-sm">
+      <div className="flex items-center gap-3 p-5 border-b border-gray-100">
+        <div className="p-2.5 rounded-lg" style={{ background: color + '15' }}>
+          {icon}
+        </div>
+        <div className="flex-1">
+          <div className="flex items-center gap-2">
+            <span className="font-semibold text-gray-900">{name}</span>
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-yellow-50 text-yellow-700 border border-yellow-200">
+              <span className="h-1.5 w-1.5 rounded-full bg-yellow-400" />
+              not configured
+            </span>
+          </div>
+          <p className="text-xs text-gray-500 mt-0.5">
+            Set up the following environment variables in Vercel Dashboard to enable this service.
+          </p>
+        </div>
+      </div>
+      <div className="p-5 space-y-2">
+        {envVars.map((ev) => (
+          <div key={ev} className="flex items-center gap-2 text-xs">
+            <code className="px-2 py-1 bg-gray-50 border border-gray-200 rounded font-mono text-gray-700">{ev}</code>
+          </div>
+        ))}
+        <a
+          href="https://vercel.com/shuddi1962s-projects/blizine/settings/environment-variables"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-1.5 mt-2 px-3 py-1.5 bg-gray-900 rounded-lg text-xs text-white hover:bg-gray-800 transition-colors"
+        >
+          <ExternalLink className="h-3.5 w-3.5" />
+          Configure in Vercel
+        </a>
+      </div>
+    </div>
+  )
+}
+
 const CHART_COLORS = {
   blue: '#4285F4', green: '#34A853', red: '#EA4335', yellow: '#FBBC04',
   indigo: '#6366F1', teal: '#14B8A6', pink: '#EC4899',
@@ -299,25 +343,6 @@ export default function AnalyticsPage() {
 
       {error && <ErrorCard message={error} onRetry={fetchData} />}
 
-      {/* CONNECTION STATUS */}
-      <Card className="p-4">
-        <div className="flex items-center gap-6 text-xs">
-          {[
-            { label: 'Google Analytics 4', ok: !!data?.ga4, configured: data?.googleConfigured },
-            { label: 'Search Console', ok: !!data?.gsc, configured: data?.googleConfigured },
-            { label: 'PageSpeed Insights', ok: !!data?.pagespeed, configured: !!process.env.NEXT_PUBLIC_PAGESPEED_KEY || !!data?.pagespeed },
-          ].map((s: any) => (
-            <div key={s.label} className="flex items-center gap-2">
-              <span className={`h-2 w-2 rounded-full ${s.ok ? 'bg-[#34A853]' : s.configured === false ? 'bg-[#FBBC04]' : 'bg-[#EA4335]'}`} />
-              <span className="text-gray-500">{s.label}</span>
-              <span className={s.ok ? 'text-[#34A853]' : 'text-gray-500'}>
-                {s.ok ? 'connected' : s.configured === false ? 'not configured' : 'disconnected'}
-              </span>
-            </div>
-          ))}
-        </div>
-      </Card>
-
       {/* BLIZINE INTERNAL STATS — top for quick reference */}
       {data?.blizine && (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -329,6 +354,30 @@ export default function AnalyticsPage() {
             icon={<FileText className="h-5 w-5" style={{ color: '#1D9E75' }} />} iconColor="#1D9E75" />
           <KpiCard label="Total Views" value={fmt(data.blizine.totalViews || 0)}
             icon={<Eye className="h-5 w-5" style={{ color: '#14B8A6' }} />} iconColor="#14B8A6" />
+        </div>
+      )}
+
+      {/* GOOGLE SERVICE CONFIG PLACEHOLDERS — shown when env vars not set */}
+      {data && data.googleConfigured === false && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+          <ServiceConfigPlaceholder
+            icon={<BarChart3 className="h-5 w-5" style={{ color: '#4285F4' }} />}
+            name="Google Analytics 4"
+            color="#4285F4"
+            envVars={['GOOGLE_SERVICE_ACCOUNT_EMAIL', 'GOOGLE_PRIVATE_KEY', 'GOOGLE_GA4_PROPERTY_ID']}
+          />
+          <ServiceConfigPlaceholder
+            icon={<Search className="h-5 w-5" style={{ color: '#34A853' }} />}
+            name="Google Search Console"
+            color="#34A853"
+            envVars={['GOOGLE_SERVICE_ACCOUNT_EMAIL', 'GOOGLE_PRIVATE_KEY', 'GOOGLE_SEARCH_CONSOLE_SITE_URL']}
+          />
+          <ServiceConfigPlaceholder
+            icon={<Zap className="h-5 w-5" style={{ color: '#FBBC04' }} />}
+            name="PageSpeed Insights"
+            color="#FBBC04"
+            envVars={['PAGESPEED_API_KEY']}
+          />
         </div>
       )}
 
