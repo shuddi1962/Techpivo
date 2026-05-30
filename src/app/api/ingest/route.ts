@@ -421,7 +421,7 @@ async function run(req: NextRequest) {
           model_used:          ai.modelUsed,
           status:              'published',
           content_fingerprint: fp,
-          published_at:        new Date(item.pubDate).toISOString(),
+          published_at:        new Date().toISOString(),
           reading_time:        Math.max(2, Math.round(
                                  ai.content.replace(/<[^>]+>/g,' ').split(/\s+/).length / 200
                                )),
