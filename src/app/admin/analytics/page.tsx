@@ -388,7 +388,7 @@ export default function AnalyticsPage() {
                       <Pie data={sourceData} dataKey="value" cx="50%" cy="50%" innerRadius={50} outerRadius={80}>
                         {sourceData.map((s: any, i: number) => <Cell key={i} fill={sourceColors[i % sourceColors.length]} />)}
                       </Pie>
-                      <Tooltip formatter={(v: number, n: string) => [v, n]} />
+                      <Tooltip formatter={(v: any, n: any) => [v, n]} />
                     </PieChart>
                   </ResponsiveContainer>
                 </div>
@@ -417,7 +417,7 @@ export default function AnalyticsPage() {
                       <Pie data={deviceData} dataKey="value" cx="50%" cy="50%" innerRadius={50} outerRadius={80}>
                         {deviceData.map((d: any, i: number) => <Cell key={i} fill={deviceColors[i % deviceColors.length]} />)}
                       </Pie>
-                      <Tooltip formatter={(v: number, n: string) => [v, n]} />
+                      <Tooltip formatter={(v: any, n: any) => [v, n]} />
                     </PieChart>
                   </ResponsiveContainer>
                 </div>
