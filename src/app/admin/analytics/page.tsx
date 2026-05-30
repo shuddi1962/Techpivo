@@ -22,14 +22,14 @@ interface KpiCardProps {
 function KpiCard({ label, value, change, icon, iconColor, suffix }: KpiCardProps) {
   const up = (change ?? 0) >= 0
   return (
-    <div className="bg-[#111827] border border-[#1E2D42] rounded-xl p-5">
+    <div className="bg-white border border-gray-200 rounded-xl p-5 shadow-sm">
       <div className="flex items-center justify-between mb-3">
         <div className="p-2 rounded-lg" style={{ background: iconColor + '20' }}>
           {icon}
         </div>
-        <span className="text-xs text-[#8B9EC7]">{label}</span>
+        <span className="text-xs text-gray-500">{label}</span>
       </div>
-      <div className="text-2xl font-bold text-[#F0F4FF]">
+      <div className="text-2xl font-bold text-gray-900">
         {value}{suffix && <span className="text-lg ml-1">{suffix}</span>}
       </div>
       {change !== undefined && (
@@ -43,12 +43,12 @@ function KpiCard({ label, value, change, icon, iconColor, suffix }: KpiCardProps
 }
 
 function Card({ children, className = '' }: { children: React.ReactNode; className?: string }) {
-  return <div className={`bg-[#111827] border border-[#1E2D42] rounded-xl ${className}`}>{children}</div>
+  return <div className={`bg-white border border-gray-200 rounded-xl shadow-sm ${className}`}>{children}</div>
 }
 
 function SectionLabel({ icon, children }: { icon: React.ReactNode; children: React.ReactNode }) {
   return (
-    <div className="flex items-center gap-2 text-sm font-semibold text-[#F0F4FF] mb-4">
+    <div className="flex items-center gap-2 text-sm font-semibold text-gray-900 mb-4">
       {icon}{children}
     </div>
   )
@@ -57,18 +57,18 @@ function SectionLabel({ icon, children }: { icon: React.ReactNode; children: Rea
 function Skeleton() {
   return (
     <div className="animate-pulse space-y-3">
-      <div className="h-4 bg-[#1E2D42] rounded w-3/4" />
-      <div className="h-8 bg-[#1E2D42] rounded" />
-      <div className="h-8 bg-[#1E2D42] rounded w-5/6" />
+      <div className="h-4 bg-gray-200 rounded w-3/4" />
+      <div className="h-8 bg-gray-200 rounded" />
+      <div className="h-8 bg-gray-200 rounded w-5/6" />
     </div>
   )
 }
 
 function ErrorCard({ message, onRetry }: { message: string; onRetry: () => void }) {
   return (
-    <div className="bg-[#111827] border border-[#1E2D42] rounded-xl p-8 text-center">
+    <div className="bg-white border border-gray-200 rounded-xl p-8 text-center">
       <AlertCircle className="h-10 w-10 text-[#EA4335] mx-auto mb-3" />
-      <p className="text-sm text-[#8B9EC7] mb-4">{message}</p>
+      <p className="text-sm text-gray-500 mb-4">{message}</p>
       <button onClick={onRetry} className="px-4 py-2 bg-[#6366F1] rounded-lg text-sm text-white hover:bg-[#5457E5] transition-colors">
         Retry
       </button>
@@ -82,9 +82,9 @@ const CHART_COLORS = {
 }
 
 const tooltipStyle = {
-  contentStyle: { background: '#162032', border: '1px solid #1E2D42', borderRadius: 8, fontSize: 12 },
-  labelStyle: { color: '#8B9EC7' },
-  itemStyle: { color: '#F0F4FF' },
+  contentStyle: { background: '#fff', border: '1px solid #E5E7EB', borderRadius: 8, fontSize: 12 },
+  labelStyle: { color: '#6B7280' },
+  itemStyle: { color: '#111827' },
 }
 
 function fmt(n: number): string {
@@ -271,8 +271,8 @@ export default function AnalyticsPage() {
       {/* HEADER */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-[#F0F4FF]">Analytics</h1>
-          <p className="text-sm text-[#8B9EC7] mt-1">
+          <h1 className="text-2xl font-bold text-gray-900">Analytics</h1>
+          <p className="text-sm text-gray-500 mt-1">
             Google Site Kit &middot; GA4 &middot; Search Console &middot; PageSpeed
             {lastFetch && <span className="ml-2">&middot; Updated {lastFetch}</span>}
           </p>
@@ -282,9 +282,9 @@ export default function AnalyticsPage() {
             <button key={d} onClick={() => setDays(d)}
               style={{
                 padding: '5px 12px', borderRadius: 6, fontSize: 12, cursor: 'pointer',
-                background: days === d ? '#6366F1' : '#111827',
-                border: `1px solid ${days === d ? '#6366F1' : '#1E2D42'}`,
-                color: days === d ? 'white' : '#8B9EC7',
+                background: days === d ? '#6366F1' : '#fff',
+                border: `1px solid ${days === d ? '#6366F1' : '#D1D5DB'}`,
+                color: days === d ? 'white' : '#6B7280',
               }}>
               {d}d
             </button>
@@ -309,8 +309,8 @@ export default function AnalyticsPage() {
           ].map((s: any) => (
             <div key={s.label} className="flex items-center gap-2">
               <span className={`h-2 w-2 rounded-full ${s.ok ? 'bg-[#34A853]' : s.configured === false ? 'bg-[#FBBC04]' : 'bg-[#EA4335]'}`} />
-              <span className="text-[#8B9EC7]">{s.label}</span>
-              <span className={s.ok ? 'text-[#34A853]' : 'text-[#8B9EC7]'}>
+              <span className="text-gray-500">{s.label}</span>
+              <span className={s.ok ? 'text-[#34A853]' : 'text-gray-500'}>
                 {s.ok ? 'connected' : s.configured === false ? 'not configured' : 'disconnected'}
               </span>
             </div>
@@ -352,7 +352,7 @@ export default function AnalyticsPage() {
             <SectionLabel icon={<Activity className="h-4 w-4 text-[#6366F1]" />}>
               Traffic overview
             </SectionLabel>
-            <div className="flex items-center gap-4 mb-4 text-xs text-[#8B9EC7]">
+            <div className="flex items-center gap-4 mb-4 text-xs text-gray-500">
               {[['Users', '#4285F4'], ['Sessions', '#34A853'], ['New users', '#EA4335']].map(([l, c]: string[]) => (
                 <div key={l} className="flex items-center gap-1.5">
                   <span className="h-2.5 w-2.5 rounded-full" style={{ background: c }} />
@@ -363,7 +363,7 @@ export default function AnalyticsPage() {
             <div className="h-72">
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={dailyData}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#1E2D42" />
+                  <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
                   <XAxis dataKey="date" tick={{ fill: '#8B9EC7', fontSize: 11 }} axisLine={false} tickLine={false} />
                   <YAxis tick={{ fill: '#8B9EC7', fontSize: 11 }} axisLine={false} tickLine={false} />
                   <Tooltip {...tooltipStyle} />
@@ -397,9 +397,9 @@ export default function AnalyticsPage() {
                     <div key={s.name} className="flex items-center justify-between text-xs">
                       <div className="flex items-center gap-2">
                         <span className="h-2.5 w-2.5 rounded-sm" style={{ background: sourceColors[i % sourceColors.length] }} />
-                        <span className="text-[#F0F4FF]">{s.name}</span>
+                        <span className="text-gray-900">{s.name}</span>
                       </div>
-                      <span className="text-[#8B9EC7]">{s.pct}%</span>
+                      <span className="text-gray-500">{s.pct}%</span>
                     </div>
                   ))}
                 </div>
@@ -428,11 +428,11 @@ export default function AnalyticsPage() {
                     { icon: <Tablet className="h-4 w-4" />, name: 'Tablet' },
                   ].map((d: any, i: number) => (
                     <div key={d.name} className="flex items-center justify-between text-xs">
-                      <div className="flex items-center gap-2 text-[#F0F4FF]">
+                      <div className="flex items-center gap-2 text-gray-900">
                         {d.icon}
                         {d.name}
                       </div>
-                      <span className="text-[#8B9EC7]">{deviceData[i]?.pct || 0}%</span>
+                      <span className="text-gray-500">{deviceData[i]?.pct || 0}%</span>
                     </div>
                   ))}
                 </div>
@@ -452,20 +452,20 @@ export default function AnalyticsPage() {
                 { label: 'Average CTR', value: gscCtr + '%', color: '#FBBC04' },
                 { label: 'Average Position', value: gscPosition, color: '#EA4335' },
               ].map((c: any) => (
-                <div key={c.label} className="bg-[#080D1A] rounded-lg p-4 text-center">
-                  <div className="text-xl font-bold text-[#F0F4FF]">{c.value}</div>
-                  <div className="text-xs text-[#8B9EC7] mt-1">{c.label}</div>
+                <div key={c.label} className="bg-gray-50 rounded-lg p-4 text-center">
+                  <div className="text-xl font-bold text-gray-900">{c.value}</div>
+                  <div className="text-xs text-gray-500 mt-1">{c.label}</div>
                 </div>
               ))}
             </div>
             <div className="h-56">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={dailyData}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#1E2D42" />
+                  <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
                   <XAxis dataKey="date" tick={{ fill: '#8B9EC7', fontSize: 10 }} axisLine={false} tickLine={false} />
                   <YAxis tick={{ fill: '#8B9EC7', fontSize: 10 }} axisLine={false} tickLine={false} />
                   <Tooltip {...tooltipStyle} />
-                  <Legend wrapperStyle={{ fontSize: 11, color: '#8B9EC7' }} />
+                  <Legend wrapperStyle={{ fontSize: 11, color: '#6B7280' }} />
                   <Bar dataKey="impressions" name="Impressions" fill="rgba(234,67,53,0.7)" radius={[2,2,0,0]} />
                   <Bar dataKey="clicks" name="Clicks" fill="#185FA5" radius={[2,2,0,0]} />
                 </BarChart>
@@ -480,16 +480,16 @@ export default function AnalyticsPage() {
                 Most popular pages
               </SectionLabel>
               <div className="space-y-1">
-                <div className="flex items-center text-xs text-[#8B9EC7] pb-2 border-b border-[#1E2D42]">
+                <div className="flex items-center text-xs text-gray-500 pb-2 border-b border-gray-200">
                   <div className="flex-1">Page</div>
                   <div className="w-16 text-right">Views</div>
                   <div className="w-16 text-right">% New</div>
                 </div>
                 {pageData.slice(0, 8).map((p: any) => (
-                  <div key={p.path} className="flex items-center text-xs py-2 border-b border-[#1E2D42]/50">
-                    <div className="flex-1 truncate text-[#F0F4FF]">{p.path}</div>
-                    <div className="w-16 text-right text-[#F0F4FF]">{fmt(p.views)}</div>
-                    <div className="w-16 text-right text-[#8B9EC7]">{p.newPct}%</div>
+                  <div key={p.path} className="flex items-center text-xs py-2 border-b border-gray-200/50">
+                    <div className="flex-1 truncate text-gray-900">{p.path}</div>
+                    <div className="w-16 text-right text-gray-900">{fmt(p.views)}</div>
+                    <div className="w-16 text-right text-gray-500">{p.newPct}%</div>
                   </div>
                 ))}
               </div>
@@ -500,16 +500,16 @@ export default function AnalyticsPage() {
                 Top search queries
               </SectionLabel>
               <div className="space-y-1">
-                <div className="flex items-center text-xs text-[#8B9EC7] pb-2 border-b border-[#1E2D42]">
+                <div className="flex items-center text-xs text-gray-500 pb-2 border-b border-gray-200">
                   <div className="flex-1">Keyword</div>
                   <div className="w-14 text-right">Clicks</div>
                   <div className="w-14 text-right">Pos.</div>
                 </div>
                 {kwData.slice(0, 8).map((k: any) => (
-                  <div key={k.keyword} className="flex items-center text-xs py-2 border-b border-[#1E2D42]/50">
-                    <div className="flex-1 truncate text-[#F0F4FF]">{k.keyword}</div>
-                    <div className="w-14 text-right text-[#F0F4FF]">{k.clicks}</div>
-                    <div className="w-14 text-right text-[#8B9EC7]">{k.position}</div>
+                  <div key={k.keyword} className="flex items-center text-xs py-2 border-b border-gray-200/50">
+                    <div className="flex-1 truncate text-gray-900">{k.keyword}</div>
+                    <div className="w-14 text-right text-gray-900">{k.clicks}</div>
+                    <div className="w-14 text-right text-gray-500">{k.position}</div>
                   </div>
                 ))}
               </div>
@@ -526,10 +526,10 @@ export default function AnalyticsPage() {
                 {geoData.map((g: any, i: number) => (
                   <div key={g.country}>
                     <div className="flex items-center justify-between text-xs mb-1">
-                      <span className="text-[#F0F4FF]">{g.country}</span>
-                      <span className="text-[#8B9EC7]">{g.pct}%</span>
+                      <span className="text-gray-900">{g.country}</span>
+                      <span className="text-gray-500">{g.pct}%</span>
                     </div>
-                    <div className="h-1.5 bg-[#1E2D42] rounded-full overflow-hidden">
+                    <div className="h-1.5 bg-gray-200 rounded-full overflow-hidden">
                       <div className="h-full rounded-full transition-all" style={{ width: `${g.pct}%`, background: i === 0 ? '#4285F4' : '#6366F1' }} />
                     </div>
                   </div>
@@ -544,10 +544,10 @@ export default function AnalyticsPage() {
               <div className="flex items-center gap-3 mb-4">
                 <div className="flex items-center gap-2">
                   <span className="h-2 w-2 rounded-full bg-[#34A853] animate-pulse" />
-                  <span className="text-xs text-[#8B9EC7]">LIVE</span>
+                  <span className="text-xs text-gray-500">LIVE</span>
                 </div>
-                <span className="text-3xl font-bold text-[#F0F4FF]">{rtData.total}</span>
-                <span className="text-xs text-[#8B9EC7]">users right now</span>
+                <span className="text-3xl font-bold text-gray-900">{rtData.total}</span>
+                <span className="text-xs text-gray-500">users right now</span>
               </div>
               <div className="grid grid-cols-3 gap-3">
                 {[
@@ -555,10 +555,10 @@ export default function AnalyticsPage() {
                   { icon: <Smartphone className="h-4 w-4" />, label: 'Mobile', val: rtData.mobile },
                   { icon: <Tablet className="h-4 w-4" />, label: 'Tablet', val: rtData.tablet },
                 ].map((d: any) => (
-                  <div key={d.label} className="bg-[#080D1A] rounded-lg p-3 text-center">
-                    <div className="flex justify-center text-[#8B9EC7] mb-1">{d.icon}</div>
-                    <div className="text-lg font-bold text-[#F0F4FF]">{d.val}</div>
-                    <div className="text-xs text-[#8B9EC7]">{d.label}</div>
+                  <div key={d.label} className="bg-gray-50 rounded-lg p-3 text-center">
+                    <div className="flex justify-center text-gray-500 mb-1">{d.icon}</div>
+                    <div className="text-lg font-bold text-gray-900">{d.val}</div>
+                    <div className="text-xs text-gray-500">{d.label}</div>
                   </div>
                 ))}
               </div>
@@ -587,8 +587,8 @@ export default function AnalyticsPage() {
                     ? (m.val >= 90 ? 'Good' : m.val >= 50 ? 'Needs work' : 'Poor')
                     : ''
                   return (
-                    <div key={m.label} className="bg-[#080D1A] rounded-lg p-4 text-center">
-                      <div className="text-xs text-[#8B9EC7] mb-2">{m.label}</div>
+                    <div key={m.label} className="bg-gray-50 rounded-lg p-4 text-center">
+                      <div className="text-xs text-gray-500 mb-2">{m.label}</div>
                       <div className="text-xl font-bold" style={{ color }}>{m.val}</div>
                       {label && <div className="text-xs mt-1" style={{ color }}>{label}</div>}
                     </div>
