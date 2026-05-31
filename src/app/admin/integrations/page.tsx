@@ -2,13 +2,12 @@
 
 import { useEffect, useState } from "react"
 import { createClient } from "@/lib/supabase/client"
-import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import {
-  Key, ExternalLink, BarChart3, Search, Zap, Activity,
-  CheckCircle2, XCircle, Globe,
+  Key, ExternalLink, Zap, Activity,
+  CheckCircle2, XCircle,
 } from "lucide-react"
 
 const integrationFields = [
@@ -20,27 +19,17 @@ const integrationFields = [
   { key: "openrouter_model", label: "OpenRouter Model", placeholder: "mistralai/mixtral-8x7b-instruct" },
 ]
 
-interface GoogleServiceStatus {
-  ga4: boolean
-  searchConsole: boolean
-  pageSpeed: boolean
-}
-
-function GoogleServiceCard({
-  icon, name, description, configured, envVars, color,
-}: {
-  icon: React.ReactNode; name: string; description: string; configured: boolean; envVars: string[]; color: string
-}) {
+function PageSpeedCard({ configured }: { configured: boolean }) {
   return (
     <Card>
       <CardContent className="p-5">
         <div className="flex items-start gap-4">
-          <div className="p-2.5 rounded-lg shrink-0" style={{ background: color + '15' }}>
-            {icon}
+          <div className="p-2.5 rounded-lg shrink-0" style={{ background: '#FBBC0415' }}>
+            <Zap className="h-5 w-5" style={{ color: '#FBBC04' }} />
           </div>
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 mb-1">
-              <span className="font-semibold text-gray-900">{name}</span>
+              <span className="font-semibold text-gray-900">PageSpeed Insights</span>
               {configured ? (
                 <Badge variant="default" className="bg-[#34A853] hover:bg-[#2D9248]">
                   <CheckCircle2 className="h-3 w-3 mr-1" />
@@ -53,13 +42,11 @@ function GoogleServiceCard({
                 </Badge>
               )}
             </div>
-            <p className="text-xs text-gray-500 mb-2">{description}</p>
+            <p className="text-xs text-gray-500 mb-2">Performance, LCP, INP, CLS scores</p>
             <div className="flex flex-wrap gap-1.5">
-              {envVars.map((ev) => (
-                <code key={ev} className="px-1.5 py-0.5 bg-gray-50 border border-gray-200 rounded text-[10px] font-mono text-gray-600">
-                  {ev}
-                </code>
-              ))}
+              <code className="px-1.5 py-0.5 bg-gray-50 border border-gray-200 rounded text-[10px] font-mono text-gray-600">
+                PAGESPEED_API_KEY
+              </code>
             </div>
           </div>
         </div>
@@ -70,7 +57,7 @@ function GoogleServiceCard({
 
 export default function AdminIntegrationsPage() {
   const [settings, setSettings] = useState<Record<string, any>>({})
-  const [googleStatus, setGoogleStatus] = useState<GoogleServiceStatus | null>(null)
+  const [pageSpeedConfigured, setPageSpeedConfigured] = useState(false)
   const [statusLoading, setStatusLoading] = useState(true)
 
   useEffect(() => {
@@ -85,14 +72,8 @@ export default function AdminIntegrationsPage() {
 
     fetch('/api/admin/analytics/status')
       .then((r) => r.json())
-      .then((d) => {
-        setGoogleStatus({
-          ga4: d.ga4,
-          searchConsole: d.searchConsole,
-          pageSpeed: d.pageSpeed,
-        })
-      })
-      .catch(() => setGoogleStatus({ ga4: false, searchConsole: false, pageSpeed: false }))
+      .then((d) => setPageSpeedConfigured(!!d.pageSpeed))
+      .catch(() => setPageSpeedConfigured(false))
       .finally(() => setStatusLoading(false))
   }, [])
 
@@ -109,11 +90,11 @@ export default function AdminIntegrationsPage() {
         <p className="text-sm text-gray-500">Manage third‑party service connections and API keys</p>
       </div>
 
-      {/* GOOGLE SERVICES STATUS */}
+      {/* PAGESPEED */}
       <div>
         <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
           <Activity className="h-5 w-5 text-[#4285F4]" />
-          Google Analytics Services
+          External Services
         </h2>
         <p className="text-xs text-gray-500 mb-4">
           These services use server‑side environment variables configured in Vercel. 
@@ -125,30 +106,7 @@ export default function AdminIntegrationsPage() {
           <div className="text-sm text-gray-400">Checking connection status...</div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <GoogleServiceCard
-              icon={<BarChart3 className="h-5 w-5" style={{ color: '#4285F4' }} />}
-              name="Google Analytics 4"
-              description="Real‑time & historical traffic data via Data API"
-              configured={googleStatus?.ga4 ?? false}
-              envVars={['GOOGLE_SERVICE_ACCOUNT_EMAIL', 'GOOGLE_PRIVATE_KEY', 'GOOGLE_GA4_PROPERTY_ID']}
-              color="#4285F4"
-            />
-            <GoogleServiceCard
-              icon={<Search className="h-5 w-5" style={{ color: '#34A853' }} />}
-              name="Google Search Console"
-              description="Search impressions, clicks, keyword positions"
-              configured={googleStatus?.searchConsole ?? false}
-              envVars={['GOOGLE_SERVICE_ACCOUNT_EMAIL', 'GOOGLE_PRIVATE_KEY', 'GOOGLE_SEARCH_CONSOLE_SITE_URL']}
-              color="#34A853"
-            />
-            <GoogleServiceCard
-              icon={<Zap className="h-5 w-5" style={{ color: '#FBBC04' }} />}
-              name="PageSpeed Insights"
-              description="Performance, LCP, INP, CLS scores"
-              configured={googleStatus?.pageSpeed ?? false}
-              envVars={['PAGESPEED_API_KEY']}
-              color="#FBBC04"
-            />
+            <PageSpeedCard configured={pageSpeedConfigured} />
           </div>
         )}
       </div>
