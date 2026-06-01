@@ -32,40 +32,42 @@ interface ConfigField {
   help: string
   secret: boolean
   required: boolean
+  pattern?: RegExp
+  patternMessage?: string
 }
 
 const API_CONFIGS: Record<string, ConfigField[]> = {
   direct_api: [
-    { key: "api_key", label: "API Key", placeholder: "Enter your API key", help: "Provided by the affiliate network dashboard", secret: true, required: true },
-    { key: "tracking_id", label: "Tracking ID / Tag", placeholder: "e.g. blizine-20", help: "Your unique affiliate tracking ID or tag", secret: false, required: true },
+    { key: "api_key", label: "API Key", placeholder: "Enter your API key", help: "Provided by the affiliate network dashboard", secret: true, required: true, pattern: /^.{8,}$/, patternMessage: "API key must be at least 8 characters" },
+    { key: "tracking_id", label: "Tracking ID / Tag", placeholder: "e.g. blizine-20", help: "Your unique affiliate tracking ID or tag", secret: false, required: true, pattern: /^[\w-]{3,}$/, patternMessage: "Must be at least 3 characters (letters, numbers, dashes)" },
   ],
   cj: [
-    { key: "website_id", label: "Website ID", placeholder: "e.g. 1234567", help: "Your CJ website ID (Publisher Dashboard)", secret: false, required: true },
-    { key: "api_key", label: "API Key", placeholder: "Enter CJ API key", help: "Generate from CJ Account > API Settings", secret: true, required: true },
-    { key: "tracking_id", label: "Tracking Tag", placeholder: "e.g. 1234567", help: "Your CJ PID (Publisher ID)", secret: false, required: false },
+    { key: "website_id", label: "Website ID", placeholder: "e.g. 1234567", help: "Your CJ website ID (Publisher Dashboard)", secret: false, required: true, pattern: /^\d{5,}$/, patternMessage: "Website ID should be a number (5+ digits)" },
+    { key: "api_key", label: "API Key", placeholder: "Enter CJ API key", help: "Generate from CJ Account > API Settings", secret: true, required: true, pattern: /^.{8,}$/, patternMessage: "API key must be at least 8 characters" },
+    { key: "tracking_id", label: "Tracking Tag", placeholder: "e.g. 1234567", help: "Your CJ PID (Publisher ID)", secret: false, required: false, pattern: /^\d{5,}$/, patternMessage: "PID should be a number (5+ digits)" },
   ],
   shareasale: [
-    { key: "merchant_id", label: "Merchant ID", placeholder: "e.g. 12345", help: "ShareASale merchant ID", secret: false, required: true },
-    { key: "api_token", label: "API Token", placeholder: "Enter ShareASale API token", help: "From ShareASale Account > API Settings", secret: true, required: true },
-    { key: "affiliate_id", label: "Affiliate ID", placeholder: "e.g. 67890", help: "Your ShareASale affiliate ID", secret: false, required: true },
+    { key: "merchant_id", label: "Merchant ID", placeholder: "e.g. 12345", help: "ShareASale merchant ID", secret: false, required: true, pattern: /^\d{4,}$/, patternMessage: "Merchant ID should be a number (4+ digits)" },
+    { key: "api_token", label: "API Token", placeholder: "Enter ShareASale API token", help: "From ShareASale Account > API Settings", secret: true, required: true, pattern: /^.{8,}$/, patternMessage: "API token must be at least 8 characters" },
+    { key: "affiliate_id", label: "Affiliate ID", placeholder: "e.g. 67890", help: "Your ShareASale affiliate ID", secret: false, required: true, pattern: /^\d{4,}$/, patternMessage: "Affiliate ID should be a number (4+ digits)" },
   ],
   impact: [
-    { key: "account_sid", label: "Account SID", placeholder: "e.g. a1b2c3d4e5", help: "Impact account SID from Partner Dashboard", secret: false, required: true },
-    { key: "auth_token", label: "Auth Token", placeholder: "Enter Impact auth token", help: "From Impact Account > API Settings", secret: true, required: true },
+    { key: "account_sid", label: "Account SID", placeholder: "e.g. a1b2c3d4e5", help: "Impact account SID from Partner Dashboard", secret: false, required: true, pattern: /^.{8,}$/, patternMessage: "Account SID must be at least 8 characters" },
+    { key: "auth_token", label: "Auth Token", placeholder: "Enter Impact auth token", help: "From Impact Account > API Settings", secret: true, required: true, pattern: /^.{8,}$/, patternMessage: "Auth token must be at least 8 characters" },
   ],
   rakuten: [
-    { key: "api_key", label: "API Key", placeholder: "Enter Rakuten API key", help: "From Rakuten LinkShare Account", secret: true, required: true },
-    { key: "secret", label: "API Secret", placeholder: "Enter API secret", help: "Rakuten API secret key", secret: true, required: true },
-    { key: "tracking_id", label: "Site ID", placeholder: "e.g. 12345", help: "Your Rakuten site/mid ID", secret: false, required: false },
+    { key: "api_key", label: "API Key", placeholder: "Enter Rakuten API key", help: "From Rakuten LinkShare Account", secret: true, required: true, pattern: /^.{8,}$/, patternMessage: "API key must be at least 8 characters" },
+    { key: "secret", label: "API Secret", placeholder: "Enter API secret", help: "Rakuten API secret key", secret: true, required: true, pattern: /^.{8,}$/, patternMessage: "API secret must be at least 8 characters" },
+    { key: "tracking_id", label: "Site ID", placeholder: "e.g. 12345", help: "Your Rakuten site/mid ID", secret: false, required: false, pattern: /^\d{3,}$/, patternMessage: "Site ID should be a number (3+ digits)" },
   ],
   awin: [
-    { key: "advertiser_id", label: "Advertiser ID", placeholder: "e.g. 12345", help: "Awin advertiser (merchant) ID", secret: false, required: true },
-    { key: "api_token", label: "API Token", placeholder: "Enter Awin API token", help: "From Awin Account > API Settings", secret: true, required: true },
-    { key: "publisher_id", label: "Publisher ID", placeholder: "e.g. 67890", help: "Your Awin publisher ID", secret: false, required: true },
+    { key: "advertiser_id", label: "Advertiser ID", placeholder: "e.g. 12345", help: "Awin advertiser (merchant) ID", secret: false, required: true, pattern: /^\d{4,}$/, patternMessage: "Advertiser ID should be a number (4+ digits)" },
+    { key: "api_token", label: "API Token", placeholder: "Enter Awin API token", help: "From Awin Account > API Settings", secret: true, required: true, pattern: /^.{8,}$/, patternMessage: "API token must be at least 8 characters" },
+    { key: "publisher_id", label: "Publisher ID", placeholder: "e.g. 67890", help: "Your Awin publisher ID", secret: false, required: true, pattern: /^\d{4,}$/, patternMessage: "Publisher ID should be a number (4+ digits)" },
   ],
   flexoffers: [
-    { key: "api_key", label: "API Key", placeholder: "Enter FlexOffers API key", help: "From FlexOffers Account", secret: true, required: true },
-    { key: "publisher_id", label: "Publisher ID", placeholder: "e.g. 12345", help: "Your FlexOffers publisher ID", secret: false, required: true },
+    { key: "api_key", label: "API Key", placeholder: "Enter FlexOffers API key", help: "From FlexOffers Account", secret: true, required: true, pattern: /^.{8,}$/, patternMessage: "API key must be at least 8 characters" },
+    { key: "publisher_id", label: "Publisher ID", placeholder: "e.g. 12345", help: "Your FlexOffers publisher ID", secret: false, required: true, pattern: /^\d{4,}$/, patternMessage: "Publisher ID should be a number (4+ digits)" },
   ],
 }
 
@@ -73,86 +75,86 @@ const PROGRAM_OVERRIDES: Record<string, { api_type: string; fields: ConfigField[
   amazon: {
     api_type: "direct_api",
     fields: [
-      { key: "tracking_id", label: "Associate Tag", placeholder: "e.g. blizine-20", help: "Your Amazon Associate tracking ID (a.co/tag/...)", secret: false, required: true },
-      { key: "access_key", label: "Access Key ID", placeholder: "e.g. AKIA...", help: "From Amazon PA-API > Security Credentials", secret: true, required: true },
-      { key: "secret_key", label: "Secret Access Key", placeholder: "AWS secret key", help: "Your Amazon Product Advertising API secret key", secret: true, required: true },
+      { key: "tracking_id", label: "Associate Tag", placeholder: "e.g. blizine-20", help: "Your Amazon Associate tracking ID (a.co/tag/...)", secret: false, required: true, pattern: /^[\w-]+-\d{2}$/, patternMessage: "Format: yourstorename-20 (e.g. blizine-20)" },
+      { key: "access_key", label: "Access Key ID", placeholder: "e.g. AKIA...", help: "From Amazon PA-API > Security Credentials", secret: true, required: true, pattern: /^AKIA[\w]{16}$/, patternMessage: "Must start with AKIA followed by 16 alphanumeric characters" },
+      { key: "secret_key", label: "Secret Access Key", placeholder: "AWS secret key", help: "Your Amazon Product Advertising API secret key", secret: true, required: true, pattern: /^[\w\/+=]{40}$/, patternMessage: "Secret key must be exactly 40 characters" },
     ],
   },
   ebay: {
     api_type: "direct_api",
     fields: [
-      { key: "campaign_id", label: "Campaign ID", placeholder: "e.g. 5338765432", help: "Your eBay Partner Network campaign ID", secret: false, required: true },
-      { key: "api_key", label: "eBay API Key", placeholder: "Enter eBay API key", help: "From eBay Developers Program", secret: true, required: true },
+      { key: "campaign_id", label: "Campaign ID", placeholder: "e.g. 5338765432", help: "Your eBay Partner Network campaign ID", secret: false, required: true, pattern: /^\d{8,}$/, patternMessage: "Campaign ID should be a number (8+ digits)" },
+      { key: "api_key", label: "eBay API Key", placeholder: "Enter eBay API key", help: "From eBay Developers Program", secret: true, required: true, pattern: /^.{8,}$/, patternMessage: "API key must be at least 8 characters" },
     ],
   },
   aliexpress: {
     api_type: "direct_api",
     fields: [
-      { key: "api_key", label: "App Key", placeholder: "e.g. 12345678", help: "Your AliExpress app key", secret: true, required: true },
-      { key: "tracking_id", label: "Tracking ID", placeholder: "e.g. 8765432", help: "Your AliExpress affiliate tracking ID", secret: false, required: true },
+      { key: "api_key", label: "App Key", placeholder: "e.g. 12345678", help: "Your AliExpress app key", secret: true, required: true, pattern: /^\d{8,}$/, patternMessage: "App key should be a number (8+ digits)" },
+      { key: "tracking_id", label: "Tracking ID", placeholder: "e.g. 8765432", help: "Your AliExpress affiliate tracking ID", secret: false, required: true, pattern: /^\d{6,}$/, patternMessage: "Tracking ID should be a number (6+ digits)" },
     ],
   },
   walmart: {
     api_type: "direct_api",
     fields: [
-      { key: "api_key", label: "API Key", placeholder: "Enter Walmart API key", help: "From Walmart Affiliate Portal", secret: true, required: true },
-      { key: "publisher_id", label: "Publisher ID", placeholder: "e.g. 12345", help: "Your Walmart publisher ID", secret: false, required: true },
+      { key: "api_key", label: "API Key", placeholder: "Enter Walmart API key", help: "From Walmart Affiliate Portal", secret: true, required: true, pattern: /^.{8,}$/, patternMessage: "API key must be at least 8 characters" },
+      { key: "publisher_id", label: "Publisher ID", placeholder: "e.g. 12345", help: "Your Walmart publisher ID", secret: false, required: true, pattern: /^\d{4,}$/, patternMessage: "Publisher ID should be a number (4+ digits)" },
     ],
   },
   bestbuy: {
     api_type: "direct_api",
     fields: [
-      { key: "api_key", label: "API Key", placeholder: "Enter Best Buy API key", help: "From Best Buy Developer Portal", secret: true, required: true },
+      { key: "api_key", label: "API Key", placeholder: "Enter Best Buy API key", help: "From Best Buy Developer Portal", secret: true, required: true, pattern: /^.{8,}$/, patternMessage: "API key must be at least 8 characters" },
     ],
   },
   newegg: {
     api_type: "direct_api",
     fields: [
-      { key: "api_key", label: "API Key", placeholder: "Enter Newegg API key", help: "From Newegg Affiliate Program", secret: true, required: true },
+      { key: "api_key", label: "API Key", placeholder: "Enter Newegg API key", help: "From Newegg Affiliate Program", secret: true, required: true, pattern: /^.{8,}$/, patternMessage: "API key must be at least 8 characters" },
     ],
   },
   envato: {
     api_type: "direct_api",
     fields: [
-      { key: "api_token", label: "API Token", placeholder: "Enter Envato API token", help: "From Envato Account > API Tokens", secret: true, required: true },
-      { key: "tracking_id", label: "Referrer Tag", placeholder: "e.g. blizine", help: "Your Envato referral tag (optional)", secret: false, required: false },
+      { key: "api_token", label: "API Token", placeholder: "Enter Envato API token", help: "From Envato Account > API Tokens", secret: true, required: true, pattern: /^.{8,}$/, patternMessage: "API token must be at least 8 characters" },
+      { key: "tracking_id", label: "Referrer Tag", placeholder: "e.g. blizine", help: "Your Envato referral tag (optional)", secret: false, required: false, pattern: /^[\w-]{3,}$/, patternMessage: "Must be at least 3 characters" },
     ],
   },
   udemy: {
     api_type: "direct_api",
     fields: [
-      { key: "api_key", label: "Affiliate API Key", placeholder: "Enter Udemy API key", help: "From Udemy Affiliate Dashboard", secret: true, required: true },
-      { key: "tracking_id", label: "Affiliate ID", placeholder: "e.g. 12345abc", help: "Your Udemy affiliate partner ID", secret: false, required: true },
+      { key: "api_key", label: "Affiliate API Key", placeholder: "Enter Udemy API key", help: "From Udemy Affiliate Dashboard", secret: true, required: true, pattern: /^.{8,}$/, patternMessage: "API key must be at least 8 characters" },
+      { key: "tracking_id", label: "Affiliate ID", placeholder: "e.g. 12345abc", help: "Your Udemy affiliate partner ID", secret: false, required: true, pattern: /^[\w-]{4,}$/, patternMessage: "Must be at least 4 alphanumeric characters" },
     ],
   },
   coursera: {
     api_type: "direct_api",
     fields: [
-      { key: "tracking_id", label: "Tracking ID", placeholder: "e.g. 123456", help: "Your Coursera affiliate tracking link ID", secret: false, required: true },
+      { key: "tracking_id", label: "Tracking ID", placeholder: "e.g. 123456", help: "Your Coursera affiliate tracking link ID", secret: false, required: true, pattern: /^\d{4,}$/, patternMessage: "Tracking ID should be a number (4+ digits)" },
     ],
   },
   bluehost: {
     api_type: "direct_api",
     fields: [
-      { key: "tracking_id", label: "Affiliate Username", placeholder: "e.g. blizine", help: "Your Bluehost affiliate username", secret: false, required: true },
+      { key: "tracking_id", label: "Affiliate Username", placeholder: "e.g. blizine", help: "Your Bluehost affiliate username", secret: false, required: true, pattern: /^[\w-]{3,}$/, patternMessage: "Must be at least 3 alphanumeric characters" },
     ],
   },
   hostinger: {
     api_type: "direct_api",
     fields: [
-      { key: "tracking_id", label: "Affiliate ID", placeholder: "e.g. blizine", help: "Your Hostinger affiliate referral ID", secret: false, required: true },
+      { key: "tracking_id", label: "Affiliate ID", placeholder: "e.g. blizine", help: "Your Hostinger affiliate referral ID", secret: false, required: true, pattern: /^[\w-]{3,}$/, patternMessage: "Must be at least 3 alphanumeric characters" },
     ],
   },
   nordvpn: {
     api_type: "direct_api",
     fields: [
-      { key: "tracking_id", label: "Affiliate Slug", placeholder: "e.g. blizine", help: "Your NordVPN affiliate referral slug", secret: false, required: true },
+      { key: "tracking_id", label: "Affiliate Slug", placeholder: "e.g. blizine", help: "Your NordVPN affiliate referral slug", secret: false, required: true, pattern: /^[\w-]{3,}$/, patternMessage: "Must be at least 3 alphanumeric characters" },
     ],
   },
   booking: {
     api_type: "direct_api",
     fields: [
-      { key: "tracking_id", label: "Affiliate ID", placeholder: "e.g. 123456", help: "Your Booking.com affiliate ID", secret: false, required: true },
+      { key: "tracking_id", label: "Affiliate ID", placeholder: "e.g. 123456", help: "Your Booking.com affiliate ID", secret: false, required: true, pattern: /^\d{4,}$/, patternMessage: "Affiliate ID should be a number (4+ digits)" },
     ],
   },
 }
@@ -187,12 +189,27 @@ function ProgramLogo({ prog, className }: { prog: AffiliateConfig; className?: s
   )
 }
 
+function getFieldError(f: ConfigField, value: string): string | null {
+  if (!value && f.required) return `${f.label} is required`
+  if (value && f.pattern && !f.pattern.test(value)) return f.patternMessage || "Invalid format"
+  return null
+}
+
 function ConfigDialog({ prog, open, onClose }: { prog: AffiliateConfig | null; open: boolean; onClose: () => void }) {
   const [values, setValues] = useState<Record<string, string>>({})
   const [showSecrets, setShowSecrets] = useState<Record<string, boolean>>({})
   const [saving, setSaving] = useState(false)
+  const [touched, setTouched] = useState<Record<string, boolean>>({})
 
   const fields = prog ? getFields(prog) : []
+
+  const errors = fields.reduce<Record<string, string | null>>((acc, f) => {
+    acc[f.key] = getFieldError(f, values[f.key] || "")
+    return acc
+  }, {})
+
+  const hasErrors = Object.values(errors).some(e => e !== null)
+  const hasRequired = fields.some(f => f.required && values[f.key])
 
   useEffect(() => {
     if (prog) {
@@ -201,26 +218,27 @@ function ConfigDialog({ prog, open, onClose }: { prog: AffiliateConfig | null; o
         initial[f.key] = prog.credentials?.[f.key] || ""
       }
       setValues(initial)
+      setTouched({})
     }
   }, [prog])
 
   if (!open || !prog) return null
 
   const handleSave = async () => {
+    setTouched(Object.fromEntries(fields.map(f => [f.key, true])))
+    if (hasErrors) return
     setSaving(true)
     const supabase = createClient()
     const credentials: Record<string, string> = {}
-    let hasValue = false
     for (const f of fields) {
       if (values[f.key]) {
         credentials[f.key] = values[f.key]
-        if (f.required) hasValue = true
       }
     }
     await supabase.from("affiliate_program_configs").update({
       credentials,
-      is_connected: hasValue,
-      search_enabled: hasValue,
+      is_connected: hasRequired,
+      search_enabled: hasRequired,
     }).eq("id", prog.id)
     setSaving(false)
     onClose()
@@ -254,35 +272,40 @@ function ConfigDialog({ prog, open, onClose }: { prog: AffiliateConfig | null; o
           </button>
         </div>
         <div className="p-5 space-y-4">
-          {fields.map((f) => (
-            <div key={f.key}>
-              <label className="text-sm font-medium mb-1 flex items-center gap-1.5">
-                {f.label}
-                {f.required && <span className="text-red-400">*</span>}
-                <span className="relative group">
-                  <HelpCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
-                  <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-1.5 text-xs bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 rounded-lg whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none shadow-lg z-10">
-                    {f.help}
+          {fields.map((f) => {
+            const err = touched[f.key] ? errors[f.key] : null
+            return (
+              <div key={f.key}>
+                <label className="text-sm font-medium mb-1 flex items-center gap-1.5">
+                  {f.label}
+                  {f.required && <span className="text-red-400">*</span>}
+                  <span className="relative group">
+                    <HelpCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
+                    <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-1.5 text-xs bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 rounded-lg whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none shadow-lg z-10">
+                      {f.help}
+                    </span>
                   </span>
-                </span>
-              </label>
-              <div className="relative">
-                <Input
-                  value={values[f.key] || ""}
-                  onChange={e => setValues(prev => ({ ...prev, [f.key]: e.target.value }))}
-                  type={f.secret && !showSecrets[f.key] ? "password" : "text"}
-                  placeholder={f.placeholder}
-                  className={f.secret ? "pr-10 font-mono text-sm" : "font-mono text-sm"}
-                />
-                {f.secret && (
-                  <button onClick={() => setShowSecrets(prev => ({ ...prev, [f.key]: !prev[f.key] }))}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
-                    {showSecrets[f.key] ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                  </button>
-                )}
+                </label>
+                <div className="relative">
+                  <Input
+                    value={values[f.key] || ""}
+                    onChange={e => setValues(prev => ({ ...prev, [f.key]: e.target.value }))}
+                    onBlur={() => setTouched(prev => ({ ...prev, [f.key]: true }))}
+                    type={f.secret && !showSecrets[f.key] ? "password" : "text"}
+                    placeholder={f.placeholder}
+                    className={`font-mono text-sm ${err ? "border-red-400 focus:ring-red-400" : ""} ${f.secret ? "pr-10" : ""}`}
+                  />
+                  {f.secret && (
+                    <button onClick={() => setShowSecrets(prev => ({ ...prev, [f.key]: !prev[f.key] }))}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
+                      {showSecrets[f.key] ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
+                  )}
+                </div>
+                {err && <p className="text-xs text-red-400 mt-1">{err}</p>}
               </div>
-            </div>
-          ))}
+            )
+          })}
         </div>
         <div className="flex items-center justify-between p-5 border-t border-gray-200 dark:border-[#374151]">
           {prog.is_connected ? (
@@ -292,7 +315,7 @@ function ConfigDialog({ prog, open, onClose }: { prog: AffiliateConfig | null; o
           ) : <div />}
           <div className="flex gap-2">
             <Button variant="outline" size="sm" onClick={onClose}>Cancel</Button>
-            <Button size="sm" onClick={handleSave} disabled={saving}>
+            <Button size="sm" onClick={handleSave} disabled={saving || hasErrors}>
               <Save className="h-4 w-4 mr-1" />{saving ? "Saving..." : "Save"}
             </Button>
           </div>
