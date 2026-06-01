@@ -18,6 +18,8 @@ interface PostRow {
   created_at: string
   published_at: string | null
   category: { name: string } | null
+  ai_rewritten: boolean
+  model_used: string | null
 }
 
 export default function AdminPostsPage() {
@@ -25,6 +27,7 @@ export default function AdminPostsPage() {
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState("")
   const [statusFilter, setStatusFilter] = useState("all")
+  const [aiFilter, setAiFilter] = useState("all")
 
   const [counts, setCounts] = useState({ total: 0, published: 0, drafts: 0, views: 0 })
 
@@ -39,7 +42,7 @@ export default function AdminPostsPage() {
       supabase.from("posts")
         .select("*, category:categories(name)")
         .order("created_at", { ascending: false })
-        .limit(200),
+        .limit(500),
     ])
 
     const totalViews = (viewsRes.data || []).reduce((sum: number, p: any) => sum + (p.views || 0), 0)
@@ -71,6 +74,8 @@ export default function AdminPostsPage() {
 
   const filtered = posts.filter((p) => {
     if (statusFilter !== "all" && p.status !== statusFilter) return false
+    if (aiFilter === "ai") { if (!p.ai_rewritten) return false }
+    if (aiFilter === "manual") { if (p.ai_rewritten) return false }
     if (search) {
       const q = search.toLowerCase()
       if (!p.title.toLowerCase().includes(q)) return false
@@ -135,6 +140,15 @@ export default function AdminPostsPage() {
             />
           </div>
           <select
+            value={aiFilter}
+            onChange={(e) => setAiFilter(e.target.value)}
+            className="text-sm border-2 border-gray-200 dark:border-[#374151] rounded-lg bg-gray-50 dark:bg-[#0A0F1E] text-gray-700 dark:text-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#F59E0B]"
+          >
+            <option value="all">All Posts</option>
+            <option value="ai">AI Rewritten</option>
+            <option value="manual">Manual Only</option>
+          </select>
+          <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
             className="text-sm border-2 border-gray-200 dark:border-[#374151] rounded-lg bg-gray-50 dark:bg-[#0A0F1E] text-gray-700 dark:text-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#F59E0B]"
@@ -154,6 +168,7 @@ export default function AdminPostsPage() {
                 <th className="text-left px-5 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Title</th>
                 <th className="text-left px-5 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider hidden md:table-cell">Category</th>
                 <th className="text-left px-5 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider hidden sm:table-cell">Status</th>
+                <th className="text-left px-5 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider hidden lg:table-cell">Source</th>
                 <th className="text-left px-5 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider hidden lg:table-cell">Views</th>
                 <th className="text-left px-5 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider hidden md:table-cell">Date</th>
                 <th className="text-right px-5 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Actions</th>
@@ -162,7 +177,7 @@ export default function AdminPostsPage() {
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan={6} className="px-5 py-12 text-center">
+                  <td colSpan={7} className="px-5 py-12 text-center">
                     <div className="flex items-center justify-center gap-2 text-sm text-gray-400">
                       <RefreshCw className="h-4 w-4 animate-spin" />
                       Loading posts...
@@ -171,7 +186,7 @@ export default function AdminPostsPage() {
                 </tr>
               ) : filtered.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-5 py-12 text-center">
+                  <td colSpan={7} className="px-5 py-12 text-center">
                     <FileText className="h-10 w-10 text-gray-300 dark:text-gray-600 mx-auto mb-3" />
                     <p className="text-sm text-gray-500 dark:text-gray-400">
                       {search || statusFilter !== "all" ? "No posts match your filter" : "No posts yet"}
@@ -229,6 +244,19 @@ export default function AdminPostsPage() {
                         }`} />
                         {post.status.charAt(0).toUpperCase() + post.status.slice(1)}
                       </span>
+                    </td>
+                    <td className="px-5 py-4 hidden lg:table-cell">
+                      {post.ai_rewritten ? (
+                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-violet-50 text-violet-700 dark:bg-violet-900/30 dark:text-violet-400 ring-1 ring-violet-600/20">
+                          <span className="w-1.5 h-1.5 rounded-full bg-violet-500" />
+                          {post.model_used === 'gemini-grounded' ? 'Gemini' : 'AI'}
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 ring-1 ring-blue-600/20">
+                          <span className="w-1.5 h-1.5 rounded-full bg-blue-500" />
+                          Manual
+                        </span>
+                      )}
                     </td>
                     <td className="px-5 py-4 hidden lg:table-cell">
                       <span className="text-sm font-medium text-gray-700 dark:text-gray-300">{post.views || 0}</span>

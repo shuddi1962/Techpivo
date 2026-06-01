@@ -1,5 +1,5 @@
 'use client'
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import {
   Eye, FileText, Activity, RefreshCw, AlertCircle, Zap,
   BarChart3, Globe, MousePointerClick, TrendingUp, Rss,
@@ -260,7 +260,11 @@ export default function AnalyticsPage() {
     }
   }, [days])
 
-  useEffect(() => { fetchData() }, [fetchData])
+  useEffect(() => {
+    fetchData()
+    const interval = setInterval(fetchData, 30000)
+    return () => clearInterval(interval)
+  }, [fetchData])
 
   const b = data?.blizine
   const a = data?.analytics

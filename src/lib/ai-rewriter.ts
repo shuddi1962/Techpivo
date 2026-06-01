@@ -544,6 +544,12 @@ export async function geminiRewriteContent(title: string, content: string): Prom
   const textContent = stripHtml(content)
   if (!textContent || textContent.length < 50) return content
 
+  const todayCount = await getGeminiTodayCount()
+  if (todayCount >= GEMINI_DAILY_CAP) {
+    console.warn(`[Blizine AI] Gemini daily cap reached (${todayCount}/${GEMINI_DAILY_CAP}) — skipping rewrite`)
+    return content
+  }
+
   const rewritePrompt =
     "You are a senior tech journalist writing for Blizine (blizine.com), a premium technology news blog.\n\n" +
     "Rewrite the following tech article in an engaging, SEO-optimized style.\n\n" +
@@ -576,6 +582,7 @@ export async function geminiRewriteContent(title: string, content: string): Prom
       const data = await res.json()
       const text = data?.candidates?.[0]?.content?.parts?.[0]?.text || ""
       if (text.length > 300) {
+        await logGeminiUsage(title, 'rewrite')
         console.log(`[✓ Gemini Rewrite] ${title.slice(0, 40)}`)
         return text
       }

@@ -476,6 +476,70 @@ async function run(req: NextRequest) {
     }
   }
 
+  // Fallback: if daily cap remains, rewrite existing posts that haven't been AI-rewritten
+  const remainingCap = canPublish - ingested
+  if (remainingCap > 0 && !isOutOfTime()) {
+    log.push(`[FALLBACK] ${remainingCap} slots left — checking for unrewritten existing posts`)
+    const { data: unrewritten } = await supabase
+      .from('posts')
+      .select('id, title, content')
+      .eq('status', 'published')
+      .eq('ai_rewritten', false)
+      .not('source_url', 'is', null)
+      .limit(remainingCap)
+
+    if (unrewritten && unrewritten.length > 0) {
+      log.push(`[FALLBACK] Found ${unrewritten.length} unrewritten posts`)
+      for (const post of unrewritten) {
+        if (ingested >= canPublish) break
+        if (isOutOfTime()) break
+
+        try {
+          const { article, debug } = await rewriteArticle(post.title, post.content.replace(/<[^>]+>/g, ' ').trim().slice(0, 5000), 'blizine-internal', 'tech-news', 'rss_auto')
+
+          if (!article) {
+            log.push(`[FALLBACK FAIL] ${post.title.slice(0, 45)} (${debug})`)
+            continue
+          }
+
+          const { error: upErr } = await supabase
+            .from('posts')
+            .update({
+              title: article.headline,
+              content: article.content,
+              seo_title: article.seoTitle,
+              seo_description: article.seoDescription,
+              seo_keywords: article.seoKeywords,
+              tags: article.tags,
+              key_points: article.keyPoints,
+              quick_brief: article.quickBrief,
+              faq: article.faq,
+              blizine_score: article.blizineScore,
+              is_breaking: article.isBreaking,
+              ai_rewritten: true,
+              model_used: article.modelUsed,
+              updated_at: new Date().toISOString(),
+            })
+            .eq('id', post.id)
+
+          if (upErr) {
+            log.push(`[FALLBACK DB ERR] ${upErr.message.slice(0, 60)}`)
+            continue
+          }
+
+          await supabase.rpc('increment_daily_count')
+          ingested++
+          log.push(`[✓ FALLBACK ${ingested}/${canPublish}][gemini-grounded] ${article.headline.slice(0, 60)}`)
+          await new Promise(r => setTimeout(r, 1200))
+        } catch (err) {
+          log.push(`[FALLBACK ERR] ${String(err).slice(0, 60)}`)
+        }
+      }
+    } else {
+      log.push('[FALLBACK] No unrewritten existing posts found')
+    }
+  }
+
   if (ingested > 0) {
     fetch(`${process.env.NEXT_PUBLIC_SITE_URL}/api/revalidate`, {
       method:  'POST',
