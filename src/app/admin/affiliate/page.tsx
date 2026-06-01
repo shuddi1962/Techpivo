@@ -30,20 +30,28 @@ export default function AdminAffiliatePage() {
   const handleSearch = async () => {
     if (!selectedProgram || !searchQuery) return
     setSearchLoading(true)
-    // Simulate live search (would call actual affiliate API via route handler)
-    const mockResults = [
-      { id: "1", product_name: `${searchQuery} Pro`, sale_price: 99.99, original_price: 149.99, product_image_url: "", affiliate_link: "#" },
-      { id: "2", product_name: `${searchQuery} Ultra`, sale_price: 199.99, original_price: 299.99, product_image_url: "", affiliate_link: "#" },
-    ]
-    setSearchResults(mockResults)
+    setSearchResults([])
+    try {
+      const res = await fetch(`/api/affiliate/search?program=${selectedProgram}&q=${encodeURIComponent(searchQuery)}`)
+      if (!res.ok) throw new Error('Affiliate search API not available')
+      const json = await res.json()
+      setSearchResults(json.products || [])
+    } catch {
+      setSearchResults([])
+    }
     setSearchLoading(false)
   }
 
   const importProduct = async (product: any) => {
     const supabase = createClient()
-    const program = AFFILIATE_PROGRAMS.find((p) => p.key === selectedProgram)
+    const { data: programs } = await supabase.from("affiliate_program_configs").select("id").eq("program_key", selectedProgram).limit(1)
+    const affiliateId = programs?.[0]?.id
+    if (!affiliateId) {
+      alert("Connect this affiliate program with API keys first.")
+      return
+    }
     await supabase.from("affiliate_products").insert({
-      affiliate_id: "00000000-0000-0000-0000-000000000000",
+      affiliate_id: affiliateId,
       program_key: selectedProgram,
       product_name: product.product_name,
       sale_price: product.sale_price,
@@ -100,7 +108,9 @@ export default function AdminAffiliatePage() {
                 </Button>
               </div>
 
-              {searchResults.length > 0 && (
+              {searchLoading ? (
+                <div className="text-sm text-muted-foreground text-center py-8">Searching...</div>
+              ) : searchResults.length > 0 ? (
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
                   {searchResults.map((product) => (
                     <Card key={product.id}>
@@ -121,6 +131,10 @@ export default function AdminAffiliatePage() {
                       </CardContent>
                     </Card>
                   ))}
+                </div>
+              ) : (
+                <div className="text-sm text-muted-foreground text-center py-8">
+                  No affiliate API connected. Configure a program with API keys to search live products.
                 </div>
               )}
             </CardContent>
