@@ -313,7 +313,7 @@ async function geminiGrounded(
   }
   lastGeminiCallTime = Date.now()
 
-  const maxRetries = 1
+  const maxRetries = 2
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
     try {
       const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`
@@ -330,14 +330,14 @@ async function geminiGrounded(
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
-        signal: AbortSignal.timeout(9000),
+        signal: AbortSignal.timeout(25000),
       })
 
       if (!res.ok) {
         const errText = await res.text().catch(() => '')
-        if (attempt < maxRetries && res.status >= 500) {
+        if (attempt < maxRetries && (res.status === 429 || res.status === 503)) {
           console.warn(`[Gemini retry ${attempt + 1}] HTTP ${res.status}`)
-          await new Promise(r => setTimeout(r, 1000))
+          await new Promise(r => setTimeout(r, 2000))
           continue
         }
         return { article: null, debug: `http_${res.status}:${errText.slice(0, 150)}` }
@@ -362,7 +362,7 @@ async function geminiGrounded(
 
     } catch (e: any) {
       const msg = String(e)
-      if (attempt < maxRetries && (msg.includes('Timeout') || msg.includes('timeout') || msg.includes('aborted'))) {
+      if (attempt < maxRetries && (msg.includes('Timeout') || msg.includes('timeout') || msg.includes('aborted') || msg.includes('FETCH_ERROR'))) {
         console.warn(`[Gemini retry ${attempt + 1}] ${msg.slice(0, 80)}`)
         await new Promise(r => setTimeout(r, 1000))
         continue

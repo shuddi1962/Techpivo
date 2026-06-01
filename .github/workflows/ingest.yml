@@ -14,8 +14,8 @@ jobs:
           SITE="${{ secrets.SITE_URL || 'https://www.blizine.com' }}"
           SECRET="${{ secrets.CRON_SECRET }}"
           if [ -n "$SECRET" ]; then
-            curl -s -X POST "$SITE/api/ingest" \
+            curl -s -o /dev/null -w "%{http_code}" -X POST "$SITE/api/ingest" \
               -H "Authorization: Bearer $SECRET"
           else
-            curl -s -X POST "$SITE/api/ingest"
+            curl -s -o /dev/null -w "%{http_code}" -X POST "$SITE/api/ingest"
           fi
