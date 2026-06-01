@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { ShoppingBag, Search, Plus, RefreshCw, Check, X, Settings, Save, Eye, EyeOff, HelpCircle } from "lucide-react"
+import { Search, Plus, RefreshCw, Check, X, Settings, Save, Eye, EyeOff, HelpCircle, ExternalLink } from "lucide-react"
 import type { AffiliateProduct } from "@/types/database"
 
 interface AffiliateConfig {
@@ -15,6 +15,7 @@ interface AffiliateConfig {
   program_key: string
   program_name: string
   logo_url: string | null
+  website_url: string | null
   api_type: string
   credentials: Record<string, string>
   is_connected: boolean
@@ -113,7 +114,7 @@ const PROGRAM_OVERRIDES: Record<string, { api_type: string; fields: ConfigField[
   envato: {
     api_type: "direct_api",
     fields: [
-      { key: "api_key", label: "API Token", placeholder: "Enter Envato API token", help: "From Envato Account > API Tokens", secret: true, required: true },
+      { key: "api_token", label: "API Token", placeholder: "Enter Envato API token", help: "From Envato Account > API Tokens", secret: true, required: true },
       { key: "tracking_id", label: "Referrer Tag", placeholder: "e.g. blizine", help: "Your Envato referral tag (optional)", secret: false, required: false },
     ],
   },
@@ -158,6 +159,32 @@ const PROGRAM_OVERRIDES: Record<string, { api_type: string; fields: ConfigField[
 
 function getFields(prog: AffiliateConfig): ConfigField[] {
   return PROGRAM_OVERRIDES[prog.program_key]?.fields || API_CONFIGS[prog.api_type] || API_CONFIGS.direct_api
+}
+
+function getFavicon(domain: string): string {
+  return `https://www.google.com/s2/favicons?domain=${domain}&sz=64`
+}
+
+function ProgramLogo({ prog, className }: { prog: AffiliateConfig; className?: string }) {
+  const domain = prog.website_url ? new URL(prog.website_url).hostname.replace("www.", "") : `${prog.program_key}.com`
+  const primarySrc = prog.logo_url || `https://logo.clearbit.com/${domain}`
+  const fallbackSrc = getFavicon(domain)
+  const [src, setSrc] = useState(primarySrc)
+  const [failed, setFailed] = useState(false)
+
+  if (failed) return null
+
+  return (
+    <img
+      src={src}
+      alt={prog.program_name}
+      className={`rounded object-contain ${className || "h-8 w-8"}`}
+      onError={() => {
+        if (src === primarySrc) setSrc(fallbackSrc)
+        else setFailed(true)
+      }}
+    />
+  )
 }
 
 function ConfigDialog({ prog, open, onClose }: { prog: AffiliateConfig | null; open: boolean; onClose: () => void }) {
@@ -216,11 +243,7 @@ function ConfigDialog({ prog, open, onClose }: { prog: AffiliateConfig | null; o
       <div className="bg-white dark:bg-[#111827] rounded-xl shadow-2xl border border-gray-200 dark:border-[#374151] w-full max-w-lg mx-4" onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between p-5 border-b border-gray-200 dark:border-[#374151]">
           <div className="flex items-center gap-3">
-            {prog.logo_url ? (
-              <img src={prog.logo_url} alt="" className="h-8 w-8 rounded object-contain" />
-            ) : (
-              <ShoppingBag className="h-8 w-8 text-muted-foreground" />
-            )}
+            <ProgramLogo prog={prog} className="h-8 w-8" />
             <div>
               <h2 className="text-lg font-bold">{prog.program_name}</h2>
               <p className="text-xs text-muted-foreground">{prog.api_type.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase())}</p>
@@ -370,10 +393,7 @@ export default function AdminAffiliatePage() {
                 <Card key={prog.id}>
                   <CardContent className="p-4">
                     <div className="flex items-center gap-3 mb-2">
-                      {prog.logo_url ? (
-                        <img src={prog.logo_url} alt={prog.program_name} className="h-8 w-8 rounded object-contain" onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; (e.target as HTMLImageElement)?.nextElementSibling?.classList.remove("hidden") }} />
-                      ) : null}
-                      <ShoppingBag className={`h-8 w-8 text-muted-foreground ${prog.logo_url ? "hidden" : ""}`} />
+                      <ProgramLogo prog={prog} className="h-8 w-8 shrink-0" />
                       <div className="min-w-0">
                         <p className="font-medium text-sm truncate">{prog.program_name}</p>
                         <div className="flex items-center gap-1.5 mt-0.5">
@@ -396,9 +416,18 @@ export default function AdminAffiliatePage() {
                         <span>{prog.total_clicks} clicks</span>
                       </div>
                     )}
-                    <Button variant="outline" size="sm" className="w-full mt-2 text-xs" onClick={() => setConfigProg(prog)}>
-                      <Settings className="h-3 w-3 mr-1" />{prog.is_connected ? "Configure" : "Connect"}
-                    </Button>
+                    <div className="flex gap-2 mt-2">
+                      <Button variant="outline" size="sm" className="flex-1 text-xs" onClick={() => setConfigProg(prog)}>
+                        <Settings className="h-3 w-3 mr-1" />{prog.is_connected ? "Configure" : "Connect"}
+                      </Button>
+                      {prog.website_url && (
+                        <Button variant="ghost" size="sm" className="text-xs" asChild>
+                          <a href={prog.website_url} target="_blank" rel="noopener noreferrer">
+                            <ExternalLink className="h-3 w-3" />
+                          </a>
+                        </Button>
+                      )}
+                    </div>
                   </CardContent>
                 </Card>
               ))}
@@ -437,9 +466,9 @@ export default function AdminAffiliatePage() {
                       <CardContent className="p-4">
                         <div className="aspect-video bg-muted rounded-md mb-2 flex items-center justify-center">
                           {product.product_image_url ? (
-                            <img src={product.product_image_url} alt="" className="w-full h-full object-contain rounded-md" onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; (e.target as HTMLImageElement).parentElement!.classList.remove("hidden") }} />
+                            <img src={product.product_image_url} alt="" className="w-full h-full object-contain rounded-md" />
                           ) : (
-                            <ShoppingBag className="h-8 w-8 text-muted-foreground" />
+                            <div className="text-xs text-muted-foreground">No image</div>
                           )}
                         </div>
                         <p className="font-medium text-sm line-clamp-2">{product.product_name}</p>
@@ -471,9 +500,9 @@ export default function AdminAffiliatePage() {
                   <CardContent className="p-4">
                     <div className="aspect-video bg-muted rounded-md mb-2 flex items-center justify-center">
                       {product.product_image_url ? (
-                        <img src={product.product_image_url} alt="" className="w-full h-full object-contain rounded-md" onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; (e.target as HTMLImageElement).parentElement!.classList.remove("hidden") }} />
+                        <img src={product.product_image_url} alt="" className="w-full h-full object-contain rounded-md" />
                       ) : (
-                        <ShoppingBag className="h-8 w-8 text-muted-foreground" />
+                        <div className="text-xs text-muted-foreground">No image</div>
                       )}
                     </div>
                     <p className="font-medium text-sm line-clamp-2">{product.product_name}</p>
