@@ -6,31 +6,45 @@ import {
   PieChart as PieIcon,
 } from 'lucide-react'
 import {
-  LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid,
+  BarChart, Bar, XAxis, YAxis, CartesianGrid,
   Tooltip, ResponsiveContainer, PieChart, Pie, Cell, AreaChart, Area,
 } from 'recharts'
 
-function KpiCard({ label, value, icon, color }: { label: string; value: string | number; icon: React.ReactNode; color: string }) {
+const WARM = ['#FF6B6B', '#FFA07A', '#FFD700', '#98FB98', '#00CED1', '#9370DB', '#FF69B4', '#20B2AA', '#F97316', '#84CC16']
+const PIE_VIBRANT = ['#FF6B6B', '#4ECDC4', '#FFD93D', '#6BCB77', '#45B7D1', '#DDA0DD', '#FF8C94', '#96CEB4', '#F97316', '#A855F7']
+
+function KpiCard({ label, value, icon, gradient }: { label: string; value: string | number; icon: React.ReactNode; gradient: string }) {
   return (
-    <div className="bg-white border border-gray-200 rounded-xl p-5 shadow-sm">
-      <div className="flex items-center justify-between mb-3">
-        <div className="p-2 rounded-lg" style={{ background: color + '20' }}>
+    <div className="rounded-xl p-5 shadow-sm text-white relative overflow-hidden" style={{ background: gradient }}>
+      <div className="absolute top-0 right-0 w-24 h-24 bg-white/5 rounded-full -translate-y-8 translate-x-8" />
+      <div className="absolute bottom-0 left-0 w-16 h-16 bg-white/5 rounded-full translate-y-6 -translate-x-6" />
+      <div className="flex items-center justify-between mb-3 relative z-10">
+        <div className="p-2 rounded-lg bg-white/20 backdrop-blur-sm">
           {icon}
         </div>
-        <span className="text-xs text-gray-500">{label}</span>
+        <span className="text-xs text-white/80 font-medium">{label}</span>
       </div>
-      <div className="text-2xl font-bold text-gray-900">{value}</div>
+      <div className="text-3xl font-bold relative z-10">{value}</div>
     </div>
   )
 }
 
 function Card({ children, className = '' }: { children: React.ReactNode; className?: string }) {
-  return <div className={`bg-white border border-gray-200 rounded-xl shadow-sm ${className}`}>{children}</div>
+  return <div className={`bg-white border border-indigo-200 rounded-xl shadow-sm ${className}`}>{children}</div>
 }
 
-function SectionLabel({ icon, children }: { icon: React.ReactNode; children: React.ReactNode }) {
+function ColorCard({ children, accent, className = '' }: { children: React.ReactNode; accent: string; className?: string }) {
   return (
-    <div className="flex items-center gap-2 text-sm font-semibold text-gray-900 mb-4">
+    <div className={`bg-white border border-indigo-200 rounded-xl shadow-sm overflow-hidden ${className}`}>
+      <div className="h-1 w-full" style={{ background: accent }} />
+      <div className="p-6">{children}</div>
+    </div>
+  )
+}
+
+function SectionLabel({ icon, children, accent }: { icon: React.ReactNode; children: React.ReactNode; accent?: string }) {
+  return (
+    <div className="flex items-center gap-2 text-sm font-semibold mb-4" style={{ color: accent || '#4F46E5' }}>
       {icon}{children}
     </div>
   )
@@ -39,19 +53,19 @@ function SectionLabel({ icon, children }: { icon: React.ReactNode; children: Rea
 function Skeleton() {
   return (
     <div className="animate-pulse space-y-3">
-      <div className="h-4 bg-gray-200 rounded w-3/4" />
-      <div className="h-8 bg-gray-200 rounded" />
-      <div className="h-8 bg-gray-200 rounded w-5/6" />
+      <div className="h-4 bg-indigo-100 rounded w-3/4" />
+      <div className="h-8 bg-indigo-100 rounded" />
+      <div className="h-8 bg-indigo-100 rounded w-5/6" />
     </div>
   )
 }
 
 function ErrorCard({ message, onRetry }: { message: string; onRetry: () => void }) {
   return (
-    <div className="bg-white border border-gray-200 rounded-xl p-8 text-center">
-      <AlertCircle className="h-10 w-10 text-[#EA4335] mx-auto mb-3" />
-      <p className="text-sm text-gray-500 mb-4">{message}</p>
-      <button onClick={onRetry} className="px-4 py-2 bg-[#6366F1] rounded-lg text-sm text-white hover:bg-[#5457E5] transition-colors">
+    <div className="bg-white border border-rose-200 rounded-xl p-8 text-center">
+      <AlertCircle className="h-10 w-10 text-rose-500 mx-auto mb-3" />
+      <p className="text-sm text-rose-600 mb-4">{message}</p>
+      <button onClick={onRetry} className="px-4 py-2 bg-indigo-500 rounded-lg text-sm text-white hover:bg-indigo-600 transition-colors">
         Retry
       </button>
     </div>
@@ -65,113 +79,159 @@ function fmt(n: number): string {
 }
 
 const tooltipStyle = {
-  contentStyle: { background: '#fff', border: '1px solid #E5E7EB', borderRadius: 8, fontSize: 12 },
-  labelStyle: { color: '#6B7280' },
-  itemStyle: { color: '#111827' },
+  contentStyle: { background: '#4C1D95', border: 'none', borderRadius: 8, fontSize: 12, color: '#EDE9FE' },
+  labelStyle: { color: '#C4B5FD' },
+  itemStyle: { color: '#EDE9FE' },
 }
 
-const COLORS = ['#4285F4', '#34A853', '#FBBC04', '#EA4335', '#6366F1', '#14B8A6', '#EC4899', '#F59E0B']
-const PIE_COLORS = ['#6366F1', '#14B8A6', '#F59E0B', '#EC4899', '#4285F4', '#34A853']
-
-function ChartCard({ title, icon, children }: { title: string; icon: React.ReactNode; children: React.ReactNode }) {
+function ChartCard({ title, icon, accent, children }: { title: string; icon: React.ReactNode; accent: string; children: React.ReactNode }) {
   return (
-    <Card className="p-6">
-      <SectionLabel icon={icon}>{title}</SectionLabel>
+    <ColorCard accent={accent}>
+      <SectionLabel icon={<span style={{ color: accent }}>{icon}</span>} accent={accent}>{title}</SectionLabel>
       <div className="h-72">{children}</div>
-    </Card>
+    </ColorCard>
   )
 }
 
-function BarListCard({ title, icon, data, valueLabel }: { title: string; icon: React.ReactNode; data: { name: string; value: number }[]; valueLabel: string }) {
+function BarListCard({ title, icon, data, valueLabel, accent }: { title: string; icon: React.ReactNode; data: { name: string; value: number }[]; valueLabel: string; accent: string }) {
   if (!data || data.length === 0) {
     return (
-      <Card className="p-6">
-        <SectionLabel icon={icon}>{title}</SectionLabel>
-        <div className="flex flex-col items-center justify-center h-48 text-sm text-gray-400">
-          <BarChart3 className="h-8 w-8 mb-2 text-gray-300" />
+      <ColorCard accent={accent}>
+        <SectionLabel icon={<span style={{ color: accent }}>{icon}</span>} accent={accent}>{title}</SectionLabel>
+        <div className="flex flex-col items-center justify-center h-48 text-sm" style={{ color: accent }}>
+          <BarChart3 className="h-8 w-8 mb-2 opacity-50" style={{ color: accent }} />
           <p>No data yet</p>
-          <p className="text-xs mt-1">Data appears as visitors browse your site</p>
+          <p className="text-xs mt-1 opacity-70">Data appears as visitors browse your site</p>
         </div>
-      </Card>
+      </ColorCard>
     )
   }
 
   return (
-    <Card className="p-6">
-      <SectionLabel icon={icon}>{title}</SectionLabel>
+    <ColorCard accent={accent}>
+      <SectionLabel icon={<span style={{ color: accent }}>{icon}</span>} accent={accent}>{title}</SectionLabel>
       <div className="h-72">
         <ResponsiveContainer width="100%" height="100%">
           <BarChart data={data} layout="vertical" margin={{ left: 10 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" horizontal={false} />
-            <XAxis type="number" tick={{ fill: '#8B9EC7', fontSize: 11 }} axisLine={false} tickLine={false} />
-            <YAxis type="category" dataKey="name" tick={{ fill: '#6B7280', fontSize: 11 }} axisLine={false} tickLine={false} width={130} />
+            <CartesianGrid strokeDasharray="3 3" stroke="#E0E7FF" horizontal={false} />
+            <XAxis type="number" tick={{ fill: accent, fontSize: 11 }} axisLine={false} tickLine={false} />
+            <YAxis type="category" dataKey="name" tick={{ fill: accent, fontSize: 11 }} axisLine={false} tickLine={false} width={130} />
             <Tooltip {...tooltipStyle} formatter={(v: any) => [v, valueLabel]} />
-            <Bar dataKey="value" radius={[0, 4, 4, 0]} barSize={20}>
+            <Bar dataKey="value" radius={[0, 6, 6, 0]} barSize={22}>
               {data.map((_, i) => (
-                <rect key={i} fill={COLORS[i % COLORS.length]} />
+                <Cell key={i} fill={WARM[i % WARM.length]} />
               ))}
             </Bar>
           </BarChart>
         </ResponsiveContainer>
       </div>
-    </Card>
+    </ColorCard>
   )
 }
 
-function DonutCard({ title, icon, data }: { title: string; icon: React.ReactNode; data: { name: string; value: number }[] }) {
+function RainbowAreaChart({ data }: { data: { date: string; views: number }[] | undefined }) {
   if (!data || data.length === 0) {
-    return null
+    return (
+      <div className="flex flex-col items-center justify-center h-full text-sm text-indigo-500">
+        <Activity className="h-8 w-8 mb-2 text-indigo-300" />
+        <p>No view data yet</p>
+      </div>
+    )
   }
+  return (
+    <ResponsiveContainer width="100%" height="100%">
+      <AreaChart data={data}>
+        <defs>
+          <linearGradient id="rainbowGrad" x1="0" y1="0" x2="1" y2="0">
+            <stop offset="0%" stopColor="#FF6B6B" stopOpacity={0.5} />
+            <stop offset="25%" stopColor="#FFD93D" stopOpacity={0.5} />
+            <stop offset="50%" stopColor="#6BCB77" stopOpacity={0.5} />
+            <stop offset="75%" stopColor="#45B7D1" stopOpacity={0.5} />
+            <stop offset="100%" stopColor="#A855F7" stopOpacity={0.5} />
+          </linearGradient>
+          <linearGradient id="rainbowLine" x1="0" y1="0" x2="1" y2="0">
+            <stop offset="0%" stopColor="#FF6B6B" />
+            <stop offset="25%" stopColor="#FFD93D" />
+            <stop offset="50%" stopColor="#6BCB77" />
+            <stop offset="75%" stopColor="#45B7D1" />
+            <stop offset="100%" stopColor="#A855F7" />
+          </linearGradient>
+        </defs>
+        <CartesianGrid strokeDasharray="3 3" stroke="#E0E7FF" />
+        <XAxis dataKey="date" tick={{ fill: '#6366F1', fontSize: 11 }} axisLine={false} tickLine={false} />
+        <YAxis tick={{ fill: '#6366F1', fontSize: 11 }} axisLine={false} tickLine={false} />
+        <Tooltip {...tooltipStyle} />
+        <Area type="monotone" dataKey="views" stroke="url(#rainbowLine)" fill="url(#rainbowGrad)" strokeWidth={2.5} />
+      </AreaChart>
+    </ResponsiveContainer>
+  )
+}
+
+function DonutCard({ title, icon, data, accent }: { title: string; icon: React.ReactNode; data: { name: string; value: number }[]; accent: string }) {
+  if (!data || data.length === 0) return null
 
   const total = data.reduce((s, d) => s + d.value, 0)
 
   return (
-    <Card className="p-6">
-      <SectionLabel icon={icon}>{title}</SectionLabel>
-      <div className="flex flex-col items-center">
-        <div className="h-44 w-44">
+    <ColorCard accent={accent} className="h-full">
+      <SectionLabel icon={<span style={{ color: accent }}>{icon}</span>} accent={accent}>{title}</SectionLabel>
+      <div className="flex flex-col items-center justify-center h-[calc(100%-2rem)]">
+        <div className="h-48 w-48">
           <ResponsiveContainer width="100%" height="100%">
             <PieChart>
+              <defs>
+                {data.map((_, i) => (
+                  <linearGradient key={i} id={`donutGrad${i}`} x1="0" y1="0" x2="1" y2="1">
+                    <stop offset="0%" stopColor={PIE_VIBRANT[i % PIE_VIBRANT.length]} stopOpacity={0.7} />
+                    <stop offset="100%" stopColor={PIE_VIBRANT[i % PIE_VIBRANT.length]} stopOpacity={1} />
+                  </linearGradient>
+                ))}
+              </defs>
               <Pie
                 data={data}
                 dataKey="value"
                 cx="50%" cy="50%"
-                innerRadius={50}
-                outerRadius={75}
-                paddingAngle={3}
-                stroke="none"
+                innerRadius={55}
+                outerRadius={90}
+                paddingAngle={4}
+                stroke="#fff"
+                strokeWidth={2.5}
               >
                 {data.map((_, i) => (
-                  <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />
+                  <Cell key={i} fill={`url(#donutGrad${i})`} />
                 ))}
               </Pie>
-              <Tooltip formatter={(v: any) => [`${v} (${Math.round((v / total) * 100)}%)`, '']} />
+              <Tooltip formatter={(v: any) => [`${v.toLocaleString()} (${Math.round((v / total) * 100)}%)`, '']} contentStyle={{ background: '#4C1D95', border: 'none', borderRadius: 8, color: '#EDE9FE' }} />
             </PieChart>
           </ResponsiveContainer>
         </div>
-        <div className="flex flex-wrap justify-center gap-3 mt-3">
+        <div className="flex flex-wrap justify-center gap-3 mt-4">
           {data.map((d, i) => (
-            <div key={d.name} className="flex items-center gap-1.5 text-xs">
-              <span className="h-2.5 w-2.5 rounded-full" style={{ background: PIE_COLORS[i % PIE_COLORS.length] }} />
-              <span className="text-gray-700">{d.name}</span>
-              <span className="text-gray-400">({Math.round((d.value / total) * 100)}%)</span>
+            <div key={d.name} className="flex items-center gap-2 text-sm">
+              <span className="h-3 w-3 rounded-full" style={{ background: PIE_VIBRANT[i % PIE_VIBRANT.length] }} />
+              <span className="font-medium" style={{ color: accent }}>{d.name}</span>
+              <span className="opacity-60" style={{ color: accent }}>{Math.round((d.value / total) * 100)}%</span>
             </div>
           ))}
         </div>
       </div>
-    </Card>
+    </ColorCard>
   )
 }
 
 function GaugeCard({ label, value, max }: { label: string; value: number; max: number }) {
   const pct = Math.min(value / max, 1)
-  const color = pct >= 0.9 ? '#34A853' : pct >= 0.5 ? '#FBBC04' : '#EA4335'
+  const grad = pct >= 0.9
+    ? 'linear-gradient(90deg, #43e97b, #38f9d7)'
+    : pct >= 0.5
+    ? 'linear-gradient(90deg, #fa709a, #fee140)'
+    : 'linear-gradient(90deg, #f5576c, #ff6b6b)'
   return (
-    <div className="bg-gray-50 rounded-lg p-4 text-center">
-      <div className="text-xs text-gray-500 mb-2">{label}</div>
-      <div className="text-xl font-bold" style={{ color }}>{value}</div>
-      <div className="mt-2 h-1.5 bg-gray-200 rounded-full overflow-hidden">
-        <div className="h-full rounded-full transition-all" style={{ width: `${pct * 100}%`, background: color }} />
+    <div className="rounded-xl p-4 text-center shadow-sm border border-indigo-100" style={{ background: '#EEF2FF' }}>
+      <div className="text-xs mb-2 font-semibold uppercase tracking-wider" style={{ color: '#4F46E5' }}>{label}</div>
+      <div className="text-2xl font-extrabold mb-1" style={{ background: grad, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>{value}</div>
+      <div className="mt-2 h-2.5 rounded-full overflow-hidden shadow-inner" style={{ background: '#C7D2FE' }}>
+        <div className="h-full rounded-full transition-all duration-700 ease-out" style={{ width: `${pct * 100}%`, background: grad }} />
       </div>
     </div>
   )
@@ -210,8 +270,12 @@ export default function AnalyticsPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Analytics</h1>
-          <p className="text-sm text-gray-500 mt-1">
+          <h1 className="text-2xl font-bold" style={{
+            background: 'linear-gradient(135deg, #667eea, #764ba2)',
+            WebkitBackgroundClip: 'text',
+            WebkitTextFillColor: 'transparent',
+          }}>Analytics</h1>
+          <p className="text-sm mt-1" style={{ color: '#6366F1' }}>
             Real-time site analytics from your database
             {lastFetch && <span className="ml-2">&middot; Updated {lastFetch}</span>}
           </p>
@@ -220,16 +284,16 @@ export default function AnalyticsPage() {
           {[7, 28, 90].map(d => (
             <button key={d} onClick={() => setDays(d)}
               style={{
-                padding: '5px 12px', borderRadius: 6, fontSize: 12, cursor: 'pointer',
-                background: days === d ? '#6366F1' : '#fff',
-                border: `1px solid ${days === d ? '#6366F1' : '#D1D5DB'}`,
-                color: days === d ? 'white' : '#6B7280',
+                padding: '5px 12px', borderRadius: 6, fontSize: 12, cursor: 'pointer', fontWeight: 500,
+                background: days === d ? '#6366F1' : '#EEF2FF',
+                border: `1px solid ${days === d ? '#6366F1' : '#A5B4FC'}`,
+                color: days === d ? 'white' : '#4F46E5',
               }}>
               {d}d
             </button>
           ))}
           <button onClick={fetchData} disabled={loading}
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-[#6366F1] rounded-lg text-xs text-white hover:bg-[#5457E5] disabled:opacity-50 transition-colors">
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-500 rounded-lg text-xs text-white hover:bg-indigo-600 disabled:opacity-50 transition-colors">
             <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} />
             {loading ? 'Loading...' : 'Refresh'}
           </button>
@@ -239,123 +303,123 @@ export default function AnalyticsPage() {
       {error && <ErrorCard message={error} onRetry={fetchData} />}
 
       {loading && !data ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           {[1,2,3,4,5,6].map(i => <Card key={i} className="p-5"><Skeleton /></Card>)}
         </div>
       ) : (
         <>
           {b && (
             <>
-              <SectionLabel icon={<Activity className="h-4 w-4 text-[#6366F1]" />}>
+              <SectionLabel icon={<Activity className="h-4 w-4" style={{ color: '#667eea' }} />} accent="#4F46E5">
                 Overview &mdash; last {days} days
               </SectionLabel>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                 <KpiCard label="Total Views" value={fmt(b.totalViews || 0)}
-                  icon={<Eye className="h-5 w-5" style={{ color: '#4285F4' }} />} color="#4285F4" />
+                  icon={<Eye className="h-5 w-5 text-white" />}
+                  gradient="linear-gradient(135deg, #667eea 0%, #764ba2 100%)" />
                 <KpiCard label="Published Posts" value={b.publishedPosts || 0}
-                  icon={<FileText className="h-5 w-5" style={{ color: '#34A853' }} />} color="#34A853" />
+                  icon={<FileText className="h-5 w-5 text-white" />}
+                  gradient="linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)" />
                 <KpiCard label="Draft Posts" value={b.draftPosts || 0}
-                  icon={<FileText className="h-5 w-5" style={{ color: '#FBBC04' }} />} color="#FBBC04" />
+                  icon={<FileText className="h-5 w-5 text-white" />}
+                  gradient="linear-gradient(135deg, #fa709a 0%, #fee140 100%)" />
                 <KpiCard label="Articles Today" value={b.todayArticles || 0}
-                  icon={<TrendingUp className="h-5 w-5" style={{ color: '#6366F1' }} />} color="#6366F1" />
+                  icon={<TrendingUp className="h-5 w-5 text-white" />}
+                  gradient="linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)" />
                 <KpiCard label="Feed Posts" value={fmt(b.totalFeedPosts || 0)}
-                  icon={<Rss className="h-5 w-5" style={{ color: '#EA4335' }} />} color="#EA4335" />
+                  icon={<Rss className="h-5 w-5 text-white" />}
+                  gradient="linear-gradient(135deg, #a18cd1 0%, #fbc2eb 100%)" />
                 <KpiCard label="Gemini Today" value={`${b.geminiToday || 0}/20`}
-                  icon={<Activity className="h-5 w-5" style={{ color: '#14B8A6' }} />} color="#14B8A6" />
+                  icon={<Activity className="h-5 w-5 text-white" />}
+                  gradient="linear-gradient(135deg, #f093fb 0%, #f5576c 100%)" />
               </div>
             </>
           )}
 
           {a && (
             <>
-              <SectionLabel icon={<BarChart3 className="h-4 w-4 text-[#6366F1]" />}>
+              <SectionLabel icon={<BarChart3 className="h-4 w-4" style={{ color: '#4facfe' }} />} accent="#4F46E5">
                 Page views &mdash; {a.totalPageViews.toLocaleString()} total
               </SectionLabel>
 
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <ChartCard title="Views over time" icon={<Activity className="h-4 w-4 text-[#6366F1]" />}>
-                  <ResponsiveContainer width="100%" height="100%">
-                    <AreaChart data={a.viewsOverTime}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
-                      <XAxis dataKey="date" tick={{ fill: '#8B9EC7', fontSize: 11 }} axisLine={false} tickLine={false} />
-                      <YAxis tick={{ fill: '#8B9EC7', fontSize: 11 }} axisLine={false} tickLine={false} />
-                      <Tooltip {...tooltipStyle} />
-                      <Area type="monotone" dataKey="views" stroke="#6366F1" fill="#6366F1" fillOpacity={0.15} strokeWidth={2} />
-                    </AreaChart>
-                  </ResponsiveContainer>
+                <ChartCard title="Views over time" icon={<Activity className="h-4 w-4" />} accent="#667eea">
+                  <RainbowAreaChart data={a.viewsOverTime} />
                 </ChartCard>
 
                 <DonutCard
                   title="Traffic sources"
-                  icon={<Globe className="h-4 w-4 text-[#6366F1]" />}
+                  icon={<Globe className="h-4 w-4" />}
                   data={a.trafficSourceDist}
+                  accent="#4ECDC4"
                 />
               </div>
 
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <BarListCard
                   title="Top pages"
-                  icon={<FileText className="h-4 w-4 text-[#6366F1]" />}
+                  icon={<FileText className="h-4 w-4" />}
                   data={a.topPages}
                   valueLabel="Views"
+                  accent="#FF6B6B"
                 />
                 <BarListCard
                   title="Top referrers"
-                  icon={<MousePointerClick className="h-4 w-4 text-[#6366F1]" />}
+                  icon={<MousePointerClick className="h-4 w-4" />}
                   data={a.topReferrers}
                   valueLabel="Visits"
+                  accent="#45B7D1"
                 />
               </div>
 
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <BarListCard
                   title="Top countries"
-                  icon={<Globe className="h-4 w-4 text-[#6366F1]" />}
+                  icon={<Globe className="h-4 w-4" />}
                   data={a.topCountries}
                   valueLabel="Visitors"
+                  accent="#48C774"
                 />
                 <DonutCard
                   title="Post status"
-                  icon={<PieIcon className="h-4 w-4 text-[#6366F1]" />}
+                  icon={<PieIcon className="h-4 w-4" />}
                   data={b?.postStatusDist}
+                  accent="#FFD93D"
                 />
               </div>
 
               <BarListCard
                 title="Most viewed posts"
-                icon={<Eye className="h-4 w-4 text-[#6366F1]" />}
+                icon={<Eye className="h-4 w-4" />}
                 data={(b?.topPosts || []).map((p: any) => ({ name: p.title.length > 40 ? p.title.slice(0, 37) + '...' : p.title, value: p.views }))}
                 valueLabel="Views"
+                accent="#A855F7"
               />
             </>
           )}
 
           {ps && (
-            <Card className="p-6">
-              <SectionLabel icon={<Zap className="h-4 w-4 text-[#6366F1]" />}>
+            <ColorCard accent="#FFD700">
+              <SectionLabel icon={<Zap className="h-4 w-4" style={{ color: '#FFD700' }} />} accent="#D97706">
                 PageSpeed Insights &middot; blizine.com
               </SectionLabel>
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
                 <GaugeCard label="Performance" value={ps.performance} max={100} />
                 <GaugeCard label="Accessibility" value={ps.accessibility} max={100} />
                 <GaugeCard label="SEO score" value={ps.seo} max={100} />
-                <div className="bg-gray-50 rounded-lg p-4 text-center">
-                  <div className="text-xs text-gray-500 mb-2">LCP</div>
-                  <div className="text-xl font-bold text-[#6366F1]">{ps.lcp}</div>
-                  <div className="text-xs mt-1 text-gray-400">Largest Contentful Paint</div>
+                <GaugeCard label="Best Practices" value={ps.bestPractices ?? 85} max={100} />
+                <div className="rounded-xl p-4 text-center shadow-sm border border-indigo-100" style={{ background: '#EEF2FF' }}>
+                  <div className="text-xs mb-2 font-semibold uppercase tracking-wider" style={{ color: '#4F46E5' }}>LCP</div>
+                  <div className="text-2xl font-extrabold mb-1" style={{ background: 'linear-gradient(90deg, #667eea, #764ba2)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>{ps.lcp}</div>
+                  <div className="text-xs mt-1" style={{ color: '#6366F1' }}>Largest Contentful Paint</div>
                 </div>
-                <div className="bg-gray-50 rounded-lg p-4 text-center">
-                  <div className="text-xs text-gray-500 mb-2">INP</div>
-                  <div className="text-xl font-bold text-[#6366F1]">{ps.inp}</div>
-                  <div className="text-xs mt-1 text-gray-400">Interaction to Next Paint</div>
-                </div>
-                <div className="bg-gray-50 rounded-lg p-4 text-center">
-                  <div className="text-xs text-gray-500 mb-2">CLS</div>
-                  <div className="text-xl font-bold text-[#6366F1]">{ps.cls}</div>
-                  <div className="text-xs mt-1 text-gray-400">Cumulative Layout Shift</div>
+                <div className="rounded-xl p-4 text-center shadow-sm border border-indigo-100" style={{ background: '#EEF2FF' }}>
+                  <div className="text-xs mb-2 font-semibold uppercase tracking-wider" style={{ color: '#4F46E5' }}>CLS</div>
+                  <div className="text-2xl font-extrabold mb-1" style={{ background: 'linear-gradient(90deg, #4ECDC4, #44A08D)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>{ps.cls}</div>
+                  <div className="text-xs mt-1" style={{ color: '#6366F1' }}>Cumulative Layout Shift</div>
                 </div>
               </div>
-            </Card>
+            </ColorCard>
           )}
         </>
       )}
