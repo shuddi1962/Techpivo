@@ -39,7 +39,7 @@ export default function AdminDashboard() {
       const [
         postsCount, postsViews, draftCount, rssFeeds,
         topPostsRes, dailyViewsRes, statusCounts,
-        regionRes, pageRes, referrerRes,
+        regionRes, pageRes, referrerRes, subsRes,
       ] = await Promise.all([
         supabase.from("posts").select("*", { count: "exact", head: true }).eq("status", "published"),
         supabase.from("posts").select("views"),
@@ -56,6 +56,7 @@ export default function AdminDashboard() {
         supabase.from("analytics_events").select("country").eq("event_type", "page_view").not("country", "is", null).limit(500),
         supabase.from("analytics_events").select("page_url").eq("event_type", "page_view").not("page_url", "is", null).limit(500),
         supabase.from("analytics_events").select("referrer").eq("event_type", "page_view").not("referrer", "is", null).limit(500),
+        supabase.from("subscribers").select("*", { count: "exact", head: true }).eq("status", "active"),
       ])
 
       const totalV = (postsViews.data || []).reduce((s: number, p: any) => s + (p.views || 0), 0)
@@ -67,7 +68,8 @@ export default function AdminDashboard() {
         const updated = [...prev]
         updated[0] = { ...updated[0], value: postsCount.count || 0, change: `+${(postsCount.count || 0) - (prev[0].value || 0)}` }
         updated[1] = { ...updated[1], value: totalV, change: viewDiff >= 0 ? `+${viewDiff}` : `${viewDiff}` }
-        updated[2] = { ...updated[2], value: rssFeeds.data?.length || 0 }
+        updated[2] = { ...updated[2], value: rssFeeds.data?.length || 0, change: `+${(rssFeeds.data?.length || 0) - (prev[2].value || 0)}` }
+        updated[3] = { ...updated[3], value: subsRes.count || 0, change: `+${(subsRes.count || 0) - (prev[3].value || 0)}` }
         return updated
       })
 
