@@ -248,7 +248,7 @@ export default function AnalyticsPage() {
     setLoading(true)
     setError('')
     try {
-      const res = await fetch(`/api/admin/analytics?days=${days}`)
+      const res = await fetch(`/api/admin/analytics?days=${days}&_t=${Date.now()}`)
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
       const json = await res.json()
       setData(json)

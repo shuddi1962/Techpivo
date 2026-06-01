@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 
+export const dynamic = 'force-dynamic'
+
 async function fetchPageSpeed() {
   const key = process.env.PAGESPEED_API_KEY
   if (!key) return null
