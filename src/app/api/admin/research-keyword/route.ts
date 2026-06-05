@@ -86,11 +86,11 @@ export async function POST(request: Request) {
     const article = await manualWriteFromTopic(trimmed)
     if (!article) {
       const capCheck = await getGeminiQuotaStatus()
-      const capMsg = capCheck.canUseGemini
-        ? "Gemini API key has remaining quota — call may have failed due to content safety or timeout"
-        : `Gemini daily cap reached (${capCheck.used}/${capCheck.cap})`
+      const capMsg = capCheck.canUseManualGemini
+        ? `Gemini API key has quota (${capCheck.manualUsed}/${capCheck.manualCap} manual, ${capCheck.used}/${capCheck.cap} total) — call may have failed due to content safety, validation, or timeout. Check server logs.`
+        : `Manual Gemini limit reached (${capCheck.manualUsed}/${capCheck.manualCap}). Resets at ${capCheck.resetsAt}.`
       return NextResponse.json(
-        { error: `Gemini research failed. ${capMsg}.`, cap: capCheck },
+        { error: `Gemini research failed. ${capMsg}`, cap: capCheck },
         { status: 500 }
       )
     }

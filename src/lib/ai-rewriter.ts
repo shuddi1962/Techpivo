@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/admin'
 
 const GEMINI_DAILY_CAP = 30
+const MANUAL_GEMINI_DAILY_CAP = 20
 const GEMINI_RATE_MS = 1000
 
 export interface BlizineArticle {
@@ -255,17 +256,22 @@ function validate(raw: string, model: BlizineArticle['modelUsed']): BlizineArtic
 
 // ── GEMINI DAILY CAP ──────────────────────────────────────────────────────
 
-async function getGeminiTodayCount(): Promise<number> {
+async function getGeminiTodayCount(usedFor?: string): Promise<number> {
   try {
     const supabase = createClient()
     const todayStart = new Date()
     todayStart.setUTCHours(0, 0, 0, 0)
 
-    const { count } = await supabase
+    let query = supabase
       .from('gemini_usage_log')
       .select('*', { count: 'exact', head: true })
       .gte('created_at', todayStart.toISOString())
 
+    if (usedFor) {
+      query = query.eq('used_for', usedFor)
+    }
+
+    const { count } = await query
     return count || 0
   } catch {
     console.warn('[Blizine AI] Could not check Gemini usage count — defaulting to cap reached')
@@ -293,16 +299,19 @@ let lastGeminiCallTime = 0
 
 async function geminiGrounded(
   prompt:  string,
-  usedFor: string
+  usedFor: string,
+  dailyCap?: number
 ): Promise<{ article: BlizineArticle | null; debug: string }> {
   if (!process.env.GEMINI_API_KEY) {
     console.log('[Blizine AI] No GEMINI_API_KEY set')
     return { article: null, debug: 'no_key' }
   }
 
-  const todayCount = await getGeminiTodayCount()
-  if (todayCount >= GEMINI_DAILY_CAP) {
-    console.log(`[Blizine AI] Gemini daily cap reached (${todayCount}/${GEMINI_DAILY_CAP}) — skipping`)
+  const cap = dailyCap ?? GEMINI_DAILY_CAP
+  const usedForFilter = dailyCap ? usedFor : undefined
+  const todayCount = await getGeminiTodayCount(usedForFilter)
+  if (todayCount >= cap) {
+    console.log(`[Blizine AI] Gemini ${usedFor} cap reached (${todayCount}/${cap}) — skipping`)
     return { article: null, debug: 'cap_reached' }
   }
 
@@ -354,7 +363,7 @@ async function geminiGrounded(
 
       if (article) {
         await logGeminiUsage(article.headline, usedFor)
-        console.log(`[✓ Gemini+Search ${todayCount + 1}/${GEMINI_DAILY_CAP}] ${article.headline.slice(0, 60)}`)
+        console.log(`[✓ Gemini+Search ${todayCount + 1}/${cap}] ${article.headline.slice(0, 60)} (${usedFor})`)
         return { article, debug: 'ok' }
       }
 
@@ -397,11 +406,17 @@ export async function getGeminiQuotaStatus(): Promise<{
   used:         number
   cap:          number
   remaining:    number
+  manualUsed:   number
+  manualCap:    number
+  manualRemaining: number
   resetsAt:     string
   canUseGemini: boolean
+  canUseManualGemini: boolean
 }> {
-  const used      = await getGeminiTodayCount()
-  const remaining = Math.max(0, GEMINI_DAILY_CAP - used)
+  const used          = await getGeminiTodayCount()
+  const manualUsed    = await getGeminiTodayCount('manual')
+  const remaining     = Math.max(0, GEMINI_DAILY_CAP - used)
+  const manualRemaining = Math.max(0, MANUAL_GEMINI_DAILY_CAP - manualUsed)
   const tomorrow  = new Date()
   tomorrow.setUTCDate(tomorrow.getUTCDate() + 1)
   tomorrow.setUTCHours(0, 0, 0, 0)
@@ -410,8 +425,12 @@ export async function getGeminiQuotaStatus(): Promise<{
     used,
     cap:          GEMINI_DAILY_CAP,
     remaining,
+    manualUsed,
+    manualCap:    MANUAL_GEMINI_DAILY_CAP,
+    manualRemaining,
     resetsAt:     tomorrow.toUTCString(),
     canUseGemini: remaining > 0,
+    canUseManualGemini: manualRemaining > 0,
   }
 }
 
@@ -495,7 +514,7 @@ export async function manualWriteFromTopic(topic: string): Promise<BlizineArticl
   console.log(`[Blizine Manual] Writing from topic: ${topic.slice(0, 60)}`)
 
   const prompt = buildBlizinePrompt(topic, "topic")
-  const { article } = await geminiGrounded(prompt, 'manual')
+  const { article } = await geminiGrounded(prompt, 'manual', MANUAL_GEMINI_DAILY_CAP)
   if (article) {
     console.log(`[✓ Gemini+Search] ${article.headline.slice(0, 55)}`)
     return article
@@ -545,7 +564,7 @@ export async function manualWriteFromUrl(url: string): Promise<BlizineArticle | 
   const inputType = sourceContent.length > 200 ? "content" : "url"
 
   const prompt = buildBlizinePrompt(input, inputType, sourceName)
-  const { article } = await geminiGrounded(prompt, 'manual')
+  const { article } = await geminiGrounded(prompt, 'manual', MANUAL_GEMINI_DAILY_CAP)
   if (article) {
     console.log(`[✓ Gemini+Search] ${article.headline.slice(0, 55)}`)
     return article
