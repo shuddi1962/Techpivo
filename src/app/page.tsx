@@ -12,7 +12,7 @@ import { NewsletterStrip } from "@/components/home/NewsletterStrip"
 import { Sidebar } from "@/components/layout/Sidebar"
 import { Footer } from "@/components/layout/Footer"
 
-export const revalidate = 300
+export const revalidate = 60
 
 export default async function HomePage() {
   let supabase: ReturnType<typeof createClient> | null = null
@@ -40,15 +40,24 @@ export default async function HomePage() {
 
   if (supabase) {
     try {
+      const shuffle = <T>(arr: T[]): T[] => {
+        const a = [...arr]
+        for (let i = a.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [a[i], a[j]] = [a[j], a[i]]
+        }
+        return a
+      }
+
       const results = await Promise.allSettled([
         supabase.from("posts").select("*, categories(name,slug,color)")
           .eq("status", "published")
           .not("featured_image", "is", null)
-          .order("published_at", { ascending: false }).limit(6),
+          .order("published_at", { ascending: false }).limit(30),
 
         supabase.from("posts").select("*, categories(name,slug,color)")
           .eq("status", "published")
-          .order("published_at", { ascending: false }).range(3, 12),
+          .order("published_at", { ascending: false }).limit(30),
 
         supabase.from("posts").select("title,slug")
           .eq("status", "published")
@@ -69,27 +78,27 @@ export default async function HomePage() {
         supabase.from("posts").select("*, categories!inner(name,slug,color)")
           .eq("status", "published").eq("categories.slug", "ai-automation")
           .not("featured_image", "is", null)
-          .order("published_at", { ascending: false }).limit(4),
+          .order("published_at", { ascending: false }).limit(10),
 
         supabase.from("posts").select("*, categories!inner(name,slug,color)")
           .eq("status", "published").eq("categories.slug", "cybersecurity")
           .not("featured_image", "is", null)
-          .order("published_at", { ascending: false }).limit(4),
+          .order("published_at", { ascending: false }).limit(10),
 
         supabase.from("posts").select("*, categories!inner(name,slug,color)")
           .eq("status", "published").eq("categories.slug", "gadgets")
           .not("featured_image", "is", null)
-          .order("published_at", { ascending: false }).limit(4),
+          .order("published_at", { ascending: false }).limit(10),
 
         supabase.from("posts").select("*, categories!inner(name,slug,color)")
           .eq("status", "published").eq("categories.slug", "tech-news")
           .not("featured_image", "is", null)
-          .order("published_at", { ascending: false }).limit(4),
+          .order("published_at", { ascending: false }).limit(10),
 
         supabase.from("posts").select("*, categories!inner(name,slug,color)")
           .eq("status", "published").eq("categories.slug", "desktops")
           .not("featured_image", "is", null)
-          .order("published_at", { ascending: false }).limit(4),
+          .order("published_at", { ascending: false }).limit(10),
 
         supabase.from("subcategories").select("*, categories(name,slug,color)")
           .order("name"),
@@ -101,17 +110,25 @@ export default async function HomePage() {
       const extract = (r: any, i: number) =>
         results[i]?.status === "fulfilled" ? results[i].value.data : null
 
-      heroPosts = extract(results[0], 0)
-      latestPosts = extract(results[1], 1)
+      const allRecent = extract(results[0], 0) || []
+      const shuffled = shuffle(allRecent)
+      heroPosts = shuffled.slice(0, 6)
+
+      const allLatest = extract(results[1], 1) || []
+      const shuffledLatest = shuffle(allLatest)
+      latestPosts = shuffledLatest.slice(0, 10)
       tickerPosts = extract(results[2], 2)
       trendingPosts = extract(results[3], 3)
       popularPosts = extract(results[4], 4)
       categories = extract(results[5], 5)
-      aiPosts = extract(results[6], 6)
-      cyberPosts = extract(results[7], 7)
-      gadgetPosts = extract(results[8], 8)
-      techNewsPosts = extract(results[9], 9)
-      desktopPosts = extract(results[10], 10)
+
+      const shuffleCat = (data: any[]) => shuffle(data || []).slice(0, 4)
+      aiPosts = shuffleCat(extract(results[6], 6))
+      cyberPosts = shuffleCat(extract(results[7], 7))
+      gadgetPosts = shuffleCat(extract(results[8], 8))
+      techNewsPosts = shuffleCat(extract(results[9], 9))
+      desktopPosts = shuffleCat(extract(results[10], 10))
+
       subcategories = extract(results[11], 11)
       allTags = extract(results[12], 12)
     } catch (e) {

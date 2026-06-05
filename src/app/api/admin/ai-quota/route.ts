@@ -17,18 +17,20 @@ export async function GET() {
   const tomorrow = new Date(todayStart)
   tomorrow.setUTCDate(tomorrow.getUTCDate() + 1)
 
+  const GEMINI_CAP = 150
+
   return NextResponse.json({
     gemini: {
       used:      geminiUsed,
-      cap:       20,
-      remaining: Math.max(0, 20 - geminiUsed),
+      cap:       GEMINI_CAP,
+      remaining: Math.max(0, GEMINI_CAP - geminiUsed),
       resetsAt:  tomorrow.toISOString(),
       note:      'Gemini 2.5 Flash + Google Search Grounding. No fallback model.',
     },
     total: {
       today: totalToday,
-      cap:   20,
-      note:  '20 articles/day — Gemini grounded only',
+      cap:   GEMINI_CAP,
+      note:  '150 articles/day — Gemini grounded only',
     },
   })
 }
