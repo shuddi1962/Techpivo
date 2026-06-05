@@ -88,13 +88,11 @@ export default function AdminKeywordsPage() {
 
     debounceRef.current = setTimeout(async () => {
       try {
-        const res = await fetch(
-          `https://suggestqueries.google.com/complete/search?client=firefox&q=${encodeURIComponent(query)}`
-        )
+        const res = await fetch(`/api/google-autocomplete?q=${encodeURIComponent(query)}`)
         if (!res.ok) return
         const data = await res.json()
-        if (Array.isArray(data?.[1])) {
-          setSuggestions(data[1].map((s: any) => typeof s === "string" ? s : s[0]).filter(Boolean))
+        if (data.suggestions?.length) {
+          setSuggestions(data.suggestions)
           setShowSuggestions(true)
         }
       } catch {}
@@ -142,9 +140,7 @@ export default function AdminKeywordsPage() {
   const writePending = async () => {
     setWriting(true)
     try {
-      const res = await fetch("/api/cron/write-keyword-article", {
-        headers: { Authorization: `Bearer ${process.env.NEXT_PUBLIC_CRON_SECRET || ""}` },
-      })
+      const res = await fetch("/api/admin/trigger-keyword-write")
       const data = await res.json()
       alert(data.error ? `Error: ${data.error}` : `Written: ${data.written || 0}/${data.processed || 0}`)
       fetchData()

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/admin"
-import { manualWriteFromTopic } from "@/lib/ai-rewriter"
+import { manualWriteFromTopic, getGeminiQuotaStatus } from "@/lib/ai-rewriter"
 
 export const dynamic = "force-dynamic"
 export const maxDuration = 300
@@ -85,8 +85,12 @@ export async function POST(request: Request) {
 
     const article = await manualWriteFromTopic(trimmed)
     if (!article) {
+      const capCheck = await getGeminiQuotaStatus()
+      const capMsg = capCheck.canUseGemini
+        ? "Gemini API key has remaining quota — call may have failed due to content safety or timeout"
+        : `Gemini daily cap reached (${capCheck.used}/${capCheck.cap})`
       return NextResponse.json(
-        { error: "Gemini grounded research failed — check Gemini API key or daily cap" },
+        { error: `Gemini research failed. ${capMsg}.`, cap: capCheck },
         { status: 500 }
       )
     }
