@@ -236,7 +236,19 @@ function validate(raw: string, model: BlizineArticle['modelUsed']): { article: B
     .trim()
 
   if (content.length < 100) { return { article: null, reason: `content_too_short:${content.length}` } }
-  if (!content.includes('<h2')) { return { article: null, reason: 'no_h2_in_content' } }
+
+  // Auto-fix missing <h2>: wrap orphan bold/lone lines as headings
+  if (!content.includes('<h2')) {
+    content = content
+      // **text** at start of line → <h2>text</h2>
+      .replace(/^\s*\*\*(.+?)\*\*/gm, '<h2>$1</h2>')
+      // <strong>text</strong> at start of line → <h2>text</h2>
+      .replace(/^\s*<strong>(.+?)<\/strong>/gim, '<h2>$1</h2>')
+    // If still no <h2>, prepend a generic one
+    if (!content.includes('<h2')) {
+      content = '<h2>Overview</h2>\n' + content
+    }
+  }
 
   // Soft banned phrases: strip from content instead of rejecting
   const headline = String(p.headline).trim()
@@ -508,17 +520,18 @@ INSTRUCTIONS:
 1. Research this topic thoroughly using Google Search — find latest facts, quotes, context
 2. Write a complete, factual, engaging tech article
 3. Write a compelling NEW headline
-4. Write exactly 6 paragraphs totalling 600-800 words
+4. Write 6-8 paragraphs totalling 700-900 words
 5. Use inverted pyramid: most important facts first
 6. Include real names, dates, numbers, and quotes from your research
 7. Explain WHY this story matters to tech readers
-8. Include a "What This Means" analysis paragraph
-9. End with a forward-looking "What's Next" paragraph
-10. Format content as HTML: use <p> tags for paragraphs, <h3> for subheadings, <strong> for key terms
+8. Include a "What This Means" analysis section
+9. End with a forward-looking "What's Next" section
+10. Format content as HTML: use <p> for paragraphs, <h2> for section headings, <strong> for key terms
 11. Do NOT mention Blizine in the article body
 12. Do NOT write "In conclusion" or "To summarize"
 13. Do NOT use phrases like "In today's fast-paced tech world"
 14. Be specific — avoid vague generalisations
+15. You MUST include at least one <h2> heading in the content field
 
 KEY POINTS (separate JSON field):
 - 3 to 5 short strings, each under 25 words, one verified fact each
@@ -528,6 +541,8 @@ QUICK BRIEF (separate JSON field — 3 bullets shown above article):
 
 FAQ (3 questions):
 - Real questions readers would search on Google, answered from article facts only
+- Each question must be longer than 5 characters
+- Each answer must be longer than 10 characters
 
 SUGGESTED CATEGORY — pick exactly one:
 tech-news | ai-automation | cybersecurity | gadgets | programming |
@@ -536,7 +551,7 @@ web-development | tutorials | digital-business | networking-it | reviews | deskt
 Return ONLY valid JSON — no markdown, no code blocks, no explanation:
 {
   "headline": "Compelling headline here",
-  "content": "<p>Para 1</p><h3>Subheading</h3><p>Para 2</p><p>Para 3</p><h3>What This Means</h3><p>Para 4</p><h3>What's Next</h3><p>Para 5</p><h3>Key Points</h3><ul><li>Fact 1</li><li>Fact 2</li><li>Fact 3</li></ul><h3>The Bottom Line</h3><p>Para 6</p>",
+  "content": "<p>Lead paragraph summarizing key news.</p><h2>Key Developments</h2><p>Detailed facts, quotes, context.</p><p>More analysis.</p><h2>What This Means</h2><p>Why it matters to tech readers.</p><h2>What's Next</h2><p>Forward-looking takeaway.</p><h2>Key Points</h2><ul><li>Fact 1</li><li>Fact 2</li><li>Fact 3</li></ul><h2>The Bottom Line</h2><p>Final summary sentence.</p>",
   "seoTitle": "60 char max SEO title",
   "seoDescription": "155 char max meta description with focus keyword",
   "seoKeywords": ["keyword1", "keyword2", "keyword3", "keyword4", "keyword5"],
