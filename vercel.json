@@ -6,5 +6,15 @@
   "github": {
     "silent": true,
     "autoJobCancelation": true
-  }
+  },
+  "crons": [
+    {
+      "path": "/api/cron/fetch-trending-keywords",
+      "schedule": "45 3 * * *"
+    },
+    {
+      "path": "/api/cron/write-keyword-article",
+      "schedule": "15 4 * * *"
+    }
+  ]
 }

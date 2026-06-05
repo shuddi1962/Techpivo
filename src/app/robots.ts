@@ -9,6 +9,26 @@ export default function robots(): MetadataRoute.Robots {
         allow: "/",
         disallow: ["/admin", "/search", "/api/", "/preview/"],
       },
+      {
+        userAgent: "GPTBot",
+        allow: "/",
+        disallow: ["/admin", "/search", "/api/", "/preview/"],
+      },
+      {
+        userAgent: "PerplexityBot",
+        allow: "/",
+        disallow: ["/admin", "/search", "/api/", "/preview/"],
+      },
+      {
+        userAgent: "ClaudeBot",
+        allow: "/",
+        disallow: ["/admin", "/search", "/api/", "/preview/"],
+      },
+      {
+        userAgent: "Google-Extended",
+        allow: "/",
+        disallow: ["/admin", "/search", "/api/", "/preview/"],
+      },
     ],
     sitemap: `${SITE_URL}/sitemap.xml`,
   }

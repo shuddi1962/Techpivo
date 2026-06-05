@@ -82,10 +82,29 @@ export default async function PostPage({ params }: Props) {
   const allTags = tagsRes.data || []
   const sidebarTags = Array.from(new Set(allTags.flatMap((p: any) => p.seo_keywords || []))).slice(0, 20) as string[]
 
+  const breadcrumbJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: [
+      { "@type": "ListItem", position: 1, name: "Home", item: SITE_URL },
+      {
+        "@type": "ListItem",
+        position: 2,
+        name: (post as any).category?.name || "Tech",
+        item: `${SITE_URL}/category/${(post as any).category?.slug || "tech-news"}`,
+      },
+      { "@type": "ListItem", position: 3, name: post.title, item: `${SITE_URL}/${post.slug}` },
+    ],
+  }
+
   return (
     <>
       <ReadingProgress />
       <ViewTracker postId={post.id} />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }}
+      />
 
       <article className="container py-8">
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-10">
@@ -202,6 +221,14 @@ export default async function PostPage({ params }: Props) {
                     </div>
                   ))}
                 </div>
+              </div>
+            )}
+
+            {/* Answer Capsule */}
+            {(post as any).answer_capsule && (
+              <div className="answer-capsule">
+                <div className="answer-capsule-label">Direct Answer</div>
+                <p className="answer-capsule-text">{(post as any).answer_capsule}</p>
               </div>
             )}
 
