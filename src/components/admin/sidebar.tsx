@@ -7,7 +7,7 @@ import {
   LayoutDashboard, FileText, FolderTree, Rss, Image,
   DollarSign, ShoppingBag, BarChart3, SearchCheck,
   Globe, Settings, Users, MessageSquare, Mail,
-  Bell, Lightbulb, Share2, Shield, Mic
+  Bell, Lightbulb, Share2, Shield, Mic, Search
 } from "lucide-react"
 
 const links = [
@@ -15,6 +15,7 @@ const links = [
   { href: "/admin/posts", label: "Posts", icon: FileText },
   { href: "/admin/categories", label: "Categories", icon: FolderTree },
   { href: "/admin/rss-feeds", label: "RSS Feeds", icon: Rss },
+  { href: "/admin/keywords", label: "Keywords", icon: Search },
   { href: "/admin/media", label: "Media", icon: Image },
   { href: "/admin/ads", label: "Ads", icon: DollarSign },
   { href: "/admin/affiliate", label: "Affiliate", icon: ShoppingBag },
