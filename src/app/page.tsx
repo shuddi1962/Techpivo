@@ -119,9 +119,7 @@ export default async function HomePage() {
     }
   }
 
-  const hasContent = heroPosts && heroPosts.length > 0
-
-  if (!hasContent) {
+  if (!heroPosts || heroPosts.length === 0) {
     return (
       <div>
         <TopBar />
@@ -147,8 +145,8 @@ export default async function HomePage() {
 
   const cats = (categories || []).map((cat: any) => ({ ...cat }))
 
-  const featuredPost = heroPosts[0] || null
-  const heroSecondary = heroPosts.slice(1, 5)
+  const featuredPost = (heroPosts || [])[0] || null
+  const heroSecondary = (heroPosts || []).slice(1, 5)
 
   const subcatsByCat: Record<string, any[]> = {}
   for (const sub of (subcategories || [])) {
