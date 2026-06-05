@@ -2,6 +2,9 @@ import { createServerClient } from "@supabase/ssr"
 import { NextResponse, type NextRequest } from "next/server"
 
 export async function middleware(request: NextRequest) {
+  if (request.nextUrl.pathname.startsWith("/cgi-sys")) {
+    return new NextResponse("Gone", { status: 410 })
+  }
   const response = NextResponse.next({ request })
 
   const supabase = createServerClient(
@@ -55,5 +58,5 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/admin/:path*"],
+  matcher: ["/admin/:path*", "/cgi-sys/:path*"],
 }
