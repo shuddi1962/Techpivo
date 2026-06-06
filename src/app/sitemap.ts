@@ -19,10 +19,25 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const series = seriesRes.data || []
   const kwArticles = kwArticlesRes.data || []
 
-  const entries: MetadataRoute.Sitemap = [
-    { url: SITE_URL, changeFrequency: "hourly", priority: 1 },
-    { url: `${SITE_URL}/write-for-us`, changeFrequency: "monthly", priority: 0.5 },
+  const staticPages: { path: string; priority: number; freq: "hourly" | "daily" | "weekly" | "monthly" }[] = [
+    { path: "", priority: 1, freq: "hourly" },
+    { path: "/about", priority: 0.5, freq: "monthly" },
+    { path: "/contact", priority: 0.3, freq: "monthly" },
+    { path: "/privacy-policy", priority: 0.3, freq: "monthly" },
+    { path: "/terms-of-use", priority: 0.3, freq: "monthly" },
+    { path: "/cookies-policy", priority: 0.3, freq: "monthly" },
+    { path: "/disclaimer", priority: 0.3, freq: "monthly" },
+    { path: "/advertise", priority: 0.4, freq: "monthly" },
+    { path: "/write-for-us", priority: 0.5, freq: "monthly" },
+    { path: "/newsletter", priority: 0.4, freq: "weekly" },
+    { path: "/subscribe", priority: 0.4, freq: "weekly" },
   ]
+
+  const entries: MetadataRoute.Sitemap = staticPages.map(p => ({
+    url: `${SITE_URL}${p.path}`,
+    changeFrequency: p.freq,
+    priority: p.priority,
+  }))
 
   for (const post of posts) {
     entries.push({
