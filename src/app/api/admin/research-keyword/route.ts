@@ -157,6 +157,41 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: insertError.message }, { status: 500 })
     }
 
+    const { error: postError } = await supabase.from("posts").insert({
+      slug,
+      title: article.headline,
+      content: finalContent,
+      excerpt: article.seoDescription || article.content.replace(/<[^>]+>/g, "").slice(0, 200),
+      featured_image: image,
+      category_id: categoryId,
+      author_id: authorId,
+      status: "published",
+      published_at: new Date().toISOString(),
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      seo_title: article.seoTitle,
+      seo_description: article.seoDescription,
+      seo_keywords: article.seoKeywords,
+      tags: article.tags,
+      quick_brief: article.quickBrief,
+      key_points: article.keyPoints,
+      faq: article.faq,
+      blizine_score: article.blizineScore,
+      is_breaking: article.isBreaking,
+      is_editors_pick: false,
+      is_featured: false,
+      reading_time: Math.max(1, Math.round((finalContent.split(" ").length || 100) / 200)),
+      focus_keyword: trimmed,
+      model_used: article.modelUsed,
+      source_name: "manual-research",
+      ai_rewritten: true,
+      views: 0,
+    })
+
+    if (postError) {
+      return NextResponse.json({ error: `Post insert failed: ${postError.message}` }, { status: 500 })
+    }
+
     return NextResponse.json({
       success: true,
       slug,
