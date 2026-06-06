@@ -36,7 +36,7 @@ async function fetchBlizineStats(supabase: any) {
     supabase.from('posts').select('id', { count: 'exact', head: true }).eq('status', 'draft'),
     supabase.from('posts').select('id', { count: 'exact', head: true }).eq('status', 'scheduled'),
     supabase.from('posts').select('id', { count: 'exact', head: true }).eq('status', 'archived'),
-    supabase.from('posts').select('id', { count: 'exact', head: true }).eq('status', 'published').not('source_name', 'is', null).or(`published_at.gte.${today}T00:00:00Z,and(published_at.is.null,created_at.gte.${today}T00:00:00Z)`),
+    supabase.from('posts').select('id', { count: 'exact', head: true }).eq('status', 'published').not('source_url', 'is', null).or(`published_at.gte.${today}T00:00:00Z,and(published_at.is.null,created_at.gte.${today}T00:00:00Z)`),
     supabase.from('posts').select('id', { count: 'exact', head: true }).eq('status', 'published').or(`published_at.gte.${today}T00:00:00Z,and(published_at.is.null,created_at.gte.${today}T00:00:00Z)`),
     supabase.from('rss_feeds').select('posts_fetched').not('posts_fetched', 'is', null),
     supabase.from('posts').select('id', { count: 'exact', head: true }).eq('status', 'published').not('model_used', 'is', null).or(`published_at.gte.${today}T00:00:00Z,and(published_at.is.null,created_at.gte.${today}T00:00:00Z)`),

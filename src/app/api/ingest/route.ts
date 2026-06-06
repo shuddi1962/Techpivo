@@ -340,185 +340,130 @@ async function run(req: NextRequest) {
   const runUrls         = new Set<string>()
   const log: string[]   = []
 
+  // ── Phase 1: parse feeds, dedup, collect candidates ────────────────────
+  const candidates: Array<{
+    item: RawItem; feed: typeof orderedFeeds[number]; categoryId: string
+    itemNorm: string; fp: string | null; sourceText: string
+  }> = []
+
   let feedIdx = 0
   for (const feed of orderedFeeds) {
     feedIdx++
     if (feedLimit && feedIdx > feedLimit) break
-
-    if (ingested >= canPublish) {
-      log.push(`[CAP] Reached ${dailyCap}/day limit, stopping`)
+    if (candidates.length >= canPublish) {
+      log.push(`[CAP] Collected ${candidates.length} candidates, stopping collection`)
       break
     }
-
     if (isOutOfTime()) {
-      log.push(`[TIME] Deadline approaching, waiting for next run`)
+      log.push(`[TIME] Deadline approaching during collection`)
       break
     }
 
     const items = await parseFeed(feed.url)
-    if (!items.length) {
-      log.push(`[EMPTY] ${feed.name}`)
-      continue
-    }
+    if (!items.length) { log.push(`[EMPTY] ${feed.name}`); continue }
 
     const perFeed = Math.min(ITEMS_PER_FEED, Math.max(1, Math.ceil(canPublish / orderedFeeds.length)))
-    for (const item of items.slice(0, perFeed)) {
 
-      if (ingested >= canPublish) break
+    for (const item of items.slice(0, perFeed)) {
+      if (candidates.length >= canPublish) break
       if (!item.title || item.title.length < 10) { skipped++; continue }
       if (!item.link.startsWith('http'))          { skipped++; continue }
 
-      if (seenUrls.has(item.link) || runUrls.has(item.link)) {
-        skipped++
-        continue
-      }
+      if (seenUrls.has(item.link) || runUrls.has(item.link)) { skipped++; continue }
 
       const fp = fingerprint(item.title, item.pubDate)
       if (fp && (seenFingerprints.has(fp) || runFingerprints.has(fp))) {
-        skipped++
-        log.push(`[DUPE fp] ${item.title.slice(0,50)}`)
-        continue
+        skipped++; log.push(`[DUPE fp] ${item.title.slice(0,50)}`); continue
       }
 
-      // Cross-feed title similarity check
       const itemNorm = item.title.toLowerCase().replace(/[^a-z0-9\s]/g, '').replace(/\s+/g, ' ').trim()
       if (itemNorm.length > 15) {
-        let isDupTitle = false
+        let isDup = false
         for (const existingNorm of Array.from(seenTitles.keys())) {
           if (itemNorm === existingNorm || itemNorm.includes(existingNorm) || existingNorm.includes(itemNorm)) {
-            isDupTitle = true
-            break
+            isDup = true; break
           }
         }
-        if (isDupTitle) {
-          skipped++
-          log.push(`[DUPE title] ${item.title.slice(0,50)}`)
-          continue
-        }
+        if (isDup) { skipped++; log.push(`[DUPE title] ${item.title.slice(0,50)}`); continue }
       }
 
       let sourceText = item.content.length > 80 ? item.content : item.description
       if (!sourceText || sourceText.length < 30) {
         const fetched = await fetchArticleContent(item.link)
         if (fetched && fetched.length >= 80) {
-          sourceText = fetched
-          log.push(`[FETCHED] ${item.title.slice(0,50)}`)
-        } else {
-          skipped++
-          log.push(`[THIN] ${item.title.slice(0,50)}`)
-          continue
-        }
+          sourceText = fetched; log.push(`[FETCHED] ${item.title.slice(0,50)}`)
+        } else { skipped++; log.push(`[THIN] ${item.title.slice(0,50)}`); continue }
+      }
+
+      const categoryId = autoCategory(item.title, feed.category, catMap)
+      runUrls.add(item.link)
+      if (fp) runFingerprints.add(fp)
+      if (itemNorm.length > 15) seenTitles.set(itemNorm, item.title)
+      candidates.push({ item, feed, categoryId, itemNorm, fp, sourceText })
+    }
+  }
+
+  // ── Phase 2: process candidates in concurrent batches ──────────────────
+  const BATCH_SIZE = 3
+
+  const processCandidate = async (c: typeof candidates[number]): Promise<{ ok: boolean; headline?: string }> => {
+    try {
+      const result_ai = await rewriteArticle(c.item.title, c.sourceText, c.feed.name, c.feed.category, 'rss_auto')
+      const ai: BlizineArticle | null = result_ai.article
+      if (!ai) { failed++; log.push(`[AI FAIL] ${c.item.title.slice(0,45)} (${result_ai.debug})`); return { ok: false } }
+
+      let finalImage: string | null = null
+      if (c.item.rawImage) finalImage = await validateImageUrl(c.item.rawImage)
+      if (!finalImage) { const og = await fetchOgImage(c.item.link); finalImage = await validateImageUrl(og) }
+      if (!finalImage) {
+        const catSlug = Object.entries(catMap).find(([, id]) => id === c.categoryId)?.[0] || 'tech-news'
+        finalImage = CATEGORY_FALLBACKS[catSlug] || CATEGORY_FALLBACKS['tech-news']
       }
 
       try {
-        if (isOutOfTime()) {
-          log.push(`[TIME] Out of time before processing ${item.title.slice(0, 40)}`)
-          break
-        }
-        const categoryId = autoCategory(item.title, feed.category, catMap)
-        const result_ai = await rewriteArticle(item.title, sourceText, feed.name, feed.category, 'rss_auto')
-        const ai: BlizineArticle | null = result_ai.article
-        const aiDebug = result_ai.debug
-
-        if (!ai) {
-          failed++
-          log.push(`[AI FAIL] ${item.title.slice(0, 45)} (${aiDebug})`)
-          continue
-        }
-
-        let finalImage: string | null = null
-
-        if (!finalImage && item.rawImage) {
-          finalImage = await validateImageUrl(item.rawImage)
-        }
-
-        if (!finalImage) {
-          const og = await fetchOgImage(item.link)
-          finalImage = await validateImageUrl(og)
-        }
-
-        if (!finalImage) {
-          const catSlug = Object.entries(catMap).find(([, id]) => id === categoryId)?.[0] || 'tech-news'
-          finalImage = CATEGORY_FALLBACKS[catSlug] || CATEGORY_FALLBACKS['tech-news']
-        }
-
-        // Upload image to Supabase Storage with watermark
-        try {
-          const imgRes = await fetch(finalImage, {
-            headers: { 'User-Agent': BOT_UA },
-            signal: AbortSignal.timeout(10000),
+        const imgRes = await fetch(finalImage, { headers: { 'User-Agent': BOT_UA }, signal: AbortSignal.timeout(10000) })
+        if (imgRes.ok) {
+          const rawBuf = await imgRes.arrayBuffer()
+          const imgBuf = await watermarkImage(Buffer.from(rawBuf))
+          const ext = finalImage.includes('.png') ? '.png' : '.jpg'
+          const filename = `post-${Date.now()}-${Math.random().toString(36).slice(2, 8)}${ext}`
+          const { error: upErr } = await supabase.storage.from('post-images').upload(filename, imgBuf as any, {
+            contentType: imgRes.headers.get('content-type') || 'image/jpeg', upsert: true,
           })
-          if (imgRes.ok) {
-            const rawBuf = await imgRes.arrayBuffer()
-            const imgBuf = await watermarkImage(Buffer.from(rawBuf))
-            const ext = finalImage.includes('.png') ? '.png' : '.jpg'
-            const filename = `post-${Date.now()}-${Math.random().toString(36).slice(2, 8)}${ext}`
-            const { error: upErr } = await supabase.storage
-              .from('post-images')
-              .upload(filename, imgBuf as any, {
-                contentType: imgRes.headers.get('content-type') || 'image/jpeg',
-                upsert: true,
-              })
-            if (!upErr) {
-              const { data: pub } = supabase.storage.from('post-images').getPublicUrl(filename)
-              finalImage = pub.publicUrl
-            }
-          }
-        } catch {}
-
-        const slug = makeSlug(ai.headline)
-        const { error: insertError } = await supabase.from('posts').insert({
-          slug,
-          title:               ai.headline,
-          content:             ai.content,
-          seo_title:           ai.seoTitle,
-          seo_description:     ai.seoDescription,
-          seo_keywords:        ai.seoKeywords,
-          featured_image:      finalImage,
-          author_id:           '3916aa7d-197c-47f8-bdf3-cd6b6f910a37',
-          category_id:         categoryId,
-          source_name:         feed.name,
-          source_url:          item.link,
-          source_urls:         [item.link],
-          tags:                ai.tags,
-          key_points:          ai.keyPoints,
-          quick_brief:         ai.quickBrief,
-          faq:                 ai.faq,
-          blizine_score:       ai.blizineScore,
-          is_breaking:         ai.isBreaking,
-          is_featured:         false,
-          is_editors_pick:     false,
-          ai_rewritten:        true,
-          model_used:          ai.modelUsed,
-          status:              'published',
-          content_fingerprint: fp,
-          published_at:        item.pubDate && !isNaN(Date.parse(item.pubDate)) ? new Date(item.pubDate).toISOString() : new Date().toISOString(),
-          reading_time:        Math.max(2, Math.round(
-                                 ai.content.replace(/<[^>]+>/g,' ').split(/\s+/).length / 200
-                               )),
-          views:               0,
-          created_at:          new Date().toISOString(),
-          updated_at:          new Date().toISOString(),
-        })
-
-        if (insertError) {
-          failed++
-          log.push(`[DB ERR] ${insertError.message.slice(0,60)}`)
-          continue
+          if (!upErr) { const { data: pub } = supabase.storage.from('post-images').getPublicUrl(filename); finalImage = pub.publicUrl }
         }
+      } catch {}
 
-        await supabase.rpc('increment_daily_count')
+      const slug = makeSlug(ai.headline)
+      const { error: insertError } = await supabase.from('posts').insert({
+        slug, title: ai.headline, content: ai.content,
+        seo_title: ai.seoTitle, seo_description: ai.seoDescription, seo_keywords: ai.seoKeywords,
+        featured_image: finalImage, author_id: '3916aa7d-197c-47f8-bdf3-cd6b6f910a37',
+        category_id: c.categoryId, source_name: c.feed.name, source_url: c.item.link, source_urls: [c.item.link],
+        tags: ai.tags, key_points: ai.keyPoints, quick_brief: ai.quickBrief, faq: ai.faq,
+        blizine_score: ai.blizineScore, is_breaking: ai.isBreaking, is_featured: false, is_editors_pick: false,
+        ai_rewritten: true, model_used: ai.modelUsed, status: 'published', content_fingerprint: c.fp,
+        published_at: c.item.pubDate && !isNaN(Date.parse(c.item.pubDate)) ? new Date(c.item.pubDate).toISOString() : new Date().toISOString(),
+        reading_time: Math.max(2, Math.round(ai.content.replace(/<[^>]+>/g,' ').split(/\s+/).length / 200)),
+        views: 0, created_at: new Date().toISOString(), updated_at: new Date().toISOString(),
+      })
+      if (insertError) { failed++; log.push(`[DB ERR] ${insertError.message.slice(0,60)}`); return { ok: false } }
 
-        runUrls.add(item.link)
-        if (fp) runFingerprints.add(fp)
-        if (itemNorm.length > 15) seenTitles.set(itemNorm, item.title)
+      await supabase.rpc('increment_daily_count')
+      return { ok: true, headline: ai.headline.slice(0,60) }
+    } catch (err) {
+      failed++; log.push(`[ERR] ${String(err).slice(0,60)}`); return { ok: false }
+    }
+  }
 
+  for (let i = 0; i < candidates.length && ingested < canPublish; i += BATCH_SIZE) {
+    if (isOutOfTime()) { log.push(`[TIME] Deadline approaching, pausing`); break }
+    const batch = candidates.slice(i, i + BATCH_SIZE)
+    const results = await Promise.allSettled(batch.map(c => processCandidate(c)))
+    for (const r of results) {
+      if (r.status === 'fulfilled' && r.value.ok) {
         ingested++
-        log.push(`[✓ ${ingested}/${canPublish}][gemini-grounded] ${ai.headline.slice(0,60)}`)
-
-      } catch (err) {
-        failed++
-        log.push(`[ERR] ${String(err).slice(0,60)}`)
+        log.push(`[✓ ${ingested}/${canPublish}][gemini-grounded] ${r.value.headline}`)
       }
     }
   }
