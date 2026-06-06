@@ -5,7 +5,8 @@ import { createClient }                    from '@/lib/supabase/admin'
 import { watermarkImage }                  from '@/lib/watermark'
 import { SITE_URL }                        from '@/lib/constants'
 
-const DAILY_CAP = 30
+const DEFAULT_DAILY_CAP = 30
+const ITEMS_PER_FEED = 10
 
 const BOT_UA = 'Mozilla/5.0 (compatible; Blizine/1.0; +https://blizine.com/bot)'
 
@@ -276,6 +277,14 @@ async function run(req: NextRequest) {
 
   const supabase = createClient()
 
+  // Read dynamic cap from site_settings, fallback to default
+  const { data: capSetting } = await supabase
+    .from('site_settings')
+    .select('value')
+    .eq('key', 'rss_daily_cap')
+    .single()
+  const dailyCap = capSetting?.value ?? DEFAULT_DAILY_CAP
+
   const { data: todayRow } = await supabase
     .from('daily_article_count')
     .select('count')
@@ -284,17 +293,17 @@ async function run(req: NextRequest) {
 
   const todayCount = todayRow?.count || 0
 
-  if (todayCount >= DAILY_CAP) {
+  if (todayCount >= dailyCap) {
     return NextResponse.json({
       ok:          true,
-      message:     `Daily cap of ${DAILY_CAP} reached. Published today: ${todayCount}. Resumes tomorrow at midnight.`,
+      message:     `Daily cap of ${dailyCap} reached. Published today: ${todayCount}. Resumes tomorrow at midnight.`,
       ingested:    0,
       cap_reached: true,
     })
   }
 
-  const canPublish = DAILY_CAP - todayCount
-  console.log(`[Ingest] Today: ${todayCount}/${DAILY_CAP}. Can publish ${canPublish} more.`)
+  const canPublish = dailyCap - todayCount
+  console.log(`[Ingest] Today: ${todayCount}/${dailyCap}. Can publish ${canPublish} more.`)
 
   const { data: cats } = await supabase.from('categories').select('id, slug')
   const catMap: Record<string, string> = {}
@@ -338,7 +347,7 @@ async function run(req: NextRequest) {
     if (feedLimit && feedIdx > feedLimit) break
 
     if (ingested >= canPublish) {
-      log.push(`[CAP] Reached ${DAILY_CAP}/day limit, stopping`)
+      log.push(`[CAP] Reached ${dailyCap}/day limit, stopping`)
       break
     }
 
@@ -353,7 +362,8 @@ async function run(req: NextRequest) {
       continue
     }
 
-    for (const item of items.slice(0, 5)) {
+    const perFeed = Math.min(ITEMS_PER_FEED, Math.max(1, Math.ceil(canPublish / orderedFeeds.length)))
+    for (const item of items.slice(0, perFeed)) {
 
       if (ingested >= canPublish) break
       if (!item.title || item.title.length < 10) { skipped++; continue }
@@ -597,7 +607,7 @@ async function run(req: NextRequest) {
     skipped,
     failed,
     today_total:   todayCount + ingested,
-    daily_cap:     DAILY_CAP,
+    daily_cap:     dailyCap,
     can_add_more:  canPublish - ingested,
     log:           log.slice(-30),
     timestamp:     new Date().toISOString(),

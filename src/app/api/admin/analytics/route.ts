@@ -36,7 +36,7 @@ async function fetchBlizineStats(supabase: any) {
     supabase.from('posts').select('id', { count: 'exact', head: true }).eq('status', 'draft'),
     supabase.from('posts').select('id', { count: 'exact', head: true }).eq('status', 'scheduled'),
     supabase.from('posts').select('id', { count: 'exact', head: true }).eq('status', 'archived'),
-    supabase.from('daily_article_count').select('count').eq('date', today).single(),
+    supabase.from('daily_article_count').select('count').eq('date', today).maybeSingle(),
     supabase.from('rss_feeds').select('posts_fetched').not('posts_fetched', 'is', null),
     supabase.from('gemini_usage_log').select('*', { count: 'exact', head: true }).gte('created_at', today),
   ])

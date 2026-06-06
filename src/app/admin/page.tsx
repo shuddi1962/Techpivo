@@ -128,8 +128,8 @@ export default function AdminDashboard() {
     fetchData()
     const interval = setInterval(fetchData, 3000)
 
-    const supabase = supabaseRef.current
-    const channel = supabase
+    const client = supabaseRef.current
+    const channel = client
       .channel("dashboard-realtime")
       .on("postgres_changes", { event: "UPDATE", schema: "public", table: "posts" }, (payload: any) => {
         if (payload.new?.views !== payload.old?.views) fetchData()
@@ -137,11 +137,13 @@ export default function AdminDashboard() {
       .on("postgres_changes", { event: "INSERT", schema: "public", table: "analytics_events" }, () => {
         fetchData()
       })
-      .subscribe()
+      .subscribe((status: string) => {
+        if (status !== "SUBSCRIBED") console.warn("Realtime status:", status)
+      })
 
     return () => {
       clearInterval(interval)
-      supabase.removeChannel(channel)
+      supabaseRef.current.removeChannel(channel)
     }
   }, [fetchData])
 

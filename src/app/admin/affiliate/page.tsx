@@ -355,7 +355,7 @@ export default function AdminAffiliatePage() {
     setSearchLoading(true)
     setSearchResults([])
     try {
-      const res = await fetch(`/api/affiliate/search?program=${selectedProgram}&q=${encodeURIComponent(searchQuery)}`)
+      const res = await fetch(`/api/affiliate-search?program=${selectedProgram}&q=${encodeURIComponent(searchQuery)}`)
       if (!res.ok) throw new Error("Affiliate search API not available")
       const json = await res.json()
       setSearchResults(json.products || [])

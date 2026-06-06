@@ -1,5 +1,6 @@
 'use client'
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback } from 'react'
+import { createClient } from '@/lib/supabase/client'
 import {
   Eye, FileText, Activity, RefreshCw, AlertCircle, Zap,
   BarChart3, Globe, MousePointerClick, TrendingUp, Rss,
@@ -263,7 +264,22 @@ export default function AnalyticsPage() {
   useEffect(() => {
     fetchData()
     const interval = setInterval(fetchData, 30000)
-    return () => clearInterval(interval)
+
+    const supabase = createClient()
+    const channel = supabase
+      .channel("analytics-realtime")
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "analytics_events" }, () => {
+        fetchData()
+      })
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "posts", filter: "status=eq.published" }, () => {
+        fetchData()
+      })
+      .subscribe()
+
+    return () => {
+      clearInterval(interval)
+      supabase.removeChannel(channel)
+    }
   }, [fetchData])
 
   const b = data?.blizine

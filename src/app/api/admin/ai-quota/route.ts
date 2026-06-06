@@ -8,7 +8,7 @@ export async function GET() {
 
   const [geminiResult, articleResult, kwPendingResult, kwPublishedResult, manualGeminiResult] = await Promise.all([
     supabase.from('gemini_usage_log').select('*', { count: 'exact', head: true }).gte('created_at', todayStart.toISOString()),
-    supabase.from('daily_article_count').select('count').eq('date', new Date().toISOString().slice(0, 10)).single(),
+    supabase.from('daily_article_count').select('count').eq('date', new Date().toISOString().slice(0, 10)).maybeSingle(),
     supabase.from('keyword_articles').select('*', { count: 'exact', head: true }).eq('status', 'draft'),
     supabase.from('keyword_articles').select('*', { count: 'exact', head: true }).gte('created_at', todayStart.toISOString()),
     supabase.from('gemini_usage_log').select('*', { count: 'exact', head: true }).gte('created_at', todayStart.toISOString()).eq('used_for', 'manual'),

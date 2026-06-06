@@ -235,7 +235,8 @@ async function processFeed(feed: any, categories: Array<{id:string;slug:string}>
     const xml = await res.text()
     const items = parseRSSItems(xml)
 
-    for (const item of items.slice(0, 5)) {
+    const perFeed = items.length
+    for (const item of items.slice(0, perFeed)) {
       try {
         const title = (item.title as string)?.trim()
         const link = (item.link as string)?.trim()
