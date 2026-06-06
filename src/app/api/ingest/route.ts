@@ -3,6 +3,7 @@ import { RSS_FEEDS }                       from '@/lib/rss-feeds'
 import { rewriteArticle, type BlizineArticle }      from '@/lib/ai-rewriter'
 import { createClient }                    from '@/lib/supabase/admin'
 import { watermarkImage }                  from '@/lib/watermark'
+import { SITE_URL }                        from '@/lib/constants'
 
 const DAILY_CAP = 30
 
@@ -577,7 +578,10 @@ async function run(req: NextRequest) {
   }
 
   if (ingested > 0) {
-    fetch(`${process.env.NEXT_PUBLIC_SITE_URL}/api/revalidate`, {
+    const sitemapUrl = `${SITE_URL}/sitemap.xml`
+    fetch(`https://www.google.com/ping?sitemap=${encodeURIComponent(sitemapUrl)}`).catch(() => {})
+    fetch(`https://www.bing.com/ping?sitemap=${encodeURIComponent(sitemapUrl)}`).catch(() => {})
+    fetch(`${SITE_URL}/api/revalidate`, {
       method:  'POST',
       headers: {
         'Content-Type':  'application/json',

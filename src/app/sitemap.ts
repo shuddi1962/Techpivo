@@ -41,7 +41,9 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     })
   }
 
+  const postSlugs = new Set(posts.map(p => p.slug))
   for (const kw of kwArticles) {
+    if (postSlugs.has(kw.slug)) continue // already in posts
     entries.push({
       url: `${SITE_URL}/${kw.slug}`,
       lastModified: kw.updated_at || undefined,

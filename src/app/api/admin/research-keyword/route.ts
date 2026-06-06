@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/admin"
 import { manualWriteFromTopic, getGeminiQuotaStatus } from "@/lib/ai-rewriter"
+import { SITE_URL } from "@/lib/constants"
 
 export const dynamic = "force-dynamic"
 export const maxDuration = 300
@@ -191,6 +192,11 @@ export async function POST(request: Request) {
     if (postError) {
       return NextResponse.json({ error: `Post insert failed: ${postError.message}` }, { status: 500 })
     }
+
+    // Ping Google & Bing about the sitemap
+    const sitemapUrl = `${SITE_URL}/sitemap.xml`
+    fetch(`https://www.google.com/ping?sitemap=${encodeURIComponent(sitemapUrl)}`).catch(() => {})
+    fetch(`https://www.bing.com/ping?sitemap=${encodeURIComponent(sitemapUrl)}`).catch(() => {})
 
     return NextResponse.json({
       success: true,
