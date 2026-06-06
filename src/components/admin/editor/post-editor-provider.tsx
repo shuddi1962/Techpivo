@@ -161,11 +161,17 @@ export function PostEditorProvider({
         updated_at: new Date().toISOString(),
       }
 
+      const now = new Date().toISOString()
+      const publishPayload = { ...payload }
+      if (publishPayload.status === "published" && !publishPayload.published_at) {
+        publishPayload.published_at = now
+      }
+
       if (postRef.current.id) {
-        const { error } = await supabase.from("posts").update(payload).eq("id", postRef.current.id)
+        const { error } = await supabase.from("posts").update(publishPayload).eq("id", postRef.current.id)
         if (error) throw error
       } else {
-        const { data, error } = await supabase.from("posts").insert({ ...payload, created_at: new Date().toISOString() }).select("id").single()
+        const { data, error } = await supabase.from("posts").insert({ ...publishPayload, created_at: now }).select("id").single()
         if (error) throw error
         if (data) {
           setPost(prev => ({ ...prev, id: data.id }))
