@@ -192,7 +192,7 @@ const BANNED_PHRASES = [
 
 const CORRECTIVE_PROMPTS: Record<string, string> = {
   no_h2_in_content:
-    "Your previous response was rejected because there were no <h2> section headings in the content. You MUST include at least one <h2> heading (e.g. `<h2>Key Developments</h2>`) to structure the article. Please regenerate with proper HTML section headings.",
+    "Your previous response was rejected because there were no <h2> or <h3> section headings in the content. You MUST include at least one heading tag (`<h2>` or `<h3>`) to structure the article. Please regenerate with proper HTML section headings.",
   faq_too_few:
     "Your previous response was rejected because there weren't enough FAQ entries. You MUST include at least 2 FAQ items — each with a question longer than 5 characters and an answer longer than 10 characters.",
   keyPoints_too_few:
@@ -242,24 +242,23 @@ function validate(raw: string, model: BlizineArticle['modelUsed']): { article: B
   if (!p.headline) { return { article: null, reason: 'missing_headline' } }
   if (!p.content) { return { article: null, reason: 'missing_content' } }
 
-  // Normalize content: markdown headings → <h2>, <h3> → <h2>
+  // Normalize markdown headings → <h2>, but preserve <h3> hierarchy
   let content = String(p.content)
     .replace(/^##\s+/gm, '<h2>')
-    .replace(/<h3>/gi, '<h2>')
-    .replace(/<\/h3>/gi, '</h2>')
     .trim()
 
   if (content.length < 100) { return { article: null, reason: `content_too_short:${content.length}` } }
 
-  // Auto-fix missing <h2>: wrap orphan bold/lone lines as headings
-  if (!content.includes('<h2')) {
+  // Accept both <h2> and <h3> as valid section headings
+  const hasHeading = content.includes('<h2') || content.includes('<h3')
+  if (!hasHeading) {
     content = content
-      // **text** at start of line → <h2>text</h2>
-      .replace(/^\s*\*\*(.+?)\*\*/gm, '<h2>$1</h2>')
-      // <strong>text</strong> at start of line → <h2>text</h2>
-      .replace(/^\s*<strong>(.+?)<\/strong>/gim, '<h2>$1</h2>')
-    // If still no <h2>, prepend a generic one
-    if (!content.includes('<h2')) {
+      // **text** at start of line → <h3>text</h3>
+      .replace(/^\s*\*\*(.+?)\*\*/gm, '<h3>$1</h3>')
+      // <strong>text</strong> at start of line → <h3>text</h3>
+      .replace(/^\s*<strong>(.+?)<\/strong>/gim, '<h3>$1</h3>')
+    // If still no heading, prepend a generic <h2>
+    if (!content.includes('<h2') && !content.includes('<h3')) {
       content = '<h2>Overview</h2>\n' + content
     }
   }
@@ -540,12 +539,12 @@ INSTRUCTIONS:
 7. Explain WHY this story matters to tech readers
 8. Include a "What This Means" analysis section
 9. End with a forward-looking "What's Next" section
-10. Format content as HTML: use <p> for paragraphs, <h2> for section headings, <strong> for key terms
+10. Format content as HTML: use <p> for paragraphs, <h2> or <h3> for section headings, <strong> for key terms
 11. Do NOT mention Blizine in the article body
 12. Do NOT write "In conclusion" or "To summarize"
 13. Do NOT use phrases like "In today's fast-paced tech world"
 14. Be specific — avoid vague generalisations
-15. You MUST include at least one <h2> heading in the content field
+15. You MUST include at least one heading (<h2> or <h3>) in the content field
 
 KEY POINTS (separate JSON field):
 - 3 to 5 short strings, each under 25 words, one verified fact each
