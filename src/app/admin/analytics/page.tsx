@@ -355,7 +355,7 @@ export default function AnalyticsPage() {
                 <KpiCard label="All Feed Posts" value={fmt(b.totalFeedPosts || 0)}
                   icon={<Rss className="h-5 w-5 text-white" />}
                   gradient="linear-gradient(135deg, #a18cd1 0%, #fbc2eb 100%)" />
-                <KpiCard label="Gemini Today" value={`${b.geminiToday || 0}/20`}
+                <KpiCard label="AI Articles Today" value={b.geminiToday || 0}
                   icon={<Activity className="h-5 w-5 text-white" />}
                   gradient="linear-gradient(135deg, #f093fb 0%, #f5576c 100%)" />
               </div>
