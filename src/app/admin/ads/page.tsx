@@ -276,8 +276,11 @@ export default function AdminAdsPage() {
     setAdvDestUrl(`/${post.slug}`)
   }
 
+  const [campaignError, setCampaignError] = useState<string | null>(null)
+
   const saveCampaign = async () => {
     if (!advName) return
+    setCampaignError(null)
 
     const payload: any = {
       advertiser_name: advName,
@@ -312,10 +315,18 @@ export default function AdminAdsPage() {
       payload.destination_url = null
     }
 
+    let error: any = null
     if (editingCampaign) {
-      await supabase.from("ad_campaigns").update(payload).eq("id", editingCampaign.id)
+      const res = await supabase.from("ad_campaigns").update(payload).eq("id", editingCampaign.id)
+      error = res.error
     } else {
-      await supabase.from("ad_campaigns").insert(payload)
+      const res = await supabase.from("ad_campaigns").insert(payload)
+      error = res.error
+    }
+
+    if (error) {
+      setCampaignError(error.message)
+      return
     }
 
     resetCampaignForm()
@@ -803,6 +814,11 @@ export default function AdminAdsPage() {
                   </div>
                 </div>
 
+                {campaignError && (
+                  <div className="p-3 bg-destructive/10 border border-destructive/30 rounded-md text-sm text-destructive">
+                    {campaignError}
+                  </div>
+                )}
                 <div className="flex gap-2 justify-end">
                   <Button variant="outline" onClick={() => { resetCampaignForm(); setShowCampaignForm(false) }}>Cancel</Button>
                   <Button onClick={saveCampaign} disabled={!advName || (advFormat === "banner_image" && !advImageUrl)}>
