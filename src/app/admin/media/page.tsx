@@ -185,7 +185,7 @@ export default function AdminMediaPage() {
           ref={inputRef}
           type="file"
           multiple
-          accept="image/*,.pdf,.doc,.docx,.zip,.txt,.svg"
+          accept="image/*,video/*,.pdf,.doc,.docx,.zip,.txt,.svg"
           className="hidden"
           onChange={(e) => e.target.files && uploadFiles(e.target.files)}
         />
@@ -232,7 +232,7 @@ export default function AdminMediaPage() {
         ref={dropInputRef}
         type="file"
         multiple
-        accept="image/*,.pdf,.doc,.docx,.zip,.txt,.svg"
+        accept="image/*,video/*,.pdf,.doc,.docx,.zip,.txt,.svg"
         className="hidden"
         onChange={(e) => e.target.files && uploadFiles(e.target.files)}
       />
@@ -258,7 +258,7 @@ export default function AdminMediaPage() {
             <p className="text-sm text-muted-foreground">
               {uploading ? "Uploading..." : "Drop files here or click to browse"}
             </p>
-            <p className="text-xs text-muted-foreground/60">PNG, JPG, GIF, WebP, SVG, PDF, DOC, ZIP (max 10 MB)</p>
+            <p className="text-xs text-muted-foreground/60">Images, videos, PDF, DOC, ZIP, SVG (max 10 MB)</p>
           </div>
         </CardContent>
       </Card>

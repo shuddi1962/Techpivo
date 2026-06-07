@@ -102,6 +102,14 @@ export default function AdminAdsPage() {
 
   useEffect(() => {
     loadData()
+
+    const channel = supabase
+      .channel("admin-ads")
+      .on("postgres_changes", { event: "*", schema: "public", table: "ads" }, () => loadData())
+      .on("postgres_changes", { event: "*", schema: "public", table: "ad_campaigns" }, () => loadData())
+      .subscribe()
+
+    return () => { supabase.removeChannel(channel) }
   }, [])
 
   const loadData = async () => {
@@ -265,7 +273,7 @@ export default function AdminAdsPage() {
     setSelectedPost(post)
     setPostSearch(post.title)
     setPostResults([])
-    setAdvDestUrl(`/post/${post.slug}`)
+    setAdvDestUrl(`/${post.slug}`)
   }
 
   const saveCampaign = async () => {
@@ -285,7 +293,7 @@ export default function AdminAdsPage() {
       payload.ad_code = null
     } else if (advFormat === "sponsored_article") {
       payload.ad_image_url = null
-      payload.destination_url = selectedPost ? `/post/${selectedPost.slug}` : (advDestUrl || null)
+      payload.destination_url = advDestUrl || (selectedPost ? `/${selectedPost.slug}` : null)
       payload.ad_code = `<!-- sponsored_article:${selectedPost?.id || ""} -->`
     } else if (advFormat === "video_ad") {
       payload.ad_image_url = null
@@ -438,7 +446,7 @@ export default function AdminAdsPage() {
                     <input
                       ref={slotInputRef}
                       type="file"
-                      accept="image/*"
+                      accept="image/*,.svg,.webp"
                       className="hidden"
                       onChange={(e) => e.target.files?.[0] && uploadSlotImage(e.target.files[0])}
                     />
@@ -585,7 +593,7 @@ export default function AdminAdsPage() {
                         <button
                           key={key}
                           type="button"
-                          onClick={() => { setAdvFormat(key); setSelectedPost(null); setVideoUrl("") }}
+                          onClick={() => { setAdvFormat(key); setAdvImageUrl(""); setAdvDestUrl(""); setAdvCode(""); setSelectedPost(null); setVideoUrl("") }}
                           className={`flex items-center gap-2 px-4 py-2 rounded-md border text-sm transition-colors ${
                             advFormat === key
                               ? "border-primary bg-primary/10 text-primary"
@@ -609,7 +617,7 @@ export default function AdminAdsPage() {
                         <input
                           ref={bannerInputRef}
                           type="file"
-                          accept="image/*"
+                          accept="image/*,.svg,.webp"
                           className="hidden"
                           onChange={(e) => e.target.files?.[0] && uploadBannerImage(e.target.files[0])}
                         />
@@ -631,7 +639,7 @@ export default function AdminAdsPage() {
                       )}
                     </div>
                     <div className="space-y-2">
-                      <Label>Destination URL</Label>
+                      <Label>Destination / Click URL</Label>
                       <Input value={advDestUrl} onChange={(e) => setAdvDestUrl(e.target.value)} placeholder="https://example.com" />
                     </div>
                   </>
@@ -672,7 +680,7 @@ export default function AdminAdsPage() {
                         <div className="flex items-center gap-2 p-2 bg-primary/5 rounded-md">
                           <FileTextIcon className="h-4 w-4 text-primary flex-shrink-0" />
                           <span className="text-sm truncate flex-1">{selectedPost.title}</span>
-                          <a href={`/post/${selectedPost.slug}`} target="_blank" rel="noopener" className="text-primary hover:underline text-xs flex items-center gap-1">
+                          <a href={`/${selectedPost.slug}`} target="_blank" rel="noopener" className="text-primary hover:underline text-xs flex items-center gap-1">
                             View <ExternalLink className="h-3 w-3" />
                           </a>
                           <button type="button" onClick={() => { setSelectedPost(null); setPostSearch("") }} className="text-muted-foreground hover:text-foreground">
@@ -683,7 +691,7 @@ export default function AdminAdsPage() {
                     </div>
                     <div className="space-y-2">
                       <Label>Custom Destination URL (optional, overrides article link)</Label>
-                      <Input value={advDestUrl} onChange={(e) => setAdvDestUrl(e.target.value)} placeholder={`/post/${selectedPost?.slug || "article-slug"}`} />
+                      <Input value={advDestUrl} onChange={(e) => setAdvDestUrl(e.target.value)} placeholder={`/${selectedPost?.slug || "article-slug"}`} />
                     </div>
                   </>
                 )}
@@ -696,7 +704,7 @@ export default function AdminAdsPage() {
                         <input
                           ref={videoInputRef}
                           type="file"
-                          accept="video/*"
+                          accept="video/*,.gif"
                           className="hidden"
                           onChange={(e) => e.target.files?.[0] && uploadVideoFile(e.target.files[0])}
                         />
