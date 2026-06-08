@@ -17,6 +17,8 @@ const integrationFields = [
   { key: "google_search_console_verification", label: "Search Console Verification Meta", placeholder: "<meta> tag content" },
   { key: "bing_webmaster_verification", label: "Bing Webmaster Verification", placeholder: "Verification code" },
   { key: "openrouter_model", label: "OpenRouter Model", placeholder: "mistralai/mixtral-8x7b-instruct" },
+  { key: "posthog_api_key", label: "PostHog API Key (public)", placeholder: "phc_..." },
+  { key: "posthog_host", label: "PostHog Host", placeholder: "https://us.i.posthog.com" },
 ]
 
 function PageSpeedCard({ configured }: { configured: boolean }) {

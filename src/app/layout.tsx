@@ -1,6 +1,7 @@
 import type { Metadata } from "next"
 import { ThemeProvider } from "@/components/theme-provider"
 import { LayoutWrapper } from "@/components/layout/layout-wrapper"
+import { PHProvider } from "@/components/posthog-provider"
 import { SITE_NAME, SITE_TAGLINE } from "@/lib/constants"
 import "./globals.css"
 
@@ -105,7 +106,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       </head>
       <body className="min-h-screen bg-background antialiased">
         <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false} disableTransitionOnChange>
-          <LayoutWrapper>{children}</LayoutWrapper>
+          <PHProvider>
+            <LayoutWrapper>{children}</LayoutWrapper>
+          </PHProvider>
         </ThemeProvider>
       </body>
     </html>
