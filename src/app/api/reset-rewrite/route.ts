@@ -11,12 +11,12 @@ function getSupabase() {
 }
 
 export async function GET() {
-  const { count } = await supabase
+  const { count } = await getSupabase()
     .from("posts")
     .select("id", { count: "exact", head: true })
     .not("blizine_score", "is", null)
 
-  const { error } = await supabase
+  const { error } = await getSupabase()
     .from("posts")
     .update({ ai_rewritten: false, blizine_score: null, quick_brief: [] })
     .not("blizine_score", "is", null)
