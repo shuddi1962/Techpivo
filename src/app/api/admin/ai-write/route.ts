@@ -80,7 +80,7 @@ export async function POST(req: NextRequest) {
     }
 
     const remaining = MONTHLY_MANUAL_CAP - usedThisMonth
-    console.log(`[Blizine Manual AI] ${mode.toUpperCase()} | User: ${user.email} | Quota: ${usedThisMonth}/${MONTHLY_MANUAL_CAP}`)
+    console.log(`[Techpivo Manual AI] ${mode.toUpperCase()} | User: ${user.email} | Quota: ${usedThisMonth}/${MONTHLY_MANUAL_CAP}`)
 
     const startTime = Date.now()
 

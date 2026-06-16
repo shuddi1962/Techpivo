@@ -4,8 +4,22 @@ import Link from "next/link"
 import { Badge } from "@/components/ui/badge"
 import { Sidebar } from "@/components/layout/Sidebar"
 import { formatDate } from "@/lib/utils"
+import { SITE_NAME, SITE_URL } from "@/lib/constants"
+import type { Metadata } from "next"
 
 type Props = { params: { slug: string; subcategory: string } }
+
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const supabase = createClient()
+  const { data: cat } = await supabase.from("categories").select("*").eq("slug", params.slug).single()
+  const { data: sub } = await supabase.from("subcategories").select("*").eq("slug", params.subcategory).eq("category_id", cat?.id || 0).single()
+  if (!sub) return { title: "Subcategory Not Found" }
+  return {
+    title: sub.name,
+    description: `${sub.name} - ${SITE_NAME}`,
+    alternates: { canonical: `${SITE_URL}/category/${params.slug}/${params.subcategory}` },
+  }
+}
 
 export default async function SubcategoryPage({ params }: Props) {
   const supabase = createClient()
@@ -76,7 +90,7 @@ export default async function SubcategoryPage({ params }: Props) {
                 <h2 className="text-xl font-bold group-hover:text-brand-amber transition-colors line-clamp-2">{post.title}</h2>
                 <p className="text-sm text-muted-foreground line-clamp-2 mt-1">{post.excerpt}</p>
                 <div className="flex items-center gap-2 mt-2 text-xs text-muted-foreground">
-                  <span>{(post as any).author?.full_name || "Blizine"}</span>
+                  <span>{(post as any).author?.full_name || "Techpivo"}</span>
                   <span>·</span>
                   <span>{post.published_at ? formatDate(post.published_at) : ""}</span>
                   <span>·</span>

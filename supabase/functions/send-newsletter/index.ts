@@ -50,8 +50,8 @@ serve(async (req: Request) => {
 
     const resend = new Resend(resendApiKey);
 
-    const fromEmail = Deno.env.get("NEWSLETTER_FROM_EMAIL") || "newsletter@blizine.com";
-    const siteUrl = Deno.env.get("SITE_URL") || "https://www.blizine.com";
+    const fromEmail = Deno.env.get("NEWSLETTER_FROM_EMAIL") || "newsletter@techpivo.com";
+    const siteUrl = Deno.env.get("SITE_URL") || "https://www.techpivo.com";
 
     const { data: post, error: postError } = await supabase
       .from("posts")
@@ -128,7 +128,7 @@ serve(async (req: Request) => {
           <!-- Header -->
           <tr>
             <td style="background:linear-gradient(135deg,#6366f1,#8b5cf6);padding:32px 40px;border-radius:12px 12px 0 0;text-align:center;">
-              <h1 style="margin:0;color:#ffffff;font-size:28px;font-weight:800;letter-spacing:-0.5px;">Blizine</h1>
+              <h1 style="margin:0;color:#ffffff;font-size:28px;font-weight:800;letter-spacing:-0.5px;">Techpivo</h1>
               <p style="margin:8px 0 0;color:rgba(255,255,255,0.85);font-size:14px;">Your daily dose of tech &amp; innovation</p>
             </td>
           </tr>
@@ -160,7 +160,7 @@ serve(async (req: Request) => {
                 <tr>
                   <td>
                     <p style="margin:0;font-size:13px;color:#9ca3af;line-height:1.5;">
-                      You received this email because you subscribed to Blizine newsletter.
+                      You received this email because you subscribed to Techpivo newsletter.
                       <br>
                       <a href="${unsubscribeUrl}" style="color:#6366f1;text-decoration:underline;">Unsubscribe</a> at any time.
                     </p>

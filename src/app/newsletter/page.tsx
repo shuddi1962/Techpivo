@@ -28,12 +28,12 @@ export default function NewsletterPage() {
           <div>
             <div className="text-4xl mb-4">🎉</div>
             <h2 className="text-2xl font-bold mb-2">You&apos;re Subscribed!</h2>
-            <p className="text-muted-foreground">Check your inbox for a confirmation email. Welcome to the Blizine community!</p>
+            <p className="text-muted-foreground">Check your inbox for a confirmation email. Welcome to the Techpivo community!</p>
           </div>
         ) : (
           <>
             <h2 className="text-2xl font-bold mb-2">Subscribe to Our Newsletter</h2>
-            <p className="text-muted-foreground mb-6">Join 8,000+ subscribers who stay informed with Blizine.</p>
+            <p className="text-muted-foreground mb-6">Join 8,000+ subscribers who stay informed with Techpivo.</p>
             <form onSubmit={handleSubmit} className="max-w-md mx-auto flex gap-3">
               <input
                 type="email"

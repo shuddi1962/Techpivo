@@ -3,8 +3,21 @@ import { notFound } from "next/navigation"
 import Link from "next/link"
 import { Badge } from "@/components/ui/badge"
 import { formatDate } from "@/lib/utils"
+import { SITE_NAME, SITE_URL } from "@/lib/constants"
+import type { Metadata } from "next"
 
 type Props = { params: { username: string } }
+
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const supabase = createClient()
+  const { data: author } = await supabase.from("profiles").select("full_name, bio").eq("username", params.username).single()
+  if (!author) return { title: "Author Not Found" }
+  return {
+    title: `${author.full_name} - ${SITE_NAME}`,
+    description: author.bio || `${author.full_name} - ${SITE_NAME} author`,
+    alternates: { canonical: `${SITE_URL}/author/${params.username}` },
+  }
+}
 
 export default async function AuthorPage({ params }: Props) {
   const supabase = createClient()

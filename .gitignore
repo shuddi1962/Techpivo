@@ -9,3 +9,4 @@ dev_errors.txt
 supabase/.temp
 
 .env*.local
+.vercel

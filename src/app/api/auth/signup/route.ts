@@ -20,7 +20,7 @@ export async function POST(request: NextRequest) {
     password,
     options: {
       data: { full_name: fullName },
-      emailRedirectTo: `${process.env.NEXT_PUBLIC_SITE_URL || "https://www.blizine.com"}/auth/callback`,
+      emailRedirectTo: `${process.env.NEXT_PUBLIC_SITE_URL || "https://www.techpivo.com"}/auth/callback`,
     },
   })
 

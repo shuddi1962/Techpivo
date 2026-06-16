@@ -33,14 +33,14 @@ export async function POST(req: Request) {
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${apiKey}`,
-        "HTTP-Referer": process.env.NEXT_PUBLIC_SITE_URL || "https://www.blizine.com",
+        "HTTP-Referer": process.env.NEXT_PUBLIC_SITE_URL || "https://www.techpivo.com",
       },
       body: JSON.stringify({
         model,
         messages: [
           {
             role: "system",
-            content: "You are an expert tech blogger for Blizine. Write engaging, SEO-optimized content about technology. Always output valid HTML without markdown.",
+            content: "You are an expert tech blogger for Techpivo. Write engaging, SEO-optimized content about technology. Always output valid HTML without markdown.",
           },
           {
             role: "user",

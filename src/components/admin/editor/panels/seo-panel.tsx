@@ -355,7 +355,7 @@ Only provide fields that need changes. Return valid JSON only.`
                 )}
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium text-gray-900 dark:text-[#F9FAFB] truncate">{post.og_title || post.seo_title || post.title}</p>
-                  <p className="text-xs text-gray-500 dark:text-[#6B7280] truncate">{process.env.NEXT_PUBLIC_SITE_URL || "www.blizine.com"}</p>
+                  <p className="text-xs text-gray-500 dark:text-[#6B7280] truncate">{process.env.NEXT_PUBLIC_SITE_URL || "www.techpivo.com"}</p>
                 </div>
               </div>
             </div>

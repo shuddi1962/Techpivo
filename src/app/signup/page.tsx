@@ -65,7 +65,7 @@ export default function SignupPage() {
     <div className="min-h-screen flex items-center justify-center px-4" style={{ background: "var(--bg)" }}>
       <div className="w-full max-w-sm bg-card border rounded-2xl p-8 shadow-lg">
         <div className="text-center mb-8">
-          <Link href="/" className="text-2xl font-black" style={{ fontFamily: "'Syne', sans-serif", color: "var(--text)" }}>Blizine</Link>
+          <Link href="/" className="text-2xl font-black" style={{ fontFamily: "'Syne', sans-serif", color: "var(--text)" }}>Techpivo</Link>
           <p className="text-sm mt-2" style={{ color: "var(--muted)" }}>Create your free account</p>
         </div>
 

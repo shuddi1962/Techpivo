@@ -1,6 +1,6 @@
 import sharp from 'sharp'
 
-const TEXT = 'Blizine'
+const TEXT = 'Techpivo'
 
 export async function watermarkImage(input: any): Promise<Buffer> {
   const image = sharp(input)

@@ -20,7 +20,7 @@ export default function AdminSuggestPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          prompt: `Generate 10 blog post title ideas about "${keyword}" for a tech blog called Blizine. Return only the titles, one per line, no numbering.`,
+          prompt: `Generate 10 blog post title ideas about "${keyword}" for a tech blog called Techpivo. Return only the titles, one per line, no numbering.`,
         }),
       })
       const data = await res.json()

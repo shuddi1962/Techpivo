@@ -2,9 +2,9 @@ import type { Metadata } from "next"
 import Image from "next/image"
 
 export const metadata: Metadata = {
-  title: "Privacy Policy – Blizine",
+  title: "Privacy Policy – Techpivo",
   description: "Blizine's Privacy Policy explains how we collect, use, and protect your personal information in compliance with GDPR, CCPA, and Google AdSense policies.",
-  openGraph: { title: "Privacy Policy – Blizine", description: "How Blizine handles your data." },
+  openGraph: { title: "Privacy Policy – Techpivo", description: "How Techpivo handles your data." },
 }
 
 export default function PrivacyPolicyPage() {
@@ -17,7 +17,7 @@ export default function PrivacyPolicyPage() {
         <div className="relative z-10 px-6 md:px-12 lg:px-16 py-16 text-white">
           <div className="text-5xl mb-4">🔒</div>
           <h1 className="text-4xl font-bold mb-2">Privacy Policy</h1>
-          <p className="text-lg text-white/80">How Blizine collects, uses, and protects your personal information.</p>
+          <p className="text-lg text-white/80">How Techpivo collects, uses, and protects your personal information.</p>
           <p className="text-sm text-white/60 mt-4">Last updated: May 27, 2026</p>
         </div>
       </div>
@@ -26,7 +26,7 @@ export default function PrivacyPolicyPage() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         <section className="bg-card border rounded-2xl p-6 col-span-full">
           <h2 className="text-2xl font-bold mb-4">1. Introduction</h2>
-          <p className="text-muted-foreground leading-relaxed">Blizine (&quot;we,&quot; &quot;our,&quot; or &quot;us&quot;) is committed to protecting your privacy. This Privacy Policy explains how we collect, use, disclose, and safeguard your information when you visit our website.</p>
+          <p className="text-muted-foreground leading-relaxed">Techpivo (&quot;we,&quot; &quot;our,&quot; or &quot;us&quot;) is committed to protecting your privacy. This Privacy Policy explains how we collect, use, disclose, and safeguard your information when you visit our website.</p>
         </section>
 
         <section className="bg-card border rounded-2xl p-6 md:col-span-2">
@@ -97,7 +97,7 @@ export default function PrivacyPolicyPage() {
               <div key={right} className="bg-card border rounded-lg p-3 text-sm text-muted-foreground">{right}</div>
             ))}
           </div>
-          <p className="text-muted-foreground mt-4">To exercise these rights, contact us at <a href="mailto:privacy@blizine.com" className="text-accent hover:underline">privacy@blizine.com</a>.</p>
+          <p className="text-muted-foreground mt-4">To exercise these rights, contact us at <a href="mailto:privacy@Techpivo.com" className="text-accent hover:underline">privacy@Techpivo.com</a>.</p>
         </section>
 
         <section className="bg-card border rounded-2xl p-6">
@@ -119,7 +119,7 @@ export default function PrivacyPolicyPage() {
       <section className="bg-card border rounded-2xl p-8 text-center mt-8">
         <h2 className="text-2xl font-bold mb-3">12. Contact Us</h2>
         <p className="text-muted-foreground mb-4">If you have any questions about this Privacy Policy, please reach out.</p>
-        <a href="mailto:privacy@blizine.com" className="inline-flex items-center gap-2 bg-accent text-white px-6 py-3 rounded-lg font-medium hover:opacity-90 transition-opacity">privacy@blizine.com</a>
+        <a href="mailto:privacy@Techpivo.com" className="inline-flex items-center gap-2 bg-accent text-white px-6 py-3 rounded-lg font-medium hover:opacity-90 transition-opacity">privacy@Techpivo.com</a>
       </section>
       </div>
     </div>

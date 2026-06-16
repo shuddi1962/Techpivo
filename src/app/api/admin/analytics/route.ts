@@ -8,7 +8,7 @@ async function fetchPageSpeed() {
   const key = process.env.PAGESPEED_API_KEY
   if (!key) return null
   try {
-    const url = `https://www.googleapis.com/pagespeedonline/v5/runPagespeed?url=${encodeURIComponent('https://blizine.com')}&strategy=mobile&key=${key}`
+    const url = `https://www.googleapis.com/pagespeedonline/v5/runPagespeed?url=${encodeURIComponent('https://techpivo.com')}&strategy=mobile&key=${key}`
     const res = await fetch(url, { signal: AbortSignal.timeout(15000) })
     const data = await res.json()
     const cats = data.lighthouseResult?.categories
@@ -181,7 +181,7 @@ export async function GET(req: NextRequest) {
 
   const days = parseInt(new URL(req.url).searchParams.get('days') || '28')
 
-  const [blizine, analytics, pagespeed] = await Promise.all([
+  const [Techpivo, analytics, pagespeed] = await Promise.all([
     fetchBlizineStats(supabase),
     fetchAnalyticsEvents(supabase, days),
     fetchPageSpeed(),
@@ -190,7 +190,7 @@ export async function GET(req: NextRequest) {
   return NextResponse.json({
     ok: true,
     days,
-    blizine,
+    Techpivo,
     analytics,
     pagespeed,
     fetchedAt: new Date().toISOString(),

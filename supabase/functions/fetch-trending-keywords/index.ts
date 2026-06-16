@@ -99,7 +99,7 @@ serve(async () => {
       try {
         const res = await fetch(url, {
           headers: {
-            "User-Agent": "Mozilla/5.0 (compatible; Blizine/1.0; +https://www.blizine.com/bot)",
+            "User-Agent": "Mozilla/5.0 (compatible; Techpivo/1.0; +https://www.techpivo.com/bot)",
           },
           signal: AbortSignal.timeout(10000),
         })

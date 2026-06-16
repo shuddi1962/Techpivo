@@ -11,7 +11,7 @@ jobs:
     steps:
       - name: Call ingest API
         run: |
-          SITE="${{ secrets.SITE_URL || 'https://www.blizine.com' }}"
+          SITE="${{ secrets.SITE_URL || 'https://www.techpivo.com' }}"
           SECRET="${{ secrets.CRON_SECRET }}"
           if [ -n "$SECRET" ]; then
             curl -sL -o /dev/null -w "%{http_code}" -X POST "$SITE/api/ingest" \

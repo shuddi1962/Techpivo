@@ -27,7 +27,7 @@ export default async function PreviewPage({ params }: Props) {
         <div className="min-h-screen bg-[#0A0F1E]">
           <div className="max-w-3xl mx-auto px-4 py-24">
             <div className="flex items-center justify-between mb-8">
-              <Link href="/" className="text-2xl font-bold text-[#F9FAFB]">Blizine</Link>
+              <Link href="/" className="text-2xl font-bold text-[#F9FAFB]">Techpivo</Link>
               <span className="text-xs text-[#F59E0B] bg-[#F59E0B]/10 px-2 py-1 rounded">PREVIEW</span>
             </div>
             <article className="prose prose-invert max-w-none">
@@ -48,7 +48,7 @@ export default async function PreviewPage({ params }: Props) {
     <div className="min-h-screen bg-[#0A0F1E]">
       <div className="max-w-3xl mx-auto px-4 py-24">
         <div className="flex items-center justify-between mb-8">
-          <Link href="/" className="text-2xl font-bold text-[#F9FAFB]">Blizine</Link>
+          <Link href="/" className="text-2xl font-bold text-[#F9FAFB]">Techpivo</Link>
           <span className="text-xs text-[#F59E0B] bg-[#F59E0B]/10 px-2 py-1 rounded">PREVIEW</span>
         </div>
         <article className="prose prose-invert max-w-none">

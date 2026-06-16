@@ -2,8 +2,18 @@ import { createClient } from "@/lib/supabase/server"
 import Link from "next/link"
 import { Badge } from "@/components/ui/badge"
 import { formatDate } from "@/lib/utils"
+import { SITE_NAME, SITE_URL } from "@/lib/constants"
+import type { Metadata } from "next"
 
 type Props = { params: { tag: string } }
+
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  return {
+    title: `#${params.tag} - ${SITE_NAME}`,
+    alternates: { canonical: `${SITE_URL}/tag/${params.tag}` },
+    robots: { index: false, follow: true },
+  }
+}
 
 export default async function TagPage({ params }: Props) {
   const supabase = createClient()

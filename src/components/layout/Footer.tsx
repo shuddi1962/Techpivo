@@ -6,11 +6,11 @@ export function Footer({ categories, recentPosts }: { categories: any[]; recentP
       <div className="footer-inner">
         <div>
           <div className="footer-logo">
-            <span style={{ fontFamily: "'Syne', sans-serif", fontWeight: 800, fontSize: 22, color: "var(--text)" }}>Blizine</span>
+            <span style={{ fontFamily: "'Syne', sans-serif", fontWeight: 800, fontSize: 22, color: "var(--text)" }}>Techpivo</span>
           </div>
           <p className="footer-tagline">Tech, decoded. Fast.</p>
           <p className="footer-about">
-            Blizine is your daily source for the latest in technology, AI, cybersecurity, gadgets, and digital innovation.
+            Techpivo is your daily source for the latest in technology, AI, cybersecurity, gadgets, and digital innovation.
           </p>
           <div className="footer-socials">
             <Link href="#" className="footer-social-icon" aria-label="Twitter">
@@ -74,7 +74,7 @@ export function Footer({ categories, recentPosts }: { categories: any[]; recentP
       </div>
 
       <div className="footer-bottom">
-        <span>&copy; {new Date().getFullYear()} Blizine. All rights reserved.</span>
+        <span>&copy; {new Date().getFullYear()} Techpivo. All rights reserved.</span>
         <span>Built with passion for the tech community</span>
         <span>Est. 2024 &middot; Tech, decoded. Fast.</span>
       </div>

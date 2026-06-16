@@ -30,12 +30,16 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
   if (!post) return { title: "Post Not Found" }
 
-  const canonical = `${SITE_URL}/${post.slug}`
+  const canonical = (post as any).canonical_url || `${SITE_URL}/${post.slug}`
 
   return {
     title: post.seo_title || post.title,
     alternates: { canonical },
     description: post.seo_description || post.content?.replace(/<[^>]+>/g,'').slice(0,155),
+    robots: {
+      index: !(post as any).robots_noindex,
+      follow: true,
+    },
     openGraph: {
       title: post.title,
       description: post.seo_description || post.content?.replace(/<[^>]+>/g,'').slice(0,155),
@@ -124,7 +128,7 @@ export default async function PostPage({ params }: Props) {
             dateModified: post.updated_at || undefined,
             author: {
               "@type": "Person",
-              name: (post as any).author?.full_name || (post as any).author?.username || "Blizine",
+              name: (post as any).author?.full_name || (post as any).author?.username || SITE_NAME,
             },
             publisher: {
               "@type": "Organization",
@@ -188,7 +192,7 @@ export default async function PostPage({ params }: Props) {
                         href={`/author/${(post as any).author?.username}`}
                         className="font-semibold text-foreground hover:text-primary transition-colors"
                       >
-                        {(post as any).author?.full_name || "Blizine"}
+                        {(post as any).author?.full_name || SITE_NAME}
                       </Link>
                       <div className="flex items-center gap-2 text-sm text-muted-foreground">
                         <time dateTime={post.published_at}>
@@ -331,7 +335,7 @@ export default async function PostPage({ params }: Props) {
                         href={`/author/${(post as any).author?.username}`}
                         className="font-bold text-lg text-foreground hover:text-primary transition-colors"
                       >
-                        {(post as any).author?.full_name || "Blizine"}
+                        {(post as any).author?.full_name || SITE_NAME}
                       </Link>
                       <p className="text-sm text-muted-foreground mt-0.5">Staff Writer</p>
                     </div>

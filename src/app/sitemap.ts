@@ -6,7 +6,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const supabase = createClient()
 
   const [postsRes, catsRes, profilesRes, seriesRes, kwArticlesRes] = await Promise.all([
-    supabase.from("posts").select("slug, updated_at").eq("status", "published").order("published_at", { ascending: false }),
+    supabase.from("posts").select("slug, updated_at, robots_noindex").eq("status", "published").order("published_at", { ascending: false }),
     supabase.from("categories").select("slug"),
     supabase.from("profiles").select("username"),
     supabase.from("series").select("slug"),
@@ -39,7 +39,9 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: p.priority,
   }))
 
+  const noindexSlugs = new Set(posts.filter(p => (p as any).robots_noindex).map(p => p.slug))
   for (const post of posts) {
+    if (noindexSlugs.has(post.slug)) continue
     entries.push({
       url: `${SITE_URL}/${post.slug}`,
       lastModified: post.updated_at || undefined,
@@ -58,7 +60,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   const postSlugs = new Set(posts.map(p => p.slug))
   for (const kw of kwArticles) {
-    if (postSlugs.has(kw.slug)) continue // already in posts
+    if (postSlugs.has(kw.slug) || noindexSlugs.has(kw.slug)) continue // already in posts or noindex
     entries.push({
       url: `${SITE_URL}/${kw.slug}`,
       lastModified: kw.updated_at || undefined,

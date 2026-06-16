@@ -2,7 +2,7 @@ import { createClient } from "@/lib/supabase/server"
 
 export async function GET() {
   const supabase = createClient()
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://www.blizine.com"
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://www.Techpivo.com"
 
   const { data: posts } = await supabase
     .from("posts")
@@ -20,7 +20,7 @@ export async function GET() {
     <link>${siteUrl}/${post.slug}</link>
     <guid>${siteUrl}/${post.slug}</guid>
     <description><![CDATA[${post.excerpt || ""}]]></description>
-    <author>${post.author?.full_name || "Blizine"}</author>
+    <author>${post.author?.full_name || "Techpivo"}</author>
     <category>${post.category?.name || "Tech"}</category>
     <pubDate>${new Date(post.published_at).toUTCString()}</pubDate>
   </item>`
@@ -30,7 +30,7 @@ export async function GET() {
   const xml = `<?xml version="1.0" encoding="UTF-8"?>
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
   <channel>
-    <title>Blizine</title>
+    <title>Techpivo</title>
     <link>${siteUrl}</link>
     <description>Tech, decoded. Fast.</description>
     <language>en</language>

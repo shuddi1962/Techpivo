@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge"
 import { PostCard } from "@/components/post/post-card"
 import { Sidebar } from "@/components/layout/Sidebar"
 import { formatDate } from "@/lib/utils"
+import { SITE_NAME, SITE_URL } from "@/lib/constants"
 import type { Metadata } from "next"
 
 type Props = { params: { slug: string } }
@@ -15,7 +16,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   if (!cat) return { title: "Category Not Found" }
   return {
     title: cat.meta_title || cat.name,
-    description: cat.meta_description || `${cat.name} - Blizine`,
+    description: cat.meta_description || `${cat.name} - ${SITE_NAME}`,
+    alternates: { canonical: `${SITE_URL}/category/${cat.slug}` },
   }
 }
 

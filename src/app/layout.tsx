@@ -10,8 +10,8 @@ export const metadata: Metadata = {
     default: `${SITE_NAME} — ${SITE_TAGLINE}`,
     template: `%s — ${SITE_NAME}`,
   },
-  description: "Blizine - Tech, decoded. Fast. Your source for the latest in tech news, web development, programming, cybersecurity, AI, gadgets, and tutorials.",
-  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || "https://www.blizine.com"),
+  description: "Techpivo - Tech, decoded. Fast. Your source for the latest in tech news, web development, programming, cybersecurity, AI, gadgets, and tutorials.",
+  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || "https://www.techpivo.com"),
   icons: {
     icon: [
       { url: '/favicon.ico', sizes: 'any' },
@@ -73,12 +73,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             __html: JSON.stringify({
               "@context": "https://schema.org",
               "@type": "Organization",
-              name: "Blizine",
-              url: "https://blizine.com",
-              logo: "https://blizine.com/icon.svg",
+              name: "Techpivo",
+              url: "https://techpivo.com",
+              logo: "https://techpivo.com/icon.svg",
               sameAs: [
-                "https://twitter.com/blizine",
-                "https://facebook.com/blizine",
+                "https://twitter.com/techpivo",
+                "https://facebook.com/techpivo",
               ],
             }),
           }}
@@ -89,14 +89,14 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             __html: JSON.stringify({
               "@context": "https://schema.org",
               "@type": "WebSite",
-              name: "Blizine",
-              url: "https://blizine.com",
+              name: "Techpivo",
+              url: "https://techpivo.com",
               description: "Tech, decoded. Fast.",
               potentialAction: {
                 "@type": "SearchAction",
                 target: {
                   "@type": "EntryPoint",
-                  urlTemplate: "https://blizine.com/search?q={search_term_string}",
+                  urlTemplate: "https://techpivo.com/search?q={search_term_string}",
                 },
                 "query-input": "required name=search_term_string",
               },

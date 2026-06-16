@@ -39,7 +39,7 @@ interface ConfigField {
 const API_CONFIGS: Record<string, ConfigField[]> = {
   direct_api: [
     { key: "api_key", label: "API Key", placeholder: "Enter your API key", help: "Provided by the affiliate network dashboard", secret: true, required: true, pattern: /^.{8,}$/, patternMessage: "API key must be at least 8 characters" },
-    { key: "tracking_id", label: "Tracking ID / Tag", placeholder: "e.g. blizine-20", help: "Your unique affiliate tracking ID or tag", secret: false, required: true, pattern: /^[\w-]{3,}$/, patternMessage: "Must be at least 3 characters (letters, numbers, dashes)" },
+    { key: "tracking_id", label: "Tracking ID / Tag", placeholder: "e.g. techpivo-20", help: "Your unique affiliate tracking ID or tag", secret: false, required: true, pattern: /^[\w-]{3,}$/, patternMessage: "Must be at least 3 characters (letters, numbers, dashes)" },
   ],
   cj: [
     { key: "website_id", label: "Website ID", placeholder: "e.g. 1234567", help: "Your CJ website ID (Publisher Dashboard)", secret: false, required: true, pattern: /^\d{5,}$/, patternMessage: "Website ID should be a number (5+ digits)" },
@@ -75,7 +75,7 @@ const PROGRAM_OVERRIDES: Record<string, { api_type: string; fields: ConfigField[
   amazon: {
     api_type: "direct_api",
     fields: [
-      { key: "tracking_id", label: "Associate Tag", placeholder: "e.g. blizine-20", help: "Your Amazon Associate tracking ID (a.co/tag/...)", secret: false, required: true, pattern: /^[\w-]+-\d{2}$/, patternMessage: "Format: yourstorename-20 (e.g. blizine-20)" },
+      { key: "tracking_id", label: "Associate Tag", placeholder: "e.g. techpivo-20", help: "Your Amazon Associate tracking ID (a.co/tag/...)", secret: false, required: true, pattern: /^[\w-]+-\d{2}$/, patternMessage: "Format: yourstorename-20 (e.g. techpivo-20)" },
       { key: "access_key", label: "Access Key ID", placeholder: "e.g. AKIA...", help: "From Amazon PA-API > Security Credentials", secret: true, required: true, pattern: /^AKIA[\w]{16}$/, patternMessage: "Must start with AKIA followed by 16 alphanumeric characters" },
       { key: "secret_key", label: "Secret Access Key", placeholder: "AWS secret key", help: "Your Amazon Product Advertising API secret key", secret: true, required: true, pattern: /^[\w\/+=]{40}$/, patternMessage: "Secret key must be exactly 40 characters" },
     ],
@@ -117,7 +117,7 @@ const PROGRAM_OVERRIDES: Record<string, { api_type: string; fields: ConfigField[
     api_type: "direct_api",
     fields: [
       { key: "api_token", label: "API Token", placeholder: "Enter Envato API token", help: "From Envato Account > API Tokens", secret: true, required: true, pattern: /^.{8,}$/, patternMessage: "API token must be at least 8 characters" },
-      { key: "tracking_id", label: "Referrer Tag", placeholder: "e.g. blizine", help: "Your Envato referral tag (optional)", secret: false, required: false, pattern: /^[\w-]{3,}$/, patternMessage: "Must be at least 3 characters" },
+      { key: "tracking_id", label: "Referrer Tag", placeholder: "e.g. techpivo", help: "Your Envato referral tag (optional)", secret: false, required: false, pattern: /^[\w-]{3,}$/, patternMessage: "Must be at least 3 characters" },
     ],
   },
   udemy: {
@@ -136,19 +136,19 @@ const PROGRAM_OVERRIDES: Record<string, { api_type: string; fields: ConfigField[
   bluehost: {
     api_type: "direct_api",
     fields: [
-      { key: "tracking_id", label: "Affiliate Username", placeholder: "e.g. blizine", help: "Your Bluehost affiliate username", secret: false, required: true, pattern: /^[\w-]{3,}$/, patternMessage: "Must be at least 3 alphanumeric characters" },
+      { key: "tracking_id", label: "Affiliate Username", placeholder: "e.g. techpivo", help: "Your Bluehost affiliate username", secret: false, required: true, pattern: /^[\w-]{3,}$/, patternMessage: "Must be at least 3 alphanumeric characters" },
     ],
   },
   hostinger: {
     api_type: "direct_api",
     fields: [
-      { key: "tracking_id", label: "Affiliate ID", placeholder: "e.g. blizine", help: "Your Hostinger affiliate referral ID", secret: false, required: true, pattern: /^[\w-]{3,}$/, patternMessage: "Must be at least 3 alphanumeric characters" },
+      { key: "tracking_id", label: "Affiliate ID", placeholder: "e.g. techpivo", help: "Your Hostinger affiliate referral ID", secret: false, required: true, pattern: /^[\w-]{3,}$/, patternMessage: "Must be at least 3 alphanumeric characters" },
     ],
   },
   nordvpn: {
     api_type: "direct_api",
     fields: [
-      { key: "tracking_id", label: "Affiliate Slug", placeholder: "e.g. blizine", help: "Your NordVPN affiliate referral slug", secret: false, required: true, pattern: /^[\w-]{3,}$/, patternMessage: "Must be at least 3 alphanumeric characters" },
+      { key: "tracking_id", label: "Affiliate Slug", placeholder: "e.g. techpivo", help: "Your NordVPN affiliate referral slug", secret: false, required: true, pattern: /^[\w-]{3,}$/, patternMessage: "Must be at least 3 alphanumeric characters" },
     ],
   },
   booking: {

@@ -171,7 +171,7 @@ export function calculateReadability(content: string): { score: number; flesch: 
 export function generateSerpPreview(state: EditorPostState) {
   const title = state.seo_title || state.title
   const desc = state.seo_description || state.excerpt || ""
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://www.blizine.com"
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://www.techpivo.com"
   return {
     title: title.slice(0, 70),
     url: `${siteUrl}/${state.slug}`,

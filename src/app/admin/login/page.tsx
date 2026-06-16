@@ -34,7 +34,7 @@ export default function AdminLoginPage() {
     <div className="min-h-screen flex items-center justify-center px-4 bg-[#0A0E17]">
       <div className="w-full max-w-sm bg-[#111827] border-2 border-[#374151] rounded-2xl p-8 shadow-2xl">
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-black text-white" style={{ fontFamily: "'Syne', sans-serif" }}>Blizine</h1>
+          <h1 className="text-3xl font-black text-white" style={{ fontFamily: "'Syne', sans-serif" }}>Techpivo</h1>
           <p className="text-sm mt-2 text-gray-400">Admin Panel — sign in to continue</p>
         </div>
 
@@ -52,7 +52,7 @@ export default function AdminLoginPage() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
-              placeholder="admin@blizine.com"
+              placeholder="admin@techpivo.com"
               className="w-full bg-[#1F2937] border border-[#374151] rounded-lg px-4 py-2.5 text-sm text-white placeholder-gray-500 outline-none focus:border-[#F59E0B] focus:ring-1 focus:ring-[#F59E0B]/30 transition-colors"
             />
           </div>

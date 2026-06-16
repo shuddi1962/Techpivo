@@ -3,9 +3,9 @@ import Link from "next/link"
 import Image from "next/image"
 
 export const metadata: Metadata = {
-  title: "Disclaimer – Blizine",
+  title: "Disclaimer – Techpivo",
   description: "Blizine's Disclaimer covering affiliate relationships, advertising, paid content, and professional advice.",
-  openGraph: { title: "Disclaimer – Blizine", description: "Important disclaimers about Blizine's content." },
+  openGraph: { title: "Disclaimer – Techpivo", description: "Important disclaimers about Blizine's content." },
 }
 
 export default function DisclaimerPage() {
@@ -31,7 +31,7 @@ export default function DisclaimerPage() {
           </div>
           <div className="w-12 h-12 rounded-xl bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center text-xl mb-3">🔗</div>
           <h2 className="text-xl font-bold mb-2">Affiliate Disclosure</h2>
-          <p className="text-sm text-muted-foreground leading-relaxed">Blizine participates in affiliate marketing programs. When you click on links and make a purchase, we may earn a commission at no extra cost to you. This never influences our editorial coverage.</p>
+          <p className="text-sm text-muted-foreground leading-relaxed">Techpivo participates in affiliate marketing programs. When you click on links and make a purchase, we may earn a commission at no extra cost to you. This never influences our editorial coverage.</p>
         </section>
 
         <section className="bg-card border rounded-2xl p-6">
@@ -40,7 +40,7 @@ export default function DisclaimerPage() {
           </div>
           <div className="w-12 h-12 rounded-xl bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center text-xl mb-3">📢</div>
           <h2 className="text-xl font-bold mb-2">Advertising Disclosure</h2>
-          <p className="text-sm text-muted-foreground leading-relaxed">Blizine displays ads from third-party networks including Google AdSense. Ads are clearly distinguished from editorial content. See our <Link href="/cookies-policy" className="text-accent hover:underline">Cookies Policy</Link>.</p>
+          <p className="text-sm text-muted-foreground leading-relaxed">Techpivo displays ads from third-party networks including Google AdSense. Ads are clearly distinguished from editorial content. See our <Link href="/cookies-policy" className="text-accent hover:underline">Cookies Policy</Link>.</p>
         </section>
 
         <section className="bg-card border rounded-2xl p-6">
@@ -55,7 +55,7 @@ export default function DisclaimerPage() {
         <section className="bg-card border rounded-2xl p-6">
           <div className="w-12 h-12 rounded-xl bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center text-xl mb-3">💳</div>
           <h2 className="text-xl font-bold mb-2">Payment Processing</h2>
-          <p className="text-sm text-muted-foreground leading-relaxed">Payments are handled by third-party processors. Blizine does not store or process your full payment details.</p>
+          <p className="text-sm text-muted-foreground leading-relaxed">Payments are handled by third-party processors. Techpivo does not store or process your full payment details.</p>
         </section>
 
         <section className="bg-card border rounded-2xl p-6">
@@ -67,7 +67,7 @@ export default function DisclaimerPage() {
         <section className="bg-card border rounded-2xl p-6">
           <div className="w-12 h-12 rounded-xl bg-red-100 dark:bg-red-900/30 flex items-center justify-center text-xl mb-3">⚠️</div>
           <h2 className="text-xl font-bold mb-2">No Professional Advice</h2>
-          <p className="text-sm text-muted-foreground leading-relaxed">Content on Blizine is for informational purposes only. It does not constitute financial, legal, medical, or technical advice.</p>
+          <p className="text-sm text-muted-foreground leading-relaxed">Content on Techpivo is for informational purposes only. It does not constitute financial, legal, medical, or technical advice.</p>
         </section>
 
         <section className="bg-card border rounded-2xl p-6">
@@ -79,7 +79,7 @@ export default function DisclaimerPage() {
         <section className="bg-card border rounded-2xl p-6">
           <div className="w-12 h-12 rounded-xl bg-teal-100 dark:bg-teal-900/30 flex items-center justify-center text-xl mb-3">🔗</div>
           <h2 className="text-xl font-bold mb-2">External Links</h2>
-          <p className="text-sm text-muted-foreground leading-relaxed">Our site may contain links to external websites. Inclusion does not imply endorsement by Blizine.</p>
+          <p className="text-sm text-muted-foreground leading-relaxed">Our site may contain links to external websites. Inclusion does not imply endorsement by Techpivo.</p>
         </section>
 
         <section className="bg-card border rounded-2xl p-6">

@@ -1,7 +1,9 @@
-export const SITE_NAME = "Blizine"
+export const SITE_NAME = "Techpivo"
 export const SITE_TAGLINE = "Tech, decoded. Fast."
-export const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://www.blizine.com"
-export const SITE_LOGO = "Blizine"
+export const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://www.techpivo.com"
+
+export const CANONICAL_DOMAIN = "www.techpivo.com"
+export const SITE_LOGO = "Techpivo"
 export const PRIMARY_COLOR = "#0F172A"
 export const ACCENT_COLOR = "#F59E0B"
 export const HIGHLIGHT_COLOR = "#F59E0B"

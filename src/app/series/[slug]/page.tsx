@@ -3,9 +3,22 @@ import { notFound } from "next/navigation"
 import Link from "next/link"
 import { Badge } from "@/components/ui/badge"
 import { formatDate } from "@/lib/utils"
+import { SITE_NAME, SITE_URL } from "@/lib/constants"
 import { ArrowRight } from "lucide-react"
+import type { Metadata } from "next"
 
 type Props = { params: { slug: string } }
+
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const supabase = createClient()
+  const { data: series } = await supabase.from("series").select("title, description").eq("slug", params.slug).single()
+  if (!series) return { title: "Series Not Found" }
+  return {
+    title: `${series.title} - ${SITE_NAME}`,
+    description: series.description || `${series.title} - ${SITE_NAME}`,
+    alternates: { canonical: `${SITE_URL}/series/${params.slug}` },
+  }
+}
 
 export default async function SeriesPage({ params }: Props) {
   const supabase = createClient()

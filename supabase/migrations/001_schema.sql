@@ -493,10 +493,10 @@ CREATE OR REPLACE TRIGGER on_auth_user_created
 
 -- ===================== DEFAULT SITE SETTINGS =====================
 INSERT INTO site_settings (key, value) VALUES
-  ('site_name', '"Blizine"'),
+  ('site_name', '"Techpivo"'),
   ('site_tagline', '"Tech, decoded. Fast."'),
-  ('site_url', '"https://www.blizine.com"'),
-  ('default_meta_description', '"Blizine - Tech, decoded. Fast. Your source for the latest in tech news, web development, programming, cybersecurity, AI, gadgets, and tutorials."'),
+  ('site_url', '"https://www.techpivo.com"'),
+  ('default_meta_description', '"Techpivo - Tech, decoded. Fast. Your source for the latest in tech news, web development, programming, cybersecurity, AI, gadgets, and tutorials."'),
   ('default_og_image', '""'),
   ('adsense_publisher_id', '""'),
   ('affiliate_disclosure', '"Some links on this page are affiliate links. We may earn a commission at no extra cost to you."'),
@@ -518,6 +518,6 @@ INSERT INTO site_settings (key, value) VALUES
   ('resend_api_key', '""'),
   ('vapid_public_key', '""'),
   ('vapid_private_key', '""'),
-  ('newsletter_from_email', '"newsletter@blizine.com"'),
-  ('newsletter_from_name', '"Blizine"')
+  ('newsletter_from_email', '"newsletter@techpivo.com"'),
+  ('newsletter_from_name', '"Techpivo"')
 ON CONFLICT (key) DO NOTHING;

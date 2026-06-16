@@ -178,7 +178,7 @@ serve(async () => {
         const modelUsed = useGemini ? "gemini-2.5-flash" : "openrouter-meta-llama-3.3-70b"
 
         const articlePrompt =
-          `You are a professional tech journalist writing for "Blizine" (https://blizine.com). ` +
+          `You are a professional tech journalist writing for "Techpivo" (https://techpivo.com). ` +
           `Write a complete, engaging, original article about the topic: "${article.keyword}".\n\n` +
           `REQUIREMENTS:\n` +
           `1. Write 600-1000 words in clean HTML (no markdown). Use <h2> for subheadings, <p> for paragraphs.\n` +

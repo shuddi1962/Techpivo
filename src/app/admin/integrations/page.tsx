@@ -100,7 +100,7 @@ export default function AdminIntegrationsPage() {
         </h2>
         <p className="text-xs text-gray-500 mb-4">
           These services use server‑side environment variables configured in Vercel. 
-          <a href="https://vercel.com/shuddi1962s-projects/blizine/settings/environment-variables" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 ml-1 text-[#6366F1] hover:underline">
+          <a href="https://vercel.com/shuddi1962s-projects/techpivo/settings/environment-variables" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 ml-1 text-[#6366F1] hover:underline">
             Manage in Vercel <ExternalLink className="h-3 w-3" />
           </a>
         </p>

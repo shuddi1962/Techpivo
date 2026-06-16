@@ -3,9 +3,9 @@ import Link from "next/link"
 import Image from "next/image"
 
 export const metadata: Metadata = {
-  title: "About Us – Blizine",
-  description: "Blizine is your trusted source for breaking tech news, in-depth reviews, and expert analysis on AI, cybersecurity, gadgets, and digital innovation.",
-  openGraph: { title: "About Us – Blizine", description: "Learn about Blizine's mission, team, and editorial standards." },
+  title: "About Us – Techpivo",
+  description: "Techpivo is your trusted source for breaking tech news, in-depth reviews, and expert analysis on AI, cybersecurity, gadgets, and digital innovation.",
+  openGraph: { title: "About Us – Techpivo", description: "Learn about Techpivo's mission, team, and editorial standards." },
 }
 
 export default function AboutPage() {
@@ -16,7 +16,7 @@ export default function AboutPage() {
         <Image src="https://images.pexels.com/photos/546819/pexels-photo-546819.jpeg" alt="Modern tech workspace" fill className="object-cover" sizes="100vw" priority />
         <div className="absolute inset-0 bg-black/40" />
         <div className="relative z-10 px-6 md:px-12 lg:px-16 py-16 text-white max-w-4xl">
-          <h1 className="text-4xl font-bold mb-4">About Blizine</h1>
+          <h1 className="text-4xl font-bold mb-4">About Techpivo</h1>
           <p className="text-lg text-white/80 max-w-2xl">
             Your trusted destination for technology news, expert reviews, and in-depth analysis since 2024.
           </p>
@@ -30,7 +30,7 @@ export default function AboutPage() {
         <div>
           <h2 className="text-2xl font-bold mb-4">Our Mission</h2>
           <p className="text-muted-foreground leading-relaxed mb-4">
-            At Blizine, we believe that understanding technology is essential for everyone. Our mission is to
+            At Techpivo, we believe that understanding technology is essential for everyone. Our mission is to
             demystify complex tech topics and deliver accurate, timely, and actionable information to our readers.
           </p>
           <p className="text-muted-foreground leading-relaxed">
@@ -78,7 +78,7 @@ export default function AboutPage() {
         <div className="md:order-1">
           <h2 className="text-2xl font-bold mb-4">Our Team</h2>
           <p className="text-muted-foreground leading-relaxed mb-6">
-            Blizine is powered by a global network of experienced journalists, technology experts, and content
+            Techpivo is powered by a global network of experienced journalists, technology experts, and content
             creators who share a passion for innovation. Our team brings decades of combined experience from
             leading technology publications and the software industry.
           </p>

@@ -93,7 +93,7 @@ export function HeroSection() {
               <AvatarImage src={(main as any).author?.avatar_url} />
               <AvatarFallback>{(main as any).author?.full_name?.[0] || "A"}</AvatarFallback>
             </Avatar>
-            <span>{(main as any).author?.full_name || "Blizine"}</span>
+            <span>{(main as any).author?.full_name || "Techpivo"}</span>
           </div>
         </div>
       </Link>

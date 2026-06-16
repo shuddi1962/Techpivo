@@ -26,7 +26,7 @@ function buildPrompt(
   sourceName: string,
   category: string
 ): string {
-  return `You are a senior tech journalist writing for Blizine (blizine.com), a premium technology news blog trusted by engineers, designers, and tech enthusiasts.
+  return `You are a senior tech journalist writing for Techpivo (techpivo.com), a premium technology news blog trusted by engineers, designers, and tech enthusiasts.
 
 ORIGINAL HEADLINE: ${title}
 SOURCE PUBLICATION: ${sourceName}
@@ -54,7 +54,7 @@ LANGUAGE RULES:
 ✗ BANNED phrases — if any appear, the article is rejected:
   "In today's fast-paced world", "It goes without saying", "At the end of the day",
   "Game-changing", "Revolutionary technology", "Leveraging synergies", "Deep dive",
-  "Blizine brings you", "Check back for updates", "This story is developing",
+  "Techpivo brings you", "Check back for updates", "This story is developing",
   "Our team of journalists", "Needless to say", "In conclusion", "To summarize",
   "Unpacking", "Delve into", "Paradigm shift"
 
@@ -126,7 +126,7 @@ FAQ (3 to 5 questions):
 - Answered directly from the article facts only
 - Each answer: 2-3 sentences max
 
-BLIZINE SCORE:
+Techpivo SCORE:
 - Rate 1-100 how newsworthy and relevant this is for a tech audience
 - 90-100: major breaking news, industry-shifting announcement
 - 75-89:  strong story, clearly relevant to tech readers
@@ -178,7 +178,7 @@ const BANNED_PHRASES = [
   "revolutionary technology",
   "leveraging synergies",
   "deep dive",
-  "blizine brings you",
+  "Techpivo brings you",
   "check back for updates",
   "this story is developing",
   "our team of journalists",
@@ -341,7 +341,7 @@ async function getGeminiTodayCount(usedFor?: string): Promise<number> {
     const { count } = await query
     return count || 0
   } catch {
-    console.warn('[Blizine AI] Could not check Gemini usage count — defaulting to cap reached')
+    console.warn('[Techpivo AI] Could not check Gemini usage count — defaulting to cap reached')
     return GEMINI_DAILY_CAP
   }
 }
@@ -356,7 +356,7 @@ async function logGeminiUsage(headline: string, usedFor: string): Promise<void> 
       created_at: new Date().toISOString(),
     })
   } catch (e) {
-    console.warn('[Blizine AI] Could not log Gemini usage:', e)
+    console.warn('[Techpivo AI] Could not log Gemini usage:', e)
   }
 }
 
@@ -370,7 +370,7 @@ async function geminiGrounded(
   dailyCap?: number
 ): Promise<{ article: BlizineArticle | null; debug: string }> {
   if (!process.env.GEMINI_API_KEY) {
-    console.log('[Blizine AI] No GEMINI_API_KEY set')
+    console.log('[Techpivo AI] No GEMINI_API_KEY set')
     return { article: null, debug: 'no_key' }
   }
 
@@ -378,7 +378,7 @@ async function geminiGrounded(
   const usedForFilter = dailyCap ? usedFor : undefined
   const todayCount = await getGeminiTodayCount(usedForFilter)
   if (todayCount >= cap) {
-    console.log(`[Blizine AI] Gemini ${usedFor} cap reached (${todayCount}/${cap}) — skipping`)
+    console.log(`[Techpivo AI] Gemini ${usedFor} cap reached (${todayCount}/${cap}) — skipping`)
     return { article: null, debug: 'cap_reached' }
   }
 
@@ -525,7 +525,7 @@ function buildBlizinePrompt(input: string, inputType: "topic" | "url" | "content
     ? `SOURCE URL TO RESEARCH:\n${input}\n\nUse Google Search to find everything about this story.`
     : `SOURCE CONTENT FROM ${sourceName || "a tech publication"}:\n${input.slice(0, 4000)}`
 
-  return `You are a senior tech journalist writing for Blizine (blizine.com), a premium technology news blog.
+  return `You are a senior tech journalist writing for Techpivo (techpivo.com), a premium technology news blog.
 
 ${sourceSection}
 
@@ -540,7 +540,7 @@ INSTRUCTIONS:
 8. Include a "What This Means" analysis section
 9. End with a forward-looking "What's Next" section
 10. Format content as HTML: use <p> for paragraphs, <h2> or <h3> for section headings, <strong> for key terms
-11. Do NOT mention Blizine in the article body
+11. Do NOT mention Techpivo in the article body
 12. Do NOT write "In conclusion" or "To summarize"
 13. Do NOT use phrases like "In today's fast-paced tech world"
 14. Be specific — avoid vague generalisations
@@ -592,7 +592,7 @@ Return ONLY valid JSON — no markdown, no code blocks, no explanation:
 
 export async function manualWriteFromTopic(topic: string): Promise<{ article: BlizineArticle | null; debug: string }> {
   if (!topic || topic.length < 5) return { article: null, debug: 'topic_too_short' }
-  console.log(`[Blizine Manual] Writing from topic: ${topic.slice(0, 60)}`)
+  console.log(`[Techpivo Manual] Writing from topic: ${topic.slice(0, 60)}`)
 
   const prompt = buildBlizinePrompt(topic, "topic")
   const result = await geminiGrounded(prompt, 'manual', MANUAL_GEMINI_DAILY_CAP)
@@ -607,13 +607,13 @@ export async function manualWriteFromTopic(topic: string): Promise<{ article: Bl
 
 export async function manualWriteFromUrl(url: string): Promise<{ article: BlizineArticle | null; debug: string }> {
   if (!url || !url.startsWith("http")) return { article: null, debug: 'invalid_url' }
-  console.log(`[Blizine Manual] Writing from URL: ${url.slice(0, 80)}`)
+  console.log(`[Techpivo Manual] Writing from URL: ${url.slice(0, 80)}`)
 
   let sourceContent = ""
   let sourceName = new URL(url).hostname.replace("www.", "")
   try {
     const res = await fetch(url, {
-      headers: { "User-Agent": "Mozilla/5.0 (compatible; Blizine/1.0; +https://blizine.com/bot)" },
+      headers: { "User-Agent": "Mozilla/5.0 (compatible; Techpivo/1.0; +https://techpivo.com/bot)" },
       signal: AbortSignal.timeout(10000),
     })
     const html = await res.text()
@@ -638,7 +638,7 @@ export async function manualWriteFromUrl(url: string): Promise<{ article: Blizin
     const siteNameMatch = html.match(/<meta[^>]+property=["']og:site_name["'][^>]+content=["']([^"']+)["']/i)
     if (siteNameMatch?.[1]) sourceName = siteNameMatch[1]
   } catch {
-    console.warn(`[Blizine Manual] Could not pre-fetch ${url}, relying on Gemini grounding`)
+    console.warn(`[Techpivo Manual] Could not pre-fetch ${url}, relying on Gemini grounding`)
   }
 
   const input = sourceContent.length > 200 ? sourceContent : url
@@ -661,12 +661,12 @@ export async function geminiRewriteContent(title: string, content: string): Prom
 
   const todayCount = await getGeminiTodayCount()
   if (todayCount >= GEMINI_DAILY_CAP) {
-    console.warn(`[Blizine AI] Gemini daily cap reached (${todayCount}/${GEMINI_DAILY_CAP}) — skipping rewrite`)
+    console.warn(`[Techpivo AI] Gemini daily cap reached (${todayCount}/${GEMINI_DAILY_CAP}) — skipping rewrite`)
     return content
   }
 
   const rewritePrompt =
-    "You are a senior tech journalist writing for Blizine (blizine.com), a premium technology news blog.\n\n" +
+    "You are a senior tech journalist writing for Techpivo (techpivo.com), a premium technology news blog.\n\n" +
     "Rewrite the following tech article in an engaging, SEO-optimized style.\n\n" +
     "INSTRUCTIONS:\n" +
     "- Write a complete, self-contained article (minimum 600 words)\n" +
@@ -677,7 +677,7 @@ export async function geminiRewriteContent(title: string, content: string): Prom
     "- Explain WHY this matters and include a forward-looking perspective\n" +
     "- Output ONLY valid HTML — no markdown, no code fences\n" +
     "- Use <p> for paragraphs, <h2>/<h3> for subheadings, <strong> for emphasis\n" +
-    "- Do NOT mention Blizine in the article body\n" +
+    "- Do NOT mention Techpivo in the article body\n" +
     "- Do NOT use phrases like 'In conclusion', 'To summarize', or 'In today's fast-paced world'\n\n" +
     "Article title: " + title + "\n\nOriginal content:\n" + textContent
 
@@ -693,7 +693,7 @@ export async function geminiRewriteContent(title: string, content: string): Prom
         }),
         signal: AbortSignal.timeout(15000),
       })
-      if (!res.ok) { console.warn('[Blizine] Gemini rewrite HTTP', res.status); return content }
+      if (!res.ok) { console.warn('[Techpivo] Gemini rewrite HTTP', res.status); return content }
       const data = await res.json()
       const text = data?.candidates?.[0]?.content?.parts?.[0]?.text || ""
       if (text.length > 300) {
@@ -702,7 +702,7 @@ export async function geminiRewriteContent(title: string, content: string): Prom
         return text
       }
     } catch (e) {
-      console.warn("[Blizine] Gemini rewrite failed:", e)
+      console.warn("[Techpivo] Gemini rewrite failed:", e)
     }
   }
 

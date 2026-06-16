@@ -47,7 +47,7 @@ export function Header() {
       <header className={`site-header${scrolled ? " scrolled" : ""}`}>
         <div className="header-inner">
           <Link href="/" className="logo">
-            <span className="logo-text">Blizine</span>
+            <span className="logo-text">Techpivo</span>
           </Link>
 
           <div className="header-search-box">
@@ -102,7 +102,7 @@ export function Header() {
           <div className="modal-box" onClick={(e) => e.stopPropagation()}>
             <button className="modal-close" onClick={() => setLoginOpen(false)}>✕</button>
             <div className="modal-logo" style={{ marginBottom: 16 }}>
-              <span style={{ fontFamily: "'Syne', sans-serif", fontWeight: 800, fontSize: 22, color: "var(--text)" }}>Blizine</span>
+              <span style={{ fontFamily: "'Syne', sans-serif", fontWeight: 800, fontSize: 22, color: "var(--text)" }}>Techpivo</span>
             </div>
             <h2 className="modal-title">Welcome Back</h2>
             <p className="modal-sub">Sign in to save articles, join discussions, and get a personalised feed.</p>

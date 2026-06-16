@@ -144,7 +144,7 @@ export default async function HomePage() {
         <MainNav categories={[]} />
         <main className="min-h-[60vh] flex items-center justify-center px-4">
           <div className="text-center max-w-lg">
-            <h1 className="text-3xl font-bold mb-4" style={{ fontFamily: "'Syne', sans-serif" }}>Welcome to Blizine</h1>
+            <h1 className="text-3xl font-bold mb-4" style={{ fontFamily: "'Syne', sans-serif" }}>Welcome to Techpivo</h1>
             <p className="text-base leading-relaxed" style={{ color: "var(--muted)" }}>
               Tech, decoded. Fast. We&apos;re preparing the latest tech news and articles for you. Check back soon.
             </p>

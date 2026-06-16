@@ -23,7 +23,7 @@ export function AdminHeader() {
     <header className="sticky top-0 z-50 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="flex h-14 items-center justify-between px-6">
         <Link href="/admin" className="flex items-center gap-2 font-semibold">
-          <span className="text-xl font-bold text-indigo-500">Blizine</span>
+          <span className="text-xl font-bold text-indigo-500">Techpivo</span>
           <span className="rounded-md bg-indigo-500/10 px-2 py-0.5 text-xs font-medium text-indigo-500">
             Admin
           </span>
@@ -53,7 +53,7 @@ export function AdminHeader() {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-48">
-              <DropdownMenuLabel>Blizine Admin</DropdownMenuLabel>
+              <DropdownMenuLabel>Techpivo Admin</DropdownMenuLabel>
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={() => router.push("/admin/settings")}>
                 <Settings className="mr-2 h-4 w-4" />

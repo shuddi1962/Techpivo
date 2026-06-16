@@ -44,7 +44,7 @@ export function HomeHero({ posts }: HomeHeroProps) {
               <AvatarImage src={main.author?.avatar_url || undefined} />
               <AvatarFallback>{main.author?.full_name?.[0] || "A"}</AvatarFallback>
             </Avatar>
-            <span>{main.author?.full_name || "Blizine"}</span>
+            <span>{main.author?.full_name || "Techpivo"}</span>
           </div>
         </div>
       </Link>

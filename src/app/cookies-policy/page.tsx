@@ -3,9 +3,9 @@ import Link from "next/link"
 import Image from "next/image"
 
 export const metadata: Metadata = {
-  title: "Cookies Policy – Blizine",
+  title: "Cookies Policy – Techpivo",
   description: "Blizine's Cookies Policy explains how we use cookies and similar technologies to enhance your experience, analyze traffic, and serve personalized ads.",
-  openGraph: { title: "Cookies Policy – Blizine", description: "How Blizine uses cookies and tracking technologies." },
+  openGraph: { title: "Cookies Policy – Techpivo", description: "How Techpivo uses cookies and tracking technologies." },
 }
 
 export default function CookiesPolicyPage() {
@@ -18,7 +18,7 @@ export default function CookiesPolicyPage() {
         <div className="relative z-10 px-6 md:px-12 lg:px-16 py-16 text-white max-w-4xl">
           <div className="text-5xl mb-4">🍪</div>
           <h1 className="text-4xl font-bold mb-2">Cookies Policy</h1>
-          <p className="text-lg text-white/80">How Blizine uses cookies and similar tracking technologies to improve your experience.</p>
+          <p className="text-lg text-white/80">How Techpivo uses cookies and similar tracking technologies to improve your experience.</p>
           <p className="text-sm text-white/60 mt-4">Last updated: May 27, 2026</p>
         </div>
       </div>
@@ -30,7 +30,7 @@ export default function CookiesPolicyPage() {
             <div className="w-12 h-12 rounded-xl bg-orange-100 dark:bg-orange-900/30 flex items-center justify-center text-xl shrink-0">📖</div>
             <div>
               <h2 className="text-2xl font-bold mb-2">What Are Cookies?</h2>
-              <p className="text-muted-foreground leading-relaxed">Cookies are small text files stored on your device when you visit a website. They help websites remember preferences, understand usage, and deliver relevant content. By continuing to use Blizine, you consent to cookie use as described here.</p>
+              <p className="text-muted-foreground leading-relaxed">Cookies are small text files stored on your device when you visit a website. They help websites remember preferences, understand usage, and deliver relevant content. By continuing to use Techpivo, you consent to cookie use as described here.</p>
             </div>
           </div>
         </section>

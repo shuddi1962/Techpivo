@@ -25,7 +25,7 @@ export function LeftColumn() {
           />
         </div>
         <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-[#6B7280]">
-          <span className="shrink-0">{process.env.NEXT_PUBLIC_SITE_URL || "www.blizine.com"}/</span>
+          <span className="shrink-0">{process.env.NEXT_PUBLIC_SITE_URL || "www.Techpivo.com"}/</span>
           <input
             value={post.slug}
             onChange={(e) => setField("slug", e.target.value)}

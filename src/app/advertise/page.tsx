@@ -3,9 +3,9 @@ import Link from "next/link"
 import Image from "next/image"
 
 export const metadata: Metadata = {
-  title: "Advertise With Us – Blizine",
-  description: "Reach a highly engaged tech audience. Explore advertising opportunities on Blizine including display ads, sponsored content, and newsletter placements.",
-  openGraph: { title: "Advertise With Us – Blizine", description: "Explore advertising opportunities on Blizine." },
+  title: "Advertise With Us – Techpivo",
+  description: "Reach a highly engaged tech audience. Explore advertising opportunities on Techpivo including display ads, sponsored content, and newsletter placements.",
+  openGraph: { title: "Advertise With Us – Techpivo", description: "Explore advertising opportunities on Techpivo." },
 }
 
 export default function AdvertisePage() {
@@ -17,7 +17,7 @@ export default function AdvertisePage() {
         <div className="absolute inset-0 bg-black/40" />
         <div className="relative z-10 px-6 md:px-12 lg:px-16 py-16 text-white max-w-4xl">
           <h1 className="text-4xl font-bold mb-4">Advertise With Us</h1>
-          <p className="text-lg text-white/80">Connect your brand with thousands of tech-savvy professionals and enthusiasts who trust Blizine daily.</p>
+          <p className="text-lg text-white/80">Connect your brand with thousands of tech-savvy professionals and enthusiasts who trust Techpivo daily.</p>
         </div>
       </div>
 
@@ -56,9 +56,9 @@ export default function AdvertisePage() {
         </div>
       </section>
 
-      {/* Why Blizine */}
+      {/* Why Techpivo */}
       <section className="mb-12">
-        <h2 className="text-2xl font-bold mb-6">Why Advertise With Blizine?</h2>
+        <h2 className="text-2xl font-bold mb-6">Why Advertise With Techpivo?</h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {[
             { title: "Targeted Audience", desc: "Reach decision-makers, developers, and tech enthusiasts actively seeking quality content.", img: "https://images.pexels.com/photos/546819/pexels-photo-546819.jpeg" },
@@ -82,7 +82,7 @@ export default function AdvertisePage() {
       <section className="bg-card border rounded-2xl p-8 text-center">
         <h2 className="text-2xl font-bold mb-3">Ready to Get Started?</h2>
         <p className="text-muted-foreground mb-6">Contact our advertising team for a customized proposal.</p>
-        <a href="mailto:ads@blizine.com" className="inline-flex items-center gap-2 bg-accent text-white px-6 py-3 rounded-lg font-medium hover:opacity-90 transition-opacity">ads@blizine.com</a>
+        <a href="mailto:ads@techpivo.com" className="inline-flex items-center gap-2 bg-accent text-white px-6 py-3 rounded-lg font-medium hover:opacity-90 transition-opacity">ads@techpivo.com</a>
       </section>
       </div>
     </div>

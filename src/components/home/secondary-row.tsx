@@ -26,7 +26,7 @@ export function SecondaryRow() {
 
   return (
     <section className="mb-10">
-      <h2 className="text-xl font-bold mb-6">More from Blizine</h2>
+      <h2 className="text-xl font-bold mb-6">More from Techpivo</h2>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {posts.map((post) => (
           <Link key={post.id} href={`/${post.slug}`} className="group">

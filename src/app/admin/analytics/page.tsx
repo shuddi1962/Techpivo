@@ -459,7 +459,7 @@ export default function AnalyticsPage() {
           {ps && (
             <ColorCard accent="#FFD700">
               <SectionLabel icon={<Zap className="h-4 w-4" style={{ color: '#FFD700' }} />} accent="#D97706">
-                PageSpeed Insights &middot; blizine.com
+                PageSpeed Insights &middot; techpivo.com
               </SectionLabel>
               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
                 <GaugeCard label="Performance" value={ps.performance} max={100} />

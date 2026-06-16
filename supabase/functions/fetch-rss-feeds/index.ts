@@ -7,7 +7,7 @@ const supabase = createClient(
 )
 
 const BOT_HEADERS = {
-  'User-Agent': 'Mozilla/5.0 (compatible; Blizine/1.0; +https://www.blizine.com/bot)',
+  'User-Agent': 'Mozilla/5.0 (compatible; Techpivo/1.0; +https://www.techpivo.com/bot)',
   'Accept': 'text/html,application/xhtml+xml,*/*'
 }
 
