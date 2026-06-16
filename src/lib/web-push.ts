@@ -1,17 +1,20 @@
 import webpush       from 'web-push'
 import { createClient } from '@/lib/supabase/admin'
 
-webpush.setVapidDetails(
-  'mailto:hello@techpivo.com',
-  process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY!,
-  process.env.VAPID_PRIVATE_KEY!
-)
-
 const SITE = process.env.NEXT_PUBLIC_SITE_URL || 'https://techpivo.com'
+
+function ensureVapid() {
+  webpush.setVapidDetails(
+    'mailto:hello@techpivo.com',
+    process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY!,
+    process.env.VAPID_PRIVATE_KEY!
+  )
+}
 
 export async function sendPushNotification(post: {
   title: string; slug: string; excerpt: string; featured_image?: string
 }): Promise<void> {
+  ensureVapid()
   const supabase = createClient()
   const { data: subs } = await supabase
     .from('push_subscriptions')
