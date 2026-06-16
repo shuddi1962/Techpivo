@@ -1,12 +1,14 @@
 import { NextResponse } from "next/server"
-import { createClient } from "@supabase/supabase-js"
+import { createClient as createSupabaseClient } from "@supabase/supabase-js"
 
 export const dynamic = "force-dynamic"
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-)
+function getSupabase() {
+  return createSupabaseClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  )
+}
 
 async function callOpenRouter(prompt: string, apiKey: string): Promise<string> {
   const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
@@ -60,7 +62,7 @@ export async function GET() {
           quickBrief = JSON.parse(cleaned)
         } catch { quickBrief = [{ text: briefResult.slice(0, 200) }] }
 
-        // Blizine Score
+        // Techpivo Score
         const scorePrompt =
           "Rate the following article's relevance to technology on a scale of 1 to 100. Return ONLY a number. Article: " +
           post.title + ". " + textContent.slice(0, 1000)
@@ -69,7 +71,7 @@ export async function GET() {
         const blizineScore = parseInt(scoreResult.replace(/\D/g, ""), 10) || null
         const validScore = blizineScore && blizineScore >= 1 && blizineScore <= 100 ? blizineScore : null
 
-        await supabase.from("posts").update({ quick_brief: quickBrief, blizine_score: validScore }).eq("id", post.id)
+        await getSupabase().from("posts").update({ quick_brief: quickBrief, blizine_score: validScore }).eq("id", post.id)
         enriched++
       } catch (e: any) {
         console.error(`Enrich failed for ${post.id}: ${e.message}`)

@@ -1,11 +1,13 @@
 import { NextResponse } from "next/server"
-import { createClient } from "@supabase/supabase-js"
+import { createClient as createSupabaseClient } from "@supabase/supabase-js"
 import { geminiRewriteContent } from "@/lib/ai-rewriter"
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-)
+function getSupabase() {
+  return createSupabaseClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  )
+}
 
 interface QuickBriefItem {
   text: string
@@ -57,7 +59,7 @@ async function callOpenRouter(prompt: string, apiKey: string): Promise<string> {
 async function fetchOriginalContent(url: string): Promise<string> {
   const response = await fetch(url, {
     signal: AbortSignal.timeout(15000),
-    headers: { "User-Agent": "Blizine/1.0" },
+    headers: { "User-Agent": "Techpivo/1.0" },
   })
 
   if (!response.ok) throw new Error("Fetch failed: " + response.status)
@@ -91,7 +93,7 @@ export async function POST(req: Request) {
 
     const openRouterKey = process.env.OPENROUTER_API_KEY || ""
 
-    const { data: post, error: fetchError } = await supabase
+    const { data: post, error: fetchError } = await getSupabase()
       .from("posts")
       .select("*")
       .eq("id", post_id)
@@ -186,7 +188,7 @@ export async function POST(req: Request) {
           }
         }
       } catch (err: any) {
-        console.error("Blizine score failed: " + err.message)
+        console.error("Techpivo score failed: " + err.message)
       }
     }
 
@@ -199,7 +201,7 @@ export async function POST(req: Request) {
     if (seoData.seo_description) updateData.seo_description = seoData.seo_description
     if (seoData.seo_keywords?.length) updateData.seo_keywords = seoData.seo_keywords
 
-    const { error: updateError } = await supabase
+    const { error: updateError } = await getSupabase()
       .from("posts")
       .update(updateData)
       .eq("id", post_id)
@@ -213,7 +215,7 @@ export async function POST(req: Request) {
       const newCols: Record<string, unknown> = {}
       if (quickBrief.length > 0) newCols.quick_brief = quickBrief
       if (blizineScore !== null) newCols.blizine_score = blizineScore
-      const { error: colErr } = await supabase.from("posts").update(newCols).eq("id", post_id)
+      const { error: colErr } = await getSupabase().from("posts").update(newCols).eq("id", post_id)
       if (colErr) console.error("newColumns error:", colErr.message)
     }
 

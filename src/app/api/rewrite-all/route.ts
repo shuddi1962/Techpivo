@@ -1,13 +1,15 @@
 import { NextResponse } from "next/server"
-import { createClient } from "@supabase/supabase-js"
+import { createClient as createSupabaseClient } from "@supabase/supabase-js"
 import { geminiRewriteContent } from "@/lib/ai-rewriter"
 
 export const dynamic = "force-dynamic"
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-)
+function getSupabase() {
+  return createSupabaseClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  )
+}
 
 const PEXELS_API_KEY = "GH735sp9bohSxSm2PnTFewYGjsZvGS2UoE0JzLCMgFgG2bAV0UTihSVn"
 
@@ -15,7 +17,7 @@ async function fetchOgImage(url: string): Promise<string | null> {
   try {
     const response = await fetch(url, {
       signal: AbortSignal.timeout(10000),
-      headers: { "User-Agent": "Mozilla/5.0 (compatible; Blizine/1.0)" },
+      headers: { "User-Agent": "Mozilla/5.0 (compatible; Techpivo/1.0)" },
     })
     if (!response.ok) return null
     const html = await response.text()
@@ -50,8 +52,8 @@ async function callOpenRouter(prompt: string, apiKey: string, maxTokens = 4096):
     headers: {
       "Content-Type": "application/json",
       Authorization: "Bearer " + apiKey,
-      "HTTP-Referer": `${process.env.NEXT_PUBLIC_SITE_URL || "https://www.blizine.com"}`,
-      "X-Title": "Blizine",
+      "HTTP-Referer": `${process.env.NEXT_PUBLIC_SITE_URL || "https://www.techpivo.com"}`,
+      "X-Title": "Techpivo",
     },
     body: JSON.stringify({
       model: "openrouter/free",
@@ -97,7 +99,7 @@ export async function GET() {
         try {
           const result = await geminiRewriteContent(post.title, post.content || "")
           if (result && result !== post.content && result.length > 300) {
-            await supabase.from("posts").update({ content: result, ai_rewritten: true }).eq("id", post.id)
+            await getSupabase().from("posts").update({ content: result, ai_rewritten: true }).eq("id", post.id)
           }
         } catch { /* rewrite failed but continue */ }
 
@@ -117,7 +119,7 @@ export async function GET() {
           }
         } catch { /* skip */ }
 
-        // Blizine score
+        // Techpivo score
         try {
           const scorePrompt =
             "Rate the following article's relevance to technology, innovation, and digital culture on a scale of 1 to 100. " +
@@ -134,7 +136,7 @@ export async function GET() {
             let img: string | null = null
             if (post.original_source_url) img = await fetchOgImage(post.original_source_url)
             if (!img) img = await searchPexels(post.title.split(" ").slice(0, 5).join(" "))
-            if (img) await supabase.from("posts").update({ featured_image: img }).eq("id", post.id)
+            if (img) await getSupabase().from("posts").update({ featured_image: img }).eq("id", post.id)
           } catch { /* skip */ }
         }
 
@@ -144,7 +146,7 @@ export async function GET() {
           blizine_score: blizineScore ?? 0,
         }
 
-        const { error: updateError } = await supabase.from("posts").update(updateData).eq("id", post.id)
+        const { error: updateError } = await getSupabase().from("posts").update(updateData).eq("id", post.id)
         if (updateError) {
           console.error("Update error for", post.id, updateError.message)
         } else {

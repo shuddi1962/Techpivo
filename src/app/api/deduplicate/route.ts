@@ -1,15 +1,17 @@
 import { NextResponse } from "next/server"
-import { createClient } from "@supabase/supabase-js"
+import { createClient as createSupabaseClient } from "@supabase/supabase-js"
 
 export const dynamic = "force-dynamic"
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-)
+function getSupabase() {
+  return createSupabaseClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  )
+}
 
 export async function GET() {
-  const { data: posts, error } = await supabase
+  const { data: posts, error } = await getSupabase()
     .from("posts")
     .select("id, title, original_source_url, content")
     .order("created_at", { ascending: true })
@@ -53,7 +55,7 @@ export async function GET() {
   const ids = Array.from(toDelete)
   let removed = 0
   for (let i = 0; i < ids.length; i += 10) {
-    await supabase.from("posts").delete().in("id", ids.slice(i, i + 10))
+    await getSupabase().from("posts").delete().in("id", ids.slice(i, i + 10))
     removed += Math.min(10, ids.length - i)
   }
 

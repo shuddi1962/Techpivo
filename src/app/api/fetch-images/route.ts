@@ -1,12 +1,14 @@
 import { NextResponse } from "next/server"
-import { createClient } from "@supabase/supabase-js"
+import { createClient as createSupabaseClient } from "@supabase/supabase-js"
 
 export const dynamic = "force-dynamic"
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-)
+function getSupabase() {
+  return createSupabaseClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  )
+}
 
 const PEXELS_API_KEY = "GH735sp9bohSxSm2PnTFewYGjsZvGS2UoE0JzLCMgFgG2bAV0UTihSVn"
 
@@ -14,7 +16,7 @@ async function fetchOgImage(url: string): Promise<string | null> {
   try {
     const response = await fetch(url, {
       signal: AbortSignal.timeout(10000),
-      headers: { "User-Agent": "Mozilla/5.0 (compatible; Blizine/1.0)" },
+      headers: { "User-Agent": "Mozilla/5.0 (compatible; Techpivo/1.0)" },
     })
     if (!response.ok) return null
     const html = await response.text()
@@ -62,7 +64,7 @@ async function searchPexels(query: string): Promise<string | null> {
 }
 
 export async function GET() {
-  const { data: posts, error } = await supabase
+  const { data: posts, error } = await getSupabase()
     .from("posts")
     .select("id, title, featured_image, original_source_url, category:categories(name)")
     .or("featured_image.is.null,featured_image.eq.")
@@ -88,7 +90,7 @@ export async function GET() {
       }
 
       if (image) {
-        await supabase.from("posts").update({ featured_image: image }).eq("id", post.id)
+        await getSupabase().from("posts").update({ featured_image: image }).eq("id", post.id)
         updated++
       }
     } catch {
