@@ -104,7 +104,7 @@ serve(async (req) => {
       }
 
       const link = `${SUPABASE_URL.replace("/functions/v1", "")}/post/${postData.slug}`;
-      const utmLink = `${link}?utm_source=${account.platform}&utm_medium=social&utm_campaign=blizine-auto&utm_content=${postData.slug}`;
+      const utmLink = `${link}?utm_source=${account.platform}&utm_medium=social&utm_campaign=techpivo-auto&utm_content=${postData.slug}`;
 
       const excerpt50 = postData.excerpt.length > 50
         ? postData.excerpt.substring(0, 47) + "..."
@@ -355,7 +355,7 @@ async function publishReddit(
     method: "POST",
     headers: {
       Authorization: `Bearer ${account.access_token}`,
-      "User-Agent": "blizine-social-publisher/1.0",
+      "User-Agent": "techpivo-social-publisher/1.0",
       "Content-Type": "application/x-www-form-urlencoded",
     },
     body,

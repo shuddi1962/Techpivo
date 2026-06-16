@@ -4,11 +4,16 @@ import { rewriteArticle, type BlizineArticle }      from '@/lib/ai-rewriter'
 import { createClient }                    from '@/lib/supabase/admin'
 import { watermarkImage }                  from '@/lib/watermark'
 import { SITE_URL }                        from '@/lib/constants'
+import { publishToAllPlatforms }    from '@/lib/social-publisher'
+import { sendNewsletterForPost }    from '@/lib/newsletter'
+import { sendPushNotification }     from '@/lib/web-push'
+import { buildAffiliateBlock }      from '@/lib/affiliate-inject'
+import { submitToGoogleIndexing }   from '@/lib/google-indexing'
 
 const DEFAULT_DAILY_CAP = 30
 const ITEMS_PER_FEED = 10
 
-const BOT_UA = 'Mozilla/5.0 (compatible; Blizine/1.0; +https://blizine.com/bot)'
+const BOT_UA = 'Mozilla/5.0 (compatible; Techpivo/1.0; +https://techpivo.com/bot)'
 
 function isAuthorised(req: NextRequest): boolean {
   const auth = req.headers.get('Authorization')
@@ -435,7 +440,7 @@ async function run(req: NextRequest) {
       } catch {}
 
       const slug = makeSlug(ai.headline)
-      const { error: insertError } = await supabase.from('posts').insert({
+      const { data: newPost, error: insertError } = await supabase.from('posts').insert({
         slug, title: ai.headline, content: ai.content,
         seo_title: ai.seoTitle, seo_description: ai.seoDescription, seo_keywords: ai.seoKeywords,
         featured_image: finalImage, author_id: '3916aa7d-197c-47f8-bdf3-cd6b6f910a37',
@@ -446,10 +451,74 @@ async function run(req: NextRequest) {
         published_at: c.item.pubDate && !isNaN(Date.parse(c.item.pubDate)) ? new Date(c.item.pubDate).toISOString() : new Date().toISOString(),
         reading_time: Math.max(2, Math.round(ai.content.replace(/<[^>]+>/g,' ').split(/\s+/).length / 200)),
         views: 0, created_at: new Date().toISOString(), updated_at: new Date().toISOString(),
-      })
-      if (insertError) { failed++; log.push(`[DB ERR] ${insertError.message.slice(0,60)}`); return { ok: false } }
+      }).select('id')
+      if (insertError || !newPost?.[0]?.id) { failed++; log.push(`[DB ERR] ${(insertError?.message || 'No ID').slice(0,60)}`); return { ok: false } }
 
       await supabase.rpc('increment_daily_count')
+
+      // ── POST-PUBLISH PIPELINE (all fire-and-forget) ───────
+      const postId      = newPost[0].id
+      const postUrl     = `${process.env.NEXT_PUBLIC_SITE_URL || SITE_URL}/${slug}`
+      const categorySlug = Object.entries(catMap)
+        .find(([, id]) => id === c.categoryId)?.[0] || 'tech-news'
+
+      const postData = {
+        id:              postId,
+        title:           ai.headline,
+        slug,
+        excerpt:         ai.content.replace(/<[^>]+>/g, ' ').slice(0, 200),
+        content:         ai.content,
+        featured_image:  finalImage || '',
+        tags:            ai.tags || [],
+        category_slug:   categorySlug,
+        seo_description: ai.seoDescription || '',
+      }
+
+      // 1. IndexNow — instant Bing/Yandex indexing
+      fetch(`${process.env.NEXT_PUBLIC_SITE_URL || SITE_URL}/api/indexnow`, {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${process.env.CRON_SECRET}` },
+        body:    JSON.stringify({ urls: [postUrl] }),
+      }).catch(() => {})
+
+      // 2. Google Indexing API
+      submitToGoogleIndexing(postUrl).catch(() => {})
+
+      // 3. Queue for Google Indexing batch processor
+      Promise.resolve(
+        supabase.from('google_indexing_queue')
+          .insert({ url: postUrl, status: 'pending' })
+      ).catch(() => {})
+
+      // 4. Social publishing — all platforms
+      publishToAllPlatforms(postData).catch(() => {})
+
+      // 5. Newsletter — email subscribers
+      sendNewsletterForPost(postData).catch(() => {})
+
+      // 6. Web push notification
+      sendPushNotification(postData).catch(() => {})
+
+      // 7. Affiliate block injection
+      const affiliateBlock = buildAffiliateBlock(postData)
+      if (affiliateBlock) {
+        Promise.resolve(
+          supabase.from('posts')
+            .update({ content: ai.content + affiliateBlock })
+            .eq('id', postId)
+        ).catch(() => {})
+      }
+
+      // 8. ISR revalidation — homepage and category
+      fetch(`${process.env.NEXT_PUBLIC_SITE_URL || SITE_URL}/api/revalidate`, {
+        method:  'POST',
+        headers: {
+          'Content-Type':  'application/json',
+          'Authorization': `Bearer ${process.env.REVALIDATION_SECRET}`,
+        },
+        body: JSON.stringify({ paths: ['/', `/category/${categorySlug}`] }),
+      }).catch(() => {})
+
       return { ok: true, headline: ai.headline.slice(0,60) }
     } catch (err) {
       failed++; log.push(`[ERR] ${String(err).slice(0,60)}`); return { ok: false }
@@ -487,7 +556,7 @@ async function run(req: NextRequest) {
         if (isOutOfTime()) break
 
         try {
-          const { article, debug } = await rewriteArticle(post.title, post.content.replace(/<[^>]+>/g, ' ').trim().slice(0, 5000), 'blizine-internal', 'tech-news', 'rss_auto')
+          const { article, debug } = await rewriteArticle(post.title, post.content.replace(/<[^>]+>/g, ' ').trim().slice(0, 5000), 'Techpivo-internal', 'tech-news', 'rss_auto')
 
           if (!article) {
             log.push(`[FALLBACK FAIL] ${post.title.slice(0, 45)} (${debug})`)

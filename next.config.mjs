@@ -1,5 +1,15 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  async redirects() {
+    return [
+      {
+        source: "/:path*",
+        has: [{ type: "host", value: "techpivo.com" }],
+        destination: "https://www.techpivo.com/:path*",
+        permanent: true,
+      },
+    ]
+  },
   images: {
     remotePatterns: [
       { protocol: 'https', hostname: '**.theverge.com' },
@@ -45,10 +55,17 @@ const nextConfig = {
       { protocol: 'https', hostname: '**.nytimes.com' },
       { protocol: 'https', hostname: '**.pcworld.com' },
       { protocol: 'https', hostname: 'images.unsplash.com' },
+      { protocol: 'https', hostname: 'images.pexels.com' },
+      { protocol: 'https', hostname: '**.pexels.com' },
       { protocol: 'https', hostname: '**.supabase.co' },
       { protocol: 'https', hostname: '**.supabase.storage' },
       { protocol: 'https', hostname: '**' },
     ],
+  },
+  experimental: {
+    staleTimes: {
+      dynamic: 300,
+    },
   },
 };
 

@@ -148,7 +148,7 @@ serve(async (req) => {
     if (openRouterKey && textContent.length > 50) {
       try {
         const rewritePrompt =
-          `You are an expert tech journalist writing for the blog "Blizine". ` +
+          `You are an expert tech journalist writing for the blog "Techpivo". ` +
           `Rewrite the following article in your OWN WORDS. Never copy sentences verbatim. ` +
           `Use a completely different structure, different opening, and different phrasing. ` +
           `Write a FULL complete article (600+ words) with: ` +
