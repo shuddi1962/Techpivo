@@ -1,9 +1,12 @@
 import { Resend }       from 'resend'
 import { createClient } from '@/lib/supabase/admin'
 
-const resend  = new Resend(process.env.RESEND_API_KEY)
 const SITE    = process.env.NEXT_PUBLIC_SITE_URL || 'https://techpivo.com'
 const FROM    = 'Techpivo <newsletter@techpivo.com>'
+
+function getResend() {
+  return new Resend(process.env.RESEND_API_KEY)
+}
 
 export async function sendNewsletterForPost(post: {
   id: string; title: string; slug: string;
@@ -69,7 +72,7 @@ export async function sendNewsletterForPost(post: {
     const batch = subscribers.slice(i, i + BATCH)
     await Promise.allSettled(
       batch.map(sub =>
-        resend.emails.send({
+        getResend().emails.send({
           from: FROM,
           to:      sub.email,
           subject: `📡 ${post.title}`,
