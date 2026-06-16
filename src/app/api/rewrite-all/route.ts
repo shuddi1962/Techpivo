@@ -78,7 +78,7 @@ export async function GET() {
       return NextResponse.json({ error: "OPENROUTER_API_KEY not set" }, { status: 500 })
     }
 
-    const { data: posts, error: fetchError } = await supabase
+    const { data: posts, error: fetchError } = await getSupabase()
       .from("posts")
       .select("id, title, content, featured_image, original_source_url, category_id")
       .is("blizine_score", null)

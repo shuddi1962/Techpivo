@@ -34,7 +34,7 @@ export async function GET() {
     const openRouterKey = process.env.OPENROUTER_API_KEY || ""
 
     // Find posts missing quick_brief or blizine_score
-    const { data: posts, error } = await supabase
+    const { data: posts, error } = await getSupabase()
       .from("posts")
       .select("id, title, content, ai_rewritten")
       .limit(50)
