@@ -27,7 +27,7 @@ export function PostCard({ post }: PostCardProps) {
         <h3 className="text-lg font-semibold line-clamp-2 group-hover:text-[#F59E0B] transition-colors mb-2" style={{ color: "var(--text)" }}>{post.title}</h3>
         <p className="text-sm line-clamp-2 mb-3" style={{ color: "var(--muted)" }}>{post.excerpt}</p>
         <div className="flex items-center gap-2 text-xs" style={{ color: "var(--muted)" }}>
-          <span className="w-6 h-6 rounded-full flex items-center justify-center text-white text-[10px] font-bold" style={{ background: "#F59E0B" }}>{post.author?.full_name?.[0] || "B"}</span>
+          <span className="w-6 h-6 rounded-full flex items-center justify-center text-white text-[10px] font-bold" style={{ background: "#F59E0B" }}>{post.author?.full_name?.[0] || "T"}</span>
           <span>{post.author?.full_name || "Techpivo"}</span>
         </div>
       </div>

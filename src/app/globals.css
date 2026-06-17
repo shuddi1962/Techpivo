@@ -126,8 +126,8 @@
 .site-header.scrolled { box-shadow: 0 4px 30px rgba(0,0,0,.15); }
 .header-inner { display: flex; align-items: center; gap: 20px; padding: 12px 24px; max-width: 1400px; margin: 0 auto; }
 .logo { display: flex; align-items: center; text-decoration: none; flex-shrink: 0; }
-.logo-text { font-family: 'Syne', sans-serif; font-weight: 800; font-size: 28px; color: #fff; letter-spacing: -.02em; }
 
+.logo-img { display: block; height: 28px; width: auto; }
 .header-search-box { flex: 1; display: flex; align-items: center; background: rgba(255,255,255,.22); backdrop-filter: blur(4px); border: 1px solid rgba(255,255,255,.3); border-radius: 8px; padding: 0 12px; max-width: 480px; margin: 0 auto; transition: border-color .2s, box-shadow .2s, background .2s; }
 .dark .header-search-box { background: rgba(255,255,255,.1); border-color: rgba(255,255,255,.15); }
 .header-search-box:focus-within { background: rgba(255,255,255,.35); border-color: rgba(255,255,255,.5); box-shadow: 0 0 0 3px rgba(255,255,255,.15); }
@@ -462,7 +462,7 @@
   opacity: .9;
 }
 
-/* ── BLIZINE ARTICLE PROSE STYLES ── */
+/* ── ARTICLE PROSE STYLES ── */
 .article-content {
   font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;
   font-size: 17px;

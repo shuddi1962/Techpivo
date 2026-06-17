@@ -11,7 +11,7 @@ export const metadata: Metadata = {
     template: `%s — ${SITE_NAME}`,
   },
   description: "Techpivo - Tech, decoded. Fast. Your source for the latest in tech news, web development, programming, cybersecurity, AI, gadgets, and tutorials.",
-  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || "https://www.techpivo.com"),
+  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || "https://techpivo.com"),
   icons: {
     icon: [
       { url: '/favicon.ico', sizes: 'any' },

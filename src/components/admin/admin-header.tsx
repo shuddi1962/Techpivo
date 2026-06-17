@@ -22,8 +22,8 @@ export function AdminHeader() {
   return (
     <header className="sticky top-0 z-50 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="flex h-14 items-center justify-between px-6">
-        <Link href="/admin" className="flex items-center gap-2 font-semibold">
-          <span className="text-xl font-bold text-indigo-500">Techpivo</span>
+        <Link href="/admin" className="flex items-center gap-2">
+          <img src="/logo.svg" alt="Techpivo" style={{ height: 22, width: 'auto' }} />
           <span className="rounded-md bg-indigo-500/10 px-2 py-0.5 text-xs font-medium text-indigo-500">
             Admin
           </span>
@@ -47,7 +47,7 @@ export function AdminHeader() {
               <Button variant="ghost" size="icon" className="rounded-full">
                 <Avatar className="h-8 w-8">
                   <AvatarFallback className="bg-indigo-500 text-xs text-white">
-                    BA
+                    TP
                   </AvatarFallback>
                 </Avatar>
               </Button>

@@ -42,7 +42,7 @@ export function HomeHero({ posts }: HomeHeroProps) {
           <div className="flex items-center gap-2 lg:gap-3 text-xs lg:text-sm text-gray-400">
             <Avatar className="h-6 w-6 lg:h-8 lg:w-8">
               <AvatarImage src={main.author?.avatar_url || undefined} />
-              <AvatarFallback>{main.author?.full_name?.[0] || "A"}</AvatarFallback>
+              <AvatarFallback>{main.author?.full_name?.[0] || "T"}</AvatarFallback>
             </Avatar>
             <span>{main.author?.full_name || "Techpivo"}</span>
           </div>

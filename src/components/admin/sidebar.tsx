@@ -40,8 +40,8 @@ export function AdminSidebar() {
   return (
     <aside className="w-64 border-r bg-background h-screen sticky top-0 overflow-y-auto hidden lg:block">
       <div className="p-4 border-b">
-        <Link href="/admin" className="text-xl font-black">
-          Techpivo
+        <Link href="/admin">
+          <img src="/logo.svg" alt="Techpivo" style={{ height: 24, width: 'auto' }} />
         </Link>
         <p className="text-xs text-muted-foreground mt-1">Admin Panel</p>
       </div>

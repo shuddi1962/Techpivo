@@ -184,7 +184,7 @@ export default async function PostPage({ params }: Props) {
                     <Avatar className="h-11 w-11 ring-2 ring-primary/20">
                       <AvatarImage src={(post as any).author?.avatar_url} />
                       <AvatarFallback className="bg-primary/10 text-primary font-semibold">
-                        {(post as any).author?.full_name?.[0] || "B"}
+                        {(post as any).author?.full_name?.[0] || "T"}
                       </AvatarFallback>
                     </Avatar>
                     <div>
@@ -325,7 +325,7 @@ export default async function PostPage({ params }: Props) {
                 <Avatar className="h-16 w-16 ring-2 ring-primary/20 shrink-0">
                   <AvatarImage src={(post as any).author?.avatar_url} />
                   <AvatarFallback className="bg-primary/10 text-primary text-lg font-bold">
-                    {(post as any).author?.full_name?.[0] || "B"}
+                    {(post as any).author?.full_name?.[0] || "T"}
                   </AvatarFallback>
                 </Avatar>
                 <div className="flex-1 min-w-0">
@@ -337,7 +337,7 @@ export default async function PostPage({ params }: Props) {
                       >
                         {(post as any).author?.full_name || SITE_NAME}
                       </Link>
-                      <p className="text-sm text-muted-foreground mt-0.5">Staff Writer</p>
+                      <p className="text-sm text-muted-foreground mt-0.5">{(post as any).author?.role || "Writer"}</p>
                     </div>
                     <Link
                       href={`/author/${(post as any).author?.username}`}

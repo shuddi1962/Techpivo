@@ -1,7 +1,6 @@
 "use client"
 
 import Link from "next/link"
-import Image from "next/image"
 import { useEffect, useState } from "react"
 import { CategoryBadge } from "@/components/ui/CategoryBadge"
 
@@ -29,12 +28,11 @@ export function PopularWidget({ posts: initialPosts }: { posts: any[] }) {
       <ul className="popular-list">
         {posts.slice(0, 5).map((post: any) => (
           <li key={post.id} className="popular-item">
-            <Image
-              src={post.featured_image || "/placeholder.jpg"}
+            <img
+              src={post.featured_image || "/api/placeholder/64/48"}
               alt={post.title}
-              width={64}
-              height={48}
               className="popular-thumb"
+              loading="lazy"
             />
             <div className="popular-info">
               <Link href={`/${post.slug}`} className="popular-title">{post.title}</Link>
