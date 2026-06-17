@@ -8,7 +8,7 @@ const sqlPath = resolve(__dirname, '..', 'supabase', 'migrations', '004_add_quic
 const sql = readFileSync(sqlPath, 'utf-8')
 
 const pool = new pg.Pool({
-  connectionString: 'postgresql://postgres:Blizine@2024!@db.xkhvojjogoeuvrifekwr.supabase.co:5432/postgres',
+  connectionString: 'postgresql://postgres:Techpivo@2024!@db.xkhvojjogoeuvrifekwr.supabase.co:5432/postgres',
   ssl: { rejectUnauthorized: false },
   connectionTimeoutMillis: 5000,
 })

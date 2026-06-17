@@ -4,7 +4,7 @@ const GEMINI_DAILY_CAP = 30
 const MANUAL_GEMINI_DAILY_CAP = 20
 const GEMINI_RATE_MS = 1000
 
-export interface BlizineArticle {
+export interface AIArticle {
   headline:          string
   content:           string
   seoTitle:          string
@@ -14,7 +14,7 @@ export interface BlizineArticle {
   keyPoints:         string[]
   quickBrief:        string[]
   faq:               Array<{ question: string; answer: string }>
-  blizineScore:      number
+  qualityScore:      number
   isBreaking:        boolean
   suggestedCategory: string
   modelUsed:         'gemini-grounded'
@@ -126,7 +126,7 @@ FAQ (3 to 5 questions):
 - Answered directly from the article facts only
 - Each answer: 2-3 sentences max
 
-Techpivo SCORE:
+QUALITY SCORE:
 - Rate 1-100 how newsworthy and relevant this is for a tech audience
 - 90-100: major breaking news, industry-shifting announcement
 - 75-89:  strong story, clearly relevant to tech readers
@@ -162,7 +162,7 @@ OUTPUT — ONLY valid JSON, zero other text, zero markdown, zero code blocks
     {"question": "Another specific reader question?", "answer": "Direct answer."},
     {"question": "Third specific question?", "answer": "Direct answer."}
   ],
-  "blizineScore": 82,
+  "qualityScore": 82,
   "isBreaking": false,
   "suggestedCategory": "tech-news"
 }`
@@ -215,7 +215,7 @@ function repairJson(str: string): string {
     .trim()
 }
 
-function validate(raw: string, model: BlizineArticle['modelUsed']): { article: BlizineArticle | null; reason: string } {
+function validate(raw: string, model: AIArticle['modelUsed']): { article: AIArticle | null; reason: string } {
   if (!raw || raw.length < 100) { return { article: null, reason: `raw_too_short:${raw?.length || 0}` } }
 
   const clean = raw
@@ -312,7 +312,7 @@ function validate(raw: string, model: BlizineArticle['modelUsed']): { article: B
       keyPoints,
       quickBrief,
       faq,
-      blizineScore:      Math.min(100, Math.max(1, Number(p.blizineScore) || 70)),
+      qualityScore:      Math.min(100, Math.max(1, Number(p.qualityScore) || 70)),
       isBreaking:        Boolean(p.isBreaking),
       suggestedCategory: String(p.suggestedCategory || 'tech-news'),
       modelUsed:         model,
@@ -368,7 +368,7 @@ async function geminiGrounded(
   prompt:  string,
   usedFor: string,
   dailyCap?: number
-): Promise<{ article: BlizineArticle | null; debug: string }> {
+): Promise<{ article: AIArticle | null; debug: string }> {
   if (!process.env.GEMINI_API_KEY) {
     console.log('[Techpivo AI] No GEMINI_API_KEY set')
     return { article: null, debug: 'no_key' }
@@ -469,7 +469,7 @@ export async function rewriteArticle(
   sourceName:    string,
   category:      string,
   usedFor:       'rss_auto' | 'manual' = 'rss_auto'
-): Promise<{ article: BlizineArticle | null; debug: string }> {
+): Promise<{ article: AIArticle | null; debug: string }> {
   if (!title || title.trim().length < 5)            return { article: null, debug: 'short_title' }
   if (!sourceContent || sourceContent.trim().length < 40) return { article: null, debug: 'short_source' }
 
@@ -518,7 +518,7 @@ function stripHtml(html: string): string {
   return html.replace(/<[^>]*>/g, "").trim()
 }
 
-function buildBlizinePrompt(input: string, inputType: "topic" | "url" | "content", sourceName?: string): string {
+function buildManualPrompt(input: string, inputType: "topic" | "url" | "content", sourceName?: string): string {
   const sourceSection = inputType === "topic"
     ? `TOPIC TO RESEARCH AND WRITE ABOUT:\n${input}`
     : inputType === "url"
@@ -584,17 +584,17 @@ Return ONLY valid JSON — no markdown, no code blocks, no explanation:
     {"question": "Another specific question?", "answer": "Direct factual answer."},
     {"question": "Third question?", "answer": "Direct factual answer."}
   ],
-  "blizineScore": 85,
+  "qualityScore": 85,
   "isBreaking": false,
   "suggestedCategory": "tech-news"
 }`
 }
 
-export async function manualWriteFromTopic(topic: string): Promise<{ article: BlizineArticle | null; debug: string }> {
+export async function manualWriteFromTopic(topic: string): Promise<{ article: AIArticle | null; debug: string }> {
   if (!topic || topic.length < 5) return { article: null, debug: 'topic_too_short' }
   console.log(`[Techpivo Manual] Writing from topic: ${topic.slice(0, 60)}`)
 
-  const prompt = buildBlizinePrompt(topic, "topic")
+  const prompt = buildManualPrompt(topic, "topic")
   const result = await geminiGrounded(prompt, 'manual', MANUAL_GEMINI_DAILY_CAP)
   if (result.article) {
     console.log(`[✓ Gemini+Search] ${result.article.headline.slice(0, 55)}`)
@@ -605,7 +605,7 @@ export async function manualWriteFromTopic(topic: string): Promise<{ article: Bl
   return result
 }
 
-export async function manualWriteFromUrl(url: string): Promise<{ article: BlizineArticle | null; debug: string }> {
+export async function manualWriteFromUrl(url: string): Promise<{ article: AIArticle | null; debug: string }> {
   if (!url || !url.startsWith("http")) return { article: null, debug: 'invalid_url' }
   console.log(`[Techpivo Manual] Writing from URL: ${url.slice(0, 80)}`)
 
@@ -644,7 +644,7 @@ export async function manualWriteFromUrl(url: string): Promise<{ article: Blizin
   const input = sourceContent.length > 200 ? sourceContent : url
   const inputType = sourceContent.length > 200 ? "content" : "url"
 
-  const prompt = buildBlizinePrompt(input, inputType, sourceName)
+  const prompt = buildManualPrompt(input, inputType, sourceName)
   const result = await geminiGrounded(prompt, 'manual', MANUAL_GEMINI_DAILY_CAP)
   if (result.article) {
     console.log(`[✓ Gemini+Search] ${result.article.headline.slice(0, 55)}`)

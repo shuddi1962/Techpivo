@@ -97,7 +97,7 @@ export default function NewsletterPage() {
         <h2 className="text-2xl font-bold mb-6">What Subscribers Say</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {[
-            { quote: "Blizine's newsletter is the first thing I read every Monday morning. The curation is outstanding.", name: "Alex K., Software Engineer" },
+            { quote: "Techpivo's newsletter is the first thing I read every Monday morning. The curation is outstanding.", name: "Alex K., Software Engineer" },
             { quote: "I've been subscribed for 6 months and the quality has been consistently excellent.", name: "Maria S., Product Manager" },
           ].map((t) => (
             <div key={t.name} className="bg-card border rounded-xl p-6">

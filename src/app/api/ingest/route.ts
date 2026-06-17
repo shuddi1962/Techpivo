@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse }      from 'next/server'
 import { RSS_FEEDS }                       from '@/lib/rss-feeds'
-import { rewriteArticle, type BlizineArticle }      from '@/lib/ai-rewriter'
+import { rewriteArticle, type AIArticle }      from '@/lib/ai-rewriter'
 import { createClient }                    from '@/lib/supabase/admin'
 import { watermarkImage }                  from '@/lib/watermark'
 import { SITE_URL }                        from '@/lib/constants'
@@ -414,7 +414,7 @@ async function run(req: NextRequest) {
   const processCandidate = async (c: typeof candidates[number]): Promise<{ ok: boolean; headline?: string }> => {
     try {
       const result_ai = await rewriteArticle(c.item.title, c.sourceText, c.feed.name, c.feed.category, 'rss_auto')
-      const ai: BlizineArticle | null = result_ai.article
+      const ai: AIArticle | null = result_ai.article
       if (!ai) { failed++; log.push(`[AI FAIL] ${c.item.title.slice(0,45)} (${result_ai.debug})`); return { ok: false } }
 
       let finalImage: string | null = null
@@ -446,7 +446,7 @@ async function run(req: NextRequest) {
         featured_image: finalImage, author_id: '3916aa7d-197c-47f8-bdf3-cd6b6f910a37',
         category_id: c.categoryId, source_name: c.feed.name, source_url: c.item.link, source_urls: [c.item.link],
         tags: ai.tags, key_points: ai.keyPoints, quick_brief: ai.quickBrief, faq: ai.faq,
-        blizine_score: ai.blizineScore, is_breaking: ai.isBreaking, is_featured: false, is_editors_pick: false,
+        blizine_score: ai.qualityScore, is_breaking: ai.isBreaking, is_featured: false, is_editors_pick: false,
         ai_rewritten: true, model_used: ai.modelUsed, status: 'published', content_fingerprint: c.fp,
         published_at: c.item.pubDate && !isNaN(Date.parse(c.item.pubDate)) ? new Date(c.item.pubDate).toISOString() : new Date().toISOString(),
         reading_time: Math.max(2, Math.round(ai.content.replace(/<[^>]+>/g,' ').split(/\s+/).length / 200)),
@@ -575,7 +575,7 @@ async function run(req: NextRequest) {
               key_points: article.keyPoints,
               quick_brief: article.quickBrief,
               faq: article.faq,
-              blizine_score: article.blizineScore,
+              blizine_score: article.qualityScore,
               is_breaking: article.isBreaking,
               ai_rewritten: true,
               model_used: article.modelUsed,

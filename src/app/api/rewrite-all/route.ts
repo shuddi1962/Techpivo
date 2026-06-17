@@ -93,7 +93,7 @@ export async function GET() {
         const textContent = stripHtml(post.content || "")
         if (textContent.length < 50) { rewritten++; continue }
 
-        let blizineScore: number | null = null
+        let qualityScore: number | null = null
         let quickBrief: { text: string }[] = []
 
         try {
@@ -127,7 +127,7 @@ export async function GET() {
             "Return ONLY a number between 1 and 100. Article: " + post.title + ". " + textContent.slice(0, 1000)
           const scoreResult = await callOpenRouter(scorePrompt, openRouterKey)
           const parsed = parseInt(scoreResult.replace(/\D/g, ""), 10)
-          if (!isNaN(parsed) && parsed >= 1 && parsed <= 100) blizineScore = parsed
+          if (!isNaN(parsed) && parsed >= 1 && parsed <= 100) qualityScore = parsed
         } catch { /* skip */ }
 
         // Fetch image if missing
@@ -143,7 +143,7 @@ export async function GET() {
         const updateData: Record<string, unknown> = {
           ai_rewritten: true,
           quick_brief: quickBrief.length > 0 ? quickBrief : [],
-          blizine_score: blizineScore ?? 0,
+          blizine_score: qualityScore ?? 0,
         }
 
         const { error: updateError } = await getSupabase().from("posts").update(updateData).eq("id", post.id)

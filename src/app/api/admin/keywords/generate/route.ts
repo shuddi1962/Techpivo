@@ -152,7 +152,7 @@ export async function POST(request: Request) {
       quick_brief: article.quickBrief,
       key_points: article.keyPoints,
       faq: article.faq,
-      blizine_score: article.blizineScore,
+      blizine_score: article.qualityScore,
       is_breaking: article.isBreaking,
       is_editors_pick: false,
       is_featured: false,
@@ -174,7 +174,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({
       success: true, slug, url: `/${slug}`,
-      headline: article.headline, blizineScore: article.blizineScore,
+      headline: article.headline, qualityScore: article.qualityScore,
       suggestedCategory: catSlug, seoTitle: article.seoTitle,
       seoDescription: article.seoDescription,
     })

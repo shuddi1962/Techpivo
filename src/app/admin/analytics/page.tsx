@@ -298,7 +298,7 @@ export default function AnalyticsPage() {
     }
   }, [fetchData])
 
-  const b = data?.blizine
+  const b = data?.techpivo
   const a = data?.analytics
   const ps = data?.pagespeed
 

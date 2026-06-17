@@ -69,7 +69,7 @@ export function AiWritingPanel() {
         seo_description:  a.seoDescription,
         seo_keywords:     a.seoKeywords,
         tags:             a.tags,
-        blizine_score:    a.blizineScore,
+        blizine_score:    a.qualityScore,
         is_breaking:      a.isBreaking,
         focus_keyword:    a.seoKeywords?.[0] || "",
         source_name:      a.suggestedCategory,

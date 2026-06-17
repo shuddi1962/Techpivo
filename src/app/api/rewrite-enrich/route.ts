@@ -33,7 +33,7 @@ export async function GET() {
   try {
     const openRouterKey = process.env.OPENROUTER_API_KEY || ""
 
-    // Find posts missing quick_brief or blizine_score
+    // Find posts missing quick_brief or quality_score
     const { data: posts, error } = await getSupabase()
       .from("posts")
       .select("id, title, content, ai_rewritten")
@@ -68,8 +68,8 @@ export async function GET() {
           post.title + ". " + textContent.slice(0, 1000)
 
         const scoreResult = await callOpenRouter(scorePrompt, openRouterKey)
-        const blizineScore = parseInt(scoreResult.replace(/\D/g, ""), 10) || null
-        const validScore = blizineScore && blizineScore >= 1 && blizineScore <= 100 ? blizineScore : null
+        const qualityScore = parseInt(scoreResult.replace(/\D/g, ""), 10) || null
+        const validScore = qualityScore && qualityScore >= 1 && qualityScore <= 100 ? qualityScore : null
 
         await getSupabase().from("posts").update({ quick_brief: quickBrief, blizine_score: validScore }).eq("id", post.id)
         enriched++

@@ -84,7 +84,7 @@ export default function WriteForUsPage() {
         </p>
         <div className="flex flex-col sm:flex-row gap-4 justify-center">
           <a
-            href="mailto:editorial@Techpivo.com?subject=Pitch%3A%20Article%20Submission%20for%20Blizine"
+            href="mailto:editorial@Techpivo.com?subject=Pitch%3A%20Article%20Submission%20for%20Techpivo"
             className="inline-flex items-center gap-2 bg-accent text-white px-6 py-3 rounded-lg font-medium hover:opacity-90 transition-opacity shadow-sm"
           >
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>

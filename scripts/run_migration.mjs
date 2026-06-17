@@ -6,7 +6,7 @@ const supabase = createClient(
 )
 
 const sql = `ALTER TABLE posts ADD COLUMN IF NOT EXISTS quick_brief jsonb DEFAULT '[]'::jsonb;
-ALTER TABLE posts ADD COLUMN IF NOT EXISTS blizine_score INT DEFAULT NULL;`
+ALTER TABLE posts ADD COLUMN IF NOT EXISTS quality_score INT DEFAULT NULL;`
 
 try {
   const { data, error } = await supabase.rpc('exec_sql', { sql })

@@ -4,7 +4,7 @@ import Image from "next/image"
 
 export const metadata: Metadata = {
   title: "Cookies Policy – Techpivo",
-  description: "Blizine's Cookies Policy explains how we use cookies and similar technologies to enhance your experience, analyze traffic, and serve personalized ads.",
+  description: "Techpivo's Cookies Policy explains how we use cookies and similar technologies to enhance your experience, analyze traffic, and serve personalized ads.",
   openGraph: { title: "Cookies Policy – Techpivo", description: "How Techpivo uses cookies and tracking technologies." },
 }
 

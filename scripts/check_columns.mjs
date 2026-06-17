@@ -8,7 +8,7 @@ const supabase = createClient(
 // Try to query quick_brief column to verify it exists
 const { data, error } = await supabase
   .from('posts')
-  .select('id, quick_brief, blizine_score')
+  .select('id, quick_brief, quality_score')
   .limit(3)
 
 if (error) {

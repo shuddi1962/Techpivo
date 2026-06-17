@@ -31,7 +31,7 @@ interface PostEditorContextType {
 
 const PostEditorContext = createContext<PostEditorContextType | null>(null)
 
-const DRAFT_KEY = "blizine-editor-draft"
+const DRAFT_KEY = "techpivo-editor-draft"
 const AUTO_SAVE_INTERVAL = 30000
 
 const initialState: EditorPostState = {

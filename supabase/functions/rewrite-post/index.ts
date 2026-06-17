@@ -60,7 +60,7 @@ async function callOpenRouter(prompt: string, apiKey: string): Promise<string> {
 async function fetchOriginalContent(url: string): Promise<string> {
   const response = await fetch(url, {
     signal: AbortSignal.timeout(15000),
-    headers: { "User-Agent": "Blizine/1.0" },
+    headers: { "User-Agent": "Techpivo/1.0" },
   })
 
   if (!response.ok) throw new Error(`Fetch failed: ${response.status}`)
@@ -143,7 +143,7 @@ serve(async (req) => {
     let rewrittenContent = textContent
     let quickBrief: QuickBriefItem[] = []
     let seoData: SEOData = {}
-    let blizineScore: number | null = null
+    let qualityScore: number | null = null
 
     if (openRouterKey && textContent.length > 50) {
       try {
@@ -211,11 +211,11 @@ serve(async (req) => {
           const cleaned = result.replace(/```\s*|\s*```/gi, "").trim()
           const parsed = parseInt(cleaned.replace(/\D/g, ""), 10)
           if (!isNaN(parsed) && parsed >= 1 && parsed <= 100) {
-            blizineScore = parsed
+            qualityScore = parsed
           }
         }
       } catch (err: any) {
-        console.error(`Blizine score failed: ${err.message}`)
+        console.error(`Quality score failed: ${err.message}`)
       }
     }
 
@@ -237,7 +237,7 @@ serve(async (req) => {
     if (seoData.seo_title) updateData.seo_title = seoData.seo_title
     if (seoData.seo_description) updateData.seo_description = seoData.seo_description
     if (seoData.seo_keywords?.length) updateData.seo_keywords = seoData.seo_keywords
-    if (blizineScore !== null) updateData.blizine_score = blizineScore
+    if (qualityScore !== null) updateData.blizine_score = qualityScore
 
     const { error: updateError } = await supabase
       .from("posts")
@@ -253,7 +253,7 @@ serve(async (req) => {
     }
 
     return new Response(
-      JSON.stringify({ success: true, blizine_score: blizineScore }),
+      JSON.stringify({ success: true, quality_score: qualityScore }),
       { headers: { "Content-Type": "application/json" } }
     )
   } catch (err: any) {

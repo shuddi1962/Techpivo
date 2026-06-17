@@ -1,8 +1,8 @@
 self.addEventListener("push", (event) => {
   const data = event.data?.json() || {}
-  const title = data.title || "Blizine"
+  const title = data.title || "Techpivo"
   const options = {
-    body: data.body || "New article from Blizine",
+    body: data.body || "New article from Techpivo",
     icon: data.icon || "/icon.png",
     badge: data.badge || "/badge.png",
     data: {

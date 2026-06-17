@@ -124,7 +124,7 @@ export async function POST(req: Request) {
     let rewrittenContent = textContent
     let quickBrief: QuickBriefItem[] = []
     let seoData: SEOData = {}
-    let blizineScore: number | null = null
+    let qualityScore: number | null = null
 
     if (textContent.length > 50) {
       if (textContent.length < 500) {
@@ -184,7 +184,7 @@ export async function POST(req: Request) {
         if (result) {
           const parsed = parseInt(result.replace(/\D/g, ""), 10)
           if (!isNaN(parsed) && parsed >= 1 && parsed <= 100) {
-            blizineScore = parsed
+            qualityScore = parsed
           }
         }
       } catch (err: any) {
@@ -211,15 +211,15 @@ export async function POST(req: Request) {
     }
 
     // Try to update new columns (may not exist yet)
-    if (quickBrief.length > 0 || blizineScore !== null) {
+    if (quickBrief.length > 0 || qualityScore !== null) {
       const newCols: Record<string, unknown> = {}
       if (quickBrief.length > 0) newCols.quick_brief = quickBrief
-      if (blizineScore !== null) newCols.blizine_score = blizineScore
+      if (qualityScore !== null) newCols.blizine_score = qualityScore
       const { error: colErr } = await getSupabase().from("posts").update(newCols).eq("id", post_id)
       if (colErr) console.error("newColumns error:", colErr.message)
     }
 
-    return NextResponse.json({ success: true, blizine_score: blizineScore })
+    return NextResponse.json({ success: true, quality_score: qualityScore })
   } catch (err: any) {
     console.error("Fatal: " + err.message)
     return NextResponse.json({ error: err.message }, { status: 500 })

@@ -3,7 +3,7 @@ import Image from "next/image"
 
 export const metadata: Metadata = {
   title: "Privacy Policy – Techpivo",
-  description: "Blizine's Privacy Policy explains how we collect, use, and protect your personal information in compliance with GDPR, CCPA, and Google AdSense policies.",
+  description: "Techpivo's Privacy Policy explains how we collect, use, and protect your personal information in compliance with GDPR, CCPA, and Google AdSense policies.",
   openGraph: { title: "Privacy Policy – Techpivo", description: "How Techpivo handles your data." },
 }
 

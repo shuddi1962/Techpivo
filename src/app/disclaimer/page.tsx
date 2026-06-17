@@ -4,8 +4,8 @@ import Image from "next/image"
 
 export const metadata: Metadata = {
   title: "Disclaimer – Techpivo",
-  description: "Blizine's Disclaimer covering affiliate relationships, advertising, paid content, and professional advice.",
-  openGraph: { title: "Disclaimer – Techpivo", description: "Important disclaimers about Blizine's content." },
+  description: "Techpivo's Disclaimer covering affiliate relationships, advertising, paid content, and professional advice.",
+  openGraph: { title: "Disclaimer – Techpivo", description: "Important disclaimers about Techpivo's content." },
 }
 
 export default function DisclaimerPage() {

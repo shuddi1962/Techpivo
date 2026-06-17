@@ -3,7 +3,7 @@ import Image from "next/image"
 
 export const metadata: Metadata = {
   title: "Terms of Use – Techpivo",
-  description: "Blizine's Terms of Use governing access to and use of our website, content, and services.",
+  description: "Techpivo's Terms of Use governing access to and use of our website, content, and services.",
   openGraph: { title: "Terms of Use – Techpivo" },
 }
 

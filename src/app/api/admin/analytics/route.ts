@@ -28,7 +28,7 @@ async function fetchPageSpeed() {
   }
 }
 
-async function fetchBlizineStats(supabase: any) {
+async function fetchStats(supabase: any) {
   const today = new Date().toISOString().slice(0, 10)
 
   const [postsRes, draftCountRes, scheduledRes, archivedRes, todayRssPostsRes, todayAllPostsRes, totalFeedRes, geminiRes] = await Promise.allSettled([
@@ -181,8 +181,8 @@ export async function GET(req: NextRequest) {
 
   const days = parseInt(new URL(req.url).searchParams.get('days') || '28')
 
-  const [Techpivo, analytics, pagespeed] = await Promise.all([
-    fetchBlizineStats(supabase),
+  const [techpivo, analytics, pagespeed] = await Promise.all([
+    fetchStats(supabase),
     fetchAnalyticsEvents(supabase, days),
     fetchPageSpeed(),
   ])
@@ -190,7 +190,7 @@ export async function GET(req: NextRequest) {
   return NextResponse.json({
     ok: true,
     days,
-    Techpivo,
+    techpivo,
     analytics,
     pagespeed,
     fetchedAt: new Date().toISOString(),
