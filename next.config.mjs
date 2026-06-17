@@ -1,15 +1,5 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  async redirects() {
-    return [
-      {
-        source: "/:path*",
-        has: [{ type: "host", value: "techpivo.com" }],
-        destination: "https://www.techpivo.com/:path*",
-        permanent: true,
-      },
-    ]
-  },
   images: {
     remotePatterns: [
       { protocol: 'https', hostname: '**.theverge.com' },
