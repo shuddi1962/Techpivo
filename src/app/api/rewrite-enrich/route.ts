@@ -71,7 +71,7 @@ export async function GET() {
         const qualityScore = parseInt(scoreResult.replace(/\D/g, ""), 10) || null
         const validScore = qualityScore && qualityScore >= 1 && qualityScore <= 100 ? qualityScore : null
 
-        await getSupabase().from("posts").update({ quick_brief: quickBrief, blizine_score: validScore }).eq("id", post.id)
+        await getSupabase().from("posts").update({ quick_brief: quickBrief, quality_score: validScore }).eq("id", post.id)
         enriched++
       } catch (e: any) {
         console.error(`Enrich failed for ${post.id}: ${e.message}`)

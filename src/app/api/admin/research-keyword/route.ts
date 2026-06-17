@@ -177,7 +177,7 @@ export async function POST(request: Request) {
       quick_brief: article.quickBrief,
       key_points: article.keyPoints,
       faq: article.faq,
-      blizine_score: article.qualityScore,
+      quality_score: article.qualityScore,
       is_breaking: article.isBreaking,
       is_editors_pick: false,
       is_featured: false,

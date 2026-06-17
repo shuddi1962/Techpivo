@@ -34,7 +34,7 @@ export interface EditorPostState {
   flesch_score: number
   secondary_keywords: string[]
   quick_brief: Record<string, unknown> | null
-  blizine_score: number
+  quality_score: number
   is_featured: boolean
   is_breaking: boolean
   is_sponsored: boolean

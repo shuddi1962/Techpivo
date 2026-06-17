@@ -81,7 +81,7 @@ export async function GET() {
     const { data: posts, error: fetchError } = await getSupabase()
       .from("posts")
       .select("id, title, content, featured_image, original_source_url, category_id")
-      .is("blizine_score", null)
+      .is("quality_score", null)
       .limit(5)
 
     if (fetchError) return NextResponse.json({ error: fetchError.message }, { status: 500 })
@@ -143,7 +143,7 @@ export async function GET() {
         const updateData: Record<string, unknown> = {
           ai_rewritten: true,
           quick_brief: quickBrief.length > 0 ? quickBrief : [],
-          blizine_score: qualityScore ?? 0,
+          quality_score: qualityScore ?? 0,
         }
 
         const { error: updateError } = await getSupabase().from("posts").update(updateData).eq("id", post.id)

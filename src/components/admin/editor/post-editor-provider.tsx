@@ -69,7 +69,7 @@ const initialState: EditorPostState = {
   flesch_score: 0,
   secondary_keywords: [],
   quick_brief: null,
-  blizine_score: 0,
+  quality_score: 0,
   is_featured: false,
   is_breaking: false,
   is_sponsored: false,

@@ -214,7 +214,7 @@ export async function POST(req: Request) {
     if (quickBrief.length > 0 || qualityScore !== null) {
       const newCols: Record<string, unknown> = {}
       if (quickBrief.length > 0) newCols.quick_brief = quickBrief
-      if (qualityScore !== null) newCols.blizine_score = qualityScore
+      if (qualityScore !== null) newCols.quality_score = qualityScore
       const { error: colErr } = await getSupabase().from("posts").update(newCols).eq("id", post_id)
       if (colErr) console.error("newColumns error:", colErr.message)
     }

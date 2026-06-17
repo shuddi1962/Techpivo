@@ -14,12 +14,12 @@ export async function GET() {
   const { count } = await getSupabase()
     .from("posts")
     .select("id", { count: "exact", head: true })
-    .not("blizine_score", "is", null)
+    .not("quality_score", "is", null)
 
   const { error } = await getSupabase()
     .from("posts")
-    .update({ ai_rewritten: false, blizine_score: null, quick_brief: [] })
-    .not("blizine_score", "is", null)
+    .update({ ai_rewritten: false, quality_score: null, quick_brief: [] })
+    .not("quality_score", "is", null)
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 })

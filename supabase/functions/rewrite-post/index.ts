@@ -237,7 +237,7 @@ serve(async (req) => {
     if (seoData.seo_title) updateData.seo_title = seoData.seo_title
     if (seoData.seo_description) updateData.seo_description = seoData.seo_description
     if (seoData.seo_keywords?.length) updateData.seo_keywords = seoData.seo_keywords
-    if (qualityScore !== null) updateData.blizine_score = qualityScore
+    if (qualityScore !== null) updateData.quality_score = qualityScore
 
     const { error: updateError } = await supabase
       .from("posts")
