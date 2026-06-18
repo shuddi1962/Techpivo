@@ -13,7 +13,7 @@ export const metadata: Metadata = {
   description: "Techpivo - Tech, decoded. Fast. Your source for the latest in tech news, web development, programming, cybersecurity, AI, gadgets, and tutorials.",
   metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || "https://techpivo.com"),
   icons: {
-    icon: '/icon.svg',
+    icon: '/icon.svg?v=2',
   },
   verification: {
     google: '75MCSV7iG7JdKa_i1Tt0ceqqQ4Jl-W33sjbIMnrlMQ4',
