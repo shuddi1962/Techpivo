@@ -15,7 +15,7 @@ export function Header() {
   const [user, setUser] = useState<User | null>(null)
   const [profileName, setProfileName] = useState<string | null>(null)
   const router = useRouter()
-  const { theme, setTheme } = useTheme()
+  const { theme, setTheme, resolvedTheme } = useTheme()
   const supabase = createClient()
 
   const loadProfile = async (userId: string) => {
@@ -47,7 +47,7 @@ export function Header() {
       <header className={`site-header${scrolled ? " scrolled" : ""}`}>
         <div className="header-inner">
           <Link href="/" className="logo">
-            <img src="/logo.svg?v=6" alt="Techpivo" className="logo-img" width="280" height="56" />
+            <img src={resolvedTheme === 'dark' ? '/logo.svg?v=6' : '/logo-light.svg?v=1'} alt="Techpivo" className="logo-img" width="280" height="56" />
           </Link>
 
           <div className="header-search-box">
