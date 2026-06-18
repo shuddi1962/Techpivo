@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { createClient as createSupabaseClient } from "@supabase/supabase-js"
 import { geminiRewriteContent } from "@/lib/ai-rewriter"
+import { SITE_URL } from "@/lib/constants"
 
 export const dynamic = "force-dynamic"
 
@@ -52,7 +53,7 @@ async function callOpenRouter(prompt: string, apiKey: string, maxTokens = 4096):
     headers: {
       "Content-Type": "application/json",
       Authorization: "Bearer " + apiKey,
-      "HTTP-Referer": `${process.env.NEXT_PUBLIC_SITE_URL || "https://www.techpivo.com"}`,
+      "HTTP-Referer": SITE_URL,
       "X-Title": "Techpivo",
     },
     body: JSON.stringify({

@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { SITE_URL } from "@/lib/constants"
 
 export async function GET() {
   const results: Record<string, any> = {
@@ -11,7 +12,7 @@ export async function GET() {
   try {
     const key = process.env.PAGESPEED_API_KEY
     if (key) {
-      const url = `https://www.googleapis.com/pagespeedonline/v5/runPagespeed?url=${encodeURIComponent('https://techpivo.com')}&strategy=mobile&key=${key}`
+      const url = `https://www.googleapis.com/pagespeedonline/v5/runPagespeed?url=${encodeURIComponent(SITE_URL)}&strategy=mobile&key=${key}`
       const res = await fetch(url, { signal: AbortSignal.timeout(15000) })
       if (res.ok) {
         const data = await res.json()

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createServerClient } from "@supabase/ssr"
+import { SITE_URL } from "@/lib/constants"
 
 export async function POST(request: NextRequest) {
   const { email, password, fullName } = await request.json()
@@ -20,7 +21,7 @@ export async function POST(request: NextRequest) {
     password,
     options: {
       data: { full_name: fullName },
-      emailRedirectTo: `${process.env.NEXT_PUBLIC_SITE_URL || "https://www.techpivo.com"}/auth/callback`,
+      emailRedirectTo: `${SITE_URL}/auth/callback`,
     },
   })
 

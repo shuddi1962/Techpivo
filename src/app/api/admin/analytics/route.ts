@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
+import { SITE_URL } from "@/lib/constants"
 
 export const dynamic = 'force-dynamic'
 
@@ -8,7 +9,7 @@ async function fetchPageSpeed() {
   const key = process.env.PAGESPEED_API_KEY
   if (!key) return null
   try {
-    const url = `https://www.googleapis.com/pagespeedonline/v5/runPagespeed?url=${encodeURIComponent('https://techpivo.com')}&strategy=mobile&key=${key}`
+    const url = `https://www.googleapis.com/pagespeedonline/v5/runPagespeed?url=${encodeURIComponent(SITE_URL)}&strategy=mobile&key=${key}`
     const res = await fetch(url, { signal: AbortSignal.timeout(15000) })
     const data = await res.json()
     const cats = data.lighthouseResult?.categories
