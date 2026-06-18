@@ -10,5 +10,5 @@
   <rect x="4" y="4" width="40" height="40" rx="10" stroke="url(#lg)" stroke-width="1.5"/>
   <path d="M18 14h12l-2 5h-7l-1 2h6l-2 4h-5l-4 9h-4l6-14-3-6z" fill="url(#lg)"/>
   <rect x="18" y="26" width="12" height="2.5" rx="1.25" fill="url(#lg)"/>
-  <text x="54" y="33" font-family="'Inter','Segoe UI',system-ui,sans-serif" font-size="26" font-weight="800" fill="white" letter-spacing="-0.5">Techpivo</text>
+  <text x="54" y="36" font-family="'Inter','Segoe UI',system-ui,sans-serif" font-size="30" font-weight="800" fill="white" letter-spacing="-0.3">Techpivo</text>
 </svg>
