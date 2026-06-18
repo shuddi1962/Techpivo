@@ -23,7 +23,7 @@ export function AdminHeader() {
     <header className="sticky top-0 z-50 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="flex h-14 items-center justify-between px-6">
         <Link href="/admin" className="flex items-center gap-2">
-           <img src="/logo.svg" alt="Techpivo" style={{ height: 26, width: 'auto' }} />
+           <img src="/logo.svg?v=2" alt="Techpivo" style={{ height: 26, width: 'auto' }} />
           <span className="rounded-md bg-indigo-500/10 px-2 py-0.5 text-xs font-medium text-indigo-500">
             Admin
           </span>

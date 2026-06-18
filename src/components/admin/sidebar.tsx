@@ -41,7 +41,7 @@ export function AdminSidebar() {
     <aside className="w-64 border-r bg-background h-screen sticky top-0 overflow-y-auto hidden lg:block">
       <div className="p-4 border-b">
         <Link href="/admin">
-           <img src="/logo.svg" alt="Techpivo" style={{ height: 28, width: 'auto' }} />
+           <img src="/logo.svg?v=2" alt="Techpivo" style={{ height: 28, width: 'auto' }} />
         </Link>
         <p className="text-xs text-muted-foreground mt-1">Admin Panel</p>
       </div>
