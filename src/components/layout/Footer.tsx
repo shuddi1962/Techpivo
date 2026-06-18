@@ -1,12 +1,20 @@
+"use client"
+
 import Link from "next/link"
+import { useTheme } from "next-themes"
+import { useState, useEffect } from "react"
 
 export function Footer({ categories, recentPosts }: { categories: any[]; recentPosts: any[] }) {
+  const { resolvedTheme } = useTheme()
+  const [mounted, setMounted] = useState(false)
+  useEffect(() => { setMounted(true) }, [])
+  const logoSrc = !mounted ? '/logo.svg?v=6' : (resolvedTheme === 'dark' ? '/logo.svg?v=6' : '/logo-light.svg?v=1')
   return (
     <footer className="site-footer">
       <div className="footer-inner">
         <div>
           <div className="footer-logo">
-            <img src="/logo.svg?v=6" alt="Techpivo" style={{ height: 52, width: 'auto' }} />
+            <img src={logoSrc} alt="Techpivo" style={{ height: 52, width: 'auto' }} />
           </div>
           <p className="footer-tagline">Tech, decoded. Fast.</p>
           <p className="footer-about">

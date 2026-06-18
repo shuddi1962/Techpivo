@@ -47,7 +47,7 @@ export function Header() {
       <header className={`site-header${scrolled ? " scrolled" : ""}`}>
         <div className="header-inner">
           <Link href="/" className="logo">
-            <img src={resolvedTheme === 'dark' ? '/logo.svg?v=6' : '/logo-light.svg?v=1'} alt="Techpivo" className="logo-img" width="280" height="56" />
+            <img src="/logo.svg?v=6" alt="Techpivo" className="logo-img" width="340" height="68" />
           </Link>
 
           <div className="header-search-box">
