@@ -48,7 +48,7 @@ async function fetchOgImage(url: string): Promise<string | null> {
     const html = await res.text()
     const match = html.match(/<meta[^>]+property=["']og:image["'][^>]+content=["']([^"']+)["']/i)
       || html.match(/<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:image["']/i)
-    return match?.[1] || null
+    return match?.[1] ? sanitizeImageUrl(match[1]) : null
   } catch {
     return null
   }
@@ -83,6 +83,25 @@ async function fetchArticleText(url: string): Promise<string> {
   }
 }
 
+function decodeHtmlEntities(text: string): string {
+  return text
+    .replace(/&#(\d+);/g, (_, n) => String.fromCodePoint(Number(n)))
+    .replace(/&#x([0-9a-f]+);/gi, (_, h) => String.fromCodePoint(parseInt(h, 16)))
+    .replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"').replace(/&apos;/g, "'")
+    .replace(/&nbsp;/g, ' ')
+}
+
+function stripInvisibleChars(text: string): string {
+  return text.replace(/[\u200b-\u200f\u2060-\u2064\ufeff\u00ad\u034f\u061c\u115f\u1160\u17b4\u17b5\u180e\u2000-\u200a\u2028-\u202f\u205f\u2066-\u2069\ufff9-\ufffb\u206a-\u206f\u0080-\u009f\u00a0]/g, ' ').replace(/\s+/g, ' ').trim()
+}
+
+function sanitizeImageUrl(url: string): string {
+  return url
+    .replace(/&amp;/g, '&').replace(/&#038;/g, '&').replace(/&#x26;/gi, '&')
+    .replace(/^http:\/\//i, 'https://')
+}
+
 function parseRSSItems(xml: string): Array<Record<string, any>> {
   const items: Array<Record<string, any>> = []
   const itemMatches = xml.matchAll(/<item>([\s\S]*?)<\/item>/g)
@@ -95,7 +114,7 @@ function parseRSSItems(xml: string): Array<Record<string, any>> {
       || ''
 
     const item: Record<string, any> = {
-      title: get('title').replace(/&amp;/g,'&').replace(/&lt;/g,'<').replace(/&gt;/g,'>'),
+      title: decodeHtmlEntities(get('title')),
       link: get('link') || get('guid'),
       pubDate: get('pubDate') || get('published') || get('dc:date') || '',
       description: get('description').replace(/<[^>]+>/g, '').trim().slice(0, 300),
@@ -238,7 +257,7 @@ async function processFeed(feed: any, categories: Array<{id:string;slug:string}>
     for (const item of items.slice(0, maxPerFeed)) {
       if (newCount >= maxPerFeed) break
       try {
-        const title = (item.title as string)?.trim()
+        const title = stripInvisibleChars((item.title as string)?.trim() || '')
         const link = (item.link as string)?.trim()
         if (!title || !link) continue
 
@@ -250,6 +269,7 @@ async function processFeed(feed: any, categories: Array<{id:string;slug:string}>
         if (exists?.length) continue
 
         let image = extractImageFromItem(item)
+        if (image) image = sanitizeImageUrl(image)
         if (!image) image = await fetchOgImage(link)
         if (!image || !image.startsWith('http')) {
           const catSlug = (feed.categories as {slug:string})?.slug || 'tech-news'
@@ -274,7 +294,7 @@ async function processFeed(feed: any, categories: Array<{id:string;slug:string}>
             content: articleText
               ? `<article>${articleText.slice(0, 2000).split('\n').filter(l => l.trim()).map(l => `<p>${l}</p>`).join('')}</article>`
               : `<article><p>${title}</p></article>`,
-            featured_image: image,
+            featured_image: image ? sanitizeImageUrl(image) : image,
             category_id: categoryId,
             subcategory_id: subcategoryId,
             author_id: authorId,

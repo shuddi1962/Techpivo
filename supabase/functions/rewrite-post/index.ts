@@ -29,7 +29,7 @@ async function callGemini(prompt: string, apiKey: string): Promise<string> {
   const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`
   const body = {
     contents: [{ role: "user", parts: [{ text: prompt }] }],
-    generationConfig: { temperature: 0.45, maxOutputTokens: 8192 },
+    generationConfig: { temperature: 0.45, maxOutputTokens: 16384 },
     tools: [{ googleSearch: {} }],
   }
   const response = await fetch(url, {
@@ -288,13 +288,53 @@ serve(async (req) => {
       console.error(`Gemini rewrite failed: ${msg}`)
     }
 
-    const finalContent = rewrittenContent.includes("<h2") || rewrittenContent.includes("<h3")
-      ? rewrittenContent
-      : `<section><h2>${headline}</h2>${rewrittenContent
-          .split(/\n{2,}/)
-          .map(p => p.trim() ? `<p>${p}</p>` : '')
-          .join('')
-        }</section>`
+    let finalContent = rewrittenContent
+    if (!finalContent.includes("<h2") && !finalContent.includes("<h3")) {
+      finalContent = `<section><h2>${headline}</h2>${finalContent
+        .split(/\n{2,}/)
+        .map(p => p.trim() ? `<p>${p}</p>` : '')
+        .join('')
+      }</section>`
+    }
+
+    // If Gemini didn't produce structured content, try once more with stricter prompt
+    if (!finalContent.includes("answer-capsule") && sourceContent.length > 100) {
+      console.error(`[RETRY] No answer-capsule in response for "${headline.slice(0, 40)}", retrying...`)
+      try {
+        const retryPrompt = buildRewritePrompt(sourceTitle, textContent)
+        const retryResult = await callGemini(retryPrompt, geminiKey)
+        const retryParsed = extractJson(retryResult)
+        if (retryParsed.content && String(retryParsed.content).includes("answer-capsule")) {
+          finalContent = String(retryParsed.content).trim()
+          if (retryParsed.headline) headline = String(retryParsed.headline).trim()
+          if (retryParsed.seoTitle) seoData.seo_title = String(retryParsed.seoTitle).slice(0, 60)
+          if (retryParsed.seoDescription) seoData.seo_description = String(retryParsed.seoDescription).slice(0, 155)
+          if (Array.isArray(retryParsed.seoKeywords)) {
+            seoKeywords = (retryParsed.seoKeywords as string[]).slice(0, 5).map(String)
+            seoData.seo_keywords = seoKeywords
+          }
+          if (Array.isArray(retryParsed.quickBrief)) {
+            quickBrief = (retryParsed.quickBrief as string[]).slice(0, 3).map(t => ({ text: String(t) }))
+          }
+          if (Array.isArray(retryParsed.keyPoints)) {
+            keyPointsResult = (retryParsed.keyPoints as string[]).slice(0, 5).map(String)
+          }
+          if (Array.isArray(retryParsed.faq)) {
+            faqResult = (retryParsed.faq as Array<{ question: string; answer: string }>).slice(0, 5)
+              .filter(f => f?.question?.length > 5 && f?.answer?.length > 10)
+          }
+          if (retryParsed.qualityScore) {
+            qualityScore = Math.min(100, Math.max(1, Number(retryParsed.qualityScore)))
+          }
+          console.log(`[✓ Retry succeeded] ${headline.slice(0, 60)}`)
+        } else {
+          console.error(`[RETRY FAILED] Still no answer-capsule for "${headline.slice(0, 40)}"`)
+        }
+      } catch (retryErr: unknown) {
+        const retryMsg = retryErr instanceof Error ? retryErr.message : String(retryErr)
+        console.error(`[RETRY ERROR] ${retryMsg}`)
+      }
+    }
 
     const updateData: Record<string, unknown> = {
       title: headline,
