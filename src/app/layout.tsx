@@ -1,13 +1,9 @@
 import type { Metadata, Viewport } from "next"
-import Script from "next/script"
 import { ThemeProvider } from "@/components/theme-provider"
 import { LayoutWrapper } from "@/components/layout/layout-wrapper"
 import { PHProvider } from "@/components/posthog-provider"
 import { SITE_NAME, SITE_TAGLINE, SITE_URL } from "@/lib/constants"
 import "./globals.css"
-
-const GA_ID = process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID || ""
-const ADSENSE_CLIENT = process.env.NEXT_PUBLIC_ADSENSE_CLIENT_ID || ""
 
 export const viewport: Viewport = {
   themeColor: "#0F172A",
@@ -68,26 +64,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         />
       </head>
       <body className="min-h-screen bg-background antialiased">
-        {GA_ID && (
-          <>
-            <Script src={`https://www.googletagmanager.com/gtag/js?id=${GA_ID}`} strategy="afterInteractive" />
-            <Script id="google-analytics" strategy="afterInteractive">
-              {`
-                window.dataLayer = window.dataLayer || [];
-                function gtag(){dataLayer.push(arguments);}
-                gtag('js', new Date());
-                gtag('config', '${GA_ID}');
-              `}
-            </Script>
-          </>
-        )}
-        {ADSENSE_CLIENT && (
-          <Script
-            src={`https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${ADSENSE_CLIENT}`}
-            strategy="afterInteractive"
-            crossOrigin="anonymous"
-          />
-        )}
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{
