@@ -4,6 +4,7 @@ import { useEffect, useState, useRef } from "react"
 import { createClient } from "@/lib/supabase/client"
 import { cn } from "@/lib/utils"
 import { AD_POSITIONS } from "@/lib/constants"
+import { hasConsentFor } from "@/lib/consent"
 
 interface AdSlotProps {
   positionKey: keyof typeof AD_POSITIONS
@@ -94,7 +95,8 @@ export function AdSlot({ positionKey, className, preview }: AdSlotProps) {
     supabase.rpc("increment_ad_impressions", { ad_id: slotAd.id }).then()
   }, [slotAd])
 
-  const showAutoAds = settings.enable_auto_ads && settings.adsense_publisher_id
+  const marketingConsent = hasConsentFor("marketing")
+  const showAutoAds = settings.enable_auto_ads && settings.adsense_publisher_id && marketingConsent
 
   if (loading) {
     return (

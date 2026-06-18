@@ -135,6 +135,7 @@ export default async function PostPage({ params }: Props) {
               name: SITE_NAME,
               logo: `${SITE_URL}/favicon.svg`,
             },
+            ...((post as any).model_used ? { creativeWorkStatus: "AI-assisted", isBasedOn: "https://schema.org" } : {}),
           }),
         }}
       />
@@ -171,6 +172,11 @@ export default async function PostPage({ params }: Props) {
                   {post.is_sponsored && (
                     <Badge variant="amber" className="px-3 py-1 text-xs uppercase tracking-wider font-semibold">
                       Sponsored
+                    </Badge>
+                  )}
+                  {(post as any).model_used && (
+                    <Badge variant="outline" className="px-3 py-1 text-xs uppercase tracking-wider font-semibold text-muted-foreground">
+                      AI-assisted
                     </Badge>
                   )}
                 </div>
@@ -262,6 +268,14 @@ export default async function PostPage({ params }: Props) {
               <div className="answer-capsule">
                 <div className="answer-capsule-label">Direct Answer</div>
                 <p className="answer-capsule-text">{(post as any).answer_capsule}</p>
+              </div>
+            )}
+
+            {/* AI Disclosure */}
+            {(post as any).model_used && (
+              <div className="mb-6 p-4 bg-muted/50 border border-border rounded-xl text-xs text-muted-foreground leading-relaxed">
+                This article was produced with the assistance of AI technology ({(post as any).model_used}).
+                It has been reviewed and edited by our editorial team to ensure accuracy and quality.
               </div>
             )}
 

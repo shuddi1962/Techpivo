@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next"
 import { ThemeProvider } from "@/components/theme-provider"
 import { LayoutWrapper } from "@/components/layout/layout-wrapper"
 import { PHProvider } from "@/components/posthog-provider"
+import { CookieConsent } from "@/components/cookies/CookieConsent"
 import { SITE_NAME, SITE_TAGLINE, SITE_URL } from "@/lib/constants"
 import "./globals.css"
 
@@ -105,6 +106,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <LayoutWrapper>{children}</LayoutWrapper>
           </PHProvider>
         </ThemeProvider>
+        <CookieConsent />
       </body>
     </html>
   )

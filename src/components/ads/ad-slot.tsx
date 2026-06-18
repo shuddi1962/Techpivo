@@ -4,6 +4,7 @@ import { useEffect, useState, useRef } from "react"
 import { createClient } from "@/lib/supabase/client"
 import type { AdPosition } from "@/types/database"
 import { cn } from "@/lib/utils"
+import { hasConsentFor } from "@/lib/consent"
 
 interface AdSlotProps {
   position: AdPosition
@@ -70,8 +71,9 @@ export function AdSlot({ position, className }: AdSlotProps) {
     }
   }, [ad])
 
+  const marketingConsent = hasConsentFor("marketing")
   const showAutoAds =
-    settings.enable_auto_ads && settings.adsense_publisher_id
+    settings.enable_auto_ads && settings.adsense_publisher_id && marketingConsent
 
   if (loading) {
     return (
