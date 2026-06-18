@@ -1,5 +1,4 @@
 import type { Metadata } from "next"
-import Image from "next/image"
 
 export const metadata: Metadata = {
   title: "Privacy Policy – Techpivo",
@@ -12,7 +11,7 @@ export default function PrivacyPolicyPage() {
     <div className="w-full">
       {/* Hero */}
       <div className="relative overflow-hidden mb-12 min-h-[320px] flex items-center">
-        <Image src="https://images.pexels.com/photos/60504/security-protection-anti-virus-software-60504.jpeg" alt="Data security" fill className="object-cover" sizes="100vw" priority />
+        <img src="https://images.pexels.com/photos/60504/security-protection-anti-virus-software-60504.jpeg" alt="Data security" className="absolute inset-0 w-full h-full object-cover" />
         <div className="absolute inset-0 bg-black/40" />
         <div className="relative z-10 px-6 md:px-12 lg:px-16 py-16 text-white">
           <div className="text-5xl mb-4">🔒</div>
@@ -31,7 +30,7 @@ export default function PrivacyPolicyPage() {
 
         <section className="bg-card border rounded-2xl p-6 md:col-span-2">
           <div className="relative h-40 rounded-xl overflow-hidden mb-4">
-            <Image src="https://images.pexels.com/photos/546819/pexels-photo-546819.jpeg" alt="Data collection" fill className="object-cover" sizes="(max-width: 768px) 100vw, 50vw" />
+            <img src="https://images.pexels.com/photos/546819/pexels-photo-546819.jpeg" alt="Data collection" className="absolute inset-0 w-full h-full object-cover" />
           </div>
           <h2 className="text-2xl font-bold mb-4">2. Information We Collect</h2>
           <h3 className="font-bold mb-2">Personal Data</h3>
@@ -48,7 +47,7 @@ export default function PrivacyPolicyPage() {
 
         <section className="bg-card border rounded-2xl p-6">
           <div className="relative h-32 rounded-xl overflow-hidden mb-4">
-            <Image src="https://images.pexels.com/photos/376464/pexels-photo-376464.jpeg" alt="Cookies" fill className="object-cover" sizes="(max-width: 768px) 100vw, 33vw" />
+            <img src="https://images.pexels.com/photos/376464/pexels-photo-376464.jpeg" alt="Cookies" className="absolute inset-0 w-full h-full object-cover" />
           </div>
           <h2 className="text-2xl font-bold mb-4">3. Cookies & Tracking</h2>
           <p className="text-muted-foreground">We use cookies and similar tracking technologies to enhance your experience, analyze traffic, and serve personalized ads. You can control preferences through browser settings.</p>
@@ -56,7 +55,7 @@ export default function PrivacyPolicyPage() {
 
         <section className="bg-card border rounded-2xl p-6">
           <div className="relative h-32 rounded-xl overflow-hidden mb-4">
-            <Image src="https://images.pexels.com/photos/3184291/pexels-photo-3184291.jpeg" alt="Advertising" fill className="object-cover" sizes="(max-width: 768px) 100vw, 33vw" />
+            <img src="https://images.pexels.com/photos/3184291/pexels-photo-3184291.jpeg" alt="Advertising" className="absolute inset-0 w-full h-full object-cover" />
           </div>
           <h2 className="text-2xl font-bold mb-4">4. Google AdSense</h2>
           <p className="text-muted-foreground">We use Google AdSense to display ads. Google and its partners use cookies to serve personalized ads. You can opt out via <a href="https://www.google.com/settings/ads" target="_blank" rel="noopener" className="text-accent hover:underline">Google&apos;s Ads Settings</a>.</p>
@@ -64,7 +63,7 @@ export default function PrivacyPolicyPage() {
 
         <section className="bg-card border rounded-2xl p-6">
           <div className="relative h-32 rounded-xl overflow-hidden mb-4">
-            <Image src="https://images.pexels.com/photos/3861969/pexels-photo-3861969.jpeg" alt="Data usage" fill className="object-cover" sizes="(max-width: 768px) 100vw, 33vw" />
+            <img src="https://images.pexels.com/photos/3861969/pexels-photo-3861969.jpeg" alt="Data usage" className="absolute inset-0 w-full h-full object-cover" />
           </div>
           <h2 className="text-2xl font-bold mb-4">5. How We Use Your Info</h2>
           <ul className="list-disc pl-5 text-muted-foreground space-y-1">
@@ -79,7 +78,7 @@ export default function PrivacyPolicyPage() {
 
         <section className="bg-card border rounded-2xl p-6">
           <div className="relative h-32 rounded-xl overflow-hidden mb-4">
-            <Image src="https://images.pexels.com/photos/1714208/pexels-photo-1714208.jpeg" alt="Data sharing" fill className="object-cover" sizes="(max-width: 768px) 100vw, 33vw" />
+            <img src="https://images.pexels.com/photos/1714208/pexels-photo-1714208.jpeg" alt="Data sharing" className="absolute inset-0 w-full h-full object-cover" />
           </div>
           <h2 className="text-2xl font-bold mb-4">6. Data Sharing</h2>
           <p className="text-muted-foreground">We do not sell your personal information. We may share data with service providers, advertising partners, and legal authorities when required.</p>

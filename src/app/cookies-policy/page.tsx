@@ -1,6 +1,5 @@
 import type { Metadata } from "next"
 import Link from "next/link"
-import Image from "next/image"
 
 export const metadata: Metadata = {
   title: "Cookies Policy – Techpivo",
@@ -13,7 +12,7 @@ export default function CookiesPolicyPage() {
     <div className="w-full">
       {/* Hero */}
       <div className="relative overflow-hidden mb-12 min-h-[320px] flex items-center">
-        <Image src="https://images.pexels.com/photos/376464/pexels-photo-376464.jpeg" alt="Cookies and tracking" fill className="object-cover" sizes="100vw" priority />
+        <img src="https://images.pexels.com/photos/376464/pexels-photo-376464.jpeg" alt="Cookies and tracking" className="absolute inset-0 w-full h-full object-cover" />
         <div className="absolute inset-0 bg-black/40" />
         <div className="relative z-10 px-6 md:px-12 lg:px-16 py-16 text-white max-w-4xl">
           <div className="text-5xl mb-4">🍪</div>

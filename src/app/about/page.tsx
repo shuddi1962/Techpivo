@@ -1,6 +1,5 @@
 import type { Metadata } from "next"
 import Link from "next/link"
-import Image from "next/image"
 
 export const metadata: Metadata = {
   title: "About Us – Techpivo",
@@ -13,7 +12,7 @@ export default function AboutPage() {
     <div className="w-full">
       {/* Hero */}
       <div className="relative overflow-hidden mb-12 min-h-[320px] flex items-center">
-        <Image src="https://images.pexels.com/photos/546819/pexels-photo-546819.jpeg" alt="Modern tech workspace" fill className="object-cover" sizes="100vw" priority />
+        <img src="https://images.pexels.com/photos/546819/pexels-photo-546819.jpeg" alt="Modern tech workspace" className="absolute inset-0 w-full h-full object-cover" />
         <div className="absolute inset-0 bg-black/40" />
         <div className="relative z-10 px-6 md:px-12 lg:px-16 py-16 text-white max-w-4xl">
           <h1 className="text-4xl font-bold mb-4">About Techpivo</h1>
@@ -39,14 +38,14 @@ export default function AboutPage() {
           </p>
         </div>
         <div className="relative h-64 rounded-xl overflow-hidden">
-          <Image src="https://images.pexels.com/photos/3183197/pexels-photo-3183197.jpeg" alt="Team collaboration" fill className="object-cover" sizes="(max-width: 768px) 100vw, 448px" />
+          <img src="https://images.pexels.com/photos/3183197/pexels-photo-3183197.jpeg" alt="Team collaboration" className="absolute inset-0 w-full h-full object-cover" />
         </div>
       </section>
 
       {/* Editorial Standards */}
       <section className="mb-12">
         <div className="relative h-48 rounded-xl overflow-hidden mb-6">
-          <Image src="https://images.pexels.com/photos/1181671/pexels-photo-1181671.jpeg" alt="Modern office space" fill className="object-cover" sizes="(max-width: 768px) 100vw, 896px" />
+          <img src="https://images.pexels.com/photos/1181671/pexels-photo-1181671.jpeg" alt="Modern office space" className="absolute inset-0 w-full h-full object-cover" />
           <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
           <h2 className="absolute bottom-4 left-6 text-2xl font-bold text-white">Editorial Standards</h2>
         </div>
@@ -73,7 +72,7 @@ export default function AboutPage() {
       {/* Team */}
       <section className="mb-12 grid md:grid-cols-2 gap-8 items-center">
         <div className="relative h-64 rounded-xl overflow-hidden md:order-2">
-          <Image src="https://images.pexels.com/photos/3184418/pexels-photo-3184418.jpeg" alt="Team meeting" fill className="object-cover" sizes="(max-width: 768px) 100vw, 448px" />
+          <img src="https://images.pexels.com/photos/3184418/pexels-photo-3184418.jpeg" alt="Team meeting" className="absolute inset-0 w-full h-full object-cover" />
         </div>
         <div className="md:order-1">
           <h2 className="text-2xl font-bold mb-4">Our Team</h2>
@@ -87,7 +86,7 @@ export default function AboutPage() {
 
       {/* Contact CTA */}
       <section className="relative rounded-2xl overflow-hidden p-8 text-center">
-        <Image src="https://images.pexels.com/photos/3861969/pexels-photo-3861969.jpeg" alt="Contact us" fill className="object-cover" sizes="(max-width: 768px) 100vw, 896px" />
+        <img src="https://images.pexels.com/photos/3861969/pexels-photo-3861969.jpeg" alt="Contact us" className="absolute inset-0 w-full h-full object-cover" />
         <div className="absolute inset-0 bg-[#0F172A]/85" />
         <div className="relative z-10">
           <h2 className="text-2xl font-bold mb-3 text-white">Get in Touch</h2>

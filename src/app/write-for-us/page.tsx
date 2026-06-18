@@ -1,6 +1,5 @@
 import type { Metadata } from "next"
 import Link from "next/link"
-import Image from "next/image"
 
 export const metadata: Metadata = {
   title: "Write For Us – Techpivo",
@@ -13,7 +12,7 @@ export default function WriteForUsPage() {
     <div className="w-full">
       {/* Hero Banner */}
       <div className="relative overflow-hidden mb-12 min-h-[320px] flex items-center">
-        <Image src="https://images.pexels.com/photos/1181671/pexels-photo-1181671.jpeg" alt="Write for us" fill className="object-cover" sizes="100vw" priority />
+        <img src="https://images.pexels.com/photos/1181671/pexels-photo-1181671.jpeg" alt="Write for us" className="absolute inset-0 w-full h-full object-cover" />
         <div className="absolute inset-0 bg-black/40" />
         <div className="relative z-10 px-6 md:px-12 lg:px-16 py-16 text-white max-w-4xl">
           <h1 className="text-4xl font-bold mb-4">Write For Us</h1>
