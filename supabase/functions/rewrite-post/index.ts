@@ -25,6 +25,10 @@ function stripHtml(html: string): string {
     .trim()
 }
 
+class QuotaError extends Error {
+  constructor() { super("Gemini API quota exhausted"); this.name = "QuotaError" }
+}
+
 async function callGemini(prompt: string, apiKey: string): Promise<string> {
   const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`
   const body = {
@@ -39,6 +43,9 @@ async function callGemini(prompt: string, apiKey: string): Promise<string> {
     signal: AbortSignal.timeout(60000),
   })
   if (!response.ok) {
+    if (response.status === 429 || response.status === 403) {
+      throw new QuotaError()
+    }
     const errorBody = await response.text().catch(() => "")
     throw new Error(`Gemini API error (${response.status}): ${errorBody.slice(0, 200)}`)
   }
@@ -181,7 +188,25 @@ function extractJson(text: string): Record<string, unknown> {
   const cleaned = text.replace(/^```(?:json)?\s*/im, '').replace(/\s*```\s*$/im, '').trim()
   const match = cleaned.match(/\{[\s\S]*\}/)
   if (!match) throw new Error("No JSON object found in response")
-  return JSON.parse(match[0])
+  try {
+    return JSON.parse(match[0])
+  } catch {
+    throw new Error("Invalid JSON in response")
+  }
+}
+
+function extractContentFromRaw(text: string): string | null {
+  const cleaned = text.replace(/^```(?:html|markdown)?\s*/im, '').replace(/\s*```\s*$/im, '').trim()
+  const sectionMatch = cleaned.match(/(<section[\s\S]*<\/section>)/i)
+  if (sectionMatch) return sectionMatch[1]
+  const divMatch = cleaned.match(/(<div[\s\S]*?<\/div>)/i)
+  if (divMatch && divMatch[1].length > 200) return divMatch[1]
+  if (cleaned.includes("<h2") || cleaned.includes("<h3")) return cleaned
+  // No HTML found — treat as plain text and wrap in section structure
+  if (cleaned.length > 200) {
+    return `<section><div class="answer-capsule"><p>${cleaned.slice(0, 300).replace(/\n/g, ' ')}</p></div></section><section><h2>Details</h2>${cleaned.split(/\n{2,}/).map(p => p.trim() ? `<p>${p}</p>` : '').join('')}</section>`
+  }
+  return null
 }
 
 serve(async (req) => {
@@ -258,82 +283,104 @@ serve(async (req) => {
     try {
       const prompt = buildRewritePrompt(sourceTitle, textContent)
       const result = await callGemini(prompt, geminiKey)
-      const parsed = extractJson(result)
-
-      if (parsed.headline) headline = String(parsed.headline).trim()
-      if (parsed.content) rewrittenContent = String(parsed.content).trim()
-      if (parsed.seoTitle) seoData.seo_title = String(parsed.seoTitle).slice(0, 60)
-      if (parsed.seoDescription) seoData.seo_description = String(parsed.seoDescription).slice(0, 155)
-      if (Array.isArray(parsed.seoKeywords)) {
-        seoKeywords = (parsed.seoKeywords as string[]).slice(0, 5).map(String)
-        seoData.seo_keywords = seoKeywords
-      }
-      if (Array.isArray(parsed.quickBrief)) {
-        quickBrief = (parsed.quickBrief as string[]).slice(0, 3).map(t => ({ text: String(t) }))
-      }
-      if (Array.isArray(parsed.keyPoints)) {
-        keyPointsResult = (parsed.keyPoints as string[]).slice(0, 5).map(String)
-      }
-      if (Array.isArray(parsed.faq)) {
-        faqResult = (parsed.faq as Array<{ question: string; answer: string }>).slice(0, 5)
-          .filter(f => f?.question?.length > 5 && f?.answer?.length > 10)
-      }
-      if (parsed.qualityScore) {
-        qualityScore = Math.min(100, Math.max(1, Number(parsed.qualityScore)))
+      let parsed: Record<string, unknown> | null = null
+      try {
+        parsed = extractJson(result)
+      } catch (jsonErr: unknown) {
+        console.error(`JSON parse failed, trying raw extraction: ${jsonErr instanceof Error ? jsonErr.message : String(jsonErr)}`)
       }
 
-      console.log(`[✓ Gemini grounded rewrite] ${headline.slice(0, 60)}`)
+      if (parsed) {
+        if (parsed.headline) headline = String(parsed.headline).trim()
+        if (parsed.content) rewrittenContent = String(parsed.content).trim()
+        if (parsed.seoTitle) seoData.seo_title = String(parsed.seoTitle).slice(0, 60)
+        if (parsed.seoDescription) seoData.seo_description = String(parsed.seoDescription).slice(0, 155)
+        if (Array.isArray(parsed.seoKeywords)) {
+          seoKeywords = (parsed.seoKeywords as string[]).slice(0, 5).map(String)
+          seoData.seo_keywords = seoKeywords
+        }
+        if (Array.isArray(parsed.quickBrief)) {
+          quickBrief = (parsed.quickBrief as string[]).slice(0, 3).map(t => ({ text: String(t) }))
+        }
+        if (Array.isArray(parsed.keyPoints)) {
+          keyPointsResult = (parsed.keyPoints as string[]).slice(0, 5).map(String)
+        }
+        if (Array.isArray(parsed.faq)) {
+          faqResult = (parsed.faq as Array<{ question: string; answer: string }>).slice(0, 5)
+            .filter(f => f?.question?.length > 5 && f?.answer?.length > 10)
+        }
+        if (parsed.qualityScore) {
+          qualityScore = Math.min(100, Math.max(1, Number(parsed.qualityScore)))
+        }
+        console.log(`[✓ Gemini grounded rewrite] ${headline.slice(0, 60)}`)
+      }
+
+      if (!parsed || !(parsed as any)?.content) {
+        const rawHtml = extractContentFromRaw(result)
+        if (rawHtml) {
+          rewrittenContent = rawHtml
+          console.log(`[✓ Extracted content from raw Gemini response]`)
+        } else {
+          console.error(`[✗ Could not extract content from Gemini response for "${sourceTitle.slice(0, 40)}"`)
+        }
+      }
+
+      // Section wrapping and retry logic inside this block so we can re-throw QuotaError
+      {
+        let finalContent = rewrittenContent
+        if (!finalContent.includes("<h2") && !finalContent.includes("<h3")) {
+          finalContent = `<section><h2>${headline}</h2>${finalContent
+            .split(/\n{2,}/)
+            .map(p => p.trim() ? `<p>${p}</p>` : '')
+            .join('')
+          }</section>`
+        }
+
+        if (!finalContent.includes("answer-capsule") && sourceContent.length > 100) {
+          console.error(`[RETRY] No answer-capsule in response for "${headline.slice(0, 40)}", retrying...`)
+          try {
+            const retryPrompt = buildRewritePrompt(sourceTitle, textContent)
+            const retryResult = await callGemini(retryPrompt, geminiKey)
+            const retryParsed = extractJson(retryResult)
+            if (retryParsed.content && String(retryParsed.content).includes("answer-capsule")) {
+              finalContent = String(retryParsed.content).trim()
+              if (retryParsed.headline) headline = String(retryParsed.headline).trim()
+              if (retryParsed.seoTitle) seoData.seo_title = String(retryParsed.seoTitle).slice(0, 60)
+              if (retryParsed.seoDescription) seoData.seo_description = String(retryParsed.seoDescription).slice(0, 155)
+              if (Array.isArray(retryParsed.seoKeywords)) {
+                seoKeywords = (retryParsed.seoKeywords as string[]).slice(0, 5).map(String)
+                seoData.seo_keywords = seoKeywords
+              }
+              if (Array.isArray(retryParsed.quickBrief)) {
+                quickBrief = (retryParsed.quickBrief as string[]).slice(0, 3).map(t => ({ text: String(t) }))
+              }
+              if (Array.isArray(retryParsed.keyPoints)) {
+                keyPointsResult = (retryParsed.keyPoints as string[]).slice(0, 5).map(String)
+              }
+              if (Array.isArray(retryParsed.faq)) {
+                faqResult = (retryParsed.faq as Array<{ question: string; answer: string }>).slice(0, 5)
+                  .filter(f => f?.question?.length > 5 && f?.answer?.length > 10)
+              }
+              if (retryParsed.qualityScore) {
+                qualityScore = Math.min(100, Math.max(1, Number(retryParsed.qualityScore)))
+              }
+              console.log(`[✓ Retry succeeded] ${headline.slice(0, 60)}`)
+            } else {
+              console.error(`[RETRY FAILED] Still no answer-capsule for "${headline.slice(0, 40)}"`)
+            }
+          } catch (retryErr: unknown) {
+            if (retryErr instanceof QuotaError) throw retryErr
+            const retryMsg = retryErr instanceof Error ? retryErr.message : String(retryErr)
+            console.error(`[RETRY ERROR] ${retryMsg}`)
+          }
+        }
+
+        rewrittenContent = finalContent
+      }
     } catch (err: unknown) {
+      if (err instanceof QuotaError) throw err
       const msg = err instanceof Error ? err.message : String(err)
       console.error(`Gemini rewrite failed: ${msg}`)
-    }
-
-    let finalContent = rewrittenContent
-    if (!finalContent.includes("<h2") && !finalContent.includes("<h3")) {
-      finalContent = `<section><h2>${headline}</h2>${finalContent
-        .split(/\n{2,}/)
-        .map(p => p.trim() ? `<p>${p}</p>` : '')
-        .join('')
-      }</section>`
-    }
-
-    // If Gemini didn't produce structured content, try once more with stricter prompt
-    if (!finalContent.includes("answer-capsule") && sourceContent.length > 100) {
-      console.error(`[RETRY] No answer-capsule in response for "${headline.slice(0, 40)}", retrying...`)
-      try {
-        const retryPrompt = buildRewritePrompt(sourceTitle, textContent)
-        const retryResult = await callGemini(retryPrompt, geminiKey)
-        const retryParsed = extractJson(retryResult)
-        if (retryParsed.content && String(retryParsed.content).includes("answer-capsule")) {
-          finalContent = String(retryParsed.content).trim()
-          if (retryParsed.headline) headline = String(retryParsed.headline).trim()
-          if (retryParsed.seoTitle) seoData.seo_title = String(retryParsed.seoTitle).slice(0, 60)
-          if (retryParsed.seoDescription) seoData.seo_description = String(retryParsed.seoDescription).slice(0, 155)
-          if (Array.isArray(retryParsed.seoKeywords)) {
-            seoKeywords = (retryParsed.seoKeywords as string[]).slice(0, 5).map(String)
-            seoData.seo_keywords = seoKeywords
-          }
-          if (Array.isArray(retryParsed.quickBrief)) {
-            quickBrief = (retryParsed.quickBrief as string[]).slice(0, 3).map(t => ({ text: String(t) }))
-          }
-          if (Array.isArray(retryParsed.keyPoints)) {
-            keyPointsResult = (retryParsed.keyPoints as string[]).slice(0, 5).map(String)
-          }
-          if (Array.isArray(retryParsed.faq)) {
-            faqResult = (retryParsed.faq as Array<{ question: string; answer: string }>).slice(0, 5)
-              .filter(f => f?.question?.length > 5 && f?.answer?.length > 10)
-          }
-          if (retryParsed.qualityScore) {
-            qualityScore = Math.min(100, Math.max(1, Number(retryParsed.qualityScore)))
-          }
-          console.log(`[✓ Retry succeeded] ${headline.slice(0, 60)}`)
-        } else {
-          console.error(`[RETRY FAILED] Still no answer-capsule for "${headline.slice(0, 40)}"`)
-        }
-      } catch (retryErr: unknown) {
-        const retryMsg = retryErr instanceof Error ? retryErr.message : String(retryErr)
-        console.error(`[RETRY ERROR] ${retryMsg}`)
-      }
     }
 
     const updateData: Record<string, unknown> = {

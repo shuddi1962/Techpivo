@@ -368,8 +368,7 @@ async function processFeed(feed: any, categories: Array<{id:string;slug:string}>
 }
 
 serve(async (req) => {
-  // Parse max_posts from request body (default: 20)
-  let maxPosts = 20
+  let maxPosts = 10
   try {
     const body = await req.json().catch(() => ({}))
     if (body.max_posts && typeof body.max_posts === 'number') maxPosts = body.max_posts

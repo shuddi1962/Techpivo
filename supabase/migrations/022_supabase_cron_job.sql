@@ -4,7 +4,7 @@ CREATE EXTENSION IF NOT EXISTS pg_net;
 
 -- Schedule the fetch-rss-feeds edge function to run daily at 6:00 AM
 -- This replaces the old Vercel/GitHub cron jobs
--- The edge function will fetch up to 20 posts per day
+-- The edge function will fetch up to 10 posts per day (Gemini free tier limit: 20 req/day)
 
 -- Safely remove any existing schedule with this name
 DO $$
@@ -26,7 +26,7 @@ SELECT cron.schedule(
       'Content-Type', 'application/json',
       'Authorization', 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhraHZvampvZ29ldXZyaWZla3dyIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3OTU1MjYzMywiZXhwIjoyMDk1MTI4NjMzfQ.06p7J_Gr9CW3nyGc1f0HGj8hXad5U8nJ9yt9XKC9aa8'
     )::jsonb,
-    body:='{"max_posts":20}'::jsonb
+    body:='{"max_posts":10}'::jsonb
   ) AS request_id;
   $$
 );
@@ -49,9 +49,9 @@ SELECT cron.schedule(
   $$
 );
 
--- Set default daily RSS cap to 20
-INSERT INTO site_settings (key, value) VALUES ('rss_daily_cap', '20')
-ON CONFLICT (key) DO UPDATE SET value = '20', updated_at = NOW();
+-- Set default daily RSS cap to 10 (Gemini free tier: 20 req/day, each post needs 1-2 reqs)
+INSERT INTO site_settings (key, value) VALUES ('rss_daily_cap', '10')
+ON CONFLICT (key) DO UPDATE SET value = '10', updated_at = NOW();
 
 -- Ensure all feeds have auto_rewrite and auto_publish enabled
 UPDATE rss_feeds SET auto_rewrite = true, auto_publish = true;
