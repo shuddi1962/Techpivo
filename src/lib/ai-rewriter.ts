@@ -7,13 +7,17 @@ const GEMINI_RATE_MS = 1000
 export interface AIArticle {
   headline:          string
   content:           string
+  answerCapsule:     string
   seoTitle:          string
   seoDescription:    string
   seoKeywords:       string[]
+  focusKeyword:      string
+  secondaryKeywords: string[]
   tags:              string[]
   keyPoints:         string[]
   quickBrief:        string[]
   faq:               Array<{ question: string; answer: string }>
+  namedEntities:     string[]
   qualityScore:      number
   isBreaking:        boolean
   suggestedCategory: string
@@ -22,149 +26,128 @@ export interface AIArticle {
 
 function buildPrompt(
   title: string,
-  sourceContent: string,
+  source: string,
   sourceName: string,
   category: string
 ): string {
-  return `You are a senior tech journalist writing for Techpivo (techpivo.com), a premium technology news blog trusted by engineers, designers, and tech enthusiasts.
+  return `You are a senior technology journalist at Techpivo (techpivo.com), writing for an audience of professionals, developers, and informed tech enthusiasts.
 
 ORIGINAL HEADLINE: ${title}
 SOURCE PUBLICATION: ${sourceName}
 CATEGORY: ${category}
 
-SOURCE CONTENT (use every fact, name, date, number, and quote from this):
-${sourceContent.slice(0, 4500)}
+SOURCE CONTENT — extract every fact, name, date, statistic, and quote:
+${source.slice(0, 4500)}
 
-═══════════════════════════════════════════════════
-MANDATORY WRITING RULES — violating any rule = article rejected
-═══════════════════════════════════════════════════
+Use Google Search to verify and expand on this story with the latest available information. Cross-check facts before including them.
 
-HEADLINE RULES:
-✓ Write a completely new headline. Do not copy the original even partially.
-✓ Active voice. Present or past tense. Maximum 90 characters.
-✓ Contains the single most important fact from the article.
-✗ No "You won't believe...", "This changes everything", "Game changer"
-✗ No questions as headlines unless genuinely investigative
+GOOGLE POLICY COMPLIANCE — MANDATORY, NO EXCEPTIONS
+- Never copy sentences verbatim from the source — full rewrite required
+- Never present speculation as confirmed fact
+- Never include misleading claims about products, companies, or people
+- Never use sensational or clickbait framing
+- Every claim must be attributable to a named source
+- Content must provide genuine added value beyond the original report
 
-LANGUAGE RULES:
-✓ Write for a smart 16-year-old. Clear. Precise. No padding.
-✓ Explain every acronym on first use: "API (Application Programming Interface)"
-✓ Average sentence length: under 20 words
-✓ Verified facts only. If something is unconfirmed, say "reportedly" or "according to"
-✗ BANNED phrases — if any appear, the article is rejected:
-  "In today's fast-paced world", "It goes without saying", "At the end of the day",
-  "Game-changing", "Revolutionary technology", "Leveraging synergies", "Deep dive",
-  "Techpivo brings you", "Check back for updates", "This story is developing",
-  "Our team of journalists", "Needless to say", "In conclusion", "To summarize",
-  "Unpacking", "Delve into", "Paradigm shift"
+HEADLINE
+- Completely new wording — never copy the original headline
+- Active voice, present or past tense
+- Include the most newsworthy fact directly in the headline
+- 50-70 characters, no clickbait
 
-STRUCTURE — use this exact HTML structure, in this exact order:
+ARTICLE STRUCTURE — use this exact HTML structure, in this order:
 
 <section>
-<h2>[Opening paragraph heading]</h2>
-<p>[Opening: 2-3 sentences. The single most important fact first. Why it matters. No jargon.]</p>
+<div class="answer-capsule"><p>[MANDATORY 2-3 sentence direct answer. What happened, who, when, why it matters — written so Google AI Overviews, ChatGPT, and Perplexity can extract it verbatim.]</p></div>
 </section>
 
 <section>
-<h2>[First major section heading]</h2>
-<p>[Section content — max 4 sentences, one clear idea per paragraph]</p>
-<h3>[Sub-point heading if breaking down detail]</h3>
-<p>[Sub-point content]</p>
+<h2>[Opening section heading]</h2>
+<p>[Opening paragraph: 2-3 sentences. Inverted pyramid — most important fact first.]</p>
 </section>
 
 <section>
-<h2>[Second major section heading]</h2>
-<p>[Content]</p>
+<h2>[Context/Background heading]</h2>
+<p>[Fact-dense paragraph with specific numbers, dates, named entities — critical GEO signals for AI citability.]</p>
+</section>
+
+<section>
+<h2>[Main development heading]</h2>
+<p>[Core story facts. Include named quote in blockquote format if source has one.]</p>
+<blockquote>"[Exact quote text]" — Person Name, Title, Organisation</blockquote>
 <ul>
-<li>[Use bullet points when listing features, steps or comparisons. Max 6 bullets. Each: one clear fact, max 20 words.]</li>
+<li>[Key detail 1]</li>
+<li>[Key detail 2]</li>
+<li>[Key detail 3]</li>
 </ul>
 </section>
 
-<blockquote>
-[Use ONLY if source has a direct named quote. Format: "Quote text." — Person Name, Title, Organisation]
-</blockquote>
+<section>
+<h2>What This Means</h2>
+<p>[Original analysis — practical implications for the reader. Critical for E-E-A-T.]</p>
+</section>
 
 <section>
 <h2>Key Points</h2>
 <ul>
-<li>[Key fact 1 — specific, verified, from the article]</li>
-<li>[Key fact 2]</li>
-<li>[Key fact 3]</li>
+<li>[Verified fact 1 with specific number/date/name]</li>
+<li>[Verified fact 2]</li>
+<li>[Verified fact 3]</li>
 </ul>
 </section>
 
 <section>
 <h2>The Bottom Line</h2>
-<p>[2-3 sentences. Practical takeaway. What does this mean for the reader right now?]</p>
+<p>[2-3 sentences. Practical takeaway. What to watch for next.]</p>
 </section>
 
-FORMATTING RULES:
-- Use <strong> for ONE key fact or number per section — not for decoration
-- Every paragraph separated by a blank line
-- Minimum 3 H2 headings per article (including Key Points and The Bottom Line)
-- Target length: 500-750 words
+NAMED ENTITY DENSITY — include at least 5 named entities across the article (companies, people, products, technologies, places). Include at least 3 specific numbers, percentages, or dates.
 
-SEO META:
-- seoTitle: 55-60 characters, includes the main keyword naturally
-- seoDescription: 140-155 characters, written for humans not robots, includes keyword
+WRITING STYLE:
+- Write for a smart 16-year-old: clear, no unexplained jargon
+- Explain every acronym on first use
+- Average sentence length under 20 words
+- BANNED phrases — NEVER use: "In today's fast-paced world", "It goes without saying", "At the end of the day", "Game-changing", "Revolutionary technology", "Leveraging synergies", "Deep dive", "Unpacking", "Delve into", "Paradigm shift", "In conclusion", "To summarize"
+- Minimum 500 words, maximum 1000 words in the content field
+- Use <strong> for ONE key fact per section
 
-KEY POINTS (separate JSON field, mirrors the Key Points H2):
-- 3 to 5 short strings
-- Each: one verified fact, under 25 words
-- Starts with a noun or number
-- No "According to..." — just the fact
+FAQ — generate exactly 4 questions:
+- Phrased as a real person would type into Google or ask ChatGPT
+- Start with What, How, Why, When, Is, Does, or Can
+- Each answer: 2-3 sentences packed with specific facts
+- Questions must be specific to THIS story, never generic
 
-QUICK BRIEF (separate JSON field — 3 bullets shown above article):
-- Exactly 3 bullets
-- Each: max 18 words
-- Starts with an action verb or number
-- Covers the 3 most important facts
-
-FAQ (3 to 5 questions):
-- Real questions a reader would actually search on Google
-- Questions must be specific to THIS article's facts, not generic
-- Answered directly from the article facts only
-- Each answer: 2-3 sentences max
-
-QUALITY SCORE:
-- Rate 1-100 how newsworthy and relevant this is for a tech audience
-- 90-100: major breaking news, industry-shifting announcement
-- 75-89:  strong story, clearly relevant to tech readers
-- 55-74:  solid but not urgent
-- Below 55: evergreen or tutorial content
-
-SUGGESTED CATEGORY — pick exactly one:
-tech-news | ai-automation | cybersecurity | gadgets | programming |
-web-development | tutorials | digital-business | networking-it | reviews | desktops
-
-═══════════════════════════════════════════════════
-OUTPUT — ONLY valid JSON, zero other text, zero markdown, zero code blocks
-═══════════════════════════════════════════════════
+OUTPUT — valid JSON only. No markdown. No code fences. No preamble.
 {
-  "headline": "New specific headline here",
-  "content": "<section><h2>Opening...</h2><p>Content...</p></section><section><h2>Section</h2><p>Content...</p></section><section><h2>Key Points</h2><ul><li>Fact 1</li><li>Fact 2</li><li>Fact 3</li></ul></section><section><h2>The Bottom Line</h2><p>Takeaway.</p></section>",
-  "seoTitle": "55-60 char SEO title with keyword",
-  "seoDescription": "140-155 char meta description written for humans, includes main keyword",
-  "seoKeywords": ["keyword1", "keyword2", "keyword3", "keyword4", "keyword5"],
-  "tags": ["Tag1", "Tag2", "Tag3", "Tag4"],
+  "headline": "New headline 50-70 chars",
+  "content": "<section>...full HTML content...</section>",
+  "answerCapsule": "Plain text version of the answer capsule",
+  "seoTitle": "55-60 char SEO title with primary keyword",
+  "seoDescription": "140-155 char meta description with primary keyword",
+  "seoKeywords": ["primary", "related1", "related2", "related3", "related4"],
+  "focusKeyword": "primary keyword phrase",
+  "secondaryKeywords": ["related1", "related2", "related3", "related4"],
+  "tags": ["Tag1", "Tag2", "Tag3", "Tag4", "Tag5"],
   "keyPoints": [
-    "Specific verified fact one from the article in under 25 words",
-    "Specific verified fact two",
-    "Specific verified fact three"
+    "Verified fact 1 with number/date/name under 25 words",
+    "Verified fact 2",
+    "Verified fact 3"
   ],
   "quickBrief": [
-    "Action verb + key fact one, max 18 words",
-    "Action verb + key fact two, max 18 words",
-    "Action verb + key fact three, max 18 words"
+    "Action-led point 1 max 18 words",
+    "Action-led point 2",
+    "Action-led point 3"
   ],
   "faq": [
-    {"question": "Specific question a reader would search?", "answer": "Direct 2-3 sentence answer from article facts only."},
-    {"question": "Another specific reader question?", "answer": "Direct answer."},
-    {"question": "Third specific question?", "answer": "Direct answer."}
+    {"question": "Specific question 1?", "answer": "2-3 sentence factual answer."},
+    {"question": "Specific question 2?", "answer": "2-3 sentence factual answer."},
+    {"question": "Specific question 3?", "answer": "2-3 sentence factual answer."},
+    {"question": "Specific question 4?", "answer": "2-3 sentence factual answer."}
   ],
-  "qualityScore": 82,
+  "namedEntities": ["Entity1", "Entity2", "Entity3", "Entity4", "Entity5"],
+  "qualityScore": 85,
   "isBreaking": false,
-  "suggestedCategory": "tech-news"
+  "suggestedCategory": "${category}"
 }`
 }
 
@@ -305,13 +288,17 @@ function validate(raw: string, model: AIArticle['modelUsed']): { article: AIArti
     article: {
       headline,
       content,
+      answerCapsule:     String(p.answerCapsule || '').slice(0, 400),
       seoTitle:          String(p.seoTitle || p.headline).slice(0, 60),
       seoDescription:    String(p.seoDescription || '').slice(0, 155),
       seoKeywords:       Array.isArray(p.seoKeywords) ? (p.seoKeywords as string[]).slice(0, 5).map(String) : [],
+      focusKeyword:      String(p.focusKeyword || '').slice(0, 60),
+      secondaryKeywords: Array.isArray(p.secondaryKeywords) ? (p.secondaryKeywords as string[]).slice(0, 4).map(String) : [],
       tags:              Array.isArray(p.tags) ? (p.tags as string[]).slice(0, 5).map(String) : [],
       keyPoints,
       quickBrief,
       faq,
+      namedEntities:     Array.isArray(p.namedEntities) ? (p.namedEntities as string[]).slice(0, 8).map(String) : [],
       qualityScore:      Math.min(100, Math.max(1, Number(p.qualityScore) || 70)),
       isBreaking:        Boolean(p.isBreaking),
       suggestedCategory: String(p.suggestedCategory || 'tech-news'),

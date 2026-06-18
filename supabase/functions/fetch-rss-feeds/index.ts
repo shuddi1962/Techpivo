@@ -342,7 +342,39 @@ async function processFeed(feed: any, categories: Array<{id:string;slug:string}>
   return { new: newCount, errors: errs }
 }
 
-serve(async () => {
+serve(async (req) => {
+  // Parse max_posts from request body (default: 20)
+  let maxPosts = 20
+  try {
+    const body = await req.json().catch(() => ({}))
+    if (body.max_posts && typeof body.max_posts === 'number') maxPosts = body.max_posts
+  } catch {}
+
+  // Check daily cap from site_settings
+  const { data: capSetting } = await supabase
+    .from('site_settings')
+    .select('value')
+    .eq('key', 'rss_daily_cap')
+    .single()
+  const dailyCap = capSetting?.value ?? maxPosts
+
+  const { data: todayRow } = await supabase
+    .from('daily_article_count')
+    .select('count')
+    .eq('date', new Date().toISOString().slice(0, 10))
+    .single()
+  const todayCount = todayRow?.count || 0
+
+  if (todayCount >= dailyCap) {
+    return new Response(JSON.stringify({
+      new_posts: 0, cap_reached: true,
+      message: `Daily cap of ${dailyCap} reached. Published today: ${todayCount}.`
+    }), { headers: { 'Content-Type': 'application/json' } })
+  }
+
+  const remainingCap = dailyCap - todayCount
+  const actualMax = Math.min(maxPosts, remainingCap)
+
   const { data: feeds } = await supabase
     .from('rss_feeds')
     .select('*, categories(slug)')
@@ -383,7 +415,7 @@ serve(async () => {
   const errors: string[] = []
   const CONCURRENCY = 5
 
-  for (let i = 0; i < feeds.length; i += CONCURRENCY) {
+  for (let i = 0; i < feeds.length && totalNew < actualMax; i += CONCURRENCY) {
     const batch = feeds.slice(i, i + CONCURRENCY)
     const results = await Promise.all(
       batch.map(f => processFeed(f, categories, subcatsWithCatSlug, defaultAuthorId))
@@ -391,10 +423,14 @@ serve(async () => {
     for (const r of results) {
       totalNew += r.new
       errors.push(...r.errors)
+      if (totalNew >= actualMax) break
     }
   }
 
-  return new Response(JSON.stringify({ new_posts: totalNew, errors }), {
+  return new Response(JSON.stringify({
+    new_posts: totalNew, errors, max_posts: actualMax, cap_reached: totalNew >= actualMax,
+    daily_remaining: dailyCap - todayCount - totalNew,
+  }), {
     headers: { 'Content-Type': 'application/json' }
   })
 })

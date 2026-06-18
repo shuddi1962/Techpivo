@@ -19,14 +19,6 @@
     {
       "path": "/api/cron/google-indexing",
       "schedule": "30 6 * * *"
-    },
-    {
-      "path": "/api/fetch-rss",
-      "schedule": "0 5 * * *"
-    },
-    {
-      "path": "/api/ingest",
-      "schedule": "0 6 * * *"
     }
   ]
 }

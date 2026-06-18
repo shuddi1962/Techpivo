@@ -1,8 +1,11 @@
 name: Ingest Articles
 
 on:
+  # DISABLED: RSS ingestion is now handled by Supabase cron job
+  # The Supabase cron triggers fetch-rss-feeds edge function daily at 6:00 AM
+  # which fetches up to 20 posts and rewrites them using Gemini with Google Search Grounding
   schedule:
-    - cron: "0 * * * *"
+    - cron: "0 6 * * *"
   workflow_dispatch:
 
 jobs:
