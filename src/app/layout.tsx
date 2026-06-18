@@ -1,9 +1,19 @@
-import type { Metadata } from "next"
+import type { Metadata, Viewport } from "next"
+import Script from "next/script"
 import { ThemeProvider } from "@/components/theme-provider"
 import { LayoutWrapper } from "@/components/layout/layout-wrapper"
 import { PHProvider } from "@/components/posthog-provider"
-import { SITE_NAME, SITE_TAGLINE } from "@/lib/constants"
+import { SITE_NAME, SITE_TAGLINE, SITE_URL } from "@/lib/constants"
 import "./globals.css"
+
+const GA_ID = process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID || "G-YX3H076JBM"
+const ADSENSE_CLIENT = process.env.NEXT_PUBLIC_ADSENSE_CLIENT_ID || ""
+
+export const viewport: Viewport = {
+  themeColor: "#0F172A",
+  width: "device-width",
+  initialScale: 1,
+}
 
 export const metadata: Metadata = {
   title: {
@@ -18,11 +28,14 @@ export const metadata: Metadata = {
   verification: {
     google: '75MCSV7iG7JdKa_i1Tt0ceqqQ4Jl-W33sjbIMnrlMQ4',
   },
+  referrer: "strict-origin-when-cross-origin",
   openGraph: {
     type: "website",
     siteName: SITE_NAME,
     title: `${SITE_NAME} — ${SITE_TAGLINE}`,
     description: "Tech, decoded. Fast.",
+    url: SITE_URL,
+    locale: "en_US",
   },
   twitter: {
     card: "summary_large_image",
@@ -53,17 +66,28 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             `,
           }}
         />
-        <script src="https://www.googletagmanager.com/gtag/js?id=G-YX3H076JBM" async />
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `
-              window.dataLayer = window.dataLayer || [];
-              function gtag(){dataLayer.push(arguments);}
-              gtag('js', new Date());
-              gtag('config', 'G-YX3H076JBM');
-            `,
-          }}
-        />
+      </head>
+      <body className="min-h-screen bg-background antialiased">
+        {GA_ID && (
+          <>
+            <Script src={`https://www.googletagmanager.com/gtag/js?id=${GA_ID}`} strategy="afterInteractive" />
+            <Script id="google-analytics" strategy="afterInteractive">
+              {`
+                window.dataLayer = window.dataLayer || [];
+                function gtag(){dataLayer.push(arguments);}
+                gtag('js', new Date());
+                gtag('config', '${GA_ID}');
+              `}
+            </Script>
+          </>
+        )}
+        {ADSENSE_CLIENT && (
+          <Script
+            src={`https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${ADSENSE_CLIENT}`}
+            strategy="afterInteractive"
+            crossOrigin="anonymous"
+          />
+        )}
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{
@@ -71,8 +95,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               "@context": "https://schema.org",
               "@type": "Organization",
               name: "Techpivo",
-              url: "https://techpivo.com",
-              logo: "https://techpivo.com/favicon.svg",
+              url: SITE_URL,
+              logo: `${SITE_URL}/favicon.svg`,
               sameAs: [
                 "https://twitter.com/techpivo",
                 "https://facebook.com/techpivo",
@@ -87,21 +111,19 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               "@context": "https://schema.org",
               "@type": "WebSite",
               name: "Techpivo",
-              url: "https://techpivo.com",
+              url: SITE_URL,
               description: "Tech, decoded. Fast.",
               potentialAction: {
                 "@type": "SearchAction",
                 target: {
                   "@type": "EntryPoint",
-                  urlTemplate: "https://techpivo.com/search?q={search_term_string}",
+                  urlTemplate: `${SITE_URL}/search?q={search_term_string}`,
                 },
                 "query-input": "required name=search_term_string",
               },
             }),
           }}
         />
-      </head>
-      <body className="min-h-screen bg-background antialiased">
         <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false} disableTransitionOnChange>
           <PHProvider>
             <LayoutWrapper>{children}</LayoutWrapper>
