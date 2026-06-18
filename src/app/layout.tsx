@@ -13,7 +13,7 @@ export const metadata: Metadata = {
   description: "Techpivo - Tech, decoded. Fast. Your source for the latest in tech news, web development, programming, cybersecurity, AI, gadgets, and tutorials.",
   metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || "https://techpivo.com"),
   icons: {
-    icon: '/icon.svg?v=2',
+    icon: '/favicon.svg',
   },
   verification: {
     google: '75MCSV7iG7JdKa_i1Tt0ceqqQ4Jl-W33sjbIMnrlMQ4',
@@ -72,7 +72,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               "@type": "Organization",
               name: "Techpivo",
               url: "https://techpivo.com",
-              logo: "https://techpivo.com/icon.svg",
+              logo: "https://techpivo.com/favicon.svg",
               sameAs: [
                 "https://twitter.com/techpivo",
                 "https://facebook.com/techpivo",

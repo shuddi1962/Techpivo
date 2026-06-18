@@ -133,7 +133,7 @@ export default async function PostPage({ params }: Props) {
             publisher: {
               "@type": "Organization",
               name: SITE_NAME,
-              logo: `${SITE_URL}/icon.svg`,
+              logo: `${SITE_URL}/favicon.svg`,
             },
           }),
         }}
