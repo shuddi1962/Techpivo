@@ -223,7 +223,7 @@ async function pexelsSearch(query: string): Promise<string | null> {
   }
 }
 
-async function processFeed(feed: any, categories: Array<{id:string;slug:string}>, subcategories: Array<{id:string;slug:string;catSlug:string}>, authorId: string): Promise<{new: number; errors: string[]}> {
+async function processFeed(feed: any, categories: Array<{id:string;slug:string}>, subcategories: Array<{id:string;slug:string;catSlug:string}>, authorId: string, maxPerFeed: number): Promise<{new: number; errors: string[]}> {
   let newCount = 0
   const errs: string[] = []
   try {
@@ -235,8 +235,8 @@ async function processFeed(feed: any, categories: Array<{id:string;slug:string}>
     const xml = await res.text()
     const items = parseRSSItems(xml)
 
-    const perFeed = items.length
-    for (const item of items.slice(0, perFeed)) {
+    for (const item of items.slice(0, maxPerFeed)) {
+      if (newCount >= maxPerFeed) break
       try {
         const title = (item.title as string)?.trim()
         const link = (item.link as string)?.trim()
@@ -299,19 +299,24 @@ async function processFeed(feed: any, categories: Array<{id:string;slug:string}>
 
         newCount++
 
+        // Track in daily_article_count
+        try { await supabase.rpc('increment_daily_count') } catch {}
+
         if (feed.auto_rewrite) {
-          fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/rewrite-post`, {
-            method: 'POST',
-            headers: {
-              'Authorization': `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`,
-              'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-              post_id: post.id,
-              article_content: articleText,
-              source_name: feed.feed_name
-            })
-          }).catch(() => {})
+          try {
+            fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/rewrite-post`, {
+              method: 'POST',
+              headers: {
+                'Authorization': `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`,
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({
+                post_id: post.id,
+                article_content: articleText,
+                source_name: feed.feed_name
+              })
+            }).catch(() => {})
+          } catch {}
         }
       } catch (e) {
         errs.push(`Item: ${e instanceof Error ? e.message : String(e)}`)
@@ -417,8 +422,11 @@ serve(async (req) => {
 
   for (let i = 0; i < feeds.length && totalNew < actualMax; i += CONCURRENCY) {
     const batch = feeds.slice(i, i + CONCURRENCY)
+    const remaining = actualMax - totalNew
+    // Spread remaining across feeds in batch (at least 1 each)
+    const perFeed = Math.max(1, Math.ceil(remaining / Math.max(1, feeds.length - i)))
     const results = await Promise.all(
-      batch.map(f => processFeed(f, categories, subcatsWithCatSlug, defaultAuthorId))
+      batch.map(f => processFeed(f, categories, subcatsWithCatSlug, defaultAuthorId, perFeed))
     )
     for (const r of results) {
       totalNew += r.new

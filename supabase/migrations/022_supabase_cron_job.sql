@@ -52,3 +52,6 @@ SELECT cron.schedule(
 -- Set default daily RSS cap to 20
 INSERT INTO site_settings (key, value) VALUES ('rss_daily_cap', '20')
 ON CONFLICT (key) DO UPDATE SET value = '20', updated_at = NOW();
+
+-- Ensure all feeds have auto_rewrite and auto_publish enabled
+UPDATE rss_feeds SET auto_rewrite = true, auto_publish = true;
