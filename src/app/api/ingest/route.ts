@@ -443,7 +443,7 @@ async function run(req: NextRequest) {
       const { data: newPost, error: insertError } = await supabase.from('posts').insert({
         slug, title: ai.headline, content: ai.content,
         seo_title: ai.seoTitle, seo_description: ai.seoDescription, seo_keywords: ai.seoKeywords,
-        featured_image: finalImage, author_id: '3916aa7d-197c-47f8-bdf3-cd6b6f910a37',
+        featured_image: finalImage, author_id: 'fe1ede95-0a79-44e4-9af7-167a127fe362',
         category_id: c.categoryId, source_name: c.feed.name, source_url: c.item.link, source_urls: [c.item.link],
         tags: ai.tags, key_points: ai.keyPoints, quick_brief: ai.quickBrief, faq: ai.faq,
         quality_score: ai.qualityScore, is_breaking: ai.isBreaking, is_featured: false, is_editors_pick: false,

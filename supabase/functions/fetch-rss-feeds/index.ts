@@ -428,6 +428,7 @@ serve(async (req) => {
   const { data: profiles } = await supabase
     .from('profiles')
     .select('id')
+    .order('created_at', { ascending: true })
     .limit(1)
 
   const defaultAuthorId = profiles?.[0]?.id

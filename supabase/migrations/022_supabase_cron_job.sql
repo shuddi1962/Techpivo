@@ -24,7 +24,7 @@ SELECT cron.schedule(
     url:='https://xkhvojjogoeuvrifekwr.supabase.co/functions/v1/fetch-rss-feeds',
     headers:=jsonb_build_object(
       'Content-Type', 'application/json',
-      'Authorization', 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhraHZvampvZ29ldXZyaWZla3dyIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3OTU1MjYzMywiZXhwIjoyMDk1MTI4NjMzfQ.06p7J_Gr9CW3nyGc1f0HGj8hXad5U8nJ9yt9XKC9aa8'
+      'Authorization', 'Bearer PLACEHOLDER_SUPABASE_SERVICE_ROLE_KEY'
     )::jsonb,
     body:='{"max_posts":10}'::jsonb
   ) AS request_id;

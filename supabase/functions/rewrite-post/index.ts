@@ -43,9 +43,7 @@ async function callGemini(prompt: string, apiKey: string): Promise<string> {
     signal: AbortSignal.timeout(60000),
   })
   if (!response.ok) {
-    if (response.status === 429 || response.status === 403) {
-      throw new QuotaError()
-    }
+    if (response.status === 429 || response.status === 403) throw new QuotaError()
     const errorBody = await response.text().catch(() => "")
     throw new Error(`Gemini API error (${response.status}): ${errorBody.slice(0, 200)}`)
   }
@@ -97,11 +95,25 @@ GOOGLE POLICY COMPLIANCE — MANDATORY, NO EXCEPTIONS
 - Every claim must be attributable to a named source
 - Content must provide genuine added value beyond the original report
 
+SOURCE ATTRIBUTION — CRITICAL
+- NEVER mention, credit, or reference the original publication, website, or RSS source
+- Never write "According to [Source Name]", "[Source] reports", "as seen on [Source]"
+- Every article must read as 100% original Techpivo reporting
+- Attribute facts to named people, organizations, or official documents — never to other news outlets
+
 HEADLINE
 - Completely new wording — never copy the original headline
 - Active voice, present or past tense
 - Include the most newsworthy fact directly in the headline
 - 50-70 characters, no clickbait
+
+EXTERNAL OUTBOUND LINKS — REQUIRED FOR SEO
+- Include 2-3 natural outbound links to authoritative external sources within the article
+- Link to: official documentation, Wikipedia, company blogs, government/regulatory sites, research papers, or reputable tech publications
+- Use full URLs: <a href="https://..." target="_blank" rel="noopener noreferrer">anchor text</a>
+- Links must feel natural in context (e.g., "according to OpenAI's official documentation" → link)
+- Never link back to the original RSS source or the source article
+- Include at least one link in the first 3 paragraphs
 
 ARTICLE STRUCTURE — use this exact HTML structure in this order:
 <section>
@@ -115,7 +127,7 @@ ARTICLE STRUCTURE — use this exact HTML structure in this order:
 
 <section>
 <h2>[Context/Background heading]</h2>
-<p>[Fact-dense paragraph with specific numbers, dates, named entities]</p>
+<p>[Fact-dense paragraph with specific numbers, dates, named entities. Include an outbound link.]</p>
 </section>
 
 <section>
@@ -161,7 +173,7 @@ WRITING RULES:
 OUTPUT — valid JSON only. No markdown. No code fences. No preamble.
 {
   "headline": "New headline 50-70 chars",
-  "content": "<section>...full HTML content...</section>",
+  "content": "<section>...full HTML content with outbound links...</section>",
   "seoTitle": "55-60 char SEO title",
   "seoDescription": "140-155 char meta description",
   "seoKeywords": ["keyword1", "keyword2", "keyword3", "keyword4", "keyword5"],
@@ -202,16 +214,68 @@ function extractContentFromRaw(text: string): string | null {
   const divMatch = cleaned.match(/(<div[\s\S]*?<\/div>)/i)
   if (divMatch && divMatch[1].length > 200) return divMatch[1]
   if (cleaned.includes("<h2") || cleaned.includes("<h3")) return cleaned
-  // No HTML found — treat as plain text and wrap in section structure
   if (cleaned.length > 200) {
     return `<section><div class="answer-capsule"><p>${cleaned.slice(0, 300).replace(/\n/g, ' ')}</p></div></section><section><h2>Details</h2>${cleaned.split(/\n{2,}/).map(p => p.trim() ? `<p>${p}</p>` : '').join('')}</section>`
   }
   return null
 }
 
+async function addInternalLinks(html: string, supabase: any, currentPostId: string): Promise<string> {
+  const { data: posts } = await supabase
+    .from("posts")
+    .select("id, title, slug")
+    .neq("id", currentPostId)
+    .eq("status", "published")
+    .limit(200)
+
+  if (!posts?.length) return html
+
+  const stopWords = new Set(["this","that","with","from","have","been","what","when","where","will","about","into","than","then","also","more","some","such","only","other","over","very","just","most","after","before","between","under","without","through","during","again","further","once","here","there","each","which","their","them","they","were","been","being","does","done","get","got","make","made","said","still","because","while","both","much","many","same","like","back","your","could","should","would","first","last","next","part","new","take","use","way","thing","every","after","still","well","down","just","also","than","may","even","then","not","are","was","has","can","all","how","its","two","may","did","say","too","out","now","any"])
+
+  const keywords: Array<{ word: string; slug: string; title: string }> = []
+  for (const post of posts) {
+    if (!post.title || !post.slug) continue
+    const titleWords = post.title
+      .toLowerCase()
+      .replace(/[^a-z0-9\s-]/g, '')
+      .split(/\s+/)
+      .filter(w => w.length > 3 && !stopWords.has(w))
+    if (titleWords.length >= 2) {
+      keywords.push({ word: post.title.toLowerCase().trim(), slug: post.slug, title: post.title })
+    }
+    for (const word of titleWords) {
+      if (word.length >= 5) {
+        keywords.push({ word, slug: post.slug, title: post.title })
+      }
+    }
+  }
+
+  keywords.sort((a, b) => b.word.length - a.word.length)
+
+  let result = html
+  const usedSlugs = new Set<string>()
+
+  for (const kw of keywords) {
+    if (usedSlugs.has(kw.slug)) continue
+    const escaped = kw.word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+    const regex = new RegExp(`(?<=[>.\\s]|^)${escaped}(?=[<.\\s]|$)`, 'gi')
+    const match = regex.exec(result)
+    if (match) {
+      usedSlugs.add(kw.slug)
+      const anchor = `<a href="/${kw.slug}" class="internal-link">${match[0]}</a>`
+      result = result.slice(0, match.index) + anchor + result.slice(match.index + match[0].length)
+    }
+  }
+
+  if (usedSlugs.size > 0) {
+    console.log(`[✓ Added ${usedSlugs.size} internal link(s)]`)
+  }
+  return result
+}
+
 serve(async (req) => {
   try {
-    const { post_id } = await req.json()
+    const { post_id, skip_gemini } = await req.json()
     if (!post_id) {
       return new Response(JSON.stringify({ error: "post_id is required" }), {
         status: 400, headers: { "Content-Type": "application/json" },
@@ -250,7 +314,7 @@ serve(async (req) => {
     let sourceContent = post.content || ""
     let sourceTitle = post.title || ""
 
-    if (sourceContent.length < 500 && post.original_source_url) {
+    if (!skip_gemini && sourceContent.length < 500 && post.original_source_url) {
       try {
         const fetched = await fetchOriginalContent(post.original_source_url)
         if (fetched.length > sourceContent.length) {
@@ -265,7 +329,7 @@ serve(async (req) => {
     }
 
     const textContent = stripHtml(sourceContent)
-    if (textContent.length < 50) {
+    if (!skip_gemini && textContent.length < 50) {
       return new Response(JSON.stringify({ error: "Source content too short" }), {
         status: 400, headers: { "Content-Type": "application/json" },
       })
@@ -273,123 +337,134 @@ serve(async (req) => {
 
     let headline = sourceTitle
     let rewrittenContent = textContent
-    let quickBrief: QuickBriefItem[] = []
-    let seoData: SEOData = {}
-    let qualityScore: number | null = null
-    let faqResult: Array<{ question: string; answer: string }> = []
-    let keyPointsResult: string[] = []
-    let seoKeywords: string[] = []
+    let quickBrief: QuickBriefItem[] = post.quick_brief || []
+    let seoData: SEOData = {
+      seo_title: post.seo_title || undefined,
+      seo_description: post.seo_description || undefined,
+      seo_keywords: post.seo_keywords || undefined,
+    }
+    let qualityScore: number | null = post.quality_score ?? null
+    let faqResult: Array<{ question: string; answer: string }> = post.faq || []
+    let keyPointsResult: string[] = post.key_points || []
+    let seoKeywords: string[] = post.seo_keywords || []
 
-    try {
-      const prompt = buildRewritePrompt(sourceTitle, textContent)
-      const result = await callGemini(prompt, geminiKey)
-      let parsed: Record<string, unknown> | null = null
+    if (!skip_gemini) {
       try {
-        parsed = extractJson(result)
-      } catch (jsonErr: unknown) {
-        console.error(`JSON parse failed, trying raw extraction: ${jsonErr instanceof Error ? jsonErr.message : String(jsonErr)}`)
-      }
-
-      if (parsed) {
-        if (parsed.headline) headline = String(parsed.headline).trim()
-        if (parsed.content) rewrittenContent = String(parsed.content).trim()
-        if (parsed.seoTitle) seoData.seo_title = String(parsed.seoTitle).slice(0, 60)
-        if (parsed.seoDescription) seoData.seo_description = String(parsed.seoDescription).slice(0, 155)
-        if (Array.isArray(parsed.seoKeywords)) {
-          seoKeywords = (parsed.seoKeywords as string[]).slice(0, 5).map(String)
-          seoData.seo_keywords = seoKeywords
-        }
-        if (Array.isArray(parsed.quickBrief)) {
-          quickBrief = (parsed.quickBrief as string[]).slice(0, 3).map(t => ({ text: String(t) }))
-        }
-        if (Array.isArray(parsed.keyPoints)) {
-          keyPointsResult = (parsed.keyPoints as string[]).slice(0, 5).map(String)
-        }
-        if (Array.isArray(parsed.faq)) {
-          faqResult = (parsed.faq as Array<{ question: string; answer: string }>).slice(0, 5)
-            .filter(f => f?.question?.length > 5 && f?.answer?.length > 10)
-        }
-        if (parsed.qualityScore) {
-          qualityScore = Math.min(100, Math.max(1, Number(parsed.qualityScore)))
-        }
-        console.log(`[✓ Gemini grounded rewrite] ${headline.slice(0, 60)}`)
-      }
-
-      if (!parsed || !(parsed as any)?.content) {
-        const rawHtml = extractContentFromRaw(result)
-        if (rawHtml) {
-          rewrittenContent = rawHtml
-          console.log(`[✓ Extracted content from raw Gemini response]`)
-        } else {
-          console.error(`[✗ Could not extract content from Gemini response for "${sourceTitle.slice(0, 40)}"`)
-        }
-      }
-
-      // Section wrapping and retry logic inside this block so we can re-throw QuotaError
-      {
-        let finalContent = rewrittenContent
-        if (!finalContent.includes("<h2") && !finalContent.includes("<h3")) {
-          finalContent = `<section><h2>${headline}</h2>${finalContent
-            .split(/\n{2,}/)
-            .map(p => p.trim() ? `<p>${p}</p>` : '')
-            .join('')
-          }</section>`
+        const prompt = buildRewritePrompt(sourceTitle, textContent)
+        const result = await callGemini(prompt, geminiKey)
+        let parsed: Record<string, unknown> | null = null
+        try {
+          parsed = extractJson(result)
+        } catch (jsonErr: unknown) {
+          console.error(`JSON parse failed: ${jsonErr instanceof Error ? jsonErr.message : String(jsonErr)}`)
         }
 
-        if (!finalContent.includes("answer-capsule") && sourceContent.length > 100) {
-          console.error(`[RETRY] No answer-capsule in response for "${headline.slice(0, 40)}", retrying...`)
-          try {
-            const retryPrompt = buildRewritePrompt(sourceTitle, textContent)
-            const retryResult = await callGemini(retryPrompt, geminiKey)
-            const retryParsed = extractJson(retryResult)
-            if (retryParsed.content && String(retryParsed.content).includes("answer-capsule")) {
-              finalContent = String(retryParsed.content).trim()
-              if (retryParsed.headline) headline = String(retryParsed.headline).trim()
-              if (retryParsed.seoTitle) seoData.seo_title = String(retryParsed.seoTitle).slice(0, 60)
-              if (retryParsed.seoDescription) seoData.seo_description = String(retryParsed.seoDescription).slice(0, 155)
-              if (Array.isArray(retryParsed.seoKeywords)) {
-                seoKeywords = (retryParsed.seoKeywords as string[]).slice(0, 5).map(String)
-                seoData.seo_keywords = seoKeywords
-              }
-              if (Array.isArray(retryParsed.quickBrief)) {
-                quickBrief = (retryParsed.quickBrief as string[]).slice(0, 3).map(t => ({ text: String(t) }))
-              }
-              if (Array.isArray(retryParsed.keyPoints)) {
-                keyPointsResult = (retryParsed.keyPoints as string[]).slice(0, 5).map(String)
-              }
-              if (Array.isArray(retryParsed.faq)) {
-                faqResult = (retryParsed.faq as Array<{ question: string; answer: string }>).slice(0, 5)
-                  .filter(f => f?.question?.length > 5 && f?.answer?.length > 10)
-              }
-              if (retryParsed.qualityScore) {
-                qualityScore = Math.min(100, Math.max(1, Number(retryParsed.qualityScore)))
-              }
-              console.log(`[✓ Retry succeeded] ${headline.slice(0, 60)}`)
-            } else {
-              console.error(`[RETRY FAILED] Still no answer-capsule for "${headline.slice(0, 40)}"`)
-            }
-          } catch (retryErr: unknown) {
-            if (retryErr instanceof QuotaError) throw retryErr
-            const retryMsg = retryErr instanceof Error ? retryErr.message : String(retryErr)
-            console.error(`[RETRY ERROR] ${retryMsg}`)
+        if (parsed) {
+          if (parsed.headline) headline = String(parsed.headline).trim()
+          if (parsed.content) rewrittenContent = String(parsed.content).trim()
+          if (parsed.seoTitle) seoData.seo_title = String(parsed.seoTitle).slice(0, 60)
+          if (parsed.seoDescription) seoData.seo_description = String(parsed.seoDescription).slice(0, 155)
+          if (Array.isArray(parsed.seoKeywords)) {
+            seoKeywords = (parsed.seoKeywords as string[]).slice(0, 5).map(String)
+            seoData.seo_keywords = seoKeywords
+          }
+          if (Array.isArray(parsed.quickBrief)) {
+            quickBrief = (parsed.quickBrief as string[]).slice(0, 3).map(t => ({ text: String(t) }))
+          }
+          if (Array.isArray(parsed.keyPoints)) {
+            keyPointsResult = (parsed.keyPoints as string[]).slice(0, 5).map(String)
+          }
+          if (Array.isArray(parsed.faq)) {
+            faqResult = (parsed.faq as Array<{ question: string; answer: string }>).slice(0, 5)
+              .filter(f => f?.question?.length > 5 && f?.answer?.length > 10)
+          }
+          if (parsed.qualityScore) {
+            qualityScore = Math.min(100, Math.max(1, Number(parsed.qualityScore)))
+          }
+          console.log(`[✓ Gemini grounded rewrite] ${headline.slice(0, 60)}`)
+        }
+
+        if (!parsed || !(parsed as any)?.content) {
+          const rawHtml = extractContentFromRaw(result)
+          if (rawHtml) {
+            rewrittenContent = rawHtml
+            console.log(`[✓ Extracted content from raw Gemini response]`)
+          } else {
+            console.error(`[✗ Could not extract content from Gemini response for "${sourceTitle.slice(0, 40)}"`)
           }
         }
 
-        rewrittenContent = finalContent
+        // Section wrapping and retry
+        {
+          let finalContent = rewrittenContent
+          if (!finalContent.includes("<h2") && !finalContent.includes("<h3")) {
+            finalContent = `<section><h2>${headline}</h2>${finalContent
+              .split(/\n{2,}/)
+              .map(p => p.trim() ? `<p>${p}</p>` : '')
+              .join('')
+            }</section>`
+          }
+
+          if (!finalContent.includes("answer-capsule") && sourceContent.length > 100) {
+            console.error(`[RETRY] No answer-capsule for "${headline.slice(0, 40)}", retrying...`)
+            try {
+              const retryPrompt = buildRewritePrompt(sourceTitle, textContent)
+              const retryResult = await callGemini(retryPrompt, geminiKey)
+              const retryParsed = extractJson(retryResult)
+              if (retryParsed.content && String(retryParsed.content).includes("answer-capsule")) {
+                finalContent = String(retryParsed.content).trim()
+                if (retryParsed.headline) headline = String(retryParsed.headline).trim()
+                if (retryParsed.seoTitle) seoData.seo_title = String(retryParsed.seoTitle).slice(0, 60)
+                if (retryParsed.seoDescription) seoData.seo_description = String(retryParsed.seoDescription).slice(0, 155)
+                if (Array.isArray(retryParsed.seoKeywords)) {
+                  seoKeywords = (retryParsed.seoKeywords as string[]).slice(0, 5).map(String)
+                  seoData.seo_keywords = seoKeywords
+                }
+                if (Array.isArray(retryParsed.quickBrief)) {
+                  quickBrief = (retryParsed.quickBrief as string[]).slice(0, 3).map(t => ({ text: String(t) }))
+                }
+                if (Array.isArray(retryParsed.keyPoints)) {
+                  keyPointsResult = (retryParsed.keyPoints as string[]).slice(0, 5).map(String)
+                }
+                if (Array.isArray(retryParsed.faq)) {
+                  faqResult = (retryParsed.faq as Array<{ question: string; answer: string }>).slice(0, 5)
+                    .filter(f => f?.question?.length > 5 && f?.answer?.length > 10)
+                }
+                if (retryParsed.qualityScore) {
+                  qualityScore = Math.min(100, Math.max(1, Number(retryParsed.qualityScore)))
+                }
+                console.log(`[✓ Retry succeeded] ${headline.slice(0, 60)}`)
+              } else {
+                console.error(`[RETRY FAILED] Still no answer-capsule for "${headline.slice(0, 40)}"`)
+              }
+            } catch (retryErr: unknown) {
+              if (retryErr instanceof QuotaError) throw retryErr
+              const retryMsg = retryErr instanceof Error ? retryErr.message : String(retryErr)
+              console.error(`[RETRY ERROR] ${retryMsg}`)
+            }
+          }
+
+          rewrittenContent = finalContent
+        }
+      } catch (err: unknown) {
+        if (err instanceof QuotaError) throw err
+        const msg = err instanceof Error ? err.message : String(err)
+        console.error(`Gemini rewrite failed: ${msg}`)
       }
-    } catch (err: unknown) {
-      if (err instanceof QuotaError) throw err
-      const msg = err instanceof Error ? err.message : String(err)
-      console.error(`Gemini rewrite failed: ${msg}`)
+    } else {
+      rewrittenContent = post.content || textContent
     }
+
+    // Always add internal links (skip_gemini or not)
+    rewrittenContent = await addInternalLinks(rewrittenContent, supabase, post_id)
 
     const updateData: Record<string, unknown> = {
       title: headline,
-      content: finalContent,
+      content: rewrittenContent,
       quick_brief: quickBrief.length > 0 ? quickBrief : [],
-      ai_rewritten: true,
+      ai_rewritten: !skip_gemini,
       status: 'published',
-      model_used: 'gemini-grounded',
+      model_used: skip_gemini ? post.model_used || null : 'gemini-grounded',
     }
 
     if (seoData.seo_title) updateData.seo_title = seoData.seo_title
@@ -410,7 +485,7 @@ serve(async (req) => {
       })
     }
 
-    return new Response(JSON.stringify({ success: true, quality_score: qualityScore }), {
+    return new Response(JSON.stringify({ success: true, quality_score: qualityScore, internal_links: true }), {
       headers: { "Content-Type": "application/json" },
     })
   } catch (err: unknown) {

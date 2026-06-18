@@ -1,7 +1,6 @@
 "use client"
 
 import Link from "next/link"
-import Image from "next/image"
 import { useState, useEffect, useCallback } from "react"
 import { CategoryBadge } from "@/components/ui/CategoryBadge"
 
@@ -34,13 +33,11 @@ export function HeroSection({ featured, secondary }: HeroSectionProps) {
       <div className="hero-grid">
         <Link href={`/${post.slug}`} className="hero-main">
           <div className="hero-main-img">
-            <Image
-              src={post.featured_image || "/placeholder.jpg"}
+            <img
+              src={post.featured_image || "/api/placeholder/900/600"}
               alt={post.title}
-              fill
               className="hero-img"
-              sizes="(max-width: 768px) 100vw, 60vw"
-              priority
+              style={{ width: "100%", height: "100%", objectFit: "cover" }}
             />
             <div className="hero-main-overlay" />
           </div>
@@ -58,12 +55,10 @@ export function HeroSection({ featured, secondary }: HeroSectionProps) {
           {others.slice(0, 2).map((p) => (
             <Link key={p.id} href={`/${p.slug}`} className="hero-sec-card">
               <div className="hero-sec-img-wrap">
-                <Image
-                  src={p.featured_image || "/placeholder.jpg"}
+                <img
+                  src={p.featured_image || "/api/placeholder/300/200"}
                   alt={p.title}
-                  fill
-                  className="hero-sec-img"
-                  sizes="120px"
+                  style={{ width: "100%", height: "100%", objectFit: "cover" }}
                 />
               </div>
               <div className="hero-sec-body">
