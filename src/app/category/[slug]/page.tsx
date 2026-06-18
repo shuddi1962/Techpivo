@@ -39,8 +39,6 @@ export default async function CategoryPage({ params }: Props) {
     .order("published_at", { ascending: false })
     .limit(20)
 
-  if (!count || count === 0) notFound()
-
   const sevenDaysAgo = new Date(Date.now() - 7 * 86400000).toISOString()
 
   const [popularRes, allCategoriesRes, recentRes, trendingRes, tagsRes] = await Promise.all([
