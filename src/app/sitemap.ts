@@ -65,7 +65,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     })
   }
 
-  for (const tag of tagSet) {
+  for (const tag of Array.from(tagSet)) {
     entries.push({
       url: `${SITE_URL}/tag/${encodeURIComponent(tag.toLowerCase().replace(/\s+/g, "-"))}`,
       changeFrequency: "weekly",
