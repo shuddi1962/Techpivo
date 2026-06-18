@@ -6,7 +6,7 @@ import { PHProvider } from "@/components/posthog-provider"
 import { SITE_NAME, SITE_TAGLINE, SITE_URL } from "@/lib/constants"
 import "./globals.css"
 
-const GA_ID = process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID || "G-YX3H076JBM"
+const GA_ID = process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID || ""
 const ADSENSE_CLIENT = process.env.NEXT_PUBLIC_ADSENSE_CLIENT_ID || ""
 
 export const viewport: Viewport = {
@@ -26,7 +26,7 @@ export const metadata: Metadata = {
     icon: '/favicon.svg',
   },
   verification: {
-    google: '75MCSV7iG7JdKa_i1Tt0ceqqQ4Jl-W33sjbIMnrlMQ4',
+    google: process.env.NEXT_PUBLIC_GOOGLE_VERIFICATION || "",
   },
   referrer: "strict-origin-when-cross-origin",
   openGraph: {
