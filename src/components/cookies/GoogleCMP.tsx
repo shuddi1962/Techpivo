@@ -6,8 +6,9 @@ const PUBLISHER_ID = "pub-3867128949973557"
 
 export function GoogleCMP() {
   useEffect(() => {
-    window.dataLayer = window.dataLayer || []
-    function gtag(...args: unknown[]) { (window.dataLayer as unknown[]).push(args) }
+    const w = window as any
+    w.dataLayer = w.dataLayer || []
+    function gtag(...args: unknown[]) { w.dataLayer.push(args) }
 
     gtag("consent", "default", {
       ad_storage: "denied",
