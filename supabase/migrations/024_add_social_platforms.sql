@@ -1,0 +1,9 @@
+-- Add new social platform values to the enum
+ALTER TYPE social_platform ADD VALUE IF NOT EXISTS 'bing_news';
+ALTER TYPE social_platform ADD VALUE IF NOT EXISTS 'perplexity';
+ALTER TYPE social_platform ADD VALUE IF NOT EXISTS 'google_news';
+ALTER TYPE social_platform ADD VALUE IF NOT EXISTS 'resend';
+ALTER TYPE social_platform ADD VALUE IF NOT EXISTS 'indexnow';
+ALTER TYPE social_platform ADD VALUE IF NOT EXISTS 'pexels';
+ALTER TYPE social_platform ADD VALUE IF NOT EXISTS 'openrouter';
+ALTER TYPE social_platform ADD VALUE IF NOT EXISTS 'google_ai_studio';

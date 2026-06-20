@@ -19,8 +19,14 @@ export const metadata: Metadata = {
   },
   description: "Techpivo - Tech, decoded. Fast. Your source for the latest in tech news, web development, programming, cybersecurity, AI, gadgets, and tutorials.",
   metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || "https://techpivo.com"),
+  applicationName: SITE_NAME,
   icons: {
-    icon: '/favicon.svg',
+    icon: [
+      { url: '/favicon.svg', type: 'image/svg+xml' },
+      { url: '/favicon.ico', sizes: 'any' },
+    ],
+    apple: { url: '/favicon.svg', sizes: '180x180', type: 'image/svg+xml' },
+    shortcut: '/favicon.ico',
   },
   verification: {
     google: process.env.NEXT_PUBLIC_GOOGLE_VERIFICATION || "",
@@ -33,11 +39,15 @@ export const metadata: Metadata = {
     description: "Tech, decoded. Fast.",
     url: SITE_URL,
     locale: "en_US",
+    images: [
+      { url: `${SITE_URL}/favicon.svg`, width: 120, height: 120, alt: SITE_NAME },
+    ],
   },
   twitter: {
     card: "summary_large_image",
     title: `${SITE_NAME} — ${SITE_TAGLINE}`,
     description: "Tech, decoded. Fast.",
+    images: `${SITE_URL}/favicon.svg`,
   },
   robots: {
     index: true,
@@ -49,6 +59,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
+        <link rel="apple-touch-icon" href="/favicon.svg" sizes="180x180" />
+        <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+        <link rel="icon" type="image/x-icon" href="/favicon.ico" sizes="any" />
+        <meta name="apple-mobile-web-app-title" content={SITE_NAME} />
         <script
           dangerouslySetInnerHTML={{
             __html: `
@@ -71,12 +85,22 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             __html: JSON.stringify({
               "@context": "https://schema.org",
               "@type": "Organization",
+              "@id": `${SITE_URL}/#organization`,
               name: "Techpivo",
               url: SITE_URL,
-              logo: `${SITE_URL}/favicon.svg`,
+              logo: {
+                "@type": "ImageObject",
+                url: `${SITE_URL}/favicon.svg`,
+                width: 120,
+                height: 120,
+                caption: "Techpivo logo",
+              },
+              image: `${SITE_URL}/favicon.svg`,
+              description: "Tech, decoded. Fast.",
               sameAs: [
                 "https://twitter.com/techpivo",
                 "https://facebook.com/techpivo",
+                "https://linkedin.com/company/techpivo",
               ],
             }),
           }}
@@ -87,9 +111,13 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             __html: JSON.stringify({
               "@context": "https://schema.org",
               "@type": "WebSite",
+              "@id": `${SITE_URL}/#website`,
               name: "Techpivo",
+              alternateName: `${SITE_NAME} — ${SITE_TAGLINE}`,
               url: SITE_URL,
               description: "Tech, decoded. Fast.",
+              publisher: { "@id": `${SITE_URL}/#organization` },
+              inLanguage: "en-US",
               potentialAction: {
                 "@type": "SearchAction",
                 target: {

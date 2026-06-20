@@ -1,12 +1,40 @@
-import type { Metadata } from "next"
+"use client"
 
-export const metadata: Metadata = {
-  title: "Contact Us – Techpivo",
-  description: "Get in touch with the Techpivo team. Reach out for editorial inquiries, advertising, partnerships, or general feedback.",
-  openGraph: { title: "Contact Us – Techpivo", description: "Reach out to the Techpivo team." },
-}
+import { useState } from "react"
 
 export default function ContactPage() {
+  const [submitting, setSubmitting] = useState(false)
+  const [done, setDone] = useState(false)
+  const [error, setError] = useState("")
+
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault()
+    setSubmitting(true)
+    setError("")
+    const form = new FormData(e.currentTarget)
+    try {
+      const res = await fetch("/api/contact", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: form.get("name"),
+          email: form.get("email"),
+          subject: form.get("subject"),
+          message: form.get("message"),
+        }),
+      })
+      if (!res.ok) {
+        const data = await res.json()
+        throw new Error(data.error || "Failed to send")
+      }
+      setDone(true)
+    } catch (err: any) {
+      setError(err.message)
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
   return (
     <div className="w-full">
       {/* Hero */}
@@ -53,27 +81,38 @@ export default function ContactPage() {
 
       <section className="bg-card border rounded-2xl p-8 mb-12">
         <h2 className="text-2xl font-bold mb-6 text-center">Send Us a Message</h2>
-        <form className="max-w-2xl mx-auto space-y-4">
+        {done ? (
+          <div className="max-w-2xl mx-auto text-center py-8">
+            <div className="text-4xl mb-4">✅</div>
+            <p className="text-lg font-medium">Message sent successfully!</p>
+            <p className="text-sm text-muted-foreground mt-1">We will get back to you as soon as possible.</p>
+          </div>
+        ) : (
+        <form onSubmit={handleSubmit} className="max-w-2xl mx-auto space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium mb-1">Name</label>
-              <input type="text" className="w-full bg-background border rounded-lg px-4 py-2.5 text-sm focus:border-accent focus:ring-1 focus:ring-accent outline-none" placeholder="Your name" />
+              <input type="text" name="name" required className="w-full bg-background border rounded-lg px-4 py-2.5 text-sm focus:border-accent focus:ring-1 focus:ring-accent outline-none" placeholder="Your name" />
             </div>
             <div>
               <label className="block text-sm font-medium mb-1">Email</label>
-              <input type="email" className="w-full bg-background border rounded-lg px-4 py-2.5 text-sm focus:border-accent focus:ring-1 focus:ring-accent outline-none" placeholder="you@example.com" />
+              <input type="email" name="email" required className="w-full bg-background border rounded-lg px-4 py-2.5 text-sm focus:border-accent focus:ring-1 focus:ring-accent outline-none" placeholder="you@example.com" />
             </div>
           </div>
           <div>
             <label className="block text-sm font-medium mb-1">Subject</label>
-            <input type="text" className="w-full bg-background border rounded-lg px-4 py-2.5 text-sm focus:border-accent focus:ring-1 focus:ring-accent outline-none" placeholder="How can we help?" />
+            <input type="text" name="subject" className="w-full bg-background border rounded-lg px-4 py-2.5 text-sm focus:border-accent focus:ring-1 focus:ring-accent outline-none" placeholder="How can we help?" />
           </div>
           <div>
             <label className="block text-sm font-medium mb-1">Message</label>
-            <textarea rows={5} className="w-full bg-background border rounded-lg px-4 py-2.5 text-sm focus:border-accent focus:ring-1 focus:ring-accent outline-none" placeholder="Write your message..." />
+            <textarea name="message" required rows={5} className="w-full bg-background border rounded-lg px-4 py-2.5 text-sm focus:border-accent focus:ring-1 focus:ring-accent outline-none" placeholder="Write your message..." />
           </div>
-          <button type="submit" className="bg-accent text-white px-6 py-2.5 rounded-lg font-medium hover:opacity-90 transition-opacity text-sm w-full sm:w-auto">Send Message</button>
+          {error && <p className="text-sm text-red-500">{error}</p>}
+          <button type="submit" disabled={submitting} className="bg-accent text-white px-6 py-2.5 rounded-lg font-medium hover:opacity-90 transition-opacity text-sm w-full sm:w-auto disabled:opacity-50">
+            {submitting ? "Sending..." : "Send Message"}
+          </button>
         </form>
+        )}
       </section>
 
       <div className="text-center text-sm text-muted-foreground">

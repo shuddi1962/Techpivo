@@ -48,8 +48,12 @@ export const AD_POSITIONS = {
 
 export const SOCIAL_PLATFORMS = [
   "twitter", "facebook", "instagram", "linkedin",
-  "pinterest", "telegram", "reddit", "medium",
-  "devto", "hashnode", "youtube_community", "gmb",
+  "pinterest", "telegram", "whatsapp", "reddit",
+  "medium", "devto", "hashnode", "youtube_community",
+  "gmb", "flipboard",
+  "bing_news", "perplexity", "google_news",
+  "resend", "indexnow", "pexels", "openrouter",
+  "google_ai_studio",
 ] as const
 
 export const AFFILIATE_PROGRAMS = [
