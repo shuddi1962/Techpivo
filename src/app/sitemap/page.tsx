@@ -31,7 +31,7 @@ export default async function SitemapPage() {
 
   const [catsRes, postsRes, seriesRes, profilesRes] = await Promise.all([
     supabase.from("categories").select("*, subcategories(*)").order("name"),
-    supabase.from("posts").select("slug, title, published_at, category:categories(name, slug)").eq("status", "published").order("published_at", { ascending: false }).limit(50),
+    supabase.from("posts").select("slug, title, published_at, categories(name, slug)").eq("status", "published").order("published_at", { ascending: false }).limit(50),
     supabase.from("series").select("slug, name").order("name"),
     supabase.from("profiles").select("username, full_name, avatar_url").order("full_name"),
   ])
@@ -114,8 +114,8 @@ export default async function SitemapPage() {
                   <div className="min-w-0 flex-1">
                     <span className="text-sm font-medium group-hover:text-accent transition-colors line-clamp-1">{post.title}</span>
                     <span className="text-xs text-muted-foreground">
-                      {post.category && (
-                        <>{post.category.name} · </>
+                      {post.categories?.name && (
+                        <>{post.categories.name} · </>
                       )}
                       {post.published_at && new Date(post.published_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
                     </span>
