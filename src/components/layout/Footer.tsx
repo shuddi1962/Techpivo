@@ -71,7 +71,7 @@ export function Footer({ categories, recentPosts }: { categories: any[]; recentP
             { label: "Newsletter", href: "/newsletter" },
             { label: "Write For Us", href: "/write-for-us" },
             { label: "Marketplace", href: "/marketplace" },
-            { label: "Sitemap", href: "/sitemap.xml" },
+            { label: "Sitemap", href: "/sitemap" },
             { label: "RSS Feed", href: "/rss.xml" },
           ].map((l) => (
             <Link key={l.label} href={l.href} className="footer-col-link">
