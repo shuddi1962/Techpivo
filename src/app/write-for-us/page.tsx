@@ -1,10 +1,13 @@
 import type { Metadata } from "next"
 import Link from "next/link"
+import { SITE_URL } from "@/lib/constants"
 
 export const metadata: Metadata = {
   title: "Write For Us – Techpivo",
   description: "Contribute to Techpivo. We welcome guest posts, expert insights, and original research on technology, AI, cybersecurity, and digital innovation.",
-  openGraph: { title: "Write For Us – Techpivo", description: "Contribute to Techpivo as a guest writer." },
+  alternates: { canonical: `${SITE_URL}/write-for-us` },
+  openGraph: { title: "Write For Us – Techpivo", description: "Contribute to Techpivo as a guest writer.", url: `${SITE_URL}/write-for-us` },
+  twitter: { card: "summary_large_image", title: "Write For Us – Techpivo", description: "Contribute to Techpivo as a guest writer." },
 }
 
 export default function WriteForUsPage() {

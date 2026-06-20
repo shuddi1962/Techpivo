@@ -5,17 +5,19 @@ import type { MetadataRoute } from "next"
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const supabase = createClient()
 
-  const [postsRes, catsRes, profilesRes, seriesRes, kwArticlesRes, tagsRes] = await Promise.all([
+  const [postsRes, catsRes, subsRes, profilesRes, seriesRes, kwArticlesRes, tagsRes] = await Promise.all([
     supabase.from("posts").select("slug, updated_at, published_at, robots_noindex").eq("status", "published").order("published_at", { ascending: false }),
-    supabase.from("categories").select("slug"),
+    supabase.from("categories").select("id, slug"),
+    supabase.from("subcategories").select("slug, category_id"),
     supabase.from("profiles").select("username"),
     supabase.from("series").select("slug"),
     supabase.from("keyword_articles").select("slug, updated_at").eq("status", "published").order("published_at", { ascending: false }),
-    supabase.from("posts").select("seo_keywords").eq("status", "published").limit(200),
+    supabase.from("posts").select("seo_keywords").eq("status", "published").limit(1000),
   ])
 
   const posts = postsRes.data || []
   const categories = catsRes.data || []
+  const subcategories = subsRes.data || []
   const profiles = profilesRes.data || []
   const series = seriesRes.data || []
   const kwArticles = kwArticlesRes.data || []
@@ -60,14 +62,27 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   for (const cat of categories) {
     entries.push({
       url: `${SITE_URL}/category/${cat.slug}`,
+      lastModified: now,
       changeFrequency: "daily",
       priority: 0.9,
     })
   }
 
+  for (const sub of subcategories) {
+    const cat = categories.find(c => c.id === sub.category_id)
+    if (!cat) continue
+    entries.push({
+      url: `${SITE_URL}/category/${cat.slug}/${sub.slug}`,
+      lastModified: now,
+      changeFrequency: "weekly",
+      priority: 0.7,
+    })
+  }
+
   for (const tag of Array.from(tagSet)) {
     entries.push({
-      url: `${SITE_URL}/tag/${encodeURIComponent(tag.toLowerCase().replace(/\s+/g, "-"))}`,
+      url: `${SITE_URL}/tag/${tag.toLowerCase().replace(/\s+/g, "-")}`,
+      lastModified: now,
       changeFrequency: "weekly",
       priority: 0.3,
     })
@@ -87,6 +102,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   for (const profile of profiles) {
     entries.push({
       url: `${SITE_URL}/author/${profile.username}`,
+      lastModified: now,
       changeFrequency: "weekly",
       priority: 0.4,
     })
@@ -95,6 +111,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   for (const s of series) {
     entries.push({
       url: `${SITE_URL}/series/${s.slug}`,
+      lastModified: now,
       changeFrequency: "daily",
       priority: 0.6,
     })

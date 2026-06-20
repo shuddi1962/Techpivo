@@ -3,7 +3,8 @@
 import {
   X, Globe, Camera, Link, Image, Send,
   MessageCircle, Hash, Code2, BookOpen, Video, ShoppingBag,
-  MapPin, RefreshCw, List, Share2,
+  MapPin, RefreshCw, List, Share2, Rss, Mail, Search,
+  ExternalLink, Cpu, Sparkles,
 } from "lucide-react"
 import { format } from "date-fns"
 import { Badge } from "@/components/ui/badge"
@@ -40,6 +41,15 @@ const platformIcon: Record<SocialPlatform, React.ReactNode> = {
   gmb: <ShoppingBag className="h-4 w-4" />,
   buffer: <RefreshCw className="h-4 w-4" />,
   hootsuite: <List className="h-4 w-4" />,
+  flipboard: <BookOpen className="h-4 w-4" />,
+  bing_news: <Rss className="h-4 w-4" />,
+  perplexity: <Sparkles className="h-4 w-4" />,
+  google_news: <Rss className="h-4 w-4" />,
+  resend: <Mail className="h-4 w-4" />,
+  indexnow: <Search className="h-4 w-4" />,
+  pexels: <Image className="h-4 w-4" />,
+  openrouter: <Cpu className="h-4 w-4" />,
+  google_ai_studio: <Sparkles className="h-4 w-4" />,
 }
 
 const statusConfig: Record<

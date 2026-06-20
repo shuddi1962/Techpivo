@@ -1,9 +1,12 @@
 import type { Metadata } from "next"
+import { SITE_URL } from "@/lib/constants"
 
 export const metadata: Metadata = {
   title: "Privacy Policy – Techpivo",
   description: "Techpivo's Privacy Policy explains how we collect, use, and protect your personal information in compliance with GDPR, CCPA, and Google AdSense policies.",
-  openGraph: { title: "Privacy Policy – Techpivo", description: "How Techpivo handles your data." },
+  alternates: { canonical: `${SITE_URL}/privacy-policy` },
+  openGraph: { title: "Privacy Policy – Techpivo", description: "How Techpivo handles your data.", url: `${SITE_URL}/privacy-policy` },
+  twitter: { card: "summary_large_image", title: "Privacy Policy – Techpivo", description: "How Techpivo handles your data." },
 }
 
 export default function PrivacyPolicyPage() {

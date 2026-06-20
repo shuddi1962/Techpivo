@@ -1,9 +1,12 @@
 import type { Metadata } from "next"
+import { SITE_URL } from "@/lib/constants"
 
 export const metadata: Metadata = {
   title: "Terms of Use – Techpivo",
   description: "Techpivo's Terms of Use governing access to and use of our website, content, and services.",
-  openGraph: { title: "Terms of Use – Techpivo" },
+  alternates: { canonical: `${SITE_URL}/terms-of-use` },
+  openGraph: { title: "Terms of Use – Techpivo", url: `${SITE_URL}/terms-of-use` },
+  twitter: { card: "summary_large_image", title: "Terms of Use – Techpivo" },
 }
 
 export default function TermsOfUsePage() {

@@ -1,10 +1,13 @@
 import type { Metadata } from "next"
 import Link from "next/link"
+import { SITE_URL } from "@/lib/constants"
 
 export const metadata: Metadata = {
   title: "Advertise With Us – Techpivo",
   description: "Reach a highly engaged tech audience. Explore advertising opportunities on Techpivo including display ads, sponsored content, and newsletter placements.",
-  openGraph: { title: "Advertise With Us – Techpivo", description: "Explore advertising opportunities on Techpivo." },
+  alternates: { canonical: `${SITE_URL}/advertise` },
+  openGraph: { title: "Advertise With Us – Techpivo", description: "Explore advertising opportunities on Techpivo.", url: `${SITE_URL}/advertise` },
+  twitter: { card: "summary_large_image", title: "Advertise With Us – Techpivo", description: "Explore advertising opportunities on Techpivo." },
 }
 
 export default function AdvertisePage() {

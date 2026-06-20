@@ -1,10 +1,13 @@
 import type { Metadata } from "next"
 import Link from "next/link"
+import { SITE_URL } from "@/lib/constants"
 
 export const metadata: Metadata = {
   title: "Disclaimer – Techpivo",
   description: "Techpivo's Disclaimer covering affiliate relationships, advertising, paid content, and professional advice.",
-  openGraph: { title: "Disclaimer – Techpivo", description: "Important disclaimers about Techpivo's content." },
+  alternates: { canonical: `${SITE_URL}/disclaimer` },
+  openGraph: { title: "Disclaimer – Techpivo", description: "Important disclaimers about Techpivo's content.", url: `${SITE_URL}/disclaimer` },
+  twitter: { card: "summary_large_image", title: "Disclaimer – Techpivo", description: "Important disclaimers about Techpivo's content." },
 }
 
 export default function DisclaimerPage() {

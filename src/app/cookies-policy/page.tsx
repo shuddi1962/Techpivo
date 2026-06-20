@@ -1,10 +1,13 @@
 import type { Metadata } from "next"
 import Link from "next/link"
+import { SITE_URL } from "@/lib/constants"
 
 export const metadata: Metadata = {
   title: "Cookies Policy – Techpivo",
   description: "Techpivo's Cookies Policy explains how we use cookies and similar technologies to enhance your experience, analyze traffic, and serve personalized ads.",
-  openGraph: { title: "Cookies Policy – Techpivo", description: "How Techpivo uses cookies and tracking technologies." },
+  alternates: { canonical: `${SITE_URL}/cookies-policy` },
+  openGraph: { title: "Cookies Policy – Techpivo", description: "How Techpivo uses cookies and tracking technologies.", url: `${SITE_URL}/cookies-policy` },
+  twitter: { card: "summary_large_image", title: "Cookies Policy – Techpivo", description: "How Techpivo uses cookies and tracking technologies." },
 }
 
 export default function CookiesPolicyPage() {

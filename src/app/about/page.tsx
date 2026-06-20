@@ -1,10 +1,13 @@
 import type { Metadata } from "next"
 import Link from "next/link"
+import { SITE_URL } from "@/lib/constants"
 
 export const metadata: Metadata = {
   title: "About Us – Techpivo",
   description: "Techpivo is your trusted source for breaking tech news, in-depth reviews, and expert analysis on AI, cybersecurity, gadgets, and digital innovation.",
-  openGraph: { title: "About Us – Techpivo", description: "Learn about Techpivo's mission, team, and editorial standards." },
+  alternates: { canonical: `${SITE_URL}/about` },
+  openGraph: { title: "About Us – Techpivo", description: "Learn about Techpivo's mission, team, and editorial standards.", url: `${SITE_URL}/about` },
+  twitter: { card: "summary_large_image", title: "About Us – Techpivo", description: "Learn about Techpivo's mission, team, and editorial standards." },
 }
 
 export default function AboutPage() {
