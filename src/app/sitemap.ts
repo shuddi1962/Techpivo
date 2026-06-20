@@ -5,23 +5,28 @@ import type { MetadataRoute } from "next"
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const supabase = createClient()
 
-  const [postsRes, catsRes, subsRes, profilesRes, seriesRes, kwArticlesRes, tagsRes] = await Promise.all([
-    supabase.from("posts").select("slug, updated_at, published_at, robots_noindex").eq("status", "published").order("published_at", { ascending: false }),
-    supabase.from("categories").select("id, slug"),
-    supabase.from("subcategories").select("slug, category_id"),
-    supabase.from("profiles").select("username"),
-    supabase.from("series").select("slug"),
-    supabase.from("keyword_articles").select("slug, updated_at").eq("status", "published").order("published_at", { ascending: false }),
-    supabase.from("posts").select("seo_keywords").eq("status", "published").limit(1000),
-  ])
-
-  const posts = postsRes.data || []
-  const categories = catsRes.data || []
-  const subcategories = subsRes.data || []
-  const profiles = profilesRes.data || []
-  const series = seriesRes.data || []
-  const kwArticles = kwArticlesRes.data || []
-  const allTags = tagsRes.data || []
+  let posts: any[] = [], categories: any[] = [], subcategories: any[] = []
+  let profiles: any[] = [], series: any[] = [], kwArticles: any[] = [], allTags: any[] = []
+  try {
+    const [postsRes, catsRes, subsRes, profilesRes, seriesRes, kwArticlesRes, tagsRes] = await Promise.all([
+      supabase.from("posts").select("slug, updated_at, published_at, robots_noindex").eq("status", "published").order("published_at", { ascending: false }),
+      supabase.from("categories").select("id, slug"),
+      supabase.from("subcategories").select("slug, category_id"),
+      supabase.from("profiles").select("username"),
+      supabase.from("series").select("slug"),
+      supabase.from("keyword_articles").select("slug, updated_at").eq("status", "published").order("published_at", { ascending: false }),
+      supabase.from("posts").select("seo_keywords").eq("status", "published").limit(1000),
+    ])
+    posts = postsRes.data || []
+    categories = catsRes.data || []
+    subcategories = subsRes.data || []
+    profiles = profilesRes.data || []
+    series = seriesRes.data || []
+    kwArticles = kwArticlesRes.data || []
+    allTags = tagsRes.data || []
+  } catch (e) {
+    console.error("Sitemap data fetch failed, serving static pages only", e)
+  }
 
   const tagSet = new Set<string>()
   allTags.flatMap((p: any) => p.seo_keywords || []).forEach((t: string) => tagSet.add(t))
