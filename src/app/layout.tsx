@@ -3,6 +3,7 @@ import { ThemeProvider } from "@/components/theme-provider"
 import { LayoutWrapper } from "@/components/layout/layout-wrapper"
 import { PHProvider } from "@/components/posthog-provider"
 import { GoogleCMP } from "@/components/cookies/GoogleCMP"
+import { CookieConsentBanner } from "@/components/cookies/cookie-consent-banner"
 import { SITE_NAME, SITE_TAGLINE, SITE_URL } from "@/lib/constants"
 import "./globals.css"
 
@@ -77,6 +78,21 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             `,
           }}
         />
+        {process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID && (
+          <>
+            <script async src={`https://www.googletagmanager.com/gtag/js?id=${process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID}`} />
+            <script
+              dangerouslySetInnerHTML={{
+                __html: `
+                  window.dataLayer = window.dataLayer || [];
+                  function gtag(){dataLayer.push(arguments);}
+                  gtag('js', new Date());
+                  gtag('config', '${process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID}');
+                `,
+              }}
+            />
+          </>
+        )}
       </head>
       <body className="min-h-screen bg-background antialiased">
         <script
@@ -135,6 +151,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           </PHProvider>
         </ThemeProvider>
         <GoogleCMP />
+        <CookieConsentBanner />
       </body>
     </html>
   )
