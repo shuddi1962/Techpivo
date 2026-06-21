@@ -162,6 +162,57 @@ export default function AdminIntegrationsPage() {
         <p className="text-sm text-gray-500">Connect your platforms and services to enable auto-publishing and more</p>
       </div>
 
+      {/* GUIDE */}
+      <details className="group border rounded-lg bg-amber-50/50 border-amber-200 open:pb-4">
+        <summary className="flex items-center gap-2 px-4 py-3 cursor-pointer text-sm font-medium text-amber-900 hover:bg-amber-100/50 rounded-lg [&::-webkit-details-marker]:hidden">
+          <span className="text-lg leading-none">📘</span>
+          How to connect accounts — step-by-step guide
+          <span className="ml-auto text-xs text-amber-600 group-open:hidden">Click to expand</span>
+          <span className="ml-auto text-xs text-amber-600 hidden group-open:inline">Click to collapse</span>
+        </summary>
+        <div className="px-4 pt-2 space-y-3 text-sm text-amber-900/80">
+          <div>
+            <strong className="text-amber-900">1. Social Platforms</strong>
+            <ul className="list-disc pl-5 mt-1 space-y-1">
+              <li>Create a business/creator account on the platform (e.g. Twitter/X, Facebook Page, LinkedIn Page).</li>
+              <li>Go to the platform's developer portal and create an app to obtain API credentials (API key, API secret, OAuth tokens, etc.).</li>
+              <li>For auto-publishing: the system stores tokens per platform in the <code className="px-1 bg-amber-100 rounded text-xs font-mono">social_accounts</code> table.</li>
+              <li>Click <strong>"Connect"</strong> on the card — it opens the platform's sign-in/setup page.</li>
+              <li>After authorising, come back and click <strong>"Manage"</strong> to configure auto-publish settings.</li>
+            </ul>
+          </div>
+          <div>
+            <strong className="text-amber-900">2. Content &amp; Discovery</strong>
+            <ul className="list-disc pl-5 mt-1 space-y-1">
+              <li>Bing News PubHub — submit your site at <code className="px-1 bg-amber-100 rounded text-xs font-mono">pubhub.bing.com</code>. Requires site verification (use the meta tag or XML file).</li>
+              <li>Perplexity Publisher — register your site to appear as an AI-search citation source.</li>
+              <li>Google News Publisher — apply via Google News Publisher Center. Approval can take weeks.</li>
+            </ul>
+          </div>
+          <div>
+            <strong className="text-amber-900">3. Developer Tools &amp; API Keys</strong>
+            <ul className="list-disc pl-5 mt-1 space-y-1">
+              <li>OpenRouter — sign up at openrouter.ai, generate an API key, paste it in the field below.</li>
+              <li>Google AI Studio — get a Gemini API key from aistudio.google.com.</li>
+              <li>Pexels — register at pexels.com/api for a free API key (article images).</li>
+              <li>Resend — create an account at resend.com for transactional email / newsletter delivery.</li>
+              <li>IndexNow — auto-configured (no manual setup needed).</li>
+            </ul>
+          </div>
+          <div>
+            <strong className="text-amber-900">4. Environment Variables (Vercel)</strong>
+            <ul className="list-disc pl-5 mt-1 space-y-1">
+              <li>Some services require env vars set directly in Vercel dashboard (e.g. <code className="px-1 bg-amber-100 rounded text-xs font-mono">PAGESPEED_API_KEY</code>, <code className="px-1 bg-amber-100 rounded text-xs font-mono">INDEXNOW_KEY</code>).</li>
+              <li>Go to <strong>Vercel → Project → Settings → Environment Variables</strong> to add them.</li>
+              <li>After adding, redeploy the site for changes to take effect.</li>
+            </ul>
+          </div>
+          <p className="text-xs text-amber-700 border-t border-amber-200 pt-2 mt-3">
+            💡 <strong>Tip:</strong> After connecting an account, post a test article to verify auto-publishing works before scheduling bulk content.
+          </p>
+        </div>
+      </details>
+
       <Tabs defaultValue="all" onValueChange={setActiveTab}>
         <TabsList className="mb-6">
           <TabsTrigger value="all">All</TabsTrigger>
