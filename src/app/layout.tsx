@@ -107,7 +107,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       </head>
       <body className="min-h-screen bg-background antialiased">
         <noscript>
-          <iframe src="https://www.googletagmanager.com/ns.html?id=GTM-5QPM5TQ5" height="0" width="0" style="display:none;visibility:hidden" />
+          <iframe src="https://www.googletagmanager.com/ns.html?id=GTM-5QPM5TQ5" height="0" width="0" style={{ display: "none", visibility: "hidden" }} />
         </noscript>
         <script
           type="application/ld+json"
