@@ -31,7 +31,6 @@ export const metadata: Metadata = {
   },
   verification: {
     google: process.env.NEXT_PUBLIC_GOOGLE_VERIFICATION || "",
-    other: { "msvalidate.01": "CBDA61642FC28CFA7E5EEF624A35DECC" },
   },
   referrer: "strict-origin-when-cross-origin",
   openGraph: {
@@ -105,6 +104,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             `,
           }}
         />
+        <meta name="msvalidate.01" content="CBDA61642FC28CFA7E5EEF624A35DECC" />
       </head>
       <body className="min-h-screen bg-background antialiased">
         <noscript>
