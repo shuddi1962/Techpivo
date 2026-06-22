@@ -455,6 +455,13 @@ serve(async (req) => {
       rewrittenContent = post.content || textContent
     }
 
+    if (!skip_gemini && !rewrittenContent?.includes('<h2') && !rewrittenContent?.includes('answer-capsule')) {
+      return new Response(JSON.stringify({
+        error: "Gemini rewrite produced insufficient output, keeping draft for retry",
+        post_id: post_id
+      }), { status: 422, headers: { "Content-Type": "application/json" } })
+    }
+
     // Always add internal links (skip_gemini or not)
     rewrittenContent = await addInternalLinks(rewrittenContent, supabase, post_id)
 

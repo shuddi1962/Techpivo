@@ -11,6 +11,8 @@ const BOT_HEADERS = {
   'Accept': 'text/html,application/xhtml+xml,*/*'
 }
 
+const MAX_ITEM_AGE_HOURS = 48
+
 function extractImageFromItem(item: Record<string, any>): string | null {
   const mediaContent = item['media:content']
   if (mediaContent?.['$']?.url) return mediaContent['$'].url
@@ -242,6 +244,59 @@ async function pexelsSearch(query: string): Promise<string | null> {
   }
 }
 
+function isItemRecent(item: Record<string, any>): boolean {
+  const pubDate = item.pubDate as string
+  if (!pubDate) return true
+  const d = new Date(pubDate)
+  if (isNaN(d.getTime())) return true
+  const cutoff = Date.now() - MAX_ITEM_AGE_HOURS * 60 * 60 * 1000
+  return d.getTime() > cutoff
+}
+
+function isFeedReady(feed: any): boolean {
+  if (!feed.last_fetched_at) return true
+  const interval = feed.fetch_interval_minutes || 60
+  const lastFetch = new Date(feed.last_fetched_at).getTime()
+  const nextFetch = lastFetch + interval * 60 * 1000
+  return Date.now() >= nextFetch
+}
+
+async function retryStuckDrafts(authorId: string): Promise<number> {
+  const cutoff = new Date(Date.now() - 15 * 60 * 1000).toISOString()
+  const { data: stuckPosts } = await supabase
+    .from('posts')
+    .select('id, title, original_source_url, content, source_name')
+    .eq('status', 'draft')
+    .eq('ai_rewritten', false)
+    .lt('created_at', cutoff)
+    .limit(20)
+
+  if (!stuckPosts?.length) return 0
+
+  let retried = 0
+  for (const post of stuckPosts) {
+    try {
+      const res = await fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/rewrite-post`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          post_id: post.id,
+          article_content: post.content || post.title || '',
+          source_name: post.source_name || ''
+        })
+      })
+      if (res.ok) retried++
+      else console.error(`Retry failed for ${post.id}: ${await res.text().catch(() => 'unknown')}`)
+    } catch (e) {
+      console.error(`Retry error for ${post.id}: ${e instanceof Error ? e.message : String(e)}`)
+    }
+  }
+  return retried
+}
+
 async function processFeed(feed: any, categories: Array<{id:string;slug:string}>, subcategories: Array<{id:string;slug:string;catSlug:string}>, authorId: string, maxPerFeed: number): Promise<{new: number; errors: string[]}> {
   let newCount = 0
   const errs: string[] = []
@@ -260,6 +315,8 @@ async function processFeed(feed: any, categories: Array<{id:string;slug:string}>
         const title = stripInvisibleChars((item.title as string)?.trim() || '')
         const link = (item.link as string)?.trim()
         if (!title || !link) continue
+
+        if (!isItemRecent(item)) continue
 
         const { data: exists } = await supabase
           .from('posts')
@@ -299,7 +356,7 @@ async function processFeed(feed: any, categories: Array<{id:string;slug:string}>
             subcategory_id: subcategoryId,
             author_id: authorId,
             source_name: feed.feed_name,
-            status: feed.auto_rewrite ? 'draft' : 'published',
+            status: 'draft',
             rss_source_url: feed.feed_url,
             original_source_url: link,
             ai_rewritten: false,
@@ -319,25 +376,27 @@ async function processFeed(feed: any, categories: Array<{id:string;slug:string}>
 
         newCount++
 
-        // Track in daily_article_count
         try { await supabase.rpc('increment_daily_count') } catch {}
 
-        if (feed.auto_rewrite) {
-          try {
-            fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/rewrite-post`, {
-              method: 'POST',
-              headers: {
-                'Authorization': `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`,
-                'Content-Type': 'application/json'
-              },
-              body: JSON.stringify({
-                post_id: post.id,
-                article_content: articleText,
-                source_name: feed.feed_name
-              })
-            }).catch(() => {})
-          } catch {}
-        }
+        try {
+          const rewriteUrl = `${Deno.env.get('SUPABASE_URL')}/functions/v1/rewrite-post`
+          fetch(rewriteUrl, {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`,
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              post_id: post.id,
+              article_content: articleText,
+              source_name: feed.feed_name
+            })
+          }).then(async (res) => {
+            if (!res.ok) console.error(`Rewrite failed for post ${post.id}: ${await res.text().catch(() => 'unknown')}`)
+          }).catch((e: unknown) => {
+            console.error(`Rewrite call failed for post ${post.id}: ${e instanceof Error ? e.message : String(e)}`)
+          })
+        } catch {} // fire-and-forget is intentional; retryStuckDrafts() picks up failures
       } catch (e) {
         errs.push(`Item: ${e instanceof Error ? e.message : String(e)}`)
       }
@@ -368,13 +427,12 @@ async function processFeed(feed: any, categories: Array<{id:string;slug:string}>
 }
 
 serve(async (req) => {
-  let maxPosts = 10
+  let maxPosts = 20
   try {
     const body = await req.json().catch(() => ({}))
     if (body.max_posts && typeof body.max_posts === 'number') maxPosts = body.max_posts
   } catch {}
 
-  // Check daily cap from site_settings
   const { data: capSetting } = await supabase
     .from('site_settings')
     .select('value')
@@ -389,14 +447,14 @@ serve(async (req) => {
     .single()
   const todayCount = todayRow?.count || 0
 
-  if (todayCount >= dailyCap) {
+  const remainingCap = dailyCap - todayCount
+  if (remainingCap <= 0) {
     return new Response(JSON.stringify({
       new_posts: 0, cap_reached: true,
       message: `Daily cap of ${dailyCap} reached. Published today: ${todayCount}.`
     }), { headers: { 'Content-Type': 'application/json' } })
   }
 
-  const remainingCap = dailyCap - todayCount
   const actualMax = Math.min(maxPosts, remainingCap)
 
   const { data: feeds } = await supabase
@@ -436,15 +494,28 @@ serve(async (req) => {
     return new Response(JSON.stringify({ error: 'No author profile found' }), { status: 500 })
   }
 
+  const retried = await retryStuckDrafts(defaultAuthorId)
+  console.log(`[Draft recovery] Retried ${retried} stuck drafts`)
+
+  const readyFeeds = feeds.filter(isFeedReady)
+  console.log(`[Feed filter] ${readyFeeds.length}/${feeds.length} feeds ready (interval elapsed)`)
+
+  if (readyFeeds.length === 0) {
+    return new Response(JSON.stringify({
+      new_posts: 0, skipped: true,
+      message: 'No feeds ready yet based on fetch_interval_minutes',
+      retried_drafts: retried
+    }), { headers: { 'Content-Type': 'application/json' } })
+  }
+
   let totalNew = 0
   const errors: string[] = []
   const CONCURRENCY = 5
 
-  for (let i = 0; i < feeds.length && totalNew < actualMax; i += CONCURRENCY) {
-    const batch = feeds.slice(i, i + CONCURRENCY)
+  for (let i = 0; i < readyFeeds.length && totalNew < actualMax; i += CONCURRENCY) {
+    const batch = readyFeeds.slice(i, i + CONCURRENCY)
     const remaining = actualMax - totalNew
-    // Spread remaining across feeds in batch (at least 1 each)
-    const perFeed = Math.max(1, Math.ceil(remaining / Math.max(1, feeds.length - i)))
+    const perFeed = Math.max(1, Math.ceil(remaining / Math.max(1, readyFeeds.length - i)))
     const results = await Promise.all(
       batch.map(f => processFeed(f, categories, subcatsWithCatSlug, defaultAuthorId, perFeed))
     )
@@ -457,7 +528,9 @@ serve(async (req) => {
 
   return new Response(JSON.stringify({
     new_posts: totalNew, errors, max_posts: actualMax, cap_reached: totalNew >= actualMax,
-    daily_remaining: dailyCap - todayCount - totalNew,
+    daily_remaining: remainingCap - totalNew,
+    feeds_processed: readyFeeds.length,
+    retried_drafts: retried,
   }), {
     headers: { 'Content-Type': 'application/json' }
   })
