@@ -175,10 +175,10 @@ export default function AdminIntegrationsPage() {
             <strong className="text-amber-900">1. Social Platforms</strong>
             <ul className="list-disc pl-5 mt-1 space-y-1">
               <li>Create a business/creator account on the platform (e.g. Twitter/X, Facebook Page, LinkedIn Page).</li>
-              <li>Go to the platform's developer portal and create an app to obtain API credentials (API key, API secret, OAuth tokens, etc.).</li>
+              <li>Go to the platform&rsquo;s developer portal and create an app to obtain API credentials (API key, API secret, OAuth tokens, etc.).</li>
               <li>For auto-publishing: the system stores tokens per platform in the <code className="px-1 bg-amber-100 rounded text-xs font-mono">social_accounts</code> table.</li>
-              <li>Click <strong>"Connect"</strong> on the card — it opens the platform's sign-in/setup page.</li>
-              <li>After authorising, come back and click <strong>"Manage"</strong> to configure auto-publish settings.</li>
+              <li>Click <strong>&ldquo;Connect&rdquo;</strong> on the card — it opens the platform&rsquo;s sign-in/setup page.</li>
+              <li>After authorising, come back and click <strong>&ldquo;Manage&rdquo;</strong> to configure auto-publish settings.</li>
             </ul>
           </div>
           <div>
