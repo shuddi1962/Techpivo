@@ -36,84 +36,288 @@ interface Integration {
   timeline: string
   benefit: string
   followUrl?: string
+  credsUrl?: string
   fields: CredentialField[]
   hasAutoPublish: boolean
+  guide: string[]
 }
 
 const integrations: Integration[] = [
   // ── SOCIAL PLATFORMS ──
-  { id: "twitter", name: "Twitter / X", logo: <XLogo size={32} />, category: "social", timeline: "Day 1", benefit: "Follow & auto-publish", followUrl: "https://twitter.com", fields: [
-    { key: "api_key", label: "API Key", placeholder: "Consumer API Key", type: "password" },
-    { key: "api_secret", label: "API Secret", placeholder: "Consumer API Secret", type: "password" },
-    { key: "access_token", label: "Access Token", placeholder: "Access Token", type: "password" },
-    { key: "access_token_secret", label: "Access Token Secret", placeholder: "Access Token Secret", type: "password" },
-  ], hasAutoPublish: true },
-  { id: "facebook", name: "Facebook Page", logo: <FacebookLogo size={32} />, category: "social", timeline: "Day 1", benefit: "Follow & auto-publish", followUrl: "https://facebook.com", fields: [
-    { key: "page_id", label: "Page ID", placeholder: "Facebook Page ID", type: "text" },
-    { key: "page_access_token", label: "Page Access Token", placeholder: "Page Access Token", type: "password" },
-  ], hasAutoPublish: true },
-  { id: "youtube_community", name: "YouTube Channel", logo: <YouTubeLogo size={32} />, category: "social", timeline: "Day 1", benefit: "Brand authority", followUrl: "https://youtube.com", fields: [
-    { key: "channel_id", label: "Channel ID", placeholder: "YouTube Channel ID", type: "text" },
-    { key: "api_key", label: "API Key", placeholder: "YouTube Data API Key", type: "password" },
-  ], hasAutoPublish: false },
-  { id: "telegram", name: "Telegram Channel", logo: <TelegramLogo size={32} />, category: "social", timeline: "Day 1", benefit: "Nigerian traffic", followUrl: "https://t.me", fields: [
-    { key: "bot_token", label: "Bot Token", placeholder: "123456:ABC-DEF1234ghIkl-zyx57W2v1u123ew11", type: "password" },
-    { key: "chat_id", label: "Chat ID", placeholder: "-1001234567890", type: "text" },
-  ], hasAutoPublish: true },
-  { id: "linkedin", name: "LinkedIn Page", logo: <LinkedInLogo size={32} />, category: "social", timeline: "Day 1", benefit: "Professional traffic", followUrl: "https://linkedin.com", fields: [
-    { key: "client_id", label: "Client ID", placeholder: "LinkedIn App Client ID", type: "text" },
-    { key: "client_secret", label: "Client Secret", placeholder: "LinkedIn App Client Secret", type: "password" },
-    { key: "access_token", label: "Access Token", placeholder: "LinkedIn Access Token", type: "password" },
-  ], hasAutoPublish: true },
-  { id: "reddit", name: "Reddit", logo: <RedditLogo size={32} />, category: "social", timeline: "Day 1", benefit: "Viral traffic spikes", followUrl: "https://reddit.com", fields: [
-    { key: "client_id", label: "Client ID", placeholder: "Reddit App Client ID", type: "text" },
-    { key: "client_secret", label: "Client Secret", placeholder: "Reddit App Client Secret", type: "password" },
-    { key: "refresh_token", label: "Refresh Token", placeholder: "Reddit Refresh Token", type: "password" },
-  ], hasAutoPublish: true },
-  { id: "whatsapp", name: "WhatsApp Channel", logo: <WhatsAppLogo size={32} />, category: "social", timeline: "Day 1", benefit: "Nigerian audience", followUrl: "https://whatsapp.com/channel", fields: [
-    { key: "phone_number_id", label: "Phone Number ID", placeholder: "WhatsApp Phone Number ID", type: "text" },
-    { key: "access_token", label: "Access Token", placeholder: "WhatsApp Access Token", type: "password" },
-  ], hasAutoPublish: true },
-  { id: "medium", name: "Medium", logo: <MediumLogo size={32} />, category: "social", timeline: "Week 1", benefit: "Crossposting", followUrl: "https://medium.com", fields: [
-    { key: "integration_token", label: "Integration Token", placeholder: "Medium Integration Token", type: "password" },
-  ], hasAutoPublish: true },
-  { id: "devto", name: "Dev.to", logo: <DevtoLogo size={32} />, category: "social", timeline: "Week 1", benefit: "Developer traffic", followUrl: "https://dev.to", fields: [
-    { key: "api_key", label: "API Key", placeholder: "Dev.to API Key", type: "password" },
-  ], hasAutoPublish: true },
-  { id: "hashnode", name: "Hashnode", logo: <HashnodeLogo size={32} />, category: "social", timeline: "Week 1", benefit: "Developer traffic", followUrl: "https://hashnode.com", fields: [
-    { key: "personal_access_token", label: "Personal Access Token", placeholder: "Hashnode PAT", type: "password" },
-  ], hasAutoPublish: true },
-  { id: "flipboard", name: "Flipboard", logo: <FlipboardLogo size={32} />, category: "social", timeline: "Week 1", benefit: "Passive traffic", followUrl: "https://flipboard.com", fields: [], hasAutoPublish: false },
-  { id: "pinterest", name: "Pinterest", logo: <PinterestLogo size={32} />, category: "social", timeline: "Week 1", benefit: "Visual traffic", followUrl: "https://pinterest.com", fields: [
-    { key: "access_token", label: "Access Token", placeholder: "Pinterest Access Token", type: "password" },
-  ], hasAutoPublish: true },
+  {
+    id: "twitter", name: "Twitter / X", logo: <XLogo size={32} />, category: "social", timeline: "Day 1", benefit: "Follow & auto-publish",
+    followUrl: "https://twitter.com", credsUrl: "https://developer.twitter.com/en/portal/dashboard",
+    fields: [
+      { key: "api_key", label: "API Key", placeholder: "Consumer API Key", type: "password" },
+      { key: "api_secret", label: "API Secret", placeholder: "Consumer API Secret", type: "password" },
+      { key: "access_token", label: "Access Token", placeholder: "Access Token", type: "password" },
+      { key: "access_token_secret", label: "Access Token Secret", placeholder: "Access Token Secret", type: "password" },
+    ], hasAutoPublish: true,
+    guide: [
+      "Go to Twitter Developer Portal and sign in with your X account",
+      "Create a new Project & App (free tier works)",
+      "Under \"Keys and Tokens\", copy your API Key and API Secret",
+      "Generate Access Token and Access Token Secret (read+write permissions)",
+      "Paste all four values into the fields below",
+    ],
+  },
+  {
+    id: "facebook", name: "Facebook Page", logo: <FacebookLogo size={32} />, category: "social", timeline: "Day 1", benefit: "Follow & auto-publish",
+    followUrl: "https://facebook.com", credsUrl: "https://developers.facebook.com/apps",
+    fields: [
+      { key: "page_id", label: "Page ID", placeholder: "Facebook Page ID", type: "text" },
+      { key: "page_access_token", label: "Page Access Token", placeholder: "Page Access Token", type: "password" },
+    ], hasAutoPublish: true,
+    guide: [
+      "Go to Facebook Developers and create a new app (Business type)",
+      "Add the Facebook Login product and configure your page",
+      "Find your Page ID: open your Facebook page → About → Page ID",
+      "Generate a Page Access Token in Graph API Explorer with page_manage_posts permission",
+      "Paste Page ID and Access Token below",
+    ],
+  },
+  {
+    id: "youtube_community", name: "YouTube Channel", logo: <YouTubeLogo size={32} />, category: "social", timeline: "Day 1", benefit: "Brand authority",
+    followUrl: "https://youtube.com", credsUrl: "https://console.cloud.google.com/apis/credentials",
+    fields: [
+      { key: "channel_id", label: "Channel ID", placeholder: "YouTube Channel ID", type: "text" },
+      { key: "api_key", label: "API Key", placeholder: "YouTube Data API Key", type: "password" },
+    ], hasAutoPublish: false,
+    guide: [
+      "Go to Google Cloud Console and create or select a project",
+      "Enable the YouTube Data API v3 from the API Library",
+      "Go to Credentials → Create Credentials → API Key",
+      "Find your Channel ID: open YouTube → your channel → URL has /channel/CHANNEL_ID",
+      "Paste Channel ID and API Key below",
+    ],
+  },
+  {
+    id: "telegram", name: "Telegram Channel", logo: <TelegramLogo size={32} />, category: "social", timeline: "Day 1", benefit: "Nigerian traffic",
+    followUrl: "https://t.me", credsUrl: "https://t.me/BotFather",
+    fields: [
+      { key: "bot_token", label: "Bot Token", placeholder: "123456:ABC-DEF1234ghIkl-zyx57W2v1u123ew11", type: "password" },
+      { key: "chat_id", label: "Chat ID", placeholder: "-1001234567890", type: "text" },
+    ], hasAutoPublish: true,
+    guide: [
+      "Open Telegram and search for @BotFather",
+      "Send /newbot and follow prompts to create a bot",
+      "Copy the bot token (format: 123456:ABC-DEF...)",
+      "Add your bot as an admin to your channel",
+      "Send any message in the channel, then visit https://api.telegram.org/bot<YOUR_TOKEN>/getUpdates to find your chat_id",
+      "Paste Bot Token and Chat ID below",
+    ],
+  },
+  {
+    id: "linkedin", name: "LinkedIn Page", logo: <LinkedInLogo size={32} />, category: "social", timeline: "Day 1", benefit: "Professional traffic",
+    followUrl: "https://linkedin.com", credsUrl: "https://www.linkedin.com/developers/apps",
+    fields: [
+      { key: "client_id", label: "Client ID", placeholder: "LinkedIn App Client ID", type: "text" },
+      { key: "client_secret", label: "Client Secret", placeholder: "LinkedIn App Client Secret", type: "password" },
+      { key: "access_token", label: "Access Token", placeholder: "LinkedIn Access Token", type: "password" },
+    ], hasAutoPublish: true,
+    guide: [
+      "Go to LinkedIn Developers and create a new app",
+      "Request the following OAuth 2.0 scopes: w_member_social, rw_organization_admin",
+      "Copy your Client ID and Client Secret from the Auth tab",
+      "Generate an Access Token via OAuth 2.0 flow (use LinkedIn's OAuth Token Generator for testing)",
+      "Paste Client ID, Client Secret and Access Token below",
+    ],
+  },
+  {
+    id: "reddit", name: "Reddit", logo: <RedditLogo size={32} />, category: "social", timeline: "Day 1", benefit: "Viral traffic spikes",
+    followUrl: "https://reddit.com", credsUrl: "https://www.reddit.com/prefs/apps",
+    fields: [
+      { key: "client_id", label: "Client ID", placeholder: "Reddit App Client ID", type: "text" },
+      { key: "client_secret", label: "Client Secret", placeholder: "Reddit App Client Secret", type: "password" },
+      { key: "refresh_token", label: "Refresh Token", placeholder: "Reddit Refresh Token", type: "password" },
+    ], hasAutoPublish: true,
+    guide: [
+      "Go to Reddit App Preferences → Apps → Create App",
+      "Select \"script\" type, give it a name, set redirect URI to http://localhost:8080",
+      "Copy the Client ID (under the app name) and Client Secret",
+      "Generate a Refresh Token using a tool like reddit-oauth-helper (requires read+submit+edit scope)",
+      "Paste Client ID, Client Secret and Refresh Token below",
+    ],
+  },
+  {
+    id: "whatsapp", name: "WhatsApp Channel", logo: <WhatsAppLogo size={32} />, category: "social", timeline: "Day 1", benefit: "Nigerian audience",
+    followUrl: "https://whatsapp.com/channel", credsUrl: "https://developers.facebook.com/apps",
+    fields: [
+      { key: "phone_number_id", label: "Phone Number ID", placeholder: "WhatsApp Phone Number ID", type: "text" },
+      { key: "access_token", label: "Access Token", placeholder: "WhatsApp Access Token", type: "password" },
+    ], hasAutoPublish: true,
+    guide: [
+      "Go to Facebook Developers → Create App → Business → WhatsApp",
+      "Set up a WhatsApp Business Account and add a phone number",
+      "From the WhatsApp dashboard, copy your Phone Number ID",
+      "Generate a permanent Access Token (System User token with whatsapp_business_messaging permission)",
+      "Paste Phone Number ID and Access Token below",
+    ],
+  },
+  {
+    id: "medium", name: "Medium", logo: <MediumLogo size={32} />, category: "social", timeline: "Week 1", benefit: "Crossposting",
+    followUrl: "https://medium.com", credsUrl: "https://medium.com/me/settings/security",
+    fields: [
+      { key: "integration_token", label: "Integration Token", placeholder: "Medium Integration Token", type: "password" },
+    ], hasAutoPublish: true,
+    guide: [
+      "Log in to Medium and go to Settings → Security and apps",
+      "Scroll down to \"Integration tokens\"",
+      "Enter a token name (e.g. \"Techpivo auto-publish\") and click \"Get integration token\"",
+      "Copy the generated token and paste it below",
+    ],
+  },
+  {
+    id: "devto", name: "Dev.to", logo: <DevtoLogo size={32} />, category: "social", timeline: "Week 1", benefit: "Developer traffic",
+    followUrl: "https://dev.to", credsUrl: "https://dev.to/settings/account",
+    fields: [
+      { key: "api_key", label: "API Key", placeholder: "Dev.to API Key", type: "password" },
+    ], hasAutoPublish: true,
+    guide: [
+      "Log in to Dev.to and go to Settings → Account",
+      "Scroll down to the \"API Key\" section",
+      "Click \"Generate API Key\" or copy your existing key",
+      "Paste the API Key below",
+    ],
+  },
+  {
+    id: "hashnode", name: "Hashnode", logo: <HashnodeLogo size={32} />, category: "social", timeline: "Week 1", benefit: "Developer traffic",
+    followUrl: "https://hashnode.com", credsUrl: "https://hashnode.com/settings/developer",
+    fields: [
+      { key: "personal_access_token", label: "Personal Access Token", placeholder: "Hashnode PAT", type: "password" },
+    ], hasAutoPublish: true,
+    guide: [
+      "Log in to Hashnode and go to Settings → Developer",
+      "Click \"Generate Personal Access Token\"",
+      "Give it a name and select the required scopes (publish posts)",
+      "Copy the generated token and paste it below",
+    ],
+  },
+  {
+    id: "flipboard", name: "Flipboard", logo: <FlipboardLogo size={32} />, category: "social", timeline: "Week 1", benefit: "Passive traffic",
+    followUrl: "https://flipboard.com", fields: [], hasAutoPublish: false,
+    guide: [
+      "No API credentials needed — simply follow the Flipboard link above to share your content",
+    ],
+  },
+  {
+    id: "pinterest", name: "Pinterest", logo: <PinterestLogo size={32} />, category: "social", timeline: "Week 1", benefit: "Visual traffic",
+    followUrl: "https://pinterest.com", credsUrl: "https://developers.pinterest.com/apps",
+    fields: [
+      { key: "access_token", label: "Access Token", placeholder: "Pinterest Access Token", type: "password" },
+    ], hasAutoPublish: true,
+    guide: [
+      "Go to Pinterest Developers and create a new app",
+      "Submit your app for review (required for write access)",
+      "Once approved, generate an Access Token with pins:read and pins:write scopes",
+      "Paste the Access Token below",
+    ],
+  },
 
   // ── CONTENT & DISCOVERY ──
-  { id: "bing_news", name: "Bing News PubHub", logo: <BingLogo size={32} />, category: "content", timeline: "Week 1", benefit: "News indexing", fields: [
-    { key: "site_url", label: "Site URL", placeholder: "https://yoursite.com", type: "text" },
-  ], hasAutoPublish: false },
-  { id: "perplexity", name: "Perplexity Publisher", logo: <PerplexityLogo size={32} />, category: "content", timeline: "Week 1", benefit: "AI search citations", fields: [], hasAutoPublish: false },
-  { id: "google_news", name: "Google News Publisher", logo: <GoogleNewsLogo size={32} />, category: "content", timeline: "Month 3", benefit: "Major traffic boost", fields: [
-    { key: "publication_url", label: "Publication URL", placeholder: "https://news.google.com/publications/...", type: "text" },
-  ], hasAutoPublish: false },
+  {
+    id: "bing_news", name: "Bing News PubHub", logo: <BingLogo size={32} />, category: "content", timeline: "Week 1", benefit: "News indexing",
+    credsUrl: "https://pubhub.bing.com",
+    fields: [
+      { key: "site_url", label: "Site URL", placeholder: "https://yoursite.com", type: "text" },
+    ], hasAutoPublish: false,
+    guide: [
+      "Go to Bing PubHub and sign in with a Microsoft account",
+      "Click \"Submit your site\" and enter your site URL",
+      "Verify site ownership using a meta tag or XML file upload",
+      "Once verified, your articles will appear in Bing News",
+    ],
+  },
+  {
+    id: "perplexity", name: "Perplexity Publisher", logo: <PerplexityLogo size={32} />, category: "content", timeline: "Week 1", benefit: "AI search citations",
+    credsUrl: "https://perplexity.com/publisher",
+    fields: [], hasAutoPublish: false,
+    guide: [
+      "Go to Perplexity Publisher page",
+      "Register your site URL to appear as a citation source in Perplexity AI search results",
+      "No API credentials required",
+    ],
+  },
+  {
+    id: "google_news", name: "Google News Publisher", logo: <GoogleNewsLogo size={32} />, category: "content", timeline: "Month 3", benefit: "Major traffic boost",
+    credsUrl: "https://news.google.com/publisher",
+    fields: [
+      { key: "publication_url", label: "Publication URL", placeholder: "https://news.google.com/publications/...", type: "text" },
+    ], hasAutoPublish: false,
+    guide: [
+      "Go to Google News Publisher Center",
+      "Apply to add your publication (approval can take weeks)",
+      "Once approved, configure your publication settings",
+      "Your articles will automatically appear in Google News",
+    ],
+  },
 
   // ── DEVELOPER TOOLS & API ──
-  { id: "resend", name: "Resend", logo: <ResendLogo size={32} />, category: "developer", timeline: "Week 1", benefit: "Newsletter delivery", fields: [
-    { key: "api_key", label: "API Key", placeholder: "re_...", type: "password" },
-  ], hasAutoPublish: false },
-  { id: "openrouter", name: "OpenRouter", logo: <OpenRouterLogo size={32} />, category: "developer", timeline: "Week 1", benefit: "AI fallback model", fields: [
-    { key: "api_key", label: "API Key", placeholder: "sk-or-v1-...", type: "password" },
-    { key: "model", label: "Model", placeholder: "mistralai/mixtral-8x7b-instruct", type: "text" },
-  ], hasAutoPublish: false },
-  { id: "google_ai_studio", name: "Google AI Studio", logo: <GoogleAIStudioLogo size={32} />, category: "developer", timeline: "Week 1", benefit: "Rotate Gemini key", fields: [
-    { key: "api_key", label: "Gemini API Key", placeholder: "AIza...", type: "password" },
-  ], hasAutoPublish: false },
-  { id: "pexels", name: "Pexels API", logo: <PexelsLogo size={32} />, category: "developer", timeline: "Week 1", benefit: "Article images", fields: [
-    { key: "api_key", label: "API Key", placeholder: "Pexels API Key", type: "password" },
-  ], hasAutoPublish: false },
-  { id: "indexnow", name: "IndexNow", logo: <IndexNowLogo size={32} />, category: "developer", timeline: "Week 1", benefit: "Instant Bing indexing", fields: [
-    { key: "key", label: "IndexNow Key", placeholder: "Auto-configured", type: "password" },
-  ], hasAutoPublish: false },
+  {
+    id: "resend", name: "Resend", logo: <ResendLogo size={32} />, category: "developer", timeline: "Week 1", benefit: "Newsletter delivery",
+    credsUrl: "https://resend.com/api-keys",
+    fields: [
+      { key: "api_key", label: "API Key", placeholder: "re_...", type: "password" },
+    ], hasAutoPublish: false,
+    guide: [
+      "Go to Resend Dashboard and sign in or create an account",
+      "Navigate to API Keys section",
+      "Create a new API Key (select the appropriate permissions)",
+      "Copy the key (format: re_...) and paste it below",
+    ],
+  },
+  {
+    id: "openrouter", name: "OpenRouter", logo: <OpenRouterLogo size={32} />, category: "developer", timeline: "Week 1", benefit: "AI fallback model",
+    credsUrl: "https://openrouter.ai/keys",
+    fields: [
+      { key: "api_key", label: "API Key", placeholder: "sk-or-v1-...", type: "password" },
+      { key: "model", label: "Model", placeholder: "mistralai/mixtral-8x7b-instruct", type: "text" },
+    ], hasAutoPublish: false,
+    guide: [
+      "Go to OpenRouter.ai and sign in or create an account",
+      "Navigate to the API Keys page",
+      "Click \"Create Key\" and copy the generated key (format: sk-or-v1-...)",
+      "Choose your preferred model (default: mistralai/mixtral-8x7b-instruct)",
+      "Paste the API Key and set your model name below",
+    ],
+  },
+  {
+    id: "google_ai_studio", name: "Google AI Studio", logo: <GoogleAIStudioLogo size={32} />, category: "developer", timeline: "Week 1", benefit: "Rotate Gemini key",
+    credsUrl: "https://aistudio.google.com/apikey",
+    fields: [
+      { key: "api_key", label: "Gemini API Key", placeholder: "AIza...", type: "password" },
+    ], hasAutoPublish: false,
+    guide: [
+      "Go to Google AI Studio and sign in with your Google account",
+      "Click \"Get API Key\" in the left sidebar",
+      "Create a new API key in Google Cloud (or use an existing project)",
+      "Copy the key (format: AIza...) and paste it below",
+    ],
+  },
+  {
+    id: "pexels", name: "Pexels API", logo: <PexelsLogo size={32} />, category: "developer", timeline: "Week 1", benefit: "Article images",
+    credsUrl: "https://www.pexels.com/api",
+    fields: [
+      { key: "api_key", label: "API Key", placeholder: "Pexels API Key", type: "password" },
+    ], hasAutoPublish: false,
+    guide: [
+      "Go to Pexels API page and click \"Join Free\" or sign in",
+      "Once signed in, your API key is displayed on the dashboard",
+      "Copy the API key and paste it below",
+    ],
+  },
+  {
+    id: "indexnow", name: "IndexNow", logo: <IndexNowLogo size={32} />, category: "developer", timeline: "Week 1", benefit: "Instant Bing indexing",
+    credsUrl: "https://www.indexnow.org",
+    fields: [
+      { key: "key", label: "IndexNow Key", placeholder: "Auto-configured", type: "password" },
+    ], hasAutoPublish: false,
+    guide: [
+      "IndexNow is auto-configured when you deploy to production",
+      "The key is generated and set as an environment variable (INDEXNOW_KEY)",
+      "No manual setup needed — Bing will automatically be notified of new content",
+    ],
+  },
 ]
 
 const timelineColors: Record<string, string> = {
@@ -255,9 +459,9 @@ export default function AdminIntegrationsPage() {
                         <p className="text-xs text-gray-500 mb-3">{integration.benefit}</p>
 
                         <div className="flex flex-wrap items-center gap-2">
-                          {integration.followUrl && (
+                          {(integration.followUrl || account?.credentials?.follow_url) && (
                             <Button variant="outline" size="sm" asChild>
-                              <a href={integration.followUrl} target="_blank" rel="noopener noreferrer">
+                              <a href={account?.credentials?.follow_url || integration.followUrl!} target="_blank" rel="noopener noreferrer">
                                 <ThumbsUp className="h-3 w-3 mr-1" />
                                 Follow
                               </a>
@@ -309,34 +513,75 @@ export default function AdminIntegrationsPage() {
                             </Button>
                           )}
                         </div>
+                        {isConnected && integration.hasAutoPublish && (
+                          <div className="flex items-center justify-between mt-3 pt-3 border-t">
+                            <span className="text-xs text-gray-600">Auto-publish articles</span>
+                            <Switch
+                              checked={account?.auto_publish ?? false}
+                              onCheckedChange={(v) => toggleAutoPublish(account!.id, v)}
+                            />
+                          </div>
+                        )}
 
                         {isExpanded && (
-                          <div className="mt-4 pt-4 border-t space-y-3">
+                          <div className="mt-4 pt-4 border-t space-y-4">
+                            <details className="group bg-blue-50/50 border border-blue-200 rounded-lg open:pb-3">
+                              <summary className="flex items-center gap-2 px-3 py-2 cursor-pointer text-xs font-medium text-blue-800 hover:bg-blue-100/50 rounded-lg [&::-webkit-details-marker]:hidden">
+                                <span>Guide</span>
+                                <span className="ml-auto text-blue-500 group-open:hidden">Show steps</span>
+                                <span className="ml-auto text-blue-500 hidden group-open:inline">Hide steps</span>
+                              </summary>
+                              <ol className="px-3 pt-1 space-y-1.5">
+                                {integration.guide.map((step, i) => (
+                                  <li key={i} className="text-xs text-blue-900/80 flex gap-2">
+                                    <span className="shrink-0 font-medium text-blue-600">{i + 1}.</span>
+                                    <span>{step}</span>
+                                  </li>
+                                ))}
+                              </ol>
+                            </details>
+
+                            {integration.credsUrl && (
+                              <Button variant="outline" size="sm" asChild className="w-full">
+                                <a href={integration.credsUrl} target="_blank" rel="noopener noreferrer">
+                                  Get credentials <ExternalLink className="h-3 w-3 ml-1" />
+                                </a>
+                              </Button>
+                            )}
+
                             <Input
                               placeholder="Account name (optional)"
                               value={form.account_name || ""}
                               onChange={(e) => setFormValue("account_name", e.target.value)}
                               className="text-sm"
                             />
-                            {integration.fields.map((field) => (
-                              <div key={field.key}>
-                                <label className="block text-xs font-medium text-gray-600 mb-1">{field.label}</label>
+                            {integration.followUrl && (
+                              <div>
+                                <label className="block text-xs font-medium text-gray-600 mb-1">Your profile/follow URL</label>
                                 <Input
-                                  type={field.type}
-                                  placeholder={field.placeholder}
-                                  value={form[field.key] || ""}
-                                  onChange={(e) => setFormValue(field.key, e.target.value)}
-                                  className="text-sm font-mono"
+                                  type="text"
+                                  placeholder={integration.followUrl}
+                                  value={form.follow_url || ""}
+                                  onChange={(e) => setFormValue("follow_url", e.target.value)}
+                                  className="text-sm"
                                 />
                               </div>
-                            ))}
-                            {isConnected && integration.hasAutoPublish && (
-                              <div className="flex items-center justify-between pt-2">
-                                <span className="text-xs text-gray-600">Auto-publish</span>
-                                <Switch
-                                  checked={account?.auto_publish ?? false}
-                                  onCheckedChange={(v) => toggleAutoPublish(account!.id, v)}
-                                />
+                            )}
+                            {integration.fields.length > 0 && (
+                              <div className="space-y-3">
+                                <p className="text-xs font-medium text-gray-700">API Credentials</p>
+                                {integration.fields.map((field) => (
+                                  <div key={field.key}>
+                                    <label className="block text-xs font-medium text-gray-600 mb-1">{field.label}</label>
+                                    <Input
+                                      type={field.type}
+                                      placeholder={field.placeholder}
+                                      value={form[field.key] || ""}
+                                      onChange={(e) => setFormValue(field.key, e.target.value)}
+                                      className="text-sm font-mono"
+                                    />
+                                  </div>
+                                ))}
                               </div>
                             )}
                             <div className="flex gap-2 pt-1">
