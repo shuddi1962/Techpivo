@@ -138,6 +138,8 @@
 .search-box-input::placeholder { color: rgba(255,255,255,.5); }
 
 .header-controls { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+.header-socials { display: flex; align-items: center; gap: 2px; margin-right: 4px; }
+.header-socials .icon-btn { padding: 6px; }
 .icon-btn { color: rgba(255,255,255,.7); padding: 8px; border-radius: 8px; background: none; border: none; cursor: pointer; display: flex; align-items: center; transition: all .2s; font-size: 16px; }
 .icon-btn:hover { background: rgba(255,255,255,.1); color: #fff; }
 .login-btn { display: flex; align-items: center; gap: 6px; background: rgba(255,255,255,.12); border: 1px solid rgba(255,255,255,.2); color: #fff; padding: 7px 14px; border-radius: 8px; font-size: 13px; font-weight: 500; cursor: pointer; transition: border-color .2s, background .2s; font-family: 'DM Sans', sans-serif; }
