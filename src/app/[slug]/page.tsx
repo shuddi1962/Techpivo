@@ -14,6 +14,8 @@ import { PostComments } from "@/components/post/post-comments"
 import { ViewTracker } from "@/components/post/view-tracker"
 import { LiveViewCount } from "@/components/post/live-view-count"
 import { SITE_NAME, SITE_URL } from "@/lib/constants"
+import { AdsterraNative } from "@/components/ads/adsterra-native"
+import { AdsterraBanner } from "@/components/ads/adsterra-banner"
 
 export const dynamic = "force-dynamic"
 
@@ -141,6 +143,7 @@ export default async function PostPage({ params }: Props) {
       />
 
       <article className="container py-8">
+        <AdsterraBanner size="728x90" className="mb-8 hidden md:flex" label="Advertisement" />
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-10">
           <div className="lg:col-span-3">
             {/* Back link */}
@@ -298,6 +301,9 @@ export default async function PostPage({ params }: Props) {
                 dangerouslySetInnerHTML={{ __html: post.content }}
               />
             </div>
+
+            {/* In-content Ad */}
+            <AdsterraNative className="my-8" />
 
             {/* FAQ */}
             {faq && Array.isArray(faq) && faq.length > 0 && (
