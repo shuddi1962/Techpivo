@@ -1,6 +1,5 @@
 "use client"
 
-import { useEffect, useRef } from "react"
 import { cn } from "@/lib/utils"
 
 export type BannerSize = "468x60" | "300x250" | "160x600" | "160x300" | "320x50" | "728x90"
@@ -58,26 +57,21 @@ interface AdsterraBannerProps {
 }
 
 export function AdsterraBanner({ size, className, label }: AdsterraBannerProps) {
-  const containerRef = useRef<HTMLDivElement>(null)
   const config = BANNERS[size]
+  if (!config) return null
 
-  useEffect(() => {
-    if (!containerRef.current) return
-    if (!config) return
-
-    const scriptKey = `adsterra-banner-${config.key}`
-    if (containerRef.current.getAttribute("data-loaded") === scriptKey) return
-
-    const script = document.createElement("script")
-    script.async = true
-    script.src = config.invokeUrl
-    script.onload = () => {
-      containerRef.current?.setAttribute("data-loaded", scriptKey)
-    }
-
-    containerRef.current.innerHTML = ""
-    containerRef.current.appendChild(script)
-  }, [config])
+  const adHtml = `
+    <script>
+      atOptions = {
+        'key' : '${config.key}',
+        'format' : 'iframe',
+        'height' : ${config.height},
+        'width' : ${config.width},
+        'params' : {}
+      };
+    </script>
+    <script src="${config.invokeUrl}"></script>
+  `
 
   return (
     <div className={cn("adsterra-banner flex flex-col items-center", className)}>
@@ -85,9 +79,8 @@ export function AdsterraBanner({ size, className, label }: AdsterraBannerProps) 
         <span className="text-[9px] uppercase tracking-widest text-muted-foreground/50 mb-1">{label}</span>
       )}
       <div
-        ref={containerRef}
-        style={{ width: config.width, height: config.height }}
-        className="overflow-hidden"
+        style={{ width: config.width, height: config.height, minHeight: config.height }}
+        dangerouslySetInnerHTML={{ __html: adHtml }}
       />
     </div>
   )
