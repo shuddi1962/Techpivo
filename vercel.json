@@ -6,23 +6,5 @@
   "github": {
     "silent": true,
     "autoJobCancelation": true
-  },
-  "crons": [
-    {
-      "path": "/api/cron/fetch-trending-keywords",
-      "schedule": "45 3 * * *"
-    },
-    {
-      "path": "/api/cron/write-keyword-article",
-      "schedule": "15 4 * * *"
-    },
-    {
-      "path": "/api/cron/google-indexing",
-      "schedule": "30 6 * * *"
-    },
-    {
-      "path": "/api/fetch-rss",
-      "schedule": "*/30 * * * *"
-    }
-  ]
+  }
 }
