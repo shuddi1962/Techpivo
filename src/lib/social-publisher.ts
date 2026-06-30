@@ -32,16 +32,15 @@ function buildUtmLink(url: string, platform: string, slug: string): string {
 
 // ── Platform posting functions (read from DB credentials) ──────────────
 
-async function postToTwitter(
-  content: string,
+function buildTwitterOAuth(
+  method: string,
+  url: string,
   credentials: Record<string, string>,
-): Promise<string | null> {
+  extraParams: Record<string, string> = {},
+): string {
   const { api_key, api_secret, access_token, access_token_secret } = credentials
-  if (!api_key || !api_secret || !access_token || !access_token_secret) return null
-
   const nonce     = crypto.randomBytes(16).toString('hex')
   const timestamp = Math.floor(Date.now() / 1000).toString()
-  const url       = 'https://api.twitter.com/2/tweets'
   const params: Record<string, string> = {
     oauth_consumer_key:     api_key,
     oauth_nonce:            nonce,
@@ -49,24 +48,96 @@ async function postToTwitter(
     oauth_timestamp:        timestamp,
     oauth_token:            access_token,
     oauth_version:          '1.0',
+    ...extraParams,
   }
   const paramStr = Object.entries(params)
     .sort(([a], [b]) => a.localeCompare(b))
     .map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v)}`)
     .join('&')
-  const base = `POST&${encodeURIComponent(url)}&${encodeURIComponent(paramStr)}`
+  const base = `${method}&${encodeURIComponent(url)}&${encodeURIComponent(paramStr)}`
   const key  = `${encodeURIComponent(api_secret)}&${encodeURIComponent(access_token_secret)}`
   const sig  = crypto.createHmac('sha1', key).update(base).digest('base64')
   params['oauth_signature'] = sig
-  const auth = 'OAuth ' + Object.entries(params)
+  return 'OAuth ' + Object.entries(params)
     .map(([k, v]) => `${encodeURIComponent(k)}="${encodeURIComponent(v)}"`)
     .join(', ')
+}
 
-  const body = { text: content.length > 280 ? content.substring(0, 277) + '...' : content }
-  const res  = await fetch(url, {
-    method:  'POST',
+async function uploadTwitterMedia(imageUrl: string, credentials: Record<string, string>): Promise<string | null> {
+  if (!imageUrl) return null
+  try {
+    const imgRes = await fetch(imageUrl)
+    if (!imgRes.ok) return null
+    const arrayBuf = await imgRes.arrayBuffer()
+    const b64 = Buffer.from(arrayBuf).toString('base64')
+
+    const mediaUrl = 'https://upload.twitter.com/1.1/media/upload.json'
+    const auth = buildTwitterOAuth('POST', mediaUrl, credentials, { command: 'INIT', media_type: 'image/jpeg', total_bytes: String(arrayBuf.byteLength) })
+
+    const initRes = await fetch(mediaUrl, {
+      method: 'POST',
+      headers: { 'Authorization': auth, 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({ command: 'INIT', media_type: 'image/jpeg', total_bytes: String(arrayBuf.byteLength) }).toString(),
+    })
+    if (!initRes.ok) return null
+    const initData = await initRes.json()
+    const mediaId = initData.media_id_string
+    if (!mediaId) return null
+
+    const appendAuth = buildTwitterOAuth('POST', mediaUrl, credentials, { command: 'APPEND', media_id: mediaId, segment_index: '0' })
+    const form = new FormData()
+    form.append('command', 'APPEND')
+    form.append('media_id', mediaId)
+    form.append('segment_index', '0')
+    form.append('media_data', b64)
+
+    await fetch(mediaUrl, {
+      method: 'POST',
+      headers: { 'Authorization': appendAuth },
+      body: form,
+    })
+
+    const finalizeAuth = buildTwitterOAuth('POST', mediaUrl, credentials, { command: 'FINALIZE', media_id: mediaId })
+    await fetch(mediaUrl, {
+      method: 'POST',
+      headers: { 'Authorization': finalizeAuth, 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({ command: 'FINALIZE', media_id: mediaId }).toString(),
+    })
+
+    return mediaId
+  } catch (e) {
+    console.warn('[Twitter Media Upload]', String(e).slice(0, 100))
+    return null
+  }
+}
+
+async function postToTwitter(
+  content: string,
+  credentials: Record<string, string>,
+  imageUrl?: string,
+): Promise<string | null> {
+  const { api_key, api_secret, access_token, access_token_secret } = credentials
+  if (!api_key || !api_secret || !access_token || !access_token_secret) return null
+
+  let mediaId: string | null = null
+  if (imageUrl) {
+    mediaId = await uploadTwitterMedia(imageUrl, credentials)
+  }
+
+  const url = 'https://api.twitter.com/2/tweets'
+  const auth = buildTwitterOAuth('POST', url, credentials)
+
+  const tweetBody: Record<string, any> = {
+    text: content.length > 280 ? content.substring(0, 277) + '...' : content,
+  }
+  if (mediaId) {
+    tweetBody.media = { media_ids: [mediaId] }
+  }
+
+  const res = await fetch(url, {
+    method: 'POST',
     headers: { 'Content-Type': 'application/json', 'Authorization': auth },
-    body:    JSON.stringify(body),
+    body: JSON.stringify(tweetBody),
   })
   if (!res.ok) throw new Error(`Twitter API error (${res.status}): ${await res.text()}`)
   const data = await res.json()
@@ -359,7 +430,9 @@ export async function publishToAllPlatforms(post: PublishPostData): Promise<void
 
     // Build content from template or default
     const utmLink = buildUtmLink(postUrl, account.platform, post.slug)
-    const defaultTemplate = '{title}\n\n{excerpt_100}\n\n{link}'
+    const defaultTemplate = account.platform === 'twitter'
+      ? '{title} {link} {hashtags}'
+      : '{title}\n\n{excerpt_100}\n\n{link}'
     const template = account.custom_template || defaultTemplate
 
     const content = renderTemplate(template, {
@@ -380,7 +453,7 @@ export async function publishToAllPlatforms(post: PublishPostData): Promise<void
     try {
       switch (account.platform) {
         case 'twitter':
-          platformPostId = await postToTwitter(content, creds) ?? null
+          platformPostId = await postToTwitter(content, creds, post.featured_image) ?? null
           break
         case 'facebook':
           platformPostId = await postToFacebook(content, creds) ?? null
@@ -505,7 +578,10 @@ export async function processScheduledPosts(): Promise<{ processed: number; resu
     const hashtags   = (post.tags || []).slice(0, 3).map((t: string) => '#' + t.replace(/\s+/g, '')).join(' ')
 
     const account = sp.social_accounts
-    const template = account.custom_template || '{title}\n\n{excerpt_100}\n\n{link}'
+    const defaultTpl = account.platform === 'twitter'
+      ? '{title} {link} {hashtags}'
+      : '{title}\n\n{excerpt_100}\n\n{link}'
+    const template = account.custom_template || defaultTpl
     const content = renderTemplate(template, {
       title:        post.title,
       excerpt_50:   excerpt50,
@@ -525,7 +601,7 @@ export async function processScheduledPosts(): Promise<{ processed: number; resu
     try {
       switch (account.platform) {
         case 'twitter':
-          platformPostId = await postToTwitter(content, creds) ?? null
+          platformPostId = await postToTwitter(content, creds, post.featured_image) ?? null
           break
         case 'facebook':
           platformPostId = await postToFacebook(content, creds) ?? null
