@@ -1,5 +1,6 @@
 import crypto from 'crypto'
 import { createClient } from '@/lib/supabase/admin'
+import type { SocialAccount, SocialPost } from '@/types/database'
 
 const SITE = process.env.NEXT_PUBLIC_SITE_URL || 'https://techpivo.com'
 
@@ -17,293 +18,575 @@ const SUBREDDIT_MAP: Record<string, string> = {
   'desktops':         'buildapc',
 }
 
-function twitterOAuth(method: string, url: string): string {
+function renderTemplate(template: string, vars: Record<string, string>): string {
+  let result = template
+  for (const [key, value] of Object.entries(vars)) {
+    result = result.replace(new RegExp(`\\{${key}\\}`, 'g'), value)
+  }
+  return result
+}
+
+function buildUtmLink(url: string, platform: string, slug: string): string {
+  return `${url}?utm_source=${platform}&utm_medium=social&utm_campaign=techpivo-auto&utm_content=${slug}`
+}
+
+// ── Platform posting functions (read from DB credentials) ──────────────
+
+async function postToTwitter(
+  content: string,
+  credentials: Record<string, string>,
+): Promise<string | null> {
+  const { api_key, api_secret, access_token, access_token_secret } = credentials
+  if (!api_key || !api_secret || !access_token || !access_token_secret) return null
+
   const nonce     = crypto.randomBytes(16).toString('hex')
   const timestamp = Math.floor(Date.now() / 1000).toString()
+  const url       = 'https://api.twitter.com/2/tweets'
   const params: Record<string, string> = {
-    oauth_consumer_key:     process.env.TWITTER_API_KEY!,
+    oauth_consumer_key:     api_key,
     oauth_nonce:            nonce,
     oauth_signature_method: 'HMAC-SHA1',
     oauth_timestamp:        timestamp,
-    oauth_token:            process.env.TWITTER_ACCESS_TOKEN!,
+    oauth_token:            access_token,
     oauth_version:          '1.0',
   }
   const paramStr = Object.entries(params)
     .sort(([a], [b]) => a.localeCompare(b))
     .map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v)}`)
     .join('&')
-  const base = `${method}&${encodeURIComponent(url)}&${encodeURIComponent(paramStr)}`
-  const key  = `${encodeURIComponent(process.env.TWITTER_API_SECRET!)}&${encodeURIComponent(process.env.TWITTER_ACCESS_SECRET!)}`
+  const base = `POST&${encodeURIComponent(url)}&${encodeURIComponent(paramStr)}`
+  const key  = `${encodeURIComponent(api_secret)}&${encodeURIComponent(access_token_secret)}`
   const sig  = crypto.createHmac('sha1', key).update(base).digest('base64')
   params['oauth_signature'] = sig
-  return 'OAuth ' + Object.entries(params)
+  const auth = 'OAuth ' + Object.entries(params)
     .map(([k, v]) => `${encodeURIComponent(k)}="${encodeURIComponent(v)}"`)
     .join(', ')
+
+  const body = { text: content.length > 280 ? content.substring(0, 277) + '...' : content }
+  const res  = await fetch(url, {
+    method:  'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': auth },
+    body:    JSON.stringify(body),
+  })
+  if (!res.ok) throw new Error(`Twitter API error (${res.status}): ${await res.text()}`)
+  const data = await res.json()
+  return data?.data?.id || null
 }
 
-export async function postToTwitter(post: {
-  title: string; slug: string; tags: string[]
-}): Promise<string | null> {
-  if (!process.env.TWITTER_API_KEY) return null
-  const url      = `${SITE}/${post.slug}`
-  const hashtags = post.tags.slice(0, 3).map(t => '#' + t.replace(/\s+/g, '')).join(' ')
-  const text     = `${post.title.slice(0, 200)}\n\n${hashtags}\n\n${url}`
-  const endpoint = 'https://api.twitter.com/2/tweets'
-  try {
-    const res  = await fetch(endpoint, {
+async function postToFacebook(
+  content: string,
+  credentials: Record<string, string>,
+): Promise<string | null> {
+  const { page_id, page_access_token } = credentials
+  if (!page_id || !page_access_token) return null
+
+  const res = await fetch(
+    `https://graph.facebook.com/v19.0/${page_id}/feed`,
+    {
       method:  'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': twitterOAuth('POST', endpoint) },
-      body:    JSON.stringify({ text }),
-    })
-    const data = await res.json()
-    return data?.data?.id || null
-  } catch (e) { console.warn('[Twitter]', String(e).slice(0, 80)); return null }
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body:    new URLSearchParams({ message: content, access_token: page_access_token }).toString(),
+    },
+  )
+  if (!res.ok) throw new Error(`Facebook API error (${res.status}): ${await res.text()}`)
+  const data = await res.json()
+  return data?.id || null
 }
 
-export async function postToFacebook(post: {
-  title: string; slug: string; excerpt: string
-}): Promise<string | null> {
-  if (!process.env.FACEBOOK_PAGE_ACCESS_TOKEN) return null
-  const url  = `${SITE}/${post.slug}`
-  const body = `${post.title}\n\n${(post.excerpt || '').slice(0, 200)}\n\nRead more: ${url}`
-  try {
-    const res  = await fetch(
-      `https://graph.facebook.com/v19.0/${process.env.FACEBOOK_PAGE_ID}/feed`,
-      {
-        method:  'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ message: body, link: url, access_token: process.env.FACEBOOK_PAGE_ACCESS_TOKEN }),
-      }
-    )
-    const data = await res.json()
-    return data?.id || null
-  } catch (e) { console.warn('[Facebook]', String(e).slice(0, 80)); return null }
-}
+async function postToLinkedIn(
+  content: string,
+  credentials: Record<string, string>,
+): Promise<string | null> {
+  const { access_token } = credentials
+  if (!access_token) return null
 
-export async function postToLinkedIn(post: {
-  title: string; slug: string; excerpt: string
-}): Promise<string | null> {
-  if (!process.env.LINKEDIN_ACCESS_TOKEN) return null
-  const url  = `${SITE}/${post.slug}`
-  const text = `${post.title}\n\n${(post.excerpt || '').slice(0, 250)}\n\nFull article: ${url}`
-  try {
-    const res = await fetch('https://api.linkedin.com/v2/ugcPosts', {
-      method:  'POST',
-      headers: {
-        'Content-Type':  'application/json',
-        'Authorization': `Bearer ${process.env.LINKEDIN_ACCESS_TOKEN}`,
-        'X-Restli-Protocol-Version': '2.0.0',
-      },
-      body: JSON.stringify({
-        author:          process.env.LINKEDIN_PAGE_URN,
-        lifecycleState:  'PUBLISHED',
-        specificContent: {
-          'com.linkedin.ugc.ShareContent': {
-            shareCommentary:    { text },
-            shareMediaCategory: 'ARTICLE',
-            media: [{
-              status:      'READY',
-              originalUrl: url,
-              title:       { text: post.title.slice(0, 200) },
-              description: { text: (post.excerpt || '').slice(0, 200) },
-            }],
-          },
+  const urn = credentials.linkedin_page_urn || credentials.page_urn || ''
+  const res = await fetch('https://api.linkedin.com/v2/ugcPosts', {
+    method:  'POST',
+    headers: {
+      'Content-Type':  'application/json',
+      'Authorization': `Bearer ${access_token}`,
+      'X-Restli-Protocol-Version': '2.0.0',
+    },
+    body: JSON.stringify({
+      author:          urn ? `urn:li:organization:${urn}` : '',
+      lifecycleState:  'PUBLISHED',
+      specificContent: {
+        'com.linkedin.ugc.ShareContent': {
+          shareCommentary:    { text: content },
+          shareMediaCategory: 'NONE',
         },
-        visibility: { 'com.linkedin.ugc.MemberNetworkVisibility': 'PUBLIC' },
-      }),
-    })
-    const data = await res.json()
-    return data?.id || null
-  } catch (e) { console.warn('[LinkedIn]', String(e).slice(0, 80)); return null }
-}
-
-export async function postToTelegram(post: {
-  title: string; slug: string; excerpt: string
-}): Promise<boolean> {
-  if (!process.env.TELEGRAM_BOT_TOKEN) return false
-  const url  = `${SITE}/${post.slug}`
-  const text = `*${post.title}*\n\n${(post.excerpt || '').slice(0, 280)}\n\n[Read full article](${url})`
-  try {
-    const res = await fetch(
-      `https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}/sendMessage`,
-      {
-        method:  'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({
-          chat_id:               process.env.TELEGRAM_CHANNEL_USERNAME,
-          text,
-          parse_mode:            'Markdown',
-          disable_web_page_preview: false,
-        }),
-      }
-    )
-    return res.ok
-  } catch (e) { console.warn('[Telegram]', String(e).slice(0, 80)); return false }
-}
-
-export async function postToReddit(post: {
-  title: string; slug: string; category_slug: string
-}): Promise<boolean> {
-  if (!process.env.REDDIT_CLIENT_ID) return false
-  const url       = `${SITE}/${post.slug}`
-  const subreddit = SUBREDDIT_MAP[post.category_slug] || 'technology'
-  try {
-    const tokenRes = await fetch('https://www.reddit.com/api/v1/access_token', {
-      method:  'POST',
-      headers: {
-        'Authorization': `Basic ${Buffer.from(`${process.env.REDDIT_CLIENT_ID}:${process.env.REDDIT_CLIENT_SECRET}`).toString('base64')}`,
-        'Content-Type':  'application/x-www-form-urlencoded',
-        'User-Agent':    `Techpivo/1.0 by u/${process.env.REDDIT_USERNAME}`,
       },
-      body: `grant_type=password&username=${process.env.REDDIT_USERNAME}&password=${process.env.REDDIT_PASSWORD}`,
-    })
-    const { access_token } = await tokenRes.json()
-    if (!access_token) return false
+      visibility: { 'com.linkedin.ugc.MemberNetworkVisibility': 'PUBLIC' },
+    }),
+  })
+  if (!res.ok) throw new Error(`LinkedIn API error (${res.status}): ${await res.text()}`)
+  const data = await res.json()
+  return data?.id || null
+}
 
-    const params = new URLSearchParams({
-      api_type: 'json', kind: 'link', sr: subreddit,
-      title: post.title.slice(0, 300), url, resubmit: 'true',
-    })
-    await fetch('https://oauth.reddit.com/api/submit', {
+async function postToTelegram(
+  content: string,
+  credentials: Record<string, string>,
+): Promise<boolean> {
+  const { bot_token, chat_id } = credentials
+  if (!bot_token || !chat_id) return false
+
+  const res = await fetch(
+    `https://api.telegram.org/bot${bot_token}/sendMessage`,
+    {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({
+        chat_id,
+        text:                  content,
+        parse_mode:            'HTML',
+        disable_web_page_preview: false,
+      }),
+    },
+  )
+  return res.ok
+}
+
+async function postToReddit(
+  content: string,
+  credentials: Record<string, string>,
+  categorySlug: string,
+): Promise<boolean> {
+  const { client_id, client_secret, refresh_token } = credentials
+  if (!client_id || !client_secret || !refresh_token) return false
+
+  const subreddit = SUBREDDIT_MAP[categorySlug] || 'technology'
+  const tokenRes  = await fetch('https://www.reddit.com/api/v1/access_token', {
+    method:  'POST',
+    headers: {
+      'Authorization': `Basic ${Buffer.from(`${client_id}:${client_secret}`).toString('base64')}`,
+      'Content-Type':  'application/x-www-form-urlencoded',
+      'User-Agent':    'Techpivo/1.0',
+    },
+    body: `grant_type=refresh_token&refresh_token=${refresh_token}`,
+  })
+  const { access_token } = await tokenRes.json()
+  if (!access_token) return false
+
+  const lines   = content.split('\n')
+  const title   = lines[0]?.slice(0, 300) || 'New Article'
+  const postUrl = lines.find(l => l.startsWith('http')) || SITE
+
+  const params = new URLSearchParams({
+    api_type: 'json', kind: 'link', sr: subreddit,
+    title, url: postUrl, resubmit: 'true',
+  })
+  const res = await fetch('https://oauth.reddit.com/api/submit', {
+    method:  'POST',
+    headers: {
+      'Authorization': `Bearer ${access_token}`,
+      'User-Agent':    'Techpivo/1.0',
+      'Content-Type':  'application/x-www-form-urlencoded',
+    },
+    body: params.toString(),
+  })
+  return res.ok
+}
+
+async function postToMedium(
+  content: string,
+  credentials: Record<string, string>,
+  title: string,
+  tags: string[],
+  canonicalUrl: string,
+): Promise<boolean> {
+  const { integration_token } = credentials
+  if (!integration_token) return false
+
+  const userRes = await fetch('https://api.medium.com/v1/me', {
+    headers: { 'Authorization': `Bearer ${integration_token}` },
+  })
+  const { data: user } = await userRes.json()
+  if (!user?.id) return false
+
+  const res = await fetch(`https://api.medium.com/v1/users/${user.id}/posts`, {
+    method:  'POST',
+    headers: {
+      'Authorization': `Bearer ${integration_token}`,
+      'Content-Type':  'application/json',
+    },
+    body: JSON.stringify({
+      title,
+      contentFormat: 'html',
+      content,
+      canonicalUrl,
+      tags:          tags.slice(0, 5),
+      publishStatus: 'public',
+    }),
+  })
+  return res.ok
+}
+
+async function postToDevTo(
+  content: string,
+  credentials: Record<string, string>,
+  title: string,
+  tags: string[],
+  categorySlug: string,
+): Promise<boolean> {
+  const { api_key } = credentials
+  if (!api_key) return false
+
+  const devCats = ['programming', 'web-development', 'tutorials', 'ai-automation']
+  if (!devCats.includes(categorySlug)) return false
+
+  const res = await fetch('https://dev.to/api/articles', {
+    method:  'POST',
+    headers: { 'api-key': api_key, 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      article: {
+        title,
+        body_markdown: content.replace(/<[^>]+>/g, ''),
+        published:     true,
+        tags:          tags.slice(0, 4).map((t: string) => t.toLowerCase().replace(/\s+/g, '')),
+      },
+    }),
+  })
+  return res.ok
+}
+
+async function postToHashnode(
+  content: string,
+  credentials: Record<string, string>,
+  title: string,
+  tags: string[],
+  canonicalUrl: string,
+): Promise<boolean> {
+  const { personal_access_token } = credentials
+  if (!personal_access_token) return false
+
+  const res = await fetch('https://gql.hashnode.com', {
+    method:  'POST',
+    headers: {
+      'Authorization': personal_access_token,
+      'Content-Type':  'application/json',
+    },
+    body: JSON.stringify({
+      query: `mutation PublishPost($input: PublishPostInput!) {
+        publishPost(input: $input) { post { id url } }
+      }`,
+      variables: {
+        input: {
+          title,
+          contentMarkdown:  content.replace(/<[^>]+>/g, ''),
+          tags:             tags.slice(0, 5).map((t: string) => ({ name: t, slug: t.toLowerCase().replace(/\s+/g, '-') })),
+          originalArticleURL: canonicalUrl,
+        },
+      },
+    }),
+  })
+  return res.ok
+}
+
+async function postToWhatsApp(
+  content: string,
+  credentials: Record<string, string>,
+): Promise<string | null> {
+  const { phone_number_id, access_token } = credentials
+  if (!phone_number_id || !access_token) return null
+
+  const res = await fetch(
+    `https://graph.facebook.com/v19.0/${phone_number_id}/messages`,
+    {
       method:  'POST',
       headers: {
         'Authorization': `Bearer ${access_token}`,
-        'User-Agent':    `Techpivo/1.0 by u/${process.env.REDDIT_USERNAME}`,
-        'Content-Type':  'application/x-www-form-urlencoded',
-      },
-      body: params.toString(),
-    })
-    return true
-  } catch (e) { console.warn('[Reddit]', String(e).slice(0, 80)); return false }
-}
-
-export async function crosspostToMedium(post: {
-  title: string; content: string; tags: string[]; slug: string
-}): Promise<boolean> {
-  if (!process.env.MEDIUM_INTEGRATION_TOKEN) return false
-  const canonicalUrl = `${SITE}/${post.slug}`
-  try {
-    const userRes = await fetch('https://api.medium.com/v1/me', {
-      headers: { 'Authorization': `Bearer ${process.env.MEDIUM_INTEGRATION_TOKEN}` },
-    })
-    const { data: user } = await userRes.json()
-    if (!user?.id) return false
-
-    await fetch(`https://api.medium.com/v1/users/${user.id}/posts`, {
-      method:  'POST',
-      headers: {
-        'Authorization': `Bearer ${process.env.MEDIUM_INTEGRATION_TOKEN}`,
         'Content-Type':  'application/json',
       },
       body: JSON.stringify({
-        title: post.title, contentFormat: 'html',
-        content: post.content, canonicalUrl,
-        tags: post.tags.slice(0, 5), publishStatus: 'public',
+        messaging_product: 'whatsapp',
+        to:                phone_number_id,
+        type:              'text',
+        text:              { body: content },
       }),
-    })
-    return true
-  } catch (e) { console.warn('[Medium]', String(e).slice(0, 80)); return false }
+    },
+  )
+  if (!res.ok) throw new Error(`WhatsApp API error (${res.status}): ${await res.text()}`)
+  const data = await res.json()
+  return data?.messages?.[0]?.id || null
 }
 
-export async function crosspostToDevTo(post: {
-  title: string; content: string; tags: string[];
-  slug: string; category_slug: string
-}): Promise<boolean> {
-  if (!process.env.DEVTO_API_KEY) return false
-  const devCats = ['programming', 'web-development', 'tutorials', 'ai-automation']
-  if (!devCats.includes(post.category_slug)) return false
-  const canonicalUrl = `${SITE}/${post.slug}`
-  try {
-    await fetch('https://dev.to/api/articles', {
-      method:  'POST',
-      headers: { 'api-key': process.env.DEVTO_API_KEY, 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        article: {
-          title:         post.title,
-          body_markdown: post.content.replace(/<[^>]+>/g, ''),
-          published:     true,
-          canonical_url: canonicalUrl,
-          tags:          post.tags.slice(0, 4).map((t: string) => t.toLowerCase().replace(/\s+/g, '')),
-        },
-      }),
-    })
-    return true
-  } catch (e) { console.warn('[Dev.to]', String(e).slice(0, 80)); return false }
-}
+// ── Main publisher: reads from DB ─────────────────────────────────────
 
-export async function crosspostToHashnode(post: {
-  title: string; content: string; tags: string[];
-  slug: string; category_slug: string
-}): Promise<boolean> {
-  if (!process.env.HASHNODE_ACCESS_TOKEN || !process.env.HASHNODE_PUBLICATION_ID) return false
-  const canonicalUrl = `${SITE}/${post.slug}`
-  try {
-    await fetch('https://gql.hashnode.com', {
-      method:  'POST',
-      headers: {
-        'Authorization': process.env.HASHNODE_ACCESS_TOKEN,
-        'Content-Type':  'application/json',
-      },
-      body: JSON.stringify({
-        query: `mutation PublishPost($input: PublishPostInput!) {
-          publishPost(input: $input) { post { id url } }
-        }`,
-        variables: {
-          input: {
-            title:            post.title,
-            contentMarkdown:  post.content.replace(/<[^>]+>/g, ''),
-            publicationId:    process.env.HASHNODE_PUBLICATION_ID,
-            tags:             post.tags.slice(0, 5).map((t: string) => ({ name: t, slug: t.toLowerCase().replace(/\s+/g, '-') })),
-            originalArticleURL: canonicalUrl,
-          },
-        },
-      }),
-    })
-    return true
-  } catch (e) { console.warn('[Hashnode]', String(e).slice(0, 80)); return false }
-}
-
-export async function publishToAllPlatforms(post: {
-  id: string; title: string; slug: string; excerpt: string;
-  content: string; featured_image: string; tags: string[];
+interface PublishPostData {
+  id: string
+  title: string
+  slug: string
+  excerpt: string
+  content: string
+  featured_image: string
+  tags: string[]
   category_slug: string
-}): Promise<void> {
+}
+
+export async function publishToAllPlatforms(post: PublishPostData): Promise<void> {
   const supabase = createClient()
 
-  const platforms = [
-    { name: 'twitter',  fn: () => postToTwitter(post) },
-    { name: 'facebook', fn: () => postToFacebook(post) },
-    { name: 'linkedin', fn: () => postToLinkedIn(post) },
-    { name: 'telegram', fn: () => postToTelegram(post) },
-    { name: 'medium',   fn: () => crosspostToMedium(post) },
-    { name: 'devto',    fn: () => crosspostToDevTo(post) },
-    { name: 'hashnode', fn: () => crosspostToHashnode(post) },
-    {
-      name: 'reddit',
-      fn:   async () => {
-        await new Promise(r => setTimeout(r, 10 * 60 * 1000))
-        return postToReddit(post)
-      },
-    },
-  ]
+  // 1. Fetch all active accounts with auto_publish enabled
+  const { data: accounts, error } = await supabase
+    .from('social_accounts')
+    .select('*')
+    .eq('auto_publish', true)
+    .eq('is_active', true)
 
-  for (const p of platforms) {
-    try {
-      const result = await p.fn()
-      await supabase.from('social_posts_log').insert({
-        post_id:  post.id,
-        platform: p.name,
-        status:   result ? 'sent' : 'failed',
-        sent_at:  new Date().toISOString(),
-      }).then()
-    } catch (e) {
-      await supabase.from('social_posts_log').insert({
-        post_id:  post.id,
-        platform: p.name,
-        status:   'failed',
-        error:    String(e).slice(0, 200),
-      }).then()
+  if (error || !accounts || accounts.length === 0) return
+
+  const postUrl    = `${SITE}/${post.slug}`
+  const excerpt50  = post.excerpt.length > 50  ? post.excerpt.slice(0, 47) + '...' : post.excerpt
+  const excerpt100 = post.excerpt.length > 100 ? post.excerpt.slice(0, 97) + '...' : post.excerpt
+  const hashtags   = post.tags.slice(0, 3).map(t => '#' + t.replace(/\s+/g, '')).join(' ')
+
+  for (const account of accounts) {
+    const creds = account.credentials || {}
+    const hasCreds = Object.values(creds).some(v => v && String(v).trim())
+    if (!hasCreds) continue
+
+    // Category filter
+    if (account.category_filter && account.category_filter.length > 0) {
+      if (!account.category_filter.includes(post.category_slug)) continue
     }
-    await new Promise(r => setTimeout(r, 1200))
+
+    // Post delay
+    if (account.post_delay_minutes && account.post_delay_minutes > 0) {
+      await new Promise(r => setTimeout(r, account.post_delay_minutes * 60 * 1000))
+    }
+
+    // Build content from template or default
+    const utmLink = buildUtmLink(postUrl, account.platform, post.slug)
+    const defaultTemplate = '{title}\n\n{excerpt_100}\n\n{link}'
+    const template = account.custom_template || defaultTemplate
+
+    const content = renderTemplate(template, {
+      title:        post.title,
+      excerpt_50:   excerpt50,
+      excerpt_100:  excerpt100,
+      link:         utmLink,
+      hashtags,
+      category:     post.category_slug.replace(/-/g, ' '),
+      author:       'Techpivo',
+      reading_time: '3 min',
+    })
+
+    let platformPostId: string | null = null
+    let status: 'sent' | 'failed' = 'failed'
+    let errorMessage: string | null = null
+
+    try {
+      switch (account.platform) {
+        case 'twitter':
+          platformPostId = await postToTwitter(content, creds) ?? null
+          break
+        case 'facebook':
+          platformPostId = await postToFacebook(content, creds) ?? null
+          break
+        case 'linkedin':
+          platformPostId = await postToLinkedIn(content, creds) ?? null
+          break
+        case 'telegram':
+          await postToTelegram(content, creds)
+          platformPostId = 'sent'
+          break
+        case 'reddit':
+          await postToReddit(content, creds, post.category_slug)
+          platformPostId = 'sent'
+          break
+        case 'medium':
+          await postToMedium(content, creds, post.title, post.tags, postUrl)
+          platformPostId = 'sent'
+          break
+        case 'devto':
+          await postToDevTo(content, creds, post.title, post.tags, post.category_slug)
+          platformPostId = 'sent'
+          break
+        case 'hashnode':
+          await postToHashnode(content, creds, post.title, post.tags, postUrl)
+          platformPostId = 'sent'
+          break
+        case 'whatsapp':
+          platformPostId = await postToWhatsApp(content, creds) ?? null
+          break
+        default:
+          continue
+      }
+      status = 'sent'
+    } catch (e) {
+      errorMessage = String(e).slice(0, 200)
+      console.warn(`[${account.platform}]`, errorMessage)
+    }
+
+    // Log to social_posts (the queue table)
+    await supabase.from('social_posts').insert({
+      post_id:          post.id,
+      platform:         account.platform,
+      social_account_id: account.id,
+      status,
+      sent_at:          status === 'sent' ? new Date().toISOString() : null,
+      platform_post_id: platformPostId,
+      content_preview:  content.slice(0, 300),
+      error_message:    errorMessage,
+    } as Partial<SocialPost>)
+
+    // Also log to social_posts_log for backward compat
+    await supabase.from('social_posts_log').insert({
+      post_id:  post.id,
+      platform: account.platform,
+      status,
+      sent_at:  status === 'sent' ? new Date().toISOString() : null,
+      error:    errorMessage,
+    })
+
+    // Update account stats
+    if (status === 'sent') {
+      await supabase
+        .from('social_accounts')
+        .update({
+          total_posts_sent: (account.total_posts_sent || 0) + 1,
+          last_posted_at:   new Date().toISOString(),
+        })
+        .eq('id', account.id)
+    }
   }
+}
+
+// ── Scheduled post processor (called by cron) ─────────────────────────
+
+export async function processScheduledPosts(): Promise<{ processed: number; results: Array<{ id: string; platform: string; status: string }> }> {
+  const supabase = createClient()
+
+  const { data: scheduledPosts, error } = await supabase
+    .from('social_posts')
+    .select('*, social_accounts!inner(*)')
+    .eq('status', 'scheduled')
+    .lte('scheduled_at', new Date().toISOString())
+    .limit(20)
+
+  if (error || !scheduledPosts || scheduledPosts.length === 0) {
+    return { processed: 0, results: [] }
+  }
+
+  const results: Array<{ id: string; platform: string; status: string }> = []
+
+  for (const sp of scheduledPosts as any[]) {
+    // Fetch the actual post
+    const { data: post } = await supabase
+      .from('posts')
+      .select('id, title, slug, excerpt, content, featured_image, tags, category_id')
+      .eq('id', sp.post_id)
+      .single()
+
+    if (!post) {
+      await supabase
+        .from('social_posts')
+        .update({ status: 'failed', error_message: 'Post not found' })
+        .eq('id', sp.id)
+      results.push({ id: sp.id, platform: sp.platform, status: 'failed' })
+      continue
+    }
+
+    // Get category slug
+    const { data: cat } = await supabase
+      .from('categories')
+      .select('slug')
+      .eq('id', post.category_id)
+      .single()
+
+    const categorySlug = cat?.slug || 'tech-news'
+    const postUrl = `${SITE}/${post.slug}`
+    const utmLink = buildUtmLink(postUrl, sp.platform, post.slug)
+
+    const excerpt50  = (post.excerpt || '').length > 50  ? (post.excerpt || '').slice(0, 47) + '...' : post.excerpt || ''
+    const excerpt100 = (post.excerpt || '').length > 100 ? (post.excerpt || '').slice(0, 97) + '...' : post.excerpt || ''
+    const hashtags   = (post.tags || []).slice(0, 3).map((t: string) => '#' + t.replace(/\s+/g, '')).join(' ')
+
+    const account = sp.social_accounts
+    const template = account.custom_template || '{title}\n\n{excerpt_100}\n\n{link}'
+    const content = renderTemplate(template, {
+      title:        post.title,
+      excerpt_50:   excerpt50,
+      excerpt_100:  excerpt100,
+      link:         utmLink,
+      hashtags,
+      category:     categorySlug.replace(/-/g, ' '),
+      author:       'Techpivo',
+      reading_time: '3 min',
+    })
+
+    const creds = account.credentials || {}
+    let platformPostId: string | null = null
+    let status: 'sent' | 'failed' = 'failed'
+    let errorMessage: string | null = null
+
+    try {
+      switch (account.platform) {
+        case 'twitter':
+          platformPostId = await postToTwitter(content, creds) ?? null
+          break
+        case 'facebook':
+          platformPostId = await postToFacebook(content, creds) ?? null
+          break
+        case 'linkedin':
+          platformPostId = await postToLinkedIn(content, creds) ?? null
+          break
+        case 'telegram':
+          await postToTelegram(content, creds)
+          platformPostId = 'sent'
+          break
+        case 'reddit':
+          await postToReddit(content, creds, categorySlug)
+          platformPostId = 'sent'
+          break
+        case 'medium':
+          await postToMedium(content, creds, post.title, post.tags || [], postUrl)
+          platformPostId = 'sent'
+          break
+        case 'devto':
+          await postToDevTo(content, creds, post.title, post.tags || [], categorySlug)
+          platformPostId = 'sent'
+          break
+        case 'hashnode':
+          await postToHashnode(content, creds, post.title, post.tags || [], postUrl)
+          platformPostId = 'sent'
+          break
+        case 'whatsapp':
+          platformPostId = await postToWhatsApp(content, creds) ?? null
+          break
+        default:
+          continue
+      }
+      status = 'sent'
+    } catch (e) {
+      errorMessage = String(e).slice(0, 200)
+    }
+
+    await supabase
+      .from('social_posts')
+      .update({
+        status,
+        sent_at:         status === 'sent' ? new Date().toISOString() : null,
+        platform_post_id: platformPostId,
+        content_preview:  content.slice(0, 300),
+        error_message:    errorMessage,
+      })
+      .eq('id', sp.id)
+
+    if (status === 'sent') {
+      await supabase
+        .from('social_accounts')
+        .update({
+          total_posts_sent: (account.total_posts_sent || 0) + 1,
+          last_posted_at:   new Date().toISOString(),
+        })
+        .eq('id', account.id)
+    }
+
+    results.push({ id: sp.id, platform: sp.platform, status })
+  }
+
+  return { processed: results.length, results }
 }
