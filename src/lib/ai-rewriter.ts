@@ -1,6 +1,6 @@
 import { createClient } from '@/lib/supabase/admin'
 
-const GEMINI_DAILY_CAP = 30
+const GEMINI_DAILY_CAP = 15
 const MANUAL_GEMINI_DAILY_CAP = 20
 const GEMINI_RATE_MS = 1000
 
@@ -139,6 +139,17 @@ ARTICLE STRUCTURE — use this exact HTML structure, in this order:
 <h2>The Bottom Line</h2>
 <p>[2-3 sentences. Practical takeaway. What to watch for next. End with something memorable, not generic.]</p>
 </section>
+
+CRITICAL HTML FORMATTING RULES:
+- Every paragraph MUST be wrapped in <p> tags
+- Every section MUST start with <h2> heading
+- Use <ul><li> for bullet points, never plain text with dashes
+- Use <blockquote> for quotes, never plain text with quotation marks
+- Use <strong> for ONE key fact per section, no more
+- NO empty paragraphs — each <p> must have content
+- NO <br> tags — use separate <p> tags instead
+- Spacing between sections: leave a blank line between closing </p> and next <h2>
+- The HTML must be clean and well-indented for readability
 
 NAMED ENTITY DENSITY — include at least 5 named entities across the article (companies, people, products, technologies, places). Include at least 3 specific numbers, percentages, or dates.
 
