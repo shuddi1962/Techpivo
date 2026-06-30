@@ -1,5 +1,6 @@
 "use client"
 
+import { useEffect, useRef } from "react"
 import { cn } from "@/lib/utils"
 
 export type BannerSize = "468x60" | "300x250" | "160x600" | "160x300" | "320x50" | "728x90"
@@ -58,20 +59,32 @@ interface AdsterraBannerProps {
 
 export function AdsterraBanner({ size, className, label }: AdsterraBannerProps) {
   const config = BANNERS[size]
-  if (!config) return null
+  const containerRef = useRef<HTMLDivElement>(null)
+  const scriptLoaded = useRef(false)
 
-  const adHtml = `
-    <script>
-      atOptions = {
-        'key' : '${config.key}',
-        'format' : 'iframe',
-        'height' : ${config.height},
-        'width' : ${config.width},
-        'params' : {}
-      };
-    </script>
-    <script src="${config.invokeUrl}"></script>
-  `
+  useEffect(() => {
+    if (!config || scriptLoaded.current || !containerRef.current) return
+
+    const existingScript = document.querySelector(`script[src="${config.invokeUrl}"]`)
+    if (existingScript) {
+      scriptLoaded.current = true
+      return
+    }
+
+    const atOptionsScript = document.createElement("script")
+    atOptionsScript.textContent = `atOptions = { 'key' : '${config.key}', 'format' : 'iframe', 'height' : ${config.height}, 'width' : ${config.width}, 'params' : {} };`
+    containerRef.current.appendChild(atOptionsScript)
+
+    const invokeScript = document.createElement("script")
+    invokeScript.async = true
+    invokeScript.src = config.invokeUrl
+    invokeScript.onload = () => {
+      scriptLoaded.current = true
+    }
+    containerRef.current.appendChild(invokeScript)
+  }, [config])
+
+  if (!config) return null
 
   return (
     <div className={cn("adsterra-banner flex flex-col items-center", className)}>
@@ -79,8 +92,8 @@ export function AdsterraBanner({ size, className, label }: AdsterraBannerProps) 
         <span className="text-[9px] uppercase tracking-widest text-muted-foreground/50 mb-1">{label}</span>
       )}
       <div
+        ref={containerRef}
         style={{ width: config.width, height: config.height, minHeight: config.height }}
-        dangerouslySetInnerHTML={{ __html: adHtml }}
       />
     </div>
   )
