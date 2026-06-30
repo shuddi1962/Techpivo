@@ -1,6 +1,6 @@
 import { createClient } from '@/lib/supabase/admin'
 
-const GEMINI_DAILY_CAP = 15
+const GEMINI_DAILY_CAP = 100
 const MANUAL_GEMINI_DAILY_CAP = 20
 const GEMINI_RATE_MS = 1000
 
