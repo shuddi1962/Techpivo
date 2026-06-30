@@ -204,7 +204,11 @@ async function parseFeed(url: string): Promise<RawItem[]> {
           rawImage:    extractRawImage(x),
         })
       }
-      return items
+      return items.sort((a, b) => {
+        const dateA = new Date(a.pubDate).getTime() || 0
+        const dateB = new Date(b.pubDate).getTime() || 0
+        return dateB - dateA
+      })
     } catch (e) {
       if (attempt < 3) {
         console.warn(`[parseFeed] Attempt ${attempt}/3 failed for ${url}, retrying...`)
@@ -237,8 +241,7 @@ function fingerprint(title: string, pubDate: string): string | null {
   const words = title.toLowerCase().replace(/[^a-z0-9\s]/g,'').split(/\s+/)
     .filter(w => w.length > 3 && !STOP.has(w)).sort().slice(0,8)
   if (words.length < 2) return null
-  const day = new Date(pubDate || Date.now()).toISOString().slice(0,10)
-  return `${day}:${words.join('-')}`
+  return words.join('-')
 }
 
 function autoCategory(title: string, feedCategory: string, catMap: Record<string, string>): string {
@@ -382,10 +385,10 @@ async function run(req: NextRequest) {
       }
 
       const itemNorm = item.title.toLowerCase().replace(/[^a-z0-9\s]/g, '').replace(/\s+/g, ' ').trim()
-      if (itemNorm.length > 15) {
+      if (itemNorm.length > 20) {
         let isDup = false
         for (const existingNorm of Array.from(seenTitles.keys())) {
-          if (itemNorm === existingNorm || itemNorm.includes(existingNorm) || existingNorm.includes(itemNorm)) {
+          if (itemNorm === existingNorm) {
             isDup = true; break
           }
         }
