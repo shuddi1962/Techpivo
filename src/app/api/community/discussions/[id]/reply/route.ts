@@ -24,14 +24,15 @@ export async function POST(
   if (error) return NextResponse.json({ error: error.message }, { status: 400 });
 
   // Update reply count on the post
-  await supabase.rpc('increment_reply_count', { post_id: id }).catch(() => {
+  try {
+    await supabase.rpc('increment_reply_count', { post_id: id });
+  } catch {
     // Fallback: manually increment
-    supabase.from('forum_posts').select('reply_count').eq('id', id).single().then(({ data: post }) => {
-      if (post) {
-        supabase.from('forum_posts').update({ reply_count: (post.reply_count || 0) + 1 }).eq('id', id);
-      }
-    });
-  });
+    const { data: post } = await supabase.from('forum_posts').select('reply_count').eq('id', id).single();
+    if (post) {
+      await supabase.from('forum_posts').update({ reply_count: (post.reply_count || 0) + 1 }).eq('id', id);
+    }
+  }
 
   return NextResponse.json({ reply: data });
 }
