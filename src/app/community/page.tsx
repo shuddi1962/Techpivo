@@ -3,7 +3,7 @@ import { Badge as UIBadge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { getLeaderboard, getQuizzes, getActivePolls, getForumCategories, LEVELS, BADGES, getLevelForXP } from '@/lib/community';
-import { MessageSquare, Trophy, Brain, BarChart3, BookOpen, Users, Flame, Star, ArrowRight, Zap, Target, Award } from 'lucide-react';
+import { MessageSquare, Trophy, Brain, BarChart3, BookOpen, Users, Flame, Star, ArrowRight, Zap, Target, Award, Calendar } from 'lucide-react';
 
 export const metadata = {
   title: 'Community — TechPivo',
@@ -240,6 +240,46 @@ export default async function CommunityPage() {
             </div>
           </div>
         )}
+
+        <div>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-2xl font-bold flex items-center gap-2">
+              <Calendar className="h-6 w-6 text-blue-500" />
+              Upcoming Events
+            </h2>
+            <Link href="/community/events">
+              <Button variant="outline" size="sm">View Events <ArrowRight className="ml-1 h-4 w-4" /></Button>
+            </Link>
+          </div>
+          <div className="grid md:grid-cols-2 gap-3">
+            <Link href="/community/events">
+              <Card className="hover:shadow-md transition-shadow cursor-pointer">
+                <CardContent className="p-4 flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-lg bg-blue-500/10 flex items-center justify-center">
+                    <Calendar className="h-5 w-5 text-blue-500" />
+                  </div>
+                  <div>
+                    <div className="font-medium">Tech Events & Meetups</div>
+                    <div className="text-sm text-muted-foreground">Workshops, conferences, and community gatherings</div>
+                  </div>
+                </CardContent>
+              </Card>
+            </Link>
+            <Link href="/community/events?type=workshop">
+              <Card className="hover:shadow-md transition-shadow cursor-pointer">
+                <CardContent className="p-4 flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-lg bg-purple-500/10 flex items-center justify-center">
+                    <BookOpen className="h-5 w-5 text-purple-500" />
+                  </div>
+                  <div>
+                    <div className="font-medium">Workshops</div>
+                    <div className="text-sm text-muted-foreground">Hands-on coding sessions and tutorials</div>
+                  </div>
+                </CardContent>
+              </Card>
+            </Link>
+          </div>
+        </div>
 
         <Card className="bg-gradient-to-r from-primary/5 to-primary/10 border-primary/20">
           <CardContent className="p-8 text-center">

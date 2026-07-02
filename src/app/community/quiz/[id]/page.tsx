@@ -92,6 +92,21 @@ export default function QuizRunnerPage({ params }: { params: Promise<{ id: strin
         }
       });
       setState(prev => ({ ...prev, status: 'finished', score, correctAnswers: correct }));
+
+      // Save attempt to database
+      params.then(({ id }) => {
+        fetch(`/api/community/quiz/${id}/attempt`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            score,
+            total_questions: state.questions.length,
+            correct_answers: correct,
+            time_taken: state.timeElapsed,
+            answers: state.answers,
+          }),
+        }).catch(() => {});
+      });
     }
   };
 

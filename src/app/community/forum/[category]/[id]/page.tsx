@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
-import { ArrowLeft, Pin, CheckCircle2, ThumbsUp, MessageSquare, Eye, Clock, Send } from 'lucide-react';
+import { ArrowLeft, Pin, CheckCircle2, ThumbsUp, ThumbsDown, MessageSquare, Eye, Clock, Send, Bookmark, Share2 } from 'lucide-react';
 
 interface ForumPost {
   id: string;
@@ -74,6 +74,26 @@ export default function ForumPostPage({ params }: { params: Promise<{ category: 
     setSubmitting(false);
   };
 
+  const handleVote = async (type: 'post' | 'reply', id: string, voteType: 1 | -1) => {
+    try {
+      await fetch('/api/community/vote', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          post_id: type === 'post' ? id : null,
+          reply_id: type === 'reply' ? id : null,
+          vote_type: voteType,
+        }),
+      });
+      // Refresh votes
+      if (type === 'post' && post) {
+        setPost({ ...post, vote_count: post.vote_count + voteType });
+      }
+    } catch (e) {
+      console.error('Failed to vote');
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -136,11 +156,15 @@ export default function ForumPostPage({ params }: { params: Promise<{ category: 
                   </div>
                 )}
                 <div className="flex items-center gap-4 text-sm text-muted-foreground pt-4 border-t">
-                  <button className="flex items-center gap-1 hover:text-primary">
-                    <ThumbsUp className="h-4 w-4" /> {post.vote_count}
-                  </button>
+                  <div className="flex items-center gap-1">
+                    <button onClick={() => handleVote('post', post.id, 1)} className="p-1 rounded hover:bg-primary/10 hover:text-primary"><ThumbsUp className="h-4 w-4" /></button>
+                    <span className="font-medium text-foreground">{post.vote_count}</span>
+                    <button onClick={() => handleVote('post', post.id, -1)} className="p-1 rounded hover:bg-destructive/10 hover:text-destructive"><ThumbsDown className="h-4 w-4" /></button>
+                  </div>
                   <span className="flex items-center gap-1"><MessageSquare className="h-4 w-4" /> {post.reply_count}</span>
                   <span className="flex items-center gap-1"><Eye className="h-4 w-4" /> {post.view_count}</span>
+                  <button className="flex items-center gap-1 hover:text-primary ml-auto"><Bookmark className="h-4 w-4" /> Save</button>
+                  <button className="flex items-center gap-1 hover:text-primary"><Share2 className="h-4 w-4" /> Share</button>
                 </div>
               </div>
             </div>
@@ -170,9 +194,11 @@ export default function ForumPostPage({ params }: { params: Promise<{ category: 
                     </div>
                     <div className="text-sm">{reply.content}</div>
                     <div className="flex items-center gap-3 mt-2 text-sm text-muted-foreground">
-                      <button className="flex items-center gap-1 hover:text-primary">
-                        <ThumbsUp className="h-3 w-3" /> {reply.vote_count}
-                      </button>
+                      <div className="flex items-center gap-1">
+                        <button onClick={() => handleVote('reply', reply.id, 1)} className="p-0.5 rounded hover:bg-primary/10 hover:text-primary"><ThumbsUp className="h-3 w-3" /></button>
+                        <span className="font-medium text-foreground">{reply.vote_count}</span>
+                        <button onClick={() => handleVote('reply', reply.id, -1)} className="p-0.5 rounded hover:bg-destructive/10 hover:text-destructive"><ThumbsDown className="h-3 w-3" /></button>
+                      </div>
                     </div>
                   </div>
                 </div>

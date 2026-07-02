@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
+import FollowButton from '@/components/follow-button';
 import { getLevelForXP, getRankTitle, BADGES } from '@/lib/community-utils';
 import { createClient } from '@/lib/supabase/server';
 import { MapPin, Globe, Calendar, Star, Users, BookOpen, MessageSquare, Trophy, Target, ArrowLeft } from 'lucide-react';
@@ -93,7 +94,7 @@ export default async function PublicProfilePage({ params }: { params: Promise<{ 
             </div>
             <p className="text-lg text-muted-foreground mb-2">{levelInfo.title}</p>
             {profile.bio && <p className="text-muted-foreground mb-3 max-w-lg">{profile.bio}</p>}
-            <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
+            <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground mb-3">
               {profile.location && (
                 <span className="flex items-center gap-1"><MapPin className="h-3 w-3" /> {profile.location}</span>
               )}
@@ -104,6 +105,7 @@ export default async function PublicProfilePage({ params }: { params: Promise<{ 
               )}
               <span className="flex items-center gap-1"><Calendar className="h-3 w-3" /> Joined {new Date(profile.created_at).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}</span>
             </div>
+            <FollowButton targetUserId={profile.id} targetUsername={username} />
           </div>
         </div>
 
