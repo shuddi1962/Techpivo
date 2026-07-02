@@ -31,6 +31,8 @@ export function MainNav({ categories }: { categories: any[] }) {
             ))}
             <Link href="/tools" className="nav-link" style={{ "--hover-color": "#F59E0B" } as React.CSSProperties}>Tools</Link>
             <Link href="/community" className="nav-link" style={{ "--hover-color": "#8B5CF6" } as React.CSSProperties}>Community</Link>
+            <Link href="/community/events" className="nav-link" style={{ "--hover-color": "#3B82F6" } as React.CSSProperties}>Events</Link>
+            <Link href="/marketplace" className="nav-link" style={{ "--hover-color": "#10B981" } as React.CSSProperties}>Shop</Link>
           </div>
           <div className="nav-right">
             <div className="live-dot-wrap">
@@ -52,6 +54,8 @@ export function MainNav({ categories }: { categories: any[] }) {
           ))}
           <Link href="/tools" className="mobile-link">Tools</Link>
           <Link href="/community" className="mobile-link">Community</Link>
+          <Link href="/community/events" className="mobile-link">Events</Link>
+          <Link href="/marketplace" className="mobile-link">Shop</Link>
         </div>
       )}
     </>

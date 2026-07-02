@@ -177,6 +177,13 @@ export default function EnterpriseSeoCenter() {
           <TabsTrigger value="schema">Schema</TabsTrigger>
           <TabsTrigger value="technical">Technical SEO</TabsTrigger>
           <TabsTrigger value="authority">Topic Authority</TabsTrigger>
+          <TabsTrigger value="redirects">Redirects</TabsTrigger>
+          <TabsTrigger value="duplicates">Duplicates</TabsTrigger>
+          <TabsTrigger value="content-decay">Content Decay</TabsTrigger>
+          <TabsTrigger value="robots">Robots.txt</TabsTrigger>
+          <TabsTrigger value="sitemap">Sitemap</TabsTrigger>
+          <TabsTrigger value="cwv">Core Web Vitals</TabsTrigger>
+          <TabsTrigger value="image-seo">Image SEO</TabsTrigger>
           <TabsTrigger value="settings">Settings</TabsTrigger>
         </TabsList>
 
@@ -574,6 +581,167 @@ export default function EnterpriseSeoCenter() {
             </CardContent>
           </Card>
         </TabsContent>
+
+        <TabsContent value="redirects" className="space-y-6">
+          <Card>
+            <CardHeader><CardTitle>Redirect Manager</CardTitle></CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex gap-2">
+                <Input placeholder="Source URL (e.g., /old-page)" className="flex-1" />
+                <Input placeholder="Target URL (e.g., /new-page)" className="flex-1" />
+                <Button><Plus className="h-4 w-4 mr-1" /> Add Redirect</Button>
+              </div>
+              <div className="space-y-2">
+                {[{ from: "/old-python-guide", to: "/python-tutorial", type: "301" }, { from: "/old-ai-tools", to: "/best-ai-tools", type: "301" }, { from: "/deprecated-page", to: "/", type: "302" }].map((r, i) => (
+                  <div key={i} className="flex items-center justify-between p-3 rounded-lg bg-muted/30 text-sm">
+                    <div className="flex items-center gap-2">
+                      <Badge variant="outline">{r.type}</Badge>
+                      <span className="font-mono">{r.from}</span>
+                      <span className="text-muted-foreground">→</span>
+                      <span className="font-mono">{r.to}</span>
+                    </div>
+                    <Button variant="ghost" size="sm"><Trash2 className="h-3 w-3" /></Button>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="duplicates" className="space-y-6">
+          <Card>
+            <CardHeader><CardTitle>Duplicate Content Detection</CardTitle></CardHeader>
+            <CardContent className="space-y-3">
+              {[{ a: "Best AI Tools 2026", b: "Top AI Tools to Try", similarity: "78%" }, { a: "Python Tutorial for Beginners", b: "Learn Python Basics", similarity: "65%" }].map((d, i) => (
+                <div key={i} className="p-3 rounded-lg bg-muted/30">
+                  <div className="flex items-center justify-between mb-2">
+                    <Badge variant="destructive">{d.similarity} similar</Badge>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2 text-sm">
+                    <div className="p-2 rounded bg-background"><p className="font-medium">{d.a}</p></div>
+                    <div className="p-2 rounded bg-background"><p className="font-medium">{d.b}</p></div>
+                  </div>
+                  <div className="flex gap-2 mt-2">
+                    <Button variant="outline" size="sm">Merge</Button>
+                    <Button variant="outline" size="sm">Rewrite</Button>
+                    <Button variant="ghost" size="sm">Ignore</Button>
+                  </div>
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="content-decay" className="space-y-6">
+          <Card>
+            <CardHeader><CardTitle>Content Decay Monitor</CardTitle></CardHeader>
+            <CardContent className="space-y-3">
+              {[{ title: "iPhone 15 Review", decline: "-42%", reason: "Outdated product", lastUpdated: "8 months ago" }, { title: "Best Laptops 2025", decline: "-35%", reason: "Year outdated", lastUpdated: "6 months ago" }, { title: "ChatGPT Guide", decline: "-18%", reason: "New features launched", lastUpdated: "3 months ago" }].map((d, i) => (
+                <div key={i} className="flex items-center justify-between p-3 rounded-lg bg-muted/30">
+                  <div>
+                    <p className="font-medium">{d.title}</p>
+                    <p className="text-xs text-muted-foreground">{d.reason} · Last updated: {d.lastUpdated}</p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Badge variant="destructive">{d.decline}</Badge>
+                    <Button variant="outline" size="sm">Refresh</Button>
+                  </div>
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="robots" className="space-y-6">
+          <Card>
+            <CardHeader><CardTitle>Robots.txt Manager</CardTitle></CardHeader>
+            <CardContent>
+              <textarea className="w-full h-48 p-3 font-mono text-sm border rounded-lg bg-muted/30" defaultValue={`User-agent: *\nAllow: /\nDisallow: /admin/\nDisallow: /api/\n\nUser-agent: GPTBot\nDisallow: /\n\nSitemap: https://techpivo.com/sitemap.xml`} />
+              <div className="flex gap-2 mt-3">
+                <Button>Save Robots.txt</Button>
+                <Button variant="outline">Preview</Button>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="sitemap" className="space-y-6">
+          <Card>
+            <CardHeader><CardTitle>Sitemap Manager</CardTitle></CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                {[{ label: "Total URLs", value: "342" }, { label: "Indexed", value: "298" }, { label: "Pending", value: "44" }, { label: "Errors", value: "3" }].map((s, i) => (
+                  <div key={i} className="p-3 rounded-lg bg-muted/30 text-center">
+                    <p className="text-xl font-bold">{s.value}</p>
+                    <p className="text-xs text-muted-foreground">{s.label}</p>
+                  </div>
+                ))}
+              </div>
+              <div className="space-y-2">
+                {[{ url: "https://techpivo.com/sitemap.xml", pages: 342, status: "OK" }, { url: "https://techpivo.com/sitemap-posts.xml", pages: 298, status: "OK" }, { url: "https://techpivo.com/sitemap-categories.xml", pages: 11, status: "OK" }].map((s, i) => (
+                  <div key={i} className="flex items-center justify-between p-3 rounded-lg bg-muted/30 text-sm">
+                    <span className="font-mono">{s.url}</span>
+                    <div className="flex items-center gap-2">
+                      <span className="text-muted-foreground">{s.pages} pages</span>
+                      <Badge variant="default">{s.status}</Badge>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <Button><RefreshCw className="h-4 w-4 mr-1" /> Regenerate Sitemap</Button>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="cwv" className="space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {[{ metric: "LCP", value: "2.1s", status: "Good", target: "< 2.5s" }, { metric: "INP", value: "180ms", status: "Needs Improvement", target: "< 200ms" }, { metric: "CLS", value: "0.05", status: "Good", target: "< 0.1" }].map((m, i) => (
+              <Card key={i}>
+                <CardContent className="p-4 text-center">
+                  <p className="text-sm text-muted-foreground">{m.metric}</p>
+                  <p className={`text-3xl font-bold ${m.status === 'Good' ? 'text-green-500' : 'text-yellow-500'}`}>{m.value}</p>
+                  <Badge variant={m.status === 'Good' ? 'default' : 'secondary'} className="mt-1">{m.status}</Badge>
+                  <p className="text-xs text-muted-foreground mt-1">Target: {m.target}</p>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+          <Card>
+            <CardHeader><CardTitle>Performance Metrics</CardTitle></CardHeader>
+            <CardContent className="space-y-3">
+              {[{ metric: "First Contentful Paint", value: "0.8s", status: "Good" }, { metric: "Time to Interactive", value: "1.2s", status: "Good" }, { metric: "Speed Index", value: "1.8s", status: "Good" }, { metric: "Total Blocking Time", value: "120ms", status: "Good" }].map((m, i) => (
+                <div key={i} className="flex items-center justify-between p-2 rounded bg-muted/30 text-sm">
+                  <span>{m.metric}</span>
+                  <div className="flex items-center gap-2">
+                    <span className="font-medium">{m.value}</span>
+                    <Badge variant="default">{m.status}</Badge>
+                  </div>
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="image-seo" className="space-y-6">
+          <Card>
+            <CardHeader><CardTitle>Image SEO Audit</CardTitle></CardHeader>
+            <CardContent className="space-y-3">
+              {[{ issue: "Missing alt text", count: 12, severity: "warning" }, { issue: "Oversized images (>500KB)", count: 8, severity: "warning" }, { issue: "Missing WebP format", count: 23, severity: "info" }, { issue: "Missing lazy loading", count: 5, severity: "info" }].map((i, idx) => (
+                <div key={idx} className="flex items-center justify-between p-3 rounded-lg bg-muted/30">
+                  <div className="flex items-center gap-2">
+                    <Image className="h-4 w-4 text-muted-foreground" />
+                    <span className="text-sm font-medium">{i.issue}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Badge variant={i.severity === 'warning' ? 'secondary' : 'outline'}>{i.count} images</Badge>
+                    <Button variant="outline" size="sm">Fix</Button>
+                  </div>
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
       </Tabs>
     </div>
   )

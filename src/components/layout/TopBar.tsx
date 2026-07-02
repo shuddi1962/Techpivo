@@ -40,6 +40,7 @@ export function TopBar() {
           <Link href="/contact">Contact</Link>
           <Link href="/disclaimer">Disclaimer</Link>
           <Link href="/advertise">Advertise</Link>
+          <Link href="/community/events">Events</Link>
           <Link href="/newsletter">Newsletter</Link>
           <span className="top-divider" />
           <Link href="/write-for-us">Write for Us</Link>

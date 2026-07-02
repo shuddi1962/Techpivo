@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Search, Plus, RefreshCw, Check, X, Settings, Save, Eye, EyeOff, HelpCircle, ExternalLink } from "lucide-react"
+import { Search, Plus, RefreshCw, Check, X, Settings, Save, Eye, EyeOff, HelpCircle, ExternalLink, Link, TrendingUp, DollarSign, Zap, FileBarChart } from "lucide-react"
 import type { AffiliateProduct } from "@/types/database"
 
 interface AffiliateConfig {
@@ -403,8 +403,13 @@ export default function AdminAffiliatePage() {
       <Tabs defaultValue="programs">
         <TabsList className="mb-6">
           <TabsTrigger value="programs">Programs</TabsTrigger>
+          <TabsTrigger value="links">Links</TabsTrigger>
           <TabsTrigger value="search">Live Search</TabsTrigger>
           <TabsTrigger value="products">Products</TabsTrigger>
+          <TabsTrigger value="performance">Performance</TabsTrigger>
+          <TabsTrigger value="revenue">Revenue</TabsTrigger>
+          <TabsTrigger value="campaigns">Campaigns</TabsTrigger>
+          <TabsTrigger value="reports">Reports</TabsTrigger>
         </TabsList>
 
         <TabsContent value="programs">
@@ -546,6 +551,114 @@ export default function AdminAffiliatePage() {
             </div>
           )}
         </TabsContent>
+
+        <TabsContent value="links" className="space-y-6">
+          <Card>
+            <CardHeader><CardTitle>Affiliate Links</CardTitle></CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex gap-2">
+                <Input placeholder="Paste affiliate URL..." className="flex-1" />
+                <Input placeholder="Custom slug (optional)" className="w-48" />
+                <Button><Plus className="h-4 w-4 mr-1" /> Create Link</Button>
+              </div>
+              <div className="space-y-2">
+                {[{ slug: "/go/chatgpt-plus", url: "https://chat.openai.com/plus", clicks: 234, conv: 12 }, { slug: "/go/notion", url: "https://notion.so", clicks: 189, conv: 8 }, { slug: "/go/vercel", url: "https://vercel.com", clicks: 156, conv: 15 }].map((l, i) => (
+                  <div key={i} className="flex items-center justify-between p-3 rounded-lg bg-muted/30 text-sm">
+                    <div>
+                      <p className="font-medium font-mono">{l.slug}</p>
+                      <p className="text-xs text-muted-foreground">{l.url}</p>
+                    </div>
+                    <div className="flex items-center gap-4">
+                      <span className="text-muted-foreground">{l.clicks} clicks</span>
+                      <span className="text-muted-foreground">{l.conv} conv.</span>
+                      <Button variant="ghost" size="sm"><Link className="h-3 w-3" /></Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="performance" className="space-y-6">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {[{ label: "Total Clicks", value: "4,280" }, { label: "Conversions", value: "142" }, { label: "Conversion Rate", value: "3.3%" }, { label: "Avg. Commission", value: "$4.20" }].map((s, i) => (
+              <Card key={i}><CardContent className="p-4 text-center"><p className="text-2xl font-bold">{s.value}</p><p className="text-xs text-muted-foreground">{s.label}</p></CardContent></Card>
+            ))}
+          </div>
+          <Card>
+            <CardHeader><CardTitle>Top Performing Products</CardTitle></CardHeader>
+            <CardContent className="space-y-2">
+              {[{ name: "ChatGPT Plus", clicks: 890, conv: 45, revenue: "$189" }, { name: "Notion Pro", clicks: 654, conv: 32, revenue: "$128" }, { name: "Vercel Pro", clicks: 423, conv: 28, revenue: "$168" }, { name: "GitHub Copilot", clicks: 312, conv: 18, revenue: "$108" }].map((p, i) => (
+                <div key={i} className="flex items-center justify-between p-3 rounded-lg bg-muted/30 text-sm">
+                  <div>
+                    <p className="font-medium">{p.name}</p>
+                    <p className="text-xs text-muted-foreground">{p.clicks} clicks · {p.conv} conversions</p>
+                  </div>
+                  <p className="font-bold">{p.revenue}</p>
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="revenue" className="space-y-6">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {[{ label: "This Month", value: "$592" }, { label: "Last Month", value: "$487" }, { label: "Growth", value: "+21.6%" }, { label: "Pending Payout", value: "$312" }].map((s, i) => (
+              <Card key={i}><CardContent className="p-4 text-center"><p className="text-2xl font-bold">{s.value}</p><p className="text-xs text-muted-foreground">{s.label}</p></CardContent></Card>
+            ))}
+          </div>
+          <Card>
+            <CardHeader><CardTitle>Revenue by Partner</CardTitle></CardHeader>
+            <CardContent className="space-y-3">
+              {[{ partner: "Amazon Associates", revenue: "$234", pct: 40 }, { partner: "ShareASale", revenue: "$156", pct: 26 }, { partner: "CJ Affiliate", revenue: "$112", pct: 19 }, { partner: "Impact", revenue: "$90", pct: 15 }].map((p, i) => (
+                <div key={i}>
+                  <div className="flex justify-between text-sm mb-1"><span>{p.partner}</span><span className="font-medium">{p.revenue}</span></div>
+                  <div className="w-full h-2 bg-muted rounded-full"><div className="h-full bg-primary rounded-full" style={{ width: `${p.pct}%` }} /></div>
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="campaigns" className="space-y-6">
+          <div className="flex justify-between items-center">
+            <h3 className="font-semibold">Active Campaigns</h3>
+            <Button size="sm"><Plus className="h-3 w-3 mr-1" /> New Campaign</Button>
+          </div>
+          {[{ name: "Best AI Tools 2026", products: 8, revenue: "$342", status: "active" }, { name: "Developer Productivity Stack", products: 5, revenue: "$189", status: "active" }, { name: "Holiday Deals 2025", products: 12, revenue: "$567", status: "ended" }].map((c, i) => (
+            <Card key={i}>
+              <CardContent className="p-4 flex items-center justify-between">
+                <div>
+                  <p className="font-medium">{c.name}</p>
+                  <p className="text-xs text-muted-foreground">{c.products} products · {c.revenue} earned</p>
+                </div>
+                <Badge variant={c.status === "active" ? "default" : "secondary"}>{c.status}</Badge>
+              </CardContent>
+            </Card>
+          ))}
+        </TabsContent>
+
+        <TabsContent value="reports" className="space-y-6">
+          <Card>
+            <CardHeader><CardTitle>Affiliate Reports</CardTitle></CardHeader>
+            <CardContent className="space-y-3">
+              {[{ name: "Weekly Performance", freq: "Every Monday" }, { name: "Monthly Revenue", freq: "1st of month" }, { name: "Product Analytics", freq: "On demand" }].map((r, i) => (
+                <div key={i} className="flex items-center justify-between p-3 rounded-lg bg-muted/30">
+                  <div>
+                    <p className="font-medium">{r.name}</p>
+                    <p className="text-xs text-muted-foreground">{r.freq}</p>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button variant="outline" size="sm">Generate</Button>
+                    <Button variant="outline" size="sm">Export</Button>
+                  </div>
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
       </Tabs>
     </div>
   )

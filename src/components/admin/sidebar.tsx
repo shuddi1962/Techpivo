@@ -107,6 +107,7 @@ const navGroups: NavGroup[] = [
       { href: "/admin/poll-builder", label: "Poll Builder", icon: BarChart3 },
       { href: "/community/leaderboard", label: "Leaderboard", icon: Trophy },
       { href: "/community/learning-paths", label: "Learning Paths", icon: BookOpen },
+      { href: "/community/events", label: "Events", icon: Calendar },
     ],
   },
 ]
