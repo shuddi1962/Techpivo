@@ -1,11 +1,11 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, Suspense } from "react"
 import Link from "next/link"
 import { useSearchParams } from "next/navigation"
-import { ArrowLeft, Zap, RefreshCw, FileText, Search, Image, Share2, CheckCircle, Copy, ExternalLink } from "lucide-react"
+import { ArrowLeft, Zap, RefreshCw, FileText, Search, Image, Share2, CheckCircle, Copy, ExternalLink, Loader2 } from "lucide-react"
 
-export default function GeneratePage() {
+function GenerateContent() {
   const searchParams = useSearchParams()
   const initialTopic = searchParams.get("topic") || ""
   const initialCategory = searchParams.get("category") || ""
@@ -312,9 +312,24 @@ export default function GeneratePage() {
               <RefreshCw className="h-4 w-4" />
               Regenerate
             </button>
-          </div>
+           </div>
         </div>
       )}
     </div>
+  )
+}
+
+export default function GeneratePage() {
+  return (
+    <Suspense fallback={
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <div className="text-center">
+          <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto mb-4" />
+          <p className="text-sm text-muted-foreground">Loading generator...</p>
+        </div>
+      </div>
+    }>
+      <GenerateContent />
+    </Suspense>
   )
 }
