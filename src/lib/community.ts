@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server';
+import { getRankTitle } from '@/lib/community-utils';
 export { LEVELS, BADGES, FORUM_CATEGORIES, getLevelForXP, getXPForLevel, getXPForAction, getStreakReward, getRankTitle, getStarRating, formatNumber, timeAgo } from '@/lib/community-utils';
 
 export interface UserProfile {
