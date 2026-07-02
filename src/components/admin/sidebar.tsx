@@ -27,10 +27,10 @@ const navGroups: NavGroup[] = [
   {
     label: "AI & Intelligence",
     links: [
-      { href: "/admin/ai-command-center", label: "AI Command Center", icon: Brain },
+      { href: "/admin/editorial-intelligence", label: "AI Editorial Intelligence", icon: Brain },
+      { href: "/admin/ai-command-center", label: "AI Command Center", icon: Lightbulb },
       { href: "/admin/research-center", label: "Research Center", icon: FlaskConical },
       { href: "/admin/ai-usage", label: "AI Usage", icon: Cpu },
-      { href: "/admin/content-suggestions", label: "Content Suggestions", icon: Lightbulb },
     ],
   },
   {
