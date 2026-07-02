@@ -4,6 +4,10 @@ import { useState, useEffect, useCallback, useRef } from "react"
 import Link from "next/link"
 import { createClient } from "@/lib/supabase/client"
 import { GeminiQuotaWidget } from "@/components/admin/GeminiQuotaWidget"
+import { AiExecutiveSummary } from "@/components/admin/ai-executive-summary"
+import { AiOpportunityCenter } from "@/components/admin/ai-opportunity-center"
+import { LivePublishingQueue } from "@/components/admin/live-publishing-queue"
+import { NotificationCenter } from "@/components/admin/notification-center"
 import {
   FileText, Eye, Users, Rss, RefreshCw, TrendingUp, TrendingDown,
   BarChart3, PieChart, Activity, Globe, MousePointerClick, Smartphone,
@@ -182,6 +186,16 @@ export default function AdminDashboard() {
 
       <div className="grid grid-cols-1">
         <GeminiQuotaWidget />
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <AiExecutiveSummary />
+        <AiOpportunityCenter />
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <LivePublishingQueue />
+        <NotificationCenter />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-7 gap-6">

@@ -2,87 +2,579 @@
 
 import { useEffect, useState } from "react"
 import { createClient } from "@/lib/supabase/client"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Textarea } from "@/components/ui/textarea"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Switch } from "@/components/ui/switch"
-import { Label } from "@/components/ui/label"
-import { Save } from "lucide-react"
+import { Badge } from "@/components/ui/badge"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import {
+  Search, AlertTriangle, CheckCircle, TrendingUp, TrendingDown,
+  FileText, Link, Image, Code, BarChart3, RefreshCw, Settings,
+  Globe, Shield, Zap, Target, ArrowUpRight, ArrowDownRight,
+  ExternalLink, Copy, Trash2, Plus, Eye, Clock
+} from "lucide-react"
 
-export default function AdminSeoPage() {
-  const [settings, setSettings] = useState<Record<string, any>>({})
+interface SeoAudit {
+  id: string
+  post_id: string
+  overall_score: number
+  seo_score: number
+  readability_score: number
+  eeat_score: number
+  media_score: number
+  internal_linking_score: number
+  external_links_score: number
+  schema_score: number
+  keyword_coverage_score: number
+  technical_health_score: number
+  freshness_score: number
+  issues: any[]
+  suggestions: any[]
+  checked_at: string
+}
+
+interface KeywordRanking {
+  id: string
+  keyword: string
+  post_id: string
+  position: number | null
+  previous_position: number | null
+  search_volume: number | null
+  difficulty: number | null
+  url: string | null
+  last_checked_at: string
+}
+
+interface SeoIssue {
+  id: string
+  post_id: string
+  issue_type: string
+  severity: string
+  description: string
+  suggestion: string
+  resolved: boolean
+  created_at: string
+}
+
+interface TopicAuthority {
+  id: string
+  category_id: string
+  authority_score: number
+  article_count: number
+  avg_quality_score: number
+  avg_seo_score: number
+  category_name?: string
+}
+
+export default function EnterpriseSeoCenter() {
+  const [activeTab, setActiveTab] = useState("dashboard")
+  const [audits, setAudits] = useState<SeoAudit[]>([])
+  const [keywords, setKeywords] = useState<KeywordRanking[]>([])
+  const [issues, setIssues] = useState<SeoIssue[]>([])
+  const [topicAuthority, setTopicAuthority] = useState<TopicAuthority[]>([])
+  const [loading, setLoading] = useState(true)
+  const [stats, setStats] = useState({
+    totalAudits: 0,
+    avgScore: 0,
+    indexedPosts: 0,
+    pendingIssues: 0,
+    trackedKeywords: 0,
+    avgPosition: 0
+  })
 
   useEffect(() => {
-    const supabase = createClient()
-    supabase.from("site_settings").select("*").then(({ data }) => {
-      if (data) {
-        const map: Record<string, any> = {}
-        data.forEach((s) => { map[s.key] = s.value })
-        setSettings(map)
-      }
-    })
+    loadData()
   }, [])
 
-  const updateSetting = async (key: string, value: any) => {
+  const loadData = async () => {
     const supabase = createClient()
-    await supabase.from("site_settings").upsert({ key, value })
-    setSettings({ ...settings, [key]: value })
+    
+    const [auditsRes, keywordsRes, issuesRes, topicRes, postsRes] = await Promise.all([
+      supabase.from("seo_audits").select("*").order("created_at", { ascending: false }).limit(100),
+      supabase.from("keyword_rankings").select("*").order("position", { ascending: true }).limit(100),
+      supabase.from("seo_issues").select("*").eq("resolved", false).order("created_at", { ascending: false }).limit(100),
+      supabase.from("topic_authority").select("*").order("authority_score", { ascending: false }),
+      supabase.from("posts").select("id, status, google_indexed")
+    ])
+
+    if (auditsRes.data) setAudits(auditsRes.data)
+    if (keywordsRes.data) setKeywords(keywordsRes.data)
+    if (issuesRes.data) setIssues(issuesRes.data)
+    if (topicRes.data) setTopicAuthority(topicRes.data)
+
+    const totalAudits = auditsRes.data?.length || 0
+    const avgScore = totalAudits > 0 
+      ? Math.round(auditsRes.data!.reduce((sum, a) => sum + a.overall_score, 0) / totalAudits)
+      : 0
+    const indexedPosts = postsRes.data?.filter(p => p.google_indexed).length || 0
+    const pendingIssues = issuesRes.data?.length || 0
+    const trackedKeywords = keywordsRes.data?.length || 0
+    const avgPosition = keywordsRes.data?.length 
+      ? Math.round(keywordsRes.data.filter(k => k.position).reduce((sum, k) => sum + (k.position || 0), 0) / keywordsRes.data.filter(k => k.position).length)
+      : 0
+
+    setStats({ totalAudits, avgScore, indexedPosts, pendingIssues, trackedKeywords, avgPosition })
+    setLoading(false)
   }
 
-  const stringFields = [
-    { key: "site_name", label: "Site Name" },
-    { key: "site_tagline", label: "Tagline" },
-    { key: "default_meta_description", label: "Default Meta Description" },
-    { key: "default_og_image", label: "Default OG Image URL" },
-    { key: "ga4_measurement_id", label: "Google Analytics 4 ID" },
-    { key: "gtm_container_id", label: "Google Tag Manager ID" },
-    { key: "google_search_console_verification", label: "Search Console Verification" },
-    { key: "bing_webmaster_verification", label: "Bing Webmaster Verification" },
-    { key: "adsense_publisher_id", label: "AdSense Publisher ID" },
-  ]
+  const runSeoAudit = async (postId: string) => {
+    const res = await fetch("/api/admin/seo/audit", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ postId })
+    })
+    if (res.ok) loadData()
+  }
+
+  const resolveIssue = async (issueId: string) => {
+    const supabase = createClient()
+    await supabase.from("seo_issues").update({ resolved: true, resolved_at: new Date().toISOString() }).eq("id", issueId)
+    loadData()
+  }
+
+  const getScoreColor = (score: number) => {
+    if (score >= 90) return "text-green-600 bg-green-50"
+    if (score >= 70) return "text-yellow-600 bg-yellow-50"
+    return "text-red-600 bg-red-50"
+  }
+
+  const getSeverityBadge = (severity: string) => {
+    switch (severity) {
+      case "critical": return <Badge variant="destructive">Critical</Badge>
+      case "warning": return <Badge variant="secondary" className="bg-yellow-100 text-yellow-800">Warning</Badge>
+      case "info": return <Badge variant="secondary" className="bg-blue-100 text-blue-800">Info</Badge>
+      default: return <Badge variant="secondary">{severity}</Badge>
+    }
+  }
+
+  const getTrendIcon = (current: number | null, previous: number | null) => {
+    if (!current || !previous) return null
+    if (current < previous) return <TrendingUp className="h-4 w-4 text-green-600" />
+    if (current > previous) return <TrendingDown className="h-4 w-4 text-red-600" />
+    return null
+  }
 
   return (
-    <div>
-      <h1 className="text-3xl font-bold mb-6">SEO Settings</h1>
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold">Enterprise SEO Center</h1>
+          <p className="text-muted-foreground">Optimize, monitor, and improve your search performance</p>
+        </div>
+        <Button onClick={() => runSeoAudit("all")}>
+          <RefreshCw className="h-4 w-4 mr-2" />
+          Run Full Audit
+        </Button>
+      </div>
 
-      <div className="space-y-6">
-        {stringFields.map((field) => (
-          <Card key={field.key}>
-            <CardContent className="p-4">
-              <label className="text-sm font-medium mb-1 block">{field.label}</label>
-              <div className="flex gap-2">
-                <Input
-                  value={settings[field.key] || ""}
-                  onChange={(e) => updateSetting(field.key, e.target.value)}
-                  placeholder={field.label}
-                  className="flex-1 font-mono text-sm"
-                />
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
+        <TabsList>
+          <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
+          <TabsTrigger value="audit">SEO Audit</TabsTrigger>
+          <TabsTrigger value="keywords">Keyword Tracking</TabsTrigger>
+          <TabsTrigger value="issues">Issues</TabsTrigger>
+          <TabsTrigger value="internal-links">Internal Links</TabsTrigger>
+          <TabsTrigger value="schema">Schema</TabsTrigger>
+          <TabsTrigger value="technical">Technical SEO</TabsTrigger>
+          <TabsTrigger value="authority">Topic Authority</TabsTrigger>
+          <TabsTrigger value="settings">Settings</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="dashboard" className="space-y-6">
+          {/* KPI Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-muted-foreground">Average SEO Score</p>
+                    <p className={`text-2xl font-bold ${getScoreColor(stats.avgScore)}`}>{stats.avgScore}%</p>
+                  </div>
+                  <div className={`p-2 rounded-full ${getScoreColor(stats.avgScore)}`}>
+                    <Target className="h-6 w-6" />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-muted-foreground">Indexed Posts</p>
+                    <p className="text-2xl font-bold">{stats.indexedPosts}</p>
+                  </div>
+                  <div className="p-2 rounded-full bg-blue-50 text-blue-600">
+                    <Globe className="h-6 w-6" />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-muted-foreground">Pending Issues</p>
+                    <p className={`text-2xl font-bold ${stats.pendingIssues > 0 ? 'text-red-600' : 'text-green-600'}`}>
+                      {stats.pendingIssues}
+                    </p>
+                  </div>
+                  <div className={`p-2 rounded-full ${stats.pendingIssues > 0 ? 'bg-red-50 text-red-600' : 'bg-green-50 text-green-600'}`}>
+                    <AlertTriangle className="h-6 w-6" />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-muted-foreground">Avg. Keyword Position</p>
+                    <p className="text-2xl font-bold">{stats.avgPosition || '-'}</p>
+                  </div>
+                  <div className="p-2 rounded-full bg-purple-50 text-purple-600">
+                    <TrendingUp className="h-6 w-6" />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Topic Authority */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Topic Authority by Category</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {topicAuthority.map((topic) => (
+                  <div key={topic.id} className="flex items-center justify-between p-3 border rounded-lg">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                        <Target className="h-5 w-5 text-primary" />
+                      </div>
+                      <div>
+                        <p className="font-medium">{topic.category_name || topic.category_id}</p>
+                        <p className="text-sm text-muted-foreground">{topic.article_count} articles</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-4">
+                      <div className="text-right">
+                        <p className="text-sm text-muted-foreground">Authority</p>
+                        <p className={`font-bold ${getScoreColor(topic.authority_score)}`}>{topic.authority_score}%</p>
+                      </div>
+                      <div className="w-24 bg-gray-200 rounded-full h-2">
+                        <div 
+                          className="bg-primary rounded-full h-2" 
+                          style={{ width: `${topic.authority_score}%` }}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                ))}
               </div>
             </CardContent>
           </Card>
-        ))}
 
-        <Card>
-          <CardHeader><CardTitle className="text-lg">Schema Settings</CardTitle></CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex items-center justify-between">
-              <Label>Auto-generate Breadcrumb Schema</Label>
-              <Switch
-                checked={settings.schema_breadcrumb === true}
-                onCheckedChange={(v) => updateSetting("schema_breadcrumb", v)}
-              />
-            </div>
-            <div className="flex items-center justify-between">
-              <Label>Auto-generate Article Schema</Label>
-              <Switch
-                checked={settings.schema_article === true}
-                onCheckedChange={(v) => updateSetting("schema_article", v)}
-              />
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+          {/* Recent Issues */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Recent SEO Issues</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {issues.length === 0 ? (
+                <p className="text-muted-foreground text-center py-4">No pending issues</p>
+              ) : (
+                <div className="space-y-3">
+                  {issues.slice(0, 5).map((issue) => (
+                    <div key={issue.id} className="flex items-center justify-between p-3 border rounded-lg">
+                      <div className="flex items-center gap-3">
+                        {getSeverityBadge(issue.severity)}
+                        <div>
+                          <p className="font-medium">{issue.issue_type}</p>
+                          <p className="text-sm text-muted-foreground">{issue.description}</p>
+                        </div>
+                      </div>
+                      <Button variant="ghost" size="sm" onClick={() => resolveIssue(issue.id)}>
+                        <CheckCircle className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="audit" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>SEO Audit Results</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {audits.length === 0 ? (
+                <div className="text-center py-8">
+                  <p className="text-muted-foreground mb-4">No audits performed yet</p>
+                  <Button onClick={() => runSeoAudit("all")}>
+                    <RefreshCw className="h-4 w-4 mr-2" />
+                    Run First Audit
+                  </Button>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {audits.map((audit) => (
+                    <div key={audit.id} className="border rounded-lg p-4">
+                      <div className="flex items-center justify-between mb-4">
+                        <div className="flex items-center gap-3">
+                          <div className={`text-2xl font-bold ${getScoreColor(audit.overall_score)}`}>
+                            {audit.overall_score}
+                          </div>
+                          <div>
+                            <p className="font-medium">Overall Score</p>
+                            <p className="text-sm text-muted-foreground">
+                              {new Date(audit.checked_at).toLocaleDateString()}
+                            </p>
+                          </div>
+                        </div>
+                        <Button variant="outline" size="sm">
+                          <Eye className="h-4 w-4 mr-2" />
+                          View Details
+                        </Button>
+                      </div>
+                      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3">
+                        {[
+                          { label: "SEO", score: audit.seo_score },
+                          { label: "Readability", score: audit.readability_score },
+                          { label: "EEAT", score: audit.eeat_score },
+                          { label: "Media", score: audit.media_score },
+                          { label: "Links", score: audit.internal_linking_score },
+                          { label: "Schema", score: audit.schema_score }
+                        ].map((item) => (
+                          <div key={item.label} className="text-center p-2 border rounded">
+                            <p className={`text-lg font-bold ${getScoreColor(item.score)}`}>{item.score}</p>
+                            <p className="text-xs text-muted-foreground">{item.label}</p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="keywords" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Keyword Rankings</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {keywords.length === 0 ? (
+                <p className="text-muted-foreground text-center py-4">No keywords tracked yet</p>
+              ) : (
+                <div className="space-y-3">
+                  {keywords.map((kw) => (
+                    <div key={kw.id} className="flex items-center justify-between p-3 border rounded-lg">
+                      <div className="flex items-center gap-4">
+                        <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center">
+                          <span className="text-lg font-bold text-primary">
+                            {kw.position || '-'}
+                          </span>
+                        </div>
+                        <div>
+                          <p className="font-medium">{kw.keyword}</p>
+                          <p className="text-sm text-muted-foreground">
+                            Volume: {kw.search_volume || 'N/A'} | Difficulty: {kw.difficulty || 'N/A'}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {getTrendIcon(kw.position, kw.previous_position)}
+                        <Badge variant={kw.position && kw.position <= 10 ? "default" : "secondary"}>
+                          {kw.position ? `#${kw.position}` : 'N/A'}
+                        </Badge>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="issues" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>SEO Issues</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {issues.length === 0 ? (
+                <p className="text-muted-foreground text-center py-4">No issues found</p>
+              ) : (
+                <div className="space-y-3">
+                  {issues.map((issue) => (
+                    <div key={issue.id} className="flex items-center justify-between p-3 border rounded-lg">
+                      <div className="flex items-center gap-3">
+                        {getSeverityBadge(issue.severity)}
+                        <div>
+                          <p className="font-medium">{issue.issue_type}</p>
+                          <p className="text-sm text-muted-foreground">{issue.description}</p>
+                          {issue.suggestion && (
+                            <p className="text-sm text-blue-600 mt-1">Suggestion: {issue.suggestion}</p>
+                          )}
+                        </div>
+                      </div>
+                      <Button variant="outline" size="sm" onClick={() => resolveIssue(issue.id)}>
+                        <CheckCircle className="h-4 w-4 mr-2" />
+                        Resolve
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="internal-links" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Internal Link Intelligence</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-muted-foreground">Internal link recommendations will appear here based on your content analysis.</p>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="schema" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Schema Generator</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-muted-foreground">Create and manage structured data schemas for your articles.</p>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="technical" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Technical SEO</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div className="p-4 border rounded-lg">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Globe className="h-5 w-5 text-blue-600" />
+                    <h3 className="font-medium">Core Web Vitals</h3>
+                  </div>
+                  <p className="text-sm text-muted-foreground">Monitor LCP, INP, and CLS scores</p>
+                </div>
+                <div className="p-4 border rounded-lg">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Link className="h-5 w-5 text-green-600" />
+                    <h3 className="font-medium">Redirect Manager</h3>
+                  </div>
+                  <p className="text-sm text-muted-foreground">Manage 301 and 302 redirects</p>
+                </div>
+                <div className="p-4 border rounded-lg">
+                  <div className="flex items-center gap-2 mb-2">
+                    <FileText className="h-5 w-5 text-purple-600" />
+                    <h3 className="font-medium">Sitemap Manager</h3>
+                  </div>
+                  <p className="text-sm text-muted-foreground">Generate and submit sitemaps</p>
+                </div>
+                <div className="p-4 border rounded-lg">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Shield className="h-5 w-5 text-red-600" />
+                    <h3 className="font-medium">Robots.txt Manager</h3>
+                  </div>
+                  <p className="text-sm text-muted-foreground">Configure crawl rules</p>
+                </div>
+                <div className="p-4 border rounded-lg">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Search className="h-5 w-5 text-yellow-600" />
+                    <h3 className="font-medium">Duplicate Detection</h3>
+                  </div>
+                  <p className="text-sm text-muted-foreground">Find and fix duplicate content</p>
+                </div>
+                <div className="p-4 border rounded-lg">
+                  <div className="flex items-center gap-2 mb-2">
+                    <TrendingUp className="h-5 w-5 text-indigo-600" />
+                    <h3 className="font-medium">Google Discover</h3>
+                  </div>
+                  <p className="text-sm text-muted-foreground">Optimize for Discover eligibility</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="authority" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Topic Authority Dashboard</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {topicAuthority.map((topic) => (
+                  <div key={topic.id} className="flex items-center justify-between p-4 border rounded-lg">
+                    <div className="flex items-center gap-4">
+                      <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
+                        <Target className="h-6 w-6 text-primary" />
+                      </div>
+                      <div>
+                        <p className="font-medium text-lg">{topic.category_name || topic.category_id}</p>
+                        <p className="text-sm text-muted-foreground">
+                          {topic.article_count} articles | Avg Quality: {topic.avg_quality_score} | Avg SEO: {topic.avg_seo_score}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-4">
+                      <div className="text-right">
+                        <p className="text-sm text-muted-foreground">Authority Score</p>
+                        <p className={`text-2xl font-bold ${getScoreColor(topic.authority_score)}`}>
+                          {topic.authority_score}%
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="settings" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>SEO Settings</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="text-sm font-medium">Default Meta Description</label>
+                  <Input placeholder="Enter default meta description" className="mt-1" />
+                </div>
+                <div>
+                  <label className="text-sm font-medium">Default OG Image</label>
+                  <Input placeholder="Enter default OG image URL" className="mt-1" />
+                </div>
+                <div>
+                  <label className="text-sm font-medium">Google Search Console Verification</label>
+                  <Input placeholder="Enter verification code" className="mt-1" />
+                </div>
+                <div>
+                  <label className="text-sm font-medium">Bing Webmaster Verification</label>
+                  <Input placeholder="Enter verification code" className="mt-1" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
     </div>
   )
 }

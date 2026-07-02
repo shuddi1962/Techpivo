@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/admin'
 import { submitToGoogleIndexing } from '@/lib/google-indexing'
 
-async function runIndexing() {
+async function runIndexing(req: NextRequest) {
   const secret = process.env.CRON_SECRET
   if (secret && req.headers.get('authorization') !== `Bearer ${secret}`) {
     return NextResponse.json({ error: 'Unauthorised' }, { status: 401 })
@@ -62,9 +62,9 @@ async function runIndexing() {
 }
 
 export async function GET(req: NextRequest) {
-  return runIndexing()
+  return runIndexing(req)
 }
 
 export async function POST(req: NextRequest) {
-  return runIndexing()
+  return runIndexing(req)
 }
