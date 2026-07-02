@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
-import { getLevelForXP, getRankTitle, BADGES } from '@/lib/community';
+import { getLevelForXP, getRankTitle, BADGES } from '@/lib/community-utils';
 import { createClient } from '@/lib/supabase/server';
 import { MapPin, Globe, Calendar, Star, Users, BookOpen, MessageSquare, Trophy, Target, ArrowLeft } from 'lucide-react';
 
