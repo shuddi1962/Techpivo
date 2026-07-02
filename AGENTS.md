@@ -4974,18 +4974,24 @@ If the objective is to build what could genuinely compete with the capabilities 
 ## AI Editorial Intelligence Center — Feature Specification
 
 ### What It Is
-A comprehensive AI-powered editorial assistant that functions as a **digital Editor-in-Chief**. It continuously scans multiple sources, identifies content opportunities, prioritizes them by score, and prepares everything needed to publish.
+A comprehensive AI-powered editorial assistant that functions as a **digital Editor-in-Chief**. It continuously scans multiple sources, identifies content opportunities, prioritizes them by score, and prepares everything needed to publish. This is NOT a simple content suggestion engine — it is an **AI Newsroom Operating System** that answers: What is trending? Which categories deserve attention? Which companies announced something important? Which articles should be updated? What topics are rising but not yet saturated?
 
 ### Navigation
 ```
 AI Editorial Intelligence (replaces "Content Suggestions")
-  ├── Dashboard (Today's briefing, top opportunities, breaking news)
-  ├── Opportunities (Scored topics, category intelligence)
-  ├── Breaking News (Real-time stories, urgency levels)
-  ├── Trends (Predicted trending topics with probability scores)
-  ├── Companies (Company watchlist, story tracking)
-  ├── Calendar (Content calendar, smart scheduling)
-  └── Generate (One-click article pipeline)
+  ├── Dashboard (Today's briefing, top opportunities, breaking news, category intelligence)
+  ├── Opportunities (Scored topics with detailed breakdown, Generate buttons)
+  ├── Breaking News (Real-time stories, urgency levels, source tracking)
+  ├── Trends (Predicted trending topics with probability scores and time windows)
+  ├── Companies (Company watchlist, story tracking, relevance scores)
+  ├── Calendar (Content calendar, smart scheduling, product launches)
+  ├── Research (AI Research Engine — gathers official docs, keywords, FAQs)
+  ├── Gaps (Content Gap Analysis — topics competitors cover that TechPivo doesn't)
+  ├── Competitors (Competitor Watch — publishing frequency, trending topics, overlap)
+  ├── Predictions (AI Predictions — emerging opportunities with confidence scores)
+  ├── Briefs (Content Briefs — generated briefs with status tracking)
+  ├── Queue (Content Queue — articles in pipeline with stage tracking)
+  └── Generate (One-click article pipeline — Research → SEO → Images → Social → Schedule)
 ```
 
 ### Core Components
@@ -5001,12 +5007,21 @@ Calculates a 0-100 score based on weighted factors:
 - Business value (4%)
 - Internal expertise (3%)
 
+Display format:
+```
+Opportunity Score: 96/100
+★★★★★
+Recommendation: Publish Today
+```
+
 #### 2. Dashboard (`src/app/admin/editorial-intelligence/page.tsx`)
-- Today's Intelligence Briefing
+- Today's Intelligence Briefing (AI-generated summary)
 - Top Opportunities with scores, stars, and Generate buttons
 - Breaking News feed with urgency indicators
 - Trend Predictions with probability bars
 - Company Watch with relevance scores
+- Category Intelligence with traffic trends and recommendations
+- Quick actions: Research, Generate Brief, Generate Article
 
 #### 3. Article Generator (`src/app/admin/editorial-intelligence/generate/page.tsx`)
 One-click pipeline that produces:
@@ -5016,35 +5031,48 @@ One-click pipeline that produces:
 - Primary and supporting keywords
 - Question keywords
 - External references with authority levels
-- Image suggestions
+- Image suggestions (Pexels, Unsplash, AI Generated, Google Reference)
 - Tags
 - Reading time estimate
+- Schema type recommendation
+- Social media drafts (X, LinkedIn, Facebook, Newsletter)
+
+One-Click Pipeline:
+```
+Opportunity → Research → Keyword Analysis → Outline → Human-like Article →
+Fact Verification → SEO → Internal Links → External References → Schema →
+Meta → Image Search → Alt Text → Social Posts → Newsletter → Push → Schedule
+```
 
 #### 4. Breaking News Scanner
 Real-time monitoring of:
-- Official company blogs
+- Official company blogs (Google, Apple, Microsoft, OpenAI, etc.)
 - CISA advisories
 - Developer blogs
 - Tech news sources
+Each story has: title, category, source, time, urgency (high/medium/low)
 
 #### 5. Trend Prediction Engine
 Predicts trending topics with:
 - Probability percentage (0-100%)
 - Confidence level
-- Time window recommendation
+- Time window recommendation (48 hours, 1 week, 2 weeks, 1 month)
 - Source attribution
-- Action recommendation
+- Action recommendation (Write Within 48 Hours, Prepare This Week, Plan Tutorial, etc.)
+- Category assignment
 
 #### 6. Company Watchlist
 Tracks: Google, Apple, Microsoft, OpenAI, NVIDIA, Meta, Samsung, Anthropic, AMD, Adobe
+For each: stories today, recent headlines, relevance scores, source attribution
 
 #### 7. Category Intelligence
 Analyzes each category for:
-- Traffic trend (up/down percentage)
-- Competition level
-- Revenue potential
+- Traffic trend (up/down percentage with arrow indicators)
+- Competition level (Low/Medium/High)
+- Revenue potential (Low/Medium/High)
 - Articles published
 - Recommended daily publish count
+- Recommendation text (Publish 3 Articles Today, Publish 2 Tutorials, Skip Today)
 
 #### 8. Content Calendar
 Smart scheduling based on:
@@ -5053,35 +5081,111 @@ Smart scheduling based on:
 - Seasonal trends
 - Publishing history
 - Content gaps
+Views: Today, Tomorrow, This Week, Next Week, This Month
 
-#### 9. One-Click Pipeline
-```
-Opportunity → Research → Keywords → Outline → Article → SEO → Images → Social → Newsletter → Push → Schedule
-```
+#### 9. AI Research Engine
+When clicking "Research" on any topic, automatically gathers:
+- Official announcements
+- Product documentation
+- Developer documentation
+- Trusted news sources
+- Existing TechPivo articles on the topic
+- Relevant keywords with search volume
+- Frequently asked questions
+Then prepares a structured content brief.
 
-#### 10. Image Options
-- Pexels (free, editorial)
-- Unsplash (editorial quality)
+#### 10. Content Gap Analysis
+Identifies topics that:
+- Competitors cover but TechPivo doesn't
+- Have high search volume but no TechPivo content
+- Are trending but not yet covered
+- Have seasonal relevance approaching
+
+#### 11. Competitor Watch
+Tracks selected competitors for:
+- Publishing frequency
+- Trending topics they're covering
+- Content overlap with TechPivo
+- Keywords they rank for that TechPivo doesn't
+
+#### 12. AI Predictions
+Emerging opportunities with:
+- Topic name
+- Probability score (0-100%)
+- Confidence level
+- Time window
+- Sources
+- Recommended action
+- Category
+
+#### 13. Content Briefs
+Generated briefs stored with:
+- Topic, category, opportunity score
+- Status tracking: generated → reviewing → approved → generating → published → discarded
+- Brief data (outline, keywords, FAQs, references)
+- Linked post (when published)
+
+#### 14. Content Queue
+Articles in pipeline with stage tracking:
+- Researching → Keyword Analysis → Draft Generation → Fact Verification →
+  SEO Optimization → Image Processing → Editorial Review → Publishing → Published
+
+#### 15. Image Options
+When article is generated, offer choice of:
+- Pexels (free, high quality, editorial use)
+- Unsplash (editorial-quality photography)
 - AI Generated (original illustrations)
-- Google Image Reference (discovery aid, not direct use)
+- Google Image Reference (discovery aid, not direct use — editors obtain from official/licensed source)
 
 Smart Image Ranking scores: Relevance, Resolution, Orientation, Visual Quality, Brand Safety, File Size
 
-### Database Tables (Migration 030)
+#### 16. Smart Category Recommendation
+AI analyzes keywords, search intent, reader needs, and historical performance to recommend:
+```
+Recommended Category: Programming (Confidence: 97%)
+Alternative: Tutorials (Confidence: 91%)
+```
+
+#### 17. AI Article Planner
+For every idea, generate:
+- Title, Subtitle, SEO Title, Slug, Meta Description
+- Outline, FAQs, Internal Links, External References
+- Schema Type, Estimated Reading Time
+- Suggested Tags, Suggested Category
+
+### Database Tables (Migrations 030-031)
 - `content_briefs` — Generated article briefs with opportunity scores
 - `editorial_calendar` — Smart content scheduling
 - `company_watchlist` — Company tracking
 - `trend_predictions` — Predicted trending topics
 - `image_rankings` — Smart image scoring and selection
+- `content_gaps` — Topics competitors cover that TechPivo doesn't (migration 031)
+- `competitor_watch` — Competitor tracking and analysis (migration 031)
+- `product_launches` — Technology launch tracker (migration 031)
+- `editorial_queue` — Articles in the publishing pipeline (migration 031)
 
 ### API Routes
-- `GET /admin/editorial-intelligence/api?section=all|opportunities|categories|trends|companies|breaking`
+- `GET /admin/editorial-intelligence/api?section=all|opportunities|categories|trends|companies|breaking|gaps|competitors|queue`
 - `POST /admin/editorial-intelligence/brief` — Generate content brief
+- `POST /admin/editorial-intelligence/research` — Run AI research on topic
+- `POST /admin/editorial-intelligence/generate-article` — One-click article generation
 
-### Files Created
-- `src/lib/editorial-intelligence.ts` — Core engine (scoring, data generation)
+### Files
+- `src/lib/editorial-intelligence.ts` — Core engine (scoring, data generation, research, gaps, competitors)
 - `src/app/admin/editorial-intelligence/page.tsx` — Main dashboard
-- `src/app/admin/editorial-intelligence/generate/page.tsx` — Article generator
+- `src/app/admin/editorial-intelligence/opportunities/page.tsx` — Detailed opportunities
+- `src/app/admin/editorial-intelligence/breaking-news/page.tsx` — Breaking news feed
+- `src/app/admin/editorial-intelligence/trends/page.tsx` — Trend predictions
+- `src/app/admin/editorial-intelligence/companies/page.tsx` — Company watchlist
+- `src/app/admin/editorial-intelligence/calendar/page.tsx` — Content calendar
+- `src/app/admin/editorial-intelligence/research/page.tsx` — AI Research Engine
+- `src/app/admin/editorial-intelligence/gaps/page.tsx` — Content Gap Analysis
+- `src/app/admin/editorial-intelligence/competitors/page.tsx` — Competitor Watch
+- `src/app/admin/editorial-intelligence/predictions/page.tsx` — AI Predictions
+- `src/app/admin/editorial-intelligence/briefs/page.tsx` — Content Briefs
+- `src/app/admin/editorial-intelligence/queue/page.tsx` — Content Queue
+- `src/app/admin/editorial-intelligence/generate/page.tsx` — Article Generator
 - `src/app/admin/editorial-intelligence/api/route.ts` — Data API
 - `src/app/admin/editorial-intelligence/brief/route.ts` — Brief generation API
-- `supabase/migrations/030_editorial_intelligence.sql` — Database schema
+- `supabase/migrations/030_editorial_intelligence.sql` — Core database schema
+- `supabase/migrations/031_editorial_intelligence_expanded.sql` — Expanded schema

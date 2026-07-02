@@ -49,6 +49,64 @@ export interface CompanyStory {
   url?: string
 }
 
+export interface ContentGap {
+  topic: string
+  category: string
+  search_volume: number
+  competition_level: string
+  competitor_coverage: string[]
+  gap_type: string
+  priority: number
+}
+
+export interface CompetitorData {
+  name: string
+  website: string
+  category_focus: string[]
+  publishing_frequency: string
+  trending_topics: string[]
+  estimated_da: number
+  overlap_score: number
+}
+
+export interface ProductLaunch {
+  company: string
+  product_name: string
+  product_type: string
+  launch_date: string
+  status: string
+  article_ideas: string[]
+}
+
+export interface EditorialQueueItem {
+  id: string
+  title: string
+  category: string
+  stage: string
+  priority: number
+  created_at: string
+}
+
+export interface ArticlePlan {
+  title: string
+  seo_title: string
+  slug: string
+  meta_description: string
+  outline: { heading: string; points: string[] }[]
+  faqs: { question: string; answer: string }[]
+  primary_keyword: string
+  supporting_keywords: string[]
+  question_keywords: string[]
+  external_references: { url: string; title: string; authority: string }[]
+  image_suggestions: { query: string; source: string }[]
+  tags: string[]
+  reading_time: string
+  schema_type: string
+  suggested_category: string
+  category_confidence: number
+  social_drafts: { platform: string; content: string }[]
+}
+
 export function calculateOpportunityScore(factors: {
   search_demand: number
   trend_direction: number
@@ -221,4 +279,167 @@ export function generateBreakingNews() {
     { title: "Docker Desktop 5.0 introduces AI-powered debugging", category: "Programming", source: "Docker Blog", time: "14 hours ago", urgency: "low", url: "#" },
     { title: "Samsung Galaxy AI features expand to older devices", category: "Gadgets", source: "Samsung Newsroom", time: "16 hours ago", urgency: "low", url: "#" },
   ]
+}
+
+export function generateContentGaps(): ContentGap[] {
+  return [
+    { topic: "AI Coding Assistants Comparison 2026", category: "Programming", search_volume: 12000, competition_level: "Medium", competitor_coverage: ["TechCrunch", "The Verge", "Ars Technica"], gap_type: "high_demand_no_coverage", priority: 9 },
+    { topic: "Best Laptops for Developers", category: "Reviews", search_volume: 18000, competition_level: "High", competitor_coverage: ["Tom's Hardware", "NotebookCheck", "LaptopMag"], gap_type: "competitor_only", priority: 8 },
+    { topic: "Kubernetes vs Docker Swarm", category: "Networking & IT", search_volume: 9500, competition_level: "Low", competitor_coverage: ["DigitalOcean", "Linode"], gap_type: "competitor_only", priority: 7 },
+    { topic: "Rust vs Go Performance", category: "Programming", search_volume: 8200, competition_level: "Medium", competitor_coverage: ["HackerNoon", "Dev.to"], gap_type: "trending_not_covered", priority: 8 },
+    { topic: "Home Network Security Guide", category: "Cybersecurity", search_volume: 14000, competition_level: "Low", competitor_coverage: ["CISA", "KrebsOnSecurity"], gap_type: "high_demand_no_coverage", priority: 7 },
+    { topic: "AI Image Generation Tools Compared", category: "AI & Automation", search_volume: 22000, competition_level: "High", competitor_coverage: ["TechRadar", "PCMag", "CreativeBloq"], gap_type: "competitor_only", priority: 9 },
+    { topic: "Windows 12 Upgrade Guide", category: "Desktops", search_volume: 15000, competition_level: "Medium", competitor_coverage: ["How-To Geek", "MajorGeeks"], gap_type: "seasonal", priority: 8 },
+    { topic: "Mechanical Keyboard Guide for Programmers", category: "Reviews", search_volume: 7800, competition_level: "Low", competitor_coverage: ["Keychron", "Reddit"], gap_type: "competitor_only", priority: 6 },
+  ]
+}
+
+export function generateCompetitorData(): CompetitorData[] {
+  return [
+    { name: "TechCrunch", website: "techcrunch.com", category_focus: ["AI & Automation", "Digital Business", "Tech News"], publishing_frequency: "50+ articles/day", trending_topics: ["AI Startups", "VC Funding", "Crypto"], estimated_da: 95, overlap_score: 65 },
+    { name: "The Verge", website: "theverge.com", category_focus: ["Gadgets", "AI & Automation", "Reviews"], publishing_frequency: "30+ articles/day", trending_topics: ["Apple Products", "AI Hardware", "Streaming"], estimated_da: 94, overlap_score: 72 },
+    { name: "Ars Technica", website: "arstechnica.com", category_focus: ["Programming", "Cybersecurity", "Science"], publishing_frequency: "20+ articles/day", trending_topics: ["Open Source", "Security Research", "Chip Design"], estimated_da: 93, overlap_score: 58 },
+    { name: "BleepingComputer", website: "bleepingcomputer.com", category_focus: ["Cybersecurity", "Tech News"], publishing_frequency: "15+ articles/day", trending_topics: ["Ransomware", "Data Breaches", "Malware"], estimated_da: 90, overlap_score: 45 },
+    { name: "How-To Geek", website: "howtogeek.com", category_focus: ["Tutorials", "Desktops", "Gadgets"], publishing_frequency: "10+ articles/day", trending_topics: ["Windows Tips", "Android", "Smart Home"], estimated_da: 88, overlap_score: 55 },
+    { name: "Tom's Hardware", website: "tomshardware.com", category_focus: ["Gadgets", "Desktops", "Reviews"], publishing_frequency: "15+ articles/day", trending_topics: ["GPU Reviews", "CPU Benchmarks", "PC Building"], estimated_da: 92, overlap_score: 50 },
+  ]
+}
+
+export function generateProductLaunches(): ProductLaunch[] {
+  return [
+    { company: "Apple", product_name: "iPhone 17 Pro", product_type: "Smartphone", launch_date: "2026-09-15", status: "upcoming", article_ideas: ["iPhone 17 Pro specs leaked", "iPhone 17 vs Samsung Galaxy S26", "Best iPhone 17 cases"] },
+    { company: "Google", product_name: "Pixel 10 Pro", product_type: "Smartphone", launch_date: "2026-10-01", status: "upcoming", article_ideas: ["Pixel 10 Pro AI features", "Tensor G5 benchmarks", "Pixel 10 camera samples"] },
+    { company: "NVIDIA", product_name: "RTX 6090", product_type: "GPU", launch_date: "2026-08-20", status: "announced", article_ideas: ["RTX 6090 specs and pricing", "RTX 6090 vs RTX 5090", "Best GPUs for AI development"] },
+    { company: "Microsoft", product_name: "Windows 12", product_type: "Operating System", launch_date: "2026-10-15", status: "upcoming", article_ideas: ["Windows 12 new features", "Windows 12 upgrade guide", "Windows 12 vs macOS"] },
+    { company: "Samsung", product_name: "Galaxy S26 Ultra", product_type: "Smartphone", launch_date: "2026-07-25", status: "announced", article_ideas: ["Galaxy S26 Ultra review", "S26 Ultra camera comparison", "Galaxy AI features"] },
+    { company: "OpenAI", product_name: "GPT-5 Turbo", product_type: "AI Model", launch_date: "2026-08-01", status: "upcoming", article_ideas: ["GPT-5 Turbo capabilities", "GPT-5 vs Claude 4", "GPT-5 pricing breakdown"] },
+    { company: "AMD", product_name: "Ryzen 9 9950X3D", product_type: "CPU", launch_date: "2026-09-01", status: "upcoming", article_ideas: ["Ryzen 9 9950X3D gaming benchmarks", "Best AMD CPUs 2026", "AMD vs Intel comparison"] },
+    { company: "Apple", product_name: "MacBook Pro M5 Pro", product_type: "Laptop", launch_date: "2026-11-01", status: "upcoming", article_ideas: ["M5 Pro benchmarks", "MacBook Pro 2026 review", "M5 Pro vs M4 Pro"] },
+  ]
+}
+
+export function generateEditorialQueue(): EditorialQueueItem[] {
+  return [
+    { id: "1", title: "AI Agents Complete Guide", category: "AI & Automation", stage: "draft_generation", priority: 9, created_at: new Date().toISOString() },
+    { id: "2", title: "Windows 12 Features Breakdown", category: "Desktops", stage: "keyword_analysis", priority: 8, created_at: new Date().toISOString() },
+    { id: "3", title: "Best Cybersecurity Tools 2026", category: "Cybersecurity", stage: "researching", priority: 7, created_at: new Date().toISOString() },
+    { id: "4", title: "React 20 Migration Guide", category: "Programming", stage: "seo_optimization", priority: 8, created_at: new Date().toISOString() },
+    { id: "5", title: "Samsung Galaxy S26 Review", category: "Reviews", stage: "editorial_review", priority: 9, created_at: new Date().toISOString() },
+    { id: "6", title: "Rust Programming Tutorial", category: "Tutorials", stage: "image_processing", priority: 6, created_at: new Date().toISOString() },
+  ]
+}
+
+export function generateSmartCalendar() {
+  const today = new Date()
+  return Array.from({ length: 30 }, (_, i) => {
+    const date = new Date(today)
+    date.setDate(today.getDate() + i)
+    const dayName = date.toLocaleDateString("en-US", { weekday: "short" })
+    const articles = i === 0 ? 3 : i < 7 ? Math.floor(Math.random() * 3) + 1 : Math.floor(Math.random() * 2)
+    return {
+      date: date.toISOString().split("T")[0],
+      day: dayName,
+      articles_count: articles,
+      has_launch: i === 14 || i === 21,
+      has_event: i === 7,
+    }
+  })
+}
+
+export function generateDailyBriefing() {
+  return {
+    summary: "Organic traffic is up 12% compared to yesterday. AI & Automation continues to lead with strong engagement. Three articles entered the Top 10 search results. Five articles are losing traffic and should be refreshed. Cybersecurity searches are increasing ahead of the CISA conference. Estimated revenue is trending above forecast.",
+    key_metrics: {
+      traffic_change: "+12%",
+      new_rankings: 3,
+      declining_articles: 5,
+      trending_categories: ["AI & Automation", "Cybersecurity", "Programming"],
+      revenue_trend: "above_forecast",
+    },
+    top_actions: [
+      "Publish AI Agents guide within 24 hours — opportunity score 98",
+      "Refresh 'Best VPN 2025' article — traffic declining 30%",
+      "Prepare Windows 12 coverage — launch announced",
+      "Schedule cybersecurity content for CISA conference week",
+    ],
+  }
+}
+
+export function generateResearchResults(topic: string) {
+  return {
+    topic,
+    official_sources: [
+      { title: `Official ${topic} documentation`, url: "#", authority: "High" },
+      { title: `${topic} press release`, url: "#", authority: "High" },
+    ],
+    news_coverage: [
+      { title: `Latest ${topic} developments`, source: "TechCrunch", date: new Date().toISOString() },
+      { title: `${topic} analysis and implications`, source: "The Verge", date: new Date().toISOString() },
+    ],
+    existing_articles: [
+      { title: `Previous ${topic} coverage on TechPivo`, url: "#", views: 1200 },
+    ],
+    keywords: [
+      { keyword: topic.toLowerCase(), volume: 12000, difficulty: 45 },
+      { keyword: `${topic} tutorial`, volume: 8000, difficulty: 30 },
+      { keyword: `${topic} vs alternatives`, volume: 6000, difficulty: 35 },
+      { keyword: `best ${topic} tools`, volume: 9500, difficulty: 40 },
+      { keyword: `${topic} guide 2026`, volume: 7000, difficulty: 25 },
+    ],
+    faqs: [
+      `What is ${topic}?`,
+      `How does ${topic} work?`,
+      `Why is ${topic} important in 2026?`,
+      `What are the best ${topic} tools?`,
+      `How to get started with ${topic}?`,
+    ],
+  }
+}
+
+export function generateArticlePlan(topic: string, category: string): ArticlePlan {
+  return {
+    title: `The Complete Guide to ${topic} in 2026`,
+    seo_title: `${topic}: Complete Guide, Features & Best Practices [2026]`,
+    slug: topic.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, ""),
+    meta_description: `Everything you need to know about ${topic} in 2026. Features, comparisons, tutorials, and expert recommendations.`,
+    outline: [
+      { heading: `What is ${topic}?`, points: ["Definition and overview", "Why it matters in 2026", "Key capabilities"] },
+      { heading: `How ${topic} Works`, points: ["Core technology", "Architecture overview", "Key components"] },
+      { heading: `Top ${topic} Tools & Solutions`, points: ["Tool 1 comparison", "Tool 2 comparison", "Tool 3 comparison", "Comparison table"] },
+      { heading: `Getting Started with ${topic}`, points: ["Prerequisites", "Step-by-step guide", "Best practices"] },
+      { heading: `${topic} vs Alternatives`, points: ["Feature comparison", "Pricing comparison", "Use case recommendations"] },
+      { heading: `Expert Tips & Best Practices`, points: ["Performance optimization", "Security considerations", "Common mistakes to avoid"] },
+      { heading: `FAQs`, points: ["5 frequently asked questions with detailed answers"] },
+    ],
+    faqs: [
+      { question: `What is ${topic}?`, answer: `${topic} is a technology that enables...` },
+      { question: `Why is ${topic} important?`, answer: `${topic} is important because...` },
+      { question: `How do I get started with ${topic}?`, answer: `To get started with ${topic}...` },
+      { question: `What are the best ${topic} tools?`, answer: `The best ${topic} tools include...` },
+      { question: `Is ${topic} free?`, answer: `${topic} pricing varies by provider...` },
+    ],
+    primary_keyword: topic.toLowerCase(),
+    supporting_keywords: [`${topic} tutorial`, `${topic} guide`, `best ${topic} tools`, `${topic} 2026`],
+    question_keywords: [`what is ${topic}`, `how to use ${topic}`, `why ${topic}`, `${topic} vs alternatives`, `best ${topic}`],
+    external_references: [
+      { url: "#", title: `Official ${topic} Documentation`, authority: "Official" },
+      { url: "#", title: `${topic} GitHub Repository`, authority: "Developer" },
+      { url: "#", title: `${topic} on MDN`, authority: "Documentation" },
+    ],
+    image_suggestions: [
+      { query: `${topic} dashboard interface`, source: "Pexels" },
+      { query: `${topic} code example`, source: "AI Generated" },
+      { query: `${topic} architecture diagram`, source: "AI Generated" },
+    ],
+    tags: [topic, category, "technology", "tutorial", "guide", "2026"],
+    reading_time: "12 min read",
+    schema_type: "Article",
+    suggested_category: category,
+    category_confidence: 95,
+    social_drafts: [
+      { platform: "X", content: `Just published: The Complete Guide to ${topic} in 2026. Everything you need to know to get started. #TechPivo #${topic.replace(/\s/g, "")}` },
+      { platform: "LinkedIn", content: `New article: ${topic} — A comprehensive guide covering features, comparisons, and best practices for 2026.` },
+      { platform: "Facebook", content: `New on TechPivo: ${topic} complete guide. Learn everything about this trending technology.` },
+    ],
+  }
 }
