@@ -45,6 +45,11 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { path: "/advertise", priority: 0.4, freq: "monthly" },
     { path: "/write-for-us", priority: 0.5, freq: "monthly" },
     { path: "/newsletter", priority: 0.4, freq: "weekly" },
+    { path: "/tools", priority: 0.7, freq: "monthly" },
+    { path: "/tools/json-formatter", priority: 0.6, freq: "monthly" },
+    { path: "/tools/password-generator", priority: 0.6, freq: "monthly" },
+    { path: "/tools/slug-generator", priority: 0.6, freq: "monthly" },
+    { path: "/tools/word-counter", priority: 0.6, freq: "monthly" },
   ]
 
   const entries: MetadataRoute.Sitemap = staticPages.map(p => ({

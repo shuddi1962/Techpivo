@@ -29,6 +29,7 @@ export function MainNav({ categories }: { categories: any[] }) {
                 {cat.name}
               </Link>
             ))}
+            <Link href="/tools" className="nav-link" style={{ "--hover-color": "#F59E0B" } as React.CSSProperties}>Tools</Link>
           </div>
           <div className="nav-right">
             <div className="live-dot-wrap">
@@ -48,6 +49,7 @@ export function MainNav({ categories }: { categories: any[] }) {
           {categories.map((cat: any) => (
             <Link key={cat.id} href={`/category/${cat.slug}`} className="mobile-link">{cat.name}</Link>
           ))}
+          <Link href="/tools" className="mobile-link">Tools</Link>
         </div>
       )}
     </>

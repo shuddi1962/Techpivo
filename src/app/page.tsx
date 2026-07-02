@@ -37,6 +37,12 @@ export default async function HomePage() {
   let gadgetPosts: any[] | null = null
   let techNewsPosts: any[] | null = null
   let desktopPosts: any[] | null = null
+  let programmingPosts: any[] | null = null
+  let reviewsPosts: any[] | null = null
+  let tutorialsPosts: any[] | null = null
+  let networkingPosts: any[] | null = null
+  let digitalBusinessPosts: any[] | null = null
+  let gamingPosts: any[] | null = null
   let subcategories: any[] | null = null
   let allTags: any[] | null = null
 
@@ -102,6 +108,36 @@ export default async function HomePage() {
           .not("featured_image", "is", null)
           .order("published_at", { ascending: false }).limit(10),
 
+        supabase.from("posts").select("*, categories!inner(name,slug,color)")
+          .eq("status", "published").eq("categories.slug", "programming")
+          .not("featured_image", "is", null)
+          .order("published_at", { ascending: false }).limit(10),
+
+        supabase.from("posts").select("*, categories!inner(name,slug,color)")
+          .eq("status", "published").eq("categories.slug", "reviews")
+          .not("featured_image", "is", null)
+          .order("published_at", { ascending: false }).limit(10),
+
+        supabase.from("posts").select("*, categories!inner(name,slug,color)")
+          .eq("status", "published").eq("categories.slug", "tutorials")
+          .not("featured_image", "is", null)
+          .order("published_at", { ascending: false }).limit(10),
+
+        supabase.from("posts").select("*, categories!inner(name,slug,color)")
+          .eq("status", "published").eq("categories.slug", "networking-it")
+          .not("featured_image", "is", null)
+          .order("published_at", { ascending: false }).limit(10),
+
+        supabase.from("posts").select("*, categories!inner(name,slug,color)")
+          .eq("status", "published").eq("categories.slug", "digital-business")
+          .not("featured_image", "is", null)
+          .order("published_at", { ascending: false }).limit(10),
+
+        supabase.from("posts").select("*, categories!inner(name,slug,color)")
+          .eq("status", "published").eq("categories.slug", "gaming")
+          .not("featured_image", "is", null)
+          .order("published_at", { ascending: false }).limit(10),
+
         supabase.from("subcategories").select("*, categories(name,slug,color)")
           .order("name"),
 
@@ -130,9 +166,15 @@ export default async function HomePage() {
       gadgetPosts = shuffleCat(extract(results[8], 8))
       techNewsPosts = shuffleCat(extract(results[9], 9))
       desktopPosts = shuffleCat(extract(results[10], 10))
+      programmingPosts = shuffleCat(extract(results[11], 11))
+      reviewsPosts = shuffleCat(extract(results[12], 12))
+      tutorialsPosts = shuffleCat(extract(results[13], 13))
+      networkingPosts = shuffleCat(extract(results[14], 14))
+      digitalBusinessPosts = shuffleCat(extract(results[15], 15))
+      gamingPosts = shuffleCat(extract(results[16], 16))
 
-      subcategories = extract(results[11], 11)
-      allTags = extract(results[12], 12)
+      subcategories = extract(results[17], 17)
+      allTags = extract(results[18], 18)
     } catch (e) {
       console.error("Homepage data fetch failed", e)
     }
@@ -252,6 +294,70 @@ export default async function HomePage() {
               posts={desktopPosts || []}
               subcategories={subcatsByCat["desktops"] || []}
             />
+
+            <AdSlot positionKey="home_infeed_7" className="ad-mid" />
+
+            <CategoryStrip
+              categoryName="Programming"
+              categorySlug="programming"
+              categoryColor="#06B6D4"
+              posts={programmingPosts || []}
+              subcategories={subcatsByCat["programming"] || []}
+            />
+
+            <CategoryStrip
+              categoryName="Reviews"
+              categorySlug="reviews"
+              categoryColor="#F97316"
+              posts={reviewsPosts || []}
+              subcategories={subcatsByCat["reviews"] || []}
+            />
+
+            <AdsterraBanner size="468x60" className="my-6 hidden md:flex" label="Advertisement" />
+
+            <CategoryStrip
+              categoryName="Tutorials"
+              categorySlug="tutorials"
+              categoryColor="#10B981"
+              posts={tutorialsPosts || []}
+              subcategories={subcatsByCat["tutorials"] || []}
+            />
+
+            <CategoryStrip
+              categoryName="Networking & IT"
+              categorySlug="networking-it"
+              categoryColor="#8B5CF6"
+              posts={networkingPosts || []}
+              subcategories={subcatsByCat["networking-it"] || []}
+            />
+
+            <AdSlot positionKey="home_infeed_8" className="ad-mid" />
+
+            <CategoryStrip
+              categoryName="Digital Business"
+              categorySlug="digital-business"
+              categoryColor="#EC4899"
+              posts={digitalBusinessPosts || []}
+              subcategories={subcatsByCat["digital-business"] || []}
+            />
+
+            <CategoryStrip
+              categoryName="Gaming"
+              categorySlug="gaming"
+              categoryColor="#EF4444"
+              posts={gamingPosts || []}
+              subcategories={subcatsByCat["gaming"] || []}
+            />
+
+            <div style={{ margin: "40px 0", padding: 32, borderRadius: 16, background: "linear-gradient(135deg, var(--accent) 0%, #D97706 100%)", textAlign: "center" }}>
+              <h2 style={{ fontFamily: "'Syne', sans-serif", fontSize: 24, fontWeight: 800, color: "#fff", marginBottom: 8 }}>Free Tech Tools</h2>
+              <p style={{ fontSize: 14, color: "rgba(255,255,255,0.85)", marginBottom: 20, maxWidth: 500, margin: "0 auto 20px" }}>
+                Developer utilities, SEO tools, security checkers, and more. Fast, free, and private.
+              </p>
+              <a href="/tools" style={{ display: "inline-block", padding: "12px 32px", borderRadius: 8, background: "#fff", color: "var(--accent)", fontWeight: 700, fontSize: 14, textDecoration: "none" }}>
+                Explore All Tools
+              </a>
+            </div>
           </div>
 
           <Sidebar

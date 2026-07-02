@@ -31,6 +31,8 @@ export const AD_POSITIONS = {
   home_infeed_4: "In-feed #4",
   home_infeed_5: "In-feed #5",
   home_infeed_6: "In-feed #6",
+  home_infeed_7: "In-feed #7",
+  home_infeed_8: "In-feed #8",
   home_sidebar_top: "300×250 Sidebar",
   home_sidebar_mid: "300×600 Half Page",
   home_bottom_banner: "728×90 Bottom",

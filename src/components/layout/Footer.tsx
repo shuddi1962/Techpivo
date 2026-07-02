@@ -101,6 +101,7 @@ export function Footer({ categories, recentPosts }: { categories: any[]; recentP
             { label: "Privacy Policy", href: "/privacy-policy" },
             { label: "Cookies Policy", href: "/cookies-policy" },
             { label: "Terms of Use", href: "/terms-of-use" },
+            { label: "Tools", href: "/tools" },
             { label: "Newsletter", href: "/newsletter" },
             { label: "Write For Us", href: "/write-for-us" },
             { label: "Marketplace", href: "/marketplace" },
