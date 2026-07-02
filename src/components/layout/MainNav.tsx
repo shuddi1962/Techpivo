@@ -30,6 +30,7 @@ export function MainNav({ categories }: { categories: any[] }) {
               </Link>
             ))}
             <Link href="/tools" className="nav-link" style={{ "--hover-color": "#F59E0B" } as React.CSSProperties}>Tools</Link>
+            <Link href="/community" className="nav-link" style={{ "--hover-color": "#8B5CF6" } as React.CSSProperties}>Community</Link>
           </div>
           <div className="nav-right">
             <div className="live-dot-wrap">
@@ -50,6 +51,7 @@ export function MainNav({ categories }: { categories: any[] }) {
             <Link key={cat.id} href={`/category/${cat.slug}`} className="mobile-link">{cat.name}</Link>
           ))}
           <Link href="/tools" className="mobile-link">Tools</Link>
+          <Link href="/community" className="mobile-link">Community</Link>
         </div>
       )}
     </>

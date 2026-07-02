@@ -1,114 +1,188 @@
-"use client"
+'use client';
 
-import { useEffect, useState } from "react"
-import { useRouter } from "next/navigation"
-import Link from "next/link"
-import { createClient } from "@/lib/supabase/client"
-import type { User } from "@supabase/supabase-js"
-import type { Profile } from "@/types/database"
+import { useState, useEffect } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Badge } from '@/components/ui/badge';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { User, Bookmark, History, Settings, Bell, Shield, Star, BookOpen, MessageSquare } from 'lucide-react';
 
 export default function AccountPage() {
-  const [user, setUser] = useState<User | null>(null)
-  const [profile, setProfile] = useState<Profile | null>(null)
-  const [fullName, setFullName] = useState("")
-  const [username, setUsername] = useState("")
-  const [bio, setBio] = useState("")
-  const [loading, setLoading] = useState(true)
-  const [saving, setSaving] = useState(false)
-  const [saved, setSaved] = useState(false)
-  const router = useRouter()
-  const supabase = createClient()
+  const [profile, setProfile] = useState<any>(null);
+  const [bookmarks, setBookmarks] = useState<any[]>([]);
+  const [history, setHistory] = useState<any[]>([]);
+  const [notifications, setNotifications] = useState<any[]>([]);
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    const load = async () => {
-      const { data: { user: u } } = await supabase.auth.getUser()
-      if (!u) { router.push("/login"); return }
-      setUser(u)
-      const { data: p } = await supabase.from("profiles").select("*").eq("id", u.id).single()
-      if (p) {
-        setProfile(p)
-        setFullName(p.full_name || "")
-        setUsername(p.username || "")
-        setBio(p.bio || "")
-      }
-      setLoading(false)
-    }
-    load()
-  }, [router, supabase])
+    fetch('/api/community/profile').then(r => r.json()).then(d => setProfile(d.profile));
+    fetch('/api/community/bookmarks').then(r => r.json()).then(d => setBookmarks(d.bookmarks || []));
+    fetch('/api/community/history').then(r => r.json()).then(d => setHistory(d.history || []));
+    fetch('/api/community/notifications').then(r => r.json()).then(d => setNotifications(d.notifications || []));
+  }, []);
 
-  const handleSave = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setSaving(true)
-    setSaved(false)
-    const { error } = await supabase.from("profiles").update({ full_name: fullName, username, bio }).eq("id", user!.id)
-    if (!error) setSaved(true)
-    setSaving(false)
-  }
-
-  const handleSignOut = async () => {
-    await supabase.auth.signOut()
-    router.push("/")
-    router.refresh()
-  }
-
-  if (loading) return <div className="min-h-screen flex items-center justify-center"><p style={{ color: "var(--muted)" }}>Loading...</p></div>
+  const saveProfile = async () => {
+    setSaving(true);
+    await fetch('/api/community/profile', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(profile),
+    });
+    setSaving(false);
+  };
 
   return (
-    <div className="min-h-screen py-12 px-4" style={{ background: "var(--bg)" }}>
-      <div className="max-w-2xl mx-auto">
-        <div className="flex items-center justify-between mb-8">
-          <div>
-            <h1 className="text-2xl font-bold" style={{ fontFamily: "'Syne', sans-serif", color: "var(--text)" }}>My Account</h1>
-            <p className="text-sm" style={{ color: "var(--muted)" }}>{user?.email}</p>
-          </div>
-          <div className="flex gap-3">
-            <Link href="/" className="text-sm font-medium hover:underline" style={{ color: "hsl(var(--accent))" }}>← Back to site</Link>
-            {profile?.role === "admin" && (
-              <Link href="/admin" className="text-sm font-medium hover:underline" style={{ color: "hsl(var(--accent))" }}>Admin Panel</Link>
-            )}
-          </div>
-        </div>
+    <div className="min-h-screen bg-background">
+      <div className="max-w-4xl mx-auto px-4 py-8">
+        <h1 className="text-3xl font-bold mb-6">My Account</h1>
 
-        <div className="bg-card border rounded-2xl p-6 mb-6" style={{ borderColor: "var(--border)" }}>
-          <div className="flex items-center gap-4 mb-6 pb-4" style={{ borderBottom: "1px solid var(--border)" }}>
-            <div className="w-14 h-14 rounded-full flex items-center justify-center text-xl font-bold text-white" style={{ background: "hsl(var(--accent))" }}>
-              {profile?.full_name?.charAt(0) || user?.email?.charAt(0) || "?"}
-            </div>
-            <div>
-              <p className="font-semibold" style={{ color: "var(--text)" }}>{profile?.full_name || "User"}</p>
-              <p className="text-xs capitalize" style={{ color: "var(--muted)" }}>Role: {profile?.role || "contributor"}</p>
-            </div>
-          </div>
+        <Tabs defaultValue="profile">
+          <TabsList className="mb-6">
+            <TabsTrigger value="profile"><User className="h-4 w-4 mr-1" /> Profile</TabsTrigger>
+            <TabsTrigger value="bookmarks"><Bookmark className="h-4 w-4 mr-1" /> Bookmarks</TabsTrigger>
+            <TabsTrigger value="history"><History className="h-4 w-4 mr-1" /> History</TabsTrigger>
+            <TabsTrigger value="notifications"><Bell className="h-4 w-4 mr-1" /> Notifications</TabsTrigger>
+          </TabsList>
 
-          {saved && <div className="text-sm text-green-600 bg-green-50 dark:bg-green-900/20 rounded-lg p-3 mb-4">Profile updated successfully.</div>}
+          <TabsContent value="profile">
+            <Card>
+              <CardHeader>
+                <CardTitle>Edit Profile</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-sm font-medium mb-1 block">Full Name</label>
+                    <Input
+                      value={profile?.full_name || ''}
+                      onChange={e => setProfile({ ...profile, full_name: e.target.value })}
+                      placeholder="Your name"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium mb-1 block">Username</label>
+                    <Input
+                      value={profile?.username || ''}
+                      onChange={e => setProfile({ ...profile, username: e.target.value })}
+                      placeholder="username"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="text-sm font-medium mb-1 block">Bio</label>
+                  <Textarea
+                    value={profile?.bio || ''}
+                    onChange={e => setProfile({ ...profile, bio: e.target.value })}
+                    placeholder="Tell us about yourself..."
+                    rows={3}
+                  />
+                </div>
+                <div className="grid md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-sm font-medium mb-1 block">Location</label>
+                    <Input
+                      value={profile?.location || ''}
+                      onChange={e => setProfile({ ...profile, location: e.target.value })}
+                      placeholder="City, Country"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium mb-1 block">Website</label>
+                    <Input
+                      value={profile?.website || ''}
+                      onChange={e => setProfile({ ...profile, website: e.target.value })}
+                      placeholder="https://..."
+                    />
+                  </div>
+                </div>
+                <Button onClick={saveProfile} disabled={saving}>
+                  {saving ? 'Saving...' : 'Save Changes'}
+                </Button>
+              </CardContent>
+            </Card>
+          </TabsContent>
 
-          <form onSubmit={handleSave} className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium mb-1" style={{ color: "var(--text)" }}>Full Name</label>
-              <input type="text" value={fullName} onChange={(e) => setFullName(e.target.value)} className="w-full border rounded-lg px-4 py-2.5 text-sm outline-none focus:border-accent" style={{ background: "var(--bg)", borderColor: "var(--border)", color: "var(--text)" }} />
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-1" style={{ color: "var(--text)" }}>Username</label>
-              <input type="text" value={username} onChange={(e) => setUsername(e.target.value)} className="w-full border rounded-lg px-4 py-2.5 text-sm outline-none focus:border-accent" style={{ background: "var(--bg)", borderColor: "var(--border)", color: "var(--text)" }} />
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-1" style={{ color: "var(--text)" }}>Bio</label>
-              <textarea rows={3} value={bio} onChange={(e) => setBio(e.target.value)} className="w-full border rounded-lg px-4 py-2.5 text-sm outline-none focus:border-accent resize-none" style={{ background: "var(--bg)", borderColor: "var(--border)", color: "var(--text)" }} />
-            </div>
-            <button type="submit" disabled={saving} className="text-white font-semibold py-2.5 px-6 rounded-lg text-sm transition-opacity hover:opacity-90" style={{ background: "hsl(var(--accent))" }}>
-              {saving ? "Saving..." : "Save Changes"}
-            </button>
-          </form>
-        </div>
+          <TabsContent value="bookmarks">
+            <Card>
+              <CardHeader>
+                <CardTitle>Saved Items</CardTitle>
+              </CardHeader>
+              <CardContent>
+                {bookmarks.length === 0 ? (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <Bookmark className="h-8 w-8 mx-auto mb-2" />
+                    <p>No bookmarks yet. Save articles, tutorials, and tools to find them here.</p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {bookmarks.map((b) => (
+                      <div key={b.id} className="flex items-center gap-3 p-3 rounded-lg hover:bg-muted/50">
+                        <Badge variant="outline">{b.item_type}</Badge>
+                        <span className="flex-1 truncate">{b.title || b.item_id}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
 
-        <div className="bg-card border rounded-2xl p-6" style={{ borderColor: "var(--border)" }}>
-          <h2 className="font-semibold mb-4" style={{ color: "var(--text)" }}>Account Actions</h2>
-          <div className="space-y-3">
-            <Link href="/reading-list" className="block text-sm font-medium hover:underline" style={{ color: "hsl(var(--accent))" }}>My Reading List →</Link>
-            <button onClick={handleSignOut} className="text-sm font-medium text-red-500 hover:underline">Sign Out</button>
-          </div>
-        </div>
+          <TabsContent value="history">
+            <Card>
+              <CardHeader>
+                <CardTitle>Reading History</CardTitle>
+              </CardHeader>
+              <CardContent>
+                {history.length === 0 ? (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <History className="h-8 w-8 mx-auto mb-2" />
+                    <p>No reading history yet. Start reading articles to track your progress.</p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {history.map((h) => (
+                      <div key={h.id} className="flex items-center gap-3 p-3 rounded-lg hover:bg-muted/50">
+                        <BookOpen className="h-4 w-4 text-muted-foreground" />
+                        <span className="flex-1 truncate">{h.title || h.post_id}</span>
+                        <Badge variant={h.completed ? 'default' : 'secondary'}>
+                          {h.completed ? 'Completed' : `${h.progress}%`}
+                        </Badge>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="notifications">
+            <Card>
+              <CardHeader>
+                <CardTitle>Notifications</CardTitle>
+              </CardHeader>
+              <CardContent>
+                {notifications.length === 0 ? (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <Bell className="h-8 w-8 mx-auto mb-2" />
+                    <p>No notifications yet.</p>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {notifications.map((n) => (
+                      <div key={n.id} className={`p-3 rounded-lg ${n.is_read ? 'bg-muted/30' : 'bg-primary/5 border border-primary/10'}`}>
+                        <div className="font-medium text-sm">{n.title}</div>
+                        {n.message && <div className="text-sm text-muted-foreground mt-1">{n.message}</div>}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
       </div>
     </div>
-  )
+  );
 }

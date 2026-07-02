@@ -9,7 +9,7 @@ import {
   Globe, Settings, Users, MessageSquare, Mail,
   Bell, Lightbulb, Share2, Shield, Mic, Search,
   Brain, FlaskConical, HeartPulse, Calendar, Swords,
-  TrendingUp, FileBarChart, Cpu, Key, Wrench, Lock, Network, Rocket
+  TrendingUp, FileBarChart, Cpu, Key, Wrench, Lock, Network, Rocket, Trophy, BookOpen
 } from "lucide-react"
 
 interface NavGroup {
@@ -94,6 +94,17 @@ const navGroups: NavGroup[] = [
       { href: "/admin/tools", label: "Tools Center", icon: Wrench },
       { href: "/admin/knowledge-graph", label: "Knowledge Graph", icon: Network },
       { href: "/admin/launch-center", label: "Launch Center", icon: Rocket },
+    ],
+  },
+  {
+    label: "Community",
+    links: [
+      { href: "/community", label: "Community Hub", icon: Users },
+      { href: "/community/forum", label: "Forum", icon: MessageSquare },
+      { href: "/community/quiz", label: "Quizzes", icon: Brain },
+      { href: "/community/polls", label: "Polls", icon: BarChart3 },
+      { href: "/community/leaderboard", label: "Leaderboard", icon: Trophy },
+      { href: "/community/learning-paths", label: "Learning Paths", icon: BookOpen },
     ],
   },
 ]

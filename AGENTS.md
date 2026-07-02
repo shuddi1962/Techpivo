@@ -5191,3 +5191,195 @@ For every idea, generate:
 - `src/app/admin/editorial-intelligence/brief/route.ts` — Brief generation API
 - `supabase/migrations/030_editorial_intelligence.sql` — Core database schema
 - `supabase/migrations/031_editorial_intelligence_expanded.sql` — Expanded schema
+
+---
+
+# PART 11 — TechPivo Community Center
+
+---
+
+## Vision
+
+Transform TechPivo from a content website into a **community-driven learning platform**. Visitors come for articles, tools, quizzes, forums, and learning paths — and stay because they have a profile, progress, reputation, and ongoing learning goals.
+
+**Goal:** Don't just get visitors. Build members.
+
+---
+
+## Navigation
+
+```
+Community
+  ├── Forum (Category-based discussions)
+  ├── Quiz (Interactive tech quizzes)
+  ├── Polls (Community polls)
+  ├── Leaderboard (Top contributors)
+  ├── Learning Paths (Structured courses)
+  ├── Events (Tech events calendar)
+  └── Bookmarks (Saved content)
+```
+
+---
+
+## 1. User Profiles 2.0
+
+Every user gets a rich profile:
+
+- Profile picture, cover photo, bio
+- Location, website, social links
+- Join date, reputation points, level, badges, rank
+- Followers / Following counts
+- Saved articles, reading history, liked articles
+- Comments, forum posts, quiz scores, poll history
+- Achievements, certificates, activity timeline
+
+Public profile URL: `/u/{username}`
+
+---
+
+## 2. Gamification System
+
+Users earn XP for positive participation:
+
+| Action | XP |
+|--------|-----|
+| Read article | +5 |
+| Complete profile | +50 |
+| Comment approved | +15 |
+| Answer forum question | +25 |
+| Create discussion | +40 |
+| Complete quiz | +20 |
+| Share article | +15 |
+| Daily login | +10 |
+| Newsletter subscription | +20 |
+| Daily streak bonus | +10-100 |
+
+---
+
+## 3. Levels
+
+| Level | Title |
+|-------|-------|
+| 1 | New Member |
+| 5 | Tech Explorer |
+| 10 | Developer |
+| 20 | Tech Enthusiast |
+| 35 | Power User |
+| 50 | Tech Guru |
+| 100 | TechPivo Legend |
+
+---
+
+## 4. Badges
+
+- 🔥 Early Member
+- 💻 Programmer
+- 🤖 AI Expert
+- 🛡 Cybersecurity Pro
+- 📱 Gadget Lover
+- 🎓 Tutorial Master
+- 🏆 Quiz Champion
+- ⭐ Top Commenter
+- 💬 Community Helper
+- 🚀 Daily Visitor
+
+---
+
+## 5. Quiz Center
+
+Interactive tech quizzes with:
+- Multiple choice, True/False, Timed quizzes
+- Score tracking, Leaderboard ranking
+- Certificate generation (optional)
+- Share results, Recommended articles
+
+---
+
+## 6. Poll Center
+
+Community polls attached to articles or standalone. Users vote and see results.
+
+---
+
+## 7. Forum
+
+Category-based discussion board:
+- Programming, Cybersecurity, AI, Gaming, Linux, Windows, Hardware, Career
+- Ask questions, Answer, Vote, Bookmark, Follow topics
+- Accepted answers earn extra reputation
+
+---
+
+## 8. Leaderboards
+
+Top contributors by: Readers, Commenters, Quiz Players, Forum Helpers, Authors. Daily, weekly, monthly views.
+
+---
+
+## 9. Reading Challenges & Learning Paths
+
+Bundled content into guided journeys with progress tracking.
+
+---
+
+## 10. Notifications
+
+New replies, followers, quizzes, badge earned, level up, trending discussions, saved article updated.
+
+---
+
+## 11. Daily Streak
+
+Login streaks with XP rewards. Missing a day resets (streak freeze future feature).
+
+---
+
+## 12. AI Community Assistant
+
+Suggests answers, recommends articles/quizzes/tools, moderates spam, summarizes discussions.
+
+---
+
+## 13. Discussion Under Every Article
+
+Rich discussions with replies, mentions, likes, bookmarks, follow, vote on helpful replies.
+
+---
+
+## Database Tables (Migration 032)
+
+- `user_profiles` — Extended profile data (level, xp, badges, streak, bio, cover, social links)
+- `user_follows` — Follower/following relationships
+- `forum_categories` — Forum category definitions
+- `forum_posts` — Forum discussions
+- `forum_replies` — Forum replies
+- `forum_votes` — Vote tracking
+- `quizzes` — Quiz definitions
+- `quiz_questions` — Quiz questions
+- `quiz_attempts` — User quiz attempts
+- `polls` — Poll definitions
+- `poll_options` — Poll choices
+- `poll_votes` — Poll voting
+- `user_bookmarks` — Saved content
+- `user_reading_history` — Reading progress
+- `user_badges` — Earned badges
+- `user_xp_log` — XP transaction log
+- `user_notifications` — Notification center
+- `article_discussions` — Article comment threads
+- `discussion_replies` — Comment replies
+
+---
+
+## Files
+
+- `src/lib/community.ts` — Gamification engine, XP, levels, badges
+- `src/app/community/page.tsx` — Community hub
+- `src/app/community/forum/page.tsx` — Forum listing
+- `src/app/community/forum/[category]/page.tsx` — Category posts
+- `src/app/community/quiz/page.tsx` — Quiz center
+- `src/app/community/quiz/[id]/page.tsx` — Quiz runner
+- `src/app/community/polls/page.tsx` — Poll center
+- `src/app/community/leaderboard/page.tsx` — Leaderboard
+- `src/app/u/[username]/page.tsx` — Public profile
+- `src/app/account/page.tsx` — Account settings
+- `supabase/migrations/032_community.sql` — Community database schema
