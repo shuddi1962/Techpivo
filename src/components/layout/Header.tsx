@@ -116,19 +116,6 @@ export function Header() {
 
           {/* Right side controls */}
           <div className="header-controls">
-            {/* Socials — desktop only */}
-            <div className="header-socials">
-              {headerSocials.map((s) => {
-                const href = socialUrls[s.id]
-                if (!href) return null
-                return (
-                  <a key={s.id} href={href} target="_blank" rel="noopener noreferrer" className="icon-btn" aria-label={s.label}>
-                    {s.icon}
-                  </a>
-                )
-              })}
-            </div>
-
             {/* Theme toggle — always visible */}
             {mounted && (
               <button className="icon-btn" onClick={() => setTheme(theme === "dark" ? "light" : "dark")} aria-label="Toggle theme">
@@ -140,11 +127,24 @@ export function Header() {
               </button>
             )}
 
-            {/* Desktop nav buttons */}
-            <Link href="/tools" className="login-btn header-nav-link"><span>Tools</span></Link>
-            <Link href="/community" className="login-btn header-nav-link"><span>Community</span></Link>
-            <Link href="/community/events" className="login-btn header-nav-link"><span>Events</span></Link>
-            <Link href="/marketplace" className="login-btn header-nav-link"><span>Shop</span></Link>
+            {/* Desktop nav links — text only */}
+            <Link href="/tools" className="header-nav-link"><span>Tools</span></Link>
+            <Link href="/community" className="header-nav-link"><span>Community</span></Link>
+            <Link href="/community/events" className="header-nav-link"><span>Events</span></Link>
+            <Link href="/marketplace" className="header-nav-link"><span>Shop</span></Link>
+
+            {/* Socials — desktop only, before Sign In */}
+            <div className="header-socials">
+              {headerSocials.map((s) => {
+                const href = socialUrls[s.id]
+                if (!href) return null
+                return (
+                  <a key={s.id} href={href} target="_blank" rel="noopener noreferrer" className="icon-btn" aria-label={s.label}>
+                    {s.icon}
+                  </a>
+                )
+              })}
+            </div>
 
             {/* Account / Sign In — always visible */}
             {user ? (
@@ -172,6 +172,7 @@ export function Header() {
             <div className="mobile-drawer-header">
               <Link href="/" className="mobile-drawer-logo" onClick={() => setDrawerOpen(false)}>
                 <img src="/logo.svg?v=6" alt="Techpivo" style={{ height: 28, width: "auto" }} />
+                <span style={{ fontFamily: "'Syne', sans-serif", fontWeight: 800, fontSize: 18, color: "var(--text)", marginLeft: 8 }}>Techpivo</span>
               </Link>
               <button className="mobile-drawer-close" onClick={() => setDrawerOpen(false)}>&times;</button>
             </div>
