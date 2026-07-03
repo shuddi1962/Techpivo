@@ -172,7 +172,7 @@ export function Header() {
             <div className="mobile-drawer-header">
               <Link href="/" className="mobile-drawer-logo" onClick={() => setDrawerOpen(false)}>
                 <img src="/logo.svg?v=6" alt="Techpivo" style={{ height: 28, width: "auto" }} />
-                <span style={{ fontFamily: "'Syne', sans-serif", fontWeight: 800, fontSize: 18, color: "var(--text)", marginLeft: 8 }}>Techpivo</span>
+                <span style={{ fontFamily: "'Syne', sans-serif", fontWeight: 800, fontSize: 18, color: "var(--text)", marginLeft: 4 }}>Techpivo</span>
               </Link>
               <button className="mobile-drawer-close" onClick={() => setDrawerOpen(false)}>&times;</button>
             </div>
@@ -264,6 +264,17 @@ export function Header() {
               <Link href="/write-for-us" className="mobile-drawer-link" onClick={() => setDrawerOpen(false)}>Write For Us</Link>
             </div>
             <div className="mobile-drawer-footer">
+              <div className="mobile-drawer-socials">
+                {headerSocials.map((s) => {
+                  const href = socialUrls[s.id]
+                  if (!href) return null
+                  return (
+                    <a key={s.id} href={href} target="_blank" rel="noopener noreferrer" aria-label={s.label}>
+                      {s.icon}
+                    </a>
+                  )
+                })}
+              </div>
               {user ? (
                 <button className="login-btn" onClick={async () => { await supabase.auth.signOut(); setDrawerOpen(false); router.refresh() }}>
                   Sign Out

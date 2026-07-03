@@ -9,10 +9,10 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   let profiles: any[] = [], series: any[] = [], kwArticles: any[] = [], allTags: any[] = []
   try {
     const [postsRes, catsRes, subsRes, profilesRes, seriesRes, kwArticlesRes, tagsRes] = await Promise.all([
-      supabase.from("posts").select("slug, updated_at, published_at, robots_noindex").eq("status", "published").order("published_at", { ascending: false }),
+      supabase.from("posts").select("slug, updated_at, published_at, robots_noindex, author_id, category_id").eq("status", "published").order("published_at", { ascending: false }),
       supabase.from("categories").select("id, slug"),
       supabase.from("subcategories").select("slug, category_id"),
-      supabase.from("profiles").select("username"),
+      supabase.from("profiles").select("username, id"),
       supabase.from("series").select("slug"),
       supabase.from("keyword_articles").select("slug, updated_at").eq("status", "published").order("published_at", { ascending: false }),
       supabase.from("posts").select("seo_keywords").eq("status", "published").limit(1000),
@@ -77,8 +77,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   }
 
   for (const cat of categories) {
+    const catSlug = cat.slug
+    const catCount = posts.filter((p: any) => p.category_id === cat.id).length
+    const isThin = catCount < 2
+    if (isThin) continue
     entries.push({
-      url: `${SITE_URL}/category/${cat.slug}`,
+      url: `${SITE_URL}/category/${catSlug}`,
       lastModified: now,
       changeFrequency: "daily",
       priority: 0.9,
@@ -116,7 +120,14 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     })
   }
 
+  const authorPostCounts = new Map<string, number>()
+  for (const post of posts) {
+    const authorId = (post as any).author_id
+    if (authorId) authorPostCounts.set(authorId, (authorPostCounts.get(authorId) || 0) + 1)
+  }
   for (const profile of profiles) {
+    const articleCount = authorPostCounts.get(profile.id) || 0
+    if (articleCount < 2) continue
     entries.push({
       url: `${SITE_URL}/author/${profile.username}`,
       lastModified: now,

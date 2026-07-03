@@ -10,12 +10,23 @@ type Props = { params: { username: string } }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const supabase = createClient()
-  const { data: author } = await supabase.from("profiles").select("full_name, bio").eq("username", params.username).single()
+  const { data: author } = await supabase.from("profiles").select("full_name, bio, id").eq("username", params.username).single()
   if (!author) return { title: "Author Not Found" }
+
+  const { count } = await supabase
+    .from("posts")
+    .select("*", { count: "exact", head: true })
+    .eq("status", "published")
+    .eq("author_id", author.id)
+
+  const hasBio = author.bio && author.bio.length > 20
+  const thinProfile = !hasBio || !count || count < 2
+
   return {
     title: `${author.full_name} - ${SITE_NAME}`,
     description: author.bio || `${author.full_name} - ${SITE_NAME} author`,
     alternates: { canonical: `${SITE_URL}/author/${params.username}` },
+    robots: thinProfile ? { index: false, follow: true } : { index: true, follow: true },
   }
 }
 

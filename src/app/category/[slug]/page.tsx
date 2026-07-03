@@ -14,10 +14,21 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const supabase = createClient()
   const { data: cat } = await supabase.from("categories").select("*").eq("slug", params.slug).single()
   if (!cat) return { title: "Category Not Found" }
+
+  const { count } = await supabase
+    .from("posts")
+    .select("*", { count: "exact", head: true })
+    .eq("status", "published")
+    .eq("category_id", cat.id)
+
+  const hasDescription = cat.description && cat.description.length > 30
+  const thinCategory = !hasDescription && (!count || count < 5)
+
   return {
     title: cat.meta_title || cat.name,
     description: cat.meta_description || `${cat.name} - ${SITE_NAME}`,
     alternates: { canonical: `${SITE_URL}/category/${cat.slug}` },
+    robots: thinCategory ? { index: false, follow: true } : { index: true, follow: true },
   }
 }
 

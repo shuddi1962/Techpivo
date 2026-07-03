@@ -15,7 +15,7 @@ import { ViewTracker } from "@/components/post/view-tracker"
 import { LiveViewCount } from "@/components/post/live-view-count"
 import { SITE_NAME, SITE_URL } from "@/lib/constants"
 
-export const dynamic = "force-dynamic"
+export const revalidate = 3600
 
 type Props = { params: { slug: string } }
 

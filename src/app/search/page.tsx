@@ -1,7 +1,7 @@
 "use client"
 
 import { Suspense, useState, useEffect, useRef } from "react"
-import { useSearchParams, notFound } from "next/navigation"
+import { useSearchParams } from "next/navigation"
 import Link from "next/link"
 import { createClient } from "@/lib/supabase/client"
 import type { Post } from "@/types/database"
@@ -51,7 +51,7 @@ function SearchContent() {
       })
   }, [query])
 
-  if (done && results.length === 0) notFound()
+  const noResults = done && results.length === 0
 
   return (
     <div className="container py-6">
@@ -83,23 +83,38 @@ function SearchContent() {
             {loading ? "Searching..." : `${results.length} result${results.length !== 1 ? "s" : ""} for "${query}"`}
           </p>
 
-          <div className="space-y-6">
-            {results.map((post) => (
-              <Link key={post.id} href={`/${post.slug}`} className="flex gap-4 group">
-                <div
-                  className="w-32 h-24 shrink-0 rounded-lg bg-cover bg-center"
-                  style={{ backgroundImage: `url(${post.featured_image || "/api/placeholder/200/150"})` }}
-                />
-                <div>
-                  <h2 className="font-semibold group-hover:text-brand-amber line-clamp-2">{post.title}</h2>
-                  <p className="text-sm text-muted-foreground line-clamp-1 mt-1">{post.excerpt}</p>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    {post.published_at ? formatDate(post.published_at) : ""} · {post.reading_time} min read
-                  </p>
-                </div>
+          {noResults ? (
+            <div className="text-center py-12">
+              <p className="text-lg font-medium">No results found</p>
+              <p className="text-sm text-muted-foreground mt-1">
+                Try adjusting your search terms or browse our categories.
+              </p>
+              <Link
+                href="/"
+                className="inline-block mt-4 text-sm text-primary font-medium hover:underline"
+              >
+                Go to Homepage
               </Link>
-            ))}
-          </div>
+            </div>
+          ) : (
+            <div className="space-y-6">
+              {results.map((post) => (
+                <Link key={post.id} href={`/${post.slug}`} className="flex gap-4 group">
+                  <div
+                    className="w-32 h-24 shrink-0 rounded-lg bg-cover bg-center"
+                    style={{ backgroundImage: `url(${post.featured_image || "/api/placeholder/200/150"})` }}
+                  />
+                  <div>
+                    <h2 className="font-semibold group-hover:text-brand-amber line-clamp-2">{post.title}</h2>
+                    <p className="text-sm text-muted-foreground line-clamp-1 mt-1">{post.excerpt}</p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {post.published_at ? formatDate(post.published_at) : ""} · {post.reading_time} min read
+                    </p>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          )}
         </div>
       )}
     </div>

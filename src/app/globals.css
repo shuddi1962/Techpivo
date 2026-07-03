@@ -144,8 +144,8 @@ body { position: relative; }
 .header-controls { display: flex; align-items: center; gap: 6px; flex-shrink: 0; margin-left: auto; }
 .header-socials { display: flex; align-items: center; gap: 2px; margin-right: 4px; }
 .header-socials .icon-btn { padding: 6px; }
-.header-nav-link { padding: 6px 10px; font-size: 13px; font-weight: 500; color: var(--text); text-decoration: none; border-radius: 6px; transition: background .15s, color .15s; }
-.header-nav-link:hover { background: var(--bg2); color: hsl(var(--accent)); }
+.header-nav-link { padding: 6px 10px; font-size: 13px; font-weight: 500; color: rgba(255,255,255,.85); text-decoration: none; border-radius: 6px; transition: background .15s, color .15s; }
+.header-nav-link:hover { background: rgba(255,255,255,.1); color: #fff; }
 .icon-btn { color: rgba(255,255,255,.7); padding: 8px; border-radius: 8px; background: none; border: none; cursor: pointer; display: flex; align-items: center; transition: all .2s; font-size: 16px; }
 .icon-btn:hover { background: rgba(255,255,255,.1); color: #fff; }
 .login-btn { display: inline-flex; align-items: center; gap: 6px; background: rgba(255,255,255,.12); border: 1px solid rgba(255,255,255,.2); color: #fff; padding: 7px 14px; border-radius: 8px; font-size: 13px; font-weight: 500; cursor: pointer; transition: border-color .2s, background .2s; font-family: 'DM Sans', sans-serif; white-space: nowrap; text-decoration: none; }
@@ -819,7 +819,7 @@ body { position: relative; }
 @media(max-width:768px) {
   .header-inner { padding: 10px 16px; gap: 10px; }
   .logo-img { height: 24px; }
-  .logo-text { display: inline; font-size: 16px; }
+  .logo-text { display: none; font-size: 16px; }
   .header-search-box { display: none; }
   .header-controls { gap: 4px; }
   .header-socials { display: none; }
@@ -888,6 +888,9 @@ body { position: relative; }
   .mobile-drawer-section { padding: 8px 16px 4px; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .1em; color: var(--muted2); }
   .mobile-drawer-footer { padding: 16px; border-top: 1px solid var(--border); flex-shrink: 0; }
   .mobile-drawer-footer .login-btn { width: 100%; justify-content: center; padding: 10px; }
+  .mobile-drawer-socials { display: flex; align-items: center; justify-content: center; gap: 10px; margin-bottom: 12px; }
+  .mobile-drawer-socials a { width: 34px; height: 34px; border-radius: 8px; background: var(--bg2); border: 1px solid var(--border); display: flex; align-items: center; justify-content: center; color: var(--muted2); text-decoration: none; transition: all .15s; }
+  .mobile-drawer-socials a:hover { color: hsl(var(--accent)); border-color: hsl(var(--accent)); }
 }
 
 /* ── MainNav: mobile — NOT sticky, no hamburger (Header drawer handles nav) ── */

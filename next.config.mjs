@@ -2,7 +2,6 @@
 const nextConfig = {
   async redirects() {
     return [
-      { source: '/favicon.ico', destination: '/favicon.svg', permanent: true },
       { source: '/icon.svg', destination: '/favicon.svg', permanent: true },
     ]
   },
