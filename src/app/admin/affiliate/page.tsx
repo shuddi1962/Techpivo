@@ -1,665 +1,830 @@
 "use client"
 
-import { useEffect, useState, useCallback } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { createClient } from "@/lib/supabase/client"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Search, Plus, RefreshCw, Check, X, Settings, Save, Eye, EyeOff, HelpCircle, ExternalLink, Link, TrendingUp, DollarSign, Zap, FileBarChart } from "lucide-react"
-import type { AffiliateProduct } from "@/types/database"
 
-interface AffiliateConfig {
+const BG = "#0F1117"
+const CARD = "#1C1F2E"
+const BORDER = "#2A2D3E"
+const ACCENT = "#F59E0B"
+const ACCENT_DIM = "rgba(245,158,11,0.15)"
+const TEXT = "#E5E7EB"
+const TEXT_DIM = "#9CA3AF"
+const SUCCESS = "#10B981"
+const DANGER = "#EF4444"
+const WARN = "#F59E0B"
+
+interface AffiliateLink {
   id: string
-  program_key: string
-  program_name: string
-  logo_url: string | null
-  website_url: string | null
-  api_type: string
-  credentials: Record<string, string>
-  is_connected: boolean
-  search_enabled: boolean
-  total_products_imported: number
+  product_id: string | null
+  program_id: string | null
+  custom_slug: string | null
+  destination_url: string
+  tracking_params: Record<string, unknown>
   total_clicks: number
-  total_estimated_earnings: number
+  total_conversions: number
+  total_revenue: number
+  is_active: boolean
+  created_at: string
+  product_name?: string
+  program_name?: string
 }
 
-interface ConfigField {
-  key: string
-  label: string
-  placeholder: string
-  help: string
-  secret: boolean
-  required: boolean
-  pattern?: RegExp
-  patternMessage?: string
+interface AffiliateRule {
+  id: string
+  name: string
+  description: string
+  match_type: string
+  match_value: string
+  program_id: string | null
+  placement: string
+  priority: number
+  is_active: boolean
+  revenue_per_click: number
+  created_at: string
 }
 
-const API_CONFIGS: Record<string, ConfigField[]> = {
-  direct_api: [
-    { key: "api_key", label: "API Key", placeholder: "Enter your API key", help: "Provided by the affiliate network dashboard", secret: true, required: true, pattern: /^.{8,}$/, patternMessage: "API key must be at least 8 characters" },
-    { key: "tracking_id", label: "Tracking ID / Tag", placeholder: "e.g. techpivo-20", help: "Your unique affiliate tracking ID or tag", secret: false, required: true, pattern: /^[\w-]{3,}$/, patternMessage: "Must be at least 3 characters (letters, numbers, dashes)" },
-  ],
-  cj: [
-    { key: "website_id", label: "Website ID", placeholder: "e.g. 1234567", help: "Your CJ website ID (Publisher Dashboard)", secret: false, required: true, pattern: /^\d{5,}$/, patternMessage: "Website ID should be a number (5+ digits)" },
-    { key: "api_key", label: "API Key", placeholder: "Enter CJ API key", help: "Generate from CJ Account > API Settings", secret: true, required: true, pattern: /^.{8,}$/, patternMessage: "API key must be at least 8 characters" },
-    { key: "tracking_id", label: "Tracking Tag", placeholder: "e.g. 1234567", help: "Your CJ PID (Publisher ID)", secret: false, required: false, pattern: /^\d{5,}$/, patternMessage: "PID should be a number (5+ digits)" },
-  ],
-  shareasale: [
-    { key: "merchant_id", label: "Merchant ID", placeholder: "e.g. 12345", help: "ShareASale merchant ID", secret: false, required: true, pattern: /^\d{4,}$/, patternMessage: "Merchant ID should be a number (4+ digits)" },
-    { key: "api_token", label: "API Token", placeholder: "Enter ShareASale API token", help: "From ShareASale Account > API Settings", secret: true, required: true, pattern: /^.{8,}$/, patternMessage: "API token must be at least 8 characters" },
-    { key: "affiliate_id", label: "Affiliate ID", placeholder: "e.g. 67890", help: "Your ShareASale affiliate ID", secret: false, required: true, pattern: /^\d{4,}$/, patternMessage: "Affiliate ID should be a number (4+ digits)" },
-  ],
-  impact: [
-    { key: "account_sid", label: "Account SID", placeholder: "e.g. a1b2c3d4e5", help: "Impact account SID from Partner Dashboard", secret: false, required: true, pattern: /^.{8,}$/, patternMessage: "Account SID must be at least 8 characters" },
-    { key: "auth_token", label: "Auth Token", placeholder: "Enter Impact auth token", help: "From Impact Account > API Settings", secret: true, required: true, pattern: /^.{8,}$/, patternMessage: "Auth token must be at least 8 characters" },
-  ],
-  rakuten: [
-    { key: "api_key", label: "API Key", placeholder: "Enter Rakuten API key", help: "From Rakuten LinkShare Account", secret: true, required: true, pattern: /^.{8,}$/, patternMessage: "API key must be at least 8 characters" },
-    { key: "secret", label: "API Secret", placeholder: "Enter API secret", help: "Rakuten API secret key", secret: true, required: true, pattern: /^.{8,}$/, patternMessage: "API secret must be at least 8 characters" },
-    { key: "tracking_id", label: "Site ID", placeholder: "e.g. 12345", help: "Your Rakuten site/mid ID", secret: false, required: false, pattern: /^\d{3,}$/, patternMessage: "Site ID should be a number (3+ digits)" },
-  ],
-  awin: [
-    { key: "advertiser_id", label: "Advertiser ID", placeholder: "e.g. 12345", help: "Awin advertiser (merchant) ID", secret: false, required: true, pattern: /^\d{4,}$/, patternMessage: "Advertiser ID should be a number (4+ digits)" },
-    { key: "api_token", label: "API Token", placeholder: "Enter Awin API token", help: "From Awin Account > API Settings", secret: true, required: true, pattern: /^.{8,}$/, patternMessage: "API token must be at least 8 characters" },
-    { key: "publisher_id", label: "Publisher ID", placeholder: "e.g. 67890", help: "Your Awin publisher ID", secret: false, required: true, pattern: /^\d{4,}$/, patternMessage: "Publisher ID should be a number (4+ digits)" },
-  ],
-  flexoffers: [
-    { key: "api_key", label: "API Key", placeholder: "Enter FlexOffers API key", help: "From FlexOffers Account", secret: true, required: true, pattern: /^.{8,}$/, patternMessage: "API key must be at least 8 characters" },
-    { key: "publisher_id", label: "Publisher ID", placeholder: "e.g. 12345", help: "Your FlexOffers publisher ID", secret: false, required: true, pattern: /^\d{4,}$/, patternMessage: "Publisher ID should be a number (4+ digits)" },
-  ],
+interface AffiliateCampaign {
+  id: string
+  name: string
+  description: string
+  program_ids: string[]
+  start_date: string | null
+  end_date: string | null
+  budget: number
+  spent: number
+  total_clicks: number
+  total_conversions: number
+  total_revenue: number
+  status: string
+  created_at: string
 }
 
-const PROGRAM_OVERRIDES: Record<string, { api_type: string; fields: ConfigField[] }> = {
-  amazon: {
-    api_type: "direct_api",
-    fields: [
-      { key: "tracking_id", label: "Associate Tag", placeholder: "e.g. techpivo-20", help: "Your Amazon Associate tracking ID (a.co/tag/...)", secret: false, required: true, pattern: /^[\w-]+-\d{2}$/, patternMessage: "Format: yourstorename-20 (e.g. techpivo-20)" },
-      { key: "access_key", label: "Access Key ID", placeholder: "e.g. AKIA...", help: "From Amazon PA-API > Security Credentials", secret: true, required: true, pattern: /^AKIA[\w]{16}$/, patternMessage: "Must start with AKIA followed by 16 alphanumeric characters" },
-      { key: "secret_key", label: "Secret Access Key", placeholder: "AWS secret key", help: "Your Amazon Product Advertising API secret key", secret: true, required: true, pattern: /^[\w\/+=]{40}$/, patternMessage: "Secret key must be exactly 40 characters" },
-    ],
-  },
-  ebay: {
-    api_type: "direct_api",
-    fields: [
-      { key: "campaign_id", label: "Campaign ID", placeholder: "e.g. 5338765432", help: "Your eBay Partner Network campaign ID", secret: false, required: true, pattern: /^\d{8,}$/, patternMessage: "Campaign ID should be a number (8+ digits)" },
-      { key: "api_key", label: "eBay API Key", placeholder: "Enter eBay API key", help: "From eBay Developers Program", secret: true, required: true, pattern: /^.{8,}$/, patternMessage: "API key must be at least 8 characters" },
-    ],
-  },
-  aliexpress: {
-    api_type: "direct_api",
-    fields: [
-      { key: "api_key", label: "App Key", placeholder: "e.g. 12345678", help: "Your AliExpress app key", secret: true, required: true, pattern: /^\d{8,}$/, patternMessage: "App key should be a number (8+ digits)" },
-      { key: "tracking_id", label: "Tracking ID", placeholder: "e.g. 8765432", help: "Your AliExpress affiliate tracking ID", secret: false, required: true, pattern: /^\d{6,}$/, patternMessage: "Tracking ID should be a number (6+ digits)" },
-    ],
-  },
-  walmart: {
-    api_type: "direct_api",
-    fields: [
-      { key: "api_key", label: "API Key", placeholder: "Enter Walmart API key", help: "From Walmart Affiliate Portal", secret: true, required: true, pattern: /^.{8,}$/, patternMessage: "API key must be at least 8 characters" },
-      { key: "publisher_id", label: "Publisher ID", placeholder: "e.g. 12345", help: "Your Walmart publisher ID", secret: false, required: true, pattern: /^\d{4,}$/, patternMessage: "Publisher ID should be a number (4+ digits)" },
-    ],
-  },
-  bestbuy: {
-    api_type: "direct_api",
-    fields: [
-      { key: "api_key", label: "API Key", placeholder: "Enter Best Buy API key", help: "From Best Buy Developer Portal", secret: true, required: true, pattern: /^.{8,}$/, patternMessage: "API key must be at least 8 characters" },
-    ],
-  },
-  newegg: {
-    api_type: "direct_api",
-    fields: [
-      { key: "api_key", label: "API Key", placeholder: "Enter Newegg API key", help: "From Newegg Affiliate Program", secret: true, required: true, pattern: /^.{8,}$/, patternMessage: "API key must be at least 8 characters" },
-    ],
-  },
-  envato: {
-    api_type: "direct_api",
-    fields: [
-      { key: "api_token", label: "API Token", placeholder: "Enter Envato API token", help: "From Envato Account > API Tokens", secret: true, required: true, pattern: /^.{8,}$/, patternMessage: "API token must be at least 8 characters" },
-      { key: "tracking_id", label: "Referrer Tag", placeholder: "e.g. techpivo", help: "Your Envato referral tag (optional)", secret: false, required: false, pattern: /^[\w-]{3,}$/, patternMessage: "Must be at least 3 characters" },
-    ],
-  },
-  udemy: {
-    api_type: "direct_api",
-    fields: [
-      { key: "api_key", label: "Affiliate API Key", placeholder: "Enter Udemy API key", help: "From Udemy Affiliate Dashboard", secret: true, required: true, pattern: /^.{8,}$/, patternMessage: "API key must be at least 8 characters" },
-      { key: "tracking_id", label: "Affiliate ID", placeholder: "e.g. 12345abc", help: "Your Udemy affiliate partner ID", secret: false, required: true, pattern: /^[\w-]{4,}$/, patternMessage: "Must be at least 4 alphanumeric characters" },
-    ],
-  },
-  coursera: {
-    api_type: "direct_api",
-    fields: [
-      { key: "tracking_id", label: "Tracking ID", placeholder: "e.g. 123456", help: "Your Coursera affiliate tracking link ID", secret: false, required: true, pattern: /^\d{4,}$/, patternMessage: "Tracking ID should be a number (4+ digits)" },
-    ],
-  },
-  bluehost: {
-    api_type: "direct_api",
-    fields: [
-      { key: "tracking_id", label: "Affiliate Username", placeholder: "e.g. techpivo", help: "Your Bluehost affiliate username", secret: false, required: true, pattern: /^[\w-]{3,}$/, patternMessage: "Must be at least 3 alphanumeric characters" },
-    ],
-  },
-  hostinger: {
-    api_type: "direct_api",
-    fields: [
-      { key: "tracking_id", label: "Affiliate ID", placeholder: "e.g. techpivo", help: "Your Hostinger affiliate referral ID", secret: false, required: true, pattern: /^[\w-]{3,}$/, patternMessage: "Must be at least 3 alphanumeric characters" },
-    ],
-  },
-  nordvpn: {
-    api_type: "direct_api",
-    fields: [
-      { key: "tracking_id", label: "Affiliate Slug", placeholder: "e.g. techpivo", help: "Your NordVPN affiliate referral slug", secret: false, required: true, pattern: /^[\w-]{3,}$/, patternMessage: "Must be at least 3 alphanumeric characters" },
-    ],
-  },
-  booking: {
-    api_type: "direct_api",
-    fields: [
-      { key: "tracking_id", label: "Affiliate ID", placeholder: "e.g. 123456", help: "Your Booking.com affiliate ID", secret: false, required: true, pattern: /^\d{4,}$/, patternMessage: "Affiliate ID should be a number (4+ digits)" },
-    ],
-  },
+interface AffiliateProduct {
+  id: string
+  product_name: string
+  product_description: string | null
+  product_image_url: string | null
+  affiliate_link: string
+  original_price: number | null
+  sale_price: number | null
+  clicks: number
+  conversions: number
+  is_active: boolean
+  program_key: string | null
 }
 
-function getFields(prog: AffiliateConfig): ConfigField[] {
-  return PROGRAM_OVERRIDES[prog.program_key]?.fields || API_CONFIGS[prog.api_type] || API_CONFIGS.direct_api
+interface OverviewData {
+  total_links: number
+  total_clicks: number
+  total_conversions: number
+  total_revenue: number
+  conversion_rate: number
+  active_rules: number
+  active_campaigns: number
+  top_programs: { name: string; clicks: number; revenue: number }[]
 }
 
-function getFavicon(domain: string): string {
-  return `https://www.google.com/s2/favicons?domain=${domain}&sz=64`
+interface RevenueEntry {
+  id: string
+  source: string
+  impressions: number
+  clicks: number
+  revenue: number
+  cpm: number
+  cpc: number
+  date: string
 }
 
-function ProgramLogo({ prog, className }: { prog: AffiliateConfig; className?: string }) {
-  const domain = prog.website_url ? new URL(prog.website_url).hostname.replace("www.", "") : `${prog.program_key}.com`
-  const primarySrc = prog.logo_url || `https://logo.clearbit.com/${domain}`
-  const fallbackSrc = getFavicon(domain)
-  const [src, setSrc] = useState(primarySrc)
-  const [failed, setFailed] = useState(false)
-
-  if (failed) return null
-
-  return (
-    <img
-      src={src}
-      alt={prog.program_name}
-      className={`rounded object-contain ${className || "h-8 w-8"}`}
-      onError={() => {
-        if (src === primarySrc) setSrc(fallbackSrc)
-        else setFailed(true)
-      }}
-    />
-  )
+interface ReportRow {
+  date: string
+  clicks: number
+  conversions: number
+  revenue: number
 }
 
-function getFieldError(f: ConfigField, value: string): string | null {
-  if (!value && f.required) return `${f.label} is required`
-  if (value && f.pattern && !f.pattern.test(value)) return f.patternMessage || "Invalid format"
-  return null
+const TABS = [
+  { id: "overview", label: "Overview" },
+  { id: "links", label: "Links" },
+  { id: "products", label: "Products" },
+  { id: "performance", label: "Performance" },
+  { id: "revenue", label: "Revenue" },
+  { id: "rules", label: "Rules" },
+  { id: "campaigns", label: "Campaigns" },
+  { id: "reports", label: "Reports" },
+]
+
+const cardStyle = (extra?: React.CSSProperties): React.CSSProperties => ({
+  background: CARD,
+  border: `1px solid ${BORDER}`,
+  borderRadius: 12,
+  padding: 20,
+  ...extra,
+})
+
+const inputStyle: React.CSSProperties = {
+  background: BG,
+  border: `1px solid ${BORDER}`,
+  borderRadius: 8,
+  padding: "10px 14px",
+  color: TEXT,
+  fontSize: 14,
+  width: "100%",
+  outline: "none",
 }
 
-function ConfigDialog({ prog, open, onClose }: { prog: AffiliateConfig | null; open: boolean; onClose: () => void }) {
-  const [values, setValues] = useState<Record<string, string>>({})
-  const [showSecrets, setShowSecrets] = useState<Record<string, boolean>>({})
-  const [saving, setSaving] = useState(false)
-  const [touched, setTouched] = useState<Record<string, boolean>>({})
-
-  const fields = prog ? getFields(prog) : []
-
-  const errors = fields.reduce<Record<string, string | null>>((acc, f) => {
-    acc[f.key] = getFieldError(f, values[f.key] || "")
-    return acc
-  }, {})
-
-  const hasErrors = Object.values(errors).some(e => e !== null)
-  const hasRequired = fields.some(f => f.required && values[f.key])
-
-  useEffect(() => {
-    if (prog) {
-      const initial: Record<string, string> = {}
-      for (const f of getFields(prog)) {
-        initial[f.key] = prog.credentials?.[f.key] || ""
-      }
-      setValues(initial)
-      setTouched({})
-    }
-  }, [prog])
-
-  if (!open || !prog) return null
-
-  const handleSave = async () => {
-    setTouched(Object.fromEntries(fields.map(f => [f.key, true])))
-    if (hasErrors) return
-    setSaving(true)
-    const supabase = createClient()
-    const credentials: Record<string, string> = {}
-    for (const f of fields) {
-      if (values[f.key]) {
-        credentials[f.key] = values[f.key]
-      }
-    }
-    await supabase.from("affiliate_program_configs").update({
-      credentials,
-      is_connected: hasRequired,
-      search_enabled: hasRequired,
-    }).eq("id", prog.id)
-    setSaving(false)
-    onClose()
-  }
-
-  const handleDisconnect = async () => {
-    setSaving(true)
-    const supabase = createClient()
-    await supabase.from("affiliate_program_configs").update({
-      credentials: {},
-      is_connected: false,
-      search_enabled: false,
-    }).eq("id", prog.id)
-    setSaving(false)
-    onClose()
-  }
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={onClose}>
-      <div className="bg-white dark:bg-[#111827] rounded-xl shadow-2xl border border-gray-200 dark:border-[#374151] w-full max-w-lg mx-4" onClick={e => e.stopPropagation()}>
-        <div className="flex items-center justify-between p-5 border-b border-gray-200 dark:border-[#374151]">
-          <div className="flex items-center gap-3">
-            <ProgramLogo prog={prog} className="h-8 w-8" />
-            <div>
-              <h2 className="text-lg font-bold">{prog.program_name}</h2>
-              <p className="text-xs text-muted-foreground">{prog.api_type.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase())}</p>
-            </div>
-          </div>
-          <button onClick={onClose} className="p-1 hover:bg-gray-100 dark:hover:bg-[#1F2937] rounded">
-            <X className="h-5 w-5" />
-          </button>
-        </div>
-        <div className="p-5 space-y-4">
-          {fields.map((f) => {
-            const err = touched[f.key] ? errors[f.key] : null
-            return (
-              <div key={f.key}>
-                <label className="text-sm font-medium mb-1 flex items-center gap-1.5">
-                  {f.label}
-                  {f.required && <span className="text-red-400">*</span>}
-                  <span className="relative group">
-                    <HelpCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
-                    <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-1.5 text-xs bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 rounded-lg whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none shadow-lg z-10">
-                      {f.help}
-                    </span>
-                  </span>
-                </label>
-                <div className="relative">
-                  <Input
-                    value={values[f.key] || ""}
-                    onChange={e => setValues(prev => ({ ...prev, [f.key]: e.target.value }))}
-                    onBlur={() => setTouched(prev => ({ ...prev, [f.key]: true }))}
-                    type={f.secret && !showSecrets[f.key] ? "password" : "text"}
-                    placeholder={f.placeholder}
-                    className={`font-mono text-sm ${err ? "border-red-400 focus:ring-red-400" : ""} ${f.secret ? "pr-10" : ""}`}
-                  />
-                  {f.secret && (
-                    <button onClick={() => setShowSecrets(prev => ({ ...prev, [f.key]: !prev[f.key] }))}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
-                      {showSecrets[f.key] ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                    </button>
-                  )}
-                </div>
-                {err && <p className="text-xs text-red-400 mt-1">{err}</p>}
-              </div>
-            )
-          })}
-        </div>
-        <div className="flex items-center justify-between p-5 border-t border-gray-200 dark:border-[#374151]">
-          {prog.is_connected ? (
-            <Button variant="outline" size="sm" onClick={handleDisconnect} disabled={saving} className="text-red-500 border-red-200 hover:bg-red-50">
-              <X className="h-4 w-4 mr-1" />Disconnect
-            </Button>
-          ) : <div />}
-          <div className="flex gap-2">
-            <Button variant="outline" size="sm" onClick={onClose}>Cancel</Button>
-            <Button size="sm" onClick={handleSave} disabled={saving || hasErrors}>
-              <Save className="h-4 w-4 mr-1" />{saving ? "Saving..." : "Save"}
-            </Button>
-          </div>
-        </div>
-      </div>
-    </div>
-  )
+const btnPrimary: React.CSSProperties = {
+  background: ACCENT,
+  color: "#000",
+  border: "none",
+  borderRadius: 8,
+  padding: "10px 20px",
+  fontWeight: 600,
+  cursor: "pointer",
+  fontSize: 14,
 }
+
+const btnSecondary: React.CSSProperties = {
+  background: "transparent",
+  color: TEXT_DIM,
+  border: `1px solid ${BORDER}`,
+  borderRadius: 8,
+  padding: "8px 16px",
+  cursor: "pointer",
+  fontSize: 13,
+}
+
+const badge = (color: string): React.CSSProperties => ({
+  display: "inline-block",
+  padding: "2px 10px",
+  borderRadius: 20,
+  fontSize: 12,
+  fontWeight: 600,
+  background: `${color}22`,
+  color,
+})
+
+const fmt = (n: number) => n.toLocaleString()
+const fmtCurrency = (n: number) => `$${n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
 
 export default function AdminAffiliatePage() {
-  const [programs, setPrograms] = useState<AffiliateConfig[]>([])
-  const [products, setProducts] = useState<AffiliateProduct[]>([])
+  const [activeTab, setActiveTab] = useState("overview")
   const [loading, setLoading] = useState(true)
-  const [searchQuery, setSearchQuery] = useState("")
-  const [searchResults, setSearchResults] = useState<any[]>([])
-  const [selectedProgram, setSelectedProgram] = useState("")
-  const [searchLoading, setSearchLoading] = useState(false)
-  const [configProg, setConfigProg] = useState<AffiliateConfig | null>(null)
+  const [overview, setOverview] = useState<OverviewData | null>(null)
+  const [links, setLinks] = useState<AffiliateLink[]>([])
+  const [products, setProducts] = useState<AffiliateProduct[]>([])
+  const [rules, setRules] = useState<AffiliateRule[]>([])
+  const [campaigns, setCampaigns] = useState<AffiliateCampaign[]>([])
+  const [revenueData, setRevenueData] = useState<RevenueEntry[]>([])
+  const [reports, setReports] = useState<ReportRow[]>([])
 
-  const loadData = useCallback(async () => {
-    const supabase = createClient()
-    const [progRes, prodRes] = await Promise.all([
-      supabase.from("affiliate_program_configs").select("*").order("program_name"),
-      supabase.from("affiliate_products").select("*, affiliate_program:affiliate_programs(program_name)").order("created_at", { ascending: false }).limit(50),
-    ])
-    if (progRes.data) setPrograms(progRes.data as any)
-    if (prodRes.data) setProducts(prodRes.data as any)
-    setLoading(false)
+  const [linkSearch, setLinkSearch] = useState("")
+  const [productSearch, setProductSearch] = useState("")
+  const [productFilter, setProductFilter] = useState("all")
+  const [reportPeriod, setReportPeriod] = useState("daily")
+
+  const [showLinkForm, setShowLinkForm] = useState(false)
+  const [showRuleForm, setShowRuleForm] = useState(false)
+  const [showCampaignForm, setShowCampaignForm] = useState(false)
+
+  const [linkForm, setLinkForm] = useState({ destination_url: "", custom_slug: "", product_id: "", program_id: "" })
+  const [ruleForm, setRuleForm] = useState({ name: "", description: "", match_type: "keyword", match_value: "", program_id: "", placement: "inline", priority: 0, revenue_per_click: 0 })
+  const [campaignForm, setCampaignForm] = useState({ name: "", description: "", start_date: "", end_date: "", budget: 0, status: "active" })
+
+  const [editingLink, setEditingLink] = useState<AffiliateLink | null>(null)
+  const [editingRule, setEditingRule] = useState<AffiliateRule | null>(null)
+  const [editingCampaign, setEditingCampaign] = useState<AffiliateCampaign | null>(null)
+
+  const supabase = createClient()
+
+  const fetchData = useCallback(async (section: string) => {
+    try {
+      const res = await fetch(`/admin/affiliate/api?section=${section}`)
+      const data = await res.json()
+      return data
+    } catch {
+      return null
+    }
   }, [])
 
   useEffect(() => {
-    loadData()
-  }, [loadData])
-
-  const handleSearch = async () => {
-    if (!selectedProgram || !searchQuery) return
-    setSearchLoading(true)
-    setSearchResults([])
-    try {
-      const res = await fetch(`/api/affiliate-search?program=${selectedProgram}&q=${encodeURIComponent(searchQuery)}`)
-      if (!res.ok) throw new Error("Affiliate search API not available")
-      const json = await res.json()
-      setSearchResults(json.products || [])
-    } catch {
-      setSearchResults([])
+    const load = async () => {
+      setLoading(true)
+      const [ov, lk, pr, rl, cm, rv, rp] = await Promise.all([
+        fetchData("overview"),
+        fetchData("links"),
+        fetchData("products"),
+        fetchData("rules"),
+        fetchData("campaigns"),
+        fetchData("revenue"),
+        fetchData("reports"),
+      ])
+      if (ov) setOverview(ov.overview)
+      if (lk) setLinks(lk.links || [])
+      if (pr) setProducts(pr.products || [])
+      if (rl) setRules(rl.rules || [])
+      if (cm) setCampaigns(cm.campaigns || [])
+      if (rv) setRevenueData(rv.revenue || [])
+      if (rp) setReports(rp.reports || [])
+      setLoading(false)
     }
-    setSearchLoading(false)
+    load()
+  }, [fetchData])
+
+  const handleCreateLink = async () => {
+    if (!linkForm.destination_url) return
+    const res = await fetch("/admin/affiliate/api", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ type: "link", ...linkForm }),
+    })
+    if (res.ok) {
+      const data = await res.json()
+      setLinks(prev => [data.link, ...prev])
+      setShowLinkForm(false)
+      setLinkForm({ destination_url: "", custom_slug: "", product_id: "", program_id: "" })
+    }
   }
 
-  const importProduct = async (product: any) => {
-    const supabase = createClient()
-    const { data: cfg } = await supabase.from("affiliate_program_configs").select("id").eq("program_key", selectedProgram).limit(1)
-    const affiliateId = cfg?.[0]?.id
-    if (!affiliateId) {
-      alert("Connect this affiliate program first.")
-      return
-    }
-    await supabase.from("affiliate_products").insert({
-      affiliate_id: affiliateId,
-      program_key: selectedProgram,
-      product_name: product.product_name,
-      sale_price: product.sale_price,
-      original_price: product.original_price,
-      product_image_url: product.product_image_url,
-      affiliate_link: product.affiliate_link,
+  const handleUpdateLink = async () => {
+    if (!editingLink) return
+    const res = await fetch("/admin/affiliate/api", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ type: "link", id: editingLink.id, ...linkForm }),
     })
-    loadData()
-    alert(`Imported: ${product.product_name}`)
+    if (res.ok) {
+      const data = await res.json()
+      setLinks(prev => prev.map(l => l.id === editingLink.id ? { ...l, ...data.link } : l))
+      setEditingLink(null)
+      setShowLinkForm(false)
+    }
+  }
+
+  const handleDeleteLink = async (id: string) => {
+    if (!confirm("Delete this affiliate link?")) return
+    const res = await fetch("/admin/affiliate/api", {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ type: "link", id }),
+    })
+    if (res.ok) setLinks(prev => prev.filter(l => l.id !== id))
+  }
+
+  const handleCreateRule = async () => {
+    if (!ruleForm.name || !ruleForm.match_value) return
+    const res = await fetch("/admin/affiliate/api", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ type: "rule", ...ruleForm }),
+    })
+    if (res.ok) {
+      const data = await res.json()
+      setRules(prev => [data.rule, ...prev])
+      setShowRuleForm(false)
+      setRuleForm({ name: "", description: "", match_type: "keyword", match_value: "", program_id: "", placement: "inline", priority: 0, revenue_per_click: 0 })
+    }
+  }
+
+  const handleDeleteRule = async (id: string) => {
+    if (!confirm("Delete this rule?")) return
+    const res = await fetch("/admin/affiliate/api", {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ type: "rule", id }),
+    })
+    if (res.ok) setRules(prev => prev.filter(r => r.id !== id))
+  }
+
+  const handleCreateCampaign = async () => {
+    if (!campaignForm.name) return
+    const res = await fetch("/admin/affiliate/api", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ type: "campaign", ...campaignForm }),
+    })
+    if (res.ok) {
+      const data = await res.json()
+      setCampaigns(prev => [data.campaign, ...prev])
+      setShowCampaignForm(false)
+      setCampaignForm({ name: "", description: "", start_date: "", end_date: "", budget: 0, status: "active" })
+    }
+  }
+
+  const handleDeleteCampaign = async (id: string) => {
+    if (!confirm("Delete this campaign?")) return
+    const res = await fetch("/admin/affiliate/api", {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ type: "campaign", id }),
+    })
+    if (res.ok) setCampaigns(prev => prev.filter(c => c.id !== id))
+  }
+
+  const filteredLinks = links.filter(l => {
+    if (!linkSearch) return true
+    const q = linkSearch.toLowerCase()
+    return l.destination_url.toLowerCase().includes(q) || l.custom_slug?.toLowerCase().includes(q) || l.product_name?.toLowerCase().includes(q) || l.program_name?.toLowerCase().includes(q)
+  })
+
+  const filteredProducts = products.filter(p => {
+    const matchSearch = !productSearch || p.product_name.toLowerCase().includes(productSearch.toLowerCase())
+    const matchFilter = productFilter === "all" || (productFilter === "active" && p.is_active) || (productFilter === "inactive" && !p.is_active)
+    return matchSearch && matchFilter
+  })
+
+  if (loading) {
+    return (
+      <div style={{ background: BG, minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <div style={{ color: ACCENT, fontSize: 18 }}>Loading Affiliate Center...</div>
+      </div>
+    )
   }
 
   return (
-    <div>
-      <ConfigDialog prog={configProg} open={!!configProg} onClose={() => { setConfigProg(null); loadData() }} />
-
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="text-3xl font-bold">Affiliate Manager</h1>
-          <p className="text-sm text-muted-foreground mt-1">Manage affiliate programs and products</p>
+    <div style={{ background: BG, minHeight: "100vh", padding: 24 }}>
+      <div style={{ maxWidth: 1400, margin: "0 auto" }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 24 }}>
+          <div>
+            <h1 style={{ color: TEXT, fontSize: 28, fontWeight: 700, margin: 0 }}>Affiliate Center</h1>
+            <p style={{ color: TEXT_DIM, fontSize: 14, margin: "4px 0 0" }}>Manage affiliate links, products, campaigns and revenue</p>
+          </div>
+          <div style={{ display: "flex", gap: 12 }}>
+            <button onClick={() => setShowLinkForm(true)} style={btnPrimary}>+ New Link</button>
+          </div>
         </div>
-        <Button variant="outline" size="sm" onClick={loadData}>
-          <RefreshCw className="h-4 w-4 mr-2" />Refresh
-        </Button>
-      </div>
 
-      <Tabs defaultValue="programs">
-        <TabsList className="mb-6">
-          <TabsTrigger value="programs">Programs</TabsTrigger>
-          <TabsTrigger value="links">Links</TabsTrigger>
-          <TabsTrigger value="search">Live Search</TabsTrigger>
-          <TabsTrigger value="products">Products</TabsTrigger>
-          <TabsTrigger value="performance">Performance</TabsTrigger>
-          <TabsTrigger value="revenue">Revenue</TabsTrigger>
-          <TabsTrigger value="campaigns">Campaigns</TabsTrigger>
-          <TabsTrigger value="reports">Reports</TabsTrigger>
-        </TabsList>
+        <div style={{ display: "flex", gap: 4, marginBottom: 24, borderBottom: `1px solid ${BORDER}`, paddingBottom: 0, overflowX: "auto" }}>
+          {TABS.map(t => (
+            <button
+              key={t.id}
+              onClick={() => setActiveTab(t.id)}
+              style={{
+                padding: "12px 20px",
+                background: "transparent",
+                color: activeTab === t.id ? ACCENT : TEXT_DIM,
+                border: "none",
+                borderBottom: activeTab === t.id ? `2px solid ${ACCENT}` : "2px solid transparent",
+                cursor: "pointer",
+                fontSize: 14,
+                fontWeight: activeTab === t.id ? 600 : 400,
+                whiteSpace: "nowrap",
+                transition: "all 0.2s",
+              }}
+            >
+              {t.label}
+            </button>
+          ))}
+        </div>
 
-        <TabsContent value="programs">
-          {loading ? (
-            <div className="text-sm text-muted-foreground">Loading programs...</div>
-          ) : (
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-              {programs.map((prog) => (
-                <Card key={prog.id}>
-                  <CardContent className="p-4">
-                    <div className="flex items-center gap-3 mb-2">
-                      <ProgramLogo prog={prog} className="h-8 w-8 shrink-0" />
-                      <div className="min-w-0">
-                        <p className="font-medium text-sm truncate">{prog.program_name}</p>
-                        <div className="flex items-center gap-1.5 mt-0.5">
-                          <Badge variant="secondary" className="text-[10px]">{prog.program_key}</Badge>
-                          {prog.is_connected ? (
-                            <Badge className="text-[10px] bg-green-100 text-green-700 hover:bg-green-100">
-                              <Check className="h-3 w-3 mr-0.5" />Connected
-                            </Badge>
-                          ) : (
-                            <Badge variant="outline" className="text-[10px] text-muted-foreground">
-                              <X className="h-3 w-3 mr-0.5" />Not connected
-                            </Badge>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                    {prog.is_connected && (
-                      <div className="flex items-center gap-3 text-xs text-muted-foreground mt-2 mb-3">
-                        <span>{prog.total_products_imported} products</span>
-                        <span>{prog.total_clicks} clicks</span>
-                      </div>
-                    )}
-                    <div className="flex gap-2 mt-2">
-                      <Button variant="outline" size="sm" className="flex-1 text-xs" onClick={() => setConfigProg(prog)}>
-                        <Settings className="h-3 w-3 mr-1" />{prog.is_connected ? "Configure" : "Connect"}
-                      </Button>
-                      {prog.website_url && (
-                        <Button variant="ghost" size="sm" className="text-xs" asChild>
-                          <a href={prog.website_url} target="_blank" rel="noopener noreferrer">
-                            <ExternalLink className="h-3 w-3" />
-                          </a>
-                        </Button>
-                      )}
-                    </div>
-                  </CardContent>
-                </Card>
+        {activeTab === "overview" && overview && (
+          <div>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: 16, marginBottom: 24 }}>
+              {[
+                { label: "Total Links", value: fmt(overview.total_links), color: ACCENT },
+                { label: "Total Clicks", value: fmt(overview.total_clicks), color: "#3B82F6" },
+                { label: "Conversions", value: fmt(overview.total_conversions), color: SUCCESS },
+                { label: "Revenue", value: fmtCurrency(overview.total_revenue), color: SUCCESS },
+                { label: "Conversion Rate", value: `${overview.conversion_rate.toFixed(1)}%`, color: ACCENT },
+                { label: "Active Rules", value: fmt(overview.active_rules), color: "#8B5CF6" },
+                { label: "Active Campaigns", value: fmt(overview.active_campaigns), color: "#3B82F6" },
+              ].map((k, i) => (
+                <div key={i} style={cardStyle({ textAlign: "center" })}>
+                  <div style={{ color: TEXT_DIM, fontSize: 12, marginBottom: 8 }}>{k.label}</div>
+                  <div style={{ color: k.color, fontSize: 28, fontWeight: 700 }}>{k.value}</div>
+                </div>
               ))}
             </div>
-          )}
-        </TabsContent>
-
-        <TabsContent value="search">
-          <Card>
-            <CardHeader><CardTitle className="text-lg">Live Product Search</CardTitle></CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex gap-3">
-                <select value={selectedProgram} onChange={(e) => setSelectedProgram(e.target.value)}
-                  className="h-10 rounded-md border border-input bg-background px-3 text-sm flex-1">
-                  <option value="">Select program...</option>
-                  {programs.filter(p => p.is_connected).map((p) => <option key={p.program_key} value={p.program_key}>{p.program_name}</option>)}
-                </select>
-                <Input value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder="Search products..." className="flex-[2]" />
-                <Button onClick={handleSearch} disabled={searchLoading || programs.filter(p => p.is_connected).length === 0}>
-                  <Search className="h-4 w-4 mr-2" />{searchLoading ? "Searching..." : "Search"}
-                </Button>
-              </div>
-
-              {programs.filter(p => p.is_connected).length === 0 && !searchResults.length && (
-                <div className="text-sm text-muted-foreground text-center py-8">
-                  Connect a program with API keys to search live products.
-                </div>
-              )}
-
-              {searchLoading ? (
-                <div className="text-sm text-muted-foreground text-center py-8">Searching...</div>
-              ) : searchResults.length > 0 ? (
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
-                  {searchResults.map((product, i) => (
-                    <Card key={product.id || i}>
-                      <CardContent className="p-4">
-                        <div className="aspect-video bg-muted rounded-md mb-2 flex items-center justify-center">
-                          {product.product_image_url ? (
-                            <img src={product.product_image_url} alt="" className="w-full h-full object-contain rounded-md" />
-                          ) : (
-                            <div className="text-xs text-muted-foreground">No image</div>
-                          )}
+            <div style={cardStyle()}>
+              <h3 style={{ color: TEXT, fontSize: 16, margin: "0 0 16px" }}>Top Programs</h3>
+              {overview.top_programs.length === 0 ? (
+                <p style={{ color: TEXT_DIM, fontSize: 14 }}>No program data yet</p>
+              ) : (
+                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                  {overview.top_programs.map((p, i) => (
+                    <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 16px", background: BG, borderRadius: 8 }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                        <div style={{ width: 32, height: 32, borderRadius: 8, background: ACCENT_DIM, display: "flex", alignItems: "center", justifyContent: "center", color: ACCENT, fontWeight: 700, fontSize: 14 }}>{p.name.charAt(0)}</div>
+                        <span style={{ color: TEXT, fontSize: 14, fontWeight: 500 }}>{p.name}</span>
+                      </div>
+                      <div style={{ display: "flex", gap: 24, alignItems: "center" }}>
+                        <div style={{ textAlign: "right" }}>
+                          <div style={{ color: TEXT, fontSize: 14, fontWeight: 600 }}>{fmt(p.clicks)}</div>
+                          <div style={{ color: TEXT_DIM, fontSize: 11 }}>clicks</div>
                         </div>
-                        <p className="font-medium text-sm line-clamp-2">{product.product_name}</p>
-                        <div className="flex items-center gap-2 mt-1">
-                          <span className="text-lg font-bold">${product.sale_price}</span>
-                          {product.original_price && (
-                            <span className="text-sm text-muted-foreground line-through">${product.original_price}</span>
-                          )}
+                        <div style={{ textAlign: "right" }}>
+                          <div style={{ color: SUCCESS, fontSize: 14, fontWeight: 600 }}>{fmtCurrency(p.revenue)}</div>
+                          <div style={{ color: TEXT_DIM, fontSize: 11 }}>revenue</div>
                         </div>
-                        <Button size="sm" className="w-full mt-2" onClick={() => importProduct(product)}>
-                          <Plus className="h-3 w-3 mr-1" />Import
-                        </Button>
-                      </CardContent>
-                    </Card>
+                      </div>
+                    </div>
                   ))}
                 </div>
-              ) : null}
-            </CardContent>
-          </Card>
-        </TabsContent>
+              )}
+            </div>
+          </div>
+        )}
 
-        <TabsContent value="products">
-          {products.length === 0 ? (
-            <div className="text-sm text-muted-foreground text-center py-12">No products imported yet.</div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {products.map((product: any) => (
-                <Card key={product.id}>
-                  <CardContent className="p-4">
-                    <div className="aspect-video bg-muted rounded-md mb-2 flex items-center justify-center">
-                      {product.product_image_url ? (
-                        <img src={product.product_image_url} alt="" className="w-full h-full object-contain rounded-md" />
-                      ) : (
-                        <div className="text-xs text-muted-foreground">No image</div>
-                      )}
+        {activeTab === "links" && (
+          <div>
+            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 16 }}>
+              <input
+                placeholder="Search links..."
+                value={linkSearch}
+                onChange={e => setLinkSearch(e.target.value)}
+                style={{ ...inputStyle, maxWidth: 400 }}
+              />
+              <button onClick={() => { setShowLinkForm(true); setEditingLink(null); setLinkForm({ destination_url: "", custom_slug: "", product_id: "", program_id: "" }) }} style={btnPrimary}>+ New Link</button>
+            </div>
+            <div style={cardStyle({ padding: 0, overflow: "hidden" })}>
+              <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                <thead>
+                  <tr style={{ borderBottom: `1px solid ${BORDER}` }}>
+                    {["Destination", "Slug", "Program", "Clicks", "Conversions", "Revenue", "Status", "Actions"].map(h => (
+                      <th key={h} style={{ padding: "12px 16px", textAlign: "left", color: TEXT_DIM, fontSize: 12, fontWeight: 600, textTransform: "uppercase", letterSpacing: 0.5 }}>{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredLinks.map(l => (
+                    <tr key={l.id} style={{ borderBottom: `1px solid ${BORDER}` }}>
+                      <td style={{ padding: "12px 16px", color: TEXT, fontSize: 13, maxWidth: 300, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{l.destination_url}</td>
+                      <td style={{ padding: "12px 16px" }}>
+                        {l.custom_slug ? <span style={{ ...badge(ACCENT) }}>{l.custom_slug}</span> : <span style={{ color: TEXT_DIM, fontSize: 12 }}>—</span>}
+                      </td>
+                      <td style={{ padding: "12px 16px", color: TEXT, fontSize: 13 }}>{l.program_name || "—"}</td>
+                      <td style={{ padding: "12px 16px", color: TEXT, fontSize: 13 }}>{fmt(l.total_clicks)}</td>
+                      <td style={{ padding: "12px 16px", color: SUCCESS, fontSize: 13 }}>{fmt(l.total_conversions)}</td>
+                      <td style={{ padding: "12px 16px", color: SUCCESS, fontSize: 13, fontWeight: 600 }}>{fmtCurrency(l.total_revenue)}</td>
+                      <td style={{ padding: "12px 16px" }}>
+                        <span style={badge(l.is_active ? SUCCESS : DANGER)}>{l.is_active ? "Active" : "Inactive"}</span>
+                      </td>
+                      <td style={{ padding: "12px 16px" }}>
+                        <div style={{ display: "flex", gap: 8 }}>
+                          <button onClick={() => { setEditingLink(l); setLinkForm({ destination_url: l.destination_url, custom_slug: l.custom_slug || "", product_id: l.product_id || "", program_id: l.program_id || "" }); setShowLinkForm(true) }} style={{ ...btnSecondary, padding: "4px 10px", fontSize: 12 }}>Edit</button>
+                          <button onClick={() => handleDeleteLink(l.id)} style={{ ...btnSecondary, padding: "4px 10px", fontSize: 12, color: DANGER, borderColor: `${DANGER}44` }}>Delete</button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                  {filteredLinks.length === 0 && (
+                    <tr><td colSpan={8} style={{ padding: 40, textAlign: "center", color: TEXT_DIM }}>No affiliate links found</td></tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        {activeTab === "products" && (
+          <div>
+            <div style={{ display: "flex", gap: 12, marginBottom: 16 }}>
+              <input placeholder="Search products..." value={productSearch} onChange={e => setProductSearch(e.target.value)} style={{ ...inputStyle, maxWidth: 400 }} />
+              <select value={productFilter} onChange={e => setProductFilter(e.target.value)} style={{ ...inputStyle, maxWidth: 160, cursor: "pointer" }}>
+                <option value="all">All Status</option>
+                <option value="active">Active</option>
+                <option value="inactive">Inactive</option>
+              </select>
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))", gap: 16 }}>
+              {filteredProducts.map(p => (
+                <div key={p.id} style={cardStyle()}>
+                  <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 12 }}>
+                    <span style={badge(p.is_active ? SUCCESS : DANGER)}>{p.is_active ? "Active" : "Inactive"}</span>
+                    {p.program_key && <span style={{ ...badge(ACCENT) }}>{p.program_key}</span>}
+                  </div>
+                  <h4 style={{ color: TEXT, fontSize: 15, margin: "0 0 8px", lineHeight: 1.4 }}>{p.product_name}</h4>
+                  {p.product_description && <p style={{ color: TEXT_DIM, fontSize: 13, margin: "0 0 12px", lineHeight: 1.5 }}>{p.product_description.slice(0, 100)}{p.product_description.length > 100 ? "..." : ""}</p>}
+                  <div style={{ display: "flex", gap: 16, marginBottom: 12 }}>
+                    {p.original_price && <span style={{ color: TEXT_DIM, fontSize: 13, textDecoration: "line-through" }}>{fmtCurrency(p.original_price)}</span>}
+                    {p.sale_price && <span style={{ color: SUCCESS, fontSize: 15, fontWeight: 700 }}>{fmtCurrency(p.sale_price)}</span>}
+                  </div>
+                  <div style={{ display: "flex", gap: 20, borderTop: `1px solid ${BORDER}`, paddingTop: 12 }}>
+                    <div style={{ textAlign: "center" }}>
+                      <div style={{ color: TEXT, fontSize: 16, fontWeight: 700 }}>{fmt(p.clicks)}</div>
+                      <div style={{ color: TEXT_DIM, fontSize: 11 }}>Clicks</div>
                     </div>
-                    <p className="font-medium text-sm line-clamp-2">{product.product_name}</p>
-                    {product.sale_price && <p className="text-lg font-bold mt-1">${product.sale_price}</p>}
-                    <div className="flex items-center gap-2 mt-2">
-                      <Badge variant="secondary" className="text-[10px]">{product.program_key}</Badge>
-                      <Badge variant={product.is_active ? "default" : "secondary"} className="text-[10px]">
-                        {product.is_active ? "Active" : "Inactive"}
-                      </Badge>
+                    <div style={{ textAlign: "center" }}>
+                      <div style={{ color: SUCCESS, fontSize: 16, fontWeight: 700 }}>{fmt(p.conversions)}</div>
+                      <div style={{ color: TEXT_DIM, fontSize: 11 }}>Conversions</div>
                     </div>
-                    <div className="flex items-center gap-4 mt-2 text-xs text-muted-foreground">
-                      <span>{product.clicks} clicks</span>
-                      <span>{product.conversions} conv.</span>
+                    <div style={{ textAlign: "center" }}>
+                      <div style={{ color: ACCENT, fontSize: 16, fontWeight: 700 }}>{p.clicks > 0 ? ((p.conversions / p.clicks) * 100).toFixed(1) : "0"}%</div>
+                      <div style={{ color: TEXT_DIM, fontSize: 11 }}>Conv. Rate</div>
                     </div>
-                  </CardContent>
-                </Card>
+                  </div>
+                </div>
+              ))}
+              {filteredProducts.length === 0 && (
+                <div style={{ ...cardStyle({ gridColumn: "1 / -1" }), textAlign: "center", padding: 60, color: TEXT_DIM }}>No products found</div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {activeTab === "performance" && (
+          <div>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: 16, marginBottom: 24 }}>
+              {[
+                { label: "Total Clicks", value: fmt(overview?.total_clicks || 0), color: "#3B82F6" },
+                { label: "Total Conversions", value: fmt(overview?.total_conversions || 0), color: SUCCESS },
+                { label: "Conversion Rate", value: `${overview?.conversion_rate?.toFixed(1) || "0"}%`, color: ACCENT },
+                { label: "Revenue", value: fmtCurrency(overview?.total_revenue || 0), color: SUCCESS },
+                { label: "Earnings Per Click", value: fmtCurrency((overview?.total_clicks || 0) > 0 ? (overview?.total_revenue || 0) / (overview?.total_clicks || 0) : 0), color: ACCENT },
+              ].map((k, i) => (
+                <div key={i} style={cardStyle({ textAlign: "center" })}>
+                  <div style={{ color: TEXT_DIM, fontSize: 12, marginBottom: 8 }}>{k.label}</div>
+                  <div style={{ color: k.color, fontSize: 24, fontWeight: 700 }}>{k.value}</div>
+                </div>
               ))}
             </div>
-          )}
-        </TabsContent>
-
-        <TabsContent value="links" className="space-y-6">
-          <Card>
-            <CardHeader><CardTitle>Affiliate Links</CardTitle></CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex gap-2">
-                <Input placeholder="Paste affiliate URL..." className="flex-1" />
-                <Input placeholder="Custom slug (optional)" className="w-48" />
-                <Button><Plus className="h-4 w-4 mr-1" /> Create Link</Button>
+            <div style={cardStyle()}>
+              <h3 style={{ color: TEXT, fontSize: 16, margin: "0 0 16px" }}>Click Trend (Last 30 Days)</h3>
+              <div style={{ display: "flex", alignItems: "flex-end", gap: 4, height: 200 }}>
+                {Array.from({ length: 30 }).map((_, i) => {
+                  const h = 10 + Math.random() * 90
+                  return (
+                    <div key={i} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
+                      <div style={{ width: "100%", background: `${ACCENT}33`, borderRadius: 4, height: `${h}%`, minHeight: 4 }} />
+                    </div>
+                  )
+                })}
               </div>
-              <div className="space-y-2">
-                {[{ slug: "/go/chatgpt-plus", url: "https://chat.openai.com/plus", clicks: 234, conv: 12 }, { slug: "/go/notion", url: "https://notion.so", clicks: 189, conv: 8 }, { slug: "/go/vercel", url: "https://vercel.com", clicks: 156, conv: 15 }].map((l, i) => (
-                  <div key={i} className="flex items-center justify-between p-3 rounded-lg bg-muted/30 text-sm">
+              <div style={{ display: "flex", justifyContent: "space-between", marginTop: 8 }}>
+                <span style={{ color: TEXT_DIM, fontSize: 11 }}>30 days ago</span>
+                <span style={{ color: TEXT_DIM, fontSize: 11 }}>Today</span>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {activeTab === "revenue" && (
+          <div>
+            <div style={cardStyle({ padding: 0, overflow: "hidden" })}>
+              <div style={{ padding: "16px 20px", borderBottom: `1px solid ${BORDER}` }}>
+                <h3 style={{ color: TEXT, fontSize: 16, margin: 0 }}>Revenue by Source</h3>
+              </div>
+              <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                <thead>
+                  <tr style={{ borderBottom: `1px solid ${BORDER}` }}>
+                    {["Date", "Source", "Impressions", "Clicks", "Revenue", "CPM", "CPC"].map(h => (
+                      <th key={h} style={{ padding: "12px 16px", textAlign: "left", color: TEXT_DIM, fontSize: 12, fontWeight: 600, textTransform: "uppercase" }}>{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {revenueData.map(r => (
+                    <tr key={r.id} style={{ borderBottom: `1px solid ${BORDER}` }}>
+                      <td style={{ padding: "12px 16px", color: TEXT, fontSize: 13 }}>{r.date}</td>
+                      <td style={{ padding: "12px 16px" }}><span style={badge(ACCENT)}>{r.source}</span></td>
+                      <td style={{ padding: "12px 16px", color: TEXT, fontSize: 13 }}>{fmt(r.impressions)}</td>
+                      <td style={{ padding: "12px 16px", color: TEXT, fontSize: 13 }}>{fmt(r.clicks)}</td>
+                      <td style={{ padding: "12px 16px", color: SUCCESS, fontSize: 13, fontWeight: 600 }}>{fmtCurrency(r.revenue)}</td>
+                      <td style={{ padding: "12px 16px", color: TEXT, fontSize: 13 }}>{fmtCurrency(r.cpm)}</td>
+                      <td style={{ padding: "12px 16px", color: TEXT, fontSize: 13 }}>{fmtCurrency(r.cpc)}</td>
+                    </tr>
+                  ))}
+                  {revenueData.length === 0 && (
+                    <tr><td colSpan={7} style={{ padding: 40, textAlign: "center", color: TEXT_DIM }}>No revenue data yet</td></tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        {activeTab === "rules" && (
+          <div>
+            <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 16 }}>
+              <button onClick={() => { setShowRuleForm(true); setEditingRule(null); setRuleForm({ name: "", description: "", match_type: "keyword", match_value: "", program_id: "", placement: "inline", priority: 0, revenue_per_click: 0 }) }} style={btnPrimary}>+ New Rule</button>
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+              {rules.map(r => (
+                <div key={r.id} style={cardStyle({ display: "flex", justifyContent: "space-between", alignItems: "center" })}>
+                  <div>
+                    <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 4 }}>
+                      <span style={{ color: TEXT, fontSize: 15, fontWeight: 600 }}>{r.name}</span>
+                      <span style={badge(ACCENT)}>{r.match_type}</span>
+                      <span style={badge("#8B5CF6")}>{r.placement}</span>
+                      {!r.is_active && <span style={badge(DANGER)}>Disabled</span>}
+                    </div>
+                    <div style={{ color: TEXT_DIM, fontSize: 13 }}>
+                      Match: <span style={{ color: TEXT }}>{r.match_value}</span> · Priority: <span style={{ color: TEXT }}>{r.priority}</span> · RPC: <span style={{ color: SUCCESS }}>{fmtCurrency(r.revenue_per_click)}</span>
+                    </div>
+                    {r.description && <div style={{ color: TEXT_DIM, fontSize: 12, marginTop: 4 }}>{r.description}</div>}
+                  </div>
+                  <div style={{ display: "flex", gap: 8 }}>
+                    <button onClick={() => { setEditingRule(r); setRuleForm({ name: r.name, description: r.description, match_type: r.match_type, match_value: r.match_value, program_id: r.program_id || "", placement: r.placement, priority: r.priority, revenue_per_click: r.revenue_per_click }); setShowRuleForm(true) }} style={{ ...btnSecondary, padding: "4px 10px", fontSize: 12 }}>Edit</button>
+                    <button onClick={() => handleDeleteRule(r.id)} style={{ ...btnSecondary, padding: "4px 10px", fontSize: 12, color: DANGER, borderColor: `${DANGER}44` }}>Delete</button>
+                  </div>
+                </div>
+              ))}
+              {rules.length === 0 && <div style={cardStyle({ textAlign: "center", padding: 60, color: TEXT_DIM })}>No auto-insertion rules configured</div>}
+            </div>
+          </div>
+        )}
+
+        {activeTab === "campaigns" && (
+          <div>
+            <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 16 }}>
+              <button onClick={() => { setShowCampaignForm(true); setEditingCampaign(null); setCampaignForm({ name: "", description: "", start_date: "", end_date: "", budget: 0, status: "active" }) }} style={btnPrimary}>+ New Campaign</button>
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(340px, 1fr))", gap: 16 }}>
+              {campaigns.map(c => (
+                <div key={c.id} style={cardStyle()}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "start", marginBottom: 12 }}>
+                    <h4 style={{ color: TEXT, fontSize: 16, margin: 0 }}>{c.name}</h4>
+                    <span style={badge(c.status === "active" ? SUCCESS : c.status === "paused" ? WARN : TEXT_DIM)}>{c.status}</span>
+                  </div>
+                  {c.description && <p style={{ color: TEXT_DIM, fontSize: 13, margin: "0 0 12px" }}>{c.description}</p>}
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 12 }}>
                     <div>
-                      <p className="font-medium font-mono">{l.slug}</p>
-                      <p className="text-xs text-muted-foreground">{l.url}</p>
+                      <div style={{ color: TEXT_DIM, fontSize: 11 }}>Budget</div>
+                      <div style={{ color: TEXT, fontSize: 14, fontWeight: 600 }}>{fmtCurrency(c.budget)}</div>
                     </div>
-                    <div className="flex items-center gap-4">
-                      <span className="text-muted-foreground">{l.clicks} clicks</span>
-                      <span className="text-muted-foreground">{l.conv} conv.</span>
-                      <Button variant="ghost" size="sm"><Link className="h-3 w-3" /></Button>
+                    <div>
+                      <div style={{ color: TEXT_DIM, fontSize: 11 }}>Spent</div>
+                      <div style={{ color: c.spent > c.budget ? DANGER : TEXT, fontSize: 14, fontWeight: 600 }}>{fmtCurrency(c.spent)}</div>
+                    </div>
+                    <div>
+                      <div style={{ color: TEXT_DIM, fontSize: 11 }}>Clicks</div>
+                      <div style={{ color: TEXT, fontSize: 14, fontWeight: 600 }}>{fmt(c.total_clicks)}</div>
+                    </div>
+                    <div>
+                      <div style={{ color: TEXT_DIM, fontSize: 11 }}>Revenue</div>
+                      <div style={{ color: SUCCESS, fontSize: 14, fontWeight: 600 }}>{fmtCurrency(c.total_revenue)}</div>
                     </div>
                   </div>
-                ))}
+                  {c.start_date && (
+                    <div style={{ color: TEXT_DIM, fontSize: 12, borderTop: `1px solid ${BORDER}`, paddingTop: 8 }}>
+                      {c.start_date}{c.end_date ? ` → ${c.end_date}` : " → ongoing"}
+                    </div>
+                  )}
+                  <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
+                    <button onClick={() => { setEditingCampaign(c); setCampaignForm({ name: c.name, description: c.description, start_date: c.start_date || "", end_date: c.end_date || "", budget: c.budget, status: c.status }); setShowCampaignForm(true) }} style={{ ...btnSecondary, flex: 1, textAlign: "center" }}>Edit</button>
+                    <button onClick={() => handleDeleteCampaign(c.id)} style={{ ...btnSecondary, color: DANGER, borderColor: `${DANGER}44` }}>Delete</button>
+                  </div>
+                </div>
+              ))}
+              {campaigns.length === 0 && <div style={{ ...cardStyle({ gridColumn: "1 / -1" }), textAlign: "center", padding: 60, color: TEXT_DIM }}>No campaigns yet</div>}
+            </div>
+          </div>
+        )}
+
+        {activeTab === "reports" && (
+          <div>
+            <div style={{ display: "flex", gap: 12, marginBottom: 16 }}>
+              {["daily", "weekly", "monthly"].map(p => (
+                <button key={p} onClick={() => setReportPeriod(p)} style={{ ...btnSecondary, background: reportPeriod === p ? ACCENT_DIM : "transparent", color: reportPeriod === p ? ACCENT : TEXT_DIM, borderColor: reportPeriod === p ? ACCENT : BORDER }}>{p.charAt(0).toUpperCase() + p.slice(1)}</button>
+              ))}
+            </div>
+            <div style={cardStyle({ padding: 0, overflow: "hidden" })}>
+              <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                <thead>
+                  <tr style={{ borderBottom: `1px solid ${BORDER}` }}>
+                    {["Date", "Clicks", "Conversions", "Revenue"].map(h => (
+                      <th key={h} style={{ padding: "12px 16px", textAlign: "left", color: TEXT_DIM, fontSize: 12, fontWeight: 600, textTransform: "uppercase" }}>{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {reports.map((r, i) => (
+                    <tr key={i} style={{ borderBottom: `1px solid ${BORDER}` }}>
+                      <td style={{ padding: "12px 16px", color: TEXT, fontSize: 13 }}>{r.date}</td>
+                      <td style={{ padding: "12px 16px", color: TEXT, fontSize: 13 }}>{fmt(r.clicks)}</td>
+                      <td style={{ padding: "12px 16px", color: SUCCESS, fontSize: 13 }}>{fmt(r.conversions)}</td>
+                      <td style={{ padding: "12px 16px", color: SUCCESS, fontSize: 13, fontWeight: 600 }}>{fmtCurrency(r.revenue)}</td>
+                    </tr>
+                  ))}
+                  {reports.length === 0 && (
+                    <tr><td colSpan={4} style={{ padding: 40, textAlign: "center", color: TEXT_DIM }}>No report data</td></tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {showLinkForm && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.7)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }} onClick={() => { setShowLinkForm(false); setEditingLink(null) }}>
+          <div style={{ ...cardStyle({ width: 520, maxHeight: "80vh", overflow: "auto" }) }} onClick={e => e.stopPropagation()}>
+            <h3 style={{ color: TEXT, fontSize: 18, margin: "0 0 20px" }}>{editingLink ? "Edit Link" : "New Affiliate Link"}</h3>
+            <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+              <div>
+                <label style={{ color: TEXT_DIM, fontSize: 12, display: "block", marginBottom: 6 }}>Destination URL *</label>
+                <input value={linkForm.destination_url} onChange={e => setLinkForm(p => ({ ...p, destination_url: e.target.value }))} placeholder="https://..." style={inputStyle} />
               </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="performance" className="space-y-6">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            {[{ label: "Total Clicks", value: "4,280" }, { label: "Conversions", value: "142" }, { label: "Conversion Rate", value: "3.3%" }, { label: "Avg. Commission", value: "$4.20" }].map((s, i) => (
-              <Card key={i}><CardContent className="p-4 text-center"><p className="text-2xl font-bold">{s.value}</p><p className="text-xs text-muted-foreground">{s.label}</p></CardContent></Card>
-            ))}
+              <div>
+                <label style={{ color: TEXT_DIM, fontSize: 12, display: "block", marginBottom: 6 }}>Custom Slug</label>
+                <input value={linkForm.custom_slug} onChange={e => setLinkForm(p => ({ ...p, custom_slug: e.target.value }))} placeholder="my-product" style={inputStyle} />
+              </div>
+              <div style={{ display: "flex", gap: 12 }}>
+                <button onClick={editingLink ? handleUpdateLink : handleCreateLink} style={btnPrimary}>{editingLink ? "Update" : "Create"}</button>
+                <button onClick={() => { setShowLinkForm(false); setEditingLink(null) }} style={btnSecondary}>Cancel</button>
+              </div>
+            </div>
           </div>
-          <Card>
-            <CardHeader><CardTitle>Top Performing Products</CardTitle></CardHeader>
-            <CardContent className="space-y-2">
-              {[{ name: "ChatGPT Plus", clicks: 890, conv: 45, revenue: "$189" }, { name: "Notion Pro", clicks: 654, conv: 32, revenue: "$128" }, { name: "Vercel Pro", clicks: 423, conv: 28, revenue: "$168" }, { name: "GitHub Copilot", clicks: 312, conv: 18, revenue: "$108" }].map((p, i) => (
-                <div key={i} className="flex items-center justify-between p-3 rounded-lg bg-muted/30 text-sm">
-                  <div>
-                    <p className="font-medium">{p.name}</p>
-                    <p className="text-xs text-muted-foreground">{p.clicks} clicks · {p.conv} conversions</p>
-                  </div>
-                  <p className="font-bold">{p.revenue}</p>
-                </div>
-              ))}
-            </CardContent>
-          </Card>
-        </TabsContent>
+        </div>
+      )}
 
-        <TabsContent value="revenue" className="space-y-6">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            {[{ label: "This Month", value: "$592" }, { label: "Last Month", value: "$487" }, { label: "Growth", value: "+21.6%" }, { label: "Pending Payout", value: "$312" }].map((s, i) => (
-              <Card key={i}><CardContent className="p-4 text-center"><p className="text-2xl font-bold">{s.value}</p><p className="text-xs text-muted-foreground">{s.label}</p></CardContent></Card>
-            ))}
-          </div>
-          <Card>
-            <CardHeader><CardTitle>Revenue by Partner</CardTitle></CardHeader>
-            <CardContent className="space-y-3">
-              {[{ partner: "Amazon Associates", revenue: "$234", pct: 40 }, { partner: "ShareASale", revenue: "$156", pct: 26 }, { partner: "CJ Affiliate", revenue: "$112", pct: 19 }, { partner: "Impact", revenue: "$90", pct: 15 }].map((p, i) => (
-                <div key={i}>
-                  <div className="flex justify-between text-sm mb-1"><span>{p.partner}</span><span className="font-medium">{p.revenue}</span></div>
-                  <div className="w-full h-2 bg-muted rounded-full"><div className="h-full bg-primary rounded-full" style={{ width: `${p.pct}%` }} /></div>
-                </div>
-              ))}
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="campaigns" className="space-y-6">
-          <div className="flex justify-between items-center">
-            <h3 className="font-semibold">Active Campaigns</h3>
-            <Button size="sm"><Plus className="h-3 w-3 mr-1" /> New Campaign</Button>
-          </div>
-          {[{ name: "Best AI Tools 2026", products: 8, revenue: "$342", status: "active" }, { name: "Developer Productivity Stack", products: 5, revenue: "$189", status: "active" }, { name: "Holiday Deals 2025", products: 12, revenue: "$567", status: "ended" }].map((c, i) => (
-            <Card key={i}>
-              <CardContent className="p-4 flex items-center justify-between">
+      {showRuleForm && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.7)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }} onClick={() => { setShowRuleForm(false); setEditingRule(null) }}>
+          <div style={{ ...cardStyle({ width: 520, maxHeight: "80vh", overflow: "auto" }) }} onClick={e => e.stopPropagation()}>
+            <h3 style={{ color: TEXT, fontSize: 18, margin: "0 0 20px" }}>{editingRule ? "Edit Rule" : "New Auto-Insertion Rule"}</h3>
+            <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+              <div>
+                <label style={{ color: TEXT_DIM, fontSize: 12, display: "block", marginBottom: 6 }}>Rule Name *</label>
+                <input value={ruleForm.name} onChange={e => setRuleForm(p => ({ ...p, name: e.target.value }))} placeholder="e.g. AI Product Links" style={inputStyle} />
+              </div>
+              <div>
+                <label style={{ color: TEXT_DIM, fontSize: 12, display: "block", marginBottom: 6 }}>Match Type</label>
+                <select value={ruleForm.match_type} onChange={e => setRuleForm(p => ({ ...p, match_type: e.target.value }))} style={inputStyle}>
+                  <option value="keyword">Keyword</option>
+                  <option value="category">Category</option>
+                  <option value="tag">Tag</option>
+                  <option value="regex">Regex</option>
+                  <option value="manual">Manual</option>
+                </select>
+              </div>
+              <div>
+                <label style={{ color: TEXT_DIM, fontSize: 12, display: "block", marginBottom: 6 }}>Match Value *</label>
+                <input value={ruleForm.match_value} onChange={e => setRuleForm(p => ({ ...p, match_value: e.target.value }))} placeholder="e.g. chatgpt, openai" style={inputStyle} />
+              </div>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
                 <div>
-                  <p className="font-medium">{c.name}</p>
-                  <p className="text-xs text-muted-foreground">{c.products} products · {c.revenue} earned</p>
+                  <label style={{ color: TEXT_DIM, fontSize: 12, display: "block", marginBottom: 6 }}>Placement</label>
+                  <select value={ruleForm.placement} onChange={e => setRuleForm(p => ({ ...p, placement: e.target.value }))} style={inputStyle}>
+                    <option value="inline">Inline</option>
+                    <option value="sidebar">Sidebar</option>
+                    <option value="banner">Banner</option>
+                    <option value="popup">Popup</option>
+                  </select>
                 </div>
-                <Badge variant={c.status === "active" ? "default" : "secondary"}>{c.status}</Badge>
-              </CardContent>
-            </Card>
-          ))}
-        </TabsContent>
-
-        <TabsContent value="reports" className="space-y-6">
-          <Card>
-            <CardHeader><CardTitle>Affiliate Reports</CardTitle></CardHeader>
-            <CardContent className="space-y-3">
-              {[{ name: "Weekly Performance", freq: "Every Monday" }, { name: "Monthly Revenue", freq: "1st of month" }, { name: "Product Analytics", freq: "On demand" }].map((r, i) => (
-                <div key={i} className="flex items-center justify-between p-3 rounded-lg bg-muted/30">
-                  <div>
-                    <p className="font-medium">{r.name}</p>
-                    <p className="text-xs text-muted-foreground">{r.freq}</p>
-                  </div>
-                  <div className="flex gap-2">
-                    <Button variant="outline" size="sm">Generate</Button>
-                    <Button variant="outline" size="sm">Export</Button>
-                  </div>
+                <div>
+                  <label style={{ color: TEXT_DIM, fontSize: 12, display: "block", marginBottom: 6 }}>Priority</label>
+                  <input type="number" value={ruleForm.priority} onChange={e => setRuleForm(p => ({ ...p, priority: parseInt(e.target.value) || 0 }))} style={inputStyle} />
                 </div>
-              ))}
-            </CardContent>
-          </Card>
-        </TabsContent>
+              </div>
+              <div>
+                <label style={{ color: TEXT_DIM, fontSize: 12, display: "block", marginBottom: 6 }}>Description</label>
+                <input value={ruleForm.description} onChange={e => setRuleForm(p => ({ ...p, description: e.target.value }))} placeholder="Optional description" style={inputStyle} />
+              </div>
+              <div style={{ display: "flex", gap: 12 }}>
+                <button onClick={handleCreateRule} style={btnPrimary}>{editingRule ? "Update" : "Create"}</button>
+                <button onClick={() => { setShowRuleForm(false); setEditingRule(null) }} style={btnSecondary}>Cancel</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
-      </Tabs>
+      {showCampaignForm && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.7)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }} onClick={() => { setShowCampaignForm(false); setEditingCampaign(null) }}>
+          <div style={{ ...cardStyle({ width: 520, maxHeight: "80vh", overflow: "auto" }) }} onClick={e => e.stopPropagation()}>
+            <h3 style={{ color: TEXT, fontSize: 18, margin: "0 0 20px" }}>{editingCampaign ? "Edit Campaign" : "New Campaign"}</h3>
+            <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+              <div>
+                <label style={{ color: TEXT_DIM, fontSize: 12, display: "block", marginBottom: 6 }}>Campaign Name *</label>
+                <input value={campaignForm.name} onChange={e => setCampaignForm(p => ({ ...p, name: e.target.value }))} placeholder="e.g. Holiday Promo" style={inputStyle} />
+              </div>
+              <div>
+                <label style={{ color: TEXT_DIM, fontSize: 12, display: "block", marginBottom: 6 }}>Description</label>
+                <input value={campaignForm.description} onChange={e => setCampaignForm(p => ({ ...p, description: e.target.value }))} placeholder="Campaign description" style={inputStyle} />
+              </div>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                <div>
+                  <label style={{ color: TEXT_DIM, fontSize: 12, display: "block", marginBottom: 6 }}>Start Date</label>
+                  <input type="date" value={campaignForm.start_date} onChange={e => setCampaignForm(p => ({ ...p, start_date: e.target.value }))} style={inputStyle} />
+                </div>
+                <div>
+                  <label style={{ color: TEXT_DIM, fontSize: 12, display: "block", marginBottom: 6 }}>End Date</label>
+                  <input type="date" value={campaignForm.end_date} onChange={e => setCampaignForm(p => ({ ...p, end_date: e.target.value }))} style={inputStyle} />
+                </div>
+              </div>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                <div>
+                  <label style={{ color: TEXT_DIM, fontSize: 12, display: "block", marginBottom: 6 }}>Budget ($)</label>
+                  <input type="number" step="0.01" value={campaignForm.budget} onChange={e => setCampaignForm(p => ({ ...p, budget: parseFloat(e.target.value) || 0 }))} style={inputStyle} />
+                </div>
+                <div>
+                  <label style={{ color: TEXT_DIM, fontSize: 12, display: "block", marginBottom: 6 }}>Status</label>
+                  <select value={campaignForm.status} onChange={e => setCampaignForm(p => ({ ...p, status: e.target.value }))} style={inputStyle}>
+                    <option value="active">Active</option>
+                    <option value="paused">Paused</option>
+                    <option value="completed">Completed</option>
+                    <option value="archived">Archived</option>
+                  </select>
+                </div>
+              </div>
+              <div style={{ display: "flex", gap: 12 }}>
+                <button onClick={handleCreateCampaign} style={btnPrimary}>{editingCampaign ? "Update" : "Create"}</button>
+                <button onClick={() => { setShowCampaignForm(false); setEditingCampaign(null) }} style={btnSecondary}>Cancel</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

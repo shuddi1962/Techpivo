@@ -94,6 +94,9 @@ const navGroups: NavGroup[] = [
       { href: "/admin/tools", label: "Tools Center", icon: Wrench },
       { href: "/admin/knowledge-graph", label: "Knowledge Graph", icon: Network },
       { href: "/admin/launch-center", label: "Launch Center", icon: Rocket },
+      { href: "/admin/automation", label: "Workflow Automation", icon: Share2 },
+      { href: "/admin/plugins", label: "Plugin Marketplace", icon: Wrench },
+      { href: "/admin/api-platform", label: "API Platform", icon: Key },
     ],
   },
   {

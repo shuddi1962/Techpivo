@@ -1,23 +1,34 @@
 "use client"
 
-import { useEffect, useState, useRef } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { createClient } from "@/lib/supabase/client"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Textarea } from "@/components/ui/textarea"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Switch } from "@/components/ui/switch"
-import { Label } from "@/components/ui/label"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Plus, Image, Code, DollarSign, Eye, MousePointer, Calendar, Copy, Check, X, Upload, Monitor, Video, FileText as FileTextIcon, Search as SearchIcon, ExternalLink, Play } from "lucide-react"
-import { AD_POSITIONS } from "@/lib/constants"
-import { AdSlot } from "@/components/ads/AdSlot"
-import type { Ad } from "@/types/database"
 
-type AdFormat = "banner_image" | "custom_code" | "adsense"
-type CampaignFormat = AdFormat | "sponsored_article" | "video_ad"
-type Campaign = {
+const BG = "#0F1117"
+const CARD = "#1C1F2E"
+const BORDER = "#2A2D3E"
+const ACCENT = "#3B82F6"
+const ACCENT_DIM = "rgba(59,130,246,0.15)"
+const TEXT = "#E5E7EB"
+const TEXT_DIM = "#9CA3AF"
+const SUCCESS = "#10B981"
+const DANGER = "#EF4444"
+const WARN = "#F59E0B"
+
+interface AdPlacement {
+  id: string
+  name: string
+  position: string
+  description: string
+  ad_type: string
+  sizes: string[]
+  is_active: boolean
+  current_ad_id: string | null
+  impressions: number
+  clicks: number
+  created_at: string
+}
+
+interface AdCampaign {
   id: string
   advertiser_name: string
   ad_image_url: string | null
@@ -33,925 +44,725 @@ type Campaign = {
   created_at: string
 }
 
-const SLOT_FORMAT_LABELS: Record<AdFormat, string> = {
-  banner_image: "Banner Image",
-  custom_code: "Custom Code",
-  adsense: "Google AdSense",
+interface AdSchedule {
+  id: string
+  name: string
+  ad_id: string | null
+  campaign_id: string | null
+  start_date: string
+  end_date: string | null
+  frequency: string
+  priority: number
+  is_active: boolean
+  created_at: string
 }
 
-const SLOT_FORMAT_ICONS: Record<AdFormat, any> = {
-  banner_image: Image,
-  custom_code: Code,
-  adsense: DollarSign,
+interface AdRevenueEntry {
+  id: string
+  ad_id: string | null
+  campaign_id: string | null
+  source: string
+  impressions: number
+  clicks: number
+  revenue: number
+  cpm: number
+  cpc: number
+  date: string
 }
 
-const CAMPAIGN_FORMAT_LABELS: Record<CampaignFormat, string> = {
-  banner_image: "Banner Image",
-  custom_code: "Custom Code",
-  adsense: "Google AdSense",
-  sponsored_article: "Sponsored Article",
-  video_ad: "Video Ad",
+interface OverviewData {
+  total_impressions: number
+  total_clicks: number
+  total_revenue: number
+  fill_rate: number
+  active_placements: number
+  active_campaigns: number
+  avg_ctr: number
+  top_sources: { source: string; revenue: number; impressions: number }[]
 }
 
-const CAMPAIGN_FORMAT_ICONS: Record<CampaignFormat, any> = {
-  banner_image: Image,
-  custom_code: Code,
-  adsense: DollarSign,
-  sponsored_article: FileTextIcon,
-  video_ad: Video,
+interface ReportRow {
+  date: string
+  impressions: number
+  clicks: number
+  revenue: number
+  source: string
 }
+
+const TABS = [
+  { id: "overview", label: "Overview" },
+  { id: "placements", label: "Placements" },
+  { id: "campaigns", label: "Campaigns" },
+  { id: "schedule", label: "Schedule" },
+  { id: "direct", label: "Direct Ads" },
+  { id: "revenue", label: "Revenue" },
+  { id: "native", label: "Native Ads" },
+  { id: "reports", label: "Reports" },
+]
+
+const cardStyle = (extra?: React.CSSProperties): React.CSSProperties => ({
+  background: CARD,
+  border: `1px solid ${BORDER}`,
+  borderRadius: 12,
+  padding: 20,
+  ...extra,
+})
+
+const inputStyle: React.CSSProperties = {
+  background: BG,
+  border: `1px solid ${BORDER}`,
+  borderRadius: 8,
+  padding: "10px 14px",
+  color: TEXT,
+  fontSize: 14,
+  width: "100%",
+  outline: "none",
+}
+
+const btnPrimary: React.CSSProperties = {
+  background: ACCENT,
+  color: "#fff",
+  border: "none",
+  borderRadius: 8,
+  padding: "10px 20px",
+  fontWeight: 600,
+  cursor: "pointer",
+  fontSize: 14,
+}
+
+const btnSecondary: React.CSSProperties = {
+  background: "transparent",
+  color: TEXT_DIM,
+  border: `1px solid ${BORDER}`,
+  borderRadius: 8,
+  padding: "8px 16px",
+  cursor: "pointer",
+  fontSize: 13,
+}
+
+const badge = (color: string): React.CSSProperties => ({
+  display: "inline-block",
+  padding: "2px 10px",
+  borderRadius: 20,
+  fontSize: 12,
+  fontWeight: 600,
+  background: `${color}22`,
+  color,
+})
+
+const fmt = (n: number) => n.toLocaleString()
+const fmtCurrency = (n: number) => `$${n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
 
 export default function AdminAdsPage() {
-  const [ads, setAds] = useState<Ad[]>([])
-  const [campaigns, setCampaigns] = useState<Campaign[]>([])
+  const [activeTab, setActiveTab] = useState("overview")
+  const [loading, setLoading] = useState(true)
+  const [overview, setOverview] = useState<OverviewData | null>(null)
+  const [placements, setPlacements] = useState<AdPlacement[]>([])
+  const [campaigns, setCampaigns] = useState<AdCampaign[]>([])
+  const [schedules, setSchedules] = useState<AdSchedule[]>([])
+  const [revenueData, setRevenueData] = useState<AdRevenueEntry[]>([])
+  const [reports, setReports] = useState<ReportRow[]>([])
+  const [reportPeriod, setReportPeriod] = useState("daily")
 
-  // ── Ad slot form state ──
-  const [name, setName] = useState("")
-  const [position, setPosition] = useState("")
-  const [slotFormat, setSlotFormat] = useState<AdFormat>("banner_image")
-  const [slotAdCode, setSlotAdCode] = useState("")
-  const [slotImageUrl, setSlotImageUrl] = useState("")
-  const [slotUploading, setSlotUploading] = useState(false)
-  const slotInputRef = useRef<HTMLInputElement>(null)
-
-  // ── Campaign form state ──
+  const [showPlacementForm, setShowPlacementForm] = useState(false)
   const [showCampaignForm, setShowCampaignForm] = useState(false)
-  const [editingCampaign, setEditingCampaign] = useState<Campaign | null>(null)
-  const [advName, setAdvName] = useState("")
-  const [advFormat, setAdvFormat] = useState<CampaignFormat>("banner_image")
-  const [advImageUrl, setAdvImageUrl] = useState("")
-  const [advDestUrl, setAdvDestUrl] = useState("")
-  const [advCode, setAdvCode] = useState("")
-  const [advPositions, setAdvPositions] = useState<string[]>([])
-  const [advStartDate, setAdvStartDate] = useState("")
-  const [advEndDate, setAdvEndDate] = useState("")
-  const [advImpCap, setAdvImpCap] = useState("")
-  const [uploadingBanner, setUploadingBanner] = useState(false)
-  const [uploadingVideo, setUploadingVideo] = useState(false)
-  const [videoUrl, setVideoUrl] = useState("")
-  const bannerInputRef = useRef<HTMLInputElement>(null)
-  const videoInputRef = useRef<HTMLInputElement>(null)
-  const [copiedCampaignId, setCopiedCampaignId] = useState<string | null>(null)
+  const [showScheduleForm, setShowScheduleForm] = useState(false)
 
-  // ── Sponsored article post search ──
-  const [postSearch, setPostSearch] = useState("")
-  const [postResults, setPostResults] = useState<any[]>([])
-  const [selectedPost, setSelectedPost] = useState<any | null>(null)
-  const [searchingPosts, setSearchingPosts] = useState(false)
+  const [placementForm, setPlacementForm] = useState({ name: "", position: "", description: "", ad_type: "banner", sizes: "300x250" })
+  const [campaignForm, setCampaignForm] = useState({ advertiser_name: "", ad_image_url: "", destination_url: "", ad_code: "", positions: "", start_date: "", end_date: "", daily_impression_cap: 0, is_active: true })
+  const [scheduleForm, setScheduleForm] = useState({ name: "", ad_id: "", campaign_id: "", start_date: "", end_date: "", frequency: "always", priority: 0 })
 
-  const supabase = createClient()
+  const [editingPlacement, setEditingPlacement] = useState<AdPlacement | null>(null)
+  const [editingCampaign, setEditingCampaign] = useState<AdCampaign | null>(null)
+  const [editingSchedule, setEditingSchedule] = useState<AdSchedule | null>(null)
 
-  useEffect(() => {
-    loadData()
-
-    const channel = supabase
-      .channel("admin-ads")
-      .on("postgres_changes", { event: "*", schema: "public", table: "ads" }, () => loadData())
-      .on("postgres_changes", { event: "*", schema: "public", table: "ad_campaigns" }, () => loadData())
-      .subscribe()
-
-    return () => { supabase.removeChannel(channel) }
+  const fetchData = useCallback(async (section: string) => {
+    try {
+      const res = await fetch(`/admin/ads/api?section=${section}`)
+      const data = await res.json()
+      return data
+    } catch {
+      return null
+    }
   }, [])
 
-  const loadData = async () => {
-    const [adsRes, campaignsRes] = await Promise.all([
-      supabase.from("ads").select("*").order("name"),
-      supabase.from("ad_campaigns").select("*").order("created_at", { ascending: false }),
-    ])
-    if (adsRes.data) setAds(adsRes.data)
-    if (campaignsRes.data) setCampaigns(campaignsRes.data)
-  }
+  useEffect(() => {
+    const load = async () => {
+      setLoading(true)
+      const [ov, pl, cm, sc, rv, rp] = await Promise.all([
+        fetchData("overview"),
+        fetchData("placements"),
+        fetchData("campaigns"),
+        fetchData("schedule"),
+        fetchData("revenue"),
+        fetchData("reports"),
+      ])
+      if (ov) setOverview(ov.overview)
+      if (pl) setPlacements(pl.placements || [])
+      if (cm) setCampaigns(cm.campaigns || [])
+      if (sc) setSchedules(sc.schedules || [])
+      if (rv) setRevenueData(rv.revenue || [])
+      if (rp) setReports(rp.reports || [])
+      setLoading(false)
+    }
+    load()
+  }, [fetchData])
 
-  // ── Ad Slot CRUD ──
-
-  const resetSlotForm = () => {
-    setName("")
-    setPosition("")
-    setSlotFormat("banner_image")
-    setSlotAdCode("")
-    setSlotImageUrl("")
-  }
-
-  const uploadSlotImage = async (file: File) => {
-    setSlotUploading(true)
-    const path = `ad-slots/${Date.now()}-${file.name}`
-    const { error } = await supabase.storage.from("media").upload(path, file, {
-      cacheControl: "3600",
-      upsert: false,
+  const handleCreatePlacement = async () => {
+    if (!placementForm.name || !placementForm.position) return
+    const res = await fetch("/admin/ads/api", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ type: "placement", ...placementForm, sizes: placementForm.sizes.split(",").map(s => s.trim()) }),
     })
-    if (error) {
-      console.error("Slot image upload error:", error)
-      setSlotUploading(false)
-      return
+    if (res.ok) {
+      const data = await res.json()
+      setPlacements(prev => [data.placement, ...prev])
+      setShowPlacementForm(false)
+      setPlacementForm({ name: "", position: "", description: "", ad_type: "banner", sizes: "300x250" })
     }
-    const { data } = supabase.storage.from("media").getPublicUrl(path)
-    setSlotImageUrl(data.publicUrl)
-    setSlotUploading(false)
   }
 
-  const addAd = async () => {
-    if (!name || !position) return
-
-    let adCode = slotAdCode
-    let adType = "banner"
-
-    if (slotFormat === "banner_image" && slotImageUrl) {
-      adCode = `<a href="#" target="_blank" rel="noopener">\n  <img src="${slotImageUrl}" alt="${name}" style="max-width:100%;height:auto" />\n</a>`
-      adType = "banner"
-    } else if (slotFormat === "adsense" && slotAdCode) {
-      adCode = slotAdCode
-      adType = "banner"
-    }
-
-    await supabase.from("ads").insert({
-      name,
-      type: adType as any,
-      position: position as any,
-      ad_code: adCode,
+  const handleDeletePlacement = async (id: string) => {
+    if (!confirm("Delete this placement?")) return
+    const res = await fetch("/admin/ads/api", {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ type: "placement", id }),
     })
-    resetSlotForm()
-    const { data } = await supabase.from("ads").select("*").order("name")
-    if (data) setAds(data)
+    if (res.ok) setPlacements(prev => prev.filter(p => p.id !== id))
   }
 
-  const toggleAdActive = async (id: string, active: boolean) => {
-    await supabase.from("ads").update({ is_active: active }).eq("id", id)
-  }
-
-  const deleteAd = async (id: string) => {
-    if (!confirm("Delete this ad slot?")) return
-    await supabase.from("ads").delete().eq("id", id)
-    setAds((prev) => prev.filter((a) => a.id !== id))
-  }
-
-  // ── Campaign CRUD ──
-
-  const resetCampaignForm = () => {
-    setEditingCampaign(null)
-    setAdvName("")
-    setAdvFormat("banner_image")
-    setAdvImageUrl("")
-    setAdvDestUrl("")
-    setAdvCode("")
-    setAdvPositions([])
-    setAdvStartDate("")
-    setAdvEndDate("")
-    setAdvImpCap("")
-    setVideoUrl("")
-    setSelectedPost(null)
-    setPostSearch("")
-    setPostResults([])
-  }
-
-  const openEditCampaign = (c: Campaign) => {
-    setEditingCampaign(c)
-    setAdvName(c.advertiser_name)
-    setAdvFormat(
-      c.ad_code?.startsWith("<!-- sponsored_article:") ? "sponsored_article" :
-      c.ad_code?.startsWith("<!-- video_ad") ? "video_ad" :
-      c.ad_code?.startsWith("<script") || c.ad_code?.startsWith("<ins") ? "adsense" :
-      c.ad_image_url ? "banner_image" : "custom_code"
-    )
-    setAdvImageUrl(c.ad_image_url || "")
-    setAdvDestUrl(c.destination_url || "")
-    setAdvCode(c.ad_code || "")
-    setAdvPositions(c.positions || [])
-    setAdvStartDate(c.start_date || "")
-    setAdvEndDate(c.end_date || "")
-    setAdvImpCap(c.daily_impression_cap?.toString() || "")
-    setShowCampaignForm(true)
-  }
-
-  const uploadBannerImage = async (file: File) => {
-    setUploadingBanner(true)
-    const path = `campaigns/${Date.now()}-${file.name}`
-    const { error } = await supabase.storage.from("media").upload(path, file, {
-      cacheControl: "3600",
-      upsert: false,
+  const handleCreateCampaign = async () => {
+    if (!campaignForm.advertiser_name) return
+    const res = await fetch("/admin/ads/api", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ type: "campaign", ...campaignForm, positions: campaignForm.positions.split(",").map(s => s.trim()) }),
     })
-    if (error) {
-      console.error("Banner upload error:", error)
-      setUploadingBanner(false)
-      return
+    if (res.ok) {
+      const data = await res.json()
+      setCampaigns(prev => [data.campaign, ...prev])
+      setShowCampaignForm(false)
+      setCampaignForm({ advertiser_name: "", ad_image_url: "", destination_url: "", ad_code: "", positions: "", start_date: "", end_date: "", daily_impression_cap: 0, is_active: true })
     }
-    const { data } = supabase.storage.from("media").getPublicUrl(path)
-    setAdvImageUrl(data.publicUrl)
-    setUploadingBanner(false)
   }
 
-  const uploadVideoFile = async (file: File) => {
-    setUploadingVideo(true)
-    const path = `campaigns/videos/${Date.now()}-${file.name}`
-    const { error } = await supabase.storage.from("media").upload(path, file, {
-      cacheControl: "3600",
-      upsert: false,
-    })
-    if (error) {
-      console.error("Video upload error:", error)
-      setUploadingVideo(false)
-      return
-    }
-    const { data } = supabase.storage.from("media").getPublicUrl(path)
-    setVideoUrl(data.publicUrl)
-    setUploadingVideo(false)
-  }
-
-  const searchPosts = async (q: string) => {
-    setPostSearch(q)
-    if (q.length < 2) { setPostResults([]); return }
-    setSearchingPosts(true)
-    const { data } = await supabase
-      .from("posts")
-      .select("id, title, slug, featured_image")
-      .or(`title.ilike.%${q}%,slug.ilike.%${q}%`)
-      .eq("status", "published")
-      .limit(10)
-    setPostResults(data || [])
-    setSearchingPosts(false)
-  }
-
-  const selectPost = (post: any) => {
-    setSelectedPost(post)
-    setPostSearch(post.title)
-    setPostResults([])
-    setAdvDestUrl(`/${post.slug}`)
-  }
-
-  const [campaignError, setCampaignError] = useState<string | null>(null)
-
-  const saveCampaign = async () => {
-    if (!advName) return
-    setCampaignError(null)
-
-    const payload: any = {
-      advertiser_name: advName,
-      positions: advPositions,
-      start_date: advStartDate || null,
-      end_date: advEndDate || null,
-      daily_impression_cap: advImpCap ? parseInt(advImpCap) : null,
-    }
-
-    if (advFormat === "banner_image") {
-      payload.ad_image_url = advImageUrl || null
-      payload.destination_url = advDestUrl || null
-      payload.ad_code = null
-    } else if (advFormat === "sponsored_article") {
-      payload.ad_image_url = null
-      payload.destination_url = advDestUrl || (selectedPost ? `/${selectedPost.slug}` : null)
-      payload.ad_code = `<!-- sponsored_article:${selectedPost?.id || ""} -->`
-    } else if (advFormat === "video_ad") {
-      payload.ad_image_url = null
-      payload.destination_url = null
-      const videoEmbed = videoUrl
-        ? `<video controls style="max-width:100%;height:auto"><source src="${videoUrl}" type="video/mp4"></video>`
-        : advCode
-      payload.ad_code = `<!-- video_ad -->\n${videoEmbed}`
-    } else if (advFormat === "adsense") {
-      payload.ad_code = advCode || null
-      payload.ad_image_url = null
-      payload.destination_url = null
-    } else {
-      payload.ad_code = advCode || null
-      payload.ad_image_url = null
-      payload.destination_url = null
-    }
-
-    let error: any = null
-    if (editingCampaign) {
-      const res = await supabase.from("ad_campaigns").update(payload).eq("id", editingCampaign.id)
-      error = res.error
-    } else {
-      const res = await supabase.from("ad_campaigns").insert(payload)
-      error = res.error
-    }
-
-    if (error) {
-      setCampaignError(error.message)
-      return
-    }
-
-    resetCampaignForm()
-    setShowCampaignForm(false)
-    const { data } = await supabase.from("ad_campaigns").select("*").order("created_at", { ascending: false })
-    if (data) setCampaigns(data)
-  }
-
-  const deleteCampaign = async (id: string) => {
+  const handleDeleteCampaign = async (id: string) => {
     if (!confirm("Delete this campaign?")) return
-    await supabase.from("ad_campaigns").delete().eq("id", id)
-    setCampaigns((prev) => prev.filter((c) => c.id !== id))
+    const res = await fetch("/admin/ads/api", {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ type: "campaign", id }),
+    })
+    if (res.ok) setCampaigns(prev => prev.filter(c => c.id !== id))
   }
 
-  const toggleCampaignActive = async (id: string, active: boolean) => {
-    await supabase.from("ad_campaigns").update({ is_active: active }).eq("id", id)
-    setCampaigns((prev) => prev.map((c) => (c.id === id ? { ...c, is_active: active } : c)))
+  const handleCreateSchedule = async () => {
+    if (!scheduleForm.name || !scheduleForm.start_date) return
+    const res = await fetch("/admin/ads/api", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ type: "schedule", ...scheduleForm }),
+    })
+    if (res.ok) {
+      const data = await res.json()
+      setSchedules(prev => [data.schedule, ...prev])
+      setShowScheduleForm(false)
+      setScheduleForm({ name: "", ad_id: "", campaign_id: "", start_date: "", end_date: "", frequency: "always", priority: 0 })
+    }
   }
 
-  const togglePosition = (pos: string) => {
-    setAdvPositions((prev) =>
-      prev.includes(pos) ? prev.filter((p) => p !== pos) : [...prev, pos]
+  const handleDeleteSchedule = async (id: string) => {
+    if (!confirm("Delete this schedule?")) return
+    const res = await fetch("/admin/ads/api", {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ type: "schedule", id }),
+    })
+    if (res.ok) setSchedules(prev => prev.filter(s => s.id !== id))
+  }
+
+  if (loading) {
+    return (
+      <div style={{ background: BG, minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <div style={{ color: ACCENT, fontSize: 18 }}>Loading Advertisement Center...</div>
+      </div>
     )
-  }
-
-  const copyCampaignAdCode = async (c: Campaign) => {
-    const code = c.ad_code || `<!-- ${c.advertiser_name} - ${c.ad_image_url ? "Banner: " + c.ad_image_url : "Custom Ad"} -->`
-    try {
-      await navigator.clipboard.writeText(code)
-      setCopiedCampaignId(c.id)
-      setTimeout(() => setCopiedCampaignId(null), 2000)
-    } catch {
-      const el = document.createElement("textarea")
-      el.value = code
-      document.body.appendChild(el)
-      el.select()
-      document.execCommand("copy")
-      document.body.removeChild(el)
-      setCopiedCampaignId(c.id)
-      setTimeout(() => setCopiedCampaignId(null), 2000)
-    }
-  }
-
-  const formatCampaignBadge = (c: Campaign) => {
-    if (c.ad_code?.startsWith("<!-- sponsored_article:")) return "Sponsored Article"
-    if (c.ad_code?.startsWith("<!-- video_ad -->")) return "Video Ad"
-    if (c.ad_code?.startsWith("<script") || c.ad_code?.startsWith("<ins") || (!c.ad_image_url && c.ad_code?.includes("adsense"))) return "Google AdSense"
-    if (c.ad_image_url) return "Banner Image"
-    if (c.ad_code) return "Custom Code"
-    return "Unknown"
-  }
-
-  const getSlotCodePreview = () => {
-    if (slotFormat === "banner_image" && slotImageUrl) {
-      return `<a href="#" target="_blank" rel="noopener">\n  <img src="${slotImageUrl}" alt="${name || "Ad"}" />\n</a>`
-    }
-    return slotAdCode
   }
 
   return (
-    <div>
-      <h1 className="text-3xl font-bold mb-6">Ad Manager</h1>
+    <div style={{ background: BG, minHeight: "100vh", padding: 24 }}>
+      <div style={{ maxWidth: 1400, margin: "0 auto" }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 24 }}>
+          <div>
+            <h1 style={{ color: TEXT, fontSize: 28, fontWeight: 700, margin: 0 }}>Advertisement Center</h1>
+            <p style={{ color: TEXT_DIM, fontSize: 14, margin: "4px 0 0" }}>Manage ad placements, campaigns, schedules and revenue</p>
+          </div>
+          <div style={{ display: "flex", gap: 12 }}>
+            <button onClick={() => setShowPlacementForm(true)} style={btnPrimary}>+ New Placement</button>
+          </div>
+        </div>
 
-      <Tabs defaultValue="slots">
-        <TabsList className="mb-6">
-          <TabsTrigger value="slots">
-            <Monitor className="h-4 w-4 mr-2" />
-            Ad Slots
-          </TabsTrigger>
-          <TabsTrigger value="campaigns">
-            <DollarSign className="h-4 w-4 mr-2" />
-            Client Campaigns
-          </TabsTrigger>
-          <TabsTrigger value="preview">
-            <Play className="h-4 w-4 mr-2" />
-            Preview
-          </TabsTrigger>
-        </TabsList>
+        <div style={{ display: "flex", gap: 4, marginBottom: 24, borderBottom: `1px solid ${BORDER}`, paddingBottom: 0, overflowX: "auto" }}>
+          {TABS.map(t => (
+            <button
+              key={t.id}
+              onClick={() => setActiveTab(t.id)}
+              style={{
+                padding: "12px 20px",
+                background: "transparent",
+                color: activeTab === t.id ? ACCENT : TEXT_DIM,
+                border: "none",
+                borderBottom: activeTab === t.id ? `2px solid ${ACCENT}` : "2px solid transparent",
+                cursor: "pointer",
+                fontSize: 14,
+                fontWeight: activeTab === t.id ? 600 : 400,
+                whiteSpace: "nowrap",
+                transition: "all 0.2s",
+              }}
+            >
+              {t.label}
+            </button>
+          ))}
+        </div>
 
-        {/* ═══════════════════════════════════════════════════════════════
-           TAB 1 — AD SLOTS
-           ═══════════════════════════════════════════════════════════════ */}
-        <TabsContent value="slots">
-          <Card className="mb-8">
-            <CardHeader><CardTitle className="text-lg flex items-center gap-2"><Plus className="h-4 w-4" />New Ad Slot</CardTitle></CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                <div className="space-y-2">
-                  <Label>Slot Name</Label>
-                  <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Home Top Banner" />
+        {activeTab === "overview" && overview && (
+          <div>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: 16, marginBottom: 24 }}>
+              {[
+                { label: "Total Impressions", value: fmt(overview.total_impressions), color: ACCENT },
+                { label: "Total Clicks", value: fmt(overview.total_clicks), color: "#8B5CF6" },
+                { label: "Revenue", value: fmtCurrency(overview.total_revenue), color: SUCCESS },
+                { label: "Fill Rate", value: `${overview.fill_rate.toFixed(1)}%`, color: ACCENT },
+                { label: "Avg. CTR", value: `${overview.avg_ctr.toFixed(2)}%`, color: WARN },
+                { label: "Active Placements", value: fmt(overview.active_placements), color: "#8B5CF6" },
+                { label: "Active Campaigns", value: fmt(overview.active_campaigns), color: SUCCESS },
+              ].map((k, i) => (
+                <div key={i} style={cardStyle({ textAlign: "center" })}>
+                  <div style={{ color: TEXT_DIM, fontSize: 12, marginBottom: 8 }}>{k.label}</div>
+                  <div style={{ color: k.color, fontSize: 28, fontWeight: 700 }}>{k.value}</div>
                 </div>
-                <div className="space-y-2">
-                  <Label>Position</Label>
-                  <select value={position} onChange={(e) => setPosition(e.target.value)}
-                    className="w-full h-10 rounded-md border border-input bg-background px-3 text-sm">
-                    <option value="">Select position...</option>
-                    {Object.entries(AD_POSITIONS).map(([key, label]) => (
-                      <option key={key} value={key}>{label}</option>
+              ))}
+            </div>
+            <div style={cardStyle()}>
+              <h3 style={{ color: TEXT, fontSize: 16, margin: "0 0 16px" }}>Revenue by Source</h3>
+              {overview.top_sources.length === 0 ? (
+                <p style={{ color: TEXT_DIM, fontSize: 14 }}>No source data yet</p>
+              ) : (
+                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                  {overview.top_sources.map((s, i) => (
+                    <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 16px", background: BG, borderRadius: 8 }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                        <div style={{ width: 32, height: 32, borderRadius: 8, background: ACCENT_DIM, display: "flex", alignItems: "center", justifyContent: "center", color: ACCENT, fontWeight: 700, fontSize: 14 }}>{s.source.charAt(0).toUpperCase()}</div>
+                        <span style={{ color: TEXT, fontSize: 14, fontWeight: 500 }}>{s.source}</span>
+                      </div>
+                      <div style={{ display: "flex", gap: 24, alignItems: "center" }}>
+                        <div style={{ textAlign: "right" }}>
+                          <div style={{ color: TEXT, fontSize: 14, fontWeight: 600 }}>{fmt(s.impressions)}</div>
+                          <div style={{ color: TEXT_DIM, fontSize: 11 }}>impressions</div>
+                        </div>
+                        <div style={{ textAlign: "right" }}>
+                          <div style={{ color: SUCCESS, fontSize: 14, fontWeight: 600 }}>{fmtCurrency(s.revenue)}</div>
+                          <div style={{ color: TEXT_DIM, fontSize: 11 }}>revenue</div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {activeTab === "placements" && (
+          <div>
+            <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 16 }}>
+              <button onClick={() => { setShowPlacementForm(true); setEditingPlacement(null); setPlacementForm({ name: "", position: "", description: "", ad_type: "banner", sizes: "300x250" }) }} style={btnPrimary}>+ New Placement</button>
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(340px, 1fr))", gap: 16 }}>
+              {placements.map(p => (
+                <div key={p.id} style={cardStyle()}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "start", marginBottom: 12 }}>
+                    <div>
+                      <h4 style={{ color: TEXT, fontSize: 16, margin: "0 0 4px" }}>{p.name}</h4>
+                      <span style={{ color: TEXT_DIM, fontSize: 12 }}>{p.position}</span>
+                    </div>
+                    <span style={badge(p.is_active ? SUCCESS : DANGER)}>{p.is_active ? "Active" : "Inactive"}</span>
+                  </div>
+                  <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
+                    <span style={badge(ACCENT)}>{p.ad_type}</span>
+                    {p.sizes?.map((s, i) => <span key={i} style={badge("#8B5CF6")}>{s}</span>)}
+                  </div>
+                  {p.description && <p style={{ color: TEXT_DIM, fontSize: 13, margin: "0 0 12px" }}>{p.description}</p>}
+                  <div style={{ display: "flex", gap: 20, borderTop: `1px solid ${BORDER}`, paddingTop: 12 }}>
+                    <div>
+                      <div style={{ color: TEXT, fontSize: 16, fontWeight: 700 }}>{fmt(p.impressions)}</div>
+                      <div style={{ color: TEXT_DIM, fontSize: 11 }}>Impressions</div>
+                    </div>
+                    <div>
+                      <div style={{ color: TEXT, fontSize: 16, fontWeight: 700 }}>{fmt(p.clicks)}</div>
+                      <div style={{ color: TEXT_DIM, fontSize: 11 }}>Clicks</div>
+                    </div>
+                    <div>
+                      <div style={{ color: ACCENT, fontSize: 16, fontWeight: 700 }}>{p.impressions > 0 ? ((p.clicks / p.impressions) * 100).toFixed(2) : "0"}%</div>
+                      <div style={{ color: TEXT_DIM, fontSize: 11 }}>CTR</div>
+                    </div>
+                  </div>
+                  <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
+                    <button onClick={() => { setEditingPlacement(p); setPlacementForm({ name: p.name, position: p.position, description: p.description, ad_type: p.ad_type, sizes: p.sizes?.join(", ") || "" }); setShowPlacementForm(true) }} style={{ ...btnSecondary, flex: 1, textAlign: "center" }}>Edit</button>
+                    <button onClick={() => handleDeletePlacement(p.id)} style={{ ...btnSecondary, color: DANGER, borderColor: `${DANGER}44` }}>Delete</button>
+                  </div>
+                </div>
+              ))}
+              {placements.length === 0 && <div style={{ ...cardStyle({ gridColumn: "1 / -1" }), textAlign: "center", padding: 60, color: TEXT_DIM }}>No ad placements configured</div>}
+            </div>
+          </div>
+        )}
+
+        {activeTab === "campaigns" && (
+          <div>
+            <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 16 }}>
+              <button onClick={() => { setShowCampaignForm(true); setEditingCampaign(null); setCampaignForm({ advertiser_name: "", ad_image_url: "", destination_url: "", ad_code: "", positions: "", start_date: "", end_date: "", daily_impression_cap: 0, is_active: true }) }} style={btnPrimary}>+ New Campaign</button>
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(340px, 1fr))", gap: 16 }}>
+              {campaigns.map(c => (
+                <div key={c.id} style={cardStyle()}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "start", marginBottom: 12 }}>
+                    <h4 style={{ color: TEXT, fontSize: 16, margin: 0 }}>{c.advertiser_name}</h4>
+                    <span style={badge(c.is_active ? SUCCESS : DANGER)}>{c.is_active ? "Active" : "Paused"}</span>
+                  </div>
+                  <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 12 }}>
+                    {c.positions?.map((pos, i) => <span key={i} style={badge(ACCENT)}>{pos}</span>)}
+                  </div>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12, marginBottom: 12 }}>
+                    <div>
+                      <div style={{ color: TEXT_DIM, fontSize: 11 }}>Impressions</div>
+                      <div style={{ color: TEXT, fontSize: 14, fontWeight: 600 }}>{fmt(c.impressions)}</div>
+                    </div>
+                    <div>
+                      <div style={{ color: TEXT_DIM, fontSize: 11 }}>Clicks</div>
+                      <div style={{ color: TEXT, fontSize: 14, fontWeight: 600 }}>{fmt(c.clicks)}</div>
+                    </div>
+                    <div>
+                      <div style={{ color: TEXT_DIM, fontSize: 11 }}>CTR</div>
+                      <div style={{ color: ACCENT, fontSize: 14, fontWeight: 600 }}>{c.impressions > 0 ? ((c.clicks / c.impressions) * 100).toFixed(2) : "0"}%</div>
+                    </div>
+                  </div>
+                  {c.start_date && (
+                    <div style={{ color: TEXT_DIM, fontSize: 12, borderTop: `1px solid ${BORDER}`, paddingTop: 8 }}>
+                      {c.start_date}{c.end_date ? ` → ${c.end_date}` : " → ongoing"}
+                      {c.daily_impression_cap ? ` · Cap: ${fmt(c.daily_impression_cap)}/day` : ""}
+                    </div>
+                  )}
+                  <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
+                    <button onClick={() => { setEditingCampaign(c); setCampaignForm({ advertiser_name: c.advertiser_name, ad_image_url: c.ad_image_url || "", destination_url: c.destination_url || "", ad_code: c.ad_code || "", positions: c.positions?.join(", ") || "", start_date: c.start_date || "", end_date: c.end_date || "", daily_impression_cap: c.daily_impression_cap || 0, is_active: c.is_active }); setShowCampaignForm(true) }} style={{ ...btnSecondary, flex: 1, textAlign: "center" }}>Edit</button>
+                    <button onClick={() => handleDeleteCampaign(c.id)} style={{ ...btnSecondary, color: DANGER, borderColor: `${DANGER}44` }}>Delete</button>
+                  </div>
+                </div>
+              ))}
+              {campaigns.length === 0 && <div style={{ ...cardStyle({ gridColumn: "1 / -1" }), textAlign: "center", padding: 60, color: TEXT_DIM }}>No campaigns yet</div>}
+            </div>
+          </div>
+        )}
+
+        {activeTab === "schedule" && (
+          <div>
+            <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 16 }}>
+              <button onClick={() => { setShowScheduleForm(true); setEditingSchedule(null); setScheduleForm({ name: "", ad_id: "", campaign_id: "", start_date: "", end_date: "", frequency: "always", priority: 0 }) }} style={btnPrimary}>+ New Schedule</button>
+            </div>
+            <div style={cardStyle({ padding: 0, overflow: "hidden" })}>
+              <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                <thead>
+                  <tr style={{ borderBottom: `1px solid ${BORDER}` }}>
+                    {["Name", "Frequency", "Start", "End", "Priority", "Status", "Actions"].map(h => (
+                      <th key={h} style={{ padding: "12px 16px", textAlign: "left", color: TEXT_DIM, fontSize: 12, fontWeight: 600, textTransform: "uppercase" }}>{h}</th>
                     ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {schedules.map(s => (
+                    <tr key={s.id} style={{ borderBottom: `1px solid ${BORDER}` }}>
+                      <td style={{ padding: "12px 16px", color: TEXT, fontSize: 14, fontWeight: 500 }}>{s.name}</td>
+                      <td style={{ padding: "12px 16px" }}><span style={badge(ACCENT)}>{s.frequency}</span></td>
+                      <td style={{ padding: "12px 16px", color: TEXT, fontSize: 13 }}>{s.start_date?.slice(0, 10) || "—"}</td>
+                      <td style={{ padding: "12px 16px", color: TEXT, fontSize: 13 }}>{s.end_date?.slice(0, 10) || "—"}</td>
+                      <td style={{ padding: "12px 16px", color: TEXT, fontSize: 13 }}>{s.priority}</td>
+                      <td style={{ padding: "12px 16px" }}><span style={badge(s.is_active ? SUCCESS : DANGER)}>{s.is_active ? "Active" : "Inactive"}</span></td>
+                      <td style={{ padding: "12px 16px" }}>
+                        <button onClick={() => handleDeleteSchedule(s.id)} style={{ ...btnSecondary, padding: "4px 10px", fontSize: 12, color: DANGER, borderColor: `${DANGER}44` }}>Delete</button>
+                      </td>
+                    </tr>
+                  ))}
+                  {schedules.length === 0 && (
+                    <tr><td colSpan={7} style={{ padding: 40, textAlign: "center", color: TEXT_DIM }}>No schedules configured</td></tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        {activeTab === "direct" && (
+          <div>
+            <div style={cardStyle()}>
+              <h3 style={{ color: TEXT, fontSize: 16, margin: "0 0 16px" }}>Direct Advertising Management</h3>
+              <p style={{ color: TEXT_DIM, fontSize: 14, marginBottom: 20 }}>Manage direct advertising partnerships, sponsorships, and branded content deals.</p>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: 16 }}>
+                {campaigns.filter(c => c.ad_code || c.ad_image_url).length === 0 ? (
+                  <div style={{ gridColumn: "1 / -1", textAlign: "center", padding: 40, color: TEXT_DIM }}>No direct ad campaigns. Create a campaign with custom code or image to manage direct ads.</div>
+                ) : (
+                  campaigns.filter(c => c.ad_code || c.ad_image_url).map(c => (
+                    <div key={c.id} style={cardStyle({ border: `1px solid ${ACCENT}44` })}>
+                      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}>
+                        <span style={{ color: TEXT, fontWeight: 600 }}>{c.advertiser_name}</span>
+                        <span style={badge(c.is_active ? SUCCESS : DANGER)}>{c.is_active ? "Live" : "Paused"}</span>
+                      </div>
+                      <div style={{ color: TEXT_DIM, fontSize: 13, marginBottom: 8 }}>
+                        {c.ad_code ? "Custom Code" : "Banner Image"}
+                        {c.daily_impression_cap ? ` · ${fmt(c.daily_impression_cap)} imp/day` : ""}
+                      </div>
+                      <div style={{ display: "flex", gap: 16, borderTop: `1px solid ${BORDER}`, paddingTop: 8 }}>
+                        <div><span style={{ color: TEXT, fontWeight: 600 }}>{fmt(c.impressions)}</span> <span style={{ color: TEXT_DIM, fontSize: 11 }}>imp</span></div>
+                        <div><span style={{ color: TEXT, fontWeight: 600 }}>{fmt(c.clicks)}</span> <span style={{ color: TEXT_DIM, fontSize: 11 }}>clicks</span></div>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {activeTab === "revenue" && (
+          <div>
+            <div style={cardStyle({ padding: 0, overflow: "hidden" })}>
+              <div style={{ padding: "16px 20px", borderBottom: `1px solid ${BORDER}` }}>
+                <h3 style={{ color: TEXT, fontSize: 16, margin: 0 }}>Revenue by Source</h3>
+              </div>
+              <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                <thead>
+                  <tr style={{ borderBottom: `1px solid ${BORDER}` }}>
+                    {["Date", "Source", "Impressions", "Clicks", "Revenue", "CPM", "CPC"].map(h => (
+                      <th key={h} style={{ padding: "12px 16px", textAlign: "left", color: TEXT_DIM, fontSize: 12, fontWeight: 600, textTransform: "uppercase" }}>{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {revenueData.map(r => (
+                    <tr key={r.id} style={{ borderBottom: `1px solid ${BORDER}` }}>
+                      <td style={{ padding: "12px 16px", color: TEXT, fontSize: 13 }}>{r.date}</td>
+                      <td style={{ padding: "12px 16px" }}><span style={badge(ACCENT)}>{r.source}</span></td>
+                      <td style={{ padding: "12px 16px", color: TEXT, fontSize: 13 }}>{fmt(r.impressions)}</td>
+                      <td style={{ padding: "12px 16px", color: TEXT, fontSize: 13 }}>{fmt(r.clicks)}</td>
+                      <td style={{ padding: "12px 16px", color: SUCCESS, fontSize: 13, fontWeight: 600 }}>{fmtCurrency(r.revenue)}</td>
+                      <td style={{ padding: "12px 16px", color: TEXT, fontSize: 13 }}>{fmtCurrency(r.cpm)}</td>
+                      <td style={{ padding: "12px 16px", color: TEXT, fontSize: 13 }}>{fmtCurrency(r.cpc)}</td>
+                    </tr>
+                  ))}
+                  {revenueData.length === 0 && (
+                    <tr><td colSpan={7} style={{ padding: 40, textAlign: "center", color: TEXT_DIM }}>No revenue data yet</td></tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        {activeTab === "native" && (
+          <div>
+            <div style={cardStyle()}>
+              <h3 style={{ color: TEXT, fontSize: 16, margin: "0 0 16px" }}>Native Ad Management</h3>
+              <p style={{ color: TEXT_DIM, fontSize: 14, marginBottom: 20 }}>Manage native advertising placements that blend with editorial content.</p>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: 16 }}>
+                {placements.filter(p => p.ad_type === "native").length === 0 ? (
+                  <div style={{ gridColumn: "1 / -1", textAlign: "center", padding: 40, color: TEXT_DIM }}>No native ad placements configured. Create a placement with type &quot;native&quot; to manage native ads.</div>
+                ) : (
+                  placements.filter(p => p.ad_type === "native").map(p => (
+                    <div key={p.id} style={cardStyle({ border: `1px solid ${ACCENT}44` })}>
+                      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}>
+                        <span style={{ color: TEXT, fontWeight: 600 }}>{p.name}</span>
+                        <span style={badge(p.is_active ? SUCCESS : DANGER)}>{p.is_active ? "Live" : "Paused"}</span>
+                      </div>
+                      <div style={{ color: TEXT_DIM, fontSize: 13, marginBottom: 8 }}>Position: {p.position}</div>
+                      <div style={{ display: "flex", gap: 16, borderTop: `1px solid ${BORDER}`, paddingTop: 8 }}>
+                        <div><span style={{ color: TEXT, fontWeight: 600 }}>{fmt(p.impressions)}</span> <span style={{ color: TEXT_DIM, fontSize: 11 }}>imp</span></div>
+                        <div><span style={{ color: TEXT, fontWeight: 600 }}>{fmt(p.clicks)}</span> <span style={{ color: TEXT_DIM, fontSize: 11 }}>clicks</span></div>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {activeTab === "reports" && (
+          <div>
+            <div style={{ display: "flex", gap: 12, marginBottom: 16 }}>
+              {["daily", "weekly", "monthly"].map(p => (
+                <button key={p} onClick={() => setReportPeriod(p)} style={{ ...btnSecondary, background: reportPeriod === p ? ACCENT_DIM : "transparent", color: reportPeriod === p ? ACCENT : TEXT_DIM, borderColor: reportPeriod === p ? ACCENT : BORDER }}>{p.charAt(0).toUpperCase() + p.slice(1)}</button>
+              ))}
+            </div>
+            <div style={cardStyle({ padding: 0, overflow: "hidden" })}>
+              <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                <thead>
+                  <tr style={{ borderBottom: `1px solid ${BORDER}` }}>
+                    {["Date", "Source", "Impressions", "Clicks", "Revenue", "CTR"].map(h => (
+                      <th key={h} style={{ padding: "12px 16px", textAlign: "left", color: TEXT_DIM, fontSize: 12, fontWeight: 600, textTransform: "uppercase" }}>{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {reports.map((r, i) => (
+                    <tr key={i} style={{ borderBottom: `1px solid ${BORDER}` }}>
+                      <td style={{ padding: "12px 16px", color: TEXT, fontSize: 13 }}>{r.date}</td>
+                      <td style={{ padding: "12px 16px" }}><span style={badge(ACCENT)}>{r.source}</span></td>
+                      <td style={{ padding: "12px 16px", color: TEXT, fontSize: 13 }}>{fmt(r.impressions)}</td>
+                      <td style={{ padding: "12px 16px", color: TEXT, fontSize: 13 }}>{fmt(r.clicks)}</td>
+                      <td style={{ padding: "12px 16px", color: SUCCESS, fontSize: 13, fontWeight: 600 }}>{fmtCurrency(r.revenue)}</td>
+                      <td style={{ padding: "12px 16px", color: ACCENT, fontSize: 13 }}>{r.impressions > 0 ? ((r.clicks / r.impressions) * 100).toFixed(2) : "0"}%</td>
+                    </tr>
+                  ))}
+                  {reports.length === 0 && (
+                    <tr><td colSpan={6} style={{ padding: 40, textAlign: "center", color: TEXT_DIM }}>No report data</td></tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {showPlacementForm && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.7)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }} onClick={() => { setShowPlacementForm(false); setEditingPlacement(null) }}>
+          <div style={{ ...cardStyle({ width: 520, maxHeight: "80vh", overflow: "auto" }) }} onClick={e => e.stopPropagation()}>
+            <h3 style={{ color: TEXT, fontSize: 18, margin: "0 0 20px" }}>{editingPlacement ? "Edit Placement" : "New Ad Placement"}</h3>
+            <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+              <div>
+                <label style={{ color: TEXT_DIM, fontSize: 12, display: "block", marginBottom: 6 }}>Placement Name *</label>
+                <input value={placementForm.name} onChange={e => setPlacementForm(p => ({ ...p, name: e.target.value }))} placeholder="e.g. Sidebar Banner" style={inputStyle} />
+              </div>
+              <div>
+                <label style={{ color: TEXT_DIM, fontSize: 12, display: "block", marginBottom: 6 }}>Position Key *</label>
+                <input value={placementForm.position} onChange={e => setPlacementForm(p => ({ ...p, position: e.target.value }))} placeholder="e.g. sidebar-right" style={inputStyle} />
+              </div>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                <div>
+                  <label style={{ color: TEXT_DIM, fontSize: 12, display: "block", marginBottom: 6 }}>Ad Type</label>
+                  <select value={placementForm.ad_type} onChange={e => setPlacementForm(p => ({ ...p, ad_type: e.target.value }))} style={inputStyle}>
+                    <option value="banner">Banner</option>
+                    <option value="native">Native</option>
+                    <option value="popup">Popup</option>
+                    <option value="sticky">Sticky</option>
+                    <option value="infeed">In-Feed</option>
+                    <option value="interstitial">Interstitial</option>
                   </select>
                 </div>
-                <div className="space-y-2">
-                  <Label>Content Format</Label>
-                  <div className="flex gap-1">
-                    {(Object.entries(SLOT_FORMAT_LABELS) as [AdFormat, string][]).map(([key, label]) => {
-                      const Icon = SLOT_FORMAT_ICONS[key]
-                      return (
-                        <button
-                          key={key}
-                          type="button"
-                          onClick={() => setSlotFormat(key)}
-                          className={`flex items-center gap-1 px-2.5 py-1.5 rounded-md border text-xs transition-colors ${
-                            slotFormat === key
-                              ? "border-primary bg-primary/10 text-primary"
-                              : "border-input hover:bg-muted"
-                          }`}
-                          title={label}
-                        >
-                          <Icon className="h-3.5 w-3.5" />
-                          <span className="hidden sm:inline">{label}</span>
-                        </button>
-                      )
-                    })}
-                  </div>
+                <div>
+                  <label style={{ color: TEXT_DIM, fontSize: 12, display: "block", marginBottom: 6 }}>Sizes (comma-sep)</label>
+                  <input value={placementForm.sizes} onChange={e => setPlacementForm(p => ({ ...p, sizes: e.target.value }))} placeholder="300x250, 728x90" style={inputStyle} />
                 </div>
               </div>
-
-              {slotFormat === "banner_image" && (
-                <div className="space-y-2">
-                  <Label>Banner Image</Label>
-                  <div className="flex items-center gap-3">
-                    <input
-                      ref={slotInputRef}
-                      type="file"
-                      accept="image/*,.svg,.webp"
-                      className="hidden"
-                      onChange={(e) => e.target.files?.[0] && uploadSlotImage(e.target.files[0])}
-                    />
-                    <Button variant="outline" onClick={() => slotInputRef.current?.click()} disabled={slotUploading}>
-                      <Upload className="h-4 w-4 mr-2" />
-                      {slotUploading ? "Uploading..." : "Upload Banner"}
-                    </Button>
-                    {slotImageUrl && (
-                      <div className="flex items-center gap-2">
-                        <img src={slotImageUrl} alt="Preview" className="h-10 rounded border" />
-                        <button type="button" onClick={() => setSlotImageUrl("")} className="text-muted-foreground hover:text-foreground">
-                          <X className="h-4 w-4" />
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                  {slotImageUrl && (
-                    <p className="text-xs text-muted-foreground truncate">{slotImageUrl}</p>
-                  )}
-                </div>
-              )}
-
-              {slotFormat === "custom_code" && (
-                <div className="space-y-2">
-                  <Label>Ad Code (HTML/JS)</Label>
-                  <Textarea
-                    value={slotAdCode}
-                    onChange={(e) => setSlotAdCode(e.target.value)}
-                    placeholder={`<div class="ad-container">\n  <!-- Your ad code -->\n</div>`}
-                    className="font-mono text-sm min-h-[100px]"
-                  />
-                </div>
-              )}
-
-              {slotFormat === "adsense" && (
-                <div className="space-y-2">
-                  <Label>Google AdSense Code</Label>
-                  <Textarea
-                    value={slotAdCode}
-                    onChange={(e) => setSlotAdCode(e.target.value)}
-                    placeholder={`<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>\n<ins class="adsbygoogle"\n     style="display:block"\n     data-ad-client="ca-pub-xxxxxxxxxxxxxx"\n     data-ad-slot="xxxxxxxxxx"\n     data-ad-format="auto"></ins>\n<script>(adsbygoogle=window.adsbygoogle||[]).push({})</script>`}
-                    className="font-mono text-sm min-h-[120px]"
-                  />
-                </div>
-              )}
-
-              {getSlotCodePreview() && (
-                <details>
-                  <summary className="text-xs text-muted-foreground cursor-pointer hover:text-foreground mb-1">Preview generated code</summary>
-                  <pre className="p-2 bg-muted rounded text-xs overflow-x-auto max-h-28">{getSlotCodePreview()}</pre>
-                </details>
-              )}
-
-              <div className="flex justify-end">
-                <Button onClick={addAd} disabled={!name || !position || (slotFormat === "banner_image" && !slotImageUrl)}>
-                  <Plus className="h-4 w-4 mr-2" />
-                  Add Slot
-                </Button>
+              <div>
+                <label style={{ color: TEXT_DIM, fontSize: 12, display: "block", marginBottom: 6 }}>Description</label>
+                <input value={placementForm.description} onChange={e => setPlacementForm(p => ({ ...p, description: e.target.value }))} placeholder="Optional description" style={inputStyle} />
               </div>
-            </CardContent>
-          </Card>
-
-          {ads.length === 0 ? (
-            <Card>
-              <CardContent className="p-12 text-center">
-                <Monitor className="h-12 w-12 text-muted-foreground/30 mx-auto mb-3" />
-                <p className="text-lg font-medium">No ad slots yet</p>
-                <p className="text-sm text-muted-foreground">Create your first ad slot to define where ads appear</p>
-              </CardContent>
-            </Card>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {ads.map((ad) => (
-                <Card key={ad.id}>
-                  <CardContent className="p-4">
-                    <div className="flex items-center justify-between mb-2">
-                      <div className="flex-1 min-w-0 mr-2">
-                        <p className="font-medium truncate">{ad.name}</p>
-                        <p className="text-xs text-muted-foreground truncate">
-                          {AD_POSITIONS[ad.position as keyof typeof AD_POSITIONS] || ad.position}
-                        </p>
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <Switch checked={ad.is_active} onCheckedChange={(v) => toggleAdActive(ad.id, v)} />
-                        <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-destructive" onClick={() => deleteAd(ad.id)} title="Delete">
-                          <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
-                        </Button>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2 mt-1">
-                      <Badge variant="secondary" className="text-[10px]">
-                        {ad.ad_code?.includes("<script") || ad.ad_code?.includes("<ins") ? "AdSense" : ad.ad_code?.includes("<img") ? "Image" : ad.ad_code ? "Custom" : "Empty"}
-                      </Badge>
-                      <Badge variant="outline" className="text-[10px]">{ad.type}</Badge>
-                    </div>
-                    <div className="flex items-center gap-4 mt-2 text-xs text-muted-foreground">
-                      <span className="flex items-center gap-1"><Eye className="h-3 w-3" />{ad.impressions}</span>
-                      <span className="flex items-center gap-1"><MousePointer className="h-3 w-3" />{ad.clicks}</span>
-                    </div>
-                    {ad.ad_code && (
-                      <details className="mt-2">
-                        <summary className="text-xs text-muted-foreground cursor-pointer hover:text-foreground">Code</summary>
-                        <pre className="mt-1 p-2 bg-muted rounded text-xs overflow-x-auto max-h-20">{ad.ad_code}</pre>
-                      </details>
-                    )}
-                  </CardContent>
-                </Card>
-              ))}
+              <div style={{ display: "flex", gap: 12 }}>
+                <button onClick={handleCreatePlacement} style={btnPrimary}>{editingPlacement ? "Update" : "Create"}</button>
+                <button onClick={() => { setShowPlacementForm(false); setEditingPlacement(null) }} style={btnSecondary}>Cancel</button>
+              </div>
             </div>
-          )}
-        </TabsContent>
-
-        {/* ═══════════════════════════════════════════════════════════════
-           TAB 2 — CLIENT CAMPAIGNS
-           ═══════════════════════════════════════════════════════════════ */}
-        <TabsContent value="campaigns">
-          <div className="mb-6">
-            <Button onClick={() => { resetCampaignForm(); setShowCampaignForm(!showCampaignForm) }}>
-              <Plus className="h-4 w-4 mr-2" />
-              {showCampaignForm ? "Cancel" : "New Campaign"}
-            </Button>
           </div>
+        </div>
+      )}
 
-          {showCampaignForm && (
-            <Card className="mb-8">
-              <CardHeader>
-                <CardTitle className="text-lg">
-                  {editingCampaign ? "Edit Campaign" : "New Campaign"}
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                <div className="space-y-2">
-                  <Label>Advertiser Name</Label>
-                  <Input value={advName} onChange={(e) => setAdvName(e.target.value)} placeholder="e.g. Acme Corp" />
+      {showCampaignForm && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.7)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }} onClick={() => { setShowCampaignForm(false); setEditingCampaign(null) }}>
+          <div style={{ ...cardStyle({ width: 560, maxHeight: "80vh", overflow: "auto" }) }} onClick={e => e.stopPropagation()}>
+            <h3 style={{ color: TEXT, fontSize: 18, margin: "0 0 20px" }}>{editingCampaign ? "Edit Campaign" : "New Campaign"}</h3>
+            <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+              <div>
+                <label style={{ color: TEXT_DIM, fontSize: 12, display: "block", marginBottom: 6 }}>Advertiser Name *</label>
+                <input value={campaignForm.advertiser_name} onChange={e => setCampaignForm(p => ({ ...p, advertiser_name: e.target.value }))} placeholder="e.g. Acme Corp" style={inputStyle} />
+              </div>
+              <div>
+                <label style={{ color: TEXT_DIM, fontSize: 12, display: "block", marginBottom: 6 }}>Destination URL</label>
+                <input value={campaignForm.destination_url} onChange={e => setCampaignForm(p => ({ ...p, destination_url: e.target.value }))} placeholder="https://..." style={inputStyle} />
+              </div>
+              <div>
+                <label style={{ color: TEXT_DIM, fontSize: 12, display: "block", marginBottom: 6 }}>Ad Image URL</label>
+                <input value={campaignForm.ad_image_url} onChange={e => setCampaignForm(p => ({ ...p, ad_image_url: e.target.value }))} placeholder="https://..." style={inputStyle} />
+              </div>
+              <div>
+                <label style={{ color: TEXT_DIM, fontSize: 12, display: "block", marginBottom: 6 }}>Positions (comma-sep)</label>
+                <input value={campaignForm.positions} onChange={e => setCampaignForm(p => ({ ...p, positions: e.target.value }))} placeholder="sidebar-right, header" style={inputStyle} />
+              </div>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                <div>
+                  <label style={{ color: TEXT_DIM, fontSize: 12, display: "block", marginBottom: 6 }}>Start Date</label>
+                  <input type="date" value={campaignForm.start_date} onChange={e => setCampaignForm(p => ({ ...p, start_date: e.target.value }))} style={inputStyle} />
                 </div>
-
-                {/* Ad Format */}
-                <div className="space-y-2">
-                  <Label>Ad Format</Label>
-                  <div className="flex flex-wrap gap-2">
-                    {(Object.entries(CAMPAIGN_FORMAT_LABELS) as [CampaignFormat, string][]).map(([key, label]) => {
-                      const Icon = CAMPAIGN_FORMAT_ICONS[key]
-                      return (
-                        <button
-                          key={key}
-                          type="button"
-                          onClick={() => { setAdvFormat(key); setAdvImageUrl(""); setAdvDestUrl(""); setAdvCode(""); setSelectedPost(null); setVideoUrl("") }}
-                          className={`flex items-center gap-2 px-4 py-2 rounded-md border text-sm transition-colors ${
-                            advFormat === key
-                              ? "border-primary bg-primary/10 text-primary"
-                              : "border-input hover:bg-muted"
-                          }`}
-                        >
-                          <Icon className="h-4 w-4" />
-                          {label}
-                        </button>
-                      )
-                    })}
-                  </div>
+                <div>
+                  <label style={{ color: TEXT_DIM, fontSize: 12, display: "block", marginBottom: 6 }}>End Date</label>
+                  <input type="date" value={campaignForm.end_date} onChange={e => setCampaignForm(p => ({ ...p, end_date: e.target.value }))} style={inputStyle} />
                 </div>
-
-                {/* Format-specific fields */}
-                {advFormat === "banner_image" && (
-                  <>
-                    <div className="space-y-2">
-                      <Label>Banner Image</Label>
-                      <div className="flex items-center gap-3">
-                        <input
-                          ref={bannerInputRef}
-                          type="file"
-                          accept="image/*,.svg,.webp"
-                          className="hidden"
-                          onChange={(e) => e.target.files?.[0] && uploadBannerImage(e.target.files[0])}
-                        />
-                        <Button variant="outline" onClick={() => bannerInputRef.current?.click()} disabled={uploadingBanner}>
-                          <Upload className="h-4 w-4 mr-2" />
-                          {uploadingBanner ? "Uploading..." : "Upload Banner"}
-                        </Button>
-                        {advImageUrl && (
-                          <div className="flex items-center gap-2">
-                            <img src={advImageUrl} alt="Banner preview" className="h-10 rounded border" />
-                            <button type="button" onClick={() => setAdvImageUrl("")} className="text-muted-foreground hover:text-foreground">
-                              <X className="h-4 w-4" />
-                            </button>
-                          </div>
-                        )}
-                      </div>
-                      {advImageUrl && (
-                        <p className="text-xs text-muted-foreground truncate mt-1">{advImageUrl}</p>
-                      )}
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Destination / Click URL</Label>
-                      <Input value={advDestUrl} onChange={(e) => setAdvDestUrl(e.target.value)} placeholder="https://example.com" />
-                    </div>
-                  </>
-                )}
-
-                {advFormat === "sponsored_article" && (
-                  <>
-                    <div className="space-y-2">
-                      <Label>Select Article</Label>
-                      <div className="relative">
-                        <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                        <Input
-                          value={postSearch}
-                          onChange={(e) => searchPosts(e.target.value)}
-                          placeholder="Search published articles..."
-                          className="pl-9"
-                        />
-                      </div>
-                      {searchingPosts && <p className="text-xs text-muted-foreground">Searching...</p>}
-                      {postResults.length > 0 && (
-                        <div className="border rounded-md divide-y max-h-48 overflow-y-auto">
-                          {postResults.map((post) => (
-                            <button
-                              key={post.id}
-                              type="button"
-                              onClick={() => selectPost(post)}
-                              className="w-full text-left px-3 py-2 text-sm hover:bg-muted flex items-center gap-3"
-                            >
-                              {post.featured_image && (
-                                <img src={post.featured_image} alt="" className="w-8 h-8 rounded object-cover flex-shrink-0" />
-                              )}
-                              <span className="truncate">{post.title}</span>
-                            </button>
-                          ))}
-                        </div>
-                      )}
-                      {selectedPost && (
-                        <div className="flex items-center gap-2 p-2 bg-primary/5 rounded-md">
-                          <FileTextIcon className="h-4 w-4 text-primary flex-shrink-0" />
-                          <span className="text-sm truncate flex-1">{selectedPost.title}</span>
-                          <a href={`/${selectedPost.slug}`} target="_blank" rel="noopener" className="text-primary hover:underline text-xs flex items-center gap-1">
-                            View <ExternalLink className="h-3 w-3" />
-                          </a>
-                          <button type="button" onClick={() => { setSelectedPost(null); setPostSearch("") }} className="text-muted-foreground hover:text-foreground">
-                            <X className="h-4 w-4" />
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Custom Destination URL (optional, overrides article link)</Label>
-                      <Input value={advDestUrl} onChange={(e) => setAdvDestUrl(e.target.value)} placeholder={`/${selectedPost?.slug || "article-slug"}`} />
-                    </div>
-                  </>
-                )}
-
-                {advFormat === "video_ad" && (
-                  <div className="space-y-3">
-                    <div className="space-y-2">
-                      <Label>Upload Video File</Label>
-                      <div className="flex items-center gap-3">
-                        <input
-                          ref={videoInputRef}
-                          type="file"
-                          accept="video/*,.gif"
-                          className="hidden"
-                          onChange={(e) => e.target.files?.[0] && uploadVideoFile(e.target.files[0])}
-                        />
-                        <Button variant="outline" onClick={() => videoInputRef.current?.click()} disabled={uploadingVideo}>
-                          <Upload className="h-4 w-4 mr-2" />
-                          {uploadingVideo ? "Uploading..." : "Upload Video"}
-                        </Button>
-                        {videoUrl && (
-                          <div className="flex items-center gap-2">
-                            <Video className="h-5 w-5 text-muted-foreground" />
-                            <span className="text-xs text-muted-foreground truncate max-w-[200px]">{videoUrl}</span>
-                            <button type="button" onClick={() => setVideoUrl("")} className="text-muted-foreground hover:text-foreground">
-                              <X className="h-4 w-4" />
-                            </button>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Video Embed Code (alternative to upload)</Label>
-                      <Textarea
-                        value={advCode}
-                        onChange={(e) => setAdvCode(e.target.value)}
-                        placeholder={`<iframe width="560" height="315" src="https://www.youtube.com/embed/VIDEO_ID" frameborder="0" allowfullscreen></iframe>`}
-                        className="font-mono text-sm min-h-[100px]"
-                      />
-                    </div>
-                    {(videoUrl || advCode) && (
-                      <div className="p-2 bg-muted rounded-md">
-                        <p className="text-xs text-muted-foreground mb-1">Preview:</p>
-                        {videoUrl && (
-                          <video controls className="max-w-full h-auto rounded" style={{ maxHeight: 200 }}>
-                            <source src={videoUrl} type="video/mp4" />
-                          </video>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                {advFormat === "custom_code" && (
-                  <div className="space-y-2">
-                    <Label>Ad Code (HTML/JS)</Label>
-                    <Textarea
-                      value={advCode}
-                      onChange={(e) => setAdvCode(e.target.value)}
-                      placeholder={`<div class="my-ad">\n  <a href="...">\n    <img src="..." />\n  </a>\n</div>`}
-                      className="font-mono text-sm min-h-[150px]"
-                    />
-                  </div>
-                )}
-
-                {advFormat === "adsense" && (
-                  <div className="space-y-2">
-                    <Label>Google AdSense Code</Label>
-                    <Textarea
-                      value={advCode}
-                      onChange={(e) => setAdvCode(e.target.value)}
-                      placeholder={`<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>\n<ins class="adsbygoogle"\n     style="display:block"\n     data-ad-client="ca-pub-xxxxxxxxxxxxxx"\n     data-ad-slot="xxxxxxxxxx"\n     data-ad-format="auto"></ins>\n<script>(adsbygoogle=window.adsbygoogle||[]).push({})</script>`}
-                      className="font-mono text-sm min-h-[150px]"
-                    />
-                  </div>
-                )}
-
-                {/* Positions */}
-                <div className="space-y-2">
-                  <Label>Ad Positions</Label>
-                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 max-h-60 overflow-y-auto p-2 border rounded-md">
-                    {Object.entries(AD_POSITIONS).map(([key, label]) => (
-                      <label key={key} className="flex items-center gap-2 text-sm cursor-pointer hover:bg-muted p-1 rounded">
-                        <input
-                          type="checkbox"
-                          checked={advPositions.includes(key)}
-                          onChange={() => togglePosition(key)}
-                          className="rounded"
-                        />
-                        {label}
-                      </label>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Dates & cap */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div className="space-y-2">
-                    <Label>Start Date</Label>
-                    <Input type="date" value={advStartDate} onChange={(e) => setAdvStartDate(e.target.value)} />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>End Date</Label>
-                    <Input type="date" value={advEndDate} onChange={(e) => setAdvEndDate(e.target.value)} />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Daily Impression Cap</Label>
-                    <Input type="number" min="0" value={advImpCap} onChange={(e) => setAdvImpCap(e.target.value)} placeholder="Unlimited" />
-                  </div>
-                </div>
-
-                {campaignError && (
-                  <div className="p-3 bg-destructive/10 border border-destructive/30 rounded-md text-sm text-destructive">
-                    {campaignError}
-                  </div>
-                )}
-                <div className="flex gap-2 justify-end">
-                  <Button variant="outline" onClick={() => { resetCampaignForm(); setShowCampaignForm(false) }}>Cancel</Button>
-                  <Button onClick={saveCampaign} disabled={!advName || (advFormat === "banner_image" && !advImageUrl)}>
-                    {editingCampaign ? "Update" : "Create"} Campaign
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Campaigns List */}
-          {campaigns.length === 0 ? (
-            <Card>
-              <CardContent className="p-12 text-center">
-                <DollarSign className="h-12 w-12 text-muted-foreground/30 mx-auto mb-3" />
-                <p className="text-lg font-medium">No client campaigns yet</p>
-                <p className="text-sm text-muted-foreground">Create your first campaign to start showing client ads</p>
-              </CardContent>
-            </Card>
-          ) : (
-            <div className="space-y-3">
-              {campaigns.map((c) => (
-                <Card key={c.id}>
-                  <CardContent className="p-4">
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-1">
-                          <p className="font-medium truncate">{c.advertiser_name}</p>
-                          <Badge variant={c.is_active ? "default" : "secondary"}>
-                            {c.is_active ? "Active" : "Inactive"}
-                          </Badge>
-                          <Badge variant="outline" className="text-xs">{formatCampaignBadge(c)}</Badge>
-                        </div>
-                        {c.positions && c.positions.length > 0 && (
-                          <div className="flex flex-wrap gap-1 mt-1">
-                            {c.positions.slice(0, 3).map((pos) => (
-                              <Badge key={pos} variant="secondary" className="text-[10px]">
-                                {AD_POSITIONS[pos as keyof typeof AD_POSITIONS] || pos}
-                              </Badge>
-                            ))}
-                            {c.positions.length > 3 && (
-                              <span className="text-[10px] text-muted-foreground self-center">+{c.positions.length - 3} more</span>
-                            )}
-                          </div>
-                        )}
-                        {(c.start_date || c.end_date) && (
-                          <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
-                            <Calendar className="h-3 w-3" />
-                            {c.start_date && <span>{c.start_date}</span>}
-                            {c.start_date && c.end_date && <span>→</span>}
-                            {c.end_date && <span>{c.end_date}</span>}
-                          </div>
-                        )}
-                        {c.daily_impression_cap && (
-                          <p className="text-xs text-muted-foreground mt-0.5">Cap: {c.daily_impression_cap}/day</p>
-                        )}
-                        {c.destination_url && (
-                          <p className="text-xs text-muted-foreground truncate mt-0.5 max-w-md">
-                            <ExternalLink className="h-3 w-3 inline mr-0.5" />
-                            {c.destination_url}
-                          </p>
-                        )}
-                      </div>
-                      <div className="flex items-center gap-3 ml-4">
-                        <div className="text-right text-xs text-muted-foreground space-y-0.5">
-                          <p className="flex items-center gap-1 justify-end"><Eye className="h-3 w-3" />{c.impressions}</p>
-                          <p className="flex items-center gap-1 justify-end"><MousePointer className="h-3 w-3" />{c.clicks}</p>
-                        </div>
-                        <Switch checked={c.is_active} onCheckedChange={(v) => toggleCampaignActive(c.id, v)} />
-                        <div className="flex flex-col gap-1">
-                          <Button variant="ghost" size="sm" className="h-7 px-2" onClick={() => openEditCampaign(c)} title="Edit">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 3a2.85 2.85 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/></svg>
-                          </Button>
-                          <Button variant="ghost" size="sm" className="h-7 px-2" onClick={() => copyCampaignAdCode(c)} title="Copy ad code">
-                            {copiedCampaignId === c.id ? <Check className="h-3.5 w-3.5 text-green-500" /> : <Copy className="h-3.5 w-3.5" />}
-                          </Button>
-                        </div>
-                        <Button variant="ghost" size="sm" className="h-7 px-2 text-destructive" onClick={() => deleteCampaign(c.id)} title="Delete">
-                          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
-                        </Button>
-                      </div>
-                    </div>
-                    {c.destination_url && advFormat === "sponsored_article" && c.ad_code?.startsWith("<!-- sponsored_article:") && (
-                      <div className="mt-2 flex items-center gap-2 text-xs">
-                        <ExternalLink className="h-3 w-3 text-primary" />
-                        <a href={c.destination_url} target="_blank" rel="noopener" className="text-primary hover:underline truncate">
-                          {c.destination_url}
-                        </a>
-                      </div>
-                    )}
-                    {c.ad_code && !c.ad_code.startsWith("<!--") && (
-                      <details className="mt-2">
-                        <summary className="text-xs text-muted-foreground cursor-pointer hover:text-foreground">Ad Code</summary>
-                        <pre className="mt-1 p-2 bg-muted rounded text-xs overflow-x-auto max-h-32">{c.ad_code}</pre>
-                      </details>
-                    )}
-                  </CardContent>
-                </Card>
-              ))}
+              </div>
+              <div>
+                <label style={{ color: TEXT_DIM, fontSize: 12, display: "block", marginBottom: 6 }}>Daily Impression Cap</label>
+                <input type="number" value={campaignForm.daily_impression_cap} onChange={e => setCampaignForm(p => ({ ...p, daily_impression_cap: parseInt(e.target.value) || 0 }))} style={inputStyle} />
+              </div>
+              <div style={{ display: "flex", gap: 12 }}>
+                <button onClick={handleCreateCampaign} style={btnPrimary}>{editingCampaign ? "Update" : "Create"}</button>
+                <button onClick={() => { setShowCampaignForm(false); setEditingCampaign(null) }} style={btnSecondary}>Cancel</button>
+              </div>
             </div>
-          )}
-        </TabsContent>
-
-        {/* ═══════════════════════════════════════════════════════════════
-           TAB 3 — PREVIEW
-           ═══════════════════════════════════════════════════════════════ */}
-        <TabsContent value="preview">
-          <p className="text-sm text-muted-foreground mb-4">
-            Preview how ads and campaigns render on the frontend for each position.
-          </p>
-          <div className="space-y-6">
-            {Object.entries(AD_POSITIONS).map(([key, label]) => (
-              <Card key={key}>
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm flex items-center gap-2">
-                    <Monitor className="h-4 w-4 text-muted-foreground" />
-                    {label}
-                    <Badge variant="outline" className="text-[10px] font-mono">{key}</Badge>
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <AdSlot positionKey={key as keyof typeof AD_POSITIONS} preview />
-                </CardContent>
-              </Card>
-            ))}
           </div>
-        </TabsContent>
-      </Tabs>
+        </div>
+      )}
+
+      {showScheduleForm && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.7)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }} onClick={() => { setShowScheduleForm(false); setEditingSchedule(null) }}>
+          <div style={{ ...cardStyle({ width: 520, maxHeight: "80vh", overflow: "auto" }) }} onClick={e => e.stopPropagation()}>
+            <h3 style={{ color: TEXT, fontSize: 18, margin: "0 0 20px" }}>{editingSchedule ? "Edit Schedule" : "New Ad Schedule"}</h3>
+            <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+              <div>
+                <label style={{ color: TEXT_DIM, fontSize: 12, display: "block", marginBottom: 6 }}>Schedule Name *</label>
+                <input value={scheduleForm.name} onChange={e => setScheduleForm(p => ({ ...p, name: e.target.value }))} placeholder="e.g. Weekend Boost" style={inputStyle} />
+              </div>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                <div>
+                  <label style={{ color: TEXT_DIM, fontSize: 12, display: "block", marginBottom: 6 }}>Start Date *</label>
+                  <input type="datetime-local" value={scheduleForm.start_date} onChange={e => setScheduleForm(p => ({ ...p, start_date: e.target.value }))} style={inputStyle} />
+                </div>
+                <div>
+                  <label style={{ color: TEXT_DIM, fontSize: 12, display: "block", marginBottom: 6 }}>End Date</label>
+                  <input type="datetime-local" value={scheduleForm.end_date} onChange={e => setScheduleForm(p => ({ ...p, end_date: e.target.value }))} style={inputStyle} />
+                </div>
+              </div>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                <div>
+                  <label style={{ color: TEXT_DIM, fontSize: 12, display: "block", marginBottom: 6 }}>Frequency</label>
+                  <select value={scheduleForm.frequency} onChange={e => setScheduleForm(p => ({ ...p, frequency: e.target.value }))} style={inputStyle}>
+                    <option value="always">Always</option>
+                    <option value="daily">Daily</option>
+                    <option value="weekly">Weekly</option>
+                    <option value="custom">Custom</option>
+                  </select>
+                </div>
+                <div>
+                  <label style={{ color: TEXT_DIM, fontSize: 12, display: "block", marginBottom: 6 }}>Priority</label>
+                  <input type="number" value={scheduleForm.priority} onChange={e => setScheduleForm(p => ({ ...p, priority: parseInt(e.target.value) || 0 }))} style={inputStyle} />
+                </div>
+              </div>
+              <div style={{ display: "flex", gap: 12 }}>
+                <button onClick={handleCreateSchedule} style={btnPrimary}>{editingSchedule ? "Update" : "Create"}</button>
+                <button onClick={() => { setShowScheduleForm(false); setEditingSchedule(null) }} style={btnSecondary}>Cancel</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
