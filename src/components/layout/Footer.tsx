@@ -24,6 +24,33 @@ const footerPlatforms = [
   },
 ]
 
+const quickLinksLeft = [
+  { label: "About Us", href: "/about" },
+  { label: "Contact Us", href: "/contact" },
+  { label: "Advertise With Us", href: "/advertise" },
+  { label: "Write For Us", href: "/write-for-us" },
+  { label: "Disclaimer", href: "/disclaimer" },
+  { label: "Privacy Policy", href: "/privacy-policy" },
+  { label: "Cookies Policy", href: "/cookies-policy" },
+  { label: "Terms of Use", href: "/terms-of-use" },
+  { label: "Sitemap", href: "/sitemap" },
+  { label: "RSS Feed", href: "/rss.xml" },
+]
+
+const quickLinksRight = [
+  { label: "Tools", href: "/tools" },
+  { label: "Community", href: "/community" },
+  { label: "Forum", href: "/community/forum" },
+  { label: "Quizzes", href: "/community/quiz" },
+  { label: "Polls", href: "/community/polls" },
+  { label: "Events", href: "/community/events" },
+  { label: "Learning Paths", href: "/community/learning-paths" },
+  { label: "Leaderboard", href: "/community/leaderboard" },
+  { label: "My Account", href: "/account" },
+  { label: "Newsletter", href: "/newsletter" },
+  { label: "Marketplace", href: "/marketplace" },
+]
+
 export function Footer({ categories, recentPosts }: { categories: any[]; recentPosts: any[] }) {
   const { resolvedTheme } = useTheme()
   const [mounted, setMounted] = useState(false)
@@ -46,7 +73,8 @@ export function Footer({ categories, recentPosts }: { categories: any[]; recentP
   return (
     <footer className="site-footer">
       <div className="footer-inner">
-        <div>
+        {/* Brand column */}
+        <div className="footer-brand-col">
           <div className="footer-logo">
             <img src={logoSrc} alt="Techpivo" style={{ height: 52, width: 'auto' }} />
           </div>
@@ -72,6 +100,7 @@ export function Footer({ categories, recentPosts }: { categories: any[]; recentP
           </div>
         </div>
 
+        {/* Categories */}
         <div>
           <h3 className="footer-col-title">Categories</h3>
           {categories.slice(0, 8).map((cat) => (
@@ -81,45 +110,36 @@ export function Footer({ categories, recentPosts }: { categories: any[]; recentP
           ))}
         </div>
 
+        {/* Recent Articles */}
         <div>
           <h3 className="footer-col-title">Recent Articles</h3>
           {recentPosts.slice(0, 6).map((post) => (
             <Link key={post.id} href={`/${post.slug}`} className="footer-post-link">
-              <span style={{ flexShrink: 0, marginTop: 3 }}>●</span>
+              <span style={{ flexShrink: 0, marginTop: 3 }}>&bull;</span>
               <span>{post.title?.slice(0, 48)}</span>
             </Link>
           ))}
         </div>
 
-        <div>
+        {/* Quick Links — two columns */}
+        <div className="footer-quicklinks-col">
           <h3 className="footer-col-title">Quick Links</h3>
-          {[
-            { label: "About Us", href: "/about" },
-            { label: "Contact Us", href: "/contact" },
-            { label: "Advertise With Us", href: "/advertise" },
-            { label: "Disclaimer", href: "/disclaimer" },
-            { label: "Privacy Policy", href: "/privacy-policy" },
-            { label: "Cookies Policy", href: "/cookies-policy" },
-            { label: "Terms of Use", href: "/terms-of-use" },
-            { label: "Tools", href: "/tools" },
-            { label: "Community", href: "/community" },
-            { label: "Forum", href: "/community/forum" },
-            { label: "Quizzes", href: "/community/quiz" },
-            { label: "Polls", href: "/community/polls" },
-            { label: "Events", href: "/community/events" },
-            { label: "Learning Paths", href: "/community/learning-paths" },
-            { label: "Leaderboard", href: "/community/leaderboard" },
-            { label: "My Account", href: "/account" },
-            { label: "Newsletter", href: "/newsletter" },
-            { label: "Write For Us", href: "/write-for-us" },
-            { label: "Marketplace", href: "/marketplace" },
-            { label: "Sitemap", href: "/sitemap" },
-            { label: "RSS Feed", href: "/rss.xml" },
-          ].map((l) => (
-            <Link key={l.label} href={l.href} className="footer-col-link">
-              <span>{l.label}</span>
-            </Link>
-          ))}
+          <div className="footer-quicklinks-grid">
+            <div className="footer-quicklinks-half">
+              {quickLinksLeft.map((l) => (
+                <Link key={l.label} href={l.href} className="footer-col-link">
+                  <span>{l.label}</span>
+                </Link>
+              ))}
+            </div>
+            <div className="footer-quicklinks-half">
+              {quickLinksRight.map((l) => (
+                <Link key={l.label} href={l.href} className="footer-col-link">
+                  <span>{l.label}</span>
+                </Link>
+              ))}
+            </div>
+          </div>
         </div>
       </div>
 

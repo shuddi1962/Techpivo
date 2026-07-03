@@ -44,6 +44,7 @@ export function Header() {
       if (session?.user) loadProfile(session.user.id)
     })
     return () => subscription.unsubscribe()
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   useEffect(() => {
@@ -126,22 +127,24 @@ export function Header() {
                 )}
               </button>
             )}
-            <Link href="/tools" className="login-btn" style={{ gap: 4 }}>
+            {/* Desktop-only nav buttons — hidden on mobile via CSS class */}
+            <Link href="/tools" className="login-btn header-nav-link" style={{ gap: 4 }}>
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>
               <span className="login-btn-text">Tools</span>
             </Link>
-            <Link href="/community" className="login-btn" style={{ gap: 4 }}>
+            <Link href="/community" className="login-btn header-nav-link" style={{ gap: 4 }}>
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
               <span className="login-btn-text">Community</span>
             </Link>
-            <Link href="/community/events" className="login-btn" style={{ gap: 4 }}>
+            <Link href="/community/events" className="login-btn header-nav-link" style={{ gap: 4 }}>
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="18" height="18" x="3" y="4" rx="2" ry="2"/><line x1="16" x2="16" y1="2" y2="6"/><line x1="8" x2="8" y1="2" y2="6"/><line x1="3" x2="21" y1="10" y2="10"/></svg>
               <span className="login-btn-text">Events</span>
             </Link>
-            <Link href="/marketplace" className="login-btn" style={{ gap: 4 }}>
+            <Link href="/marketplace" className="login-btn header-nav-link" style={{ gap: 4 }}>
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
               <span className="login-btn-text">Shop</span>
             </Link>
+            {/* Account — always visible */}
             {user ? (
               <Link href="/account" className="login-btn" style={{ gap: 8, textDecoration: "none" }}>
                 {user.user_metadata?.avatar_url ? (
@@ -157,6 +160,7 @@ export function Header() {
                 Sign In
               </button>
             )}
+            {/* Hamburger — always last, always visible on mobile */}
             <button className="icon-btn header-hamburger" onClick={() => setDrawerOpen(true)} aria-label="Menu">
               <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
             </button>
@@ -167,11 +171,16 @@ export function Header() {
       {drawerOpen && (
         <div className="header-mobile-drawer" onClick={() => setDrawerOpen(false)}>
           <div className="mobile-drawer-panel" onClick={e => e.stopPropagation()}>
+            {/* Drawer header with logo */}
             <div className="mobile-drawer-header">
-              <h3>Menu</h3>
+              <Link href="/" className="mobile-drawer-logo" onClick={() => setDrawerOpen(false)}>
+                <img src="/logo.svg?v=6" alt="Techpivo" style={{ height: 28, width: "auto" }} />
+              </Link>
               <button className="mobile-drawer-close" onClick={() => setDrawerOpen(false)}>&times;</button>
             </div>
+            {/* Search */}
             <form className="mobile-drawer-search" onSubmit={handleMobileSearch}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" style={{ flexShrink: 0, color: "var(--muted2)" }}><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
               <input
                 type="text"
                 placeholder="Search articles..."
@@ -179,31 +188,77 @@ export function Header() {
                 onChange={e => setMobileSearch(e.target.value)}
               />
             </form>
+            {/* Navigation */}
             <div className="mobile-drawer-nav">
               <div className="mobile-drawer-section">Navigation</div>
-              <Link href="/" className="mobile-drawer-link" onClick={() => setDrawerOpen(false)}>Home</Link>
-              <Link href="/tools" className="mobile-drawer-link" onClick={() => setDrawerOpen(false)}>Tools</Link>
-              <Link href="/community" className="mobile-drawer-link" onClick={() => setDrawerOpen(false)}>Community</Link>
-              <Link href="/community/events" className="mobile-drawer-link" onClick={() => setDrawerOpen(false)}>Events</Link>
-              <Link href="/marketplace" className="mobile-drawer-link" onClick={() => setDrawerOpen(false)}>Shop</Link>
-              <Link href="/newsletter" className="mobile-drawer-link" onClick={() => setDrawerOpen(false)}>Newsletter</Link>
+              <Link href="/" className="mobile-drawer-link" onClick={() => setDrawerOpen(false)}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+                Home
+              </Link>
+              <Link href="/tools" className="mobile-drawer-link" onClick={() => setDrawerOpen(false)}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>
+                Tools
+              </Link>
+              <Link href="/community" className="mobile-drawer-link" onClick={() => setDrawerOpen(false)}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                Community
+              </Link>
+              <Link href="/community/events" className="mobile-drawer-link" onClick={() => setDrawerOpen(false)}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect width="18" height="18" x="3" y="4" rx="2" ry="2"/><line x1="16" x2="16" y1="2" y2="6"/><line x1="8" x2="8" y1="2" y2="6"/><line x1="3" x2="21" y1="10" y2="10"/></svg>
+                Events
+              </Link>
+              <Link href="/marketplace" className="mobile-drawer-link" onClick={() => setDrawerOpen(false)}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
+                Shop
+              </Link>
+              <Link href="/newsletter" className="mobile-drawer-link" onClick={() => setDrawerOpen(false)}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+                Newsletter
+              </Link>
               <div className="mobile-drawer-divider" />
               <div className="mobile-drawer-section">Community</div>
-              <Link href="/community/forum" className="mobile-drawer-link" onClick={() => setDrawerOpen(false)}>Forum</Link>
-              <Link href="/community/quiz" className="mobile-drawer-link" onClick={() => setDrawerOpen(false)}>Quizzes</Link>
-              <Link href="/community/polls" className="mobile-drawer-link" onClick={() => setDrawerOpen(false)}>Polls</Link>
-              <Link href="/community/leaderboard" className="mobile-drawer-link" onClick={() => setDrawerOpen(false)}>Leaderboard</Link>
-              <Link href="/community/learning-paths" className="mobile-drawer-link" onClick={() => setDrawerOpen(false)}>Learning Paths</Link>
+              <Link href="/community/forum" className="mobile-drawer-link" onClick={() => setDrawerOpen(false)}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                Forum
+              </Link>
+              <Link href="/community/quiz" className="mobile-drawer-link" onClick={() => setDrawerOpen(false)}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                Quizzes
+              </Link>
+              <Link href="/community/polls" className="mobile-drawer-link" onClick={() => setDrawerOpen(false)}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+                Polls
+              </Link>
+              <Link href="/community/leaderboard" className="mobile-drawer-link" onClick={() => setDrawerOpen(false)}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></svg>
+                Leaderboard
+              </Link>
+              <Link href="/community/learning-paths" className="mobile-drawer-link" onClick={() => setDrawerOpen(false)}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+                Learning Paths
+              </Link>
               <div className="mobile-drawer-divider" />
               <div className="mobile-drawer-section">Account</div>
               {user ? (
                 <>
-                  <Link href="/account" className="mobile-drawer-link" onClick={() => setDrawerOpen(false)}>My Account</Link>
-                  <Link href="/account/security" className="mobile-drawer-link" onClick={() => setDrawerOpen(false)}>Security</Link>
-                  <Link href="/account/bookmarks" className="mobile-drawer-link" onClick={() => setDrawerOpen(false)}>Bookmarks</Link>
+                  <Link href="/account" className="mobile-drawer-link" onClick={() => setDrawerOpen(false)}>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                    My Account
+                  </Link>
+                  <Link href="/account/security" className="mobile-drawer-link" onClick={() => setDrawerOpen(false)}>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                    Security
+                  </Link>
+                  <Link href="/account/bookmarks" className="mobile-drawer-link" onClick={() => setDrawerOpen(false)}>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z"/></svg>
+                    Bookmarks
+                  </Link>
                 </>
               ) : (
-                <button className="mobile-drawer-link" onClick={() => { setDrawerOpen(false); setLoginOpen(true) }}>Sign In</button>
+                <button className="mobile-drawer-link" onClick={() => { setDrawerOpen(false); setLoginOpen(true) }}>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" x2="3" y1="12" y2="12"/></svg>
+                  Sign In
+                </button>
               )}
               <div className="mobile-drawer-divider" />
               <div className="mobile-drawer-section">Info</div>
