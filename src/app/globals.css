@@ -126,10 +126,12 @@ body { position: relative; }
 .site-header { background: #0000CD; border-bottom: 1px solid rgba(255,255,255,.1); position: sticky; top: 0; z-index: 100; transition: box-shadow .3s; }
 .dark .site-header { background: #111111; }
 .site-header.scrolled { box-shadow: 0 4px 30px rgba(0,0,0,.15); }
-.header-inner { display: flex; align-items: center; gap: 20px; padding: 12px 24px; max-width: 1400px; margin: 0 auto; }
-.logo { display: flex; align-items: center; text-decoration: none; flex-shrink: 0; }
-
+.header-inner { display: flex; align-items: center; gap: 16px; padding: 12px 24px; max-width: 1400px; margin: 0 auto; }
+.logo { display: flex; align-items: center; text-decoration: none; flex-shrink: 0; gap: 8px; }
 .logo-img { display: block; height: 28px; width: auto; }
+.logo-text { font-family: 'Syne', sans-serif; font-weight: 800; font-size: 18px; color: #fff; display: none; }
+.header-hamburger { display: none; background: none; border: none; color: rgba(255,255,255,.8); cursor: pointer; padding: 6px; flex-shrink: 0; border-radius: 6px; transition: background .15s; }
+.header-hamburger:hover { background: rgba(255,255,255,.1); }
 .header-search-box { flex: 1; display: flex; align-items: center; background: rgba(255,255,255,.22); backdrop-filter: blur(4px); border: 1px solid rgba(255,255,255,.3); border-radius: 8px; padding: 0 12px; max-width: 480px; margin: 0 auto; transition: border-color .2s, box-shadow .2s, background .2s; }
 .dark .header-search-box { background: rgba(255,255,255,.1); border-color: rgba(255,255,255,.15); }
 .header-search-box:focus-within { background: rgba(255,255,255,.35); border-color: rgba(255,255,255,.5); box-shadow: 0 0 0 3px rgba(255,255,255,.15); }
@@ -139,13 +141,12 @@ body { position: relative; }
 .search-box-input { flex: 1; background: none; border: none; padding: 9px 10px; color: #fff; font-size: 14px; font-family: 'DM Sans', sans-serif; outline: none; }
 .search-box-input::placeholder { color: rgba(255,255,255,.5); }
 
-.header-controls { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
-.header-hamburger { display: none; }
+.header-controls { display: flex; align-items: center; gap: 6px; flex-shrink: 0; margin-left: auto; }
 .header-socials { display: flex; align-items: center; gap: 2px; margin-right: 4px; }
 .header-socials .icon-btn { padding: 6px; }
 .icon-btn { color: rgba(255,255,255,.7); padding: 8px; border-radius: 8px; background: none; border: none; cursor: pointer; display: flex; align-items: center; transition: all .2s; font-size: 16px; }
 .icon-btn:hover { background: rgba(255,255,255,.1); color: #fff; }
-.login-btn { display: flex; align-items: center; gap: 6px; background: rgba(255,255,255,.12); border: 1px solid rgba(255,255,255,.2); color: #fff; padding: 7px 14px; border-radius: 8px; font-size: 13px; font-weight: 500; cursor: pointer; transition: border-color .2s, background .2s; font-family: 'DM Sans', sans-serif; }
+.login-btn { display: inline-flex; align-items: center; gap: 6px; background: rgba(255,255,255,.12); border: 1px solid rgba(255,255,255,.2); color: #fff; padding: 7px 14px; border-radius: 8px; font-size: 13px; font-weight: 500; cursor: pointer; transition: border-color .2s, background .2s; font-family: 'DM Sans', sans-serif; white-space: nowrap; text-decoration: none; }
 .login-btn:hover { background: rgba(255,255,255,.2); border-color: rgba(255,255,255,.4); }
 .header-avatar { width: 22px; height: 22px; border-radius: 50%; object-fit: cover; flex-shrink: 0; }
 .header-user-name { font-size: 13px; font-weight: 500; color: #fff; max-width: 100px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -814,27 +815,25 @@ body { position: relative; }
 
 /* ── Header: mobile layout ── */
 @media(max-width:768px) {
-  .header-inner { padding: 10px 16px; gap: 10px; flex-wrap: nowrap; }
-  .logo-img { height: 22px; }
+  .header-inner { padding: 10px 16px; gap: 10px; }
+  .logo-img { height: 24px; }
+  .logo-text { display: inline; font-size: 16px; }
   .header-search-box { display: none; }
-  .header-controls { gap: 2px; flex-wrap: nowrap; overflow: hidden; }
+  .header-controls { gap: 4px; }
   .header-socials { display: none; }
   .header-nav-link { display: none !important; }
-  .login-btn { padding: 6px 8px; font-size: 12px; gap: 4px; white-space: nowrap; }
-  .login-btn svg { width: 14px; height: 14px; flex-shrink: 0; }
-  .login-btn-text { display: none; }
-  .header-hamburger { display: flex !important; flex-shrink: 0; }
-  .header-user-name { display: none; }
-  .icon-btn { padding: 6px; flex-shrink: 0; }
+  .header-hamburger { display: flex !important; }
+  .header-signin-btn { padding: 6px 12px; font-size: 12px; font-weight: 600; }
+  .header-account-btn { padding: 4px; gap: 0; }
+  .header-account-btn .header-user-name { display: none; }
+  .icon-btn { padding: 6px; }
   .icon-btn svg { width: 16px; height: 16px; }
-  .header-avatar { width: 20px; height: 20px; }
 }
 
 /* ── Header: tablet adjustments ── */
 @media(min-width:769px) and (max-width:1024px) {
   .header-socials { display: none; }
-  .login-btn-text { display: none; }
-  .header-nav-link { padding: 6px 10px; }
+  .header-nav-link { padding: 6px 10px; font-size: 12px; }
   .header-inner { gap: 12px; padding: 10px 16px; }
   .logo-img { height: 24px; }
   .header-search-box { max-width: 320px; }
@@ -942,7 +941,7 @@ body { position: relative; }
   .nav-right { padding-right: 12px; }
 }
 
-/* ── Footer: mobile — single column ── */
+/* ── Footer: mobile — single column for main grid, but Quick Links stays 2-col ── */
 @media(max-width:768px) {
   .site-footer { padding: 32px 16px 0; }
   .footer-inner { padding: 0 16px 24px; gap: 24px; grid-template-columns: 1fr; }
@@ -950,7 +949,7 @@ body { position: relative; }
   .footer-col-link { font-size: 13px; padding: 3px 0; }
   .footer-post-link { font-size: 13px; padding: 4px 0; }
   .footer-bottom { padding: 12px 16px; font-size: 12px; gap: 4px; flex-direction: column; text-align: center; }
-  .footer-quicklinks-grid { grid-template-columns: 1fr; gap: 16px; }
+  .footer-quicklinks-grid { grid-template-columns: 1fr 1fr; gap: 0 12px; }
 }
 
 /* ── Footer: tablet — two columns ── */

@@ -8,7 +8,6 @@ import { Header } from "@/components/layout/Header"
 import { MainNav } from "@/components/layout/MainNav"
 import { BreakingTicker } from "@/components/home/BreakingTicker"
 import { Footer } from "@/components/layout/Footer"
-import { MobileStickyBanner } from "@/components/ads/mobile-sticky-banner"
 
 export function LayoutWrapper({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
@@ -42,7 +41,7 @@ export function LayoutWrapper({ children }: { children: React.ReactNode }) {
   }, [])
 
   if (noLayout) {
-    return <>{children}<BackToTop /><MobileStickyBanner /></>
+    return <>{children}<BackToTop /></>
   }
 
   return (
@@ -53,7 +52,6 @@ export function LayoutWrapper({ children }: { children: React.ReactNode }) {
       <main>{children}</main>
       <Footer categories={categories} recentPosts={recentPosts} />
       <BackToTop />
-      <MobileStickyBanner />
     </>
   )
 }

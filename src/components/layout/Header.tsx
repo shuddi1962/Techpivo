@@ -88,10 +88,18 @@ export function Header() {
     <>
       <header className={`site-header${scrolled ? " scrolled" : ""}`}>
         <div className="header-inner">
+          {/* MOBILE: hamburger on left */}
+          <button className="header-hamburger" onClick={() => setDrawerOpen(true)} aria-label="Menu">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+          </button>
+
+          {/* Logo — always visible */}
           <Link href="/" className="logo">
             <img src="/logo.svg?v=6" alt="Techpivo" className="logo-img" width="340" height="68" />
+            <span className="logo-text">Techpivo</span>
           </Link>
 
+          {/* Search — desktop only */}
           <div className="header-search-box">
             <input
               type="text"
@@ -106,7 +114,9 @@ export function Header() {
             </button>
           </div>
 
+          {/* Right side controls */}
           <div className="header-controls">
+            {/* Socials — desktop only */}
             <div className="header-socials">
               {headerSocials.map((s) => {
                 const href = socialUrls[s.id]
@@ -118,6 +128,8 @@ export function Header() {
                 )
               })}
             </div>
+
+            {/* Theme toggle — always visible */}
             {mounted && (
               <button className="icon-btn" onClick={() => setTheme(theme === "dark" ? "light" : "dark")} aria-label="Toggle theme">
                 {theme === "dark" ? (
@@ -127,26 +139,16 @@ export function Header() {
                 )}
               </button>
             )}
-            {/* Desktop-only nav buttons — hidden on mobile via CSS class */}
-            <Link href="/tools" className="login-btn header-nav-link" style={{ gap: 4 }}>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>
-              <span className="login-btn-text">Tools</span>
-            </Link>
-            <Link href="/community" className="login-btn header-nav-link" style={{ gap: 4 }}>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-              <span className="login-btn-text">Community</span>
-            </Link>
-            <Link href="/community/events" className="login-btn header-nav-link" style={{ gap: 4 }}>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="18" height="18" x="3" y="4" rx="2" ry="2"/><line x1="16" x2="16" y1="2" y2="6"/><line x1="8" x2="8" y1="2" y2="6"/><line x1="3" x2="21" y1="10" y2="10"/></svg>
-              <span className="login-btn-text">Events</span>
-            </Link>
-            <Link href="/marketplace" className="login-btn header-nav-link" style={{ gap: 4 }}>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
-              <span className="login-btn-text">Shop</span>
-            </Link>
-            {/* Account — always visible */}
+
+            {/* Desktop nav buttons */}
+            <Link href="/tools" className="login-btn header-nav-link"><span>Tools</span></Link>
+            <Link href="/community" className="login-btn header-nav-link"><span>Community</span></Link>
+            <Link href="/community/events" className="login-btn header-nav-link"><span>Events</span></Link>
+            <Link href="/marketplace" className="login-btn header-nav-link"><span>Shop</span></Link>
+
+            {/* Account / Sign In — always visible */}
             {user ? (
-              <Link href="/account" className="login-btn" style={{ gap: 8, textDecoration: "none" }}>
+              <Link href="/account" className="login-btn header-account-btn">
                 {user.user_metadata?.avatar_url ? (
                   <img src={user.user_metadata.avatar_url} alt="" className="header-avatar" />
                 ) : (
@@ -155,30 +157,24 @@ export function Header() {
                 <span className="header-user-name">{profileName || user.user_metadata?.full_name || user.email?.split("@")[0] || "Account"}</span>
               </Link>
             ) : (
-              <button className="login-btn" onClick={() => setLoginOpen(true)}>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" x2="3" y1="12" y2="12"/></svg>
-                <span className="login-btn-text">Sign In</span>
+              <button className="login-btn header-signin-btn" onClick={() => setLoginOpen(true)}>
+                Sign In
               </button>
             )}
-            {/* Hamburger — always last, always visible on mobile */}
-            <button className="icon-btn header-hamburger" onClick={() => setDrawerOpen(true)} aria-label="Menu">
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
-            </button>
           </div>
         </div>
       </header>
 
+      {/* Mobile drawer */}
       {drawerOpen && (
         <div className="header-mobile-drawer" onClick={() => setDrawerOpen(false)}>
           <div className="mobile-drawer-panel" onClick={e => e.stopPropagation()}>
-            {/* Drawer header with logo */}
             <div className="mobile-drawer-header">
               <Link href="/" className="mobile-drawer-logo" onClick={() => setDrawerOpen(false)}>
                 <img src="/logo.svg?v=6" alt="Techpivo" style={{ height: 28, width: "auto" }} />
               </Link>
               <button className="mobile-drawer-close" onClick={() => setDrawerOpen(false)}>&times;</button>
             </div>
-            {/* Search */}
             <form className="mobile-drawer-search" onSubmit={handleMobileSearch}>
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" style={{ flexShrink: 0, color: "var(--muted2)" }}><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
               <input
@@ -188,7 +184,6 @@ export function Header() {
                 onChange={e => setMobileSearch(e.target.value)}
               />
             </form>
-            {/* Navigation */}
             <div className="mobile-drawer-nav">
               <div className="mobile-drawer-section">Navigation</div>
               <Link href="/" className="mobile-drawer-link" onClick={() => setDrawerOpen(false)}>

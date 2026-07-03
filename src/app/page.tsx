@@ -3,9 +3,6 @@ import { TopBar } from "@/components/layout/TopBar"
 import { Header } from "@/components/layout/Header"
 import { MainNav } from "@/components/layout/MainNav"
 import { BreakingTicker } from "@/components/home/BreakingTicker"
-import { AdSlot } from "@/components/ads/AdSlot"
-import { AdsterraNative } from "@/components/ads/adsterra-native"
-import { AdsterraBanner } from "@/components/ads/adsterra-banner"
 import { HeroSection } from "@/components/home/HeroSection"
 import { CategoryTabSection } from "@/components/home/CategoryTabSection"
 import { LatestGrid } from "@/components/home/LatestGrid"
@@ -223,8 +220,6 @@ export default async function HomePage() {
       <MainNav categories={cats} />
       <BreakingTicker posts={tickerPosts || []} />
 
-      <AdsterraBanner size="728x90" className="my-4 hidden md:flex" label="Advertisement" />
-
       <div className="site-main">
         <div className="main-layout">
           <div className="content-col">
@@ -235,13 +230,7 @@ export default async function HomePage() {
 
             <CategoryTabSection categories={cats} posts={latestPosts || []} />
 
-            <AdSlot positionKey="home_infeed_1" className="ad-mid" />
-
             <LatestGrid posts={latestPosts || []} />
-
-            <AdSlot positionKey="home_infeed_2" className="ad-mid" />
-
-            <AdsterraNative className="ad-mid" />
 
             <CategoryStrip
               categoryName="AI & Automation"
@@ -251,8 +240,6 @@ export default async function HomePage() {
               subcategories={subcatsByCat["ai-automation"] || []}
             />
 
-            <AdSlot positionKey="home_infeed_3" className="ad-mid" />
-
             <CategoryStrip
               categoryName="Cybersecurity"
               categorySlug="cybersecurity"
@@ -260,8 +247,6 @@ export default async function HomePage() {
               posts={cyberPosts || []}
               subcategories={subcatsByCat["cybersecurity"] || []}
             />
-
-            <AdSlot positionKey="home_infeed_4" className="ad-mid" />
 
             <CategoryStrip
               categoryName="Gadgets"
@@ -271,10 +256,6 @@ export default async function HomePage() {
               subcategories={subcatsByCat["gadgets"] || []}
             />
 
-            <AdsterraBanner size="468x60" className="my-6 hidden md:flex" label="Advertisement" />
-
-            <AdSlot positionKey="home_infeed_5" className="ad-mid" />
-
             <CategoryStrip
               categoryName="Tech News"
               categorySlug="tech-news"
@@ -283,10 +264,6 @@ export default async function HomePage() {
               subcategories={subcatsByCat["tech-news"] || []}
             />
 
-            <AdsterraNative className="ad-mid" />
-
-            <AdSlot positionKey="home_infeed_6" className="ad-mid" />
-
             <CategoryStrip
               categoryName="Desktops"
               categorySlug="desktops"
@@ -294,8 +271,6 @@ export default async function HomePage() {
               posts={desktopPosts || []}
               subcategories={subcatsByCat["desktops"] || []}
             />
-
-            <AdSlot positionKey="home_infeed_7" className="ad-mid" />
 
             <CategoryStrip
               categoryName="Programming"
@@ -313,8 +288,6 @@ export default async function HomePage() {
               subcategories={subcatsByCat["reviews"] || []}
             />
 
-            <AdsterraBanner size="468x60" className="my-6 hidden md:flex" label="Advertisement" />
-
             <CategoryStrip
               categoryName="Tutorials"
               categorySlug="tutorials"
@@ -330,8 +303,6 @@ export default async function HomePage() {
               posts={networkingPosts || []}
               subcategories={subcatsByCat["networking-it"] || []}
             />
-
-            <AdSlot positionKey="home_infeed_8" className="ad-mid" />
 
             <CategoryStrip
               categoryName="Digital Business"

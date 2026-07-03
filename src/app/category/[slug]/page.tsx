@@ -6,8 +6,6 @@ import { PostCard } from "@/components/post/post-card"
 import { Sidebar } from "@/components/layout/Sidebar"
 import { formatDate } from "@/lib/utils"
 import { SITE_NAME, SITE_URL } from "@/lib/constants"
-import { AdsterraNative } from "@/components/ads/adsterra-native"
-import { AdsterraBanner } from "@/components/ads/adsterra-banner"
 import type { Metadata } from "next"
 
 type Props = { params: { slug: string } }
@@ -78,11 +76,6 @@ export default async function CategoryPage({ params }: Props) {
           </div>
         )}
       </div>
-
-      <AdsterraBanner size="728x90" className="mb-6 hidden md:flex" label="Advertisement" />
-
-      {/* Ad Banner */}
-      <AdsterraNative className="mb-8" />
 
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
         <div className="lg:col-span-3">
