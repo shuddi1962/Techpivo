@@ -22,8 +22,10 @@ export function Header() {
   const [user, setUser] = useState<User | null>(null)
   const [profileName, setProfileName] = useState<string | null>(null)
   const [socialUrls, setSocialUrls] = useState<Record<string, string>>({})
+  const [drawerOpen, setDrawerOpen] = useState(false)
+  const [mobileSearch, setMobileSearch] = useState("")
   const router = useRouter()
-  const { theme, setTheme, resolvedTheme } = useTheme()
+  const { theme, setTheme } = useTheme()
   const supabase = createClient()
 
   const loadProfile = async (userId: string) => {
@@ -63,6 +65,23 @@ export function Header() {
       }
     })
   }, [])
+
+  useEffect(() => {
+    if (drawerOpen) {
+      document.body.style.overflow = "hidden"
+    } else {
+      document.body.style.overflow = ""
+    }
+    return () => { document.body.style.overflow = "" }
+  }, [drawerOpen])
+
+  const handleMobileSearch = (e: React.FormEvent) => {
+    e.preventDefault()
+    if (mobileSearch.trim()) {
+      setDrawerOpen(false)
+      router.push(`/search?q=${encodeURIComponent(mobileSearch)}`)
+    }
+  }
 
   return (
     <>
@@ -109,19 +128,19 @@ export function Header() {
             )}
             <Link href="/tools" className="login-btn" style={{ gap: 4 }}>
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>
-              Tools
+              <span className="login-btn-text">Tools</span>
             </Link>
             <Link href="/community" className="login-btn" style={{ gap: 4 }}>
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-              Community
+              <span className="login-btn-text">Community</span>
             </Link>
             <Link href="/community/events" className="login-btn" style={{ gap: 4 }}>
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="18" height="18" x="3" y="4" rx="2" ry="2"/><line x1="16" x2="16" y1="2" y2="6"/><line x1="8" x2="8" y1="2" y2="6"/><line x1="3" x2="21" y1="10" y2="10"/></svg>
-              Events
+              <span className="login-btn-text">Events</span>
             </Link>
             <Link href="/marketplace" className="login-btn" style={{ gap: 4 }}>
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
-              Shop
+              <span className="login-btn-text">Shop</span>
             </Link>
             {user ? (
               <Link href="/account" className="login-btn" style={{ gap: 8, textDecoration: "none" }}>
@@ -138,14 +157,80 @@ export function Header() {
                 Sign In
               </button>
             )}
+            <button className="icon-btn header-hamburger" onClick={() => setDrawerOpen(true)} aria-label="Menu">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+            </button>
           </div>
         </div>
       </header>
 
+      {drawerOpen && (
+        <div className="header-mobile-drawer" onClick={() => setDrawerOpen(false)}>
+          <div className="mobile-drawer-panel" onClick={e => e.stopPropagation()}>
+            <div className="mobile-drawer-header">
+              <h3>Menu</h3>
+              <button className="mobile-drawer-close" onClick={() => setDrawerOpen(false)}>&times;</button>
+            </div>
+            <form className="mobile-drawer-search" onSubmit={handleMobileSearch}>
+              <input
+                type="text"
+                placeholder="Search articles..."
+                value={mobileSearch}
+                onChange={e => setMobileSearch(e.target.value)}
+              />
+            </form>
+            <div className="mobile-drawer-nav">
+              <div className="mobile-drawer-section">Navigation</div>
+              <Link href="/" className="mobile-drawer-link" onClick={() => setDrawerOpen(false)}>Home</Link>
+              <Link href="/tools" className="mobile-drawer-link" onClick={() => setDrawerOpen(false)}>Tools</Link>
+              <Link href="/community" className="mobile-drawer-link" onClick={() => setDrawerOpen(false)}>Community</Link>
+              <Link href="/community/events" className="mobile-drawer-link" onClick={() => setDrawerOpen(false)}>Events</Link>
+              <Link href="/marketplace" className="mobile-drawer-link" onClick={() => setDrawerOpen(false)}>Shop</Link>
+              <Link href="/newsletter" className="mobile-drawer-link" onClick={() => setDrawerOpen(false)}>Newsletter</Link>
+              <div className="mobile-drawer-divider" />
+              <div className="mobile-drawer-section">Community</div>
+              <Link href="/community/forum" className="mobile-drawer-link" onClick={() => setDrawerOpen(false)}>Forum</Link>
+              <Link href="/community/quiz" className="mobile-drawer-link" onClick={() => setDrawerOpen(false)}>Quizzes</Link>
+              <Link href="/community/polls" className="mobile-drawer-link" onClick={() => setDrawerOpen(false)}>Polls</Link>
+              <Link href="/community/leaderboard" className="mobile-drawer-link" onClick={() => setDrawerOpen(false)}>Leaderboard</Link>
+              <Link href="/community/learning-paths" className="mobile-drawer-link" onClick={() => setDrawerOpen(false)}>Learning Paths</Link>
+              <div className="mobile-drawer-divider" />
+              <div className="mobile-drawer-section">Account</div>
+              {user ? (
+                <>
+                  <Link href="/account" className="mobile-drawer-link" onClick={() => setDrawerOpen(false)}>My Account</Link>
+                  <Link href="/account/security" className="mobile-drawer-link" onClick={() => setDrawerOpen(false)}>Security</Link>
+                  <Link href="/account/bookmarks" className="mobile-drawer-link" onClick={() => setDrawerOpen(false)}>Bookmarks</Link>
+                </>
+              ) : (
+                <button className="mobile-drawer-link" onClick={() => { setDrawerOpen(false); setLoginOpen(true) }}>Sign In</button>
+              )}
+              <div className="mobile-drawer-divider" />
+              <div className="mobile-drawer-section">Info</div>
+              <Link href="/about" className="mobile-drawer-link" onClick={() => setDrawerOpen(false)}>About</Link>
+              <Link href="/contact" className="mobile-drawer-link" onClick={() => setDrawerOpen(false)}>Contact</Link>
+              <Link href="/advertise" className="mobile-drawer-link" onClick={() => setDrawerOpen(false)}>Advertise</Link>
+              <Link href="/write-for-us" className="mobile-drawer-link" onClick={() => setDrawerOpen(false)}>Write For Us</Link>
+            </div>
+            <div className="mobile-drawer-footer">
+              {user ? (
+                <button className="login-btn" onClick={async () => { await supabase.auth.signOut(); setDrawerOpen(false); router.refresh() }}>
+                  Sign Out
+                </button>
+              ) : (
+                <button className="login-btn" onClick={() => { setDrawerOpen(false); setLoginOpen(true) }}>
+                  Sign In
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
       {loginOpen && (
         <div className="modal-backdrop" onClick={() => setLoginOpen(false)}>
           <div className="modal-box" onClick={(e) => e.stopPropagation()}>
-            <button className="modal-close" onClick={() => setLoginOpen(false)}>✕</button>
+            <button className="modal-close" onClick={() => setLoginOpen(false)}>&times;</button>
             <div className="modal-logo" style={{ marginBottom: 16 }}>
               <span style={{ fontFamily: "'Syne', sans-serif", fontWeight: 800, fontSize: 22, color: "var(--text)" }}>Techpivo</span>
             </div>
@@ -156,7 +241,7 @@ export function Header() {
               Continue with Google
             </a>
             <a href="#" className="oauth-btn" onClick={(e) => { e.preventDefault(); supabase.auth.signInWithOAuth({ provider: "github", options: { redirectTo: `${location.origin}/auth/callback` } }) }}>
-              <span className="oauth-icon">⌥</span>
+              <span className="oauth-icon">&#8984;</span>
               Continue with GitHub
             </a>
           <div className="modal-or">or</div>

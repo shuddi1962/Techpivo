@@ -13,6 +13,15 @@ export function MainNav({ categories }: { categories: any[] }) {
     return () => window.removeEventListener("scroll", fn)
   }, [])
 
+  useEffect(() => {
+    if (mobileOpen) {
+      document.body.style.overflow = "hidden"
+    } else {
+      document.body.style.overflow = ""
+    }
+    return () => { document.body.style.overflow = "" }
+  }, [mobileOpen])
+
   return (
     <>
       <div className={`main-nav${sticky ? " nav-sticky" : ""}`}>
@@ -39,7 +48,7 @@ export function MainNav({ categories }: { categories: any[] }) {
               <span className="live-pulse" />
               <span className="live-text">LIVE</span>
             </div>
-            <button className="nav-mobile-toggle" onClick={() => setMobileOpen(m => !m)} aria-label="Menu">
+            <button className="nav-mobile-toggle" onClick={() => setMobileOpen(true)} aria-label="Menu">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
             </button>
           </div>
@@ -48,14 +57,21 @@ export function MainNav({ categories }: { categories: any[] }) {
 
       {mobileOpen && (
         <div className="mobile-menu">
-          <Link href="/" className="mobile-link">Home</Link>
-          {categories.map((cat: any) => (
-            <Link key={cat.id} href={`/category/${cat.slug}`} className="mobile-link">{cat.name}</Link>
-          ))}
-          <Link href="/tools" className="mobile-link">Tools</Link>
-          <Link href="/community" className="mobile-link">Community</Link>
-          <Link href="/community/events" className="mobile-link">Events</Link>
-          <Link href="/marketplace" className="mobile-link">Shop</Link>
+          <button className="mobile-menu-close" onClick={() => setMobileOpen(false)}>&times;</button>
+          <div style={{ padding: "8px 0" }}>
+            <Link href="/" className="mobile-link" onClick={() => setMobileOpen(false)}>Home</Link>
+            {categories.map((cat: any) => (
+              <Link key={cat.id} href={`/category/${cat.slug}`} className="mobile-link" onClick={() => setMobileOpen(false)}>{cat.name}</Link>
+            ))}
+            <Link href="/tools" className="mobile-link" onClick={() => setMobileOpen(false)}>Tools</Link>
+            <Link href="/community" className="mobile-link" onClick={() => setMobileOpen(false)}>Community</Link>
+            <Link href="/community/events" className="mobile-link" onClick={() => setMobileOpen(false)}>Events</Link>
+            <Link href="/marketplace" className="mobile-link" onClick={() => setMobileOpen(false)}>Shop</Link>
+            <Link href="/community/forum" className="mobile-link" onClick={() => setMobileOpen(false)}>Forum</Link>
+            <Link href="/community/quiz" className="mobile-link" onClick={() => setMobileOpen(false)}>Quizzes</Link>
+            <Link href="/community/polls" className="mobile-link" onClick={() => setMobileOpen(false)}>Polls</Link>
+            <Link href="/community/leaderboard" className="mobile-link" onClick={() => setMobileOpen(false)}>Leaderboard</Link>
+          </div>
         </div>
       )}
     </>
