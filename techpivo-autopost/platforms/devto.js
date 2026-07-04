@@ -1,49 +1,31 @@
-import { buildUrl } from "../utils.js"
+const API = 'https://dev.to/api';
 
-const API = "https://dev.to/api"
+exports.post = async function post(item, imageUrl, caption) {
+  const apiKey = process.env.DEVTO_API_KEY;
+  if (!apiKey) throw new Error('DEVTO_API_KEY not set');
 
-export async function post(article, env) {
-  const apiKey = env.DEVTO_API_KEY
-  if (!apiKey) throw new Error("DEVTO_API_KEY not set")
-
-  const content = stripHtml(article.content || article.excerpt || article.title)
-  const tags    = (article.tags || []).slice(0, 4).map(t => t.toLowerCase().replace(/\s+/g, ""))
+  const content = stripHtml(item.content || item.contentSnippet || item.title || '');
+  const tags = (item.categories || []).slice(0, 4).map(t => t.toLowerCase().replace(/\s+/g, ''));
 
   const body = {
     article: {
-      title: article.title,
+      title: item.title || '',
       body_markdown: content,
       published: true,
       tags,
-      canonical_url: buildUrl(article, "devto"),
+      canonical_url: item.link || '',
     },
-  }
-
+  };
   const res = await fetch(`${API}/articles`, {
-    method: "POST",
-    headers: {
-      "api-key": apiKey,
-      "Content-Type": "application/json",
-    },
+    method: 'POST',
+    headers: { 'api-key': apiKey, 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
-  })
+  });
+  if (!res.ok) throw new Error(`Dev.to (${res.status}): ${await res.text()}`);
+  const data = await res.json();
+  return { platform: 'devto', postId: String(data?.id || '') };
+};
 
-  if (!res.ok) {
-    const err = await res.text()
-    throw new Error(`Dev.to API (${res.status}): ${err}`)
-  }
-
-  const data = await res.json()
-  return { platform: "devto", postId: String(data?.id || "") }
-}
-
-function stripHtml(html) {
-  return html
-    .replace(/<[^>]+>/g, "")
-    .replace(/&amp;/g, "&")
-    .replace(/&lt;/g, "<")
-    .replace(/&gt;/g, ">")
-    .replace(/&quot;/g, '"')
-    .replace(/&#039;/g, "'")
-    .trim()
+function stripHtml(s) {
+  return String(s).replace(/<[^>]+>/g, '').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#039;/g, "'").trim();
 }

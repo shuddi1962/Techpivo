@@ -1,191 +1,150 @@
-import "dotenv/config"
-import fs from "node:fs"
-import path from "node:path"
-import { fileURLToPath } from "node:url"
-import cron from "node-cron"
-import { parseRSS } from "./utils.js"
+/**
+ * TechPivo Multi-Platform Auto-Poster
+ * Reads https://techpivo.com/rss.xml on a schedule and posts any new
+ * article (with its featured image) to whichever platforms you enable.
+ *
+ * Fully self-hosted — your own API keys, no post caps, no third-party tool.
+ */
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url))
-const POSTED_FILE = path.join(__dirname, "posted.json")
-const RSS_URL = process.env.RSS_URL || "https://techpivo.com/rss.xml"
-const CRON_SCHEDULE = process.env.CRON_SCHEDULE || `*/${process.env.POLL_INTERVAL_MINUTES || 15} * * * *`
-const RUN_ONCE = process.argv.includes("--once")
+require('dotenv').config();
+const Parser = require('rss-parser');
+const fs = require('fs');
+const path = require('path');
+const cron = require('node-cron');
 
-// ── Platform loader ──────────────────────────────────────────────────────
-const PLATFORMS = {}
+const FEED_URL    = process.env.RSS_FEED_URL || 'https://techpivo.com/rss.xml';
+const POSTED_LOG  = path.join(__dirname, 'posted.json');
+const CRON_SCHEDULE = process.env.CRON_SCHEDULE || '*/15 * * * *';
 
-async function loadPlatform(name) {
+const parser = new Parser({
+  customFields: { item: [['media:content', 'mediaContent']] },
+});
+
+// ── Platform loader (lazy) ───────────────────────────────────────────────
+function loadPlatform(name) {
   try {
-    const mod = await import(`./platforms/${name}.js`)
-    PLATFORMS[name] = mod.post
+    return require(`./platforms/${name}`);
   } catch {
-    // platform module not found — skip
+    return null;
   }
 }
 
-const PLATFORM_MAP = {
-  facebook:          "ENABLE_FACEBOOK",
-  instagram:         "ENABLE_INSTAGRAM",
-  threads:           "ENABLE_THREADS",
-  linkedin:          "ENABLE_LINKEDIN",
-  x:                 "ENABLE_X",
-  telegram:          "ENABLE_TELEGRAM",
-  reddit:            "ENABLE_REDDIT",
-  whatsapp:          "ENABLE_WHATSAPP",
-  medium:            "ENABLE_MEDIUM",
-  devto:             "ENABLE_DEVTO",
-  hashnode:          "ENABLE_HASHNODE",
-  pinterest:         "ENABLE_PINTEREST",
-  youtube_community: "ENABLE_YOUTUBE_COMMUNITY",
-}
+const PLATFORMS = [
+  { name: 'Facebook',         key: 'ENABLE_FACEBOOK',         file: 'facebook' },
+  { name: 'Instagram',        key: 'ENABLE_INSTAGRAM',        file: 'instagram' },
+  { name: 'Threads',          key: 'ENABLE_THREADS',          file: 'threads' },
+  { name: 'LinkedIn',         key: 'ENABLE_LINKEDIN',         file: 'linkedin' },
+  { name: 'X',                key: 'ENABLE_X',                file: 'x' },
+  { name: 'Telegram',         key: 'ENABLE_TELEGRAM',         file: 'telegram' },
+  { name: 'Reddit',           key: 'ENABLE_REDDIT',           file: 'reddit' },
+  { name: 'WhatsApp',         key: 'ENABLE_WHATSAPP',         file: 'whatsapp' },
+  { name: 'Medium',           key: 'ENABLE_MEDIUM',           file: 'medium' },
+  { name: 'DevTo',            key: 'ENABLE_DEVTO',            file: 'devto' },
+  { name: 'Hashnode',         key: 'ENABLE_HASHNODE',         file: 'hashnode' },
+  { name: 'Pinterest',        key: 'ENABLE_PINTEREST',        file: 'pinterest' },
+  { name: 'YouTubeCommunity', key: 'ENABLE_YOUTUBE_COMMUNITY', file: 'youtube_community' },
+];
 
 // ── posted.json ledger ───────────────────────────────────────────────────
-function readPosted() {
-  try {
-    return JSON.parse(fs.readFileSync(POSTED_FILE, "utf-8"))
-  } catch {
-    return {}
+function loadPosted() {
+  if (!fs.existsSync(POSTED_LOG)) return {};
+  try { return JSON.parse(fs.readFileSync(POSTED_LOG, 'utf8')); }
+  catch { return {}; }
+}
+function savePosted(state) {
+  fs.writeFileSync(POSTED_LOG, JSON.stringify(state, null, 2));
+}
+
+// ── Image extraction ─────────────────────────────────────────────────────
+function extractImage(item) {
+  if (item.enclosure && item.enclosure.url) return item.enclosure.url;
+  if (item.mediaContent && item.mediaContent.$ && item.mediaContent.$.url) {
+    return item.mediaContent.$.url;
   }
+  // fallback: some feeds embed it in a <media:content> string
+  if (typeof item['media:content'] === 'string' && item['media:content']) {
+    const m = item['media:content'].match(/url="([^"]+)"/);
+    if (m) return m[1];
+  }
+  return null;
 }
 
-function writePosted(posted) {
-  fs.writeFileSync(POSTED_FILE, JSON.stringify(posted, null, 2))
+// ── Default caption builder (platforms can override via env templates) ───
+function defaultCaption(item) {
+  return `${item.title || ''}\n\nRead more: ${item.link || ''}`;
 }
 
-// ── Main logic ───────────────────────────────────────────────────────────
+// ── Main run ─────────────────────────────────────────────────────────────
 async function runOnce() {
-  console.log(`[${new Date().toISOString()}] Polling ${RSS_URL} ...`)
+  console.log(`[${new Date().toISOString()}] Checking feed: ${FEED_URL}`);
 
-  // 1. Fetch & parse RSS
-  let xml
+  let feed;
   try {
-    const res = await fetch(RSS_URL)
-    if (!res.ok) throw new Error(`HTTP ${res.status}`)
-    xml = await res.text()
+    feed = await parser.parseURL(FEED_URL);
   } catch (err) {
-    console.error(`[RSS] Fetch failed: ${err.message}`)
-    return
+    console.error(`Feed parse failed: ${err.message}`);
+    return;
   }
 
-  const items = parseRSS(xml)
-  console.log(`[RSS] ${items.length} items found`)
+  const posted  = loadPosted();
+  const enabled = PLATFORMS.filter(p => process.env[p.key] === 'true');
 
-  if (items.length === 0) {
-    console.log("[RSS] No items — check feed URL or format")
-    return
+  if (enabled.length === 0) {
+    console.log('No platforms enabled — set ENABLE_* flags in .env');
+    return;
   }
 
-  // 2. Build article key (guid or link)
-  const posted = readPosted()
+  // Process oldest-first so backlog catches up chronologically
+  const items = [...(feed.items || [])].reverse();
 
   for (const item of items) {
-    const articleKey = item.guid || item.link
-    if (!articleKey) continue
+    const key = item.guid || item.link;
+    if (!key) continue;
 
-    const article = {
-      title:   item.title,
-      slug:    extractSlug(item.link),
-      excerpt: item.excerpt,
-      image:   item.image,
-      tags:    extractTags(item),
-      content: item.excerpt, // RSS feeds carry excerpt, not full body
-      link:    item.link,
+    const imageUrl = extractImage(item);
+    if (!imageUrl) {
+      console.log(`  ⏭  "${item.title}" — no image, skipping`);
+      continue;
     }
 
-    if (!article.image) {
-      console.log(`  ⏭  "${article.title}" — no image, skipping`)
-      continue
-    }
+    const caption = defaultCaption(item);
+    posted[key] = posted[key] || {};
 
-    // 3. For each enabled platform
-    for (const [platform, envVar] of Object.entries(PLATFORM_MAP)) {
-      if (process.env[envVar] !== "true") continue
+    for (const p of enabled) {
+      if (posted[key][p.name]) continue; // already posted
 
-      const postKey = `${articleKey}::${platform}`
-      if (posted[postKey]) {
-        continue // already posted
-      }
+      const mod = loadPlatform(p.file);
+      if (!mod) { console.warn(`  ⚠  No module for "${p.file}"`); continue; }
 
-      if (!PLATFORMS[platform]) {
-        await loadPlatform(platform)
-      }
-      if (!PLATFORMS[platform]) {
-        console.warn(`  ⚠  No module for "${platform}" — check platforms/${platform}.js`)
-        continue
-      }
-
-      console.log(`  → posting to ${platform} ...`)
+      console.log(`  → ${p.name}: "${item.title}"`);
       try {
-        const result = await PLATFORMS[platform](article, process.env)
-        posted[postKey] = {
-          postedAt: new Date().toISOString(),
-          postId:   result.postId,
-        }
-        console.log(`    ✓ ${result.platform} postId: ${result.postId}`)
+        const result = await mod.post(item, imageUrl, caption);
+        posted[key][p.name] = true;
+        savePosted(posted);
+        console.log(`    ✓ ${p.name} — ${result.postId || 'OK'}`);
       } catch (err) {
-        posted[postKey] = {
-          postedAt:  new Date().toISOString(),
-          failed:    true,
-          error:     err.message.slice(0, 300),
-        }
-        console.error(`    ✗ ${platform}: ${err.message}`)
+        console.error(`    ✗ ${p.name}: ${err.message.slice(0, 200)}`);
+        // not marked posted → will retry next run
       }
-
-      writePosted(posted)
     }
   }
 
-  console.log(`[${new Date().toISOString()}] Done.`)
+  console.log(`[${new Date().toISOString()}] Done.`);
 }
 
-// ── Helpers ──────────────────────────────────────────────────────────────
-function extractSlug(link) {
-  if (!link) return ""
-  try {
-    const url = new URL(link)
-    return url.pathname.replace(/^\//, "").replace(/\/$/, "")
-  } catch {
-    return link.split("/").filter(Boolean).pop() || ""
-  }
-}
-
-function extractTags(item) {
-  const tags = []
-  const tagRegex = /<category[^>]*>([\s\S]*?)<\/category>/gi
-  let m
-  while ((m = tagRegex.exec(item._raw || "")) !== null) {
-    tags.push(m[1].trim())
-  }
-  return tags
-}
-
-// Inject raw XML for tag extraction in parseRSS
-function injectRaw(xmlText) {
-  const items = []
-  const itemRegex = /<item>([\s\S]*?)<\/item>/gi
-  let match
-  while ((match = itemRegex.exec(xmlText)) !== null) {
-    items.push({ _raw: match[1] })
-  }
-  return items
-}
-
-// Patch parseRSS to attach _raw for tag extraction
-const origParse = parseRSS
-parseRSS = function(xml) {
-  const items = origParse(xml)
-  const rawItems = injectRaw(xml)
-  items.forEach((item, i) => {
-    if (rawItems[i]) item._raw = rawItems[i]._raw
-  })
-  return items
-}
-
-// ── Entry point ──────────────────────────────────────────────────────────
-if (RUN_ONCE) {
-  runOnce()
+// ── Entry ────────────────────────────────────────────────────────────────
+if (process.argv.includes('--once')) {
+  runOnce().catch(err => { console.error('Fatal:', err); process.exit(1); });
 } else {
-  console.log(`[TechPivo Auto-Poster] Starting — polling every ${CRON_SCHEDULE}`)
-  runOnce()
-  cron.schedule(CRON_SCHEDULE, runOnce)
+  runOnce().catch(err => console.error('Initial run failed:', err));
+  cron.schedule(CRON_SCHEDULE, () => {
+    runOnce().catch(err => console.error('Scheduled run failed:', err));
+  });
+  const names = enabledNames();
+  console.log(`Auto-poster running. Enabled: ${names.length ? names.join(', ') : 'none'}`);
+  console.log(`Schedule: ${CRON_SCHEDULE}`);
+}
+
+function enabledNames() {
+  return PLATFORMS.filter(p => process.env[p.key] === 'true').map(p => p.name);
 }

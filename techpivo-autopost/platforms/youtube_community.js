@@ -1,64 +1,30 @@
-import { buildUrl } from "../utils.js"
+const API = 'https://www.googleapis.com/youtube/v3';
 
-const API = "https://www.googleapis.com/youtube/v3"
+exports.post = async function post(item, imageUrl, caption) {
+  const token = process.env.YOUTUBE_ACCESS_TOKEN;
+  if (!token) throw new Error('YOUTUBE_ACCESS_TOKEN not set (API key not sufficient for Community posts)');
 
-export async function post(article, env) {
-  const channelId = env.YOUTUBE_CHANNEL_ID
-  const apiKey    = env.YOUTUBE_API_KEY
-  if (!channelId || !apiKey) throw new Error("YOUTUBE_CHANNEL_ID / YOUTUBE_API_KEY not set")
+  const channelId = process.env.YOUTUBE_CHANNEL_ID;
+  if (!channelId) throw new Error('YOUTUBE_CHANNEL_ID not set');
 
-  // YouTube Community posts via API are only available to channels
-  // with >500 subscribers and require OAuth 2.0 (not just API key).
-  // This module attempts to use the unlisted `insert` endpoint.
-  // If you have OAuth credentials instead, set YOUTUBE_ACCESS_TOKEN.
+  const template = process.env.YOUTUBE_TEMPLATE || '{title}\n\nRead more: {url}';
+  const text = template
+    .replace(/\{title\}/g,   item.title || '')
+    .replace(/\{url\}/g,     item.link || '')
+    .replace(/\{caption\}/g, caption)
+    .replace(/\{excerpt\}/g, (item.contentSnippet || item.content || '').slice(0, 200));
 
-  const text = (env.YOUTUBE_TEMPLATE || "{title}\n\n{excerpt}\n\n{url}")
-    .replace(/\{title\}/g,   article.title)
-    .replace(/\{url\}/g,     buildUrl(article, "youtube_community"))
-    .replace(/\{excerpt\}/g, (article.excerpt || "").slice(0, 200))
-    .replace(/\{tags\}/g,    (article.tags || []).join(", "))
-
-  // YouTube Community API (beta, OAuth 2.0 required)
-  const accessToken = env.YOUTUBE_ACCESS_TOKEN
-  if (!accessToken) {
-    throw new Error(
-      "YouTube Community posts require YOUTUBE_ACCESS_TOKEN (OAuth 2.0). " +
-      "API keys don't support this endpoint. " +
-      "See https://developers.google.com/youtube/v3/docs/communityPosts"
-    )
-  }
-
-  const body = {
-    snippet: {
-      channelId,
-      text,
-    },
-  }
-
-  if (article.image) {
-    body.contentDetails = {
-      attachment: {
-        image: {
-          url: article.image,
-        },
-      },
-    }
+  const body = { snippet: { channelId, text } };
+  if (imageUrl) {
+    body.contentDetails = { attachment: { image: { url: imageUrl } } };
   }
 
   const res = await fetch(`${API}/communityPosts?part=snippet,contentDetails`, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-      "Content-Type": "application/json",
-    },
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
-  })
-
-  if (!res.ok) {
-    const err = await res.text()
-    throw new Error(`YouTube Community API (${res.status}): ${err}`)
-  }
-
-  const data = await res.json()
-  return { platform: "youtube_community", postId: data?.id || "" }
-}
+  });
+  if (!res.ok) throw new Error(`YouTube Community (${res.status}): ${await res.text()}`);
+  const data = await res.json();
+  return { platform: 'youtube_community', postId: data?.id || '' };
+};

@@ -1,56 +1,36 @@
-import { buildUrl } from "../utils.js"
+const API = 'https://graph.facebook.com/v21.0';
 
-const FB_API = "https://graph.facebook.com/v21.0"
+exports.post = async function post(item, imageUrl, caption) {
+  const igUserId = process.env.IG_USER_ID;
+  const token    = process.env.FB_PAGE_ACCESS_TOKEN;
+  if (!igUserId || !token) throw new Error('IG_USER_ID / FB_PAGE_ACCESS_TOKEN not set');
+  if (!imageUrl) throw new Error('Instagram requires an image');
 
-export async function post(article, env) {
-  const igUserId = env.IG_USER_ID
-  const token    = env.FB_PAGE_ACCESS_TOKEN
-  if (!igUserId || !token) throw new Error("IG_USER_ID / FB_PAGE_ACCESS_TOKEN not set")
-  if (!article.image) throw new Error("Instagram requires an image (article has none)")
+  const template = process.env.INSTAGRAM_TEMPLATE || '{title}\n\nRead more: Link in bio';
+  const cap = template
+    .replace(/\{title\}/g,   item.title || '')
+    .replace(/\{url\}/g,     item.link || '')
+    .replace(/\{caption\}/g, caption)
+    .replace(/\{excerpt\}/g, (item.contentSnippet || item.content || '').slice(0, 150));
 
-  const caption = (env.INSTAGRAM_TEMPLATE || "{title}\n\n{excerpt}\n\nLink in bio 🔗\ntechpivo.com")
-    .replace(/\{title\}/g,   article.title)
-    .replace(/\{url\}/g,     buildUrl(article, "instagram"))
-    .replace(/\{excerpt\}/g, (article.excerpt || "").slice(0, 150))
-    .replace(/\{tags\}/g,    (article.tags || []).join(", "))
-
-  // Step 1 — create a media container with the image URL
-  const createBody = new URLSearchParams({
-    image_url: article.image,
-    caption,
-    access_token: token,
-  })
-
-  const createRes = await fetch(`${FB_API}/${igUserId}/media`, {
-    method: "POST",
-    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+  // Step 1 — create media container
+  const createBody = new URLSearchParams({ image_url: imageUrl, caption: cap, access_token: token });
+  const createRes = await fetch(`${API}/${igUserId}/media`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body: createBody,
-  })
+  });
+  if (!createRes.ok) throw new Error(`Instagram create (${createRes.status}): ${await createRes.text()}`);
+  const { id: creationId } = await createRes.json();
 
-  if (!createRes.ok) {
-    const err = await createRes.text()
-    throw new Error(`Instagram create-media API (${createRes.status}): ${err}`)
-  }
-
-  const { id: creationId } = await createRes.json()
-
-  // Step 2 — publish the container
-  const publishBody = new URLSearchParams({
-    creation_id: creationId,
-    access_token: token,
-  })
-
-  const publishRes = await fetch(`${FB_API}/${igUserId}/media_publish`, {
-    method: "POST",
-    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+  // Step 2 — publish
+  const publishBody = new URLSearchParams({ creation_id: creationId, access_token: token });
+  const publishRes = await fetch(`${API}/${igUserId}/media_publish`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body: publishBody,
-  })
-
-  if (!publishRes.ok) {
-    const err = await publishRes.text()
-    throw new Error(`Instagram publish API (${publishRes.status}): ${err}`)
-  }
-
-  const data = await publishRes.json()
-  return { platform: "instagram", postId: data.id }
-}
+  });
+  if (!publishRes.ok) throw new Error(`Instagram publish (${publishRes.status}): ${await publishRes.text()}`);
+  const data = await publishRes.json();
+  return { platform: 'instagram', postId: data.id };
+};

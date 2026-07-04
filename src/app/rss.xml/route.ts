@@ -1,5 +1,14 @@
 import { createClient } from "@/lib/supabase/server"
 
+function esc(s: string | null | undefined): string {
+  return String(s ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&apos;")
+}
+
 export async function GET() {
   const supabase = createClient()
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://techpivo.com"
@@ -22,18 +31,21 @@ export async function GET() {
   const items =
     deduped
       ?.map(
-        (post: any) => `
+        (post: any) => {
+          const img = post.featured_image ? esc(post.featured_image) : ""
+          return `
   <item>
     <title><![CDATA[${post.title}]]></title>
-    <link>${siteUrl}/${post.slug}</link>
-    <guid>${siteUrl}/${post.slug}</guid>
-    ${post.featured_image ? `<media:content url="${post.featured_image}" medium="image" type="image/jpeg" />
-    <enclosure url="${post.featured_image}" type="image/jpeg" length="0" />` : ""}
+    <link>${esc(siteUrl)}/${esc(post.slug)}</link>
+    <guid>${esc(siteUrl)}/${esc(post.slug)}</guid>
+    ${img ? `<media:content url="${img}" medium="image" type="image/jpeg" />
+    <enclosure url="${img}" type="image/jpeg" length="0" />` : ""}
     <description><![CDATA[${post.excerpt || ""}]]></description>
     <author>${post.author?.full_name || "Techpivo"}</author>
     <category>${post.category?.name || "Tech"}</category>
     <pubDate>${new Date(post.published_at).toUTCString()}</pubDate>
   </item>`
+        }
       )
       .join("") || ""
 
@@ -41,10 +53,10 @@ export async function GET() {
 <rss version="2.0" xmlns:media="http://search.yahoo.com/mrss/" xmlns:atom="http://www.w3.org/2005/Atom">
   <channel>
     <title>Techpivo</title>
-    <link>${siteUrl}</link>
+    <link>${esc(siteUrl)}</link>
     <description>Tech, decoded. Fast.</description>
     <language>en</language>
-    <atom:link href="${siteUrl}/rss.xml" rel="self" type="application/rss+xml"/>
+    <atom:link href="${esc(siteUrl)}/rss.xml" rel="self" type="application/rss+xml"/>
     ${items}
   </channel>
 </rss>`

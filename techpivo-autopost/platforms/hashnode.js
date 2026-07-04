@@ -1,65 +1,35 @@
-import { buildUrl } from "../utils.js"
+const API = 'https://gql.hashnode.com';
 
-const GRAPHQL_URL = "https://gql.hashnode.com"
+exports.post = async function post(item, imageUrl, caption) {
+  const token = process.env.HASHNODE_PAT;
+  if (!token) throw new Error('HASHNODE_PAT not set');
 
-export async function post(article, env) {
-  const token = env.HASHNODE_PAT
-  if (!token) throw new Error("HASHNODE_PAT not set")
+  const content = stripHtml(item.content || item.contentSnippet || item.title || '');
+  const tags = (item.categories || []).slice(0, 5).map(t => ({ name: t, slug: t.toLowerCase().replace(/\s+/g, '-') }));
 
-  const content = stripHtml(article.content || article.excerpt || article.title)
-  const tags    = (article.tags || []).slice(0, 5).map(t => ({
-    name: t,
-    slug: t.toLowerCase().replace(/\s+/g, "-"),
-  }))
-
-  const query = `
-    mutation PublishPost($input: PublishPostInput!) {
-      publishPost(input: $input) {
-        post {
-          id
-          url
-        }
-      }
-    }
-  `
-
+  const query = `mutation PublishPost($input: PublishPostInput!) {
+    publishPost(input: $input) { post { id url } }
+  }`;
   const variables = {
     input: {
-      title: article.title,
+      title: item.title || '',
       contentMarkdown: content,
       tags,
-      originalArticleURL: buildUrl(article, "hashnode"),
+      originalArticleURL: item.link || '',
     },
-  }
+  };
 
-  const res = await fetch(GRAPHQL_URL, {
-    method: "POST",
-    headers: {
-      Authorization: token,
-      "Content-Type": "application/json",
-    },
+  const res = await fetch(API, {
+    method: 'POST',
+    headers: { Authorization: token, 'Content-Type': 'application/json' },
     body: JSON.stringify({ query, variables }),
-  })
+  });
+  if (!res.ok) throw new Error(`Hashnode (${res.status}): ${await res.text()}`);
+  const { data, errors } = await res.json();
+  if (errors?.length) throw new Error(`Hashnode: ${errors.map(e => e.message).join(', ')}`);
+  return { platform: 'hashnode', postId: data?.publishPost?.post?.id || '' };
+};
 
-  if (!res.ok) {
-    const err = await res.text()
-    throw new Error(`Hashnode API (${res.status}): ${err}`)
-  }
-
-  const { data, errors } = await res.json()
-  if (errors?.length) throw new Error(`Hashnode errors: ${errors.map(e => e.message).join(", ")}`)
-
-  const postId = data?.publishPost?.post?.id || ""
-  return { platform: "hashnode", postId }
-}
-
-function stripHtml(html) {
-  return html
-    .replace(/<[^>]+>/g, "")
-    .replace(/&amp;/g, "&")
-    .replace(/&lt;/g, "<")
-    .replace(/&gt;/g, ">")
-    .replace(/&quot;/g, '"')
-    .replace(/&#039;/g, "'")
-    .trim()
+function stripHtml(s) {
+  return String(s).replace(/<[^>]+>/g, '').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#039;/g, "'").trim();
 }

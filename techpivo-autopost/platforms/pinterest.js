@@ -1,46 +1,33 @@
-import { buildUrl } from "../utils.js"
+const API = 'https://api.pinterest.com/v5';
 
-const API = "https://api.pinterest.com/v5"
+exports.post = async function post(item, imageUrl, caption) {
+  const token = process.env.PINTEREST_ACCESS_TOKEN;
+  if (!token) throw new Error('PINTEREST_ACCESS_TOKEN not set');
+  if (!imageUrl) throw new Error('Pinterest requires an image');
 
-export async function post(article, env) {
-  const token    = env.PINTEREST_ACCESS_TOKEN
-  const boardId  = env.PINTEREST_BOARD_ID
-  if (!token) throw new Error("PINTEREST_ACCESS_TOKEN not set")
-
-  if (!article.image) throw new Error("Pinterest requires an image (article has none)")
-
-  const description = (env.PINTEREST_TEMPLATE || "{title}\n\n{excerpt}\n\n{url}")
-    .replace(/\{title\}/g,   article.title)
-    .replace(/\{url\}/g,     buildUrl(article, "pinterest"))
-    .replace(/\{excerpt\}/g, (article.excerpt || "").slice(0, 200))
-    .replace(/\{tags\}/g,    (article.tags || []).join(", "))
+  const boardId = process.env.PINTEREST_BOARD_ID;
+  const description = process.env.PINTEREST_TEMPLATE
+    ? process.env.PINTEREST_TEMPLATE
+        .replace(/\{title\}/g,   item.title || '')
+        .replace(/\{url\}/g,     item.link || '')
+        .replace(/\{caption\}/g, caption)
+    : caption;
 
   const body = {
-    title: article.title.slice(0, 100),
+    title: (item.title || '').slice(0, 100),
     description,
-    link: buildUrl(article, "pinterest"),
-    alt_text: `Read about ${article.title}`,
-  }
-
-  if (boardId) body.board_id = boardId
-
-  // Option A: pin from image URL
-  body.image_source_url = article.image
+    link: item.link || '',
+    alt_text: item.title ? `Read about ${item.title}` : '',
+    image_source_url: imageUrl,
+  };
+  if (boardId) body.board_id = boardId;
 
   const res = await fetch(`${API}/pins`, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${token}`,
-      "Content-Type": "application/json",
-    },
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
-  })
-
-  if (!res.ok) {
-    const err = await res.text()
-    throw new Error(`Pinterest API (${res.status}): ${err}`)
-  }
-
-  const data = await res.json()
-  return { platform: "pinterest", postId: data?.id || "" }
-}
+  });
+  if (!res.ok) throw new Error(`Pinterest (${res.status}): ${await res.text()}`);
+  const data = await res.json();
+  return { platform: 'pinterest', postId: data?.id || '' };
+};
