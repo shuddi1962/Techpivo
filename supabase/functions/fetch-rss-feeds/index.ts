@@ -321,7 +321,9 @@ async function processFeed(feed: any, categories: Array<{id:string;slug:string}>
         const { data: exists } = await supabase
           .from('posts')
           .select('id')
-          .or(`original_source_url.eq.${link},title.ilike.${title.slice(0, 80).replace(/[%_]/g, '\\$&')}%`)
+          .or(
+            `original_source_url.eq.${link},source_url.eq.${link},title.ilike.${title.slice(0, 80).replace(/[%_]/g, '\\$&')}%`
+          )
           .limit(1)
         if (exists?.length) continue
 
@@ -359,6 +361,8 @@ async function processFeed(feed: any, categories: Array<{id:string;slug:string}>
             status: 'draft',
             rss_source_url: feed.feed_url,
             original_source_url: link,
+            source_url: link,
+            source_urls: [link],
             ai_rewritten: false,
             published_at: (() => {
               const d = new Date(item.pubDate as string || Date.now())

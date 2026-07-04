@@ -11,8 +11,16 @@ export async function GET() {
     .order("published_at", { ascending: false })
     .limit(50)
 
+  const seen = new Set<string>()
+  const deduped = (posts || []).filter(p => {
+    const norm = p.title?.toLowerCase().replace(/[^a-z0-9]/g, "").slice(0, 80) || ""
+    if (seen.has(norm)) return false
+    seen.add(norm)
+    return true
+  })
+
   const items =
-    posts
+    deduped
       ?.map(
         (post: any) => `
   <item>

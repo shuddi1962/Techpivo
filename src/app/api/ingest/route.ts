@@ -317,18 +317,21 @@ async function run(req: NextRequest) {
   for (const c of cats || []) catMap[c.slug] = c.id
 
   // Load all existing posts' fingerprints and URLs for dedup (no date limit)
+  // Check BOTH source_url AND original_source_url — two independent pipelines
+  // set different columns, causing cross-pipeline blindness
   const { data: existingPosts } = await supabase
     .from('posts')
-    .select('content_fingerprint, source_url, source_urls, title')
-    .not('source_url', 'is', null)
+    .select('content_fingerprint, source_url, source_urls, original_source_url, title')
+    .or('source_url.not.is.null,original_source_url.not.is.null')
     .limit(5000)
 
   const seenFingerprints = new Set<string>()
   const seenUrls         = new Set<string>()
   const seenTitles       = new Map<string, string>() // normalized -> original
   for (const p of existingPosts || []) {
-    if (p.content_fingerprint) seenFingerprints.add(p.content_fingerprint)
-    if (p.source_url)          seenUrls.add(p.source_url)
+    if (p.content_fingerprint)   seenFingerprints.add(p.content_fingerprint)
+    if (p.source_url)            seenUrls.add(p.source_url)
+    if (p.original_source_url)   seenUrls.add(p.original_source_url)
     for (const u of (p.source_urls || [])) seenUrls.add(u)
     if (p.title) {
       const norm = p.title.toLowerCase().replace(/[^a-z0-9\s]/g, '').replace(/\s+/g, ' ').trim()

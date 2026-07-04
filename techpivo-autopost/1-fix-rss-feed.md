@@ -1,11 +1,10 @@
-# Step 1 — Fix the RSS feed so it carries images
+# Step 1 — Fix the RSS feed so it carries images & deduplicates
 
 The auto-poster skips articles without an image because social platforms
-require a media attachment for rich link previews. The current RSS feed at
-`/rss.xml` does not include a `<media:content>` or `<enclosure>` element, so
-we need to add one.
+require a media attachment. The current RSS feed also had duplicate items
+(3-5 variants of the same story from two independent ingestion pipelines).
 
-## What to change
+## Fix 1 — Add image data to each item
 
 Edit `src/app/rss.xml/route.ts`:
 
@@ -14,15 +13,12 @@ Edit `src/app/rss.xml/route.ts`:
 ```diff
   const { data: posts } = await supabase
     .from("posts")
--   .select("title, slug, excerpt, content, published_at, author:profiles(full_name), category:categories(name)")
-+   .select("title, slug, excerpt, content, featured_image, published_at, author:profiles(full_name), category:categories(name)")
-    .eq("status", "published")
-    .order("published_at", { ascending: false })
-    .limit(50)
+-   .select("title, slug, excerpt, content, published_at, ...")
++   .select("title, slug, excerpt, content, featured_image, published_at, ...")
 ```
 
-2. Add a `<media:content>` element inside each `<item>` and declare the
-   namespace on the `<rss>` tag:
+2. Add `<media:content>` + `<enclosure>` inside each `<item>`, and declare
+   the namespace on the `<rss>` tag:
 
 ```diff
 + xmlns:media="http://search.yahoo.com/mrss/"
@@ -32,34 +28,54 @@ Edit `src/app/rss.xml/route.ts`:
 ```diff
     <guid>${siteUrl}/${post.slug}</guid>
 +   <media:content url="${post.featured_image}" medium="image" type="image/jpeg" />
++   <enclosure url="${post.featured_image}" type="image/jpeg" length="0" />
     <description><![CDATA[${post.excerpt || ""}]]></description>
 ```
 
-3. Optionally add `<enclosure>` for backward compatibility with readers that
-   don't support Media RSS:
+## Fix 2 — De-duplicate items before rendering
 
-```diff
-+   <enclosure url="${post.featured_image}" type="image/jpeg" length="0" />
+Before mapping posts to RSS items, filter by normalized title hash:
+
+```ts
+const seen = new Set<string>()
+const deduped = (posts || []).filter(p => {
+  const norm = p.title?.toLowerCase().replace(/[^a-z0-9]/g, "").slice(0, 80) || ""
+  if (seen.has(norm)) return false
+  seen.add(norm)
+  return true
+})
 ```
+
+## Fix 3 — Stop duplicates at the pipeline level (root cause)
+
+The duplication happens because **two RSS ingestion pipelines** run independently:
+
+| Pipeline | Sets | Dedup checks |
+|----------|------|-------------|
+| `fetch-rss-feeds` (edge fn) | `original_source_url` | `original_source_url` + title |
+| `/api/ingest` (Vercel) | `source_url` | `source_url` + fingerprint + title |
+
+Each pipeline can't see the other's posts because they use different columns.
+
+**Patches applied:**
+
+1. **`supabase/functions/fetch-rss-feeds/index.ts`** — insert now also sets
+   `source_url` and `source_urls`; dedup check also queries `source_url`.
+
+2. **`src/app/api/ingest/route.ts`** — dedup query uses `.or()` on both
+   `source_url` and `original_source_url`; dedup loop also checks
+   `original_source_url`.
+
+3. **`src/app/api/deduplicate/route.ts`** — cleanup endpoint now groups by
+   whichever URL column is populated (`original_source_url || source_url`).
 
 ## Verify
 
-After deploying, run:
-
 ```bash
-curl -s https://techpivo.com/rss.xml | grep -o '<media:content[^>]*>' | head -3
+# Check images are present
+curl -s https://techpivo.com/rss.xml | grep -o '<enclosure[^>]*>' | head -3
+
+# Check duplicates are gone — run this, count results for a topic
+curl -s https://techpivo.com/rss.xml | grep -o 'NetNut' | wc -l
+# Should be 1, not 5+
 ```
-
-You should see a URL returned for each item. Now the auto-poster will never
-skip an article for lack of an image.
-
-## Why this matters
-
-- Facebook / Instagram / Threads / LinkedIn all generate link previews from
-  Open Graph tags, but the auto-poster posts these articles by sending a
-  message + link. Without an image in the feed, the poster has nothing to
-  attach for platforms like X (where you can attach media to a tweet) or
-  Instagram (where every post requires an image).
-
-- The auto-poster filters `rss.items.filter(item => itemImage(item))` — no
-  image, no post. Fixing the feed unblocks all platforms at once.

@@ -13,16 +13,17 @@ function getSupabase() {
 export async function GET() {
   const { data: posts, error } = await getSupabase()
     .from("posts")
-    .select("id, title, original_source_url, content")
+    .select("id, title, original_source_url, source_url, content")
     .order("created_at", { ascending: true })
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
-  // Group by URL -> keep post with longest content
+  // Group by URL (check both columns) -> keep post with longest content
   const urlGroups: Record<string, { id: string; len: number }[]> = {}
   for (const p of posts) {
-    if (!p.original_source_url) continue
-    const key = p.original_source_url.toLowerCase().trim()
+    const url = p.original_source_url || p.source_url
+    if (!url) continue
+    const key = url.toLowerCase().trim()
     if (!urlGroups[key]) urlGroups[key] = []
     urlGroups[key].push({ id: p.id, len: p.content?.length || 0 })
   }
