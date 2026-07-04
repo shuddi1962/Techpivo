@@ -1,70 +1,84 @@
-const API = 'https://api.linkedin.com/v2';
-
-function utmUrl(link) {
-  return `${link}${link.includes('?') ? '&' : '?'}utm_source=linkedin&utm_medium=social&utm_campaign=techpivo-auto`;
-}
-
 exports.post = async function post(item, imageUrl, caption) {
-  const orgUrn = process.env.LINKEDIN_ORG_URN;
   const token  = process.env.LINKEDIN_ACCESS_TOKEN;
-  if (!orgUrn || !token) throw new Error('LINKEDIN_ORG_URN / LINKEDIN_ACCESS_TOKEN not set');
+  const orgUrn = process.env.LINKEDIN_ORG_URN;
+  if (!token || !orgUrn) throw new Error('LINKEDIN_ACCESS_TOKEN / LINKEDIN_ORG_URN not set');
 
-  const author = `urn:li:organization:${orgUrn}`;
+  const headers = {
+    Authorization: `Bearer ${token}`,
+    'Content-Type': 'application/json',
+    'X-Restli-Protocol-Version': '2.0.0',
+  };
+
   const template = process.env.LINKEDIN_TEMPLATE || '{title}\n\nRead more: {url}';
   const text = template
     .replace(/\{title\}/g,   item.title || '')
-    .replace(/\{url\}/g,     utmUrl(item.link))
+    .replace(/\{url\}/g,     item.link || '')
     .replace(/\{caption\}/g, caption)
     .replace(/\{excerpt\}/g, (item.contentSnippet || item.content || '').slice(0, 200));
 
-  const body = {
-    author,
+  let assetUrn = null;
+
+  if (imageUrl) {
+    // Step 1 — register the upload
+    const registerRes = await fetch(
+      'https://api.linkedin.com/v2/assets?action=registerUpload',
+      {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({
+          registerUploadRequest: {
+            recipes: ['urn:li:digitalmediaRecipe:feedshare-image'],
+            owner: orgUrn,
+            serviceRelationships: [
+              { relationshipType: 'OWNER', identifier: 'urn:li:userGeneratedContent' },
+            ],
+          },
+        }),
+      }
+    );
+    const registerData = await registerRes.json();
+    if (registerData.serviceErrorCode) {
+      throw new Error(`LinkedIn register upload: ${JSON.stringify(registerData)}`);
+    }
+    const uploadUrl =
+      registerData.value.uploadMechanism[
+        'com.linkedin.digitalmedia.uploading.MediaUploadHttpRequest'
+      ].uploadUrl;
+    assetUrn = registerData.value.asset;
+
+    // Step 2 — PUT the image bytes
+    const imgRes = await fetch(imageUrl);
+    const imgBuf = Buffer.from(await imgRes.arrayBuffer());
+    const putRes = await fetch(uploadUrl, {
+      method: 'PUT',
+      headers: { Authorization: `Bearer ${token}` },
+      body: imgBuf,
+    });
+    if (!putRes.ok) throw new Error(`LinkedIn image upload failed: ${putRes.status}`);
+  }
+
+  // Step 3 — create the post
+  const postBody = {
+    author: orgUrn,
     lifecycleState: 'PUBLISHED',
     specificContent: {
       'com.linkedin.ugc.ShareContent': {
         shareCommentary: { text },
-        shareMediaCategory: 'NONE',
+        shareMediaCategory: assetUrn ? 'IMAGE' : 'NONE',
+        ...(assetUrn && {
+          media: [{ status: 'READY', media: assetUrn }],
+        }),
       },
     },
     visibility: { 'com.linkedin.ugc.MemberNetworkVisibility': 'PUBLIC' },
   };
 
-  if (imageUrl) {
-    try {
-      const regRes = await fetch(`${API}/assets?action=registerUpload`, {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json', 'X-Restli-Protocol-Version': '2.0.0' },
-        body: JSON.stringify({
-          registerUploadRequest: {
-            recipes: ['urn:li:digitalmediaRecipe:feedshare-image'],
-            owner: author,
-            serviceRelationships: [{ relationshipType: 'OWNER', identifier: 'urn:li:userGeneratedContent' }],
-          },
-        }),
-      });
-      if (regRes.ok) {
-        const regData = await regRes.json();
-        const uploadUrl = regData.value.uploadMechanism['com.linkedin.digitalmedia.uploading.MediaUploadHttpRequest'].uploadUrl;
-        const assetUrn  = regData.value.asset;
-        const imgRes = await fetch(imageUrl);
-        if (imgRes.ok) {
-          const imgBuf = await imgRes.arrayBuffer();
-          await fetch(uploadUrl, { method: 'PUT', headers: { 'Content-Type': 'image/jpeg' }, body: Buffer.from(imgBuf) });
-          body.specificContent['com.linkedin.ugc.ShareContent'].media = [
-            { status: 'READY', description: { text: item.title }, media: assetUrn, title: { text: item.title } },
-          ];
-          body.specificContent['com.linkedin.ugc.ShareContent'].shareMediaCategory = 'IMAGE';
-        }
-      }
-    } catch { /* fall through without image */ }
-  }
-
-  const res = await fetch(`${API}/ugcPosts`, {
+  const postRes = await fetch('https://api.linkedin.com/v2/ugcPosts', {
     method: 'POST',
-    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json', 'X-Restli-Protocol-Version': '2.0.0' },
-    body: JSON.stringify(body),
+    headers,
+    body: JSON.stringify(postBody),
   });
-  if (!res.ok) throw new Error(`LinkedIn API (${res.status}): ${await res.text()}`);
-  const data = await res.json();
+  if (!postRes.ok) throw new Error(`LinkedIn post failed: ${await postRes.text()}`);
+  const data = await postRes.json();
   return { platform: 'linkedin', postId: data.id };
 };

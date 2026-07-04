@@ -1,15 +1,19 @@
 {
   "name": "techpivo-autopost",
   "version": "1.0.0",
-  "private": true,
-  "description": "Self-hosted auto-poster for TechPivo — polls RSS, posts to 13 social platforms",
+  "description": "Self-hosted RSS-to-Facebook/Instagram auto-poster for techpivo.com",
+  "main": "poster.js",
+  "type": "commonjs",
   "scripts": {
-    "start": "node poster.js",
-    "once": "node poster.js --once"
+    "start": "node poster.js"
   },
   "dependencies": {
+    "dotenv": "^16.4.5",
+    "node-cron": "^3.0.3",
     "rss-parser": "^3.13.0",
-    "dotenv": "^16.4.7",
-    "node-cron": "^3.0.3"
+    "twitter-api-v2": "^1.18.2"
+  },
+  "engines": {
+    "node": ">=18"
   }
 }

@@ -1,4 +1,5 @@
-const API = 'https://graph.threads.net/v1.0';
+const GRAPH_VERSION = process.env.GRAPH_API_VERSION || 'v1.0';
+const API = `https://graph.threads.net/${GRAPH_VERSION}`;
 
 exports.post = async function post(item, imageUrl, caption) {
   const userId = process.env.THREADS_USER_ID;
