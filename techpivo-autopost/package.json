@@ -1,0 +1,17 @@
+{
+  "name": "techpivo-autopost",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Self-hosted auto-poster for TechPivo — polls RSS feed, posts to Facebook, Instagram, Threads, LinkedIn, X",
+  "type": "module",
+  "scripts": {
+    "start": "node poster.js",
+    "once": "node poster.js --once"
+  },
+  "dependencies": {
+    "node-cron": "^3.0.3",
+    "dotenv": "^16.4.7",
+    "fast-xml-parser": "^5.0.9",
+    "he": "^1.2.0"
+  }
+}

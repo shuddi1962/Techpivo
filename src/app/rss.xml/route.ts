@@ -6,7 +6,7 @@ export async function GET() {
 
   const { data: posts } = await supabase
     .from("posts")
-    .select("title, slug, excerpt, content, published_at, author:profiles(full_name), category:categories(name)")
+    .select("title, slug, excerpt, content, featured_image, published_at, author:profiles(full_name), category:categories(name)")
     .eq("status", "published")
     .order("published_at", { ascending: false })
     .limit(50)
@@ -19,6 +19,8 @@ export async function GET() {
     <title><![CDATA[${post.title}]]></title>
     <link>${siteUrl}/${post.slug}</link>
     <guid>${siteUrl}/${post.slug}</guid>
+    ${post.featured_image ? `<media:content url="${post.featured_image}" medium="image" type="image/jpeg" />
+    <enclosure url="${post.featured_image}" type="image/jpeg" length="0" />` : ""}
     <description><![CDATA[${post.excerpt || ""}]]></description>
     <author>${post.author?.full_name || "Techpivo"}</author>
     <category>${post.category?.name || "Tech"}</category>
@@ -28,7 +30,7 @@ export async function GET() {
       .join("") || ""
 
   const xml = `<?xml version="1.0" encoding="UTF-8"?>
-<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+<rss version="2.0" xmlns:media="http://search.yahoo.com/mrss/" xmlns:atom="http://www.w3.org/2005/Atom">
   <channel>
     <title>Techpivo</title>
     <link>${siteUrl}</link>

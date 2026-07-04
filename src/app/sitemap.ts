@@ -2,20 +2,22 @@ import { createClient } from "@/lib/supabase/server"
 import { SITE_URL } from "@/lib/constants"
 import type { MetadataRoute } from "next"
 
+export const revalidate = 3600
+
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const supabase = createClient()
+  const now = new Date().toISOString()
 
   let posts: any[] = [], categories: any[] = [], subcategories: any[] = []
-  let profiles: any[] = [], series: any[] = [], kwArticles: any[] = [], allTags: any[] = []
+  let profiles: any[] = [], series: any[] = [], kwArticles: any[] = []
   try {
-    const [postsRes, catsRes, subsRes, profilesRes, seriesRes, kwArticlesRes, tagsRes] = await Promise.all([
-      supabase.from("posts").select("slug, updated_at, published_at, robots_noindex, author_id, category_id").eq("status", "published").order("published_at", { ascending: false }),
+    const [postsRes, catsRes, subsRes, profilesRes, seriesRes, kwArticlesRes] = await Promise.all([
+      supabase.from("posts").select("slug, updated_at, published_at, robots_noindex, author_id, category_id").eq("status", "published").order("published_at", { ascending: false }).limit(500),
       supabase.from("categories").select("id, slug"),
       supabase.from("subcategories").select("slug, category_id"),
       supabase.from("profiles").select("username, id"),
       supabase.from("series").select("slug"),
-      supabase.from("keyword_articles").select("slug, updated_at").eq("status", "published").order("published_at", { ascending: false }),
-      supabase.from("posts").select("seo_keywords").eq("status", "published").limit(1000),
+      supabase.from("keyword_articles").select("slug, updated_at").eq("status", "published").order("published_at", { ascending: false }).limit(500),
     ])
     posts = postsRes.data || []
     categories = catsRes.data || []
@@ -23,15 +25,9 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     profiles = profilesRes.data || []
     series = seriesRes.data || []
     kwArticles = kwArticlesRes.data || []
-    allTags = tagsRes.data || []
   } catch (e) {
     console.error("Sitemap data fetch failed, serving static pages only", e)
   }
-
-  const tagSet = new Set<string>()
-  allTags.flatMap((p: any) => p.seo_keywords || []).forEach((t: string) => tagSet.add(t))
-
-  const now = new Date().toISOString()
 
   const staticPages: { path: string; priority: number; freq: "hourly" | "daily" | "weekly" | "monthly" }[] = [
     { path: "", priority: 1, freq: "hourly" },
@@ -67,7 +63,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   const noindexSlugs = new Set(posts.filter(p => (p as any).robots_noindex).map(p => p.slug))
   for (const post of posts) {
-    if (noindexSlugs.has(post.slug)) continue
+    if ((post as any).robots_noindex) continue
     entries.push({
       url: `${SITE_URL}/${post.slug}`,
       lastModified: post.updated_at || post.published_at || now,
@@ -77,12 +73,10 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   }
 
   for (const cat of categories) {
-    const catSlug = cat.slug
     const catCount = posts.filter((p: any) => p.category_id === cat.id).length
-    const isThin = catCount < 2
-    if (isThin) continue
+    if (catCount < 2) continue
     entries.push({
-      url: `${SITE_URL}/category/${catSlug}`,
+      url: `${SITE_URL}/category/${cat.slug}`,
       lastModified: now,
       changeFrequency: "daily",
       priority: 0.9,
@@ -100,18 +94,9 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     })
   }
 
-  for (const tag of Array.from(tagSet)) {
-    entries.push({
-      url: `${SITE_URL}/tag/${tag.toLowerCase().replace(/\s+/g, "-")}`,
-      lastModified: now,
-      changeFrequency: "weekly",
-      priority: 0.3,
-    })
-  }
-
   const postSlugs = new Set(posts.map(p => p.slug))
   for (const kw of kwArticles) {
-    if (postSlugs.has(kw.slug) || noindexSlugs.has(kw.slug)) continue
+    if (postSlugs.has(kw.slug)) continue
     entries.push({
       url: `${SITE_URL}/${kw.slug}`,
       lastModified: kw.updated_at || now,
