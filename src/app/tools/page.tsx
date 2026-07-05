@@ -6,7 +6,7 @@ import { TopBar } from "@/components/layout/TopBar"
 import { Header } from "@/components/layout/Header"
 import { Footer } from "@/components/layout/Footer"
 import { NewsletterStrip } from "@/components/home/NewsletterStrip"
-import { Braces, Key, Globe, Type, Calculator, Shield, Search, Image, Lock, Hash, Binary, Link2, FileText, Palette, Minimize2, FileJson, Clock } from "lucide-react"
+import { Braces, Key, Globe, Type } from "lucide-react"
 
 interface Tool {
   name: string
@@ -24,33 +24,7 @@ const tools: Tool[] = [
   { name: "Word Counter", slug: "word-counter", description: "Count words, characters, sentences, and paragraphs", icon: Type, category: "SEO", color: "bg-orange-500/10 text-orange-500" },
 ]
 
-const comingSoon: Tool[] = [
-  { name: "Base64 Encoder", slug: "#", description: "Encode and decode Base64 strings", icon: Binary, category: "Developer", color: "bg-purple-500/10 text-purple-500" },
-  { name: "URL Encoder", slug: "#", description: "Encode and decode URLs", icon: Link2, category: "Developer", color: "bg-cyan-500/10 text-cyan-500" },
-  { name: "Hash Generator", slug: "#", description: "Generate MD5, SHA-1, SHA-256 hashes", icon: Hash, category: "Security", color: "bg-red-500/10 text-red-500" },
-  { name: "Password Strength", slug: "#", description: "Check password strength and security", icon: Shield, category: "Security", color: "bg-green-500/10 text-green-500" },
-  { name: "Email Validator", slug: "#", description: "Validate email address format", icon: Lock, category: "Security", color: "bg-pink-500/10 text-pink-500" },
-  { name: "Meta Tag Generator", slug: "#", description: "Generate meta tags for SEO", icon: Search, category: "SEO", color: "bg-green-500/10 text-green-500" },
-  { name: "Readability Checker", slug: "#", description: "Check content readability score", icon: FileText, category: "SEO", color: "bg-purple-500/10 text-purple-500" },
-  { name: "Image Compressor", slug: "#", description: "Compress images without quality loss", icon: Image, category: "Image", color: "bg-cyan-500/10 text-cyan-500" },
-  { name: "Image Resizer", slug: "#", description: "Resize images to any dimension", icon: Minimize2, category: "Image", color: "bg-pink-500/10 text-pink-500" },
-  { name: "Color Picker", slug: "#", description: "Pick and convert color codes", icon: Palette, category: "Image", color: "bg-amber-500/10 text-amber-500" },
-  { name: "Unit Converter", slug: "#", description: "Convert between measurement units", icon: Calculator, category: "Calculator", color: "bg-green-500/10 text-green-500" },
-  { name: "Percentage Calculator", slug: "#", description: "Calculate percentages quickly", icon: Calculator, category: "Calculator", color: "bg-blue-500/10 text-blue-500" },
-  { name: "Date Calculator", slug: "#", description: "Calculate date differences", icon: Clock, category: "Calculator", color: "bg-purple-500/10 text-purple-500" },
-]
-
-const categories = ["All", "Developer", "Security", "SEO", "Image", "Calculator"]
-
 export default function PublicToolsPage() {
-  const [search, setSearch] = useState("")
-  const [category, setCategory] = useState("All")
-
-  const filtered = comingSoon.filter(t => {
-    const matchSearch = t.name.toLowerCase().includes(search.toLowerCase()) || t.description.toLowerCase().includes(search.toLowerCase())
-    const matchCat = category === "All" || t.category === category
-    return matchSearch && matchCat
-  })
 
   return (
     <div>
@@ -98,62 +72,6 @@ export default function PublicToolsPage() {
                 </Link>
               )
             })}
-          </div>
-
-          <div style={{ marginBottom: 32 }}>
-            <h2 style={{ fontFamily: "'Syne', sans-serif", fontSize: 24, fontWeight: 700, marginBottom: 8 }}>More Tools Coming Soon</h2>
-            <p style={{ fontSize: 14, color: "var(--muted)", marginBottom: 24 }}>We&apos;re building more free tools for developers, marketers, and tech enthusiasts.</p>
-
-            <div className="flex gap-1 flex-wrap" style={{ marginBottom: 20 }}>
-              {categories.map(cat => (
-                <button
-                  key={cat}
-                  onClick={() => setCategory(cat)}
-                  style={{
-                    padding: "8px 14px",
-                    fontSize: 13,
-                    fontWeight: 600,
-                    borderRadius: 8,
-                    border: "1px solid var(--border)",
-                    background: category === cat ? "var(--accent)" : "transparent",
-                    color: category === cat ? "#fff" : "var(--muted)",
-                    cursor: "pointer",
-                    transition: "all 0.15s",
-                  }}
-                >
-                  {cat}
-                </button>
-              ))}
-            </div>
-
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: 14 }}>
-              {filtered.map((tool) => {
-                const Icon = tool.icon
-                return (
-                  <div
-                    key={tool.name}
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 12,
-                      padding: 16,
-                      borderRadius: 10,
-                      border: "1px solid var(--border)",
-                      background: "var(--card)",
-                      opacity: 0.7,
-                    }}
-                  >
-                    <div className={tool.color} style={{ width: 36, height: 36, borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                      <Icon size={18} />
-                    </div>
-                    <div>
-                      <div style={{ fontSize: 14, fontWeight: 600, color: "var(--text)" }}>{tool.name}</div>
-                      <div style={{ fontSize: 12, color: "var(--muted)" }}>Coming Soon</div>
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
           </div>
         </div>
       </main>

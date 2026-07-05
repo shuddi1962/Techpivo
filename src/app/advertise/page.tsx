@@ -24,17 +24,18 @@ export default function AdvertisePage() {
       </div>
 
       <div className="px-4 md:px-12 lg:px-16 pb-12">
-      {/* Stats */}
+      {/* Audience */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-12">
         {[
-          { value: "50K+", label: "Monthly Visitors" },
-          { value: "8K+", label: "Newsletter Subscribers" },
-          { value: "95%", label: "Reader Satisfaction" },
-          { value: "4M+", label: "Monthly Impressions" },
+          { icon: "👨‍💻", label: "Tech Professionals", desc: "Developers, IT admins, and decision-makers" },
+          { icon: "📱", label: "Multi-Platform Reach", desc: "Desktop, mobile, and newsletter" },
+          { icon: "🎯", label: "Targeted Content", desc: "11 categories covering technology topics" },
+          { icon: "🌍", label: "Global Audience", desc: "English-speaking tech audience worldwide" },
         ].map((stat) => (
           <div key={stat.label} className="bg-card border rounded-xl p-6 text-center">
-            <div className="text-3xl font-bold text-accent mb-1">{stat.value}</div>
-            <div className="text-sm text-muted-foreground">{stat.label}</div>
+            <div className="text-3xl mb-1">{stat.icon}</div>
+            <div className="font-bold text-lg mb-1">{stat.label}</div>
+            <div className="text-sm text-muted-foreground">{stat.desc}</div>
           </div>
         ))}
       </div>

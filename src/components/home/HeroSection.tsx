@@ -1,6 +1,7 @@
 "use client"
 
 import Link from "next/link"
+import Image from "next/image"
 import { useState, useEffect, useCallback } from "react"
 import { CategoryBadge } from "@/components/ui/CategoryBadge"
 
@@ -33,12 +34,14 @@ export function HeroSection({ featured, secondary }: HeroSectionProps) {
       <div className="hero-grid">
         <Link href={`/${post.slug}`} className="hero-main">
           <div className="hero-main-img">
-            <img
-              src={post.featured_image || "/api/placeholder/900/600"}
-              alt={post.title}
-              className="hero-img"
-              style={{ width: "100%", height: "100%", objectFit: "cover" }}
-            />
+              <Image
+                  src={post.featured_image || "/api/placeholder/900/600"}
+                  alt={post.title}
+                  fill
+                  className="hero-img object-cover"
+                  unoptimized={!post.featured_image?.startsWith("http")}
+                  priority
+                />
             <div className="hero-main-overlay" />
           </div>
           {post.is_breaking && (
@@ -55,10 +58,12 @@ export function HeroSection({ featured, secondary }: HeroSectionProps) {
           {others.slice(0, 2).map((p) => (
             <Link key={p.id} href={`/${p.slug}`} className="hero-sec-card">
               <div className="hero-sec-img-wrap">
-                <img
+                <Image
                   src={p.featured_image || "/api/placeholder/300/200"}
                   alt={p.title}
-                  style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                  fill
+                  className="object-cover"
+                  unoptimized={!p.featured_image?.startsWith("http")}
                 />
               </div>
               <div className="hero-sec-body">

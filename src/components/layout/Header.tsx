@@ -1,6 +1,7 @@
 "use client"
 
 import Link from "next/link"
+import Image from "next/image"
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { useTheme } from "next-themes"
@@ -95,7 +96,7 @@ export function Header() {
 
           {/* Logo — always visible */}
           <Link href="/" className="logo">
-            <img src="/logo.svg?v=6" alt="Techpivo" className="logo-img" width="340" height="68" />
+            <Image src="/logo.svg?v=6" alt="Techpivo" className="logo-img" width={340} height={68} priority />
             <span className="logo-text">Techpivo</span>
           </Link>
 
@@ -171,7 +172,7 @@ export function Header() {
           <div className="mobile-drawer-panel" onClick={e => e.stopPropagation()}>
             <div className="mobile-drawer-header">
               <Link href="/" className="mobile-drawer-logo" onClick={() => setDrawerOpen(false)}>
-                <img src="/logo.svg?v=6" alt="Techpivo" style={{ height: 28, width: "auto" }} />
+                <Image src="/logo.svg?v=6" alt="Techpivo" width={140} height={28} />
                 <span style={{ fontFamily: "'Syne', sans-serif", fontWeight: 800, fontSize: 18, color: "var(--text)", marginLeft: 4 }}>Techpivo</span>
               </Link>
               <button className="mobile-drawer-close" onClick={() => setDrawerOpen(false)}>&times;</button>

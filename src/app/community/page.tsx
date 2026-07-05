@@ -30,15 +30,15 @@ export default async function CommunityPage() {
           </div>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-8 max-w-3xl mx-auto">
             {[
-              { icon: Users, label: 'Members', value: '2,450+' },
-              { icon: MessageSquare, label: 'Discussions', value: '1,200+' },
-              { icon: Brain, label: 'Quizzes', value: '85+' },
-              { icon: Trophy, label: 'Daily XP', value: '15K+' },
+              { icon: MessageSquare, label: 'Forum', desc: 'Tech discussions and Q&A' },
+              { icon: Brain, label: 'Quizzes', desc: 'Test your tech knowledge' },
+              { icon: BarChart3, label: 'Polls', desc: 'Share your opinion' },
+              { icon: Trophy, label: 'Leaderboard', desc: 'Compete and earn XP' },
             ].map((stat) => (
               <div key={stat.label} className="text-center p-4 rounded-xl bg-card border">
                 <stat.icon className="h-6 w-6 mx-auto mb-2 text-primary" />
-                <div className="text-2xl font-bold">{stat.value}</div>
-                <div className="text-sm text-muted-foreground">{stat.label}</div>
+                <div className="font-bold text-lg">{stat.label}</div>
+                <div className="text-sm text-muted-foreground">{stat.desc}</div>
               </div>
             ))}
           </div>

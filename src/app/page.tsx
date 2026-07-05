@@ -183,12 +183,28 @@ export default async function HomePage() {
         <TopBar />
         <Header />
         <MainNav categories={[]} />
-        <main className="min-h-[60vh] flex items-center justify-center px-4">
-          <div className="text-center max-w-lg">
-            <h1 className="text-3xl font-bold mb-4" style={{ fontFamily: "'Syne', sans-serif" }}>Welcome to Techpivo</h1>
-            <p className="text-base leading-relaxed" style={{ color: "var(--muted)" }}>
-              Tech, decoded. Fast. We&apos;re preparing the latest tech news and articles for you. Check back soon.
-            </p>
+        <main>
+          <div className="site-main">
+            <div className="main-layout">
+              <div className="content-col">
+                <section style={{ padding: "60px 0", textAlign: "center" as const }}>
+                  <h1 className="text-3xl font-bold mb-4" style={{ fontFamily: "'Syne', sans-serif" }}>Explore Technology With Techpivo</h1>
+                  <p className="text-base leading-relaxed max-w-2xl mx-auto" style={{ color: "var(--muted)" }}>
+                    In-depth technology news, tutorials, reviews, and guides. From AI and cybersecurity to programming and gadgets — we cover the topics that matter.
+                  </p>
+                </section>
+
+                <div style={{ margin: "20px 0 60px", padding: 32, borderRadius: 16, background: "linear-gradient(135deg, var(--accent) 0%, #D97706 100%)", textAlign: "center" as const }}>
+                  <h2 style={{ fontFamily: "'Syne', sans-serif", fontSize: 24, fontWeight: 800, color: "#fff", marginBottom: 8 }}>Free Tech Tools</h2>
+                  <p style={{ fontSize: 14, color: "rgba(255,255,255,0.85)", marginBottom: 20, maxWidth: 500, margin: "0 auto 20px" }}>
+                    Developer utilities, SEO tools, security checkers, and more. Fast, free, and private.
+                  </p>
+                  <a href="/tools" style={{ display: "inline-block", padding: "12px 32px", borderRadius: 8, background: "#fff", color: "var(--accent)", fontWeight: 700, fontSize: 14, textDecoration: "none" }}>
+                    Explore All Tools
+                  </a>
+                </div>
+              </div>
+            </div>
           </div>
         </main>
         <NewsletterStrip />

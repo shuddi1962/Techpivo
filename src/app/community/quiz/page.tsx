@@ -77,8 +77,11 @@ export default async function QuizPage() {
           <Card>
             <CardContent className="p-12 text-center">
               <Brain className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-              <h3 className="text-lg font-semibold mb-2">No Quizzes Available</h3>
-              <p className="text-muted-foreground">Quizzes are coming soon. Check back later!</p>
+              <h3 className="text-lg font-semibold mb-2">No Quizzes Yet</h3>
+              <p className="text-muted-foreground">Quizzes are being prepared. Subscribe to our newsletter to know when they launch.</p>
+              <a href="/newsletter" className="inline-flex items-center gap-2 mt-4 text-sm font-medium text-primary hover:underline">
+                Subscribe to Newsletter →
+              </a>
             </CardContent>
           </Card>
         )}

@@ -10,7 +10,7 @@ import { sendPushNotification }     from '@/lib/web-push'
 import { buildAffiliateBlock }      from '@/lib/affiliate-inject'
 import { submitToGoogleIndexing }   from '@/lib/google-indexing'
 
-const DEFAULT_DAILY_CAP = 30
+const DEFAULT_DAILY_CAP = 15
 const ITEMS_PER_FEED = 10
 
 const BOT_UA = 'Mozilla/5.0 (compatible; Techpivo/1.0; +https://techpivo.com/bot)'

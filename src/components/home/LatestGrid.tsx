@@ -1,4 +1,5 @@
 import Link from "next/link"
+import Image from "next/image"
 import { CategoryBadge } from "@/components/ui/CategoryBadge"
 
 export function LatestGrid({ posts }: { posts: any[] }) {
@@ -17,12 +18,12 @@ export function LatestGrid({ posts }: { posts: any[] }) {
         {posts.slice(0, 6).map((post) => (
           <Link key={post.id} href={`/${post.slug}`} className="post-card">
             <div className="post-card-img-wrap">
-              <img
+              <Image
                 src={post.featured_image || "/api/placeholder/400/225"}
                 alt={post.title}
-                className="post-card-img"
-                style={{ width: '100%', height: '100%' }}
-                loading="lazy"
+                fill
+                className="post-card-img object-cover"
+                unoptimized={!post.featured_image?.startsWith("http")}
               />
               <div className="post-card-img-overlay" />
               <div className="post-card-img-top">

@@ -176,7 +176,7 @@ export default function EventsPage() {
                 <CardContent className="p-12 text-center">
                   <Calendar className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
                   <h3 className="text-lg font-semibold mb-2">No Events Found</h3>
-                  <p className="text-muted-foreground">Check back soon for upcoming tech events!</p>
+                  <p className="text-muted-foreground">Events will appear here once they are scheduled.</p>
                 </CardContent>
               </Card>
             )}

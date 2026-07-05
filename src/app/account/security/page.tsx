@@ -127,7 +127,7 @@ export default function SecurityPage() {
             <Badge variant="outline">Not Enabled</Badge>
           </div>
           <Button variant="outline" className="mt-4" disabled>
-            <Smartphone className="h-4 w-4 mr-2" /> Enable 2FA (Coming Soon)
+            <Smartphone className="h-4 w-4 mr-2" /> Enable Two-Factor Authentication
           </Button>
         </CardContent>
       </Card>

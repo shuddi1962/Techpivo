@@ -160,7 +160,7 @@ export default function MarketplacePage() {
           <div className="text-5xl mb-4">🛒</div>
           <h2 className="text-2xl font-bold mb-2">No Products Yet</h2>
           <p className="text-muted-foreground mb-6 max-w-md mx-auto">
-            Our marketplace is being stocked. Check back soon for curated tech deals from our trusted partners.
+            Curated tech deals from our trusted partners are coming. Browse our affiliate program partners below.
           </p>
           <div className="space-y-2">
             <p className="text-sm font-medium">Available Programs:</p>

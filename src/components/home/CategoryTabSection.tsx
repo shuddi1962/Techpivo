@@ -1,6 +1,7 @@
 "use client"
 
 import Link from "next/link"
+import Image from "next/image"
 import { useState } from "react"
 import { CategoryBadge } from "@/components/ui/CategoryBadge"
 
@@ -37,13 +38,13 @@ export function CategoryTabSection({ categories, posts }: { categories: any[]; p
         {bigPost && (
           <Link href={`/${bigPost.slug}`} className="tab-big-post">
             <div className="tab-big-img-wrap">
-              <img
-                src={bigPost.featured_image || "/api/placeholder/600/450"}
-                alt={bigPost.title}
-                className="tab-big-img"
-                style={{ width: '100%', height: '100%' }}
-                loading="lazy"
-              />
+                <Image
+                  src={bigPost.featured_image || "/api/placeholder/600/450"}
+                  alt={bigPost.title}
+                  fill
+                  className="tab-big-img object-cover"
+                  unoptimized={!bigPost.featured_image?.startsWith("http")}
+                />
               <div className="tab-big-overlay" />
               <div className="tab-big-badge-wrap">
                 <CategoryBadge name={bigPost.categories?.name} color={bigPost.categories?.color} size="xs" />
@@ -61,12 +62,12 @@ export function CategoryTabSection({ categories, posts }: { categories: any[]; p
           {listPosts.map((post) => (
             <Link key={post.id} href={`/${post.slug}`} className="tab-list-card">
               <div className="tab-list-thumb">
-                <img
+                <Image
                   src={post.featured_image || "/api/placeholder/90/90"}
                   alt={post.title}
-                  className="tab-thumb-img"
-                  style={{ width: '100%', height: '100%' }}
-                  loading="lazy"
+                  fill
+                  className="tab-thumb-img object-cover"
+                  unoptimized={!post.featured_image?.startsWith("http")}
                 />
               </div>
               <div className="tab-list-body">

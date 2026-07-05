@@ -1,6 +1,7 @@
 "use client"
 
 import Link from "next/link"
+import Image from "next/image"
 import { useTheme } from "next-themes"
 import { useState, useEffect } from "react"
 import { createClient } from "@/lib/supabase/client"
@@ -76,7 +77,7 @@ export function Footer({ categories, recentPosts }: { categories: any[]; recentP
         {/* Brand column */}
         <div className="footer-brand-col">
           <div className="footer-logo">
-            <img src={logoSrc} alt="Techpivo" style={{ height: 52, width: 'auto' }} />
+            <Image src={logoSrc} alt="Techpivo" width={260} height={52} />
           </div>
           <p className="footer-tagline">Tech, decoded. Fast.</p>
           <p className="footer-about">

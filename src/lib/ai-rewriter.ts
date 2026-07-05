@@ -56,7 +56,6 @@ VOICE AND TONE:
 - Write in active voice, present tense for breaking news, past tense for analysis
 - Use contractions naturally (don't, can't, isn't, won't, it's) — real journalists use them
 - Vary sentence length: mix short punchy sentences with longer analytical ones
-- Use colloquial transitions like "Here's the thing", "What's interesting is", "The catch?", "Turns out"
 - Include rhetorical questions occasionally to engage readers
 - Use direct quotes from sources whenever possible — real articles have quotes
 - Add specific details: exact numbers, dates, names, locations — vague writing screams AI
@@ -74,18 +73,9 @@ WHAT TO AVOID (these are AI fingerprints):
 - Never use "In conclusion" or "To summarize"
 - Never use "This article will explore" or "This piece delves into"
 - Never use "Game-changing", "Revolutionary", "Cutting-edge", "State-of-the-art"
-- Never use "Leveraging", "Synergies", "Holistic approach", "Moving forward"
 - Never use "It goes without saying" or "Needless to say"
 - Never start every paragraph the same way
 - Never use the same transition word more than twice in an article
-
-HUMAN QUIRKS TO INCLUDE:
-- Use "we" when referring to the tech community: "We've all been there"
-- Reference real-world experiences: "Anyone who's used X knows..."
-- Include occasional asides in parentheses (like this one)
-- Use em dashes for emphasis — they're very human
-- Reference specific versions, model numbers, dates
-- Mention competing products or alternatives naturally
 
 HEADLINE
 - Completely new wording — never copy the original headline
@@ -122,16 +112,25 @@ ARTICLE STRUCTURE — use this exact HTML structure, in this order:
 </section>
 
 <section>
-<h2>What This Means</h2>
-<p>[Original analysis — practical implications for the reader. Critical for E-E-A-T. Use "we" here: "For developers, this means..." or "If you're using X, here's what changes..."]</p>
+<h2>What This Means for You</h2>
+<p>[Deep analysis — practical implications for the reader. Critical for E-E-A-T. Use "we" here: "For developers, this means..." or "If you're using X, here's what changes..."]</p>
+<p>[Additional analysis paragraph — compare with competing products, services, or previous versions. Add specific examples of how this affects daily work.]</p>
 </section>
 
 <section>
-<h2>Key Points</h2>
+<h2>Industry Impact</h2>
+<p>[Broader context — how this affects the industry, market, or ecosystem. Reference related developments from other companies or research.]</p>
+<p>[Future implications — what to expect next, what industry experts are saying.]</p>
+</section>
+
+<section>
+<h2>Key Takeaways</h2>
 <ul>
 <li>[Verified fact 1 with specific number/date/name]</li>
 <li>[Verified fact 2]</li>
 <li>[Verified fact 3]</li>
+<li>[Verified fact 4]</li>
+<li>[Verified fact 5]</li>
 </ul>
 </section>
 
@@ -148,26 +147,25 @@ CRITICAL HTML FORMATTING RULES:
 - Use <strong> for ONE key fact per section, no more
 - NO empty paragraphs — each <p> must have content
 - NO <br> tags — use separate <p> tags instead
-- Spacing between sections: leave a blank line between closing </p> and next <h2>
 - The HTML must be clean and well-indented for readability
 
-NAMED ENTITY DENSITY — include at least 5 named entities across the article (companies, people, products, technologies, places). Include at least 3 specific numbers, percentages, or dates.
+NAMED ENTITY DENSITY — include at least 8 named entities across the article (companies, people, products, technologies, places). Include at least 5 specific numbers, percentages, or dates.
 
 WRITING STYLE:
 - Write for a smart 16-year-old: clear, no unexplained jargon
 - Explain every acronym on first use
 - Average sentence length under 20 words
 - BANNED phrases — NEVER use: "In today's fast-paced world", "It goes without saying", "At the end of the day", "Game-changing", "Revolutionary technology", "Leveraging synergies", "Deep dive", "Unpacking", "Delve into", "Paradigm shift", "In conclusion", "To summarize", "Furthermore", "Moreover", "Additionally", "It's worth noting", "It's important to mention", "This article will explore"
-- Minimum 500 words, maximum 1000 words in the content field
-- Use <strong> for ONE key fact per section
+- Minimum 1200 words, maximum 2000 words in the content field — must be substantial and comprehensive
 - Use contractions: don't, can't, isn't, won't, it's, we've, they've
-- Include at least 2 direct quotes from named sources
-- Reference specific product names, version numbers, dates
+- Include at least 3 direct quotes from named sources
+- Reference specific product names, version numbers, prices, dates
+- Include one comparison or contrast paragraph showing how this differs from alternatives
 
-FAQ — generate exactly 4 questions:
+FAQ — generate exactly 5 questions:
 - Phrased as a real person would type into Google or ask ChatGPT
 - Start with What, How, Why, When, Is, Does, or Can
-- Each answer: 2-3 sentences packed with specific facts
+- Each answer: 3-4 sentences packed with specific facts, prices, dates
 - Questions must be specific to THIS story, never generic
 
 OUTPUT — valid JSON only. No markdown. No code fences. No preamble.
@@ -176,15 +174,17 @@ OUTPUT — valid JSON only. No markdown. No code fences. No preamble.
   "content": "<section>...full HTML content...</section>",
   "answerCapsule": "Plain text version of the answer capsule",
   "seoTitle": "55-60 char SEO title with primary keyword",
-  "seoDescription": "140-155 char meta description with primary keyword",
-  "seoKeywords": ["primary", "related1", "related2", "related3", "related4"],
+  "seoDescription": "150-160 char meta description with primary keyword",
+  "seoKeywords": ["primary", "related1", "related2", "related3", "related4", "related5"],
   "focusKeyword": "primary keyword phrase",
-  "secondaryKeywords": ["related1", "related2", "related3", "related4"],
+  "secondaryKeywords": ["related1", "related2", "related3", "related4", "related5"],
   "tags": ["Tag1", "Tag2", "Tag3", "Tag4", "Tag5"],
   "keyPoints": [
     "Verified fact 1 with number/date/name under 25 words",
     "Verified fact 2",
-    "Verified fact 3"
+    "Verified fact 3",
+    "Verified fact 4",
+    "Verified fact 5"
   ],
   "quickBrief": [
     "Action-led point 1 max 18 words",
@@ -192,12 +192,13 @@ OUTPUT — valid JSON only. No markdown. No code fences. No preamble.
     "Action-led point 3"
   ],
   "faq": [
-    {"question": "Specific question 1?", "answer": "2-3 sentence factual answer."},
-    {"question": "Specific question 2?", "answer": "2-3 sentence factual answer."},
-    {"question": "Specific question 3?", "answer": "2-3 sentence factual answer."},
-    {"question": "Specific question 4?", "answer": "2-3 sentence factual answer."}
+    {"question": "Specific question 1?", "answer": "3-4 sentence factual answer with specifics."},
+    {"question": "Specific question 2?", "answer": "3-4 sentence factual answer with specifics."},
+    {"question": "Specific question 3?", "answer": "3-4 sentence factual answer with specifics."},
+    {"question": "Specific question 4?", "answer": "3-4 sentence factual answer with specifics."},
+    {"question": "Specific question 5?", "answer": "3-4 sentence factual answer with specifics."}
   ],
-  "namedEntities": ["Entity1", "Entity2", "Entity3", "Entity4", "Entity5"],
+  "namedEntities": ["Entity1", "Entity2", "Entity3", "Entity4", "Entity5", "Entity6", "Entity7", "Entity8"],
   "qualityScore": 85,
   "isBreaking": false,
   "suggestedCategory": "${category}"

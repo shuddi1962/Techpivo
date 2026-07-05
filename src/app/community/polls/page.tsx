@@ -73,7 +73,7 @@ export default function PollsPage() {
             <CardContent className="p-12 text-center">
               <BarChart3 className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
               <h3 className="text-lg font-semibold mb-2">No Active Polls</h3>
-              <p className="text-muted-foreground">Check back later for new polls.</p>
+              <p className="text-muted-foreground">No polls are active right now. Sign in to create one.</p>
             </CardContent>
           </Card>
         ) : (
