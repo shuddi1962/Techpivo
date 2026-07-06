@@ -20,21 +20,27 @@ export function TrendingWidget({ posts: initialPosts }: { posts: any[] }) {
 
   if (!posts?.length) return null
   return (
-    <div className="sidebar-card">
+    <div className="sidebar-card trending-widget">
       <div className="sidebar-card-header">
-        <span className="sidebar-card-icon">◈</span>
-        <span className="sidebar-card-title">Trending Now</span>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--accent2)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M8 18L12 7L16 18M9.5 14.5H14.5"/>
+          <path d="M4 22L12 2L20 22"/>
+        </svg>
+        <span className="sidebar-card-title" style={{ color: "var(--accent2)" }}>Trending Now</span>
       </div>
       <ul className="trending-list">
         {posts.map((post: any, i: number) => (
-          <li key={post.id} className="trending-item">
-            <span className={`trending-rank${i < 3 ? [" gold", " silver", " bronze"][i] : ""}`}>
-              {String(i + 1).padStart(2, "0")}
+          <li key={post.id} className={`trending-item${i === 0 ? " trending-top" : ""}`}>
+            <span className={`trending-badge${i < 3 ? [" gold", " silver", " bronze"][i] : ""}`}>
+              {i + 1}
             </span>
             <div className="trending-content">
               <Link href={`/${post.slug}`} className="trending-title">{post.title}</Link>
               <div className="trending-meta">
                 <CategoryBadge name={post.categories?.name} color={post.categories?.color} size="xs" />
+                {post.views && (
+                  <span className="trending-views">{post.views.toLocaleString()} views</span>
+                )}
               </div>
             </div>
           </li>
