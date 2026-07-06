@@ -15,7 +15,7 @@ export function LayoutWrapper({ children }: { children: React.ReactNode }) {
   const isHome = pathname === "/"
   const noLayout = isAdmin || isHome || pathname === "/login" || pathname === "/signup" || pathname === "/account" || pathname?.startsWith("/auth/")
   const [categories, setCategories] = useState<any[]>([])
-
+  const [socialUrls, setSocialUrls] = useState<Record<string, string>>({})
   const [recentPosts, setRecentPosts] = useState<any[]>([])
 
   useEffect(() => {
@@ -24,7 +24,8 @@ export function LayoutWrapper({ children }: { children: React.ReactNode }) {
       supabase.from("posts").select("category_id, subcategory_id").eq("status", "published"),
       supabase.from("categories").select("*, subcategories(*)").order("name"),
       supabase.from("posts").select("id,title,slug,featured_image").eq("status","published").order("published_at",{ascending:false}).limit(6),
-    ]).then(([postsRes, catsRes, recentRes]) => {
+      supabase.from("social_accounts").select("platform, credentials"),
+    ]).then(([postsRes, catsRes, recentRes, socialRes]) => {
       const catIds = new Set((postsRes.data || []).map((p: any) => p.category_id).filter(Boolean) as string[])
       const subcatIds = new Set((postsRes.data || []).map((p: any) => p.subcategory_id).filter(Boolean) as string[])
       if (catsRes.data) {
@@ -37,6 +38,14 @@ export function LayoutWrapper({ children }: { children: React.ReactNode }) {
         setCategories(filtered)
       }
       if (recentRes.data) setRecentPosts(recentRes.data)
+      if (socialRes.data) {
+        const map: Record<string, string> = {}
+        socialRes.data.forEach((a: any) => {
+          const creds = a.credentials as Record<string, string> | undefined
+          if (creds?.follow_url) map[a.platform] = creds.follow_url
+        })
+        setSocialUrls(map)
+      }
     })
   }, [])
 
@@ -46,11 +55,11 @@ export function LayoutWrapper({ children }: { children: React.ReactNode }) {
 
   return (
     <>
-      <TopBar />
+      <TopBar socialUrls={socialUrls} />
       <Header />
       <MainNav categories={categories} />
       <main>{children}</main>
-      <Footer categories={categories} recentPosts={recentPosts} />
+      <Footer categories={categories} recentPosts={recentPosts} socialUrls={socialUrls} />
       <BackToTop />
     </>
   )

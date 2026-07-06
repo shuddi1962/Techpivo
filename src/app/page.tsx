@@ -42,6 +42,7 @@ export default async function HomePage() {
   let gamingPosts: any[] | null = null
   let subcategories: any[] | null = null
   let allTags: any[] | null = null
+  let socialUrls: Record<string, string> = {}
 
   if (supabase) {
     try {
@@ -140,6 +141,8 @@ export default async function HomePage() {
 
         supabase.from("posts").select("seo_keywords")
           .eq("status", "published").limit(100),
+
+        supabase.from("social_accounts").select("platform, credentials"),
       ])
 
       const extract = (r: any, i: number) =>
@@ -172,6 +175,15 @@ export default async function HomePage() {
 
       subcategories = extract(results[17], 17)
       allTags = extract(results[18], 18)
+      const socialData = extract(results[19], 19)
+      if (socialData) {
+        const map: Record<string, string> = {}
+        socialData.forEach((a: any) => {
+          const creds = a.credentials
+          if (creds?.follow_url) map[a.platform] = creds.follow_url
+        })
+        socialUrls = map
+      }
     } catch (e) {
       console.error("Homepage data fetch failed", e)
     }
@@ -180,7 +192,7 @@ export default async function HomePage() {
   if (!heroPosts || heroPosts.length === 0) {
     return (
       <div>
-        <TopBar />
+        <TopBar socialUrls={socialUrls} />
         <Header />
         <MainNav categories={[]} />
         <main>
@@ -208,7 +220,7 @@ export default async function HomePage() {
           </div>
         </main>
         <NewsletterStrip />
-        <Footer categories={[]} recentPosts={[]} />
+        <Footer categories={[]} recentPosts={[]} socialUrls={socialUrls} />
       </div>
     )
   }
@@ -231,8 +243,8 @@ export default async function HomePage() {
 
   return (
     <div>
-      <TopBar />
-      <Header />
+      <TopBar socialUrls={socialUrls} />
+        <Header />
       <MainNav categories={cats} />
       <BreakingTicker posts={tickerPosts || []} />
 
@@ -358,7 +370,7 @@ export default async function HomePage() {
 
       <NewsletterStrip />
 
-      <Footer categories={cats} recentPosts={latestPosts || []} />
+      <Footer categories={cats} recentPosts={latestPosts || []} socialUrls={socialUrls} />
     </div>
   )
 }
