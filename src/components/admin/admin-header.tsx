@@ -64,7 +64,12 @@ export function AdminHeader() {
                 Profile
               </DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem className="text-red-500" onClick={async () => { await supabase.auth.signOut(); router.push("/"); }}>
+              <DropdownMenuItem className="text-red-500" onClick={async () => {
+                await supabase.auth.signOut()
+                await fetch("/api/auth/logout", { method: "POST" })
+                router.push("/")
+                router.refresh()
+              }}>
                 <LogOut className="mr-2 h-4 w-4" />
                 Sign Out
               </DropdownMenuItem>
