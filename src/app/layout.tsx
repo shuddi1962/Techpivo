@@ -60,9 +60,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
-        <link rel="apple-touch-icon" href="/favicon.svg" sizes="180x180" />
-        <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-        <link rel="icon" type="image/x-icon" href="/favicon.ico" sizes="any" />
         <meta name="apple-mobile-web-app-title" content={SITE_NAME} />
         <script
           dangerouslySetInnerHTML={{

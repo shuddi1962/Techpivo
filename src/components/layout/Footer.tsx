@@ -70,7 +70,7 @@ export function Footer({ categories, recentPosts }: { categories: any[]; recentP
       }
     })
   }, [])
-  const logoSrc = !mounted ? '/logo.svg?v=6' : (resolvedTheme === 'dark' ? '/logo.svg?v=6' : '/logo-light.svg?v=1')
+  const logoSrc = !mounted ? '/logo.svg' : (resolvedTheme === 'dark' ? '/logo.svg' : '/logo-light.svg')
   return (
     <footer className="site-footer">
       <div className="footer-inner">

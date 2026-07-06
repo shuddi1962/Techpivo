@@ -1,11 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  async redirects() {
-    return [
-      { source: '/icon.svg', destination: '/favicon.svg', permanent: true },
-    ]
-  },
   images: {
+    dangerouslyAllowSVG: true,
     remotePatterns: [
       { protocol: 'https', hostname: '**.theverge.com' },
       { protocol: 'https', hostname: '**.techcrunch.com' },

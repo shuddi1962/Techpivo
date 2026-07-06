@@ -96,7 +96,7 @@ export function Header() {
 
           {/* Logo — always visible */}
           <Link href="/" className="logo">
-            <Image src="/logo.svg?v=6" alt="Techpivo" className="logo-img" width={340} height={68} priority />
+            <Image src="/logo.svg" alt="Techpivo" className="logo-img" width={340} height={68} priority />
             <span className="logo-text">Techpivo</span>
           </Link>
 
@@ -172,7 +172,7 @@ export function Header() {
           <div className="mobile-drawer-panel" onClick={e => e.stopPropagation()}>
             <div className="mobile-drawer-header">
               <Link href="/" className="mobile-drawer-logo" onClick={() => setDrawerOpen(false)}>
-                <Image src="/logo.svg?v=6" alt="Techpivo" width={140} height={28} />
+                <Image src="/logo.svg" alt="Techpivo" width={140} height={28} />
                 <span style={{ fontFamily: "'Syne', sans-serif", fontWeight: 800, fontSize: 18, color: "var(--text)", marginLeft: 4 }}>Techpivo</span>
               </Link>
               <button className="mobile-drawer-close" onClick={() => setDrawerOpen(false)}>&times;</button>
