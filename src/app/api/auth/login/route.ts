@@ -1,7 +1,20 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createServerClient } from "@supabase/ssr"
+import { checkRateLimit, resetRateLimit } from "@/lib/rate-limiter"
 
 export async function POST(request: NextRequest) {
+  const forwarded = request.headers.get("x-forwarded-for")
+  const ip = forwarded?.split(",")[0]?.trim() || "127.0.0.1"
+  const key = `login:${ip}`
+
+  const { allowed, cooldown } = checkRateLimit(key)
+  if (!allowed) {
+    return NextResponse.json(
+      { error: `Too many attempts. Try again in ${cooldown}s.`, cooldown },
+      { status: 429 }
+    )
+  }
+
   const response = NextResponse.json({ success: true })
   const { email, password } = await request.json()
 
@@ -19,7 +32,10 @@ export async function POST(request: NextRequest) {
   )
 
   const { error } = await supabase.auth.signInWithPassword({ email, password })
-  if (error) return NextResponse.json({ error: error.message }, { status: 401 })
+  if (error) {
+    return NextResponse.json({ error: error.message }, { status: 401 })
+  }
 
+  resetRateLimit(key)
   return response
 }

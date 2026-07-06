@@ -1,5 +1,6 @@
 import { AdminSidebar } from "@/components/admin/sidebar"
 import { AdminHeader } from "@/components/admin/admin-header"
+import { SessionTimeout } from "@/components/admin/session-timeout"
 import { createClient } from "@/lib/supabase/server"
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
@@ -18,6 +19,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
 
   return (
     <div className="flex min-h-screen">
+      <SessionTimeout />
       <AdminSidebar />
       <div className="flex-1 overflow-auto">
         <AdminHeader />
