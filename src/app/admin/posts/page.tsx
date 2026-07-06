@@ -5,7 +5,7 @@ import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { createClient } from "@/lib/supabase/client"
 import { PostActionsDropdown } from "@/components/admin/post-actions-dropdown"
-import { Plus, FileText, Search, RefreshCw } from "lucide-react"
+import { Plus, FileText, Search, RefreshCw, ChevronLeft, ChevronRight } from "lucide-react"
 
 interface PostRow {
   id: string
@@ -30,6 +30,8 @@ export default function AdminPostsPage() {
   const [aiFilter, setAiFilter] = useState("all")
 
   const [counts, setCounts] = useState({ total: 0, published: 0, drafts: 0, views: 0 })
+  const [page, setPage] = useState(1)
+  const pageSize = 20
 
   const fetchPosts = useCallback(async () => {
     const supabase = createClient()
@@ -82,6 +84,11 @@ export default function AdminPostsPage() {
     }
     return true
   })
+
+  const totalPages = Math.ceil(filtered.length / pageSize)
+  const paginatedPosts = filtered.slice((page - 1) * pageSize, page * pageSize)
+
+  useEffect(() => { setPage(1) }, [search, statusFilter, aiFilter])
 
   function formatDate(d: string) {
     return new Date(d).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
@@ -202,7 +209,7 @@ export default function AdminPostsPage() {
                   </td>
                 </tr>
               ) : (
-                filtered.map((post, i) => (
+                paginatedPosts.map((post, i) => (
                   <tr key={post.id} className={`border-b border-gray-50 dark:border-[#1F2937]/50 hover:bg-gray-50 dark:hover:bg-[#1a2235] transition-colors ${i === 0 ? "" : ""}`}>
                     <td className="px-5 py-4">
                       <div className="flex items-center gap-3">
@@ -275,6 +282,55 @@ export default function AdminPostsPage() {
             </tbody>
           </table>
         </div>
+
+        {totalPages > 1 && (
+          <div className="flex items-center justify-between px-5 py-4 border-t-2 border-gray-100 dark:border-[#1F2937]">
+            <span className="text-sm text-gray-500 dark:text-gray-400">
+              Page {page} of {totalPages} ({filtered.length} posts)
+            </span>
+            <div className="flex items-center gap-1">
+              <button
+                onClick={() => setPage(p => Math.max(1, p - 1))}
+                disabled={page === 1}
+                className="p-2 text-gray-400 hover:text-[#F59E0B] hover:bg-gray-100 dark:hover:bg-[#1F2937] rounded-lg transition-colors disabled:opacity-40 disabled:pointer-events-none"
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </button>
+              {Array.from({ length: Math.min(totalPages, 7) }, (_, i) => {
+                let pageNum: number
+                if (totalPages <= 7) {
+                  pageNum = i + 1
+                } else if (page <= 4) {
+                  pageNum = i + 1
+                } else if (page >= totalPages - 3) {
+                  pageNum = totalPages - 6 + i
+                } else {
+                  pageNum = page - 3 + i
+                }
+                return (
+                  <button
+                    key={pageNum}
+                    onClick={() => setPage(pageNum)}
+                    className={`min-w-[32px] h-8 text-xs font-medium rounded-lg transition-colors ${
+                      page === pageNum
+                        ? "bg-[#F59E0B] text-white"
+                        : "text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-[#1F2937]"
+                    }`}
+                  >
+                    {pageNum}
+                  </button>
+                )
+              })}
+              <button
+                onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                disabled={page === totalPages}
+                className="p-2 text-gray-400 hover:text-[#F59E0B] hover:bg-gray-100 dark:hover:bg-[#1F2937] rounded-lg transition-colors disabled:opacity-40 disabled:pointer-events-none"
+              >
+                <ChevronRight className="h-4 w-4" />
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   )
