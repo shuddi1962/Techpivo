@@ -56,14 +56,14 @@ export default async function CategoryPage({ params }: Props) {
     supabase.from("posts").select("*").eq("status", "published").order("views", { ascending: false }).limit(5),
     supabase.from("categories").select("*").order("name"),
     supabase.from("posts").select("*").eq("status", "published").order("published_at", { ascending: false }).limit(5),
-    supabase.from("posts").select("id,title,slug,views,categories(name,slug,color)").eq("status", "published").gte("published_at", sevenDaysAgo).order("views", { ascending: false }).limit(5),
+    supabase.from("posts").select("id,title,slug,views,category:categories!inner(name,slug,color)").eq("status", "published").gte("published_at", sevenDaysAgo).order("views", { ascending: false }).limit(5),
     supabase.from("posts").select("seo_keywords").eq("status", "published").limit(100),
   ])
 
   const popularPosts = popularRes.data || []
   const allCategories = allCategoriesRes.data || []
   const recentPosts = recentRes.data || []
-  const trendingPosts = trendingRes.data || []
+  const trendingPosts = (trendingRes.data || []).filter((t: any) => !popularPosts.some((p: any) => p.id === t.id))
   const allTags = tagsRes.data || []
   const sidebarTags = Array.from(new Set(allTags.flatMap((p: any) => p.seo_keywords || []))).slice(0, 20) as string[]
 

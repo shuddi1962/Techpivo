@@ -155,6 +155,35 @@ export interface LeaderboardEntry {
   rank: string;
 }
 
+export interface LearningPath {
+  id: string;
+  title: string;
+  slug: string;
+  description: string;
+  icon: string;
+  color_from: string;
+  color_to: string;
+  difficulty: string;
+  duration: string;
+  category: string | null;
+  lesson_count: number;
+  enrolled_count: number;
+  xp_reward: number;
+  is_published: boolean;
+  sort_order: number;
+  created_at: string;
+}
+
+export async function getLearningPaths() {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from('learning_paths')
+    .select('*')
+    .eq('is_published', true)
+    .order('sort_order');
+  return data as LearningPath[];
+}
+
 export async function getUserProfile(userId: string) {
   const supabase = await createClient();
   const { data } = await supabase
