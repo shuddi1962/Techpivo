@@ -112,8 +112,6 @@ export default function AdminLoginPage() {
               <Shield className="w-3.5 h-3.5 text-emerald-500" />
               <span className="font-medium text-emerald-600">SECURE</span>
             </div>
-            <span className="text-gray-300 mx-1">|</span>
-            <span className="text-xs text-gray-400">techpivohub@gmail.com</span>
           </div>
 
           <div className="p-6">
