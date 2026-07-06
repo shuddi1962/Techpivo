@@ -80,7 +80,10 @@ export function ShareButtons({ title, url, excerpt }: ShareButtonsProps) {
         <button
           key={platform.name}
           title={`Share on ${platform.name}`}
-          onClick={() => (platform as any).copyLink ? copyLink(platform.name) : openShare(platform.getUrl(title, url, excerpt))}
+          onClick={() => {
+            const p = platform as any
+            p.copyLink ? copyLink(p.name) : openShare(p.getUrl(title, url, excerpt))
+          }}
           className="relative flex items-center justify-center w-8 h-8 rounded-md hover:bg-black/5 dark:hover:bg-white/10 transition-colors"
         >
           {platform.icon}
