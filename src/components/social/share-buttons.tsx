@@ -1,8 +1,5 @@
 "use client"
 
-import { X, Globe, Link, MessageCircle, Send, MessageSquare } from "lucide-react"
-import { Button } from "@/components/ui/button"
-
 interface ShareButtonsProps {
   title: string
   url: string
@@ -12,37 +9,43 @@ interface ShareButtonsProps {
 const platforms = [
   {
     name: "Twitter",
-    icon: X,
+    color: "#1DA1F2",
+    icon: <svg viewBox="0 0 24 24" width="16" height="16" fill="#1DA1F2"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>,
     getUrl: (title: string, url: string) =>
       `https://twitter.com/intent/tweet?text=${encodeURIComponent(title)}&url=${encodeURIComponent(url)}`,
   },
   {
     name: "Facebook",
-    icon: Globe,
+    color: "#1877F2",
+    icon: <svg viewBox="0 0 24 24" width="16" height="16" fill="#1877F2"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>,
     getUrl: (_title: string, url: string) =>
       `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}`,
   },
   {
     name: "LinkedIn",
-    icon: Link,
+    color: "#0A66C2",
+    icon: <svg viewBox="0 0 24 24" width="16" height="16" fill="#0A66C2"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 0 1-2.063-2.065 2.064 2.064 0 1 1 2.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg>,
     getUrl: (_title: string, url: string) =>
       `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(url)}`,
   },
   {
     name: "Reddit",
-    icon: MessageCircle,
+    color: "#FF4500",
+    icon: <svg viewBox="0 0 24 24" width="16" height="16" fill="#FF4500"><path d="M12 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0zm5.51 9.08a1.83 1.83 0 0 1 1.83 1.83c0 .68-.37 1.27-.92 1.58.03.13.04.27.04.41 0 2.78-2.98 5.03-6.66 5.03s-6.66-2.25-6.66-5.03c0-.14.02-.28.04-.41a1.83 1.83 0 0 1-.92-1.58 1.83 1.83 0 0 1 3.63-.6c1-.7 2.35-1.14 3.85-1.2l.66-3.1a.38.38 0 0 1 .45-.31l2.17.47a1.29 1.29 0 0 1 1.2-.88 1.3 1.3 0 0 1 1.29 1.29 1.3 1.3 0 0 1-1.3 1.3c-.6 0-1.1-.4-1.24-.95l-1.92-.42-.6 2.82c1.52.06 2.88.5 3.89 1.2a1.83 1.83 0 0 1 1.62-.92zm-5.5 3.23c-.7 0-1.43.28-2 .73-.3.24-.35.7-.1 1.01.24.31.7.36 1.01.1.37-.29.78-.44 1.19-.44.7 0 1.1.3 1.2.44.3.25.76.2 1.01-.1.24-.31.2-.77-.1-1.01-.6-.45-1.3-.73-2.21-.73zm-1.83 2.2c-.49.54-.7 1.24-.46 1.93.36 1.03 1.63 1.7 2.98 1.7s2.62-.67 2.98-1.7c.24-.69.03-1.4-.46-1.93-.48-.52-1.26-.86-2.52-.86s-2.04.34-2.52.86zm6.38.48a1.03 1.03 0 1 0 0 2.06 1.03 1.03 0 1 0 0-2.06zm-10.88 0a1.03 1.03 0 1 0 0 2.06 1.03 1.03 0 1 0 0-2.06z"/></svg>,
     getUrl: (title: string, url: string) =>
       `https://reddit.com/submit?url=${encodeURIComponent(url)}&title=${encodeURIComponent(title)}`,
   },
   {
     name: "Telegram",
-    icon: Send,
+    color: "#0088CC",
+    icon: <svg viewBox="0 0 24 24" width="16" height="16" fill="#0088CC"><path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/></svg>,
     getUrl: (title: string, url: string) =>
       `https://t.me/share/url?url=${encodeURIComponent(url)}&text=${encodeURIComponent(title)}`,
   },
   {
     name: "WhatsApp",
-    icon: MessageSquare,
+    color: "#25D366",
+    icon: <svg viewBox="0 0 24 24" width="16" height="16" fill="#25D366"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413z"/></svg>,
     getUrl: (_title: string, url: string, excerpt?: string) => {
       const text = excerpt ? `${_title} - ${excerpt}` : _title
       return `https://wa.me/?text=${encodeURIComponent(text + " " + url)}`
@@ -57,21 +60,16 @@ export function ShareButtons({ title, url, excerpt }: ShareButtonsProps) {
 
   return (
     <div className="flex items-center gap-1">
-      {platforms.map((platform) => {
-        const Icon = platform.icon
-        return (
-          <Button
-            key={platform.name}
-            variant="ghost"
-            size="icon"
-            className="h-8 w-8"
-            title={`Share on ${platform.name}`}
-            onClick={() => openShare(platform.getUrl(title, url, excerpt))}
-          >
-            <Icon className="h-4 w-4" />
-          </Button>
-        )
-      })}
+      {platforms.map((platform) => (
+        <button
+          key={platform.name}
+          title={`Share on ${platform.name}`}
+          onClick={() => openShare(platform.getUrl(title, url, excerpt))}
+          className="flex items-center justify-center w-8 h-8 rounded-md hover:bg-black/5 dark:hover:bg-white/10 transition-colors"
+        >
+          {platform.icon}
+        </button>
+      ))}
     </div>
   )
 }

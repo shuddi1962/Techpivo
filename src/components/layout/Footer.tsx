@@ -111,18 +111,19 @@ export function Footer({ categories, recentPosts, socialUrls = {} }: { categorie
           ))}
         </div>
 
-        {/* Quick Links — two columns */}
+        {/* Quick Links & Community */}
         <div className="footer-quicklinks-col">
-          <h3 className="footer-col-title">Quick Links</h3>
           <div className="footer-quicklinks-grid">
-            <div className="footer-quicklinks-half">
+            <div>
+              <h3 className="footer-col-title">Quick Links</h3>
               {quickLinksLeft.map((l) => (
                 <Link key={l.label} href={l.href} className="footer-col-link">
                   <span>{l.label}</span>
                 </Link>
               ))}
             </div>
-            <div className="footer-quicklinks-half">
+            <div>
+              <h3 className="footer-col-title">Community</h3>
               {quickLinksRight.map((l) => (
                 <Link key={l.label} href={l.href} className="footer-col-link">
                   <span>{l.label}</span>
