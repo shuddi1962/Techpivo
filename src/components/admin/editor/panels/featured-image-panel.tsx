@@ -55,6 +55,7 @@ export function FeaturedImagePanel() {
               src={post.featured_image}
               alt="Featured"
               className="w-full h-40 object-cover"
+              onError={(e) => { (e.target as HTMLImageElement).src = "/api/placeholder/400/225" }}
             />
             <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
             <button

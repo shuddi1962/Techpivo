@@ -3,6 +3,7 @@
 import Link from "next/link"
 import { useEffect, useState } from "react"
 import { CategoryBadge } from "@/components/ui/CategoryBadge"
+import { SafeImage } from "@/components/ui/safe-image"
 
 export function PopularWidget({ posts: initialPosts }: { posts: any[] }) {
   const [posts, setPosts] = useState(initialPosts)
@@ -28,11 +29,10 @@ export function PopularWidget({ posts: initialPosts }: { posts: any[] }) {
       <ul className="popular-list">
         {posts.slice(0, 5).map((post: any) => (
           <li key={post.id} className="popular-item">
-            <img
-              src={post.featured_image || "/api/placeholder/64/48"}
+            <SafeImage
+              src={post.featured_image}
               alt={post.title}
               className="popular-thumb"
-              loading="lazy"
             />
             <div className="popular-info">
               <Link href={`/${post.slug}`} className="popular-title">{post.title}</Link>

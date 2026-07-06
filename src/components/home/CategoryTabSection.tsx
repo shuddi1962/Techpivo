@@ -1,9 +1,9 @@
 "use client"
 
 import Link from "next/link"
-import Image from "next/image"
 import { useState } from "react"
 import { CategoryBadge } from "@/components/ui/CategoryBadge"
+import { SafeImage } from "@/components/ui/safe-image"
 
 export function CategoryTabSection({ categories, posts }: { categories: any[]; posts: any[] }) {
   const [active, setActive] = useState("All")
@@ -38,12 +38,11 @@ export function CategoryTabSection({ categories, posts }: { categories: any[]; p
         {bigPost && (
           <Link href={`/${bigPost.slug}`} className="tab-big-post">
             <div className="tab-big-img-wrap">
-                <Image
-                  src={bigPost.featured_image || "/api/placeholder/600/450"}
+                <SafeImage
+                  src={bigPost.featured_image}
                   alt={bigPost.title}
-                  fill
                   className="tab-big-img object-cover"
-                  unoptimized={!bigPost.featured_image?.startsWith("http")}
+                  fill
                 />
               <div className="tab-big-overlay" />
               <div className="tab-big-badge-wrap">
@@ -62,12 +61,11 @@ export function CategoryTabSection({ categories, posts }: { categories: any[]; p
           {listPosts.map((post) => (
             <Link key={post.id} href={`/${post.slug}`} className="tab-list-card">
               <div className="tab-list-thumb">
-                <Image
-                  src={post.featured_image || "/api/placeholder/90/90"}
+                <SafeImage
+                  src={post.featured_image}
                   alt={post.title}
-                  fill
                   className="tab-thumb-img object-cover"
-                  unoptimized={!post.featured_image?.startsWith("http")}
+                  fill
                 />
               </div>
               <div className="tab-list-body">

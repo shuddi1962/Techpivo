@@ -1,5 +1,6 @@
 import Link from "next/link"
 import { CategoryBadge } from "@/components/ui/CategoryBadge"
+import { SafeImage } from "@/components/ui/safe-image"
 
 export function EditorialSection({ posts }: { posts: any[] }) {
   if (!posts.length) return null
@@ -17,12 +18,11 @@ export function EditorialSection({ posts }: { posts: any[] }) {
         {posts.slice(0, 4).map((post) => (
           <Link key={post.id} href={`/${post.slug}`} className="cat-strip-card">
             <div className="cat-strip-img-wrap">
-              <img
-                src={post.featured_image || "/api/placeholder/400/225"}
+              <SafeImage
+                src={post.featured_image}
                 alt={post.title}
                 className="cat-strip-img"
-                style={{ width: '100%', height: '100%' }}
-                loading="lazy"
+                fill
               />
               <div className="cat-strip-grad" />
             </div>

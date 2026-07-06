@@ -1,8 +1,8 @@
 "use client"
 
 import Link from "next/link"
-import Image from "next/image"
 import { CategoryBadge } from "@/components/ui/CategoryBadge"
+import { SafeImage } from "@/components/ui/safe-image"
 
 interface CategoryStripProps {
   categoryName: string
@@ -47,12 +47,11 @@ export function CategoryStrip({ categoryName, categorySlug, categoryColor, posts
         {posts.slice(0, 4).map((post) => (
           <Link key={post.id} href={`/${post.slug}`} className="cat-strip-card">
             <div className="cat-strip-img-wrap">
-              <Image
-                src={post.featured_image || "/api/placeholder/400/225"}
+              <SafeImage
+                src={post.featured_image}
                 alt={post.title}
-                fill
                 className="cat-strip-img object-cover"
-                unoptimized={!post.featured_image?.startsWith("http")}
+                fill
               />
               <div className="cat-strip-grad" />
             </div>

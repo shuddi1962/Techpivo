@@ -5,6 +5,7 @@ import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { createClient } from "@/lib/supabase/client"
 import { PostActionsDropdown } from "@/components/admin/post-actions-dropdown"
+import { SafeImage } from "@/components/ui/safe-image"
 import { Plus, FileText, Search, RefreshCw, ChevronLeft, ChevronRight } from "lucide-react"
 
 interface PostRow {
@@ -214,7 +215,7 @@ export default function AdminPostsPage() {
                     <td className="px-5 py-4">
                       <div className="flex items-center gap-3">
                         {post.featured_image ? (
-                          <img src={post.featured_image} alt="" className="w-10 h-10 rounded-lg object-cover shrink-0 hidden sm:block border-2 border-gray-200 dark:border-[#374151]" />
+                          <SafeImage src={post.featured_image} alt="" className="w-10 h-10 rounded-lg object-cover shrink-0 hidden sm:block" />
                         ) : (
                           <div className="w-10 h-10 rounded-lg bg-gray-100 dark:bg-[#1F2937] flex items-center justify-center shrink-0 hidden sm:block border-2 border-gray-200 dark:border-[#374151]">
                             <FileText className="h-5 w-5 text-gray-400" />

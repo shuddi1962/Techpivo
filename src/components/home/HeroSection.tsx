@@ -1,9 +1,9 @@
 "use client"
 
 import Link from "next/link"
-import Image from "next/image"
 import { useState, useEffect, useCallback } from "react"
 import { CategoryBadge } from "@/components/ui/CategoryBadge"
+import { SafeImage } from "@/components/ui/safe-image"
 
 interface HeroSectionProps {
   featured: any
@@ -34,12 +34,11 @@ export function HeroSection({ featured, secondary }: HeroSectionProps) {
       <div className="hero-grid">
         <Link href={`/${post.slug}`} className="hero-main">
           <div className="hero-main-img">
-              <Image
-                  src={post.featured_image || "/api/placeholder/900/600"}
+              <SafeImage
+                  src={post.featured_image}
                   alt={post.title}
-                  fill
                   className="hero-img object-cover"
-                  unoptimized={!post.featured_image?.startsWith("http")}
+                  fill
                   priority
                 />
             <div className="hero-main-overlay" />
@@ -58,12 +57,11 @@ export function HeroSection({ featured, secondary }: HeroSectionProps) {
           {others.slice(0, 2).map((p) => (
             <Link key={p.id} href={`/${p.slug}`} className="hero-sec-card">
               <div className="hero-sec-img-wrap">
-                <Image
-                  src={p.featured_image || "/api/placeholder/300/200"}
+                <SafeImage
+                  src={p.featured_image}
                   alt={p.title}
-                  fill
                   className="object-cover"
-                  unoptimized={!p.featured_image?.startsWith("http")}
+                  fill
                 />
               </div>
               <div className="hero-sec-body">

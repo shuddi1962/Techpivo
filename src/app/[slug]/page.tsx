@@ -8,7 +8,7 @@ import { Sidebar } from "@/components/layout/Sidebar"
 import { formatDate, formatDateFull, readingTime } from "@/lib/utils"
 import { Clock, Eye, ArrowLeft, Bookmark, ChevronRight } from "lucide-react"
 import type { Metadata } from "next"
-import Image from "next/image"
+import { SafeImage } from "@/components/ui/safe-image"
 import { ReadingProgress } from "@/components/post/reading-progress"
 import { ShareButtons } from "@/components/social/share-buttons"
 import { PostComments } from "@/components/post/post-comments"
@@ -156,12 +156,11 @@ export default async function PostPage({ params }: Props) {
             {/* Featured Image Card */}
             <div className="bg-card border rounded-2xl overflow-hidden mb-8 shadow-sm">
               <div className="relative w-full bg-muted max-h-72 md:max-h-96 overflow-hidden">
-                <Image
-                  src={post.featured_image || "/api/placeholder/1200/600"}
+                <SafeImage
+                  src={post.featured_image}
                   alt={post.title}
-                  fill
                   className="object-cover"
-                  unoptimized={!post.featured_image?.startsWith("http")}
+                  fill
                   priority
                 />
               </div>

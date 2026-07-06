@@ -347,7 +347,7 @@ Only provide fields that need changes. Return valid JSON only.`
               />
               <div className="bg-gray-50 dark:bg-[#1a1f2e] rounded-xl p-3 flex items-center gap-3 border-2 border-gray-200 dark:border-[#1F2937]">
                 {post.og_image || post.featured_image ? (
-                  <img src={post.og_image || post.featured_image} alt="" className="w-12 h-12 rounded-lg object-cover border-2 border-gray-200" />
+                  <img src={post.og_image || post.featured_image} alt="" className="w-12 h-12 rounded-lg object-cover border-2 border-gray-200" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }} />
                 ) : (
                   <div className="w-12 h-12 rounded-lg bg-gray-200 dark:bg-[#1F2937] flex items-center justify-center border-2 border-gray-300 dark:border-[#374151]">
                     <Image className="h-5 w-5 text-gray-400" />

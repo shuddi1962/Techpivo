@@ -1,4 +1,5 @@
 import Link from "next/link"
+import { SafeImage } from "@/components/ui/safe-image"
 
 interface PostCardPost {
   title: string
@@ -19,8 +20,8 @@ interface PostCardProps {
 export function PostCard({ post }: PostCardProps) {
   return (
     <Link href={`/${post.slug}`} className="post-card group" style={{ borderColor: "var(--border)", background: "var(--card)" }}>
-      <div className="relative aspect-[16/9] overflow-hidden">
-        <img src={post.featured_image || "/api/placeholder/400/225"} alt={post.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" loading="lazy" decoding="async" />
+        <div className="relative aspect-[16/9] overflow-hidden">
+          <SafeImage src={post.featured_image} alt={post.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" fill />
         <span className="absolute top-3 left-3 px-2 py-1 text-xs font-medium rounded" style={{ background: "rgba(245,158,11,0.2)", color: "#F59E0B" }}>{post.category?.name || "Tech"}</span>
       </div>
       <div className="p-4">
