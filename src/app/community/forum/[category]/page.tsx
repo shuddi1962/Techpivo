@@ -4,11 +4,27 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { getForumCategories, getForumPosts, timeAgo } from '@/lib/community';
 import { MessageSquare, Plus, Pin, CheckCircle2, Eye, ThumbsUp, ArrowLeft, Clock } from 'lucide-react';
+import type { Metadata } from 'next/types';
+import { SITE_NAME, SITE_URL } from '@/lib/constants';
 
-export async function generateMetadata({ params }: { params: Promise<{ category: string }> }) {
+export async function generateMetadata({ params }: { params: Promise<{ category: string }> }): Promise<Metadata> {
   const { category } = await params;
   const name = category.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
-  return { title: `${name} — TechPivo Forum` };
+  const description = `Browse ${name} discussions on the TechPivo forum. Join the conversation about technology topics.`
+  return {
+    title: `${name} — TechPivo Forum`,
+    description,
+    alternates: { canonical: `${SITE_URL}/community/forum/${category}` },
+    openGraph: {
+      title: `${name} — TechPivo Forum`,
+      description,
+    },
+    twitter: {
+      card: "summary",
+      title: `${name} — TechPivo Forum`,
+      description,
+    },
+  }
 }
 
 export default async function ForumCategoryPage({ params }: { params: Promise<{ category: string }> }) {

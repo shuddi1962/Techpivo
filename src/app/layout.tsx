@@ -23,6 +23,9 @@ export const metadata: Metadata = {
   description: "Techpivo - Tech, decoded. Fast. Your source for the latest in tech news, web development, programming, cybersecurity, AI, gadgets, and tutorials.",
   metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || "https://techpivo.com"),
   applicationName: SITE_NAME,
+  alternates: {
+    canonical: SITE_URL,
+  },
   verification: {
     google: process.env.NEXT_PUBLIC_GOOGLE_VERIFICATION || "",
   },
@@ -31,17 +34,17 @@ export const metadata: Metadata = {
     type: "website",
     siteName: SITE_NAME,
     title: `${SITE_NAME} — ${SITE_TAGLINE}`,
-    description: "Tech, decoded. Fast.",
+    description: "Techpivo - Tech, decoded. Fast. Your source for the latest in tech news, web development, programming, cybersecurity, AI, gadgets, and tutorials.",
     url: SITE_URL,
     locale: "en_US",
     images: [
-      { url: `${SITE_URL}/favicon.svg`, width: 120, height: 120, alt: SITE_NAME },
+      { url: `${SITE_URL}/favicon.svg`, width: 1200, height: 630, alt: SITE_NAME },
     ],
   },
   twitter: {
     card: "summary_large_image",
     title: `${SITE_NAME} — ${SITE_TAGLINE}`,
-    description: "Tech, decoded. Fast.",
+    description: "Techpivo - Tech, decoded. Fast.",
     images: `${SITE_URL}/favicon.svg`,
   },
   robots: {

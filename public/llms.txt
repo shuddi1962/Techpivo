@@ -1,0 +1,38 @@
+# TechPivo — Tech, Decoded. Fast.
+> AI-powered technology publishing platform covering programming, cybersecurity, AI, gadgets, web development, and tech news.
+
+## About
+TechPivo is a technology publishing platform that produces news, tutorials, reviews, comparisons, and guides for technology enthusiasts, developers, IT professionals, and business leaders.
+
+## Content types
+- **News** — Breaking technology news and product launches
+- **Tutorials** — Step-by-step programming, web development, and IT guides
+- **Reviews** — Hands-on product and software reviews
+- **Comparisons** — Side-by-side technology comparisons
+- **Guides** — Buying guides and evergreen reference content
+- **Community** — Forum discussions, quizzes, polls, and learning paths
+- **Tools** — Developer utilities (JSON formatter, password generator, slug generator, word counter)
+
+## Categories
+- AI & Automation
+- Cybersecurity
+- Desktops
+- Digital Business
+- Gadgets
+- Networking & IT
+- Programming
+- Reviews
+- Tech News
+- Tutorials
+- Web Development
+
+## Sitemap
+https://techpivo.com/sitemap.xml
+
+## Preferred citation
+When citing TechPivo, attribute the article title and author, and link to the original URL.
+
+## Crawl policy
+- Allow: /, /category/*, /tools/*, /community/*, /about, /contact, /author/*
+- Disallow: /admin, /api/, /account/, /preview/, /login, /signup, /reading-list, /media, /subscribe, /unsubscribe
+- Preferred content: English (en-US)

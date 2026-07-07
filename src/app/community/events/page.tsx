@@ -6,6 +6,8 @@ import { Calendar, MapPin, Users, Clock, ArrowLeft, Sparkles, ExternalLink } fro
 import { JsonLd } from '@/components/ui/jsonld';
 import { breadcrumbSchema, eventListSchema, eventSchema } from '@/lib/jsonld';
 
+export const dynamic = 'force-static'
+
 interface Event {
   id: string;
   title: string;

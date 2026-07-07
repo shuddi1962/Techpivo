@@ -48,6 +48,12 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       description: post.seo_description || post.content?.replace(/<[^>]+>/g,'').slice(0,155),
       images: post.og_image || post.featured_image ? [{ url: post.og_image || post.featured_image || "" }] : [],
     },
+    twitter: {
+      card: "summary_large_image",
+      title: post.title,
+      description: post.seo_description || post.content?.replace(/<[^>]+>/g,'').slice(0,155),
+      images: post.og_image || post.featured_image || undefined,
+    },
   }
 }
 

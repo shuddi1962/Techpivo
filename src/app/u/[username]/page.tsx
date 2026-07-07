@@ -7,10 +7,26 @@ import FollowButton from '@/components/follow-button';
 import { getLevelForXP, getRankTitle, BADGES } from '@/lib/community-utils';
 import { createClient } from '@/lib/supabase/server';
 import { MapPin, Globe, Calendar, Star, Users, BookOpen, MessageSquare, Trophy, Target, ArrowLeft } from 'lucide-react';
+import type { Metadata } from 'next/types';
+import { SITE_URL } from '@/lib/constants';
 
-export async function generateMetadata({ params }: { params: Promise<{ username: string }> }) {
+export async function generateMetadata({ params }: { params: Promise<{ username: string }> }): Promise<Metadata> {
   const { username } = await params;
-  return { title: `${username} — TechPivo Community` };
+  const description = `View ${username}'s profile on TechPivo — level, badges, activity, and contributions.`
+  return {
+    title: `${username} — TechPivo Community`,
+    description,
+    alternates: { canonical: `${SITE_URL}/u/${username}` },
+    openGraph: {
+      title: `${username} — TechPivo Community`,
+      description,
+    },
+    twitter: {
+      card: "summary",
+      title: `${username} — TechPivo Community`,
+      description,
+    },
+  }
 }
 
 export default async function PublicProfilePage({ params }: { params: Promise<{ username: string }> }) {

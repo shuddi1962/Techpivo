@@ -1,3 +1,4 @@
+import type { Metadata } from "next"
 import { createClient } from "@/lib/supabase/server"
 import { TopBar } from "@/components/layout/TopBar"
 import { Header } from "@/components/layout/Header"
@@ -10,8 +11,22 @@ import { CategoryStrip } from "@/components/home/CategoryStrip"
 import { NewsletterStrip } from "@/components/home/NewsletterStrip"
 import { Sidebar } from "@/components/layout/Sidebar"
 import { Footer } from "@/components/layout/Footer"
+import { SITE_NAME } from "@/lib/constants"
 
 export const revalidate = 60
+
+export const metadata: Metadata = {
+  title: `${SITE_NAME} — Tech, Decoded. Fast.`,
+  description: "Techpivo - Your source for the latest in tech news, web development, programming, cybersecurity, AI, gadgets, and tutorials. Tech, decoded. fast.",
+  openGraph: {
+    title: `${SITE_NAME} — Tech, Decoded. Fast.`,
+    description: "Techpivo - Your source for the latest in tech news, web development, programming, cybersecurity, AI, gadgets, and tutorials.",
+  },
+  twitter: {
+    title: `${SITE_NAME} — Tech, Decoded. Fast.`,
+    description: "Techpivo - Your source for the latest in tech news, web development, programming, cybersecurity, AI, gadgets, and tutorials.",
+  },
+}
 
 export default async function HomePage() {
   let supabase: ReturnType<typeof createClient> | null = null

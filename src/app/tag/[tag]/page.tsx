@@ -10,10 +10,21 @@ import type { Metadata } from "next"
 type Props = { params: { tag: string } }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const description = `Browse all articles tagged with #${params.tag} on ${SITE_NAME}.`
   return {
     title: `#${params.tag} - ${SITE_NAME}`,
+    description,
     alternates: { canonical: `${SITE_URL}/tag/${params.tag}` },
     robots: { index: false, follow: true },
+    openGraph: {
+      title: `#${params.tag} - ${SITE_NAME}`,
+      description,
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: `#${params.tag} - ${SITE_NAME}`,
+      description,
+    },
   }
 }
 
