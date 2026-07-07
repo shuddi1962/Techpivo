@@ -75,7 +75,6 @@ export function Header() {
           {/* Logo — always visible */}
           <Link href="/" className="logo">
             <Image src="/logo.svg" alt="Techpivo" className="logo-img" width={340} height={68} priority />
-            <span className="logo-text">Techpivo</span>
           </Link>
 
           {/* Search — desktop only */}
@@ -146,10 +145,6 @@ export function Header() {
         <div className="header-mobile-drawer" onClick={() => setDrawerOpen(false)}>
           <div className="mobile-drawer-panel" onClick={e => e.stopPropagation()}>
             <div className="mobile-drawer-header">
-              <Link href="/" className="mobile-drawer-logo" onClick={() => setDrawerOpen(false)}>
-                <Image src="/logo.svg" alt="Techpivo" width={140} height={28} />
-                <span style={{ fontFamily: "'Syne', sans-serif", fontWeight: 800, fontSize: 18, color: "var(--text)", marginLeft: 4 }}>Techpivo</span>
-              </Link>
               <button className="mobile-drawer-close" onClick={() => setDrawerOpen(false)}>&times;</button>
             </div>
             <form className="mobile-drawer-search" onSubmit={handleMobileSearch}>
@@ -163,10 +158,11 @@ export function Header() {
             </form>
             <div className="mobile-drawer-nav">
               <div className="mobile-drawer-section">Navigation</div>
-              <Link href="/" className="mobile-drawer-link" onClick={() => setDrawerOpen(false)}>
+              <Link href="/" className="mobile-drawer-link active" onClick={() => setDrawerOpen(false)}>
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
                 Home
               </Link>
+
               <Link href="/tools" className="mobile-drawer-link" onClick={() => setDrawerOpen(false)}>
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>
                 Tools
