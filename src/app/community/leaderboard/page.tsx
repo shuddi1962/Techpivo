@@ -1,6 +1,9 @@
 import Link from 'next/link';
 import { Trophy, Star, ArrowLeft, Sparkles, Crown } from 'lucide-react';
+import { JsonLd } from '@/components/ui/jsonld';
+import { breadcrumbSchema } from '@/lib/jsonld';
 import { getLeaderboard, getRankTitle, getStarRating } from '@/lib/community';
+import { SITE_URL } from '@/lib/constants';
 
 export const metadata = {
   title: 'Leaderboard — TechPivo Community',
@@ -11,7 +14,13 @@ export default async function LeaderboardPage() {
   const entries = await getLeaderboard(50);
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-background via-background to-muted/30">
+    <>
+      <JsonLd data={breadcrumbSchema([
+        { name: "Home", url: SITE_URL },
+        { name: "Community", url: `${SITE_URL}/community` },
+        { name: "Leaderboard" },
+      ])} />
+      <div className="min-h-screen bg-gradient-to-b from-background via-background to-muted/30">
       {/* Hero */}
       <div className="relative overflow-hidden bg-gradient-to-br from-amber-600/10 via-yellow-500/5 to-orange-600/10 dark:from-amber-500/5 dark:via-yellow-500/5 dark:to-orange-500/5 border-b border-border/40">
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_center,_var(--tw-gradient-stops))] from-amber-400/10 via-transparent to-transparent" />
@@ -118,5 +127,6 @@ export default async function LeaderboardPage() {
         )}
       </div>
     </div>
+    </>
   );
 }

@@ -3,6 +3,8 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Calendar, MapPin, Users, Clock, ArrowLeft, Sparkles, ExternalLink } from 'lucide-react';
+import { JsonLd } from '@/components/ui/jsonld';
+import { breadcrumbSchema, eventListSchema, eventSchema } from '@/lib/jsonld';
 
 interface Event {
   id: string;
@@ -68,7 +70,20 @@ export default function EventsPage() {
   const past = filtered.filter(e => new Date(e.start_date) < now).sort((a, b) => new Date(b.start_date).getTime() - new Date(a.start_date).getTime());
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-background via-background to-muted/30">
+    <>
+      <JsonLd data={breadcrumbSchema([
+        { name: "Home", url: "https://techpivo.com" },
+        { name: "Community", url: "https://techpivo.com/community" },
+        { name: "Events" },
+      ])} />
+      {upcoming.length > 0 && (
+        <JsonLd data={eventListSchema(upcoming.map(e => ({
+          name: e.title,
+          startDate: e.start_date,
+          url: e.url,
+        })))} />
+      )}
+      <div className="min-h-screen bg-gradient-to-b from-background via-background to-muted/30">
       {/* Hero */}
       <div className="relative overflow-hidden bg-gradient-to-br from-amber-600/10 via-orange-500/5 to-rose-600/10 dark:from-amber-500/5 dark:via-orange-500/5 dark:to-rose-500/5 border-b border-border/40">
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-amber-400/10 via-transparent to-transparent" />
@@ -266,5 +281,6 @@ export default function EventsPage() {
         )}
       </div>
     </div>
+    </>
   );
 }

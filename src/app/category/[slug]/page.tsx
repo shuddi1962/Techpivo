@@ -6,6 +6,8 @@ import { PostCard } from "@/components/post/post-card"
 import { Sidebar } from "@/components/layout/Sidebar"
 import { formatDate } from "@/lib/utils"
 import { SITE_NAME, SITE_URL } from "@/lib/constants"
+import { JsonLd } from "@/components/ui/jsonld"
+import { breadcrumbSchema, collectionPageSchema } from "@/lib/jsonld"
 import type { Metadata } from "next"
 
 type Props = { params: { slug: string } }
@@ -67,8 +69,16 @@ export default async function CategoryPage({ params }: Props) {
   const allTags = tagsRes.data || []
   const sidebarTags = Array.from(new Set(allTags.flatMap((p: any) => p.seo_keywords || []))).slice(0, 20) as string[]
 
+  const catUrl = `${SITE_URL}/category/${category.slug}`
+
   return (
-    <div className="container py-6">
+    <>
+      <JsonLd data={breadcrumbSchema([
+        { name: "Home", url: SITE_URL },
+        { name: category.name },
+      ])} />
+      <JsonLd data={collectionPageSchema(category.meta_title || category.name, category.meta_description || `${category.name} articles on ${SITE_NAME}`, catUrl)} />
+      <div className="container py-6">
       {/* Header */}
       <div className="mb-8">
         <h1 className="text-3xl font-bold mb-2">{category.name}</h1>
@@ -112,5 +122,6 @@ export default async function CategoryPage({ params }: Props) {
         </div>
       </div>
     </div>
+    </>
   )
 }

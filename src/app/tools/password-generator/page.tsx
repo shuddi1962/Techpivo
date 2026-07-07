@@ -3,6 +3,8 @@
 import { useState, useCallback } from "react"
 import Link from "next/link"
 import { NewsletterStrip } from "@/components/home/NewsletterStrip"
+import { JsonLd } from "@/components/ui/jsonld"
+import { SITE_URL } from "@/lib/constants"
 
 export default function PasswordGeneratorPage() {
   const [length, setLength] = useState(16)
@@ -46,7 +48,18 @@ export default function PasswordGeneratorPage() {
   const strength = getStrength()
 
   return (
-    <div style={{ maxWidth: 800, margin: "0 auto", padding: "40px 20px" }}>
+    <>
+      <JsonLd data={{
+        "@context": "https://schema.org",
+        "@type": "SoftwareApplication",
+        name: "Password Generator",
+        description: "Generate secure random passwords with customizable options",
+        url: `${SITE_URL}/tools/password-generator`,
+        applicationCategory: "UtilitiesApplication",
+        operatingSystem: "Web",
+        offers: { "@type": "Offer", price: "0", priceCurrency: "USD" },
+      }} />
+      <div style={{ maxWidth: 800, margin: "0 auto", padding: "40px 20px" }}>
       <nav style={{ fontSize: 14, color: "var(--muted)", marginBottom: 24 }}>
         <Link href="/tools" style={{ color: "var(--accent)", textDecoration: "none" }}>Tools</Link>
         <span style={{ margin: "0 8px" }}>/</span>
@@ -107,5 +120,6 @@ export default function PasswordGeneratorPage() {
       </div>
       <NewsletterStrip />
     </div>
+    </>
   )
 }

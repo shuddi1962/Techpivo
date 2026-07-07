@@ -1,6 +1,9 @@
 import Link from 'next/link';
 import { ArrowLeft, BookOpen, Clock, Users, Zap, Sparkles, ChevronRight } from 'lucide-react';
+import { JsonLd } from '@/components/ui/jsonld';
+import { breadcrumbSchema, courseListSchema } from '@/lib/jsonld';
 import { getLearningPaths } from '@/lib/community';
+import { SITE_URL } from '@/lib/constants';
 
 export const metadata = {
   title: 'Learning Paths — TechPivo Community',
@@ -17,7 +20,19 @@ export default async function LearningPathsPage() {
   const paths = await getLearningPaths();
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-background via-background to-muted/30">
+    <>
+      <JsonLd data={breadcrumbSchema([
+        { name: "Home", url: SITE_URL },
+        { name: "Community", url: `${SITE_URL}/community` },
+        { name: "Learning Paths" },
+      ])} />
+      <JsonLd data={paths.length >= 3 ? courseListSchema(paths.map(p => ({
+        name: p.title,
+        description: p.description,
+        url: `${SITE_URL}/community/learning-paths`,
+        image: undefined,
+      }))) : null} />
+      <div className="min-h-screen bg-gradient-to-b from-background via-background to-muted/30">
       {/* Hero */}
       <div className="relative overflow-hidden bg-gradient-to-br from-violet-600/10 via-indigo-500/5 to-purple-600/10 dark:from-violet-500/5 dark:via-indigo-500/5 dark:to-purple-500/5 border-b border-border/40">
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_left,_var(--tw-gradient-stops))] from-violet-400/10 via-transparent to-transparent" />
@@ -113,5 +128,6 @@ export default async function LearningPathsPage() {
         )}
       </div>
     </div>
+    </>
   );
 }

@@ -5,6 +5,8 @@ import { PHProvider } from "@/components/posthog-provider"
 import { GoogleCMP } from "@/components/cookies/GoogleCMP"
 import { CookieConsentBanner } from "@/components/cookies/cookie-consent-banner"
 import { SITE_NAME, SITE_TAGLINE, SITE_URL } from "@/lib/constants"
+import { JsonLd } from "@/components/ui/jsonld"
+import { organizationSchema, websiteSchema } from "@/lib/jsonld"
 import "./globals.css"
 
 export const viewport: Viewport = {
@@ -99,56 +101,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <noscript>
           <iframe src="https://www.googletagmanager.com/ns.html?id=GTM-5QPM5TQ5" height="0" width="0" style={{ display: "none", visibility: "hidden" }} />
         </noscript>
-        <script
-          type="application/ld+json"
-          dangerouslySetInnerHTML={{
-            __html: JSON.stringify({
-              "@context": "https://schema.org",
-              "@type": "Organization",
-              "@id": `${SITE_URL}/#organization`,
-              name: "Techpivo",
-              url: SITE_URL,
-              logo: {
-                "@type": "ImageObject",
-                url: `${SITE_URL}/favicon.svg`,
-                width: 120,
-                height: 120,
-                caption: "Techpivo logo",
-              },
-              image: `${SITE_URL}/favicon.svg`,
-              description: "Tech, decoded. Fast.",
-              sameAs: [
-                "https://twitter.com/techpivo",
-                "https://facebook.com/techpivo",
-                "https://linkedin.com/company/techpivo",
-              ],
-            }),
-          }}
-        />
-        <script
-          type="application/ld+json"
-          dangerouslySetInnerHTML={{
-            __html: JSON.stringify({
-              "@context": "https://schema.org",
-              "@type": "WebSite",
-              "@id": `${SITE_URL}/#website`,
-              name: "Techpivo",
-              alternateName: `${SITE_NAME} — ${SITE_TAGLINE}`,
-              url: SITE_URL,
-              description: "Tech, decoded. Fast.",
-              publisher: { "@id": `${SITE_URL}/#organization` },
-              inLanguage: "en-US",
-              potentialAction: {
-                "@type": "SearchAction",
-                target: {
-                  "@type": "EntryPoint",
-                  urlTemplate: `${SITE_URL}/search?q={search_term_string}`,
-                },
-                "query-input": "required name=search_term_string",
-              },
-            }),
-          }}
-        />
+        <JsonLd data={organizationSchema()} />
+        <JsonLd data={websiteSchema()} />
         <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false} disableTransitionOnChange>
           <PHProvider>
             <LayoutWrapper>{children}</LayoutWrapper>

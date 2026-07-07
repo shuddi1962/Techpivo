@@ -15,6 +15,8 @@ import { PostComments } from "@/components/post/post-comments"
 import { ViewTracker } from "@/components/post/view-tracker"
 import { LiveViewCount } from "@/components/post/live-view-count"
 import { SITE_NAME, SITE_URL } from "@/lib/constants"
+import { JsonLd } from "@/components/ui/jsonld"
+import { articleSchema, breadcrumbSchema, faqPageSchema, collectionPageSchema } from "@/lib/jsonld"
 
 export const revalidate = 3600
 
@@ -93,53 +95,26 @@ export default async function PostPage({ params }: Props) {
   const allTags = tagsRes.data || []
   const sidebarTags = Array.from(new Set(allTags.flatMap((p: any) => p.seo_keywords || []))).slice(0, 20) as string[]
 
-  const breadcrumbJsonLd = {
-    "@context": "https://schema.org",
-    "@type": "BreadcrumbList",
-    itemListElement: [
-      { "@type": "ListItem", position: 1, name: "Home", item: SITE_URL },
-      {
-        "@type": "ListItem",
-        position: 2,
-        name: (post as any).category?.name || "Tech",
-        item: `${SITE_URL}/category/${(post as any).category?.slug || "tech-news"}`,
-      },
-      { "@type": "ListItem", position: 3, name: post.title, item: `${SITE_URL}/${post.slug}` },
-    ],
-  }
+  const faqData = (() => {
+    try {
+      const raw = (post as any).faq
+      if (Array.isArray(raw)) return raw as { question: string; answer: string }[]
+      if (typeof raw === "string") return JSON.parse(raw)
+      return null
+    } catch { return null }
+  })()
 
   return (
     <>
       <ReadingProgress />
       <ViewTracker postId={post.id} />
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }}
-      />
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{
-          __html: JSON.stringify({
-            "@context": "https://schema.org",
-            "@type": (post as any).schema_type || "Article",
-            headline: post.title,
-            description: (post.seo_description || post.content?.replace(/<[^>]+>/g, "").slice(0, 155)),
-            image: post.featured_image || undefined,
-            datePublished: post.published_at || undefined,
-            dateModified: post.updated_at || undefined,
-            author: {
-              "@type": "Person",
-              name: (post as any).author?.full_name || (post as any).author?.username || SITE_NAME,
-            },
-            publisher: {
-              "@type": "Organization",
-              name: SITE_NAME,
-              logo: `${SITE_URL}/favicon.svg`,
-            },
-            ...((post as any).model_used ? {} : {}),
-          }),
-        }}
-      />
+      <JsonLd data={breadcrumbSchema([
+        { name: "Home", url: SITE_URL },
+        { name: (post as any).category?.name || "Tech", url: `${SITE_URL}/category/${(post as any).category?.slug || "tech-news"}` },
+        { name: post.title },
+      ])} />
+      <JsonLd data={articleSchema(post)} />
+      <JsonLd data={faqPageSchema(faqData || [])} />
 
       <article className="container py-8">
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-10">

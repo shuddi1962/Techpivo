@@ -4,6 +4,8 @@ import Link from "next/link"
 import { Badge } from "@/components/ui/badge"
 import { formatDate } from "@/lib/utils"
 import { SITE_NAME, SITE_URL } from "@/lib/constants"
+import { JsonLd } from "@/components/ui/jsonld"
+import { breadcrumbSchema, profilePageSchema } from "@/lib/jsonld"
 import type { Metadata } from "next"
 
 type Props = { params: { username: string } }
@@ -51,7 +53,13 @@ export default async function AuthorPage({ params }: Props) {
   if (!count || count === 0) notFound()
 
   return (
-    <div className="container py-6">
+    <>
+      <JsonLd data={breadcrumbSchema([
+        { name: "Home", url: SITE_URL },
+        { name: `Author: ${author.full_name}` },
+      ])} />
+      <JsonLd data={profilePageSchema(author)} />
+      <div className="container py-6">
       <div className="max-w-6xl mx-auto mb-10">
         <div>
           <h1 className="text-3xl font-bold">{author.full_name}</h1>
@@ -83,5 +91,6 @@ export default async function AuthorPage({ params }: Props) {
         </div>
       </div>
     </div>
+    </>
   )
 }

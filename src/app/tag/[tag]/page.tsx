@@ -3,6 +3,8 @@ import Link from "next/link"
 import { Badge } from "@/components/ui/badge"
 import { formatDate } from "@/lib/utils"
 import { SITE_NAME, SITE_URL } from "@/lib/constants"
+import { JsonLd } from "@/components/ui/jsonld"
+import { breadcrumbSchema } from "@/lib/jsonld"
 import type { Metadata } from "next"
 
 type Props = { params: { tag: string } }
@@ -26,7 +28,12 @@ export default async function TagPage({ params }: Props) {
     .limit(50)
 
   return (
-    <div className="container py-6">
+    <>
+      <JsonLd data={breadcrumbSchema([
+        { name: "Home", url: SITE_URL },
+        { name: `#${params.tag}` },
+      ])} />
+      <div className="container py-6">
       <div className="mb-8">
         <h1 className="text-3xl font-bold">#{params.tag}</h1>
         <p className="text-muted-foreground mt-1">{posts?.length || 0} article{(posts?.length || 0) !== 1 ? "s" : ""}</p>
@@ -51,5 +58,6 @@ export default async function TagPage({ params }: Props) {
         )}
       </div>
     </div>
+    </>
   )
 }

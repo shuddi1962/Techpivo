@@ -1,6 +1,9 @@
 import Link from 'next/link';
 import { Brain, Clock, Users, BarChart, Sparkles, ArrowRight, Zap } from 'lucide-react';
+import { JsonLd } from '@/components/ui/jsonld';
+import { breadcrumbSchema } from '@/lib/jsonld';
 import { getQuizzes } from '@/lib/community';
+import { SITE_URL } from '@/lib/constants';
 
 export const metadata = {
   title: 'Quizzes — TechPivo Community',
@@ -18,7 +21,13 @@ export default async function QuizPage() {
   const categories = [...new Set(quizzes.map(q => q.category).filter(Boolean))];
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-background via-background to-muted/30">
+    <>
+      <JsonLd data={breadcrumbSchema([
+        { name: "Home", url: SITE_URL },
+        { name: "Community", url: `${SITE_URL}/community` },
+        { name: "Quizzes" },
+      ])} />
+      <div className="min-h-screen bg-gradient-to-b from-background via-background to-muted/30">
       {/* Hero */}
       <div className="relative overflow-hidden bg-gradient-to-br from-purple-600/10 via-violet-500/5 to-pink-600/10 dark:from-purple-500/5 dark:via-violet-500/5 dark:to-pink-500/5 border-b border-border/40">
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_left,_var(--tw-gradient-stops))] from-purple-400/10 via-transparent to-transparent" />
@@ -109,5 +118,6 @@ export default async function QuizPage() {
         )}
       </div>
     </div>
+    </>
   );
 }

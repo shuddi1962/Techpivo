@@ -1,6 +1,9 @@
 import Link from 'next/link';
 import { MessageSquare, Plus, Pin, CheckCircle2, Eye, ThumbsUp, Clock, Sparkles, ArrowRight } from 'lucide-react';
+import { JsonLd } from '@/components/ui/jsonld';
+import { breadcrumbSchema } from '@/lib/jsonld';
 import { getForumCategories, getForumPosts, timeAgo } from '@/lib/community';
+import { SITE_URL } from '@/lib/constants';
 
 export const metadata = {
   title: 'Forum — TechPivo Community',
@@ -14,7 +17,13 @@ export default async function ForumPage() {
   ]);
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-background via-background to-muted/30">
+    <>
+      <JsonLd data={breadcrumbSchema([
+        { name: "Home", url: SITE_URL },
+        { name: "Community", url: `${SITE_URL}/community` },
+        { name: "Forum" },
+      ])} />
+      <div className="min-h-screen bg-gradient-to-b from-background via-background to-muted/30">
       {/* Hero */}
       <div className="relative overflow-hidden bg-gradient-to-br from-blue-600/10 via-cyan-500/5 to-sky-600/10 dark:from-blue-500/5 dark:via-cyan-500/5 dark:to-sky-500/5 border-b border-border/40">
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-blue-400/10 via-transparent to-transparent" />
@@ -140,5 +149,6 @@ export default async function ForumPage() {
         </div>
       </div>
     </div>
+    </>
   );
 }

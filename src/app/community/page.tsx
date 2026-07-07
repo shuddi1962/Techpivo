@@ -2,8 +2,11 @@ import Link from 'next/link';
 import { Badge as UIBadge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { JsonLd } from '@/components/ui/jsonld';
+import { breadcrumbSchema, collectionPageSchema } from '@/lib/jsonld';
 import { getLeaderboard, getQuizzes, getActivePolls, getForumCategories, LEVELS, BADGES, getLevelForXP } from '@/lib/community';
 import { MessageSquare, Trophy, Brain, BarChart3, BookOpen, Users, Flame, Star, ArrowRight, Zap, Target, Award, Calendar } from 'lucide-react';
+import { SITE_URL } from '@/lib/constants';
 
 export const metadata = {
   title: 'Community — TechPivo',
@@ -19,7 +22,13 @@ export default async function CommunityPage() {
   ]);
 
   return (
-    <div className="min-h-screen bg-background">
+    <>
+      <JsonLd data={breadcrumbSchema([
+        { name: "Home", url: SITE_URL },
+        { name: "Community" },
+      ])} />
+      <JsonLd data={collectionPageSchema("TechPivo Community", "Join the TechPivo community. Discuss tech, take quizzes, earn rewards, and connect with fellow technology enthusiasts.", `${SITE_URL}/community`)} />
+      <div className="min-h-screen bg-background">
       <div className="bg-gradient-to-br from-primary/5 via-background to-primary/10 border-b">
         <div className="max-w-7xl mx-auto px-4 py-12">
           <div className="text-center max-w-2xl mx-auto">
@@ -300,5 +309,6 @@ export default async function CommunityPage() {
         </Card>
       </div>
     </div>
+    </>
   );
 }
