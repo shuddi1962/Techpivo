@@ -1,10 +1,11 @@
 "use client"
 
 import { useState } from "react"
+import Link from "next/link"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Share2, Link2, Clock, Image, BarChart3, TrendingUp, Zap, Settings, Send, Calendar, MessageSquare } from "lucide-react"
+import { Share2, Link2, Clock, Image, BarChart3, TrendingUp, Zap, Settings, Send, Calendar, MessageSquare, ThumbsUp } from "lucide-react"
 import { SocialCalendar } from "@/components/admin/social-calendar"
 import { AiCaptionStudio } from "@/components/admin/ai-caption-studio"
 import { CampaignManager } from "@/components/admin/campaign-manager"
@@ -230,6 +231,13 @@ export default function SocialPage() {
       <div>
         <h1 className="text-2xl font-bold">Social Command Center</h1>
         <p className="text-sm text-muted-foreground mt-1">Manage all social media platforms, scheduling, and analytics</p>
+      </div>
+      <div className="flex items-center gap-2 mb-2">
+        <Button variant="outline" size="sm" asChild>
+          <Link href="/admin/social/fb-token-helper">
+            <ThumbsUp className="h-3.5 w-3.5 mr-1.5" /> FB Token Helper
+          </Link>
+        </Button>
       </div>
       <div className="flex flex-wrap gap-1 border-b pb-px">
         {tabs.map(tab => {

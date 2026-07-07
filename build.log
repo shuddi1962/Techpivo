@@ -1,0 +1,28 @@
+Failed to create Supabase client n [Error]: Dynamic server usage: Route / couldn't be rendered statically because it used `cookies`. See more info here: https://nextjs.org/docs/messages/dynamic-server-error
+    at l (C:\Users\USER\Desktop\MY WORKFLOWS\Techpivo\.next\server\chunks\8948.js:1:37220)
+    at p (C:\Users\USER\Desktop\MY WORKFLOWS\Techpivo\.next\server\app\admin\ads\api\route.js:1:8732)
+    at n (C:\Users\USER\Desktop\MY WORKFLOWS\Techpivo\.next\server\app\admin\ads\api\route.js:1:13562)
+    at j (C:\Users\USER\Desktop\MY WORKFLOWS\Techpivo\.next\server\app\page.js:1:19415)
+    at em (C:\Users\USER\Desktop\MY WORKFLOWS\Techpivo\node_modules\next\dist\compiled\next-server\app-page.runtime.prod.js:12:134808)
+    at e (C:\Users\USER\Desktop\MY WORKFLOWS\Techpivo\node_modules\next\dist\compiled\next-server\app-page.runtime.prod.js:12:137693)
+    at e_ (C:\Users\USER\Desktop\MY WORKFLOWS\Techpivo\node_modules\next\dist\compiled\next-server\app-page.runtime.prod.js:12:138168)
+    at Array.toJSON (C:\Users\USER\Desktop\MY WORKFLOWS\Techpivo\node_modules\next\dist\compiled\next-server\app-page.runtime.prod.js:12:135777)
+    at stringify (<anonymous>)
+    at eE (C:\Users\USER\Desktop\MY WORKFLOWS\Techpivo\node_modules\next\dist\compiled\next-server\app-page.runtime.prod.js:12:142242) {
+  description: "Route / couldn't be rendered statically because it used `cookies`. See more info here: https://nextjs.org/docs/messages/dynamic-server-error",
+  digest: 'DYNAMIC_SERVER_USAGE'
+}
+Failed to create Supabase client n [Error]: Dynamic server usage: Route / couldn't be rendered statically because it used `cookies`. See more info here: https://nextjs.org/docs/messages/dynamic-server-error
+    at l (C:\Users\USER\Desktop\MY WORKFLOWS\Techpivo\.next\server\chunks\8948.js:1:37220)
+    at p (C:\Users\USER\Desktop\MY WORKFLOWS\Techpivo\.next\server\app\admin\ads\api\route.js:1:8732)
+    at n (C:\Users\USER\Desktop\MY WORKFLOWS\Techpivo\.next\server\app\admin\ads\api\route.js:1:13562)
+    at j (C:\Users\USER\Desktop\MY WORKFLOWS\Techpivo\.next\server\app\page.js:1:19415)
+    at em (C:\Users\USER\Desktop\MY WORKFLOWS\Techpivo\node_modules\next\dist\compiled\next-server\app-page.runtime.prod.js:12:134808)
+    at e (C:\Users\USER\Desktop\MY WORKFLOWS\Techpivo\node_modules\next\dist\compiled\next-server\app-page.runtime.prod.js:12:137693)
+    at e_ (C:\Users\USER\Desktop\MY WORKFLOWS\Techpivo\node_modules\next\dist\compiled\next-server\app-page.runtime.prod.js:12:138168)
+    at Array.toJSON (C:\Users\USER\Desktop\MY WORKFLOWS\Techpivo\node_modules\next\dist\compiled\next-server\app-page.runtime.prod.js:12:135777)
+    at stringify (<anonymous>)
+    at eE (C:\Users\USER\Desktop\MY WORKFLOWS\Techpivo\node_modules\next\dist\compiled\next-server\app-page.runtime.prod.js:12:142242) {
+  description: "Route / couldn't be rendered statically because it used `cookies`. See more info here: https://nextjs.org/docs/messages/dynamic-server-error",
+  digest: 'DYNAMIC_SERVER_USAGE'
+}

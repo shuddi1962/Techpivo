@@ -522,6 +522,34 @@ export default function AdminIntegrationsPage() {
                             />
                           </div>
                         )}
+                        {isConnected && integration.id === 'facebook' && (
+                          <div className="mt-3 pt-3 border-t">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="w-full"
+                              onClick={async () => {
+                                try {
+                                  setSaving((prev) => ({ ...prev, ['test_facebook']: true }))
+                                  const res = await fetch('/api/admin/social/test-post', { method: 'POST' })
+                                  const data = await res.json()
+                                  if (data.success) {
+                                    alert(`✅ Test post published!\n\nPost ID: ${data.postId}\nView: ${data.url}`)
+                                  } else {
+                                    alert(`❌ Failed: ${data.error}`)
+                                  }
+                                } catch (e: any) {
+                                  alert(`❌ Error: ${e.message}`)
+                                } finally {
+                                  setSaving((prev) => ({ ...prev, ['test_facebook']: false }))
+                                }
+                              }}
+                              disabled={saving['test_facebook']}
+                            >
+                              {saving['test_facebook'] ? 'Posting...' : 'Send Test Post → Facebook'}
+                            </Button>
+                          </div>
+                        )}
 
                         {isExpanded && (
                           <div className="mt-4 pt-4 border-t space-y-4">

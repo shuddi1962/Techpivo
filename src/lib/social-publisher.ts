@@ -144,7 +144,7 @@ async function postToTwitter(
   return data?.data?.id || null
 }
 
-async function postToFacebook(
+export async function postToFacebook(
   content: string,
   credentials: Record<string, string>,
   imageUrl?: string,
