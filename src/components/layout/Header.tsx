@@ -217,9 +217,9 @@ export function Header() {
                 Learning Paths
               </Link>
               <div className="mobile-drawer-divider" />
-              <div className="mobile-drawer-section">Account</div>
-              {user ? (
+              {user && (
                 <>
+                  <div className="mobile-drawer-section">Account</div>
                   <Link href="/account" className="mobile-drawer-link" onClick={() => setDrawerOpen(false)}>
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
                     My Account
@@ -233,11 +233,6 @@ export function Header() {
                     Bookmarks
                   </Link>
                 </>
-              ) : (
-                <button className="mobile-drawer-link" onClick={() => { setDrawerOpen(false); setLoginOpen(true) }}>
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" x2="3" y1="12" y2="12"/></svg>
-                  Sign In
-                </button>
               )}
               <div className="mobile-drawer-divider" />
               <div className="mobile-drawer-section">Info</div>

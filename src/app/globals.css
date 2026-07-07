@@ -85,7 +85,8 @@
 
 /* scroll-behavior removed to prevent unwanted nav scrolling */
 *, *::before, *::after { box-sizing: border-box; }
-html, body { overflow-x: hidden; max-width: 100vw; }
+html { overflow-x: clip; }
+body { overflow-x: clip; max-width: 100vw; }
 body { position: relative; }
 
 @layer components {
