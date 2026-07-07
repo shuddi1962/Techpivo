@@ -45,7 +45,7 @@ export default function AdminPostsPage() {
       supabase.from("posts")
         .select("*, category:categories(name)")
         .order("created_at", { ascending: false })
-        .limit(500),
+        .limit(500)
     ])
 
     const totalViews = (viewsRes.data || []).reduce((sum: number, p: any) => sum + (p.views || 0), 0)
