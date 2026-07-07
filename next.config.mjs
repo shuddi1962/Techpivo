@@ -58,6 +58,28 @@ const nextConfig = {
       dynamic: 300,
     },
   },
+  async headers() {
+    return [
+      {
+        source: '/(.*)',
+        headers: [
+          {
+            key: 'Content-Security-Policy',
+            value: [
+              "default-src 'self'",
+              "script-src 'self' 'unsafe-inline' https://*.googletagmanager.com https://va.vercel-scripts.com https://*.posthog.com",
+              "connect-src 'self' https://*.google-analytics.com https://*.analytics.google.com https://*.googletagmanager.com https://*.posthog.com https://*.supabase.co https://vitals.vercel-insights.com",
+              "img-src 'self' data: https: blob:",
+              "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+              "font-src 'self' data: https://fonts.gstatic.com",
+              "frame-src 'self' https://*.googletagmanager.com",
+              "upgrade-insecure-requests",
+            ].join('; '),
+          },
+        ],
+      },
+    ]
+  },
 };
 
 export default nextConfig;
