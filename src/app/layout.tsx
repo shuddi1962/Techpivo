@@ -34,7 +34,7 @@ export const metadata: Metadata = {
     type: "website",
     siteName: SITE_NAME,
     title: `${SITE_NAME} — ${SITE_TAGLINE}`,
-    description: "Techpivo - Tech, decoded. Fast. Your source for the latest in tech news, web development, programming, cybersecurity, AI, gadgets, and tutorials.",
+  description: "Techpivo delivers expert tech news, programming tutorials, cybersecurity guides, AI insights, gadget reviews, and developer tools. Stay ahead with in-depth tech coverage.",
     url: SITE_URL,
     locale: "en_US",
     images: [
@@ -58,6 +58,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en" suppressHydrationWarning>
       <head>
         <meta name="apple-mobile-web-app-title" content={SITE_NAME} />
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <link rel="dns-prefetch" href="https://www.googletagmanager.com" />
+        <link rel="dns-prefetch" href="https://www.google-analytics.com" />
         <script
           dangerouslySetInnerHTML={{
             __html: `

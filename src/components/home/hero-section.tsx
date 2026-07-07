@@ -87,13 +87,16 @@ export function HeroSection() {
           <h2 className="text-xl lg:text-3xl font-bold text-white mb-2 line-clamp-3">
             {main.title}
           </h2>
-          <p className="text-xs lg:text-sm text-gray-300 line-clamp-2 mb-2 lg:mb-3">{main.excerpt}</p>
-          <div className="flex items-center gap-2 lg:gap-3 text-xs lg:text-sm text-gray-400">
-            <Avatar className="h-6 w-6 lg:h-8 lg:w-8">
-              <AvatarImage src={(main as any).author?.avatar_url} />
-              <AvatarFallback>{(main as any).author?.full_name?.[0] || "T"}</AvatarFallback>
-            </Avatar>
-            <span>{(main as any).author?.full_name || "Techpivo"}</span>
+          <p className="text-xs lg:text-sm text-gray-200 line-clamp-2 mb-3">{main.excerpt}</p>
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2 lg:gap-3 text-xs lg:text-sm text-gray-300">
+              <Avatar className="h-6 w-6 lg:h-8 lg:w-8">
+                <AvatarImage src={(main as any).author?.avatar_url} />
+                <AvatarFallback>{(main as any).author?.full_name?.[0] || "T"}</AvatarFallback>
+              </Avatar>
+              <span>{(main as any).author?.full_name || "Techpivo"}</span>
+            </div>
+            <span className="btn-hero-cta">Read Article →</span>
           </div>
         </div>
       </Link>

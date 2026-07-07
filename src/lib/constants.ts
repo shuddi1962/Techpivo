@@ -1,5 +1,5 @@
 export const SITE_NAME = "Techpivo"
-export const SITE_TAGLINE = "Tech, decoded. Fast."
+export const SITE_TAGLINE = "Tech News, Tutorials & AI-Powered Insights"
 export const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://techpivo.com"
 
 export const CANONICAL_DOMAIN = "techpivo.com"

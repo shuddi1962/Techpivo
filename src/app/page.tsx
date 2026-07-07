@@ -16,15 +16,15 @@ import { SITE_NAME } from "@/lib/constants"
 export const revalidate = 60
 
 export const metadata: Metadata = {
-  title: `${SITE_NAME} — Tech, Decoded. Fast.`,
-  description: "Techpivo - Your source for the latest in tech news, web development, programming, cybersecurity, AI, gadgets, and tutorials. Tech, decoded. fast.",
+  title: `${SITE_NAME} — Tech News, Tutorials & AI-Powered Insights`,
+  description: "Techpivo delivers expert tech news, programming tutorials, cybersecurity guides, AI insights, gadget reviews, and developer tools. Stay ahead with in-depth coverage of the technologies shaping our world.",
   openGraph: {
-    title: `${SITE_NAME} — Tech, Decoded. Fast.`,
-    description: "Techpivo - Your source for the latest in tech news, web development, programming, cybersecurity, AI, gadgets, and tutorials.",
+    title: `${SITE_NAME} — Tech News, Tutorials & AI-Powered Insights`,
+    description: "Techpivo delivers expert tech news, programming tutorials, cybersecurity guides, AI insights, gadget reviews, and developer tools. Stay ahead with in-depth coverage of the technologies shaping our world.",
   },
   twitter: {
-    title: `${SITE_NAME} — Tech, Decoded. Fast.`,
-    description: "Techpivo - Your source for the latest in tech news, web development, programming, cybersecurity, AI, gadgets, and tutorials.",
+    title: `${SITE_NAME} — Tech News, Tutorials & AI-Powered Insights`,
+    description: "Techpivo delivers expert tech news, programming tutorials, cybersecurity guides, AI insights, gadget reviews, and developer tools.",
   },
 }
 
@@ -221,12 +221,12 @@ export default async function HomePage() {
                   </p>
                 </section>
 
-                <div style={{ margin: "20px 0 60px", padding: 32, borderRadius: 16, background: "linear-gradient(135deg, var(--accent) 0%, #D97706 100%)", textAlign: "center" as const }}>
-                  <h2 style={{ fontFamily: "'Syne', sans-serif", fontSize: 24, fontWeight: 800, color: "#fff", marginBottom: 8 }}>Free Tech Tools</h2>
-                  <p style={{ fontSize: 14, color: "rgba(255,255,255,0.85)", marginBottom: 20, maxWidth: 500, margin: "0 auto 20px" }}>
+                <div className="tools-cta-banner">
+                  <h2 className="tools-cta-title">Free Tech Tools</h2>
+                  <p className="tools-cta-desc">
                     Developer utilities, SEO tools, security checkers, and more. Fast, free, and private.
                   </p>
-                  <a href="/tools" style={{ display: "inline-block", padding: "12px 32px", borderRadius: 8, background: "#fff", color: "var(--accent)", fontWeight: 700, fontSize: 14, textDecoration: "none" }}>
+                  <a href="/tools" className="btn btn-white">
                     Explore All Tools
                   </a>
                 </div>
@@ -363,12 +363,12 @@ export default async function HomePage() {
               subcategories={subcatsByCat["gaming"] || []}
             />
 
-            <div style={{ margin: "40px 0", padding: 32, borderRadius: 16, background: "linear-gradient(135deg, var(--accent) 0%, #D97706 100%)", textAlign: "center" }}>
-              <h2 style={{ fontFamily: "'Syne', sans-serif", fontSize: 24, fontWeight: 800, color: "#fff", marginBottom: 8 }}>Free Tech Tools</h2>
-              <p style={{ fontSize: 14, color: "rgba(255,255,255,0.85)", marginBottom: 20, maxWidth: 500, margin: "0 auto 20px" }}>
+            <div className="tools-cta-banner">
+              <h2 className="tools-cta-title">Free Tech Tools</h2>
+              <p className="tools-cta-desc">
                 Developer utilities, SEO tools, security checkers, and more. Fast, free, and private.
               </p>
-              <a href="/tools" style={{ display: "inline-block", padding: "12px 32px", borderRadius: 8, background: "#fff", color: "var(--accent)", fontWeight: 700, fontSize: 14, textDecoration: "none" }}>
+              <a href="/tools" className="btn btn-white">
                 Explore All Tools
               </a>
             </div>
