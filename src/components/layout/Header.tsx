@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation"
 import { useTheme } from "next-themes"
 import { createClient } from "@/lib/supabase/client"
 import type { User } from "@supabase/supabase-js"
+import { socialIcons, defaultPlatforms } from "@/components/layout/social-icons"
 
 export function Header() {
   const [searchQ, setSearchQ] = useState("")
@@ -17,6 +18,7 @@ export function Header() {
   const [profileName, setProfileName] = useState<string | null>(null)
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [mobileSearch, setMobileSearch] = useState("")
+  const [socialUrls, setSocialUrls] = useState<Record<string, string>>({})
   const router = useRouter()
   const { theme, setTheme } = useTheme()
   const supabase = createClient()
@@ -35,6 +37,15 @@ export function Header() {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user ?? null)
       if (session?.user) loadProfile(session.user.id)
+    })
+    supabase.from("social_accounts").select("platform, credentials").then(({ data }) => {
+      if (data) {
+        const map: Record<string, string> = {}
+        data.forEach((a: any) => {
+          if (a.credentials?.follow_url) map[a.platform] = a.credentials.follow_url
+        })
+        setSocialUrls(map)
+      }
     })
     return () => subscription.unsubscribe()
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -234,17 +245,31 @@ export function Header() {
               <Link href="/contact" className="mobile-drawer-link" onClick={() => setDrawerOpen(false)}>Contact</Link>
               <Link href="/advertise" className="mobile-drawer-link" onClick={() => setDrawerOpen(false)}>Advertise</Link>
               <Link href="/write-for-us" className="mobile-drawer-link" onClick={() => setDrawerOpen(false)}>Write For Us</Link>
-            </div>
-            <div className="mobile-drawer-footer">
               {user ? (
-                <button className="login-btn" onClick={async () => { await supabase.auth.signOut(); setDrawerOpen(false); router.refresh() }}>
+                <button className="mobile-drawer-link" onClick={async () => { await supabase.auth.signOut(); setDrawerOpen(false); router.refresh() }}>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
                   Sign Out
                 </button>
               ) : (
-                <button className="login-btn" onClick={() => { setDrawerOpen(false); setLoginOpen(true) }}>
+                <button className="mobile-drawer-link" onClick={() => { setDrawerOpen(false); setLoginOpen(true) }}>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
                   Sign In
                 </button>
               )}
+              <div className="mobile-drawer-divider" />
+              <div className="mobile-drawer-section">Follow Us</div>
+              <div className="mobile-drawer-socials">
+                {defaultPlatforms.map((platform) => {
+                  const href = socialUrls[platform]
+                  if (!href) return null
+                  return (
+                    <a key={platform} href={href} target="_blank" rel="noopener noreferrer" className="mobile-drawer-link">
+                      {socialIcons[platform]}
+                      <span style={{ marginLeft: 10 }}>{platform.charAt(0).toUpperCase() + platform.slice(1)}</span>
+                    </a>
+                  )
+                })}
+              </div>
             </div>
           </div>
         </div>
