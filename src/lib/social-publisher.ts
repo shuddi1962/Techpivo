@@ -147,10 +147,32 @@ async function postToTwitter(
 async function postToFacebook(
   content: string,
   credentials: Record<string, string>,
+  imageUrl?: string,
 ): Promise<string | null> {
   const { page_id, page_access_token } = credentials
   if (!page_id || !page_access_token) return null
 
+  // Use /photos endpoint when we have an image — creates a native photo post
+  // with visible caption (includes the read-more link) for much better engagement
+  if (imageUrl) {
+    const res = await fetch(
+      `https://graph.facebook.com/v19.0/${page_id}/photos`,
+      {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body:    new URLSearchParams({
+          url: imageUrl,
+          message: content,
+          access_token: page_access_token,
+        }).toString(),
+      },
+    )
+    if (!res.ok) throw new Error(`Facebook API error (${res.status}): ${await res.text()}`)
+    const data = await res.json()
+    return data?.id || null
+  }
+
+  // No image — fall back to text-only feed post
   const res = await fetch(
     `https://graph.facebook.com/v19.0/${page_id}/feed`,
     {
@@ -456,7 +478,7 @@ export async function publishToAllPlatforms(post: PublishPostData): Promise<void
           platformPostId = await postToTwitter(content, creds, post.featured_image) ?? null
           break
         case 'facebook':
-          platformPostId = await postToFacebook(content, creds) ?? null
+          platformPostId = await postToFacebook(content, creds, post.featured_image) ?? null
           break
         case 'linkedin':
           platformPostId = await postToLinkedIn(content, creds) ?? null
@@ -604,7 +626,7 @@ export async function processScheduledPosts(): Promise<{ processed: number; resu
           platformPostId = await postToTwitter(content, creds, post.featured_image) ?? null
           break
         case 'facebook':
-          platformPostId = await postToFacebook(content, creds) ?? null
+          platformPostId = await postToFacebook(content, creds, post.featured_image) ?? null
           break
         case 'linkedin':
           platformPostId = await postToLinkedIn(content, creds) ?? null
