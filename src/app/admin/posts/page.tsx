@@ -275,7 +275,7 @@ export default function AdminPostsPage() {
                       </span>
                     </td>
                     <td className="px-5 py-4 text-right">
-                      <PostActionsDropdown postId={post.id} slug={post.slug} title={post.title} excerpt={post.excerpt || undefined} featured_image={post.featured_image || undefined} tags={post.tags} />
+                      <PostActionsDropdown postId={post.id} slug={post.slug} title={post.title} excerpt={post.excerpt || undefined} featured_image={post.featured_image || undefined} />
                     </td>
                   </tr>
                 ))
