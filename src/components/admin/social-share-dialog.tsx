@@ -87,7 +87,7 @@ const platforms: PlatformConfig[] = [
   },
 ]
 
-const STOP_WORDS = new Set(["a","an","the","for","to","is","are","and","or","of","in","on","at","with","from","by","its","it","as","be","but","not","this","that","was","were","has","had","have","can","will","all","get","got","new","how","what","why","who","you","your","our","their","about","into","over","after","than","then","also","just","very","too","much","more","most","some","any","each","every","own","same","such","may","than","when","which","while","other","only","still","been","being","make","made","said","does","used","use","using"]])
+const STOP_WORDS = new Set(["a","an","the","for","to","is","are","and","or","of","in","on","at","with","from","by","its","it","as","be","but","not","this","that","was","were","has","had","have","can","will","all","get","got","new","how","what","why","who","you","your","our","their","about","into","over","after","than","then","also","just","very","too","much","more","most","some","any","each","every","own","same","such","may","than","when","which","while","other","only","still","been","being","make","made","said","does","used","use","using"])
 
 function autoHashtags(title: string, count: number): string[] {
   const words = title.replace(/[^a-zA-Z0-9\s.-]/g, "").split(/\s+/)
