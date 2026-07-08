@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import { X, Share2, Check, ExternalLink, Copy, Image } from "lucide-react"
 import { SITE_URL } from "@/lib/constants"
 
@@ -87,28 +87,28 @@ const platforms: PlatformConfig[] = [
   },
 ]
 
-function captionFor(platform: string, title: string, excerpt: string, shortUrl: string, tags: string[]): string {
+function captionFor(platform: string, title: string, excerpt: string, url: string, tags: string[]): string {
   const hashtags = tags.slice(0, 3).map(t => "#" + t.replace(/\s+/g, "")).join(" ")
 
   switch (platform) {
     case "facebook":
-      return `${title}\n\n${excerpt.slice(0, 200)}${excerpt.length > 200 ? "..." : ""}\n\n${hashtags}\n\n📖 ${shortUrl}`
+      return `${title}\n\n${excerpt.slice(0, 200)}${excerpt.length > 200 ? "..." : ""}\n\n${hashtags}\n\n📖 ${url}`
     case "instagram":
-      return `${title} 🔥\n\n${excerpt.slice(0, 300)}${excerpt.length > 300 ? "..." : ""}\n\n${tags.slice(0, 15).map(t => "#" + t.replace(/\s+/g, "")).join(" ")}\n\n🔗 ${shortUrl}`
+      return `${title} 🔥\n\n${excerpt.slice(0, 300)}${excerpt.length > 300 ? "..." : ""}\n\n${tags.slice(0, 15).map(t => "#" + t.replace(/\s+/g, "")).join(" ")}\n\n🔗 ${url}`
     case "threads":
-      return `${excerpt.slice(0, 120)}${excerpt.length > 120 ? "..." : ""} 👀\n\n${title}\n\n🔗 ${shortUrl}`
+      return `${excerpt.slice(0, 120)}${excerpt.length > 120 ? "..." : ""} 👀\n\n${title}\n\n🔗 ${url}`
     case "twitter":
-      return `${title.slice(0, 100)}${title.length > 100 ? "..." : ""}\n\n${excerpt.slice(0, 120)}${excerpt.length > 120 ? "..." : ""}\n\n🔗 ${shortUrl}\n\n${tags.slice(0, 2).map(t => "#" + t.replace(/\s+/g, "")).join(" ")}`
+      return `${title.slice(0, 100)}${title.length > 100 ? "..." : ""}\n\n${excerpt.slice(0, 120)}${excerpt.length > 120 ? "..." : ""}\n\n🔗 ${url}\n\n${tags.slice(0, 2).map(t => "#" + t.replace(/\s+/g, "")).join(" ")}`
     case "linkedin":
-      return `${title}\n\n${excerpt.slice(0, 300)}${excerpt.length > 300 ? "..." : ""}\n\n${hashtags}\n\n📖 Read more: ${shortUrl}`
+      return `${title}\n\n${excerpt.slice(0, 300)}${excerpt.length > 300 ? "..." : ""}\n\n${hashtags}\n\n📖 Read more: ${url}`
     case "telegram":
-      return `${title}\n\n${excerpt.slice(0, 250)}${excerpt.length > 250 ? "..." : ""}\n\n${tags.slice(0, 3).map(t => "#" + t.replace(/\s+/g, "")).join(" ")}\n\n📖 ${shortUrl}`
+      return `${title}\n\n${excerpt.slice(0, 250)}${excerpt.length > 250 ? "..." : ""}\n\n${tags.slice(0, 3).map(t => "#" + t.replace(/\s+/g, "")).join(" ")}\n\n📖 ${url}`
     case "reddit":
-      return `${title}\n\n${excerpt.slice(0, 300)}${excerpt.length > 300 ? "..." : ""}\n\n${shortUrl}`
+      return `${title}\n\n${excerpt.slice(0, 300)}${excerpt.length > 300 ? "..." : ""}\n\n${url}`
     case "pinterest":
-      return `${title}\n\n${excerpt.slice(0, 200)}${excerpt.length > 200 ? "..." : ""}\n\n${hashtags}\n\n📖 ${shortUrl}`
+      return `${title}\n\n${excerpt.slice(0, 200)}${excerpt.length > 200 ? "..." : ""}\n\n${hashtags}\n\n📖 ${url}`
     default:
-      return `${title}\n\n${excerpt}\n\n📖 Read more: ${shortUrl}`
+      return `${title}\n\n${excerpt}\n\n📖 Read more: ${url}`
   }
 }
 
@@ -120,23 +120,11 @@ interface SocialShareDialogProps {
 
 export function SocialShareDialog({ open, onClose, post }: SocialShareDialogProps) {
   const [copied, setCopied] = useState<string | null>(null)
-  const [shortUrl, setShortUrl] = useState("tinyurl.com/...")
 
   const postUrl = `${SITE_URL}/${post.slug}`
   const excerpt = post.excerpt || ""
   const image = post.featured_image || ""
   const tags = post.tags || []
-
-  useEffect(() => {
-    if (!open) return
-    const ctrl = new AbortController()
-    const timer = setTimeout(() => ctrl.abort(), 4000)
-    fetch(`https://tinyurl.com/api-create.php?url=${encodeURIComponent(postUrl)}`, { signal: ctrl.signal })
-      .then(r => r.text())
-      .then(u => { if (u.startsWith("http")) setShortUrl(u.trim()) })
-      .catch(() => {})
-      .finally(() => clearTimeout(timer))
-  }, [open, postUrl])
 
   const copyToClipboard = async (key: string, text: string) => {
     try {
@@ -148,12 +136,37 @@ export function SocialShareDialog({ open, onClose, post }: SocialShareDialogProp
 
   const copyImageToClipboard = async (key: string, url: string) => {
     try {
-      const res = await fetch(url)
-      const blob = await res.blob()
-      const type = blob.type.startsWith("image/") ? blob.type : "image/png"
-      await navigator.clipboard.write([new ClipboardItem({ [type]: blob })])
-      setCopied(key)
-      setTimeout(() => setCopied(null), 2000)
+      // 1) Direct blob fetch
+      try {
+        const res = await fetch(url)
+        if (res.ok) {
+          const blob = await res.blob()
+          const type = blob.type.startsWith("image/") ? blob.type : "image/png"
+          await navigator.clipboard.write([new ClipboardItem({ [type]: blob })])
+          setCopied(key)
+          setTimeout(() => setCopied(null), 2000)
+          return
+        }
+      } catch {}
+
+      // 2) Canvas fallback (handles stricter CORS)
+      const img = new Image()
+      img.crossOrigin = "anonymous"
+      await new Promise<void>((resolve, reject) => {
+        img.onload = () => resolve()
+        img.onerror = reject
+        img.src = url
+      })
+      const canvas = document.createElement("canvas")
+      canvas.width = img.naturalWidth
+      canvas.height = img.naturalHeight
+      canvas.getContext("2d")?.drawImage(img, 0, 0)
+      const blob = await new Promise<Blob | null>((r) => canvas.toBlob(r, "image/png"))
+      if (blob) {
+        await navigator.clipboard.write([new ClipboardItem({ "image/png": blob })])
+        setCopied(key)
+        setTimeout(() => setCopied(null), 2000)
+      }
     } catch {}
   }
 
@@ -177,7 +190,7 @@ export function SocialShareDialog({ open, onClose, post }: SocialShareDialogProp
 
         <div className="overflow-y-auto px-5 py-4 flex-1 space-y-3">
           {platforms.map((platform) => {
-            const caption = captionFor(platform.id, post.title, excerpt, shortUrl, tags)
+            const caption = captionFor(platform.id, post.title, excerpt, postUrl, tags)
             const captionShort = caption.length > 180 ? caption.slice(0, 177) + "..." : caption
 
             return (

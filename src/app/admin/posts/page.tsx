@@ -23,6 +23,7 @@ interface PostRow {
   category: { name: string } | null
   ai_rewritten: boolean
   model_used: string | null
+  tags: string[] | null
 }
 
 export default function AdminPostsPage() {
@@ -297,7 +298,7 @@ export default function AdminPostsPage() {
                       </span>
                     </td>
                     <td className="px-5 py-4 text-right">
-                      <PostActionsDropdown postId={post.id} slug={post.slug} title={post.title} excerpt={post.excerpt || undefined} featured_image={post.featured_image || undefined} />
+                      <PostActionsDropdown postId={post.id} slug={post.slug} title={post.title} excerpt={post.excerpt || undefined} featured_image={post.featured_image || undefined} tags={post.tags || undefined} />
                     </td>
                   </tr>
                 ))
