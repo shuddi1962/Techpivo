@@ -1,14 +1,20 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
-import { AlertCircle, CheckCircle2, RefreshCw, LogIn } from "lucide-react"
+import { AlertCircle, CheckCircle2, RefreshCw } from "lucide-react"
 
 const FB_APP_ID = "1409956737618255"
-const REDIRECT_URI = "https://developers.facebook.com/tools/explorer/callback"
+
+declare global {
+  interface Window {
+    FB?: any
+    fbAsyncInit?: () => void
+  }
+}
 
 export default function FbTokenHelperPage() {
   const [userToken, setUserToken] = useState("")
@@ -16,8 +22,31 @@ export default function FbTokenHelperPage() {
   const [result, setResult] = useState<any>(null)
   const [error, setError] = useState("")
   const [saving, setSaving] = useState<string | null>(null)
+  const [sdkReady, setSdkReady] = useState(false)
+  const [loginLoading, setLoginLoading] = useState(false)
+  const initDone = useRef(false)
 
   useEffect(() => {
+    if (initDone.current) return
+    initDone.current = true
+
+    // Load FB SDK
+    const script = document.createElement("script")
+    script.src = "https://connect.facebook.net/en_US/sdk.js"
+    script.onload = () => {
+      if (window.FB) {
+        window.FB.init({
+          appId: FB_APP_ID,
+          version: "v19.0",
+          status: true,
+          xfbml: false,
+        })
+        setSdkReady(true)
+      }
+    }
+    document.body.appendChild(script)
+
+    // Also check URL hash for token
     const hash = window.location.hash
     if (hash && hash.includes("access_token=")) {
       const params = new URLSearchParams(hash.replace("#", "?"))
@@ -30,14 +59,27 @@ export default function FbTokenHelperPage() {
   }, [])
 
   const loginWithFacebook = () => {
-    const url =
-      `https://www.facebook.com/v19.0/dialog/oauth?` +
-      `client_id=${FB_APP_ID}&` +
-      `redirect_uri=${encodeURIComponent(REDIRECT_URI)}&` +
-      `scope=pages_manage_posts&` +
-      `response_type=token,granted_scopes`
+    if (!window.FB || !sdkReady) {
+      setError("Facebook SDK not loaded yet. Please wait a moment and try again.")
+      return
+    }
+    setLoginLoading(true)
+    setError("")
 
-    window.open(url, "_blank", "width=700,height=600")
+    window.FB.login(
+      (response: any) => {
+        setLoginLoading(false)
+        if (response.status === "connected" && response.authResponse?.accessToken) {
+          setUserToken(response.authResponse.accessToken)
+          exchangeToken(response.authResponse.accessToken)
+        } else if (response.status === "not_authorized") {
+          setError("You declined the authorization. Please try again and accept the permissions.")
+        } else {
+          setError("Login failed or was cancelled. Status: " + (response.status || "unknown"))
+        }
+      },
+      { scope: "pages_manage_posts", return_scopes: true }
+    )
   }
 
   const exchangeToken = async (token?: string) => {
@@ -91,7 +133,7 @@ export default function FbTokenHelperPage() {
       <div>
         <h1 className="text-2xl font-bold">Facebook Token Helper</h1>
         <p className="text-sm text-muted-foreground mt-1">
-          Get a Page Access Token in one click — no manual Graph API Explorer needed.
+          Get a Page Access Token using the Facebook Login SDK.
         </p>
       </div>
 
@@ -99,27 +141,37 @@ export default function FbTokenHelperPage() {
         <CardHeader><CardTitle>Step 1 — Log in with Facebook</CardTitle></CardHeader>
         <CardContent className="space-y-3">
           <p className="text-sm text-muted-foreground">
-            Click the button below to open Facebook&apos;s login dialog. Only the{" "}
-            <code className="bg-muted px-1 rounded text-xs">pages_manage_posts</code> permission is requested.
+            Click the button below. Facebook will open a popup asking for the{" "}
+            <code className="bg-muted px-1 rounded text-xs">pages_manage_posts</code> permission.
           </p>
-          <Button onClick={loginWithFacebook} size="lg" className="w-full sm:w-auto">
-            <LogIn className="h-4 w-4 mr-2" />
-            Login with Facebook
+          <Button
+            onClick={loginWithFacebook}
+            disabled={loginLoading || !sdkReady}
+            size="lg"
+            className="w-full sm:w-auto"
+          >
+            {loginLoading ? (
+              <><RefreshCw className="h-4 w-4 mr-2 animate-spin" /> Logging in...</>
+            ) : !sdkReady ? (
+              <><RefreshCw className="h-4 w-4 mr-2 animate-spin" /> Loading SDK...</>
+            ) : (
+              <><svg className="h-4 w-4 mr-2" viewBox="0 0 24 24" fill="currentColor"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg> Login with Facebook</>
+            )}
           </Button>
-          <p className="text-xs text-muted-foreground">
-            A new window will open. After authorizing, copy the token shown in the new page and paste it below.
-          </p>
+          {!sdkReady && (
+            <p className="text-xs text-amber-600">Loading Facebook SDK... please wait.</p>
+          )}
         </CardContent>
       </Card>
 
       <Card>
-        <CardHeader><CardTitle>Step 2 — Paste Token &amp; Exchange</CardTitle></CardHeader>
+        <CardHeader><CardTitle>Step 2 — Or Paste Token Manually</CardTitle></CardHeader>
         <CardContent className="space-y-3">
           <div className="flex gap-2">
             <Input
               value={userToken}
               onChange={(e) => setUserToken(e.target.value)}
-              placeholder="EAAU... (paste the access token)"
+              placeholder="EAAU... (paste access token)"
               className="font-mono text-xs flex-1"
             />
             <Button onClick={() => exchangeToken()} disabled={loading || !userToken.trim()}>
@@ -133,7 +185,7 @@ export default function FbTokenHelperPage() {
         <Card className="border-red-200">
           <CardContent className="p-4 flex items-start gap-3 text-red-700">
             <AlertCircle className="h-5 w-5 shrink-0 mt-0.5" />
-            <div className="text-sm">{error}</div>
+            <div className="text-sm whitespace-pre-wrap">{error}</div>
           </CardContent>
         </Card>
       )}
@@ -177,7 +229,6 @@ export default function FbTokenHelperPage() {
             ) : (
               <div className="text-sm text-muted-foreground">
                 No pages found. The token may not have <code className="bg-muted px-1 rounded">pages_manage_posts</code> permission.
-                Try the direct login button above.
               </div>
             )}
           </CardContent>
@@ -185,8 +236,7 @@ export default function FbTokenHelperPage() {
       )}
 
       <div className="text-xs text-muted-foreground space-y-1">
-        <p>Your credentials are processed server-side using your app secret. Nothing is sent to third parties.</p>
-        <p>App ID: <code className="bg-muted px-1 rounded">{FB_APP_ID}</code></p>
+        <p>Your Facebook login popup must not be blocked by your browser.</p>
       </div>
     </div>
   )
