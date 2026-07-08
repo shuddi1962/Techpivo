@@ -55,28 +55,28 @@ ${excerpt.length > 200 ? excerpt.slice(0, 197) + '...' : excerpt}
 
 ${hashtags}
 
-📖 Read full story in the comments ↓`
+Read full story in the comments:
+${_shortUrl}`
 }
 
 export function instagramCaption(title: string, excerpt: string, shortUrl: string, tags: string[]): string {
   const igHashtags = tags.slice(0, 15).map(t => '#' + t.replace(/\s+/g, '')).join(' ')
-  return `${title} 🔥
+  return `${title}
 
 ${excerpt.length > 300 ? excerpt.slice(0, 297) + '...' : excerpt}
 
 ${igHashtags}
 
-🔗 Read more: ${shortUrl}`
+${shortUrl}`
 }
 
-export function threadsCaption(title: string, excerpt: string, shortUrl: string, tags: string[]): string {
+export function threadsCaption(title: string, excerpt: string, shortUrl: string, _tags: string[]): string {
   const sentence = excerpt.length > 120 ? excerpt.slice(0, 117) + '...' : excerpt
-  return `${sentence} 👀
+  return `${sentence}
 
 ${title}
 
-🔗 ${shortUrl}
-`
+${shortUrl}`
 }
 
 export function twitterCaption(title: string, excerpt: string, shortUrl: string, tags: string[]): string {
@@ -86,7 +86,7 @@ export function twitterCaption(title: string, excerpt: string, shortUrl: string,
 
 ${teaser}
 
-🔗 ${shortUrl}
+${shortUrl}
 
 ${tags.slice(0, 2).map(t => '#' + t.replace(/\s+/g, '')).join(' ')}`
 }
@@ -98,7 +98,7 @@ ${excerpt.length > 250 ? excerpt.slice(0, 247) + '...' : excerpt}
 
 ${tags.slice(0, 3).map(t => '#' + t.replace(/\s+/g, '')).join(' ')}
 
-📖 [Read more →](${shortUrl})`
+${shortUrl}`
 }
 
 export function linkedinCaption(title: string, excerpt: string, shortUrl: string, hashtags: string): string {
@@ -108,7 +108,7 @@ ${excerpt.length > 300 ? excerpt.slice(0, 297) + '...' : excerpt}
 
 ${hashtags}
 
-📖 Read more: ${shortUrl}`
+Read more: ${shortUrl}`
 }
 
 export function redditTitle(title: string): string {

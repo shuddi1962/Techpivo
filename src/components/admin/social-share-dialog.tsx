@@ -87,28 +87,43 @@ const platforms: PlatformConfig[] = [
   },
 ]
 
+const STOP_WORDS = new Set(["a","an","the","for","to","is","are","and","or","of","in","on","at","with","from","by","its","it","as","be","but","not","this","that","was","were","has","had","have","can","will","all","get","got","new","how","what","why","who","you","your","our","their","about","into","over","after","than","then","also","just","very","too","much","more","most","some","any","each","every","own","same","such","may","than","when","which","while","other","only","still","been","being","make","made","said","does","used","use","using"]])
+
+function autoHashtags(title: string, count: number): string[] {
+  const words = title.replace(/[^a-zA-Z0-9\s.-]/g, "").split(/\s+/)
+  const meaningful = words.filter(w => w.length > 2 && !STOP_WORDS.has(w.toLowerCase()))
+  const seen = new Set<string>()
+  return meaningful.filter(w => {
+    const key = w.toLowerCase().replace(/[^a-z0-9]/g, "")
+    if (!key || seen.has(key)) return false
+    seen.add(key)
+    return true
+  }).slice(0, count).map(w => "#" + w.replace(/[^a-zA-Z0-9]/g, ""))
+}
+
 function captionFor(platform: string, title: string, excerpt: string, url: string, tags: string[]): string {
-  const hashtags = tags.slice(0, 3).map(t => "#" + t.replace(/\s+/g, "")).join(" ")
+  const fallbackTags = tags.length > 0 ? tags : autoHashtags(title, 3)
+  const hashtags = fallbackTags.slice(0, 3).map(t => "#" + t.replace(/\s+/g, "")).join(" ")
 
   switch (platform) {
     case "facebook":
-      return `${title}\n\n${excerpt.slice(0, 200)}${excerpt.length > 200 ? "..." : ""}\n\n${hashtags}\n\n📖 ${url}`
+      return `${title}\n\n${excerpt.slice(0, 200)}${excerpt.length > 200 ? "..." : ""}\n\n${hashtags}\n\nRead full story in the comments:\n${url}`
     case "instagram":
-      return `${title} 🔥\n\n${excerpt.slice(0, 300)}${excerpt.length > 300 ? "..." : ""}\n\n${tags.slice(0, 15).map(t => "#" + t.replace(/\s+/g, "")).join(" ")}\n\n🔗 ${url}`
+      return `${title}\n\n${excerpt.slice(0, 300)}${excerpt.length > 300 ? "..." : ""}\n\n${fallbackTags.slice(0, 15).map(t => "#" + t.replace(/\s+/g, "")).join(" ")}\n\n${url}`
     case "threads":
-      return `${excerpt.slice(0, 120)}${excerpt.length > 120 ? "..." : ""} 👀\n\n${title}\n\n🔗 ${url}`
+      return `${excerpt.slice(0, 120)}${excerpt.length > 120 ? "..." : ""}\n\n${title}\n\n${url}`
     case "twitter":
-      return `${title.slice(0, 100)}${title.length > 100 ? "..." : ""}\n\n${excerpt.slice(0, 120)}${excerpt.length > 120 ? "..." : ""}\n\n🔗 ${url}\n\n${tags.slice(0, 2).map(t => "#" + t.replace(/\s+/g, "")).join(" ")}`
+      return `${title.slice(0, 100)}${title.length > 100 ? "..." : ""}\n\n${excerpt.slice(0, 120)}${excerpt.length > 120 ? "..." : ""}\n\n${url}\n\n${fallbackTags.slice(0, 2).map(t => "#" + t.replace(/\s+/g, "")).join(" ")}`
     case "linkedin":
-      return `${title}\n\n${excerpt.slice(0, 300)}${excerpt.length > 300 ? "..." : ""}\n\n${hashtags}\n\n📖 Read more: ${url}`
+      return `${title}\n\n${excerpt.slice(0, 300)}${excerpt.length > 300 ? "..." : ""}\n\n${hashtags}\n\nRead more: ${url}`
     case "telegram":
-      return `${title}\n\n${excerpt.slice(0, 250)}${excerpt.length > 250 ? "..." : ""}\n\n${tags.slice(0, 3).map(t => "#" + t.replace(/\s+/g, "")).join(" ")}\n\n📖 ${url}`
+      return `${title}\n\n${excerpt.slice(0, 250)}${excerpt.length > 250 ? "..." : ""}\n\n${fallbackTags.slice(0, 3).map(t => "#" + t.replace(/\s+/g, "")).join(" ")}\n\n${url}`
     case "reddit":
       return `${title}\n\n${excerpt.slice(0, 300)}${excerpt.length > 300 ? "..." : ""}\n\n${url}`
     case "pinterest":
-      return `${title}\n\n${excerpt.slice(0, 200)}${excerpt.length > 200 ? "..." : ""}\n\n${hashtags}\n\n📖 ${url}`
+      return `${title}\n\n${excerpt.slice(0, 200)}${excerpt.length > 200 ? "..." : ""}\n\n${hashtags}\n\n${url}`
     default:
-      return `${title}\n\n${excerpt}\n\n📖 Read more: ${url}`
+      return `${title}\n\n${excerpt}\n\nRead more: ${url}`
   }
 }
 
