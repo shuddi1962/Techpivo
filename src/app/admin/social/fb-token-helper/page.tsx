@@ -1,20 +1,13 @@
 "use client"
 
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
-import { AlertCircle, CheckCircle2, RefreshCw } from "lucide-react"
+import { AlertCircle, CheckCircle2, RefreshCw, ExternalLink, Facebook } from "lucide-react"
 
 const FB_APP_ID = "1409956737618255"
-
-declare global {
-  interface Window {
-    FB?: any
-    fbAsyncInit?: () => void
-  }
-}
 
 export default function FbTokenHelperPage() {
   const [userToken, setUserToken] = useState("")
@@ -22,66 +15,31 @@ export default function FbTokenHelperPage() {
   const [result, setResult] = useState<any>(null)
   const [error, setError] = useState("")
   const [saving, setSaving] = useState<string | null>(null)
-  const [sdkReady, setSdkReady] = useState(false)
-  const [loginLoading, setLoginLoading] = useState(false)
-  const [grantedScopes, setGrantedScopes] = useState("")
-  const initDone = useRef(false)
 
+  // Auto-detect token from URL hash (redirected back from Facebook OAuth)
   useEffect(() => {
-    if (initDone.current) return
-    initDone.current = true
-
-    // Load FB SDK
-    const script = document.createElement("script")
-    script.src = "https://connect.facebook.net/en_US/sdk.js"
-    script.onload = () => {
-      if (window.FB) {
-        window.FB.init({
-          appId: FB_APP_ID,
-          version: "v19.0",
-          status: true,
-          xfbml: false,
-        })
-        setSdkReady(true)
-      }
-    }
-    document.body.appendChild(script)
-
-    // Also check URL hash for token
     const hash = window.location.hash
     if (hash && hash.includes("access_token=")) {
       const params = new URLSearchParams(hash.replace("#", "?"))
       const token = params.get("access_token")
       if (token) {
         setUserToken(token)
+        window.location.hash = ""
         setTimeout(() => exchangeToken(token), 500)
       }
     }
   }, [])
 
-  const loginWithFacebook = () => {
-    if (!window.FB || !sdkReady) {
-      setError("Facebook SDK not loaded yet. Please wait a moment and try again.")
-      return
-    }
-    setLoginLoading(true)
-    setError("")
-
-    window.FB.login(
-      (response: any) => {
-        setLoginLoading(false)
-        if (response.status === "connected" && response.authResponse?.accessToken) {
-          setUserToken(response.authResponse.accessToken)
-          setGrantedScopes(response.authResponse.grantedScopes || "")
-          exchangeToken(response.authResponse.accessToken)
-        } else if (response.status === "not_authorized") {
-          setError("You declined the authorization. Please try again and accept the permissions.")
-        } else {
-          setError("Login failed or was cancelled. Status: " + (response.status || "unknown"))
-        }
-      },
-      { scope: "instagram_basic,instagram_content_publish", return_scopes: true }
-    )
+  // Redirect the main window to Facebook OAuth (most reliable, no SDK needed)
+  const redirectToFacebook = () => {
+    const redirectUri = window.location.href.split("#")[0].split("?")[0]
+    const url =
+      `https://www.facebook.com/v19.0/dialog/oauth?` +
+      `client_id=${FB_APP_ID}&` +
+      `redirect_uri=${encodeURIComponent(redirectUri)}&` +
+      `scope=instagram_basic,instagram_content_publish&` +
+      `response_type=token`
+    window.location.href = url
   }
 
   const exchangeToken = async (token?: string) => {
@@ -134,42 +92,42 @@ export default function FbTokenHelperPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold">Facebook Token Helper</h1>
+        <h1 className="text-2xl font-bold">Instagram &amp; Facebook Token Helper</h1>
         <p className="text-sm text-muted-foreground mt-1">
-           Get Instagram &amp; Facebook tokens. Post to Instagram, cross-post to Facebook automatically.
+          Post to Instagram, cross-post to Facebook automatically.
         </p>
       </div>
 
+      {/* ── STEP 1: AUTH ── */}
       <Card>
-        <CardHeader><CardTitle>Step 1 — Log in with Facebook</CardTitle></CardHeader>
-        <CardContent className="space-y-3">
+        <CardHeader><CardTitle>Step 1 — Connect with Facebook</CardTitle></CardHeader>
+        <CardContent className="space-y-4">
           <p className="text-sm text-muted-foreground">
-            Click the button below. Facebook will open a popup asking for
-            Instagram permissions (<code className="bg-muted px-1 rounded text-xs">instagram_basic</code> + <code className="bg-muted px-1 rounded text-xs">instagram_content_publish</code>).
+            Grant <strong>instagram_basic</strong> and <strong>instagram_content_publish</strong> permissions.
           </p>
-          <Button
-            onClick={loginWithFacebook}
-            disabled={loginLoading || !sdkReady}
-            size="lg"
-            className="w-full sm:w-auto"
-          >
-            {loginLoading ? (
-              <><RefreshCw className="h-4 w-4 mr-2 animate-spin" /> Logging in...</>
-            ) : !sdkReady ? (
-              <><RefreshCw className="h-4 w-4 mr-2 animate-spin" /> Loading SDK...</>
-            ) : (
-              <><svg className="h-4 w-4 mr-2" viewBox="0 0 24 24" fill="currentColor"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg> Login with Facebook</>
-            )}
+
+          <p className="text-sm text-muted-foreground bg-blue-50 border border-blue-200 rounded-lg p-3">
+            Clicking the button below will redirect you to Facebook for authorization.
+            After you approve, you&apos;ll be sent back here and the token is captured automatically.
+          </p>
+
+          <Button onClick={redirectToFacebook} size="lg" className="w-full sm:w-auto bg-[#1877F2] hover:bg-[#166FE5] text-white">
+            <Facebook className="h-4 w-4 mr-2" />
+            Connect with Facebook
           </Button>
-          {!sdkReady && (
-            <p className="text-xs text-amber-600">Loading Facebook SDK... please wait.</p>
-          )}
         </CardContent>
       </Card>
 
+      {/* ── STEP 2: MANUAL / EXCHANGE ── */}
       <Card>
-        <CardHeader><CardTitle>Step 2 — Or Paste Token Manually</CardTitle></CardHeader>
+        <CardHeader><CardTitle>Step 2 — Or Paste an Access Token</CardTitle></CardHeader>
         <CardContent className="space-y-3">
+          <p className="text-xs text-muted-foreground">
+            If the redirect doesn&apos;t work, get a token from the{" "}
+            <a href="https://developers.facebook.com/tools/explorer/" target="_blank" rel="noopener noreferrer" className="text-blue-600 underline">Graph API Explorer</a>
+            {" "}with <code className="bg-muted px-1 rounded text-[10px]">instagram_basic</code> +{" "}
+            <code className="bg-muted px-1 rounded text-[10px]">instagram_content_publish</code> and paste it below.
+          </p>
           <div className="flex gap-2">
             <Input
               value={userToken}
@@ -181,9 +139,15 @@ export default function FbTokenHelperPage() {
               {loading ? <><RefreshCw className="h-3 w-3 mr-1 animate-spin" /> Exchanging...</> : "Exchange"}
             </Button>
           </div>
+          {userToken && (
+            <p className="text-xs text-muted-foreground truncate">
+              Token: {userToken.substring(0, 50)}...
+            </p>
+          )}
         </CardContent>
       </Card>
 
+      {/* ── ERROR ── */}
       {error && (
         <Card className="border-red-200">
           <CardContent className="p-4 flex items-start gap-3 text-red-700">
@@ -193,10 +157,16 @@ export default function FbTokenHelperPage() {
         </Card>
       )}
 
+      {/* ── RESULTS ── */}
       {result && (
         <>
           <Card>
-            <CardHeader><CardTitle>Step 3a — Instagram Business Accounts</CardTitle></CardHeader>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                Step 3a — Instagram Business Accounts
+                <Badge className="bg-pink-100 text-pink-700 text-xs">Instagram</Badge>
+              </CardTitle>
+            </CardHeader>
             <CardContent className="space-y-3">
               {(() => {
                 const igPages = (result.pages || []).filter((p: any) => p.instagram_business_account)
@@ -204,31 +174,38 @@ export default function FbTokenHelperPage() {
                   igPages.map((page: any) => {
                     const ig = page.instagram_business_account
                     return (
-                      <div key={ig.id} className="flex items-center justify-between p-3 rounded-lg bg-muted/30 border border-pink-200">
+                      <div key={ig.id} className="flex items-center justify-between p-4 rounded-lg bg-gradient-to-r from-pink-50 to-purple-50 border border-pink-200">
                         <div>
                           <p className="font-medium flex items-center gap-2">
-                            {ig.username || ig.name || "Instagram"}
-                            <Badge className="bg-pink-100 text-pink-700">Instagram</Badge>
+                            {ig.username || ig.name || "Instagram Account"}
                           </p>
-                          <p className="text-xs text-muted-foreground">IG ID: {ig.id} · linked to: {page.name}</p>
-                          <p className="text-[10px] font-mono text-muted-foreground truncate max-w-[500px] mt-1">
-                            page token: {page.access_token?.substring(0, 40)}...
+                          <p className="text-xs text-muted-foreground">
+                            IG ID: {ig.id} · Linked to Facebook Page: <strong>{page.name}</strong>
                           </p>
                         </div>
                         <Button
                           variant="default"
                           size="sm"
+                          className="bg-gradient-to-r from-pink-500 to-purple-500 hover:from-pink-600 hover:to-purple-600 text-white"
                           onClick={() => savePageToken(page.access_token, ig.id, ig.username || ig.id, { instagramUserId: ig.id, platform: 'instagram' })}
                           disabled={saving === ig.id}
                         >
-                          {saving === ig.id ? "Saving..." : "Save Instagram → DB"}
+                          {saving === ig.id ? (
+                            "Saving..."
+                          ) : result.saved === ig.id ? (
+                            <><CheckCircle2 className="h-3 w-3 mr-1" /> Saved</>
+                          ) : (
+                            "Save Instagram → DB"
+                          )}
                         </Button>
                       </div>
                     )
                   })
                 ) : (
-                  <div className="text-sm text-muted-foreground">
-                    No Instagram accounts found linked to your pages.
+                  <div className="text-sm text-muted-foreground p-3 bg-muted/20 rounded-lg">
+                    No Instagram Business Accounts linked to your Facebook Pages.
+                    Make sure your Instagram account is a <strong>Business Account</strong>
+                    {" "}and linked to a Facebook Page you manage.
                   </div>
                 )
               })()}
@@ -236,7 +213,12 @@ export default function FbTokenHelperPage() {
           </Card>
 
           <Card>
-            <CardHeader><CardTitle>Step 3b — Facebook Pages</CardTitle></CardHeader>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                Step 3b — Facebook Pages
+                <Badge className="bg-blue-100 text-blue-700 text-xs">Facebook</Badge>
+              </CardTitle>
+            </CardHeader>
             <CardContent className="space-y-3">
               {result.pages?.length > 0 ? (
                 result.pages.map((page: any) => (
@@ -244,14 +226,6 @@ export default function FbTokenHelperPage() {
                     <div>
                       <p className="font-medium">{page.name}</p>
                       <p className="text-xs text-muted-foreground">ID: {page.id}</p>
-                      {page.instagram_business_account && (
-                        <p className="text-xs text-pink-600">IG: {page.instagram_business_account.username || page.instagram_business_account.id}</p>
-                      )}
-                      {page.access_token && (
-                        <p className="text-[10px] font-mono text-muted-foreground truncate max-w-[500px] mt-1">
-                          token: {page.access_token.substring(0, 40)}...
-                        </p>
-                      )}
                     </div>
                     <div className="flex items-center gap-2">
                       {result.saved === page.id ? (
@@ -274,25 +248,18 @@ export default function FbTokenHelperPage() {
                   </div>
                 ))
               ) : (
-                <div className="text-sm text-muted-foreground">
-                  No pages found. Your token needs <code className="bg-muted px-1 rounded">pages_manage_posts</code> permission.
+                <div className="text-sm text-muted-foreground p-3 bg-muted/20 rounded-lg">
+                  No Facebook pages found. Your token may need the <code className="bg-muted px-1 rounded text-xs">pages_manage_posts</code> permission.
                 </div>
               )}
             </CardContent>
           </Card>
-
-          {grantedScopes && (
-            <Card>
-              <CardContent className="p-3 text-xs text-muted-foreground">
-                Granted scopes: <code className="bg-muted px-1 rounded">{grantedScopes}</code>
-              </CardContent>
-            </Card>
-          )}
         </>
       )}
 
       <div className="text-xs text-muted-foreground space-y-1">
-        <p>Your Facebook login popup must not be blocked by your browser.</p>
+        <p>Facebook App ID: {FB_APP_ID}</p>
+        <p>After saving, go to <strong>Admin → Integrations</strong> to verify.</p>
       </div>
     </div>
   )
