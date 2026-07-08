@@ -4,6 +4,22 @@ import type { SocialAccount, SocialPost } from '@/types/database'
 
 const SITE = process.env.NEXT_PUBLIC_SITE_URL || 'https://techpivo.com'
 
+// ── URL shortener ───────────────────────────────────────────────────────
+
+export async function shortenUrl(url: string): Promise<string> {
+  try {
+    const res = await fetch(
+      `https://tinyurl.com/api-create.php?url=${encodeURIComponent(url)}`,
+      { signal: AbortSignal.timeout(5000) },
+    )
+    if (!res.ok) return url
+    const short = await res.text()
+    return short.startsWith('http') ? short.trim() : url
+  } catch {
+    return url
+  }
+}
+
 const SUBREDDIT_MAP: Record<string, string> = {
   'tech-news':        'technology',
   'ai-automation':    'artificial',
@@ -28,6 +44,76 @@ function renderTemplate(template: string, vars: Record<string, string>): string 
 
 function buildUtmLink(url: string, platform: string, slug: string): string {
   return `${url}?utm_source=${platform}&utm_medium=social&utm_campaign=techpivo-auto&utm_content=${slug}`
+}
+
+// ── Per-platform caption formatters ─────────────────────────────────────
+
+export function facebookCaption(title: string, excerpt: string, shortUrl: string, hashtags: string): string {
+  return `${title}
+
+${excerpt.length > 200 ? excerpt.slice(0, 197) + '...' : excerpt}
+
+${hashtags}
+
+🔗 Read more: ${shortUrl}`
+}
+
+export function instagramCaption(title: string, excerpt: string, shortUrl: string, tags: string[]): string {
+  const igHashtags = tags.slice(0, 15).map(t => '#' + t.replace(/\s+/g, '')).join(' ')
+  return `${title} 🔥
+
+${excerpt.length > 300 ? excerpt.slice(0, 297) + '...' : excerpt}
+
+${igHashtags}
+
+🔗 Link: ${shortUrl}`
+}
+
+export function threadsCaption(title: string, excerpt: string, shortUrl: string, tags: string[]): string {
+  const sentence = excerpt.length > 120 ? excerpt.slice(0, 117) + '...' : excerpt
+  return `${sentence} 👀
+
+${title}
+
+${shortUrl}
+
+${tags.slice(0, 4).map(t => '#' + t.replace(/\s+/g, '')).join(' ')}`
+}
+
+export function twitterCaption(title: string, excerpt: string, shortUrl: string, tags: string[]): string {
+  const headline = title.length > 100 ? title.slice(0, 97) + '...' : title
+  const teaser = excerpt.length > 120 ? excerpt.slice(0, 117) + '...' : excerpt
+  return `${headline}
+
+${teaser}
+
+${tags.slice(0, 3).map(t => '#' + t.replace(/\s+/g, '')).join(' ')}
+
+🔗 ${shortUrl}`
+}
+
+export function telegramCaption(title: string, excerpt: string, shortUrl: string, tags: string[]): string {
+  return `*${title}*
+
+${excerpt.length > 250 ? excerpt.slice(0, 247) + '...' : excerpt}
+
+${tags.slice(0, 3).map(t => '#' + t.replace(/\s+/g, '')).join(' ')}
+
+[Read more →](${shortUrl})`
+}
+
+export function linkedinCaption(title: string, excerpt: string, shortUrl: string, hashtags: string): string {
+  return `${title}
+
+${excerpt.length > 300 ? excerpt.slice(0, 297) + '...' : excerpt}
+
+${hashtags}
+
+Read more: ${shortUrl}`
+}
+
+export function redditTitle(title: string): string {
+  return title.length > 300 ? title.slice(0, 297) + '...' : title
 }
 
 // ── Platform posting functions (read from DB credentials) ──────────────
@@ -111,7 +197,7 @@ async function uploadTwitterMedia(imageUrl: string, credentials: Record<string, 
   }
 }
 
-async function postToTwitter(
+export async function postToTwitter(
   content: string,
   credentials: Record<string, string>,
   imageUrl?: string,
@@ -186,7 +272,7 @@ export async function postToFacebook(
   return data?.id || null
 }
 
-async function postToInstagram(
+export async function postToInstagram(
   content: string,
   credentials: Record<string, string>,
   imageUrl?: string,
@@ -231,7 +317,56 @@ async function postToInstagram(
   return data?.id || null
 }
 
-async function postToLinkedIn(
+export async function postToThreads(
+  content: string,
+  credentials: Record<string, string>,
+  imageUrl?: string,
+): Promise<string | null> {
+  const { threads_user_id, access_token } = credentials
+  if (!threads_user_id || !access_token) return null
+  if (!imageUrl) {
+    throw new Error('Threads posts require an image')
+  }
+
+  // 1. Create media container
+  const createRes = await fetch(
+    `https://graph.threads.net/v1.0/${threads_user_id}/threads`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        media_type: 'IMAGE',
+        image_url: imageUrl,
+        text: content.slice(0, 500),
+        access_token,
+      }).toString(),
+    },
+  )
+  if (!createRes.ok) throw new Error(`Threads API error (create): ${await createRes.text()}`)
+  const { id: creationId } = await createRes.json()
+  if (!creationId) throw new Error('Threads returned no creation ID')
+
+  // 2. Wait for processing
+  await new Promise(r => setTimeout(r, 30000))
+
+  // 3. Publish
+  const publishRes = await fetch(
+    `https://graph.threads.net/v1.0/${threads_user_id}/threads_publish`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        creation_id: creationId,
+        access_token,
+      }).toString(),
+    },
+  )
+  if (!publishRes.ok) throw new Error(`Threads API error (publish): ${await publishRes.text()}`)
+  const data = await publishRes.json()
+  return data?.id || null
+}
+
+export async function postToLinkedIn(
   content: string,
   credentials: Record<string, string>,
 ): Promise<string | null> {
@@ -263,12 +398,30 @@ async function postToLinkedIn(
   return data?.id || null
 }
 
-async function postToTelegram(
+export async function postToTelegram(
   content: string,
   credentials: Record<string, string>,
+  imageUrl?: string,
 ): Promise<boolean> {
   const { bot_token, chat_id } = credentials
   if (!bot_token || !chat_id) return false
+
+  if (imageUrl) {
+    const res = await fetch(
+      `https://api.telegram.org/bot${bot_token}/sendPhoto`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          chat_id,
+          photo: imageUrl,
+          caption: content.slice(0, 1024),
+          parse_mode: 'Markdown',
+        }),
+      },
+    )
+    return res.ok
+  }
 
   const res = await fetch(
     `https://api.telegram.org/bot${bot_token}/sendMessage`,
@@ -308,7 +461,7 @@ async function postToReddit(
   if (!access_token) return false
 
   const lines   = content.split('\n')
-  const title   = lines[0]?.slice(0, 300) || 'New Article'
+  const title   = redditTitle(lines[0] || 'New Article')
   const postUrl = lines.find(l => l.startsWith('http')) || SITE
 
   const params = new URLSearchParams({
@@ -476,9 +629,7 @@ export async function publishToAllPlatforms(post: PublishPostData): Promise<void
   if (error || !accounts || accounts.length === 0) return
 
   const postUrl    = `${SITE}/${post.slug}`
-  const excerpt50  = post.excerpt.length > 50  ? post.excerpt.slice(0, 47) + '...' : post.excerpt
-  const excerpt100 = post.excerpt.length > 100 ? post.excerpt.slice(0, 97) + '...' : post.excerpt
-  const hashtags   = post.tags.slice(0, 3).map(t => '#' + t.replace(/\s+/g, '')).join(' ')
+  const shortUrl   = await shortenUrl(postUrl)
 
   for (const account of accounts) {
     const creds = account.credentials || {}
@@ -495,23 +646,38 @@ export async function publishToAllPlatforms(post: PublishPostData): Promise<void
       await new Promise(r => setTimeout(r, account.post_delay_minutes * 60 * 1000))
     }
 
-    // Build content from template or default
-    const utmLink = buildUtmLink(postUrl, account.platform, post.slug)
-    const defaultTemplate = account.platform === 'twitter'
-      ? '{title} {link} {hashtags}'
-      : '{title}\n\n{excerpt_100}\n\n{link}'
-    const template = account.custom_template || defaultTemplate
+    // Build content per platform — native caption format
+    const hashtags = post.tags.slice(0, 3).map(t => '#' + t.replace(/\s+/g, '')).join(' ')
 
-    const content = renderTemplate(template, {
-      title:        post.title,
-      excerpt_50:   excerpt50,
-      excerpt_100:  excerpt100,
-      link:         utmLink,
-      hashtags,
-      category:     post.category_slug.replace(/-/g, ' '),
-      author:       'Techpivo',
-      reading_time: '3 min',
-    })
+    const content = account.custom_template
+      ? renderTemplate(account.custom_template, {
+          title:        post.title,
+          excerpt_50:   post.excerpt.slice(0, 47) + (post.excerpt.length > 47 ? '...' : ''),
+          excerpt_100:  post.excerpt.slice(0, 97) + (post.excerpt.length > 97 ? '...' : ''),
+          link:         shortUrl,
+          hashtags,
+          category:     post.category_slug.replace(/-/g, ' '),
+          author:       'Techpivo',
+          reading_time: '3 min',
+        })
+      : (() => {
+          switch (account.platform) {
+            case 'facebook':
+              return facebookCaption(post.title, post.excerpt, shortUrl, hashtags)
+            case 'instagram':
+              return instagramCaption(post.title, post.excerpt, shortUrl, post.tags)
+            case 'threads':
+              return threadsCaption(post.title, post.excerpt, shortUrl, post.tags)
+            case 'twitter':
+              return twitterCaption(post.title, post.excerpt, shortUrl, post.tags)
+            case 'telegram':
+              return telegramCaption(post.title, post.excerpt, shortUrl, post.tags)
+            case 'linkedin':
+              return linkedinCaption(post.title, post.excerpt, shortUrl, hashtags)
+            default:
+              return `${post.title}\n\n${post.excerpt}\n\n${shortUrl}`
+          }
+        })()
 
     let platformPostId: string | null = null
     let status: 'sent' | 'failed' = 'failed'
@@ -525,6 +691,9 @@ export async function publishToAllPlatforms(post: PublishPostData): Promise<void
         case 'instagram':
           platformPostId = await postToInstagram(content, creds, post.featured_image) ?? null
           break
+        case 'threads':
+          platformPostId = await postToThreads(content, creds, post.featured_image) ?? null
+          break
         case 'facebook':
           platformPostId = await postToFacebook(content, creds, post.featured_image) ?? null
           break
@@ -532,7 +701,7 @@ export async function publishToAllPlatforms(post: PublishPostData): Promise<void
           platformPostId = await postToLinkedIn(content, creds) ?? null
           break
         case 'telegram':
-          await postToTelegram(content, creds)
+          await postToTelegram(content, creds, post.featured_image)
           platformPostId = 'sent'
           break
         case 'reddit':
@@ -641,27 +810,40 @@ export async function processScheduledPosts(): Promise<{ processed: number; resu
 
     const categorySlug = cat?.slug || 'tech-news'
     const postUrl = `${SITE}/${post.slug}`
-    const utmLink = buildUtmLink(postUrl, sp.platform, post.slug)
-
-    const excerpt50  = (post.excerpt || '').length > 50  ? (post.excerpt || '').slice(0, 47) + '...' : post.excerpt || ''
-    const excerpt100 = (post.excerpt || '').length > 100 ? (post.excerpt || '').slice(0, 97) + '...' : post.excerpt || ''
-    const hashtags   = (post.tags || []).slice(0, 3).map((t: string) => '#' + t.replace(/\s+/g, '')).join(' ')
+    const shortUrl = await shortenUrl(postUrl)
 
     const account = sp.social_accounts
-    const defaultTpl = account.platform === 'twitter'
-      ? '{title} {link} {hashtags}'
-      : '{title}\n\n{excerpt_100}\n\n{link}'
-    const template = account.custom_template || defaultTpl
-    const content = renderTemplate(template, {
-      title:        post.title,
-      excerpt_50:   excerpt50,
-      excerpt_100:  excerpt100,
-      link:         utmLink,
-      hashtags,
-      category:     categorySlug.replace(/-/g, ' '),
-      author:       'Techpivo',
-      reading_time: '3 min',
-    })
+    const hashtags = (post.tags || []).slice(0, 3).map((t: string) => '#' + t.replace(/\s+/g, '')).join(' ')
+
+    const content = account.custom_template
+      ? renderTemplate(account.custom_template, {
+          title:        post.title,
+          excerpt_50:   (post.excerpt || '').slice(0, 47) + ((post.excerpt || '').length > 47 ? '...' : ''),
+          excerpt_100:  (post.excerpt || '').slice(0, 97) + ((post.excerpt || '').length > 97 ? '...' : ''),
+          link:         shortUrl,
+          hashtags,
+          category:     categorySlug.replace(/-/g, ' '),
+          author:       'Techpivo',
+          reading_time: '3 min',
+        })
+      : (() => {
+          switch (account.platform) {
+            case 'facebook':
+              return facebookCaption(post.title, post.excerpt || '', shortUrl, hashtags)
+            case 'instagram':
+              return instagramCaption(post.title, post.excerpt || '', shortUrl, post.tags || [])
+            case 'threads':
+              return threadsCaption(post.title, post.excerpt || '', shortUrl, post.tags || [])
+            case 'twitter':
+              return twitterCaption(post.title, post.excerpt || '', shortUrl, post.tags || [])
+            case 'telegram':
+              return telegramCaption(post.title, post.excerpt || '', shortUrl, post.tags || [])
+            case 'linkedin':
+              return linkedinCaption(post.title, post.excerpt || '', shortUrl, hashtags)
+            default:
+              return `${post.title}\n\n${post.excerpt || ''}\n\n${shortUrl}`
+          }
+        })()
 
     const creds = account.credentials || {}
     let platformPostId: string | null = null
@@ -676,6 +858,9 @@ export async function processScheduledPosts(): Promise<{ processed: number; resu
         case 'instagram':
           platformPostId = await postToInstagram(content, creds, post.featured_image) ?? null
           break
+        case 'threads':
+          platformPostId = await postToThreads(content, creds, post.featured_image) ?? null
+          break
         case 'facebook':
           platformPostId = await postToFacebook(content, creds, post.featured_image) ?? null
           break
@@ -683,7 +868,7 @@ export async function processScheduledPosts(): Promise<{ processed: number; resu
           platformPostId = await postToLinkedIn(content, creds) ?? null
           break
         case 'telegram':
-          await postToTelegram(content, creds)
+          await postToTelegram(content, creds, post.featured_image)
           platformPostId = 'sent'
           break
         case 'reddit':
