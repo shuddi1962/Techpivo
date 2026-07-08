@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useCallback } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { useRouter } from "next/navigation"
 import { usePostEditor } from "./post-editor-provider"
 import { LeftColumn } from "./left-column"
@@ -14,11 +14,13 @@ import { AiWritingPanel } from "./panels/ai-writing-panel"
 import { ReadabilityPanel } from "./panels/readability-panel"
 import { InternalLinksPanel } from "./panels/internal-links-panel"
 import { QuickBriefPanel } from "./panels/quick-brief-panel"
-import { Save, Send, Eye, ArrowLeft, Loader2 } from "lucide-react"
+import { Save, Send, Eye, ArrowLeft, Loader2, Share2 } from "lucide-react"
+import { SocialShareDialog } from "@/components/admin/social-share-dialog"
 
 export function PostEditorLayout() {
   const router = useRouter()
   const { post, isSaving, loading, dirty, lastSaved, saveDraft, publish } = usePostEditor()
+  const [shareOpen, setShareOpen] = useState(false)
 
   const handleKeyDown = useCallback((e: KeyboardEvent) => {
     if ((e.ctrlKey || e.metaKey) && e.key === "s") {
@@ -95,6 +97,13 @@ export function PostEditorLayout() {
             <span className="hidden sm:inline">Preview</span>
           </button>
           <button
+            onClick={() => setShareOpen(true)}
+            className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-200 bg-white dark:bg-[#1F2937] border-2 border-gray-300 dark:border-[#374151] rounded-lg hover:bg-amber-50 dark:hover:bg-amber-900/20 hover:border-amber-300 transition-all shadow-sm"
+          >
+            <Share2 className="h-4 w-4 text-[#F59E0B]" />
+            <span className="hidden sm:inline">Share</span>
+          </button>
+          <button
             onClick={publish}
             disabled={isSaving}
             className="flex items-center gap-2 px-5 py-2 text-sm font-semibold text-white bg-[#F59E0B] hover:bg-[#D97706] disabled:bg-gray-300 dark:disabled:bg-[#374151] disabled:text-gray-500 dark:disabled:text-[#6B7280] rounded-lg transition-all shadow-sm shadow-[#F59E0B]/20"
@@ -105,6 +114,19 @@ export function PostEditorLayout() {
           </button>
         </div>
       </div>
+
+      <SocialShareDialog
+        open={shareOpen}
+        onClose={() => setShareOpen(false)}
+        post={{
+          id: post.id || "",
+          slug: post.slug || slugify(post.title),
+          title: post.title || "",
+          excerpt: post.excerpt || "",
+          featured_image: post.featured_image || post.og_image || "",
+          tags: post.tags || [],
+        }}
+      />
 
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
         <div className="xl:col-span-2">
