@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useCallback, useEffect } from "react"
+import { useState, useEffect } from "react"
 import { X, Share2, Check, ExternalLink, Loader2, AlertCircle } from "lucide-react"
 import { SITE_URL } from "@/lib/constants"
 
@@ -143,7 +143,7 @@ export function SocialShareDialog({ open, onClose, post }: SocialShareDialogProp
 
   if (!open) return null
 
-  const composeUrl = useCallback((platform: string, caption: string): string | null => {
+  function composeUrl(platform: string, caption: string): string | null {
     switch (platform) {
       case "facebook":
         return `https://www.facebook.com/dialog/feed?app_id=${FB_APP_ID}&display=popup&picture=${encodeURIComponent(image)}&name=${encodeURIComponent(post.title)}&description=${encodeURIComponent(caption)}&redirect_uri=${encodeURIComponent(postUrl)}`
@@ -164,7 +164,7 @@ export function SocialShareDialog({ open, onClose, post }: SocialShareDialogProp
       default:
         return null
     }
-  }, [image, post.title, postUrl])
+  }
 
   const handleAction = async (platform: PlatformConfig) => {
     const caption = captionFor(platform.id, post.title, excerpt, shortUrl, tags)
