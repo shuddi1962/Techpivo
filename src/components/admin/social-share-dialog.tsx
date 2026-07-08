@@ -28,7 +28,7 @@ const platforms: PlatformConfig[] = [
     id: "facebook",
     name: "Facebook",
     color: "#1877F2",
-    action: "compose",
+    action: "api",
     icon: <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M24 12.073c0-6.627-5.373-12-12-12S0 5.446 0 12.073c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>,
   },
   {
@@ -94,23 +94,23 @@ function captionFor(platform: string, title: string, excerpt: string, shortUrl: 
 
   switch (platform) {
     case "facebook":
-      return `${title}\n\n${excerpt.slice(0, 200)}${excerpt.length > 200 ? "..." : ""}\n\n${hashtags}\n\n🔗 Read more: ${shortUrl}`
+      return `${title}\n\n${excerpt.slice(0, 200)}${excerpt.length > 200 ? "..." : ""}\n\n${hashtags}\n\n📖 Read full story in the comments ↓`
     case "instagram":
-      return `${title} 🔥\n\n${excerpt.slice(0, 300)}${excerpt.length > 300 ? "..." : ""}\n\n${tags.slice(0, 15).map(t => "#" + t.replace(/\s+/g, "")).join(" ")}\n\n🔗 Link: ${shortUrl}`
+      return `${title} 🔥\n\n${excerpt.slice(0, 300)}${excerpt.length > 300 ? "..." : ""}\n\n${tags.slice(0, 15).map(t => "#" + t.replace(/\s+/g, "")).join(" ")}\n\n🔗 Read more: ${shortUrl}`
     case "threads":
-      return `${excerpt.slice(0, 120)}${excerpt.length > 120 ? "..." : ""} 👀\n\n${title}\n\n${shortUrl}\n\n${tags.slice(0, 4).map(t => "#" + t.replace(/\s+/g, "")).join(" ")}`
+      return `${excerpt.slice(0, 120)}${excerpt.length > 120 ? "..." : ""} 👀\n\n${title}\n\n🔗 ${shortUrl}`
     case "twitter":
-      return `${title.slice(0, 100)}${title.length > 100 ? "..." : ""}\n\n${excerpt.slice(0, 120)}${excerpt.length > 120 ? "..." : ""}\n\n${tags.slice(0, 3).map(t => "#" + t.replace(/\s+/g, "")).join(" ")}\n\n🔗 ${shortUrl}`
+      return `${title.slice(0, 100)}${title.length > 100 ? "..." : ""}\n\n${excerpt.slice(0, 120)}${excerpt.length > 120 ? "..." : ""}\n\n🔗 ${shortUrl}\n\n${tags.slice(0, 2).map(t => "#" + t.replace(/\s+/g, "")).join(" ")}`
     case "linkedin":
-      return `${title}\n\n${excerpt.slice(0, 300)}${excerpt.length > 300 ? "..." : ""}\n\n${hashtags}\n\nRead more: ${shortUrl}`
+      return `${title}\n\n${excerpt.slice(0, 300)}${excerpt.length > 300 ? "..." : ""}\n\n${hashtags}\n\n📖 Read more: ${shortUrl}`
     case "telegram":
-      return `${title}\n\n${excerpt.slice(0, 250)}${excerpt.length > 250 ? "..." : ""}\n\n${tags.slice(0, 3).map(t => "#" + t.replace(/\s+/g, "")).join(" ")}\n\nRead more → ${shortUrl}`
+      return `${title}\n\n${excerpt.slice(0, 250)}${excerpt.length > 250 ? "..." : ""}\n\n${tags.slice(0, 3).map(t => "#" + t.replace(/\s+/g, "")).join(" ")}\n\n📖 Read more → ${shortUrl}`
     case "reddit":
       return `${title}\n\n${excerpt.slice(0, 300)}${excerpt.length > 300 ? "..." : ""}\n\n${shortUrl}`
     case "pinterest":
-      return `${title}\n\n${excerpt.slice(0, 200)}${excerpt.length > 200 ? "..." : ""}\n\n${hashtags}\n\n🔗 ${shortUrl}`
+      return `${title}\n\n${excerpt.slice(0, 200)}${excerpt.length > 200 ? "..." : ""}\n\n${hashtags}\n\n📖 ${shortUrl}`
     default:
-      return `${title}\n\n${excerpt}\n\n🔗 Read more: ${shortUrl}`
+      return `${title}\n\n${excerpt}\n\n📖 Read more: ${shortUrl}`
   }
 }
 
@@ -190,10 +190,7 @@ export function SocialShareDialog({ open, onClose, post }: SocialShareDialogProp
       return
     }
 
-    // For compose & clipboard: always copy caption to clipboard first
-    if (platform.id === "facebook") {
-      try { await navigator.clipboard.writeText(caption) } catch {}
-    }
+    // For clipboard action: always copy caption to clipboard first
     if (platform.action === "clipboard") {
       try { await navigator.clipboard.writeText(caption) } catch {}
     }

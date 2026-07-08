@@ -98,7 +98,7 @@ export async function POST(req: Request) {
 
       case "facebook": {
         const caption = facebookCaption(title, excerpt, shortUrl, hashtags)
-        result = await postToFacebook(caption, creds, imageUrl)
+        result = await postToFacebook(caption, creds, imageUrl, shortUrl)
         break
       }
 

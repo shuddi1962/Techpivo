@@ -48,14 +48,14 @@ function buildUtmLink(url: string, platform: string, slug: string): string {
 
 // ── Per-platform caption formatters ─────────────────────────────────────
 
-export function facebookCaption(title: string, excerpt: string, shortUrl: string, hashtags: string): string {
+export function facebookCaption(title: string, excerpt: string, _shortUrl: string, hashtags: string): string {
   return `${title}
 
 ${excerpt.length > 200 ? excerpt.slice(0, 197) + '...' : excerpt}
 
 ${hashtags}
 
-🔗 Read more: ${shortUrl}`
+📖 Read full story in the comments ↓`
 }
 
 export function instagramCaption(title: string, excerpt: string, shortUrl: string, tags: string[]): string {
@@ -66,7 +66,7 @@ ${excerpt.length > 300 ? excerpt.slice(0, 297) + '...' : excerpt}
 
 ${igHashtags}
 
-🔗 Link: ${shortUrl}`
+🔗 Read more: ${shortUrl}`
 }
 
 export function threadsCaption(title: string, excerpt: string, shortUrl: string, tags: string[]): string {
@@ -75,9 +75,8 @@ export function threadsCaption(title: string, excerpt: string, shortUrl: string,
 
 ${title}
 
-${shortUrl}
-
-${tags.slice(0, 4).map(t => '#' + t.replace(/\s+/g, '')).join(' ')}`
+🔗 ${shortUrl}
+`
 }
 
 export function twitterCaption(title: string, excerpt: string, shortUrl: string, tags: string[]): string {
@@ -87,9 +86,9 @@ export function twitterCaption(title: string, excerpt: string, shortUrl: string,
 
 ${teaser}
 
-${tags.slice(0, 3).map(t => '#' + t.replace(/\s+/g, '')).join(' ')}
+🔗 ${shortUrl}
 
-🔗 ${shortUrl}`
+${tags.slice(0, 2).map(t => '#' + t.replace(/\s+/g, '')).join(' ')}`
 }
 
 export function telegramCaption(title: string, excerpt: string, shortUrl: string, tags: string[]): string {
@@ -99,7 +98,7 @@ ${excerpt.length > 250 ? excerpt.slice(0, 247) + '...' : excerpt}
 
 ${tags.slice(0, 3).map(t => '#' + t.replace(/\s+/g, '')).join(' ')}
 
-[Read more →](${shortUrl})`
+📖 [Read more →](${shortUrl})`
 }
 
 export function linkedinCaption(title: string, excerpt: string, shortUrl: string, hashtags: string): string {
@@ -109,7 +108,7 @@ ${excerpt.length > 300 ? excerpt.slice(0, 297) + '...' : excerpt}
 
 ${hashtags}
 
-Read more: ${shortUrl}`
+📖 Read more: ${shortUrl}`
 }
 
 export function redditTitle(title: string): string {
@@ -234,13 +233,16 @@ export async function postToFacebook(
   content: string,
   credentials: Record<string, string>,
   imageUrl?: string,
+  shortUrl?: string,
 ): Promise<string | null> {
   const { page_id, page_access_token } = credentials
   if (!page_id || !page_access_token) return null
 
+  let postId: string | null = null
+
   if (imageUrl) {
-    // Try binary upload first — creates a NATIVE photo post, caption in post body,
-    // no link preview card, no domain shown
+    // Try binary upload first — NATIVE photo post, caption in post body,
+    // NO link preview card, NO domain shown
     try {
       const imgRes = await fetch(imageUrl, { signal: AbortSignal.timeout(15000) })
       if (imgRes.ok) {
@@ -269,44 +271,67 @@ export async function postToFacebook(
         )
         if (res.ok) {
           const data = await res.json()
-          return data?.post_id || data?.id || null
+          postId = data?.post_id || data?.id || null
         }
       }
     } catch {}
 
-    // Fallback: URL-based photo upload (URL attribution may show but post still goes out)
+    if (!postId) {
+      // Fallback: URL-based photo upload
+      try {
+        const res = await fetch(
+          `https://graph.facebook.com/v19.0/${page_id}/photos`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: new URLSearchParams({
+              url: imageUrl,
+              message: content,
+              access_token: page_access_token,
+            }).toString(),
+          },
+        )
+        if (res.ok) {
+          const data = await res.json()
+          postId = data?.post_id || data?.id || null
+        }
+      } catch {}
+    }
+  }
+
+  if (!postId) {
+    // No image or all image uploads failed — post as text only
+    const res = await fetch(
+      `https://graph.facebook.com/v19.0/${page_id}/feed`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({ message: content, access_token: page_access_token }).toString(),
+      },
+    )
+    if (!res.ok) throw new Error(`Facebook API error (${res.status}): ${await res.text()}`)
+    const data = await res.json()
+    postId = data?.id || null
+  }
+
+  // Post a comment with the actual link (only if photo post succeeded and shortUrl provided)
+  if (postId && shortUrl) {
     try {
-      const res = await fetch(
-        `https://graph.facebook.com/v19.0/${page_id}/photos`,
+      await fetch(
+        `https://graph.facebook.com/v19.0/${postId}/comments`,
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
           body: new URLSearchParams({
-            url: imageUrl,
-            message: content,
+            message: `📖 Read the full story: ${shortUrl}`,
             access_token: page_access_token,
           }).toString(),
         },
       )
-      if (res.ok) {
-        const data = await res.json()
-        return data?.post_id || data?.id || null
-      }
     } catch {}
   }
 
-  // No image or image upload failed — post as text only
-  const res = await fetch(
-    `https://graph.facebook.com/v19.0/${page_id}/feed`,
-    {
-      method:  'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body:    new URLSearchParams({ message: content, access_token: page_access_token }).toString(),
-    },
-  )
-  if (!res.ok) throw new Error(`Facebook API error (${res.status}): ${await res.text()}`)
-  const data = await res.json()
-  return data?.id || null
+  return postId
 }
 
 export async function postToInstagram(
@@ -732,7 +757,7 @@ export async function publishToAllPlatforms(post: PublishPostData): Promise<void
           platformPostId = await postToThreads(content, creds, post.featured_image) ?? null
           break
         case 'facebook':
-          platformPostId = await postToFacebook(content, creds, post.featured_image) ?? null
+          platformPostId = await postToFacebook(content, creds, post.featured_image, shortUrl) ?? null
           break
         case 'linkedin':
           platformPostId = await postToLinkedIn(content, creds) ?? null
@@ -899,7 +924,7 @@ export async function processScheduledPosts(): Promise<{ processed: number; resu
           platformPostId = await postToThreads(content, creds, post.featured_image) ?? null
           break
         case 'facebook':
-          platformPostId = await postToFacebook(content, creds, post.featured_image) ?? null
+          platformPostId = await postToFacebook(content, creds, post.featured_image, shortUrl) ?? null
           break
         case 'linkedin':
           platformPostId = await postToLinkedIn(content, creds) ?? null
