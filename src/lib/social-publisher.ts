@@ -186,6 +186,51 @@ export async function postToFacebook(
   return data?.id || null
 }
 
+async function postToInstagram(
+  content: string,
+  credentials: Record<string, string>,
+  imageUrl?: string,
+): Promise<string | null> {
+  const { instagram_user_id, access_token } = credentials
+  if (!instagram_user_id || !access_token) return null
+  if (!imageUrl) {
+    throw new Error('Instagram posts require an image')
+  }
+
+  // 1. Create media container
+  const createRes = await fetch(
+    `https://graph.facebook.com/v19.0/${instagram_user_id}/media`,
+    {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body:    new URLSearchParams({
+        image_url: imageUrl,
+        caption:   content.slice(0, 2200),
+        access_token,
+      }).toString(),
+    },
+  )
+  if (!createRes.ok) throw new Error(`Instagram API error (create): ${await createRes.text()}`)
+  const { id: creationId } = await createRes.json()
+  if (!creationId) throw new Error('Instagram returned no creation ID')
+
+  // 2. Publish the media container
+  const publishRes = await fetch(
+    `https://graph.facebook.com/v19.0/${instagram_user_id}/media_publish`,
+    {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body:    new URLSearchParams({
+        creation_id: creationId,
+        access_token,
+      }).toString(),
+    },
+  )
+  if (!publishRes.ok) throw new Error(`Instagram API error (publish): ${await publishRes.text()}`)
+  const data = await publishRes.json()
+  return data?.id || null
+}
+
 async function postToLinkedIn(
   content: string,
   credentials: Record<string, string>,
@@ -477,6 +522,9 @@ export async function publishToAllPlatforms(post: PublishPostData): Promise<void
         case 'twitter':
           platformPostId = await postToTwitter(content, creds, post.featured_image) ?? null
           break
+        case 'instagram':
+          platformPostId = await postToInstagram(content, creds, post.featured_image) ?? null
+          break
         case 'facebook':
           platformPostId = await postToFacebook(content, creds, post.featured_image) ?? null
           break
@@ -624,6 +672,9 @@ export async function processScheduledPosts(): Promise<{ processed: number; resu
       switch (account.platform) {
         case 'twitter':
           platformPostId = await postToTwitter(content, creds, post.featured_image) ?? null
+          break
+        case 'instagram':
+          platformPostId = await postToInstagram(content, creds, post.featured_image) ?? null
           break
         case 'facebook':
           platformPostId = await postToFacebook(content, creds, post.featured_image) ?? null

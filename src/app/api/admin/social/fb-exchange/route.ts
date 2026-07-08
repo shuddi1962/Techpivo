@@ -10,20 +10,14 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "userToken is required" }, { status: 400 })
     }
 
-    // 1. Exchange short-lived user token for long-lived one
-    // First, get the app_id from the token itself by inspecting /me
-    let appId: string
-    try {
-      const meRes = await fetch(`https://graph.facebook.com/v19.0/me?access_token=${userToken}&fields=id`)
-      const meData = await meRes.json()
-      if (!meData.id) {
-        return NextResponse.json({ error: "Invalid token — could not identify user" }, { status: 400 })
-      }
-      // app_id can't be determined from user token directly, so we'll use the stored one
-      appId = "1409956737618255" // user's app_id
-    } catch {
-      return NextResponse.json({ error: "Failed to validate token with Facebook" }, { status: 502 })
+    // 1. Validate token and get user info
+    const meRes = await fetch(`https://graph.facebook.com/v19.0/me?access_token=${userToken}&fields=id,name`)
+    const meData = await meRes.json()
+    if (!meData.id) {
+      return NextResponse.json({ error: "Invalid token — could not identify user" }, { status: 400 })
     }
+
+    const appId = "1409956737618255"
 
     // 2. Exchange for long-lived token
     const exchangeUrl = `https://graph.facebook.com/v19.0/oauth/access_token?` +
@@ -43,21 +37,38 @@ export async function POST(req: NextRequest) {
 
     const longLivedToken = exchangeData.access_token
 
-    // 3. List pages
+    // 3. List pages (for Page Access Tokens and Instagram Business IDs)
     const pagesRes = await fetch(
       `https://graph.facebook.com/v19.0/me/accounts?access_token=${longLivedToken}&fields=id,name,access_token,picture`
     )
     const pagesData = await pagesRes.json()
 
     if (!pagesRes.ok) {
-      return NextResponse.json({
-        error: `Failed to list pages: ${pagesData.error?.message || JSON.stringify(pagesData)}`,
-      }, { status: 400 })
+      // Pages endpoint may fail if token lacks page scopes — that's OK, try Instagram directly
+    }
+
+    const pages = (pagesData?.data || []).map((p: any) => ({ ...p, platform: 'facebook' }))
+
+    // 4. For each page, try to get the linked Instagram Business Account
+    for (const page of pages) {
+      if (!page.access_token) continue
+      try {
+        const igRes = await fetch(
+          `https://graph.facebook.com/v19.0/${page.id}?fields=instagram_business_account{id,username,profile_picture_url}&access_token=${page.access_token}`
+        )
+        const igData = await igRes.json()
+        if (igData?.instagram_business_account?.id) {
+          page.instagram_business_account = igData.instagram_business_account
+        }
+      } catch {
+        // Page may not have Instagram connected
+      }
     }
 
     return NextResponse.json({
       success: true,
-      pages: pagesData.data || [],
+      user: meData,
+      pages,
     })
   } catch (err: any) {
     return NextResponse.json({ error: err.message || "Internal error" }, { status: 500 })
@@ -66,24 +77,35 @@ export async function POST(req: NextRequest) {
 
 export async function PUT(req: NextRequest) {
   try {
-    const { pageAccessToken, pageId, pageName } = await req.json()
+    const { pageAccessToken, pageId, pageName, instagramUserId, platform } = await req.json()
     if (!pageAccessToken || !pageId) {
       return NextResponse.json({ error: "pageAccessToken and pageId are required" }, { status: 400 })
     }
 
+    const targetPlatform = platform || 'facebook'
     const supabase = createClient()
 
     const { data: existing } = await supabase
       .from("social_accounts")
       .select("id")
-      .eq("platform", "facebook")
+      .eq("platform", targetPlatform)
       .single()
+
+    const credentials: Record<string, string> = {
+      page_id: pageId,
+      page_access_token: pageAccessToken,
+    }
+
+    if (instagramUserId) {
+      credentials.instagram_user_id = instagramUserId
+      credentials.access_token = pageAccessToken
+    }
 
     if (existing) {
       await supabase
         .from("social_accounts")
         .update({
-          credentials: { page_id: pageId, page_access_token: pageAccessToken },
+          credentials,
           account_name: pageName || "Facebook Page",
           is_active: true,
           auto_publish: true,
@@ -93,9 +115,9 @@ export async function PUT(req: NextRequest) {
       await supabase
         .from("social_accounts")
         .insert({
-          platform: "facebook",
-          account_name: pageName || "Facebook Page",
-          credentials: { page_id: pageId, page_access_token: pageAccessToken },
+          platform: targetPlatform,
+          account_name: pageName || (targetPlatform === 'instagram' ? 'Instagram Business' : 'Facebook Page'),
+          credentials,
           is_active: true,
           auto_publish: true,
         })

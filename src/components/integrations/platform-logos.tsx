@@ -187,6 +187,24 @@ export function GoogleAIStudioLogo(props: Props) {
   )
 }
 
+export function InstagramLogo(props: Props) {
+  return (
+    <Base {...props}>
+      <rect width="28" height="28" rx="6" fill="url(#ig-gradient)" />
+      <defs>
+        <linearGradient id="ig-gradient" x1="0" y1="0" x2="28" y2="28">
+          <stop offset="0%" stopColor="#F58529" />
+          <stop offset="50%" stopColor="#DD2A7B" />
+          <stop offset="100%" stopColor="#8134AF" />
+        </linearGradient>
+      </defs>
+      <rect x="5.5" y="5.5" width="17" height="17" rx="4.5" stroke="#fff" strokeWidth="1.8" fill="none" />
+      <circle cx="14" cy="14" r="4.5" stroke="#fff" strokeWidth="1.8" fill="none" />
+      <circle cx="19" cy="9" r="1.2" fill="#fff" />
+    </Base>
+  )
+}
+
 export function PinterestLogo(props: Props) {
   return (
     <Base {...props}>

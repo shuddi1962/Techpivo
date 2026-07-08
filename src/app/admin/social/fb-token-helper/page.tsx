@@ -24,6 +24,7 @@ export default function FbTokenHelperPage() {
   const [saving, setSaving] = useState<string | null>(null)
   const [sdkReady, setSdkReady] = useState(false)
   const [loginLoading, setLoginLoading] = useState(false)
+  const [grantedScopes, setGrantedScopes] = useState("")
   const initDone = useRef(false)
 
   useEffect(() => {
@@ -71,6 +72,7 @@ export default function FbTokenHelperPage() {
         setLoginLoading(false)
         if (response.status === "connected" && response.authResponse?.accessToken) {
           setUserToken(response.authResponse.accessToken)
+          setGrantedScopes(response.authResponse.grantedScopes || "")
           exchangeToken(response.authResponse.accessToken)
         } else if (response.status === "not_authorized") {
           setError("You declined the authorization. Please try again and accept the permissions.")
@@ -78,7 +80,7 @@ export default function FbTokenHelperPage() {
           setError("Login failed or was cancelled. Status: " + (response.status || "unknown"))
         }
       },
-      { scope: "pages_manage_posts", return_scopes: true }
+      { scope: "instagram_basic,instagram_content_publish", return_scopes: true }
     )
   }
 
@@ -107,17 +109,18 @@ export default function FbTokenHelperPage() {
     }
   }
 
-  const savePageToken = async (pageAccessToken: string, pageId: string, pageName: string) => {
-    setSaving(pageId)
+  const savePageToken = async (pageAccessToken: string, pageId: string, pageName: string, extra: Record<string, any> = {}) => {
+    const id = extra?.instagramUserId || pageId
+    setSaving(id)
     try {
       const res = await fetch("/api/admin/social/fb-exchange", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ pageAccessToken, pageId, pageName }),
+        body: JSON.stringify({ pageAccessToken, pageId, pageName, ...extra }),
       })
       const data = await res.json()
       if (data.success) {
-        setResult((prev: any) => ({ ...prev, saved: pageId }))
+        setResult((prev: any) => ({ ...prev, saved: id }))
       } else {
         alert("Failed to save: " + (data.error || "unknown"))
       }
@@ -133,7 +136,7 @@ export default function FbTokenHelperPage() {
       <div>
         <h1 className="text-2xl font-bold">Facebook Token Helper</h1>
         <p className="text-sm text-muted-foreground mt-1">
-          Get a Page Access Token using the Facebook Login SDK.
+           Get Instagram &amp; Facebook tokens. Post to Instagram, cross-post to Facebook automatically.
         </p>
       </div>
 
@@ -141,8 +144,8 @@ export default function FbTokenHelperPage() {
         <CardHeader><CardTitle>Step 1 — Log in with Facebook</CardTitle></CardHeader>
         <CardContent className="space-y-3">
           <p className="text-sm text-muted-foreground">
-            Click the button below. Facebook will open a popup asking for the{" "}
-            <code className="bg-muted px-1 rounded text-xs">pages_manage_posts</code> permission.
+            Click the button below. Facebook will open a popup asking for
+            Instagram permissions (<code className="bg-muted px-1 rounded text-xs">instagram_basic</code> + <code className="bg-muted px-1 rounded text-xs">instagram_content_publish</code>).
           </p>
           <Button
             onClick={loginWithFacebook}
@@ -191,48 +194,101 @@ export default function FbTokenHelperPage() {
       )}
 
       {result && (
-        <Card>
-          <CardHeader><CardTitle>Step 3 — Select Your Page</CardTitle></CardHeader>
-          <CardContent className="space-y-3">
-            {result.pages?.length > 0 ? (
-              result.pages.map((page: any) => (
-                <div key={page.id} className="flex items-center justify-between p-3 rounded-lg bg-muted/30">
-                  <div>
-                    <p className="font-medium">{page.name}</p>
-                    <p className="text-xs text-muted-foreground">ID: {page.id}</p>
-                    {page.access_token && (
-                      <p className="text-[10px] font-mono text-muted-foreground truncate max-w-[500px] mt-1">
-                        token: {page.access_token.substring(0, 40)}...
-                      </p>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-2">
-                    {result.saved === page.id ? (
-                      <Badge className="bg-green-100 text-green-700">
-                        <CheckCircle2 className="h-3 w-3 mr-1" /> Saved
-                      </Badge>
-                    ) : (
-                      page.access_token && (
+        <>
+          <Card>
+            <CardHeader><CardTitle>Step 3a — Instagram Business Accounts</CardTitle></CardHeader>
+            <CardContent className="space-y-3">
+              {(() => {
+                const igPages = (result.pages || []).filter((p: any) => p.instagram_business_account)
+                return igPages.length > 0 ? (
+                  igPages.map((page: any) => {
+                    const ig = page.instagram_business_account
+                    return (
+                      <div key={ig.id} className="flex items-center justify-between p-3 rounded-lg bg-muted/30 border border-pink-200">
+                        <div>
+                          <p className="font-medium flex items-center gap-2">
+                            {ig.username || ig.name || "Instagram"}
+                            <Badge className="bg-pink-100 text-pink-700">Instagram</Badge>
+                          </p>
+                          <p className="text-xs text-muted-foreground">IG ID: {ig.id} · linked to: {page.name}</p>
+                          <p className="text-[10px] font-mono text-muted-foreground truncate max-w-[500px] mt-1">
+                            page token: {page.access_token?.substring(0, 40)}...
+                          </p>
+                        </div>
                         <Button
                           variant="default"
                           size="sm"
-                          onClick={() => savePageToken(page.access_token, page.id, page.name)}
-                          disabled={saving === page.id}
+                          onClick={() => savePageToken(page.access_token, ig.id, ig.username || ig.id, { instagramUserId: ig.id, platform: 'instagram' })}
+                          disabled={saving === ig.id}
                         >
-                          {saving === page.id ? "Saving..." : "Save to Database"}
+                          {saving === ig.id ? "Saving..." : "Save Instagram → DB"}
                         </Button>
-                      )
-                    )}
+                      </div>
+                    )
+                  })
+                ) : (
+                  <div className="text-sm text-muted-foreground">
+                    No Instagram accounts found linked to your pages.
                   </div>
+                )
+              })()}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader><CardTitle>Step 3b — Facebook Pages</CardTitle></CardHeader>
+            <CardContent className="space-y-3">
+              {result.pages?.length > 0 ? (
+                result.pages.map((page: any) => (
+                  <div key={page.id} className="flex items-center justify-between p-3 rounded-lg bg-muted/30">
+                    <div>
+                      <p className="font-medium">{page.name}</p>
+                      <p className="text-xs text-muted-foreground">ID: {page.id}</p>
+                      {page.instagram_business_account && (
+                        <p className="text-xs text-pink-600">IG: {page.instagram_business_account.username || page.instagram_business_account.id}</p>
+                      )}
+                      {page.access_token && (
+                        <p className="text-[10px] font-mono text-muted-foreground truncate max-w-[500px] mt-1">
+                          token: {page.access_token.substring(0, 40)}...
+                        </p>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {result.saved === page.id ? (
+                        <Badge className="bg-green-100 text-green-700">
+                          <CheckCircle2 className="h-3 w-3 mr-1" /> Saved
+                        </Badge>
+                      ) : (
+                        page.access_token && (
+                          <Button
+                            variant="default"
+                            size="sm"
+                            onClick={() => savePageToken(page.access_token, page.id, page.name)}
+                            disabled={saving === page.id}
+                          >
+                            {saving === page.id ? "Saving..." : "Save Facebook → DB"}
+                          </Button>
+                        )
+                      )}
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div className="text-sm text-muted-foreground">
+                  No pages found. Your token needs <code className="bg-muted px-1 rounded">pages_manage_posts</code> permission.
                 </div>
-              ))
-            ) : (
-              <div className="text-sm text-muted-foreground">
-                No pages found. The token may not have <code className="bg-muted px-1 rounded">pages_manage_posts</code> permission.
-              </div>
-            )}
-          </CardContent>
-        </Card>
+              )}
+            </CardContent>
+          </Card>
+
+          {grantedScopes && (
+            <Card>
+              <CardContent className="p-3 text-xs text-muted-foreground">
+                Granted scopes: <code className="bg-muted px-1 rounded">{grantedScopes}</code>
+              </CardContent>
+            </Card>
+          )}
+        </>
       )}
 
       <div className="text-xs text-muted-foreground space-y-1">

@@ -13,7 +13,7 @@ import {
   CheckCircle2, XCircle, Globe, ThumbsUp,
 } from "lucide-react"
 import {
-  XLogo, FacebookLogo, YouTubeLogo, TelegramLogo, LinkedInLogo,
+  XLogo, FacebookLogo, InstagramLogo, YouTubeLogo, TelegramLogo, LinkedInLogo,
   RedditLogo, WhatsAppLogo, MediumLogo, DevtoLogo, HashnodeLogo,
   FlipboardLogo, BingLogo, PerplexityLogo, GoogleNewsLogo,
   ResendLogo, IndexNowLogo, PexelsLogo, OpenRouterLogo,
@@ -74,6 +74,22 @@ const integrations: Integration[] = [
       "Find your Page ID: open your Facebook page → About → Page ID",
       "Generate a Page Access Token in Graph API Explorer with page_manage_posts permission",
       "Paste Page ID and Access Token below",
+    ],
+  },
+  {
+    id: "instagram", name: "Instagram Business", logo: <InstagramLogo size={32} />, category: "social", timeline: "Day 1", benefit: "Auto-crosspost to Facebook",
+    followUrl: "https://instagram.com", credsUrl: "https://developers.facebook.com/apps",
+    fields: [
+      { key: "instagram_user_id", label: "Instagram Business Account ID", placeholder: "IG Business Account ID", type: "text" },
+      { key: "access_token", label: "Access Token", placeholder: "Facebook User Token with instagram_basic + instagram_content_publish", type: "password" },
+    ], hasAutoPublish: true,
+    guide: [
+      "Go to Facebook Developers and open your existing Techpivo app",
+      "Add the Instagram Graph API product if not already added",
+      "Connect your Instagram Business account to your Facebook Page",
+      "Use the FB Token Helper (Admin → Social → FB Token Helper) to get your Instagram Business Account ID and token",
+      "Paste the ID and Access Token below",
+      "Enable cross-posting: Instagram Settings → Account → Sharing → Auto-share to Facebook",
     ],
   },
   {
