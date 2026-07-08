@@ -1,7 +1,0 @@
-Facebook Token Helper + test-post & fb-exchange APIs
-
-- Created /api/admin/social/test-post — test post to Facebook
-- Created /api/admin/social/fb-exchange — user token exchange (POST) + save page token (PUT)
-- Created /admin/social/fb-token-helper — admin UI for token exchange
-- Added FB Token Helper + Test Post buttons in admin pages
-- Exported postToFacebook for reuse by test endpoint
