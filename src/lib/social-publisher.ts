@@ -239,35 +239,65 @@ export async function postToFacebook(
   if (!page_id || !page_access_token) return null
 
   if (imageUrl) {
-    // Download image to buffer so Facebook receives binary data, not an external URL
-    const imgRes = await fetch(imageUrl)
-    if (!imgRes.ok) throw new Error(`Failed to download image: ${imgRes.status}`)
-    const arrayBuf = await imgRes.arrayBuffer()
+    // Try binary upload first — creates a NATIVE photo post, caption in post body,
+    // no link preview card, no domain shown
+    try {
+      const imgRes = await fetch(imageUrl, { signal: AbortSignal.timeout(15000) })
+      if (imgRes.ok) {
+        const imgBuf = Buffer.from(await imgRes.arrayBuffer())
+        const contentType = imgRes.headers.get('content-type') || 'image/jpeg'
 
-    // Upload as multipart/form-data with source= binary + message= caption
-    // This creates a NATIVE photo post — caption shows in the post body,
-    // image is a direct upload, NO link preview card, NO domain shown
-    const form = new FormData()
-    form.append('message', content)
-    form.append('source', new Blob([arrayBuf], { type: 'image/jpeg' }), 'post.jpg')
-    form.append('access_token', page_access_token)
-    form.append('published', 'true')
+        const boundary = `----TechpivoFB${Date.now()}`
+        const CRLF = '\r\n'
+        const enc = (s: string) => Buffer.from(s, 'utf-8')
 
-    const res = await fetch(
-      `https://graph.facebook.com/v21.0/${page_id}/photos`,
-      {
-        method: 'POST',
-        body: form,
-      },
-    )
-    if (!res.ok) throw new Error(`Facebook API error (${res.status}): ${await res.text()}`)
-    const data = await res.json()
-    return data?.post_id || data?.id || null
+        const parts: Buffer[] = [
+          enc(`--${boundary}${CRLF}Content-Disposition: form-data; name="message"${CRLF}${CRLF}${content}${CRLF}`),
+          enc(`--${boundary}${CRLF}Content-Disposition: form-data; name="source"; filename="post.jpg"${CRLF}Content-Type: ${contentType}${CRLF}${CRLF}`),
+          imgBuf,
+          enc(`${CRLF}--${boundary}${CRLF}Content-Disposition: form-data; name="access_token"${CRLF}${CRLF}${page_access_token}${CRLF}`),
+          enc(`--${boundary}--${CRLF}`),
+        ]
+
+        const res = await fetch(
+          `https://graph.facebook.com/v19.0/${page_id}/photos`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': `multipart/form-data; boundary=${boundary}` },
+            body: Buffer.concat(parts),
+          },
+        )
+        if (res.ok) {
+          const data = await res.json()
+          return data?.post_id || data?.id || null
+        }
+      }
+    } catch {}
+
+    // Fallback: URL-based photo upload (URL attribution may show but post still goes out)
+    try {
+      const res = await fetch(
+        `https://graph.facebook.com/v19.0/${page_id}/photos`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: new URLSearchParams({
+            url: imageUrl,
+            message: content,
+            access_token: page_access_token,
+          }).toString(),
+        },
+      )
+      if (res.ok) {
+        const data = await res.json()
+        return data?.post_id || data?.id || null
+      }
+    } catch {}
   }
 
-  // No image — fall back to text-only feed post
+  // No image or image upload failed — post as text only
   const res = await fetch(
-    `https://graph.facebook.com/v21.0/${page_id}/feed`,
+    `https://graph.facebook.com/v19.0/${page_id}/feed`,
     {
       method:  'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },

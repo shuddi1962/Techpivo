@@ -122,7 +122,7 @@ interface SocialShareDialogProps {
 
 export function SocialShareDialog({ open, onClose, post }: SocialShareDialogProps) {
   const [posting, setPosting] = useState<string | null>(null)
-  const [results, setResults] = useState<Record<string, "success" | "error">>({})
+  const [results, setResults] = useState<Record<string, string>>({})
   const [shortUrl, setShortUrl] = useState("tinyurl.com/...")
 
   const postUrl = `${SITE_URL}/${post.slug}`
@@ -180,6 +180,9 @@ export function SocialShareDialog({ open, onClose, post }: SocialShareDialogProp
         })
         const data = await res.json()
         setResults(prev => ({ ...prev, [platform.id]: data.success ? "success" : "error" }))
+        if (!data.success && data.error) {
+          setResults(prev => ({ ...prev, [platform.id + "_msg"]: data.error }))
+        }
       } catch {
         setResults(prev => ({ ...prev, [platform.id]: "error" }))
       }
@@ -187,10 +190,12 @@ export function SocialShareDialog({ open, onClose, post }: SocialShareDialogProp
       return
     }
 
+    // For compose & clipboard: always copy caption to clipboard first
+    if (platform.id === "facebook") {
+      try { await navigator.clipboard.writeText(caption) } catch {}
+    }
     if (platform.action === "clipboard") {
-      try {
-        await navigator.clipboard.writeText(caption + "\n\n" + postUrl)
-      } catch {}
+      try { await navigator.clipboard.writeText(caption) } catch {}
     }
 
     if (url) {
@@ -220,6 +225,7 @@ export function SocialShareDialog({ open, onClose, post }: SocialShareDialogProp
             const captionShort = caption.length > 180 ? caption.slice(0, 177) + "..." : caption
             const isPosting = posting === platform.id
             const result = results[platform.id]
+            const errMsg = results[platform.id + "_msg"]
 
             return (
               <button
@@ -238,8 +244,8 @@ export function SocialShareDialog({ open, onClose, post }: SocialShareDialogProp
                     </span>
                   )}
                   {result === "error" && (
-                    <span className="ml-auto text-xs font-medium text-red-600 dark:text-red-400 flex items-center gap-1">
-                      <AlertCircle className="h-3 w-3" /> Failed
+                    <span className="ml-auto text-xs font-medium text-red-600 dark:text-red-400 flex items-center gap-1" title={errMsg}>
+                      <AlertCircle className="h-3 w-3 shrink-0" /> Failed
                     </span>
                   )}
                 </div>
@@ -266,6 +272,13 @@ export function SocialShareDialog({ open, onClose, post }: SocialShareDialogProp
                     </p>
                   </div>
                 </div>
+
+                {/* Error message */}
+                {errMsg && (
+                  <div className="px-4 pb-1">
+                    <p className="text-[10px] text-red-500 dark:text-red-400 leading-tight truncate">{errMsg}</p>
+                  </div>
+                )}
 
                 {/* Action button */}
                 <div className="px-4 pb-3">
