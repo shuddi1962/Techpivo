@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { X, Share2, Check, ExternalLink, Copy, Image } from "lucide-react"
+import { X, Share2, Check, ExternalLink, Copy, Image as ImageIcon } from "lucide-react"
 import { SITE_URL } from "@/lib/constants"
 
 interface PostData {
@@ -252,7 +252,7 @@ export function SocialShareDialog({ open, onClose, post }: SocialShareDialogProp
                     {copied === `img_${platform.id}` ? (
                       <><Check className="h-3 w-3" /> Copied</>
                     ) : (
-                      <><Image className="h-3 w-3" /> Image</>
+                      <><ImageIcon className="h-3 w-3" /> Image</>
                     )}
                   </button>
 
