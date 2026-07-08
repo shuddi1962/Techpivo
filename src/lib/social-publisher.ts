@@ -238,29 +238,36 @@ export async function postToFacebook(
   const { page_id, page_access_token } = credentials
   if (!page_id || !page_access_token) return null
 
-  // Use /photos endpoint when we have an image — creates a native photo post
-  // with visible caption (includes the read-more link) for much better engagement
   if (imageUrl) {
+    // Download image to buffer so Facebook receives binary data, not an external URL
+    const imgRes = await fetch(imageUrl)
+    if (!imgRes.ok) throw new Error(`Failed to download image: ${imgRes.status}`)
+    const arrayBuf = await imgRes.arrayBuffer()
+
+    // Upload as multipart/form-data with source= binary + message= caption
+    // This creates a NATIVE photo post — caption shows in the post body,
+    // image is a direct upload, NO link preview card, NO domain shown
+    const form = new FormData()
+    form.append('message', content)
+    form.append('source', new Blob([arrayBuf], { type: 'image/jpeg' }), 'post.jpg')
+    form.append('access_token', page_access_token)
+    form.append('published', 'true')
+
     const res = await fetch(
-      `https://graph.facebook.com/v19.0/${page_id}/photos`,
+      `https://graph.facebook.com/v21.0/${page_id}/photos`,
       {
-        method:  'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body:    new URLSearchParams({
-          url: imageUrl,
-          message: content,
-          access_token: page_access_token,
-        }).toString(),
+        method: 'POST',
+        body: form,
       },
     )
     if (!res.ok) throw new Error(`Facebook API error (${res.status}): ${await res.text()}`)
     const data = await res.json()
-    return data?.id || null
+    return data?.post_id || data?.id || null
   }
 
   // No image — fall back to text-only feed post
   const res = await fetch(
-    `https://graph.facebook.com/v19.0/${page_id}/feed`,
+    `https://graph.facebook.com/v21.0/${page_id}/feed`,
     {
       method:  'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
