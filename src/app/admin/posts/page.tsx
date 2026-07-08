@@ -1,12 +1,14 @@
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect, useCallback, useRef } from "react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { createClient } from "@/lib/supabase/client"
 import { PostActionsDropdown } from "@/components/admin/post-actions-dropdown"
 import { SafeImage } from "@/components/ui/safe-image"
 import { Plus, FileText, Search, RefreshCw, ChevronLeft, ChevronRight } from "lucide-react"
+
+const PAGE_SIZE = 20
 
 interface PostRow {
   id: string
@@ -26,28 +28,49 @@ interface PostRow {
 export default function AdminPostsPage() {
   const [posts, setPosts] = useState<PostRow[]>([])
   const [loading, setLoading] = useState(true)
+  const [totalCount, setTotalCount] = useState(0)
+  const [searchInput, setSearchInput] = useState("")
   const [search, setSearch] = useState("")
   const [statusFilter, setStatusFilter] = useState("all")
   const [aiFilter, setAiFilter] = useState("all")
-
-  const [counts, setCounts] = useState({ total: 0, published: 0, drafts: 0, views: 0 })
   const [page, setPage] = useState(1)
-  const pageSize = 20
+  const [counts, setCounts] = useState({ total: 0, published: 0, drafts: 0, views: 0 })
+  const searchTimeout = useRef<ReturnType<typeof setTimeout>>()
 
-  const fetchPosts = useCallback(async () => {
+  const buildQuery = useCallback((client: ReturnType<typeof createClient>, pageNum: number) => {
+    let q = client
+      .from("posts")
+      .select("*, category:categories(name)", { count: "exact" })
+
+    if (statusFilter !== "all") q = q.eq("status", statusFilter)
+    if (aiFilter === "ai") q = q.eq("ai_rewritten", true)
+    if (aiFilter === "manual") q = q.eq("ai_rewritten", false)
+    if (search) q = q.ilike("title", `%${search}%`)
+
+    const from = (pageNum - 1) * PAGE_SIZE
+    const to = from + PAGE_SIZE - 1
+
+    return q
+      .order("created_at", { ascending: false })
+      .range(from, to)
+  }, [search, statusFilter, aiFilter])
+
+  const fetchPage = useCallback(async (pageNum: number) => {
     const supabase = createClient()
+    const res = await buildQuery(supabase, pageNum)
+    if (res.data) setPosts(res.data as unknown as PostRow[])
+    if (typeof res.count === "number") setTotalCount(res.count)
+    setLoading(false)
+  }, [buildQuery])
 
-    const [countRes, pubRes, draftRes, viewsRes, dataRes] = await Promise.all([
+  const fetchCounts = useCallback(async () => {
+    const supabase = createClient()
+    const [countRes, pubRes, draftRes, viewsRes] = await Promise.all([
       supabase.from("posts").select("*", { count: "exact", head: true }),
       supabase.from("posts").select("*", { count: "exact", head: true }).eq("status", "published"),
       supabase.from("posts").select("*", { count: "exact", head: true }).eq("status", "draft"),
       supabase.from("posts").select("views"),
-      supabase.from("posts")
-        .select("*, category:categories(name)")
-        .order("created_at", { ascending: false })
-        .limit(500)
     ])
-
     const totalViews = (viewsRes.data || []).reduce((sum: number, p: any) => sum + (p.views || 0), 0)
     setCounts({
       total: countRes.count || 0,
@@ -55,41 +78,36 @@ export default function AdminPostsPage() {
       drafts: draftRes.count || 0,
       views: totalViews,
     })
-    if (dataRes.data) setPosts(dataRes.data as unknown as PostRow[])
-    setLoading(false)
   }, [])
 
+  const refresh = useCallback(() => {
+    setLoading(true)
+    fetchCounts()
+    fetchPage(page)
+  }, [fetchCounts, fetchPage, page])
+
   useEffect(() => {
-    fetchPosts()
-    const interval = setInterval(fetchPosts, 3000)
+    fetchCounts()
+    fetchPage(1)
+    setPage(1)
+  }, [search, statusFilter, aiFilter])
+
+  useEffect(() => {
+    fetchPage(page)
+  }, [page]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
     const supabase = createClient()
     const channel = supabase
       .channel("posts-realtime")
-      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "posts" }, (payload: any) => {
-        if (payload.new?.views !== payload.old?.views) fetchPosts()
+      .on("postgres_changes", { event: "*", schema: "public", table: "posts" }, () => {
+        fetchCounts()
       })
       .subscribe()
-    return () => {
-      clearInterval(interval)
-      supabase.removeChannel(channel)
-    }
-  }, [fetchPosts])
+    return () => { supabase.removeChannel(channel) }
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
-  const filtered = posts.filter((p) => {
-    if (statusFilter !== "all" && p.status !== statusFilter) return false
-    if (aiFilter === "ai") { if (!p.ai_rewritten) return false }
-    if (aiFilter === "manual") { if (p.ai_rewritten) return false }
-    if (search) {
-      const q = search.toLowerCase()
-      if (!p.title.toLowerCase().includes(q)) return false
-    }
-    return true
-  })
-
-  const totalPages = Math.ceil(filtered.length / pageSize)
-  const paginatedPosts = filtered.slice((page - 1) * pageSize, page * pageSize)
-
-  useEffect(() => { setPage(1) }, [search, statusFilter, aiFilter])
+  const totalPages = Math.ceil(totalCount / PAGE_SIZE)
 
   function formatDate(d: string) {
     return new Date(d).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
@@ -103,7 +121,7 @@ export default function AdminPostsPage() {
           <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Manage your blog content</p>
         </div>
         <div className="flex items-center gap-2">
-          <button onClick={fetchPosts} className="p-2 text-gray-400 hover:text-[#F59E0B] hover:bg-gray-100 dark:hover:bg-[#1F2937] rounded-lg transition-colors">
+          <button onClick={refresh} className="p-2 text-gray-400 hover:text-[#F59E0B] hover:bg-gray-100 dark:hover:bg-[#1F2937] rounded-lg transition-colors">
             <RefreshCw className="h-4 w-4" />
           </button>
           <Link href="/admin/posts/new">
@@ -141,8 +159,12 @@ export default function AdminPostsPage() {
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
             <input
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              value={searchInput}
+              onChange={(e) => {
+                setSearchInput(e.target.value)
+                if (searchTimeout.current) clearTimeout(searchTimeout.current)
+                searchTimeout.current = setTimeout(() => setSearch(e.target.value), 300)
+              }}
               placeholder="Search posts..."
               className="pl-9 pr-4 py-2 text-sm border-2 border-gray-200 dark:border-[#374151] rounded-lg bg-gray-50 dark:bg-[#0A0F1E] text-gray-900 dark:text-gray-100 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#F59E0B] focus:border-transparent w-64"
             />
@@ -192,7 +214,7 @@ export default function AdminPostsPage() {
                     </div>
                   </td>
                 </tr>
-              ) : filtered.length === 0 ? (
+              ) : posts.length === 0 ? (
                 <tr>
                   <td colSpan={7} className="px-5 py-12 text-center">
                     <FileText className="h-10 w-10 text-gray-300 dark:text-gray-600 mx-auto mb-3" />
@@ -210,7 +232,7 @@ export default function AdminPostsPage() {
                   </td>
                 </tr>
               ) : (
-                paginatedPosts.map((post, i) => (
+                posts.map((post, i) => (
                   <tr key={post.id} className={`border-b border-gray-50 dark:border-[#1F2937]/50 hover:bg-gray-50 dark:hover:bg-[#1a2235] transition-colors ${i === 0 ? "" : ""}`}>
                     <td className="px-5 py-4">
                       <div className="flex items-center gap-3">
@@ -287,7 +309,7 @@ export default function AdminPostsPage() {
         {totalPages > 1 && (
           <div className="flex items-center justify-between px-5 py-4 border-t-2 border-gray-100 dark:border-[#1F2937]">
             <span className="text-sm text-gray-500 dark:text-gray-400">
-              Page {page} of {totalPages} ({filtered.length} posts)
+              Page {page} of {totalPages} ({totalCount} posts)
             </span>
             <div className="flex items-center gap-1">
               <button

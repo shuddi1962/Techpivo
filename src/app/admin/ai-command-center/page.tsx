@@ -64,7 +64,7 @@ export default function AICommandCenterPage() {
         supabase.from("posts").select("id, title, status, ai_rewritten, published_at, created_at")
           .gte("created_at", thirtyDaysAgo),
         supabase.from("gemini_usage_log").select("*")
-          .gte("created_at", thirtyDaysAgo),
+          .gte("created_at", thirtyDaysAgo).limit(5000),
       ])
 
       const posts = postsRes.data || []

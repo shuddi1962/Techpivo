@@ -21,7 +21,7 @@ export default function AdminRolesPage() {
   const load = async () => {
     setLoading(true)
     const [profilesRes, emailRes] = await Promise.all([
-      supabase.from("profiles").select("*").order("created_at", { ascending: false }),
+      supabase.from("profiles").select("*").order("created_at", { ascending: false }).limit(500),
       fetch("/api/admin/users"),
     ])
     const emailMap: Record<string, string> = (await emailRes.json()).users || {}

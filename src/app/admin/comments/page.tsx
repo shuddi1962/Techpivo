@@ -23,16 +23,19 @@ export default function AdminCommentsPage() {
 
   useEffect(() => {
     const supabase = createClient()
-    supabase.from("comments").select("*, posts:post_id(title)").order("created_at", { ascending: false }).limit(100)
-      .then(({ data }) => {
-        if (data) setComments(data as any)
-      })
-  }, [])
+    let q = supabase.from("comments").select("*, posts:post_id(title)").order("created_at", { ascending: false })
+    if (activeTab !== "all") q = q.eq("status", activeTab)
+    q.limit(100).then(({ data }) => {
+      if (data) setComments(data as any)
+    })
+  }, [activeTab])
 
   const filtered = comments.filter(c => {
-    const matchTab = activeTab === "all" || c.status === activeTab
-    const matchSearch = !search || c.content?.toLowerCase().includes(search.toLowerCase()) || c.author_name?.toLowerCase().includes(search.toLowerCase())
-    return matchTab && matchSearch
+    if (search) {
+      const q = search.toLowerCase()
+      if (!c.content?.toLowerCase().includes(q) && !c.author_name?.toLowerCase().includes(q)) return false
+    }
+    return true
   })
 
   const counts = {

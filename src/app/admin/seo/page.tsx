@@ -93,8 +93,8 @@ export default function EnterpriseSeoCenter() {
       supabase.from("seo_audits").select("*").order("created_at", { ascending: false }).limit(100),
       supabase.from("keyword_rankings").select("*").order("position", { ascending: true }).limit(100),
       supabase.from("seo_issues").select("*").eq("resolved", false).order("created_at", { ascending: false }).limit(100),
-      supabase.from("topic_authority").select("*").order("authority_score", { ascending: false }),
-      supabase.from("posts").select("id, status, google_indexed")
+      supabase.from("topic_authority").select("*").order("authority_score", { ascending: false }).limit(200),
+      supabase.from("posts").select("id, status, google_indexed").limit(500)
     ])
 
     if (auditsRes.data) setAudits(auditsRes.data)
