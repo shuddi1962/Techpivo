@@ -105,30 +105,34 @@ function cleanExcerpt(text: string): string {
   return text.replace(/^TL;DR:\s*/i, "")
 }
 
-function captionFor(platform: string, title: string, _excerpt: string, url: string, tags: string[]): string {
+function cleanTag(t: string): string {
+  return "#" + t.replace(/^#/, "").replace(/\s+/g, "")
+}
+
+function captionFor(platform: string, title: string, _excerpt: string, url: string, tags: string[], shortUrl: string): string {
   const excerpt = cleanExcerpt(_excerpt)
   const fallbackTags = tags.length > 0 ? tags : autoHashtags(title, 3)
-  const hashtags = fallbackTags.slice(0, 3).map(t => "#" + t.replace(/\s+/g, "")).join(" ")
+  const short = shortUrl.startsWith("http") ? shortUrl : url
 
   switch (platform) {
     case "facebook":
-      return `${title}\n\n${excerpt.slice(0, 200)}${excerpt.length > 200 ? "..." : ""}\n\n${hashtags}\n\nRead full story in the comments:\n${url}`
+      return `${title}\n\n${excerpt.slice(0, 200)}${excerpt.length > 200 ? "..." : ""}\n\nRead full story in the comments:\n${fallbackTags.slice(0, 3).map(cleanTag).join(" ")}`
     case "instagram":
-      return `${title}\n\n${excerpt.slice(0, 300)}${excerpt.length > 300 ? "..." : ""}\n\n${fallbackTags.slice(0, 15).map(t => "#" + t.replace(/\s+/g, "")).join(" ")}\n\n${url}`
+      return `${title}\n\n${excerpt.slice(0, 300)}${excerpt.length > 300 ? "..." : ""}\n\n${fallbackTags.slice(0, 10).map(cleanTag).join(" ")}\n\n${short}`
     case "threads":
-      return `${excerpt.slice(0, 120)}${excerpt.length > 120 ? "..." : ""}\n\n${title}\n\n${url}`
+      return `${excerpt.slice(0, 120)}${excerpt.length > 120 ? "..." : ""}\n\n${title}\n\n${short}`
     case "twitter":
-      return `${title.slice(0, 100)}${title.length > 100 ? "..." : ""}\n\n${excerpt.slice(0, 120)}${excerpt.length > 120 ? "..." : ""}\n\n${url}\n\n${fallbackTags.slice(0, 2).map(t => "#" + t.replace(/\s+/g, "")).join(" ")}`
+      return `${title.slice(0, 100)}${title.length > 100 ? "..." : ""}\n\n${excerpt.slice(0, 120)}${excerpt.length > 120 ? "..." : ""}\n\n${fallbackTags.slice(0, 2).map(cleanTag).join(" ")}\n\n${short}`
     case "linkedin":
-      return `${title}\n\n${excerpt.slice(0, 300)}${excerpt.length > 300 ? "..." : ""}\n\n${hashtags}\n\nRead more: ${url}`
+      return `${title}\n\n${excerpt.slice(0, 300)}${excerpt.length > 300 ? "..." : ""}\n\n${fallbackTags.slice(0, 3).map(cleanTag).join(" ")}\n\nRead more: ${short}`
     case "telegram":
-      return `${title}\n\n${excerpt.slice(0, 250)}${excerpt.length > 250 ? "..." : ""}\n\n${fallbackTags.slice(0, 3).map(t => "#" + t.replace(/\s+/g, "")).join(" ")}\n\n${url}`
+      return `${title}\n\n${excerpt.slice(0, 250)}${excerpt.length > 250 ? "..." : ""}\n\n${fallbackTags.slice(0, 3).map(cleanTag).join(" ")}\n\n${short}`
     case "reddit":
-      return `${title}\n\n${excerpt.slice(0, 300)}${excerpt.length > 300 ? "..." : ""}\n\n${url}`
+      return `${title}\n\n${excerpt.slice(0, 300)}${excerpt.length > 300 ? "..." : ""}\n\n${short}`
     case "pinterest":
-      return `${title}\n\n${excerpt.slice(0, 200)}${excerpt.length > 200 ? "..." : ""}\n\n${hashtags}\n\n${url}`
+      return `${title}\n\n${excerpt.slice(0, 200)}${excerpt.length > 200 ? "..." : ""}\n\n${fallbackTags.slice(0, 3).map(cleanTag).join(" ")}\n\n${short}`
     default:
-      return `${title}\n\n${excerpt}\n\nRead more: ${url}`
+      return `${title}\n\n${excerpt}\n\nRead more: ${short}`
   }
 }
 
@@ -142,25 +146,35 @@ export function SocialShareDialog({ open, onClose, post }: SocialShareDialogProp
   const [copied, setCopied] = useState<string | null>(null)
   const [imageBlob, setImageBlob] = useState<Blob | null>(null)
   const [imageLoading, setImageLoading] = useState(false)
+  const [shortUrl, setShortUrl] = useState("")
 
   const postUrl = `${SITE_URL}/${post.slug}`
   const excerpt = post.excerpt || ""
   const image = post.featured_image || ""
   const tags = post.tags || []
 
-  // Pre-fetch image blob when dialog opens so Copy Image is instant
+  // Pre-fetch image blob + shorten URL when dialog opens
   useEffect(() => {
-    if (!open || !image) return
-    setImageBlob(null)
-    setImageLoading(true)
+    if (!open) return
+    setShortUrl("")
+    // Fetch short URL
     const ctrl = new AbortController()
-    fetch(image, { signal: ctrl.signal })
-      .then(r => r.blob())
-      .then(b => { if (b.type.startsWith("image/")) setImageBlob(b) })
+    fetch(`https://tinyurl.com/api-create.php?url=${encodeURIComponent(postUrl)}`, { signal: ctrl.signal })
+      .then(r => r.text())
+      .then(u => { if (u.startsWith("http")) setShortUrl(u.trim()) })
       .catch(() => {})
-      .finally(() => setImageLoading(false))
+    // Pre-fetch image blob
+    if (image) {
+      setImageBlob(null)
+      setImageLoading(true)
+      fetch(image, { signal: ctrl.signal })
+        .then(r => r.blob())
+        .then(b => { if (b.type.startsWith("image/")) setImageBlob(b) })
+        .catch(() => {})
+        .finally(() => setImageLoading(false))
+    }
     return () => ctrl.abort()
-  }, [open, image])
+  }, [open, image, postUrl])
 
   const copyToClipboard = async (key: string, text: string) => {
     try {
@@ -234,7 +248,7 @@ export function SocialShareDialog({ open, onClose, post }: SocialShareDialogProp
 
         <div className="overflow-y-auto px-5 py-4 flex-1 space-y-3">
           {platforms.map((platform) => {
-            const caption = captionFor(platform.id, post.title, excerpt, postUrl, tags)
+            const caption = captionFor(platform.id, post.title, excerpt, postUrl, tags, shortUrl)
             const captionShort = caption.length > 180 ? caption.slice(0, 177) + "..." : caption
 
             return (

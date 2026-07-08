@@ -58,15 +58,15 @@ export function facebookCaption(title: string, excerpt: string, _shortUrl: strin
 
 ${e.length > 200 ? e.slice(0, 197) + '...' : e}
 
-${hashtags}
-
 Read full story in the comments:
-${_shortUrl}`
+${hashtags}`
 }
+
+const cleanTag = (t: string) => '#' + t.replace(/^#/, '').replace(/\s+/g, '')
 
 export function instagramCaption(title: string, excerpt: string, shortUrl: string, tags: string[]): string {
   const e = cleanExcerpt(excerpt)
-  const igHashtags = tags.slice(0, 15).map(t => '#' + t.replace(/\s+/g, '')).join(' ')
+  const igHashtags = tags.slice(0, 15).map(cleanTag).join(' ')
   return `${title}
 
 ${e.length > 300 ? e.slice(0, 297) + '...' : e}
@@ -96,7 +96,7 @@ ${teaser}
 
 ${shortUrl}
 
-${tags.slice(0, 2).map(t => '#' + t.replace(/\s+/g, '')).join(' ')}`
+${tags.slice(0, 2).map(cleanTag).join(' ')}`
 }
 
 export function telegramCaption(title: string, excerpt: string, shortUrl: string, tags: string[]): string {
@@ -105,7 +105,7 @@ export function telegramCaption(title: string, excerpt: string, shortUrl: string
 
 ${e.length > 250 ? e.slice(0, 247) + '...' : e}
 
-${tags.slice(0, 3).map(t => '#' + t.replace(/\s+/g, '')).join(' ')}
+${tags.slice(0, 3).map(cleanTag).join(' ')}
 
 ${shortUrl}`
 }
@@ -719,7 +719,7 @@ export async function publishToAllPlatforms(post: PublishPostData): Promise<void
     }
 
     // Build content per platform — native caption format
-    const hashtags = post.tags.slice(0, 3).map(t => '#' + t.replace(/\s+/g, '')).join(' ')
+    const hashtags = post.tags.slice(0, 3).map(t => '#' + t.replace(/^#/, '').replace(/\s+/g, '')).join(' ')
 
     const content = account.custom_template
       ? renderTemplate(account.custom_template, {
@@ -885,7 +885,7 @@ export async function processScheduledPosts(): Promise<{ processed: number; resu
     const shortUrl = await shortenUrl(postUrl)
 
     const account = sp.social_accounts
-    const hashtags = (post.tags || []).slice(0, 3).map((t: string) => '#' + t.replace(/\s+/g, '')).join(' ')
+    const hashtags = (post.tags || []).slice(0, 3).map((t: string) => '#' + t.replace(/^#/, '').replace(/\s+/g, '')).join(' ')
 
     const content = account.custom_template
       ? renderTemplate(account.custom_template, {
