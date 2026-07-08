@@ -48,10 +48,15 @@ function buildUtmLink(url: string, platform: string, slug: string): string {
 
 // ── Per-platform caption formatters ─────────────────────────────────────
 
+function cleanExcerpt(text: string): string {
+  return text.replace(/^TL;DR:\s*/i, "")
+}
+
 export function facebookCaption(title: string, excerpt: string, _shortUrl: string, hashtags: string): string {
+  const e = cleanExcerpt(excerpt)
   return `${title}
 
-${excerpt.length > 200 ? excerpt.slice(0, 197) + '...' : excerpt}
+${e.length > 200 ? e.slice(0, 197) + '...' : e}
 
 ${hashtags}
 
@@ -60,10 +65,11 @@ ${_shortUrl}`
 }
 
 export function instagramCaption(title: string, excerpt: string, shortUrl: string, tags: string[]): string {
+  const e = cleanExcerpt(excerpt)
   const igHashtags = tags.slice(0, 15).map(t => '#' + t.replace(/\s+/g, '')).join(' ')
   return `${title}
 
-${excerpt.length > 300 ? excerpt.slice(0, 297) + '...' : excerpt}
+${e.length > 300 ? e.slice(0, 297) + '...' : e}
 
 ${igHashtags}
 
@@ -71,7 +77,8 @@ ${shortUrl}`
 }
 
 export function threadsCaption(title: string, excerpt: string, shortUrl: string, _tags: string[]): string {
-  const sentence = excerpt.length > 120 ? excerpt.slice(0, 117) + '...' : excerpt
+  const e = cleanExcerpt(excerpt)
+  const sentence = e.length > 120 ? e.slice(0, 117) + '...' : e
   return `${sentence}
 
 ${title}
@@ -80,8 +87,9 @@ ${shortUrl}`
 }
 
 export function twitterCaption(title: string, excerpt: string, shortUrl: string, tags: string[]): string {
+  const e = cleanExcerpt(excerpt)
   const headline = title.length > 100 ? title.slice(0, 97) + '...' : title
-  const teaser = excerpt.length > 120 ? excerpt.slice(0, 117) + '...' : excerpt
+  const teaser = e.length > 120 ? e.slice(0, 117) + '...' : e
   return `${headline}
 
 ${teaser}
@@ -92,9 +100,10 @@ ${tags.slice(0, 2).map(t => '#' + t.replace(/\s+/g, '')).join(' ')}`
 }
 
 export function telegramCaption(title: string, excerpt: string, shortUrl: string, tags: string[]): string {
+  const e = cleanExcerpt(excerpt)
   return `*${title}*
 
-${excerpt.length > 250 ? excerpt.slice(0, 247) + '...' : excerpt}
+${e.length > 250 ? e.slice(0, 247) + '...' : e}
 
 ${tags.slice(0, 3).map(t => '#' + t.replace(/\s+/g, '')).join(' ')}
 
@@ -102,9 +111,10 @@ ${shortUrl}`
 }
 
 export function linkedinCaption(title: string, excerpt: string, shortUrl: string, hashtags: string): string {
+  const e = cleanExcerpt(excerpt)
   return `${title}
 
-${excerpt.length > 300 ? excerpt.slice(0, 297) + '...' : excerpt}
+${e.length > 300 ? e.slice(0, 297) + '...' : e}
 
 ${hashtags}
 

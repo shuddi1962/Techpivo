@@ -101,7 +101,12 @@ function autoHashtags(title: string, count: number): string[] {
   }).slice(0, count).map(w => "#" + w.replace(/[^a-zA-Z0-9]/g, ""))
 }
 
-function captionFor(platform: string, title: string, excerpt: string, url: string, tags: string[]): string {
+function cleanExcerpt(text: string): string {
+  return text.replace(/^TL;DR:\s*/i, "")
+}
+
+function captionFor(platform: string, title: string, _excerpt: string, url: string, tags: string[]): string {
+  const excerpt = cleanExcerpt(_excerpt)
   const fallbackTags = tags.length > 0 ? tags : autoHashtags(title, 3)
   const hashtags = fallbackTags.slice(0, 3).map(t => "#" + t.replace(/\s+/g, "")).join(" ")
 
