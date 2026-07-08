@@ -1,7 +1,7 @@
 "use client"
 
-import { useState } from "react"
-import { X, Share2, Check, ExternalLink, Copy, Image as ImageIcon } from "lucide-react"
+import { useState, useEffect } from "react"
+import { X, Share2, Check, ExternalLink, Copy, Image as ImageIcon, Loader2 } from "lucide-react"
 import { SITE_URL } from "@/lib/constants"
 
 interface PostData {
@@ -120,11 +120,27 @@ interface SocialShareDialogProps {
 
 export function SocialShareDialog({ open, onClose, post }: SocialShareDialogProps) {
   const [copied, setCopied] = useState<string | null>(null)
+  const [imageBlob, setImageBlob] = useState<Blob | null>(null)
+  const [imageLoading, setImageLoading] = useState(false)
 
   const postUrl = `${SITE_URL}/${post.slug}`
   const excerpt = post.excerpt || ""
   const image = post.featured_image || ""
   const tags = post.tags || []
+
+  // Pre-fetch image blob when dialog opens so Copy Image is instant
+  useEffect(() => {
+    if (!open || !image) return
+    setImageBlob(null)
+    setImageLoading(true)
+    const ctrl = new AbortController()
+    fetch(image, { signal: ctrl.signal })
+      .then(r => r.blob())
+      .then(b => { if (b.type.startsWith("image/")) setImageBlob(b) })
+      .catch(() => {})
+      .finally(() => setImageLoading(false))
+    return () => ctrl.abort()
+  }, [open, image])
 
   const copyToClipboard = async (key: string, text: string) => {
     try {
@@ -136,20 +152,28 @@ export function SocialShareDialog({ open, onClose, post }: SocialShareDialogProp
 
   const copyImageToClipboard = async (key: string, url: string) => {
     try {
-      // 1) Direct blob fetch
-      try {
-        const res = await fetch(url)
-        if (res.ok) {
-          const blob = await res.blob()
-          const type = blob.type.startsWith("image/") ? blob.type : "image/png"
-          await navigator.clipboard.write([new ClipboardItem({ [type]: blob })])
-          setCopied(key)
-          setTimeout(() => setCopied(null), 2000)
-          return
-        }
-      } catch {}
+      // Use pre-fetched blob if available — instant copy
+      if (imageBlob) {
+        await navigator.clipboard.write([new ClipboardItem({ [imageBlob.type]: imageBlob })])
+        setCopied(key)
+        setTimeout(() => setCopied(null), 2000)
+        return
+      }
 
-      // 2) Canvas fallback (handles stricter CORS)
+      // Fallback: fetch now
+      const res = await fetch(url)
+      if (res.ok) {
+        const blob = await res.blob()
+        const type = blob.type.startsWith("image/") ? blob.type : "image/png"
+        await navigator.clipboard.write([new ClipboardItem({ [type]: blob })])
+        setCopied(key)
+        setTimeout(() => setCopied(null), 2000)
+        return
+      }
+    } catch {}
+
+    // Last resort: canvas fallback
+    try {
       const img = new Image()
       img.crossOrigin = "anonymous"
       await new Promise<void>((resolve, reject) => {
@@ -245,11 +269,13 @@ export function SocialShareDialog({ open, onClose, post }: SocialShareDialogProp
                   {/* Copy image */}
                   <button
                     onClick={() => image && copyImageToClipboard(`img_${platform.id}`, image)}
-                    disabled={!image}
+                    disabled={!image || imageLoading}
                     className="flex-1 inline-flex items-center justify-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg text-white transition-opacity hover:opacity-90 disabled:opacity-30"
                     style={{ backgroundColor: platform.color }}
                   >
-                    {copied === `img_${platform.id}` ? (
+                    {imageLoading ? (
+                      <><Loader2 className="h-3 w-3 animate-spin" /> Loading</>
+                    ) : copied === `img_${platform.id}` ? (
                       <><Check className="h-3 w-3" /> Copied</>
                     ) : (
                       <><ImageIcon className="h-3 w-3" /> Image</>
