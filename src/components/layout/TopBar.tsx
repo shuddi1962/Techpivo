@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { socialIcons, defaultPlatforms } from "@/components/layout/social-icons"
+import { socialIcons, defaultPlatforms, defaultSocialUrls } from "@/components/layout/social-icons"
 
 export function TopBar({ socialUrls = {} }: { socialUrls?: Record<string, string> }) {
   const now = new Date().toLocaleDateString("en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric" })
@@ -24,7 +24,7 @@ export function TopBar({ socialUrls = {} }: { socialUrls?: Record<string, string
         <div className="top-bar-right">
           <div className="top-social" style={{ display: "flex", gap: 6, alignItems: "center" }}>
             {defaultPlatforms.map((platform) => {
-              const href = socialUrls[platform]
+              const href = socialUrls[platform] || defaultSocialUrls[platform]
               if (!href) return null
               return (
                 <a key={platform} href={href} target="_blank" rel="noopener noreferrer" aria-label={platform} style={{ display: "flex", alignItems: "center", lineHeight: 0 }}>

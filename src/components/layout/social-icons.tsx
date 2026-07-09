@@ -10,3 +10,11 @@ export const socialIcons: Record<string, JSX.Element> = {
 }
 
 export const defaultPlatforms = ["twitter", "facebook", "instagram", "reddit", "linkedin", "youtube", "telegram", "whatsapp"]
+
+export const defaultSocialUrls: Record<string, string> = {
+  twitter: "https://x.com/Techpivo",
+  facebook: "https://www.facebook.com/Techpivo",
+  instagram: "https://www.instagram.com/techpivohub/",
+  reddit: "https://www.reddit.com/user/Techpivo/",
+  linkedin: "https://www.linkedin.com/in/techpivo-hub-5a1554416/",
+}

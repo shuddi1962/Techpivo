@@ -4,6 +4,7 @@ import Link from "next/link"
 import { useTheme } from "next-themes"
 import { useEffect, useState } from "react"
 import { createClient } from "@/lib/supabase/client"
+import { defaultSocialUrls } from "@/components/layout/social-icons"
 
 const platforms = [
   {
@@ -70,7 +71,7 @@ export function SocialWidget() {
         <span className="sidebar-card-title">Follow Us</span>
       </div>
       {platforms.map((p) => {
-        const href = socialUrls[p.id] || p.defaultHref
+        const href = socialUrls[p.id] || defaultSocialUrls[p.id] || p.defaultHref
         return (
           <div key={p.id} className="social-row">
             <div className="social-icon-wrap" style={{ background: p.color }}>

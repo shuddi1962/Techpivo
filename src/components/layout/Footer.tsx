@@ -4,6 +4,7 @@ import Link from "next/link"
 import Image from "next/image"
 import { useTheme } from "next-themes"
 import { useState, useEffect } from "react"
+import { defaultSocialUrls } from "@/components/layout/social-icons"
 
 const footerPlatforms = [
   {
@@ -74,7 +75,7 @@ export function Footer({ categories, recentPosts, socialUrls = {} }: { categorie
           </p>
           <div className="footer-socials">
             {footerPlatforms.map((p) => {
-              const href = socialUrls[p.id]
+              const href = socialUrls[p.id] || defaultSocialUrls[p.id]
               if (href) {
                 return (
                   <Link key={p.id} href={href} className="footer-social-icon" aria-label={p.label} target="_blank" rel="noopener noreferrer">
