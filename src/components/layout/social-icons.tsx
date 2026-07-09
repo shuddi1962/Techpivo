@@ -15,6 +15,6 @@ export const defaultSocialUrls: Record<string, string> = {
   twitter: "https://x.com/Techpivo",
   facebook: "https://www.facebook.com/Techpivo",
   instagram: "https://www.instagram.com/techpivohub/",
-  reddit: "https://www.reddit.com/user/Techpivo/",
+  reddit: "https://www.reddit.com/user/Techpivo/?utm_source=share&utm_medium=web3x&utm_name=web3xcss&utm_term=1&utm_content=share_button",
   linkedin: "https://www.linkedin.com/in/techpivo-hub-5a1554416/",
 }
