@@ -7,7 +7,7 @@ import { useRouter } from "next/navigation"
 import { useTheme } from "next-themes"
 import { createClient } from "@/lib/supabase/client"
 import type { User } from "@supabase/supabase-js"
-import { socialIcons, defaultPlatforms } from "@/components/layout/social-icons"
+import { socialIcons, defaultPlatforms, defaultSocialUrls } from "@/components/layout/social-icons"
 
 export function Header() {
   const [searchQ, setSearchQ] = useState("")
@@ -255,7 +255,7 @@ export function Header() {
               <div className="mobile-drawer-section">Follow Us</div>
               <div className="mobile-drawer-socials">
                 {defaultPlatforms.map((platform) => {
-                  const href = socialUrls[platform]
+                  const href = socialUrls[platform] || defaultSocialUrls[platform]
                   if (!href) return null
                   return (
                     <a key={platform} href={href} target="_blank" rel="noopener noreferrer" className="mobile-drawer-link">

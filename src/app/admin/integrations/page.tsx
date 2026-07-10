@@ -78,7 +78,7 @@ const integrations: Integration[] = [
   },
   {
     id: "instagram", name: "Instagram Business", logo: <InstagramLogo size={32} />, category: "social", timeline: "Day 1", benefit: "Auto-crosspost to Facebook",
-    followUrl: "https://instagram.com", credsUrl: "https://developers.facebook.com/apps",
+    followUrl: "https://www.instagram.com/invites/contact/?utm_source=ig_contact_invite&utm_medium=copy_link&utm_content=juzs10n", credsUrl: "https://developers.facebook.com/apps",
     fields: [
       { key: "instagram_user_id", label: "Instagram Business Account ID", placeholder: "IG Business Account ID", type: "text" },
       { key: "access_token", label: "Access Token", placeholder: "Facebook User Token with instagram_basic + instagram_content_publish", type: "password" },
@@ -125,7 +125,7 @@ const integrations: Integration[] = [
   },
   {
     id: "linkedin", name: "LinkedIn Page", logo: <LinkedInLogo size={32} />, category: "social", timeline: "Day 1", benefit: "Professional traffic",
-    followUrl: "https://linkedin.com", credsUrl: "https://www.linkedin.com/developers/apps",
+    followUrl: "https://ng.linkedin.com/in/techpivo-hub-5a1554416?utm_source=share&utm_medium=member_mweb&utm_campaign=share_via&utm_content=profile", credsUrl: "https://www.linkedin.com/developers/apps",
     fields: [
       { key: "client_id", label: "Client ID", placeholder: "LinkedIn App Client ID", type: "text" },
       { key: "client_secret", label: "Client Secret", placeholder: "LinkedIn App Client Secret", type: "password" },
@@ -141,7 +141,7 @@ const integrations: Integration[] = [
   },
   {
     id: "reddit", name: "Reddit", logo: <RedditLogo size={32} />, category: "social", timeline: "Day 1", benefit: "Viral traffic spikes",
-    followUrl: "https://reddit.com", credsUrl: "https://www.reddit.com/prefs/apps",
+    followUrl: "https://www.reddit.com/user/Techpivo/?utm_source=share&utm_medium=mweb3x&utm_name=mweb3xcss&utm_term=1&utm_content=share_button", credsUrl: "https://www.reddit.com/prefs/apps",
     fields: [
       { key: "client_id", label: "Client ID", placeholder: "Reddit App Client ID", type: "text" },
       { key: "client_secret", label: "Client Secret", placeholder: "Reddit App Client Secret", type: "password" },

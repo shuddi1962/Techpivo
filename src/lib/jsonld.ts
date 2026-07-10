@@ -16,9 +16,9 @@ export function organizationSchema() {
     image: `${SITE_URL}/favicon.svg`,
     description: SITE_TAGLINE,
     sameAs: [
-      "https://x.com/techpivo",
-      "https://facebook.com/techpivo",
-      "https://linkedin.com/company/techpivo",
+      "https://x.com/Techpivo",
+      "https://facebook.com/Techpivo",
+      "https://ng.linkedin.com/in/techpivo-hub-5a1554416",
     ],
   }
 }

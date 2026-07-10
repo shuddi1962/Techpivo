@@ -14,7 +14,7 @@ export const defaultPlatforms = ["twitter", "facebook", "instagram", "reddit", "
 export const defaultSocialUrls: Record<string, string> = {
   twitter: "https://x.com/Techpivo",
   facebook: "https://www.facebook.com/Techpivo",
-  instagram: "https://www.instagram.com/techpivohub/",
-  reddit: "https://www.reddit.com/user/Techpivo/?utm_source=share&utm_medium=web3x&utm_name=web3xcss&utm_term=1&utm_content=share_button",
-  linkedin: "https://www.linkedin.com/in/techpivo-hub-5a1554416/",
+  instagram: "https://www.instagram.com/invites/contact/?utm_source=ig_contact_invite&utm_medium=copy_link&utm_content=juzs10n",
+  reddit: "https://www.reddit.com/user/Techpivo/?utm_source=share&utm_medium=mweb3x&utm_name=mweb3xcss&utm_term=1&utm_content=share_button",
+  linkedin: "https://ng.linkedin.com/in/techpivo-hub-5a1554416?utm_source=share&utm_medium=member_mweb&utm_campaign=share_via&utm_content=profile",
 }
