@@ -32,7 +32,7 @@ export default function RevenueIntelligencePage() {
   const fetchData = useCallback(async () => {
     const { data: posts } = await supabase
       .from("posts")
-      .select("id, title, views, category_id")
+      .select("id, title, views, category_id, created_at")
       .eq("status", "published")
 
     if (posts) {
