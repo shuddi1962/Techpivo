@@ -401,7 +401,7 @@ function ImageCompressorTool() {
   const [compressedSize, setCompressedSize] = useState<number | null>(null)
   const compress = () => {
     if (!file) return
-    const img = new Image()
+    const img = document.createElement("img")
     img.onload = () => {
       const canvas = document.createElement("canvas")
       canvas.width = img.width
@@ -443,7 +443,7 @@ function ImageResizerTool() {
   const [result, setResult] = useState<string>("")
   const resize = () => {
     if (!file) return
-    const img = new Image()
+    const img = document.createElement("img")
     img.onload = () => {
       const canvas = document.createElement("canvas")
       canvas.width = width
