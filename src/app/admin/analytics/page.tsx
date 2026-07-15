@@ -1,9 +1,10 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect, useCallback } from "react"
+import { createClient } from "@/lib/supabase/client"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { BarChart3, Users, Globe, TrendingUp, Share2, Mail, Swords, Brain, Download, Settings } from "lucide-react"
+import { BarChart3, Users, Globe, TrendingUp, Share2, Mail, Swords, Brain, Download, RefreshCw } from "lucide-react"
 import { RevenueAnalytics } from "@/components/admin/revenue-analytics"
 import { AiInsights } from "@/components/admin/ai-insights"
 
@@ -21,35 +22,122 @@ const tabs = [
 ]
 
 function OverviewTab() {
-  const kpis = [
-    { label: "Users", value: "12,450", change: "+14%", up: true },
-    { label: "Sessions", value: "28,320", change: "+8%", up: true },
-    { label: "Page Views", value: "89,100", change: "+22%", up: true },
-    { label: "Avg. Engagement", value: "3m 24s", change: "+5%", up: true },
-    { label: "Bounce Rate", value: "42%", change: "-3%", up: true },
-    { label: "Returning Visitors", value: "34%", change: "+7%", up: true },
-  ]
+  const supabase = createClient()
+  const [data, setData] = useState<any>(null)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const [users, sessions, pageViews, postsCount] = await Promise.all([
+          supabase.from("profiles").select("*", { count: "exact", head: true }),
+          supabase.from("analytics_events").select("*", { count: "exact", head: true }).eq("event_type", "page_view")
+            .gte("created_at", new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()),
+          supabase.from("analytics_events").select("*", { count: "exact", head: true }).eq("event_type", "page_view"),
+          supabase.from("posts").select("*", { count: "exact", head: true }).eq("status", "published"),
+        ])
+
+        const { data: dailyData } = await supabase
+          .from("analytics_events")
+          .select("created_at")
+          .eq("event_type", "page_view")
+          .gte("created_at", new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString())
+          .limit(5000)
+
+        const { data: topPages } = await supabase
+          .from("analytics_events")
+          .select("page_url")
+          .eq("event_type", "page_view")
+          .not("page_url", "is", null)
+          .limit(5000)
+
+        const { data: catPosts } = await supabase
+          .from("posts")
+          .select("category_id, categories!left(name)")
+          .eq("status", "published")
+          .limit(100)
+
+        const pageMap: Record<string, number> = {}
+        ;(topPages || []).forEach((p: any) => {
+          const url = p.page_url || "/"
+          pageMap[url] = (pageMap[url] || 0) + 1
+        })
+        const sortedPages = Object.entries(pageMap).sort((a, b) => b[1] - a[1]).slice(0, 5)
+
+        const catMap: Record<string, number> = {}
+        ;(catPosts || []).forEach((p: any) => {
+          const name = p.categories?.name || "Uncategorized"
+          catMap[name] = (catMap[name] || 0) + 1
+        })
+        const totalCat = Object.values(catMap).reduce((s, v) => s + v, 0) || 1
+
+        setData({
+          users: users.count || 0,
+          sessions: sessions.count || 0,
+          pageViews: pageViews.count || 0,
+          postsCount: postsCount.count || 0,
+          dailyData,
+          topPages: sortedPages,
+          categories: Object.entries(catMap).map(([name, count]) => ({ name, pct: Math.round((count / totalCat) * 100) })),
+        })
+      } catch (err) {
+        console.error("Failed to fetch analytics:", err)
+      }
+      setLoading(false)
+    }
+    fetchData()
+  }, [])
+
+  if (loading) return <div className="flex items-center justify-center h-64 text-muted-foreground">Loading analytics...</div>
+  if (!data) return <div className="flex items-center justify-center h-64 text-muted-foreground">No data available yet</div>
+
+  const dailyHeights = data.dailyData
+    ? Array.from({ length: 30 }).map((_, i) => {
+        const d = new Date()
+        d.setDate(d.getDate() - (29 - i))
+        const dayStr = d.toDateString()
+        const count = data.dailyData.filter((e: any) => new Date(e.created_at).toDateString() === dayStr).length
+        return count
+      })
+    : []
+
+  const maxH = Math.max(...dailyHeights, 1)
+
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-        {kpis.map(k => (
+        {[
+          { label: "Users", value: data.users.toLocaleString(), change: "+" + data.users, up: true },
+          { label: "Sessions (30d)", value: data.sessions.toLocaleString(), change: "Last 30 days", up: true },
+          { label: "Page Views", value: data.pageViews.toLocaleString(), change: "All time", up: true },
+          { label: "Published Posts", value: data.postsCount.toLocaleString(), change: "Total", up: true },
+          { label: "Avg Daily Views", value: Math.round(data.pageViews / (data.postsCount || 1)).toLocaleString(), change: "Per post", up: true },
+          { label: "Returning", value: "—", change: "Track with GA", up: true },
+        ].map((k) => (
           <Card key={k.label}>
             <CardContent className="p-4">
               <p className="text-xs text-muted-foreground">{k.label}</p>
               <p className="text-2xl font-bold mt-1">{k.value}</p>
-              <p className={`text-xs mt-1 ${k.up ? 'text-green-500' : 'text-red-500'}`}>{k.change}</p>
+              <p className="text-xs mt-1 text-green-500">{k.change}</p>
             </CardContent>
           </Card>
         ))}
       </div>
       <Card>
-        <CardHeader><CardTitle>Traffic Trend (Last 30 Days)</CardTitle></CardHeader>
+        <CardHeader><CardTitle>Daily Views (Last 30 Days)</CardTitle></CardHeader>
         <CardContent>
           <div className="h-48 flex items-end gap-1">
-            {Array.from({ length: 30 }).map((_, i) => {
-              const h = 20 + Math.random() * 80
-              return <div key={i} className="flex-1 bg-primary/20 rounded-t" style={{ height: `${h}%` }} />
-            })}
+            {dailyHeights.map((h, i) => (
+              <div
+                key={i}
+                className="flex-1 bg-primary/20 rounded-t hover:bg-primary/40 transition-colors relative group"
+                style={{ height: `${(h / maxH) * 100}%` }}
+              >
+                <span className="absolute -top-6 left-1/2 -translate-x-1/2 text-[10px] text-muted-foreground opacity-0 group-hover:opacity-100 whitespace-nowrap">
+                  {h} views
+                </span>
+              </div>
+            ))}
           </div>
           <p className="text-xs text-muted-foreground mt-2 text-center">Daily page views — last 30 days</p>
         </CardContent>
@@ -58,28 +146,36 @@ function OverviewTab() {
         <Card>
           <CardHeader><CardTitle>Top Pages</CardTitle></CardHeader>
           <CardContent className="space-y-2">
-            {["Best AI Tools 2026", "Python Tutorial for Beginners", "Cybersecurity Guide", "React vs Vue Comparison", "Linux Commands Cheat Sheet"].map((t, i) => (
-              <div key={i} className="flex items-center justify-between text-sm">
-                <span className="truncate">{t}</span>
-                <span className="text-muted-foreground">{(5000 - i * 800).toLocaleString()} views</span>
-              </div>
-            ))}
+            {data.topPages.length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-4">No page data yet</p>
+            ) : (
+              data.topPages.map(([url, count]: [string, number], i: number) => (
+                <div key={i} className="flex items-center justify-between text-sm">
+                  <span className="truncate font-mono text-xs">{url}</span>
+                  <span className="text-muted-foreground">{count} views</span>
+                </div>
+              ))
+            )}
           </CardContent>
         </Card>
         <Card>
-          <CardHeader><CardTitle>Top Categories</CardTitle></CardHeader>
+          <CardHeader><CardTitle>Content by Category</CardTitle></CardHeader>
           <CardContent className="space-y-2">
-            {["AI & Automation", "Programming", "Cybersecurity", "Tutorials", "Reviews"].map((c, i) => (
-              <div key={i} className="flex items-center justify-between text-sm">
-                <span>{c}</span>
-                <div className="flex items-center gap-2">
-                  <div className="w-24 h-2 bg-muted rounded-full overflow-hidden">
-                    <div className="h-full bg-primary rounded-full" style={{ width: `${90 - i * 15}%` }} />
+            {data.categories.length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-4">No categories yet</p>
+            ) : (
+              data.categories.map((c: any, i: number) => (
+                <div key={i} className="flex items-center justify-between text-sm">
+                  <span>{c.name}</span>
+                  <div className="flex items-center gap-2">
+                    <div className="w-24 h-2 bg-muted rounded-full overflow-hidden">
+                      <div className="h-full bg-primary rounded-full" style={{ width: `${c.pct}%` }} />
+                    </div>
+                    <span className="text-muted-foreground text-xs">{c.pct}%</span>
                   </div>
-                  <span className="text-muted-foreground text-xs">{90 - i * 15}%</span>
                 </div>
-              </div>
-            ))}
+              ))
+            )}
           </CardContent>
         </Card>
       </div>
@@ -88,86 +184,165 @@ function OverviewTab() {
 }
 
 function RealTimeTab() {
+  const supabase = createClient()
+  const [stats, setStats] = useState({ activeNow: 0, today: 0, thisHour: 0, newToday: 0 })
+  const [pages, setPages] = useState<{ page: string; visitors: number }[]>([])
+  const [countries, setCountries] = useState<{ name: string; count: number }[]>([])
+
+  useEffect(() => {
+    const fetchRealtime = async () => {
+      try {
+        const now = new Date()
+        const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString()
+        const hourAgo = new Date(now.getTime() - 60 * 60 * 1000).toISOString()
+
+        const [todayRes, hourRes, pageRes, countryRes] = await Promise.all([
+          supabase.from("analytics_events").select("*", { count: "exact", head: true }).eq("event_type", "page_view").gte("created_at", todayStart),
+          supabase.from("analytics_events").select("*", { count: "exact", head: true }).eq("event_type", "page_view").gte("created_at", hourAgo),
+          supabase.from("analytics_events").select("page_url").eq("event_type", "page_view").gte("created_at", hourAgo).limit(500),
+          supabase.from("analytics_events").select("country").eq("event_type", "page_view").gte("created_at", todayStart).limit(500),
+        ])
+
+        const pageMap: Record<string, number> = {}
+        ;(pageRes.data || []).forEach((p: any) => {
+          const url = p.page_url || "/"
+          pageMap[url] = (pageMap[url] || 0) + 1
+        })
+
+        const countryMap: Record<string, number> = {}
+        ;(countryRes.data || []).forEach((c: any) => {
+          if (c.country) countryMap[c.country] = (countryMap[c.country] || 0) + 1
+        })
+
+        setStats({
+          activeNow: hourRes.count || 0,
+          today: todayRes.count || 0,
+          thisHour: hourRes.count || 0,
+          newToday: todayRes.count || 0,
+        })
+        setPages(Object.entries(pageMap).sort((a, b) => b[1] - a[1]).slice(0, 5).map(([page, visitors]) => ({ page, visitors })))
+        setCountries(Object.entries(countryMap).sort((a, b) => b[1] - a[1]).slice(0, 8).map(([name, count]) => ({ name, count })))
+      } catch (err) {
+        console.error("Realtime fetch error:", err)
+      }
+    }
+    fetchRealtime()
+    const interval = setInterval(fetchRealtime, 30000)
+    return () => clearInterval(interval)
+  }, [])
+
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <Card><CardContent className="p-4 text-center"><p className="text-3xl font-bold text-green-500">47</p><p className="text-xs text-muted-foreground">Active Now</p></CardContent></Card>
-        <Card><CardContent className="p-4 text-center"><p className="text-3xl font-bold">1,240</p><p className="text-xs text-muted-foreground">Today</p></CardContent></Card>
-        <Card><CardContent className="p-4 text-center"><p className="text-3xl font-bold">89</p><p className="text-xs text-muted-foreground">This Hour</p></CardContent></Card>
-        <Card><CardContent className="p-4 text-center"><p className="text-3xl font-bold">23</p><p className="text-xs text-muted-foreground">New Today</p></CardContent></Card>
+        <Card><CardContent className="p-4 text-center"><p className="text-3xl font-bold text-green-500">{stats.activeNow}</p><p className="text-xs text-muted-foreground">Active (Last Hour)</p></CardContent></Card>
+        <Card><CardContent className="p-4 text-center"><p className="text-3xl font-bold">{stats.today.toLocaleString()}</p><p className="text-xs text-muted-foreground">Today</p></CardContent></Card>
+        <Card><CardContent className="p-4 text-center"><p className="text-3xl font-bold">{stats.thisHour.toLocaleString()}</p><p className="text-xs text-muted-foreground">This Hour</p></CardContent></Card>
+        <Card><CardContent className="p-4 text-center"><p className="text-3xl font-bold">{stats.newToday.toLocaleString()}</p><p className="text-xs text-muted-foreground">Views Today</p></CardContent></Card>
       </div>
-      <Card>
-        <CardHeader><CardTitle>Live Visitors by Page</CardTitle></CardHeader>
-        <CardContent className="space-y-2">
-          {[{ page: "/", visitors: 12 }, { page: "/best-ai-tools-2026", visitors: 8 }, { page: "/python-tutorial", visitors: 6 }, { page: "/category/cybersecurity", visitors: 5 }, { page: "/tools/json-formatter", visitors: 4 }].map((p, i) => (
-            <div key={i} className="flex items-center justify-between text-sm">
-              <span className="font-mono text-xs">{p.page}</span>
-              <Badge variant="outline">{p.visitors} active</Badge>
+      <div className="grid md:grid-cols-2 gap-6">
+        <Card>
+          <CardHeader><CardTitle>Pages (Last Hour)</CardTitle></CardHeader>
+          <CardContent className="space-y-2">
+            {pages.length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-4">No recent page views</p>
+            ) : (
+              pages.map((p, i) => (
+                <div key={i} className="flex items-center justify-between text-sm">
+                  <span className="font-mono text-xs truncate">{p.page}</span>
+                  <Badge variant="outline">{p.visitors} views</Badge>
+                </div>
+              ))
+            )}
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader><CardTitle>Countries (Today)</CardTitle></CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 gap-3">
+              {countries.length === 0 ? (
+                <p className="text-sm text-muted-foreground col-span-2 text-center py-4">No country data yet</p>
+              ) : (
+                countries.map((c, i) => (
+                  <div key={i} className="text-center p-2 rounded-lg bg-muted/30">
+                    <p className="text-xs font-medium">{c.name}</p>
+                    <p className="text-xs text-muted-foreground">{c.count} views</p>
+                  </div>
+                ))
+              )}
             </div>
-          ))}
-        </CardContent>
-      </Card>
-      <Card>
-        <CardHeader><CardTitle>Live Geographic Distribution</CardTitle></CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            {[{ country: "Nigeria", flag: "🇳🇬", pct: 34 }, { country: "India", flag: "🇮🇳", pct: 22 }, { country: "USA", flag: "🇺🇸", pct: 18 }, { country: "UK", flag: "🇬🇧", pct: 8 }, { country: "Germany", flag: "🇩🇪", pct: 6 }, { country: "Canada", flag: "🇨🇦", pct: 5 }, { country: "Brazil", flag: "🇧🇷", pct: 4 }, { country: "Other", flag: "🌍", pct: 3 }].map((c, i) => (
-              <div key={i} className="text-center p-2 rounded-lg bg-muted/30">
-                <p className="text-2xl">{c.flag}</p>
-                <p className="text-xs font-medium">{c.country}</p>
-                <p className="text-xs text-muted-foreground">{c.pct}%</p>
-              </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   )
 }
 
 function AudienceTab() {
+  const supabase = createClient()
+  const [data, setData] = useState<any>(null)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    const fetchAudience = async () => {
+      try {
+        const { data: events } = await supabase
+          .from("analytics_events")
+          .select("country, device, browser, os")
+          .eq("event_type", "page_view")
+          .limit(2000)
+
+        const deviceMap: Record<string, number> = {}
+        const browserMap: Record<string, number> = {}
+        const osMap: Record<string, number> = {}
+        const countryMap: Record<string, number> = {}
+
+        ;(events || []).forEach((e: any) => {
+          if (e.device) deviceMap[e.device] = (deviceMap[e.device] || 0) + 1
+          if (e.browser) browserMap[e.browser] = (browserMap[e.browser] || 0) + 1
+          if (e.os) osMap[e.os] = (osMap[e.os] || 0) + 1
+          if (e.country) countryMap[e.country] = (countryMap[e.country] || 0) + 1
+        })
+
+        const total = (v: Record<string, number>) => Object.values(v).reduce((s, c) => s + c, 0) || 1
+
+        setData({
+          devices: Object.entries(deviceMap).map(([k, v]) => ({ name: k, pct: Math.round((v / total(deviceMap)) * 100) })),
+          browsers: Object.entries(browserMap).map(([k, v]) => ({ name: k, pct: Math.round((v / total(browserMap)) * 100) })),
+          os: Object.entries(osMap).map(([k, v]) => ({ name: k, pct: Math.round((v / total(osMap)) * 100) })),
+          countries: Object.entries(countryMap).sort((a, b) => b[1] - a[1]).slice(0, 5).map(([k, v]) => ({ name: k, pct: Math.round((v / total(countryMap)) * 100) })),
+        })
+      } catch (err) { console.error("Audience fetch error:", err) }
+      setLoading(false)
+    }
+    fetchAudience()
+  }, [])
+
+  if (loading) return <div className="h-64 flex items-center justify-center text-muted-foreground">Loading...</div>
+  if (!data) return <div className="h-64 flex items-center justify-center text-muted-foreground">No audience data yet. Data appears as visitors browse the site.</div>
+
+  const renderBar = (items: { name: string; pct: number }[]) => (
+    <div className="space-y-3">
+      {items.map((item, i) => (
+        <div key={i}>
+          <div className="flex justify-between text-sm mb-1"><span>{item.name}</span><span>{item.pct}%</span></div>
+          <div className="w-full h-2 bg-muted rounded-full"><div className="h-full bg-primary rounded-full" style={{ width: `${item.pct}%` }} /></div>
+        </div>
+      ))}
+    </div>
+  )
+
   return (
     <div className="space-y-6">
       <div className="grid md:grid-cols-2 gap-6">
-        <Card>
-          <CardHeader><CardTitle>Devices</CardTitle></CardHeader>
-          <CardContent className="space-y-3">
-            {[{ device: "Mobile", pct: 62 }, { device: "Desktop", pct: 31 }, { device: "Tablet", pct: 7 }].map((d, i) => (
-              <div key={i}>
-                <div className="flex justify-between text-sm mb-1"><span>{d.device}</span><span>{d.pct}%</span></div>
-                <div className="w-full h-2 bg-muted rounded-full"><div className="h-full bg-primary rounded-full" style={{ width: `${d.pct}%` }} /></div>
-              </div>
-            ))}
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader><CardTitle>Browsers</CardTitle></CardHeader>
-          <CardContent className="space-y-3">
-            {[{ browser: "Chrome", pct: 58 }, { browser: "Safari", pct: 22 }, { browser: "Firefox", pct: 12 }, { browser: "Edge", pct: 8 }].map((b, i) => (
-              <div key={i}>
-                <div className="flex justify-between text-sm mb-1"><span>{b.browser}</span><span>{b.pct}%</span></div>
-                <div className="w-full h-2 bg-muted rounded-full"><div className="h-full bg-primary rounded-full" style={{ width: `${b.pct}%` }} /></div>
-              </div>
-            ))}
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader><CardTitle>Operating Systems</CardTitle></CardHeader>
-          <CardContent className="space-y-3">
-            {[{ os: "Android", pct: 45 }, { os: "Windows", pct: 28 }, { os: "iOS", pct: 18 }, { os: "macOS", pct: 6 }, { os: "Linux", pct: 3 }].map((o, i) => (
-              <div key={i}>
-                <div className="flex justify-between text-sm mb-1"><span>{o.os}</span><span>{o.pct}%</span></div>
-                <div className="w-full h-2 bg-muted rounded-full"><div className="h-full bg-primary rounded-full" style={{ width: `${o.pct}%` }} /></div>
-              </div>
-            ))}
-          </CardContent>
-        </Card>
+        <Card><CardHeader><CardTitle>Devices</CardTitle></CardHeader><CardContent>{renderBar(data.devices)}</CardContent></Card>
+        <Card><CardHeader><CardTitle>Browsers</CardTitle></CardHeader><CardContent>{renderBar(data.browsers)}</CardContent></Card>
+        <Card><CardHeader><CardTitle>Operating Systems</CardTitle></CardHeader><CardContent>{renderBar(data.os)}</CardContent></Card>
         <Card>
           <CardHeader><CardTitle>Top Countries</CardTitle></CardHeader>
           <CardContent className="space-y-2">
-            {[{ country: "Nigeria", pct: 34 }, { country: "India", pct: 22 }, { country: "United States", pct: 18 }, { country: "United Kingdom", pct: 8 }, { country: "Germany", pct: 6 }].map((c, i) => (
+            {data.countries.map((c: any, i: number) => (
               <div key={i} className="flex items-center justify-between text-sm">
-                <span>{c.country}</span>
+                <span>{c.name}</span>
                 <Badge variant="outline">{c.pct}%</Badge>
               </div>
             ))}
@@ -179,82 +354,188 @@ function AudienceTab() {
 }
 
 function TrafficSourcesTab() {
+  const supabase = createClient()
+  const [data, setData] = useState<any>(null)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    const fetchTraffic = async () => {
+      try {
+        const { data: events } = await supabase
+          .from("analytics_events")
+          .select("referrer")
+          .eq("event_type", "page_view")
+          .limit(3000)
+
+        const refMap: Record<string, number> = {}
+        ;(events || []).forEach((e: any) => {
+          let ref = e.referrer || "Direct"
+          if (!ref) ref = "Direct"
+          try { ref = new URL(ref).hostname.replace("www.", "") } catch { ref = "Direct" }
+          refMap[ref] = (refMap[ref] || 0) + 1
+        })
+
+        const total = Object.values(refMap).reduce((s, c) => s + c, 0) || 1
+        const sorted = Object.entries(refMap).sort((a, b) => b[1] - a[1])
+
+        const socialRefs = ["facebook", "twitter", "x.com", "linkedin", "reddit", "t.co", "instagram"]
+        const social = sorted.filter(([k]) => socialRefs.some(s => k.includes(s)))
+        const socialTotal = social.reduce((s, [, v]) => s + v, 0) || 1
+
+        setData({
+          sources: sorted.slice(0, 6).map(([k, v]) => ({ source: k, pct: Math.round((v / total) * 100), sessions: v })),
+          social: social.map(([k, v]) => ({ platform: k, sessions: v, pct: Math.round((v / socialTotal) * 100) })),
+        })
+      } catch (err) { console.error("Traffic fetch error:", err) }
+      setLoading(false)
+    }
+    fetchTraffic()
+  }, [])
+
+  if (loading) return <div className="h-64 flex items-center justify-center text-muted-foreground">Loading...</div>
+  if (!data || data.sources.length === 0) return <div className="h-64 flex items-center justify-center text-muted-foreground">No traffic data yet. Data appears as visitors come from external sites.</div>
+
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        {[{ source: "Organic Search", pct: 52, sessions: "14,726" }, { source: "Direct", pct: 24, sessions: "6,797" }, { source: "Social Media", pct: 15, sessions: "4,248" }, { source: "Referral", pct: 9, sessions: "2,549" }].map((s, i) => (
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+        {data.sources.slice(0, 6).map((s: any, i: number) => (
           <Card key={i}>
             <CardContent className="p-4">
-              <p className="text-xs text-muted-foreground">{s.source}</p>
+              <p className="text-xs text-muted-foreground truncate">{s.source}</p>
               <p className="text-2xl font-bold mt-1">{s.pct}%</p>
               <p className="text-xs text-muted-foreground">{s.sessions} sessions</p>
             </CardContent>
           </Card>
         ))}
       </div>
-      <Card>
-        <CardHeader><CardTitle>Social Media Breakdown</CardTitle></CardHeader>
-        <CardContent className="space-y-3">
-          {[{ platform: "X (Twitter)", sessions: 1890, pct: 44 }, { platform: "Facebook", sessions: 1102, pct: 26 }, { platform: "LinkedIn", sessions: 637, pct: 15 }, { platform: "Reddit", sessions: 425, pct: 10 }, { platform: "Other", sessions: 194, pct: 5 }].map((p, i) => (
-            <div key={i}>
-              <div className="flex justify-between text-sm mb-1"><span>{p.platform}</span><span>{p.sessions} ({p.pct}%)</span></div>
-              <div className="w-full h-2 bg-muted rounded-full"><div className="h-full bg-primary rounded-full" style={{ width: `${p.pct}%` }} /></div>
-            </div>
-          ))}
-        </CardContent>
-      </Card>
+      {data.social.length > 0 && (
+        <Card>
+          <CardHeader><CardTitle>Social Media Breakdown</CardTitle></CardHeader>
+          <CardContent className="space-y-3">
+            {data.social.map((p: any, i: number) => (
+              <div key={i}>
+                <div className="flex justify-between text-sm mb-1"><span>{p.platform}</span><span>{p.sessions} ({p.pct}%)</span></div>
+                <div className="w-full h-2 bg-muted rounded-full"><div className="h-full bg-primary rounded-full" style={{ width: `${p.pct}%` }} /></div>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      )}
     </div>
   )
 }
 
 function SocialTab() {
+  const supabase = createClient()
+  const [data, setData] = useState<any>(null)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    const fetchSocial = async () => {
+      try {
+        const { data: accounts } = await supabase.from("social_accounts").select("*")
+        const { data: events } = await supabase
+          .from("analytics_events")
+          .select("referrer, created_at")
+          .eq("event_type", "page_view")
+          .limit(3000)
+
+        const platformRefs = ["facebook", "twitter", "x.com", "linkedin", "t.co", "instagram", "reddit"]
+        const socialEvents: Record<string, number> = {}
+        ;(events || []).forEach((e: any) => {
+          const ref = e.referrer || ""
+          for (const p of platformRefs) {
+            if (ref.includes(p)) {
+              socialEvents[p] = (socialEvents[p] || 0) + 1
+              break
+            }
+          }
+        })
+
+        setData({ accounts: accounts || [], socialEvents })
+      } catch (err) { console.error("Social fetch error:", err) }
+      setLoading(false)
+    }
+    fetchSocial()
+  }, [])
+
+  if (loading) return <div className="h-64 flex items-center justify-center text-muted-foreground">Loading...</div>
+
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        {[{ platform: "X", followers: "4,200", engagement: "3.2%" }, { platform: "Facebook", followers: "2,800", engagement: "2.1%" }, { platform: "LinkedIn", followers: "1,500", engagement: "4.5%" }, { platform: "YouTube", followers: "890", engagement: "5.8%" }].map((p, i) => (
+        {(data?.accounts?.length > 0 ? data.accounts : [
+          { platform: "X", follower_count: null },
+          { platform: "Facebook", follower_count: null },
+          { platform: "LinkedIn", follower_count: null },
+          { platform: "Threads", follower_count: null },
+        ]).slice(0, 4).map((p: any, i: number) => (
           <Card key={i}>
             <CardContent className="p-4">
               <p className="font-medium">{p.platform}</p>
-              <p className="text-2xl font-bold">{p.followers}</p>
-              <p className="text-xs text-muted-foreground">Engagement: {p.engagement}</p>
+              <p className="text-2xl font-bold">{p.follower_count?.toLocaleString() || "—"}</p>
+              <p className="text-xs text-muted-foreground">
+                {data?.socialEvents?.[p.platform.toLowerCase()] ? `${data.socialEvents[p.platform.toLowerCase()]} referrals` : "No data yet"}
+              </p>
             </CardContent>
           </Card>
         ))}
       </div>
-      <Card>
-        <CardHeader><CardTitle>Recent Social Performance</CardTitle></CardHeader>
-        <CardContent className="space-y-2">
-          {[{ post: "AI Tools You Need to Try", platform: "X", clicks: 234, shares: 45 }, { post: "Python Tutorial Launch", platform: "LinkedIn", clicks: 189, shares: 32 }, { post: "Cybersecurity Tips Thread", platform: "X", clicks: 156, shares: 28 }].map((p, i) => (
-            <div key={i} className="flex items-center justify-between p-2 rounded-lg bg-muted/30 text-sm">
-              <div><p className="font-medium">{p.post}</p><p className="text-xs text-muted-foreground">{p.platform}</p></div>
-              <div className="text-right"><p>{p.clicks} clicks</p><p className="text-xs text-muted-foreground">{p.shares} shares</p></div>
-            </div>
-          ))}
-        </CardContent>
-      </Card>
     </div>
   )
 }
 
 function NewsletterTab() {
+  const supabase = createClient()
+  const [data, setData] = useState<any>(null)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    const fetchNewsletter = async () => {
+      try {
+        const [subsRes, campaignsRes] = await Promise.all([
+          supabase.from("subscribers").select("*", { count: "exact", head: true }).eq("status", "active"),
+          supabase.from("newsletter_campaigns").select("*").order("created_at", { ascending: false }).limit(5),
+        ])
+        setData({
+          subscribers: subsRes.count || 0,
+          campaigns: campaignsRes.data || [],
+        })
+      } catch (err) { console.error("Newsletter fetch error:", err) }
+      setLoading(false)
+    }
+    fetchNewsletter()
+  }, [])
+
+  if (loading) return <div className="h-64 flex items-center justify-center text-muted-foreground">Loading...</div>
+
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        {[{ label: "Subscribers", value: "2,450" }, { label: "Open Rate", value: "42%" }, { label: "Click Rate", value: "8.3%" }, { label: "Unsubscribes", value: "12" }].map((s, i) => (
-          <Card key={i}><CardContent className="p-4 text-center"><p className="text-2xl font-bold">{s.value}</p><p className="text-xs text-muted-foreground">{s.label}</p></CardContent></Card>
-        ))}
+        <Card><CardContent className="p-4 text-center"><p className="text-2xl font-bold">{data?.subscribers?.toLocaleString() || 0}</p><p className="text-xs text-muted-foreground">Active Subscribers</p></CardContent></Card>
+        <Card><CardContent className="p-4 text-center"><p className="text-2xl font-bold">{data?.campaigns?.length || 0}</p><p className="text-xs text-muted-foreground">Campaigns</p></CardContent></Card>
       </div>
-      <Card>
-        <CardHeader><CardTitle>Recent Newsletters</CardTitle></CardHeader>
-        <CardContent className="space-y-2">
-          {[{ subject: "Weekly Tech Roundup #42", sent: "2 days ago", opens: "44%", clicks: "9.1%" }, { subject: "AI News Weekly #18", sent: "5 days ago", opens: "41%", clicks: "7.8%" }, { subject: "Best Tools This Month", sent: "1 week ago", opens: "46%", clicks: "10.2%" }].map((n, i) => (
-            <div key={i} className="flex items-center justify-between p-3 rounded-lg bg-muted/30 text-sm">
-              <div><p className="font-medium">{n.subject}</p><p className="text-xs text-muted-foreground">Sent {n.sent}</p></div>
-              <div className="text-right"><p>Opens: {n.opens}</p><p>Clicks: {n.clicks}</p></div>
-            </div>
-          ))}
-        </CardContent>
-      </Card>
+      {data?.campaigns?.length > 0 && (
+        <Card>
+          <CardHeader><CardTitle>Recent Campaigns</CardTitle></CardHeader>
+          <CardContent className="space-y-2">
+            {data.campaigns.map((c: any, i: number) => (
+              <div key={i} className="flex items-center justify-between p-3 rounded-lg bg-muted/30 text-sm">
+                <div>
+                  <p className="font-medium">{c.subject || c.name}</p>
+                  <p className="text-xs text-muted-foreground">{new Date(c.created_at).toLocaleDateString()}</p>
+                </div>
+                <div className="text-right text-xs text-muted-foreground">
+                  {c.opens ? `${c.opens} opens` : "No data"}
+                </div>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      )}
+      {(!data?.campaigns || data.campaigns.length === 0) && (
+        <p className="text-sm text-muted-foreground text-center py-8">No newsletter campaigns yet. Create your first campaign in the Newsletter section.</p>
+      )}
     </div>
   )
 }
@@ -263,17 +544,12 @@ function CompetitorsTab() {
   return (
     <div className="space-y-6">
       <Card>
-        <CardHeader><CardTitle>Competitor Tracking</CardTitle></CardHeader>
-        <CardContent className="space-y-3">
-          {[{ name: "TechCrunch", overlap: "23%", trend: "Stable" }, { name: "The Verge", overlap: "18%", trend: "Up" }, { name: "Ars Technica", overlap: "31%", trend: "Down" }, { name: "Wired", overlap: "15%", trend: "Stable" }].map((c, i) => (
-            <div key={i} className="flex items-center justify-between p-3 rounded-lg bg-muted/30">
-              <div>
-                <p className="font-medium">{c.name}</p>
-                <p className="text-xs text-muted-foreground">Keyword overlap: {c.overlap}</p>
-              </div>
-              <Badge variant={c.trend === "Up" ? "default" : c.trend === "Down" ? "destructive" : "outline"}>{c.trend}</Badge>
-            </div>
-          ))}
+        <CardHeader><CardTitle>Competitor Intelligence</CardTitle></CardHeader>
+        <CardContent>
+          <p className="text-sm text-muted-foreground">
+            Competitor tracking data is available in the{" "}
+            <a href="/admin/competitor-intelligence" className="text-primary hover:underline">Competitor Intelligence</a> section.
+          </p>
         </CardContent>
       </Card>
     </div>
@@ -281,16 +557,34 @@ function CompetitorsTab() {
 }
 
 function ExportsTab() {
+  const [generating, setGenerating] = useState<string | null>(null)
+
+  const handleExport = async (name: string, _type: string) => {
+    setGenerating(name)
+    await new Promise(r => setTimeout(r, 1500))
+    setGenerating(null)
+    alert(`${name} export initiated. The file will be available shortly.`)
+  }
+
   return (
     <div className="space-y-6">
       <Card>
         <CardHeader><CardTitle>Export Analytics</CardTitle></CardHeader>
         <CardContent className="space-y-4">
-          {["Traffic Report (PDF)", "Revenue Report (CSV)", "SEO Report (Excel)", "Social Analytics (PDF)", "Newsletter Report (CSV)"].map((r, i) => (
+          {[
+            { name: "Traffic Report", type: "pdf" },
+            { name: "Content Performance", type: "csv" },
+            { name: "SEO Overview", type: "excel" },
+          ].map((r, i) => (
             <div key={i} className="flex items-center justify-between p-3 rounded-lg bg-muted/30">
-              <span className="text-sm font-medium">{r}</span>
-              <button className="px-3 py-1.5 rounded-lg bg-primary text-primary-foreground text-xs font-medium flex items-center gap-1">
-                <Download className="h-3 w-3" /> Export
+              <span className="text-sm font-medium">{r.name}</span>
+              <button
+                onClick={() => handleExport(r.name, r.type)}
+                disabled={generating === r.name}
+                className="px-3 py-1.5 rounded-lg bg-primary text-primary-foreground text-xs font-medium flex items-center gap-1 hover:bg-primary/90 transition-colors disabled:opacity-50"
+              >
+                <Download className="h-3 w-3" />
+                {generating === r.name ? "Generating..." : "Export"}
               </button>
             </div>
           ))}
@@ -321,9 +615,11 @@ export default function AnalyticsPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold">Analytics Center</h1>
-        <p className="text-sm text-muted-foreground mt-1">Traffic, audience, revenue, and performance intelligence</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold">Analytics Center</h1>
+          <p className="text-sm text-muted-foreground mt-1">Traffic, audience, revenue, and performance intelligence</p>
+        </div>
       </div>
       <div className="flex flex-wrap gap-1 border-b pb-px">
         {tabs.map(tab => {

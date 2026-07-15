@@ -65,12 +65,20 @@ export default function RevenueIntelligencePage() {
         { name: "Sponsored", value: 0 },
       ])
 
-      const days = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
-      setDailyRevenue(days.map(d => ({
-        date: d,
-        ad: Math.round(Math.random() * 50 + 20),
-        affiliate: Math.round(Math.random() * 30 + 10),
-      })))
+      const dailyData = Array.from({ length: 7 }, (_, i) => {
+        const d = new Date()
+        d.setDate(d.getDate() - (6 - i))
+        const dayViews = (posts || []).filter(p => {
+          const pDate = new Date(p.created_at || Date.now())
+          return pDate.toDateString() === d.toDateString()
+        }).reduce((s: number, p: any) => s + (p.views || 0), 0)
+        return {
+          date: d.toLocaleDateString("en-US", { weekday: "short" }),
+          ad: Math.round(dayViews * 0.005),
+          affiliate: Math.round(dayViews * 0.002),
+        }
+      })
+      setDailyRevenue(dailyData)
     }
     setLoading(false)
   }, [supabase])

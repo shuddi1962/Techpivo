@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from "react"
 import { createClient } from "@/lib/supabase/client"
 import {
   Calendar, ChevronLeft, ChevronRight, Plus, FileText,
-  Clock, RefreshCw, LayoutGrid, List
+  Clock, LayoutGrid, List
 } from "lucide-react"
 
 interface CalendarEvent {
@@ -20,24 +20,51 @@ export default function EditorialCalendarPage() {
   const [loading, setLoading] = useState(true)
   const [currentMonth, setCurrentMonth] = useState(new Date())
   const [events, setEvents] = useState<CalendarEvent[]>([])
-  const [view, setView] = useState<"month" | "week">("month")
+  const [view] = useState<"month" | "week">("month")
+  const [error, setError] = useState("")
 
   const fetchData = useCallback(async () => {
-    const { data: posts } = await supabase
-      .from("posts")
-      .select("id, title, status, published_at, scheduled_at, created_at, category_id")
-      .in("status", ["published", "scheduled", "draft"])
-      .order("published_at", { ascending: false })
-      .limit(100)
+    setError("")
+    try {
+      const { data: posts, error: postsErr } = await supabase
+        .from("posts")
+        .select("id, title, status, published_at, scheduled_at, created_at, category_id, categories!inner(name)")
+        .in("status", ["published", "scheduled", "draft"])
+        .order("published_at", { ascending: false })
+        .limit(100)
 
-    if (posts) {
-      setEvents(posts.map(p => ({
-        id: p.id,
-        title: p.title,
-        date: p.published_at || p.scheduled_at || p.created_at,
-        status: p.status as "draft" | "scheduled" | "published",
-        category: "tech-news",
-      })))
+      if (postsErr) {
+        const { data: postsFallback, error: fallbackErr } = await supabase
+          .from("posts")
+          .select("id, title, status, published_at, scheduled_at, created_at, category_id")
+          .in("status", ["published", "scheduled", "draft"])
+          .order("published_at", { ascending: false })
+          .limit(100)
+        if (fallbackErr) throw fallbackErr
+        if (postsFallback) {
+          const { data: categories } = await supabase.from("categories").select("id, name")
+          const catMap: Record<string, string> = {}
+          if (categories) categories.forEach(c => { catMap[c.id] = c.name })
+          setEvents(postsFallback.map(p => ({
+            id: p.id,
+            title: p.title,
+            date: p.published_at || p.scheduled_at || p.created_at,
+            status: p.status as "draft" | "scheduled" | "published",
+            category: catMap[p.category_id] || "Uncategorized",
+          })))
+        }
+      } else if (posts) {
+        setEvents(posts.map(p => ({
+          id: p.id,
+          title: p.title,
+          date: p.published_at || p.scheduled_at || p.created_at,
+          status: p.status as "draft" | "scheduled" | "published",
+          category: (p as any).categories?.name || "Uncategorized",
+        })))
+      }
+    } catch (err) {
+      console.error("Failed to fetch calendar:", err)
+      setError("Failed to load calendar data.")
     }
     setLoading(false)
   }, [supabase])
@@ -73,34 +100,36 @@ export default function EditorialCalendarPage() {
         </div>
         <div className="flex items-center gap-2">
           <div className="flex border rounded-lg p-0.5">
-            <button
-              onClick={() => setView("month")}
-              className={`px-3 py-1 rounded-md text-sm ${view === "month" ? "bg-background shadow-sm" : "text-muted-foreground"}`}
-            >
+            <button className="px-3 py-1 rounded-md text-sm bg-background shadow-sm">
               <LayoutGrid className="h-4 w-4" />
             </button>
-            <button
-              onClick={() => setView("week")}
-              className={`px-3 py-1 rounded-md text-sm ${view === "week" ? "bg-background shadow-sm" : "text-muted-foreground"}`}
-            >
+            <button className="px-3 py-1 rounded-md text-sm text-muted-foreground">
               <List className="h-4 w-4" />
             </button>
           </div>
-          <button className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary/90">
+          <a
+            href="/admin/posts/new"
+            className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary/90 transition-colors"
+          >
             <Plus className="h-4 w-4" />
-            Schedule Article
-          </button>
+            New Article
+          </a>
         </div>
       </div>
 
-      {/* Calendar Header */}
-      <div className="bg-white dark:bg-[#111827] border rounded-xl p-6">
+      {error && (
+        <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-lg text-sm text-red-600 dark:text-red-400">
+          {error}
+        </div>
+      )}
+
+      <div className="bg-card border rounded-xl p-6">
         <div className="flex items-center justify-between mb-6">
-          <button onClick={prevMonth} className="p-2 hover:bg-muted rounded-lg">
+          <button onClick={prevMonth} className="p-2 hover:bg-muted rounded-lg transition-colors">
             <ChevronLeft className="h-5 w-5" />
           </button>
           <h2 className="text-lg font-semibold">{monthName}</h2>
-          <button onClick={nextMonth} className="p-2 hover:bg-muted rounded-lg">
+          <button onClick={nextMonth} className="p-2 hover:bg-muted rounded-lg transition-colors">
             <ChevronRight className="h-5 w-5" />
           </button>
         </div>
@@ -127,13 +156,18 @@ export default function EditorialCalendarPage() {
                   <span className={`text-sm font-medium ${isToday ? "text-primary" : ""}`}>{day}</span>
                   <div className="mt-1 space-y-1">
                     {dayEvents.slice(0, 3).map(event => (
-                      <div key={event.id} className={`px-1.5 py-0.5 rounded text-xs truncate ${
-                        event.status === "published" ? "bg-green-500/10 text-green-600" :
-                        event.status === "scheduled" ? "bg-blue-500/10 text-blue-600" :
-                        "bg-amber-500/10 text-amber-600"
-                      }`}>
+                      <a
+                        key={event.id}
+                        href={`/admin/posts/${event.id}/edit`}
+                        className={`block px-1.5 py-0.5 rounded text-xs truncate hover:opacity-80 transition-opacity ${
+                          event.status === "published" ? "bg-green-500/10 text-green-600 dark:text-green-400" :
+                          event.status === "scheduled" ? "bg-blue-500/10 text-blue-600 dark:text-blue-400" :
+                          "bg-amber-500/10 text-amber-600 dark:text-amber-400"
+                        }`}
+                        title={`${event.title} (${event.status})`}
+                      >
                         {event.title.slice(0, 25)}
-                      </div>
+                      </a>
                     ))}
                     {dayEvents.length > 3 && (
                       <span className="text-xs text-muted-foreground">+{dayEvents.length - 3} more</span>
@@ -146,8 +180,7 @@ export default function EditorialCalendarPage() {
         )}
       </div>
 
-      {/* Upcoming */}
-      <div className="bg-white dark:bg-[#111827] border rounded-xl p-6">
+      <div className="bg-card border rounded-xl p-6">
         <h3 className="font-semibold mb-4 flex items-center gap-2">
           <Clock className="h-5 w-5 text-muted-foreground" />
           Upcoming Scheduled
@@ -157,15 +190,20 @@ export default function EditorialCalendarPage() {
             .filter(e => e.status === "scheduled")
             .slice(0, 5)
             .map(event => (
-              <div key={event.id} className="flex items-center justify-between p-3 border rounded-lg">
-                <div className="flex items-center gap-3">
-                  <span className="px-2 py-1 bg-blue-500/10 text-blue-500 rounded-full text-xs font-medium">Scheduled</span>
-                  <span className="text-sm font-medium">{event.title}</span>
+              <a
+                key={event.id}
+                href={`/admin/posts/${event.id}/edit`}
+                className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50 transition-colors"
+              >
+                <div className="flex items-center gap-3 min-w-0">
+                  <span className="px-2 py-1 bg-blue-500/10 text-blue-600 dark:text-blue-400 rounded-full text-xs font-medium shrink-0">Scheduled</span>
+                  <span className="text-sm font-medium truncate">{event.title}</span>
+                  <span className="text-xs text-muted-foreground hidden sm:inline">{event.category}</span>
                 </div>
-                <span className="text-xs text-muted-foreground">
+                <span className="text-xs text-muted-foreground shrink-0">
                   {new Date(event.date).toLocaleDateString("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
                 </span>
-              </div>
+              </a>
             ))}
           {events.filter(e => e.status === "scheduled").length === 0 && (
             <p className="text-sm text-muted-foreground text-center py-4">No scheduled articles</p>

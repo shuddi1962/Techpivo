@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
-import { Users, Shield, Activity, UserPlus, Search, Mail, Calendar, Eye } from "lucide-react"
+import { Users, Shield, Activity, UserPlus, Search, Mail, Calendar, Eye, RefreshCw } from "lucide-react"
 import type { Profile } from "@/types/database"
 
 const tabs = [
@@ -105,29 +105,55 @@ function RolesTab() {
 }
 
 function ActivityTab() {
-  const [users] = useState<Profile[]>([])
-  const activities = [
-    { action: "User Created", user: "newreporter@techpivo.com", time: "2 hours ago", icon: UserPlus },
-    { action: "Role Changed", user: "jane@techpivo.com", time: "5 hours ago", icon: Shield },
-    { action: "Password Reset", user: "bob@techpivo.com", time: "1 day ago", icon: Shield },
-    { action: "Profile Updated", user: "admin@techpivo.com", time: "2 days ago", icon: Users },
-    { action: "Login", user: "jane@techpivo.com", time: "2 days ago", icon: Eye },
-  ]
+  const [activities, setActivities] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    const supabase = createClient()
+    supabase.from("audit_logs").select("action, user_email, created_at").order("created_at", { ascending: false }).limit(20).then(({ data }) => {
+      if (data) {
+        setActivities(data.map((log: any) => ({
+          action: log.action,
+          user: log.user_email,
+          time: formatRelativeTime(log.created_at),
+          icon: log.action?.toLowerCase().includes("create") ? UserPlus : log.action?.toLowerCase().includes("role") ? Shield : log.action?.toLowerCase().includes("login") ? Eye : Activity,
+        })))
+      }
+      setLoading(false)
+    }).catch(() => setLoading(false))
+  }, [])
+
+  const formatRelativeTime = (dateStr: string) => {
+    const diff = Date.now() - new Date(dateStr).getTime()
+    const mins = Math.floor(diff / 60000)
+    if (mins < 60) return `${mins} min${mins !== 1 ? 's' : ''} ago`
+    const hours = Math.floor(mins / 60)
+    if (hours < 24) return `${hours} hour${hours !== 1 ? 's' : ''} ago`
+    const days = Math.floor(hours / 24)
+    return `${days} day${days !== 1 ? 's' : ''} ago`
+  }
+
   return (
     <div className="space-y-4">
       <Card>
         <CardHeader><CardTitle>Recent User Activity</CardTitle></CardHeader>
         <CardContent className="space-y-2">
-          {activities.map((a, i) => (
-            <div key={i} className="flex items-center gap-3 p-3 rounded-lg bg-muted/30">
-              <a.icon className="h-4 w-4 text-muted-foreground shrink-0" />
-              <div className="flex-1">
-                <p className="text-sm font-medium">{a.action}</p>
-                <p className="text-xs text-muted-foreground">{a.user}</p>
+          {loading ? (
+            <p className="text-sm text-muted-foreground text-center py-4">Loading...</p>
+          ) : activities.length === 0 ? (
+            <p className="text-sm text-muted-foreground text-center py-4">No recent activity found</p>
+          ) : (
+            activities.map((a, i) => (
+              <div key={i} className="flex items-center gap-3 p-3 rounded-lg bg-muted/30">
+                <a.icon className="h-4 w-4 text-muted-foreground shrink-0" />
+                <div className="flex-1">
+                  <p className="text-sm font-medium capitalize">{a.action?.replace(/_/g, " ")}</p>
+                  <p className="text-xs text-muted-foreground">{a.user}</p>
+                </div>
+                <span className="text-xs text-muted-foreground">{a.time}</span>
               </div>
-              <span className="text-xs text-muted-foreground">{a.time}</span>
-            </div>
-          ))}
+            ))
+          )}
         </CardContent>
       </Card>
     </div>
@@ -135,8 +161,35 @@ function ActivityTab() {
 }
 
 function InviteTab() {
+  const supabase = createClient()
   const [email, setEmail] = useState("")
   const [role, setRole] = useState("reporter")
+  const [sending, setSending] = useState(false)
+  const [result, setResult] = useState<{ ok: boolean; msg: string } | null>(null)
+
+  const sendInvite = async () => {
+    if (!email) return
+    setSending(true)
+    setResult(null)
+    try {
+      const res = await fetch("/admin/users/api", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "invite", email, role }),
+      })
+      const data = await res.json()
+      if (res.ok) {
+        setResult({ ok: true, msg: `Invitation sent to ${email}` })
+        setEmail("")
+      } else {
+        setResult({ ok: false, msg: data.error || "Failed to send invite" })
+      }
+    } catch {
+      setResult({ ok: false, msg: "Network error" })
+    }
+    setSending(false)
+  }
+
   return (
     <div className="space-y-6">
       <Card>
@@ -146,8 +199,14 @@ function InviteTab() {
             <label className="text-sm font-medium mb-1.5 block">Email Address</label>
             <div className="flex gap-2">
               <Input type="email" placeholder="user@example.com" value={email} onChange={e => setEmail(e.target.value)} className="flex-1" />
-              <Button disabled={!email}><Mail className="h-4 w-4 mr-1" /> Send Invite</Button>
+              <Button disabled={!email || sending} onClick={sendInvite}>
+                {sending ? <RefreshCw className="h-4 w-4 mr-1 animate-spin" /> : <Mail className="h-4 w-4 mr-1" />}
+                {sending ? "Sending..." : "Send Invite"}
+              </Button>
             </div>
+            {result && (
+              <p className={`text-sm mt-1 ${result.ok ? "text-green-600" : "text-red-600"}`}>{result.msg}</p>
+            )}
           </div>
           <div>
             <label className="text-sm font-medium mb-1.5 block">Role</label>
@@ -160,12 +219,6 @@ function InviteTab() {
               ))}
             </div>
           </div>
-        </CardContent>
-      </Card>
-      <Card>
-        <CardHeader><CardTitle>Pending Invitations</CardTitle></CardHeader>
-        <CardContent>
-          <p className="text-sm text-muted-foreground text-center py-4">No pending invitations</p>
         </CardContent>
       </Card>
     </div>
