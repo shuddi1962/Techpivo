@@ -121,6 +121,13 @@ export default function ContentHealthPage() {
       healthArticles.sort((a, b) => b.refresh_priority - a.refresh_priority)
 
       setArticles(healthArticles)
+      const totalLinks = posts.reduce((count, p) => {
+        if (p.content) {
+          const matches = p.content.match(/https?:\/\/[^\s"')>]+/g)
+          return count + (matches ? matches.length : 0)
+        }
+        return count
+      }, 0)
       setSummary({
         totalPublished: healthArticles.length,
         needsRefresh: healthArticles.filter(a => a.refresh_priority > 2).length,
@@ -128,13 +135,7 @@ export default function ContentHealthPage() {
         avgQualityScore: healthArticles.length > 0
           ? Math.round(healthArticles.reduce((s, a) => s + a.quality_score, 0) / healthArticles.length)
           : 0,
-        brokenLinks: healthArticles.reduce((count, a) => {
-          if (a.content) {
-            const linkMatches = a.content.match(/https?:\/\/[^\s"')>]+/g)
-            return count + (linkMatches ? linkMatches.length : 0)
-          }
-          return count
-        }, 0),
+        brokenLinks: totalLinks,
         missingImages: healthArticles.filter(a => a.issues.some(i => i.type === "missing_image")).length,
         missingMeta: healthArticles.filter(a => a.issues.some(i => i.type === "missing_meta")).length,
       })
