@@ -8,14 +8,15 @@ import { AiExecutiveSummary } from "@/components/admin/ai-executive-summary"
 import { AiOpportunityCenter } from "@/components/admin/ai-opportunity-center"
 import { LivePublishingQueue } from "@/components/admin/live-publishing-queue"
 import { NotificationCenter } from "@/components/admin/notification-center"
+import { ExecutiveKpiCards } from "@/components/admin/executive-kpi-cards"
 import {
-  FileText, Eye, Users, Rss, RefreshCw, TrendingUp, TrendingDown,
-  BarChart3, PieChart, Activity, Globe, MousePointerClick, Smartphone,
+  RefreshCw, TrendingUp, TrendingDown,
+  BarChart3, Activity, Globe, MousePointerClick, Smartphone,
+  FileText, Clock, ArrowUpRight,
 } from "lucide-react"
 import {
   ComposedChart, Line, Bar, BarChart, XAxis, YAxis, CartesianGrid,
-  Tooltip, ResponsiveContainer, PieChart as RePie, Pie, Cell,
-  RadialBarChart, RadialBar,
+  Tooltip, ResponsiveContainer, RadialBarChart, RadialBar, Cell,
 } from "recharts"
 
 const COLORS = ["#F59E0B", "#10B981", "#F59E0B", "#EF4444", "#F59E0B", "#EC4899", "#06B6D4", "#84CC16"]
@@ -41,13 +42,6 @@ function flag(name: string): string {
 
 export default function AdminDashboard() {
   const supabaseRef = useRef(createClient())
-  const prevViewsRef = useRef(0)
-  const [stats, setStats] = useState([
-    { label: "Published Posts", value: 0, change: "+0", icon: FileText, color: "#F59E0B", href: "/admin/posts" },
-    { label: "Total Views", value: 0, change: "+0", icon: Eye, color: "#10B981", href: "/admin/analytics" },
-    { label: "Active RSS Feeds", value: 0, change: "", icon: Rss, color: "#F59E0B", href: "/admin/rss-feeds" },
-    { label: "Subscribers", value: 0, change: "", icon: Users, color: "#EC4899", href: "/admin/newsletter" },
-  ])
   const [viewsOverTime, setViewsOverTime] = useState<{ date: string; views: number }[]>([])
   const [topPosts, setTopPosts] = useState<any[]>([])
   const [statusDist, setStatusDist] = useState<{ name: string; value: number }[]>([])
@@ -61,14 +55,9 @@ export default function AdminDashboard() {
       const supabase = supabaseRef.current
 
       const [
-        postsCount, postsViews, draftCount, rssFeeds,
         topPostsRes, dailyViewsRes, statusCounts,
-        regionRes, pageRes, referrerRes, subsRes,
+        regionRes, pageRes, referrerRes,
       ] = await Promise.all([
-        supabase.from("posts").select("*", { count: "exact", head: true }).eq("status", "published"),
-        supabase.from("posts").select("views"),
-        supabase.from("posts").select("*", { count: "exact", head: true }).eq("status", "draft"),
-        supabase.from("rss_feeds").select("*").eq("is_active", true),
         supabase.from("posts").select("id, title, slug, views").eq("status", "published").order("views", { ascending: false }).limit(5),
         supabase.from("analytics_events").select("created_at").eq("event_type", "page_view").gte("created_at", new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()),
         Promise.all([
@@ -80,22 +69,7 @@ export default function AdminDashboard() {
         supabase.from("analytics_events").select("country").eq("event_type", "page_view").not("country", "is", null).limit(500),
         supabase.from("analytics_events").select("page_url").eq("event_type", "page_view").not("page_url", "is", null).limit(500),
         supabase.from("analytics_events").select("referrer").eq("event_type", "page_view").not("referrer", "is", null).limit(500),
-        supabase.from("subscribers").select("*", { count: "exact", head: true }).eq("status", "active"),
       ])
-
-      const totalV = (postsViews.data || []).reduce((s: number, p: any) => s + (p.views || 0), 0)
-      const prevV = prevViewsRef.current
-      const viewDiff = totalV - prevV
-      prevViewsRef.current = totalV
-
-      setStats(prev => {
-        const updated = [...prev]
-        updated[0] = { ...updated[0], value: postsCount.count || 0, change: `+${(postsCount.count || 0) - (prev[0].value || 0)}` }
-        updated[1] = { ...updated[1], value: totalV, change: viewDiff >= 0 ? `+${viewDiff}` : `${viewDiff}` }
-        updated[2] = { ...updated[2], value: rssFeeds.data?.length || 0, change: `+${(rssFeeds.data?.length || 0) - (prev[2].value || 0)}` }
-        updated[3] = { ...updated[3], value: subsRes.count || 0, change: `+${(subsRes.count || 0) - (prev[3].value || 0)}` }
-        return updated
-      })
 
       if (topPostsRes.data) setTopPosts(topPostsRes.data)
 
@@ -150,99 +124,122 @@ export default function AdminDashboard() {
 
   useEffect(() => {
     fetchData()
-
     const client = supabaseRef.current
     const channel = client
       .channel("dashboard-realtime")
-      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "posts" }, () => {
-        fetchData()
-      })
-      .on("postgres_changes", { event: "INSERT", schema: "public", table: "analytics_events" }, () => {
-        fetchData()
-      })
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "posts" }, () => { fetchData() })
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "analytics_events" }, () => { fetchData() })
       .subscribe()
-
-    return () => {
-      supabaseRef.current.removeChannel(channel)
-    }
+    return () => { supabaseRef.current.removeChannel(channel) }
   }, [fetchData])
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Dashboard</h1>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Your site at a glance</p>
+          <h1 className="text-2xl font-bold tracking-tight">Dashboard</h1>
+          <p className="text-sm text-muted-foreground">Your publishing command center</p>
         </div>
-        <button onClick={fetchData} className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-[#1F2937] rounded-lg transition-colors border-2 border-gray-200 dark:border-[#374151]">
-          <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
-          Refresh
-        </button>
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-muted-foreground hidden sm:inline">
+            Last updated: {new Date().toLocaleTimeString()}
+          </span>
+          <button
+            onClick={fetchData}
+            className="inline-flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors border"
+          >
+            <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} />
+            Refresh
+          </button>
+        </div>
       </div>
 
-      <div className="grid grid-cols-1">
-        <GeminiQuotaWidget />
-      </div>
+      {/* Executive KPI Cards */}
+      <ExecutiveKpiCards />
 
+      {/* AI Quota */}
+      <GeminiQuotaWidget />
+
+      {/* AI Widgets Row */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <AiExecutiveSummary />
         <AiOpportunityCenter />
       </div>
 
+      {/* Publishing + Notifications */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <LivePublishingQueue />
         <NotificationCenter />
       </div>
 
+      {/* Charts Row */}
       <div className="grid grid-cols-1 lg:grid-cols-7 gap-6">
-        <div className="lg:col-span-4 bg-white dark:bg-[#111827] border-2 border-gray-200 dark:border-[#374151] rounded-xl p-6">
-          <div className="flex items-center justify-between mb-6">
+        <div className="lg:col-span-4 bg-card border rounded-xl p-5">
+          <div className="flex items-center justify-between mb-5">
             <div className="flex items-center gap-2.5">
-              <Activity className="h-5 w-5 text-[#F59E0B]" />
-              <h2 className="text-base font-bold text-gray-900 dark:text-white">Views This Week</h2>
+              <Activity className="h-5 w-5 text-amber-500" />
+              <h2 className="text-base font-semibold">Views This Week</h2>
             </div>
             {!loading && (
-              <span className="text-xs font-semibold text-gray-400 dark:text-gray-500 bg-gray-50 dark:bg-[#1F2937] px-3 py-1.5 rounded-lg border border-gray-200 dark:border-[#374151]">
+              <span className="text-xs font-medium text-muted-foreground bg-muted/50 px-2.5 py-1 rounded-md border">
                 {viewsOverTime.reduce((s, d) => s + d.views, 0).toLocaleString()} total
               </span>
             )}
           </div>
           {loading ? (
-            <div className="h-64 flex items-center justify-center text-sm text-gray-400">Loading...</div>
+            <div className="h-64 flex items-center justify-center text-sm text-muted-foreground">
+              <RefreshCw className="h-4 w-4 animate-spin mr-2" /> Loading...
+            </div>
           ) : (
             <ResponsiveContainer width="100%" height={260}>
               <ComposedChart data={viewsOverTime}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#1F2937" />
-                <XAxis dataKey="date" tick={{ fill: "#6B7280", fontSize: 12 }} axisLine={{ stroke: "#374151" }} tickLine={false} />
-                <YAxis tick={{ fill: "#6B7280", fontSize: 12 }} axisLine={false} tickLine={false} />
-                <Tooltip contentStyle={{ background: "#111827", border: "2px solid #374151", borderRadius: "12px", color: "#F9FAFB" }} labelStyle={{ color: "#9CA3AF" }} />
+                <CartesianGrid strokeDasharray="3 3" stroke="currentColor" className="stroke-border/50" />
+                <XAxis dataKey="date" tick={{ fill: "currentColor", fontSize: 12 }} className="text-muted-foreground" axisLine={false} tickLine={false} />
+                <YAxis tick={{ fill: "currentColor", fontSize: 12 }} className="text-muted-foreground" axisLine={false} tickLine={false} />
+                <Tooltip
+                  contentStyle={{
+                    background: "hsl(var(--popover))",
+                    border: "1px solid hsl(var(--border))",
+                    borderRadius: "8px",
+                    color: "hsl(var(--popover-foreground))",
+                  }}
+                  labelStyle={{ color: "hsl(var(--muted-foreground))" }}
+                />
                 <Bar dataKey="views" fill="#F59E0B" radius={[4, 4, 0, 0]} barSize={24} opacity={0.7} />
-                <Line type="monotone" dataKey="views" stroke="#10B981" strokeWidth={2.5} dot={{ fill: "#10B981", stroke: "#111827", strokeWidth: 2, r: 3 }} />
+                <Line type="monotone" dataKey="views" stroke="#10B981" strokeWidth={2.5} dot={{ fill: "#10B981", stroke: "hsl(var(--background))", strokeWidth: 2, r: 3 }} />
               </ComposedChart>
             </ResponsiveContainer>
           )}
         </div>
 
-        <div className="lg:col-span-3 bg-white dark:bg-[#111827] border-2 border-gray-200 dark:border-[#374151] rounded-xl p-6">
-          <div className="flex items-center gap-2.5 mb-6">
-            <PieChart className="h-5 w-5 text-[#F59E0B]" />
-            <h2 className="text-base font-bold text-gray-900 dark:text-white">Post Status</h2>
+        <div className="lg:col-span-3 bg-card border rounded-xl p-5">
+          <div className="flex items-center gap-2.5 mb-5">
+            <BarChart3 className="h-5 w-5 text-amber-500" />
+            <h2 className="text-base font-semibold">Post Status</h2>
           </div>
           {loading ? (
-            <div className="h-64 flex items-center justify-center text-sm text-gray-400">Loading...</div>
+            <div className="h-64 flex items-center justify-center text-sm text-muted-foreground">Loading...</div>
           ) : (
             <div className="flex flex-col items-center">
               <ResponsiveContainer width="100%" height={220}>
                 <RadialBarChart innerRadius="30%" outerRadius="90%" data={statusDist.map((d, i) => ({ ...d, fill: [COLORS[0], COLORS[2], COLORS[1], COLORS[3]][i] }))} startAngle={180} endAngle={0}>
-                  <RadialBar dataKey="value" cornerRadius={8} background={{ fill: "#1F2937" }} />
-                  <Tooltip contentStyle={{ background: "#111827", border: "2px solid #374151", borderRadius: "12px", color: "#F9FAFB" }} />
+                  <RadialBar dataKey="value" cornerRadius={8} background={{ fill: "hsl(var(--muted))" }} />
+                  <Tooltip
+                    contentStyle={{
+                      background: "hsl(var(--popover))",
+                      border: "1px solid hsl(var(--border))",
+                      borderRadius: "8px",
+                      color: "hsl(var(--popover-foreground))",
+                    }}
+                  />
                 </RadialBarChart>
               </ResponsiveContainer>
               <div className="flex flex-wrap justify-center gap-4 mt-2">
                 {statusDist.map((s, i) => s.value > 0 && (
                   <div key={s.name} className="flex items-center gap-1.5">
                     <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: [COLORS[0], COLORS[2], COLORS[1], COLORS[3]][i] }} />
-                    <span className="text-xs font-medium text-gray-500 dark:text-gray-400">{s.name} ({s.value})</span>
+                    <span className="text-xs font-medium text-muted-foreground">{s.name} ({s.value})</span>
                   </div>
                 ))}
               </div>
@@ -251,23 +248,31 @@ export default function AdminDashboard() {
         </div>
       </div>
 
+      {/* Top Posts + Regions */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="bg-white dark:bg-[#111827] border-2 border-gray-200 dark:border-[#374151] rounded-xl p-6">
-          <div className="flex items-center gap-2.5 mb-6">
-            <BarChart3 className="h-5 w-5 text-[#10B981]" />
-            <h2 className="text-base font-bold text-gray-900 dark:text-white">Top Posts by Views</h2>
+        <div className="bg-card border rounded-xl p-5">
+          <div className="flex items-center gap-2.5 mb-5">
+            <BarChart3 className="h-5 w-5 text-emerald-500" />
+            <h2 className="text-base font-semibold">Top Posts by Views</h2>
           </div>
           {loading ? (
-            <div className="h-64 flex items-center justify-center text-sm text-gray-400">Loading...</div>
+            <div className="h-64 flex items-center justify-center text-sm text-muted-foreground">Loading...</div>
           ) : topPosts.length === 0 ? (
-            <div className="h-64 flex items-center justify-center text-sm text-gray-400">No published posts yet</div>
+            <div className="h-64 flex items-center justify-center text-sm text-muted-foreground">No published posts yet</div>
           ) : (
             <ResponsiveContainer width="100%" height={280}>
               <BarChart data={topPosts.map((p: any) => ({ name: p.title.length > 30 ? p.title.slice(0, 27) + "..." : p.title, views: p.views || 0 }))} layout="vertical" margin={{ left: 10 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#1F2937" horizontal={false} />
-                <XAxis type="number" tick={{ fill: "#6B7280", fontSize: 11 }} axisLine={false} tickLine={false} />
-                <YAxis type="category" dataKey="name" tick={{ fill: "#D1D5DB", fontSize: 11 }} axisLine={false} tickLine={false} width={160} />
-                <Tooltip contentStyle={{ background: "#111827", border: "2px solid #374151", borderRadius: "12px", color: "#F9FAFB" }} />
+                <CartesianGrid strokeDasharray="3 3" className="stroke-border/50" horizontal={false} />
+                <XAxis type="number" tick={{ fill: "currentColor", fontSize: 11 }} className="text-muted-foreground" axisLine={false} tickLine={false} />
+                <YAxis type="category" dataKey="name" tick={{ fill: "currentColor", fontSize: 11 }} className="text-muted-foreground" axisLine={false} tickLine={false} width={160} />
+                <Tooltip
+                  contentStyle={{
+                    background: "hsl(var(--popover))",
+                    border: "1px solid hsl(var(--border))",
+                    borderRadius: "8px",
+                    color: "hsl(var(--popover-foreground))",
+                  }}
+                />
                 <Bar dataKey="views" radius={[0, 6, 6, 0]} barSize={22}>
                   {topPosts.map((_, i) => (<Cell key={i} fill={COLORS[i % COLORS.length]} />))}
                 </Bar>
@@ -276,26 +281,33 @@ export default function AdminDashboard() {
           )}
         </div>
 
-        <div className="bg-white dark:bg-[#111827] border-2 border-gray-200 dark:border-[#374151] rounded-xl p-6">
-          <div className="flex items-center gap-2.5 mb-6">
-            <Globe className="h-5 w-5 text-[#F59E0B]" />
-            <h2 className="text-base font-bold text-gray-900 dark:text-white">Top Regions</h2>
+        <div className="bg-card border rounded-xl p-5">
+          <div className="flex items-center gap-2.5 mb-5">
+            <Globe className="h-5 w-5 text-amber-500" />
+            <h2 className="text-base font-semibold">Top Regions</h2>
           </div>
           {loading ? (
-            <div className="h-64 flex items-center justify-center text-sm text-gray-400">Loading...</div>
+            <div className="h-64 flex items-center justify-center text-sm text-muted-foreground">Loading...</div>
           ) : regions.length === 0 ? (
-            <div className="h-64 flex flex-col items-center justify-center text-sm text-gray-400">
-              <Globe className="h-10 w-10 text-gray-300 dark:text-gray-600 mb-3" />
+            <div className="h-64 flex flex-col items-center justify-center text-sm text-muted-foreground">
+              <Globe className="h-10 w-10 text-muted-foreground/30 mb-3" />
               <p>No region data yet</p>
               <p className="text-xs mt-1">Data appears as visitors view posts</p>
             </div>
           ) : (
             <ResponsiveContainer width="100%" height={280}>
               <BarChart data={regions} layout="vertical" margin={{ left: 10 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#1F2937" horizontal={false} />
-                <XAxis type="number" tick={{ fill: "#6B7280", fontSize: 11 }} axisLine={false} tickLine={false} />
-                <YAxis type="category" dataKey="name" tick={{ fill: "#D1D5DB", fontSize: 11 }} axisLine={false} tickLine={false} width={100} />
-                <Tooltip contentStyle={{ background: "#111827", border: "2px solid #374151", borderRadius: "12px", color: "#F9FAFB" }} />
+                <CartesianGrid strokeDasharray="3 3" className="stroke-border/50" horizontal={false} />
+                <XAxis type="number" tick={{ fill: "currentColor", fontSize: 11 }} className="text-muted-foreground" axisLine={false} tickLine={false} />
+                <YAxis type="category" dataKey="name" tick={{ fill: "currentColor", fontSize: 11 }} className="text-muted-foreground" axisLine={false} tickLine={false} width={100} />
+                <Tooltip
+                  contentStyle={{
+                    background: "hsl(var(--popover))",
+                    border: "1px solid hsl(var(--border))",
+                    borderRadius: "8px",
+                    color: "hsl(var(--popover-foreground))",
+                  }}
+                />
                 <Bar dataKey="value" radius={[0, 6, 6, 0]} barSize={22}>
                   {regions.map((_, i) => (<Cell key={i} fill={COLORS[i % COLORS.length]} />))}
                 </Bar>
@@ -305,27 +317,35 @@ export default function AdminDashboard() {
         </div>
       </div>
 
+      {/* Pages + Traffic Sources */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="bg-white dark:bg-[#111827] border-2 border-gray-200 dark:border-[#374151] rounded-xl p-6">
-          <div className="flex items-center gap-2.5 mb-6">
-            <MousePointerClick className="h-5 w-5 text-[#06B6D4]" />
-            <h2 className="text-base font-bold text-gray-900 dark:text-white">Top Pages</h2>
+        <div className="bg-card border rounded-xl p-5">
+          <div className="flex items-center gap-2.5 mb-5">
+            <MousePointerClick className="h-5 w-5 text-cyan-500" />
+            <h2 className="text-base font-semibold">Top Pages</h2>
           </div>
           {loading ? (
-            <div className="h-64 flex items-center justify-center text-sm text-gray-400">Loading...</div>
+            <div className="h-64 flex items-center justify-center text-sm text-muted-foreground">Loading...</div>
           ) : pages.length === 0 ? (
-            <div className="h-64 flex flex-col items-center justify-center text-sm text-gray-400">
-              <FileText className="h-10 w-10 text-gray-300 dark:text-gray-600 mb-3" />
+            <div className="h-64 flex flex-col items-center justify-center text-sm text-muted-foreground">
+              <FileText className="h-10 w-10 text-muted-foreground/30 mb-3" />
               <p>No page data yet</p>
               <p className="text-xs mt-1">Data appears as visitors view posts</p>
             </div>
           ) : (
             <ResponsiveContainer width="100%" height={280}>
               <BarChart data={pages} layout="vertical" margin={{ left: 10 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#1F2937" horizontal={false} />
-                <XAxis type="number" tick={{ fill: "#6B7280", fontSize: 11 }} axisLine={false} tickLine={false} />
-                <YAxis type="category" dataKey="name" tick={{ fill: "#D1D5DB", fontSize: 11 }} axisLine={false} tickLine={false} width={160} />
-                <Tooltip contentStyle={{ background: "#111827", border: "2px solid #374151", borderRadius: "12px", color: "#F9FAFB" }} />
+                <CartesianGrid strokeDasharray="3 3" className="stroke-border/50" horizontal={false} />
+                <XAxis type="number" tick={{ fill: "currentColor", fontSize: 11 }} className="text-muted-foreground" axisLine={false} tickLine={false} />
+                <YAxis type="category" dataKey="name" tick={{ fill: "currentColor", fontSize: 11 }} className="text-muted-foreground" axisLine={false} tickLine={false} width={160} />
+                <Tooltip
+                  contentStyle={{
+                    background: "hsl(var(--popover))",
+                    border: "1px solid hsl(var(--border))",
+                    borderRadius: "8px",
+                    color: "hsl(var(--popover-foreground))",
+                  }}
+                />
                 <Bar dataKey="value" radius={[0, 6, 6, 0]} barSize={22}>
                   {pages.map((_, i) => (<Cell key={i} fill={COLORS[(i + 2) % COLORS.length]} />))}
                 </Bar>
@@ -334,26 +354,33 @@ export default function AdminDashboard() {
           )}
         </div>
 
-        <div className="bg-white dark:bg-[#111827] border-2 border-gray-200 dark:border-[#374151] rounded-xl p-6">
-          <div className="flex items-center gap-2.5 mb-6">
-            <Smartphone className="h-5 w-5 text-[#84CC16]" />
-            <h2 className="text-base font-bold text-gray-900 dark:text-white">Traffic Sources</h2>
+        <div className="bg-card border rounded-xl p-5">
+          <div className="flex items-center gap-2.5 mb-5">
+            <Smartphone className="h-5 w-5 text-lime-500" />
+            <h2 className="text-base font-semibold">Traffic Sources</h2>
           </div>
           {loading ? (
-            <div className="h-64 flex items-center justify-center text-sm text-gray-400">Loading...</div>
+            <div className="h-64 flex items-center justify-center text-sm text-muted-foreground">Loading...</div>
           ) : referrers.length === 0 ? (
-            <div className="h-64 flex flex-col items-center justify-center text-sm text-gray-400">
-              <TrendingUp className="h-10 w-10 text-gray-300 dark:text-gray-600 mb-3" />
+            <div className="h-64 flex flex-col items-center justify-center text-sm text-muted-foreground">
+              <TrendingUp className="h-10 w-10 text-muted-foreground/30 mb-3" />
               <p>No traffic source data yet</p>
               <p className="text-xs mt-1">Data appears as visitors come from external sites</p>
             </div>
           ) : (
             <ResponsiveContainer width="100%" height={280}>
               <BarChart data={referrers} layout="vertical" margin={{ left: 10 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#1F2937" horizontal={false} />
-                <XAxis type="number" tick={{ fill: "#6B7280", fontSize: 11 }} axisLine={false} tickLine={false} />
-                <YAxis type="category" dataKey="name" tick={{ fill: "#D1D5DB", fontSize: 11 }} axisLine={false} tickLine={false} width={120} />
-                <Tooltip contentStyle={{ background: "#111827", border: "2px solid #374151", borderRadius: "12px", color: "#F9FAFB" }} />
+                <CartesianGrid strokeDasharray="3 3" className="stroke-border/50" horizontal={false} />
+                <XAxis type="number" tick={{ fill: "currentColor", fontSize: 11 }} className="text-muted-foreground" axisLine={false} tickLine={false} />
+                <YAxis type="category" dataKey="name" tick={{ fill: "currentColor", fontSize: 11 }} className="text-muted-foreground" axisLine={false} tickLine={false} width={120} />
+                <Tooltip
+                  contentStyle={{
+                    background: "hsl(var(--popover))",
+                    border: "1px solid hsl(var(--border))",
+                    borderRadius: "8px",
+                    color: "hsl(var(--popover-foreground))",
+                  }}
+                />
                 <Bar dataKey="value" radius={[0, 6, 6, 0]} barSize={22}>
                   {referrers.map((_, i) => (<Cell key={i} fill={COLORS[(i + 4) % COLORS.length]} />))}
                 </Bar>
