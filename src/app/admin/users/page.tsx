@@ -109,18 +109,21 @@ function ActivityTab() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    const supabase = createClient()
-    supabase.from("audit_logs").select("action, user_email, created_at").order("created_at", { ascending: false }).limit(20).then(({ data }) => {
-      if (data) {
-        setActivities(data.map((log: any) => ({
-          action: log.action,
-          user: log.user_email,
-          time: formatRelativeTime(log.created_at),
-          icon: log.action?.toLowerCase().includes("create") ? UserPlus : log.action?.toLowerCase().includes("role") ? Shield : log.action?.toLowerCase().includes("login") ? Eye : Activity,
-        })))
-      }
+    (async () => {
+      try {
+        const supabase = createClient()
+        const { data } = await supabase.from("audit_logs").select("action, user_email, created_at").order("created_at", { ascending: false }).limit(20)
+        if (data) {
+          setActivities(data.map((log: any) => ({
+            action: log.action,
+            user: log.user_email,
+            time: formatRelativeTime(log.created_at),
+            icon: log.action?.toLowerCase().includes("create") ? UserPlus : log.action?.toLowerCase().includes("role") ? Shield : log.action?.toLowerCase().includes("login") ? Eye : Activity,
+          })))
+        }
+      } catch { /* ignore */ }
       setLoading(false)
-    }).catch(() => setLoading(false))
+    })()
   }, [])
 
   const formatRelativeTime = (dateStr: string) => {

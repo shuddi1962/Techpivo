@@ -607,10 +607,13 @@ function InternalLinksTab() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    supabase.from("posts").select("id, title, slug, content").eq("status", "published").limit(20).then(({ data }) => {
-      if (data) setPosts(data)
+    (async () => {
+      try {
+        const { data } = await supabase.from("posts").select("id, title, slug, content").eq("status", "published").limit(20)
+        if (data) setPosts(data)
+      } catch { /* ignore */ }
       setLoading(false)
-    }).catch(() => setLoading(false))
+    })()
   }, [])
 
   return (
@@ -720,10 +723,13 @@ function DuplicatesTab() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    supabase.from("posts").select("id, title, slug").eq("status", "published").limit(50).then(({ data }) => {
-      if (data) setPosts(data)
+    (async () => {
+      try {
+        const { data } = await supabase.from("posts").select("id, title, slug").eq("status", "published").limit(50)
+        if (data) setPosts(data)
+      } catch { /* ignore */ }
       setLoading(false)
-    }).catch(() => setLoading(false))
+    })()
   }, [])
 
   const findSimilar = (title: string, allPosts: any[]) => {
