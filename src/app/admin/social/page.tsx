@@ -69,10 +69,13 @@ function ConnectedAccountsTab() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    supabase.from("social_accounts").select("*").then(({ data }) => {
-      if (data) setAccounts(data)
+    (async () => {
+      try {
+        const { data } = await supabase.from("social_accounts").select("*")
+        if (data) setAccounts(data)
+      } catch { /* ignore */ }
       setLoading(false)
-    }).catch(() => setLoading(false))
+    })()
   }, [])
 
   const defaultAccounts = [
@@ -123,10 +126,13 @@ function QueueTab() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    supabase.from("posts").select("id, title, status, published_at, scheduled_at").in("status", ["draft", "scheduled"]).order("updated_at", { ascending: false }).limit(10).then(({ data }) => {
-      if (data) setPosts(data)
+    (async () => {
+      try {
+        const { data } = await supabase.from("posts").select("id, title, status, published_at, scheduled_at").in("status", ["draft", "scheduled"]).order("updated_at", { ascending: false }).limit(10)
+        if (data) setPosts(data)
+      } catch { /* ignore */ }
       setLoading(false)
-    }).catch(() => setLoading(false))
+    })()
   }, [])
 
   return (
