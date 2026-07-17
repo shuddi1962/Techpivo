@@ -112,6 +112,7 @@ interface OverviewData {
   avgOpenRate: number
   avgClickRate: number
   recentActivity: Array<{ type: string; message: string; time: string }>
+  subscriberGrowth: Array<{ month: string; count: number }>
 }
 
 interface AnalyticsData {

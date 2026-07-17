@@ -171,6 +171,21 @@ export async function GET(request: Request) {
         const avgOpen = openRates.length > 0 ? openRates.reduce((s: number, r: any) => s + (r.open_rate || 0), 0) / openRates.length : 0
         const avgClick = clickRates.length > 0 ? clickRates.reduce((s: number, r: any) => s + (r.click_rate || 0), 0) / clickRates.length : 0
 
+        const { data: subsGrowth } = await supabase
+          .from("newsletter_subscribers")
+          .select("subscribed_at")
+          .order("subscribed_at", { ascending: true })
+
+        const monthMap: Record<string, number> = {}
+        ;(subsGrowth || []).forEach((s: any) => {
+          const d = new Date(s.subscribed_at)
+          const key = d.toLocaleString("default", { month: "short", year: "numeric" })
+          monthMap[key] = (monthMap[key] || 0) + 1
+        })
+        const subscriberGrowth = Object.entries(monthMap)
+          .slice(-12)
+          .map(([month, count]) => ({ month, count }))
+
         return NextResponse.json({
           totalSubscribers: totalRes.count || 0,
           activeSubscribers: activeRes.count || 0,
@@ -179,6 +194,7 @@ export async function GET(request: Request) {
           avgOpenRate: avgOpen,
           avgClickRate: avgClick,
           recentActivity,
+          subscriberGrowth,
         })
       }
     }
