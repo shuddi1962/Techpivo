@@ -647,7 +647,7 @@ function SchemaTab() {
 }
 
 function RedirectsTab() {
-  const [redirects, setRedirects] = useState<{ id?: string; from: string; to: string; type: string }[]>([])
+  const [redirects, setRedirects] = useState<{ id?: string; source_url: string; target_url: string; status_code: number }[]>([])
   const [from, setFrom] = useState("")
   const [to, setTo] = useState("")
   const [loading, setLoading] = useState(true)
@@ -695,12 +695,12 @@ function RedirectsTab() {
             <p className="text-sm text-muted-foreground text-center py-4">No redirects configured. Add your first redirect above.</p>
           ) : (
             redirects.map((r) => (
-              <div key={r.id || r.from} className="flex items-center justify-between p-3 rounded-lg bg-muted/30 text-sm">
+              <div key={r.id || r.source_url} className="flex items-center justify-between p-3 rounded-lg bg-muted/30 text-sm">
                 <div className="flex items-center gap-2">
-                  <Badge variant="outline">{r.type || "301"}</Badge>
-                  <span className="font-mono">{r.from || r.source_url}</span>
+                  <Badge variant="outline">{r.status_code?.toString() || "301"}</Badge>
+                  <span className="font-mono">{r.source_url}</span>
                   <span className="text-muted-foreground">→</span>
-                  <span className="font-mono">{r.to || r.target_url}</span>
+                  <span className="font-mono">{r.target_url}</span>
                 </div>
                 <Button variant="ghost" size="sm" onClick={() => removeRedirect(r.id!)}><Trash2 className="h-3 w-3" /></Button>
               </div>
