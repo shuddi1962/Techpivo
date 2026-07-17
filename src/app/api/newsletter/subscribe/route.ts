@@ -17,8 +17,8 @@ export async function POST(req: NextRequest) {
 
     const email = sanitizeEmail(validationResult.data.email)
     const supabase = createClient()
-    const { error } = await supabase.from('subscribers').upsert(
-      { email, name: body.name || null, categories: body.categories || [], status: 'active', source: 'website' },
+    const { error } = await supabase.from('newsletter_subscribers').upsert(
+      { email, name: body.name || '', source: 'website' },
       { onConflict: 'email' }
     )
 
@@ -43,6 +43,6 @@ export async function DELETE(req: NextRequest) {
 
   const sanitizedEmail = sanitizeEmail(validationResult.data.email)
   const supabase = createClient()
-  await supabase.from('subscribers').update({ status: 'unsubscribed' }).eq('email', sanitizedEmail)
+  await supabase.from('newsletter_subscribers').update({ status: 'unsubscribed', unsubscribed_at: new Date().toISOString() }).eq('email', sanitizedEmail)
   return NextResponse.json({ ok: true })
 }
