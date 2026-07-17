@@ -5,11 +5,12 @@ import { createClient } from "@/lib/supabase/client"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Globe, Send } from "lucide-react"
+import { Globe, Send, Loader2 } from "lucide-react"
 import type { GoogleIndexingQueue } from "@/types/database"
 
 export default function AdminIndexingPage() {
   const [queue, setQueue] = useState<GoogleIndexingQueue[]>([])
+  const [submitting, setSubmitting] = useState(false)
 
   useEffect(() => {
     const supabase = createClient()
@@ -20,14 +21,36 @@ export default function AdminIndexingPage() {
   }, [])
 
   const submitAll = async () => {
+    setSubmitting(true)
     const supabase = createClient()
     const unindexed = queue.filter((q) => q.status === "pending")
+    let successCount = 0
     for (const item of unindexed) {
-      await supabase.from("google_indexing_queue").update({ status: "submitted", submitted_at: new Date().toISOString() }).eq("id", item.id)
+      try {
+        // Call IndexNow API for real indexing
+        const siteUrl = window.location.origin
+        const indexNowRes = await fetch("https://api.indexnow.org/indexnow", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            host: new URL(siteUrl).host,
+            key: "techpivo-indexing-key",
+            keyLocation: `${siteUrl}/techpivo-indexing-key.txt`,
+            urlList: [item.url],
+          }),
+        })
+        if (indexNowRes.ok) {
+          await supabase.from("google_indexing_queue").update({ status: "submitted", submitted_at: new Date().toISOString() }).eq("id", item.id)
+          successCount++
+        }
+      } catch {
+        await supabase.from("google_indexing_queue").update({ status: "failed", submitted_at: new Date().toISOString() }).eq("id", item.id)
+      }
     }
-    alert(`Submitted ${unindexed.length} URLs to Google Indexing API`)
+    alert(`Submitted ${successCount} of ${unindexed.length} URLs to IndexNow API`)
     const { data } = await supabase.from("google_indexing_queue").select("*").order("created_at", { ascending: false }).limit(50)
     if (data) setQueue(data)
+    setSubmitting(false)
   }
 
   const statusColors: Record<string, string> = {

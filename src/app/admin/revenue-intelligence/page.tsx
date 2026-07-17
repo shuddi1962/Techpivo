@@ -3,16 +3,21 @@
 import { useState, useEffect, useCallback } from "react"
 import { createClient } from "@/lib/supabase/client"
 import {
-  DollarSign, TrendingUp, TrendingDown, BarChart3, PieChart,
-  RefreshCw, ShoppingCart, Megaphone, ArrowUpRight, ArrowDownRight
+  DollarSign, TrendingUp, BarChart3, PieChart,
+  RefreshCw, ShoppingCart, Megaphone,
 } from "lucide-react"
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, PieChart as RePie, Pie, Cell,
-  LineChart, Line
 } from "recharts"
 
 const COLORS = ["#10B981", "#F59E0B", "#3B82F6", "#EF4444", "#EC4899", "#06B6D4"]
+
+function getDateNDaysAgo(n: number): string {
+  const d = new Date()
+  d.setDate(d.getDate() - n)
+  return d.toISOString().split("T")[0]
+}
 
 export default function RevenueIntelligencePage() {
   const supabase = createClient()
@@ -30,55 +35,132 @@ export default function RevenueIntelligencePage() {
   const [dailyRevenue, setDailyRevenue] = useState<{ date: string; ad: number; affiliate: number }[]>([])
 
   const fetchData = useCallback(async () => {
-    const { data: posts } = await supabase
-      .from("posts")
-      .select("id, title, views, category_id, created_at")
-      .eq("status", "published")
+    try {
+      const today = getDateNDaysAgo(0)
+      const monthStart = new Date()
+      monthStart.setDate(1)
+      const monthStartStr = monthStart.toISOString().split("T")[0]
+      const sevenDaysAgo = getDateNDaysAgo(6)
+      const sevenDaysAgoFull = new Date()
+      sevenDaysAgoFull.setDate(sevenDaysAgoFull.getDate() - 6)
 
-    if (posts) {
-      // Simulated revenue data based on actual post views
-      const totalViews = posts.reduce((s, p) => s + (p.views || 0), 0)
-      const adRev = Math.round(totalViews * 0.005) // $0.005 per view
-      const affRev = Math.round(totalViews * 0.002) // $0.002 per view
+      const [
+        adTodayResult,
+        adMonthResult,
+        adDailyResult,
+        adsResult,
+        campaignsResult,
+        affiliateTodayResult,
+        affiliateMonthResult,
+        affiliateDailyResult,
+        postsResult,
+        categoriesResult,
+      ] = await Promise.all([
+        supabase.from("ad_revenue").select("revenue").eq("date", today),
+        supabase.from("ad_revenue").select("revenue").gte("date", monthStartStr),
+        supabase.from("ad_revenue").select("date, revenue").gte("date", sevenDaysAgo).order("date"),
+        supabase.from("ads").select("impressions, clicks"),
+        supabase.from("ad_campaigns").select("impressions, clicks, is_active").eq("is_active", true),
+        supabase.from("affiliate_sales").select("commission").eq("status", "approved").gte("recorded_at", `${today}T00:00:00`),
+        supabase.from("affiliate_sales").select("commission").in("status", ["approved", "paid"]).gte("recorded_at", `${monthStartStr}T00:00:00`),
+        supabase.from("affiliate_sales").select("commission, recorded_at").in("status", ["approved", "paid"]).gte("recorded_at", sevenDaysAgoFull.toISOString()),
+        supabase.from("posts").select("id, views, category_id").eq("status", "published"),
+        supabase.from("categories").select("id, name"),
+      ])
+
+      const adToday = adTodayResult.data?.reduce((s: number, r: { revenue: number }) => s + Number(r.revenue || 0), 0) || 0
+      const adMonth = adMonthResult.data?.reduce((s: number, r: { revenue: number }) => s + Number(r.revenue || 0), 0) || 0
+      const affiliateToday = affiliateTodayResult.data?.reduce((s: number, r: { commission: number }) => s + Number(r.commission || 0), 0) || 0
+      const affiliateMonth = affiliateMonthResult.data?.reduce((s: number, r: { commission: number }) => s + Number(r.commission || 0), 0) || 0
+      const totalMonth = adMonth + affiliateMonth
+
+      const adData = adDailyResult.data || []
+      const affData = affiliateDailyResult.data || []
+      const posts = postsResult.data || []
+      const categories = categoriesResult.data || []
+
+      const totalViews = posts.reduce((s: number, p: { views: number }) => s + (p.views || 0), 0)
+      const totalAdImpressions = (adsResult.data || []).reduce((s: number, a: { impressions: number }) => s + (a.impressions || 0), 0) +
+        (campaignsResult.data || []).reduce((s: number, c: { impressions: number }) => s + (c.impressions || 0), 0)
+
+      const rpm = totalViews > 0 ? Math.round((adMonth / totalViews) * 1000 * 100) / 100 : 0
+      const cpm = totalAdImpressions > 0 ? Math.round((adMonth / totalAdImpressions) * 1000 * 100) / 100 : 0
+      const earningsPerArticle = posts.length > 0 ? Math.round((totalMonth / posts.length) * 100) / 100 : 0
 
       setStats({
-        adRevenueToday: Math.round(adRev * 0.1),
-        affiliateRevenueToday: Math.round(affRev * 0.1),
-        monthlyEstimate: adRev + affRev,
-        rpm: totalViews > 0 ? Math.round((adRev / totalViews) * 1000) : 0,
-        cpm: totalViews > 0 ? Math.round((adRev / totalViews) * 1000) : 0,
-        earningsPerArticle: posts.length > 0 ? Math.round((adRev + affRev) / posts.length) : 0,
+        adRevenueToday: Math.round(adToday * 100) / 100,
+        affiliateRevenueToday: Math.round(affiliateToday * 100) / 100,
+        monthlyEstimate: Math.round(totalMonth * 100) / 100,
+        rpm,
+        cpm,
+        earningsPerArticle,
       })
 
-      setRevenueByCategory([
-        { name: "AI & Automation", value: 3200 },
-        { name: "Programming", value: 2800 },
-        { name: "Cybersecurity", value: 2100 },
-        { name: "Gadgets", value: 1800 },
-        { name: "Tutorials", value: 1500 },
-        { name: "Reviews", value: 1200 },
-      ])
+      const catMap = new Map<string, string>()
+      for (const c of categories) catMap.set(c.id, c.name)
 
+      const viewsByCat = new Map<string, number>()
+      for (const p of posts) {
+        const cid = p.category_id || "uncategorized"
+        viewsByCat.set(cid, (viewsByCat.get(cid) || 0) + (p.views || 0))
+      }
+      const catRevenue: { name: string; value: number }[] = []
+      for (const [cid, v] of viewsByCat) {
+        const name = catMap.get(cid) || "Uncategorized"
+        const share = totalViews > 0 ? v / totalViews : 0
+        catRevenue.push({ name, value: Math.round(share * totalMonth) })
+      }
+      catRevenue.sort((a, b) => b.value - a.value)
+      setRevenueByCategory(catRevenue)
+
+      const sponsored = (adData.filter((r: { revenue: number; source?: string }) => r.source === "sponsor").reduce((s: number, r: { revenue: number }) => s + Number(r.revenue || 0), 0) || 0)
+      const adSourceTotal = adData.reduce((s: number, r: { revenue: number }) => s + Number(r.revenue || 0), 0) || 0
       setRevenueBySource([
-        { name: "Ads", value: adRev },
-        { name: "Affiliate", value: affRev },
-        { name: "Sponsored", value: 0 },
+        { name: "Ads", value: Math.round((adSourceTotal - sponsored) * 100) / 100 },
+        { name: "Affiliate", value: Math.round(affiliateMonth * 100) / 100 },
+        { name: "Sponsored", value: Math.round(sponsored * 100) / 100 },
       ])
 
-      const dailyData = Array.from({ length: 7 }, (_, i) => {
-        const d = new Date()
-        d.setDate(d.getDate() - (6 - i))
-        const dayViews = (posts || []).filter(p => {
-          const pDate = new Date(p.created_at || Date.now())
-          return pDate.toDateString() === d.toDateString()
-        }).reduce((s: number, p: any) => s + (p.views || 0), 0)
-        return {
-          date: d.toLocaleDateString("en-US", { weekday: "short" }),
-          ad: Math.round(dayViews * 0.005),
-          affiliate: Math.round(dayViews * 0.002),
+      const dailyMap = new Map<string, { ad: number; affiliate: number }>()
+      for (let i = 0; i < 7; i++) {
+        const d = getDateNDaysAgo(6 - i)
+        const label = new Date()
+        label.setDate(label.getDate() - (6 - i))
+        dailyMap.set(d, { ad: 0, affiliate: 0 })
+      }
+      for (const r of adData) {
+        const key = typeof r.date === "string" ? r.date.split("T")[0] : ""
+        if (dailyMap.has(key)) {
+          const entry = dailyMap.get(key)!
+          entry.ad += Number(r.revenue || 0)
         }
+      }
+      for (const r of affData) {
+        const raw = r.recorded_at || ""
+        const key = raw.split("T")[0]
+        if (dailyMap.has(key)) {
+          const entry = dailyMap.get(key)!
+          entry.affiliate += Number(r.commission || 0)
+        }
+      }
+      const dailyArr: { date: string; ad: number; affiliate: number }[] = []
+      for (let i = 0; i < 7; i++) {
+        const d = getDateNDaysAgo(6 - i)
+        const label = new Date()
+        label.setDate(label.getDate() - (6 - i))
+        const dayStr = label.toLocaleDateString("en-US", { weekday: "short" })
+        const entry = dailyMap.get(d) || { ad: 0, affiliate: 0 }
+        dailyArr.push({ date: dayStr, ad: Math.round(entry.ad * 100) / 100, affiliate: Math.round(entry.affiliate * 100) / 100 })
+      }
+      setDailyRevenue(dailyArr)
+    } catch {
+      setStats({
+        adRevenueToday: 0, affiliateRevenueToday: 0, monthlyEstimate: 0,
+        rpm: 0, cpm: 0, earningsPerArticle: 0,
       })
-      setDailyRevenue(dailyData)
+      setRevenueByCategory([])
+      setRevenueBySource([])
+      setDailyRevenue([])
     }
     setLoading(false)
   }, [supabase])
@@ -104,12 +186,12 @@ export default function RevenueIntelligencePage() {
       {/* KPI Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-6 gap-4">
         {[
-          { label: "Ad Revenue Today", value: `$${stats.adRevenueToday}`, icon: Megaphone, color: "text-blue-500", change: "+12%", up: true },
-          { label: "Affiliate Today", value: `$${stats.affiliateRevenueToday}`, icon: ShoppingCart, color: "text-green-500", change: "+8%", up: true },
-          { label: "Monthly Estimate", value: `$${stats.monthlyEstimate}`, icon: TrendingUp, color: "text-purple-500", change: "+15%", up: true },
-          { label: "RPM", value: `$${stats.rpm}`, icon: BarChart3, color: "text-amber-500", change: "+3%", up: true },
-          { label: "CPM", value: `$${stats.cpm}`, icon: PieChart, color: "text-cyan-500", change: "-2%", up: false },
-          { label: "Per Article", value: `$${stats.earningsPerArticle}`, icon: DollarSign, color: "text-green-500", change: "+5%", up: true },
+          { label: "Ad Revenue Today", value: `$${stats.adRevenueToday}`, icon: Megaphone, color: "text-blue-500" },
+          { label: "Affiliate Today", value: `$${stats.affiliateRevenueToday}`, icon: ShoppingCart, color: "text-green-500" },
+          { label: "Monthly Estimate", value: `$${stats.monthlyEstimate}`, icon: TrendingUp, color: "text-purple-500" },
+          { label: "RPM", value: `$${stats.rpm}`, icon: BarChart3, color: "text-amber-500" },
+          { label: "CPM", value: `$${stats.cpm}`, icon: PieChart, color: "text-cyan-500" },
+          { label: "Per Article", value: `$${stats.earningsPerArticle}`, icon: DollarSign, color: "text-green-500" },
         ].map((stat) => (
           <div key={stat.label} className="bg-white dark:bg-[#111827] border rounded-xl p-4">
             <div className="flex items-center gap-2 mb-2">
@@ -118,18 +200,38 @@ export default function RevenueIntelligencePage() {
             </div>
             <div className="flex items-end justify-between">
               <p className="text-2xl font-bold">{stat.value}</p>
-              <span className={`flex items-center gap-0.5 text-xs font-medium ${stat.up ? "text-green-500" : "text-red-500"}`}>
-                {stat.up ? <ArrowUpRight className="h-3 w-3" /> : <ArrowDownRight className="h-3 w-3" />}
-                {stat.change}
-              </span>
             </div>
           </div>
         ))}
       </div>
 
-      {/* Charts */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      {/* Revenue by Source Pie */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="bg-white dark:bg-[#111827] border rounded-xl p-6">
+          <h3 className="font-semibold mb-4">Revenue by Source</h3>
+          {loading ? (
+            <div className="h-64 flex items-center justify-center text-muted-foreground">Loading...</div>
+          ) : (
+            <ResponsiveContainer width="100%" height={260}>
+              <RePie>
+                <Pie
+                  data={revenueBySource}
+                  dataKey="value"
+                  nameKey="name"
+                  cx="50%"
+                  cy="50%"
+                  outerRadius={90}
+                  label={({ name, value }) => `${name}: $${value}`}
+                >
+                  {revenueBySource.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
+                </Pie>
+                <Tooltip contentStyle={{ background: "#111827", border: "2px solid #374151", borderRadius: "12px", color: "#F9FAFB" }} />
+              </RePie>
+            </ResponsiveContainer>
+          )}
+        </div>
+
+        <div className="bg-white dark:bg-[#111827] border rounded-xl p-6 lg:col-span-2">
           <h3 className="font-semibold mb-4">Daily Revenue Trend</h3>
           {loading ? (
             <div className="h-64 flex items-center justify-center text-muted-foreground">Loading...</div>
@@ -146,7 +248,10 @@ export default function RevenueIntelligencePage() {
             </ResponsiveContainer>
           )}
         </div>
+      </div>
 
+      {/* Revenue by Category */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="bg-white dark:bg-[#111827] border rounded-xl p-6">
           <h3 className="font-semibold mb-4">Revenue by Category</h3>
           {loading ? (

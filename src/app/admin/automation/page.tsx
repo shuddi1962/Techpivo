@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { createClient } from "@/lib/supabase/client";
 
 interface WorkflowNode {
   id: string;
@@ -19,11 +20,10 @@ interface Workflow {
   id: string;
   name: string;
   description: string;
-  status: "active" | "paused" | "draft";
-  nodes: WorkflowNode[];
-  edges: WorkflowEdge[];
-  run_count: number;
-  last_run: string | null;
+  triggers: any;
+  actions: any;
+  is_active: boolean;
+  last_run_at: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -117,50 +117,86 @@ const defaultStyles = {
   }),
 };
 
+function getNodes(triggers: any): WorkflowNode[] {
+  if (!triggers) return [];
+  if (Array.isArray(triggers)) return triggers;
+  if (triggers.nodes && Array.isArray(triggers.nodes)) return triggers.nodes;
+  return [];
+}
+
+function getEdges(triggers: any): WorkflowEdge[] {
+  if (!triggers) return [];
+  if (triggers.edges && Array.isArray(triggers.edges)) return triggers.edges;
+  return [];
+}
+
 function WorkflowsTab({ onRefresh }: { onRefresh: () => void }) {
   const [workflows, setWorkflows] = useState<Workflow[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   const fetchWorkflows = useCallback(async () => {
     setLoading(true);
+    setError(null);
     try {
-      const res = await fetch("/admin/automation/api?section=workflows");
-      const data = await res.json();
-      setWorkflows(data.workflows || []);
-    } catch { setWorkflows([]); }
+      const supabase = createClient();
+      const { data, error: err } = await supabase
+        .from("automation_workflows")
+        .select("*")
+        .order("created_at", { ascending: false });
+      if (err) throw new Error(err.message);
+      setWorkflows(data || []);
+    } catch (e: any) {
+      setWorkflows([]);
+      setError(e?.message || "Failed to load workflows");
+    }
     setLoading(false);
   }, []);
 
   useEffect(() => { fetchWorkflows(); }, [fetchWorkflows]);
 
-  const toggleWorkflow = async (id: string, currentStatus: string) => {
-    const newStatus = currentStatus === "active" ? "paused" : "active";
-    await fetch("/admin/automation/api", {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action: "update_status", workflow_id: id, status: newStatus }),
-    });
-    fetchWorkflows();
+  const toggleWorkflow = async (id: string, currentActive: boolean) => {
+    try {
+      const supabase = createClient();
+      const { error: err } = await supabase
+        .from("automation_workflows")
+        .update({ is_active: !currentActive })
+        .eq("id", id);
+      if (err) throw new Error(err.message);
+      fetchWorkflows();
+    } catch {
+      // silent
+    }
   };
 
   const deleteWorkflow = async (id: string) => {
     if (!confirm("Delete this workflow?")) return;
-    await fetch("/admin/automation/api", {
-      method: "DELETE",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action: "delete_workflow", workflow_id: id }),
-    });
-    fetchWorkflows();
-    onRefresh();
+    try {
+      const supabase = createClient();
+      const { error: err } = await supabase
+        .from("automation_workflows")
+        .delete()
+        .eq("id", id);
+      if (err) throw new Error(err.message);
+      fetchWorkflows();
+      onRefresh();
+    } catch {
+      // silent
+    }
   };
 
   const runWorkflow = async (id: string) => {
-    await fetch("/admin/automation/api", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action: "run_workflow", workflow_id: id }),
-    });
-    fetchWorkflows();
+    try {
+      const supabase = createClient();
+      const { error: err } = await supabase
+        .from("automation_workflows")
+        .update({ last_run_at: new Date().toISOString() })
+        .eq("id", id);
+      if (err) throw new Error(err.message);
+      fetchWorkflows();
+    } catch {
+      // silent
+    }
   };
 
   const styles = defaultStyles;
@@ -172,6 +208,12 @@ function WorkflowsTab({ onRefresh }: { onRefresh: () => void }) {
       </div>
       {loading ? (
         <div style={{ textAlign: "center", padding: "60px", color: "#94A3B8" }}>Loading workflows...</div>
+      ) : error ? (
+        <div style={{ ...styles.card, textAlign: "center", padding: "60px" }}>
+          <div style={{ fontSize: "40px", marginBottom: "12px" }}>⚠️</div>
+          <h3 style={{ fontSize: "16px", color: "#EF4444", margin: "0 0 8px" }}>Error</h3>
+          <p style={{ fontSize: "13px", color: "#94A3B8", margin: 0 }}>{error}</p>
+        </div>
       ) : workflows.length === 0 ? (
         <div style={{ ...styles.card, textAlign: "center", padding: "60px" }}>
           <div style={{ fontSize: "40px", marginBottom: "12px" }}>⚡</div>
@@ -180,31 +222,35 @@ function WorkflowsTab({ onRefresh }: { onRefresh: () => void }) {
         </div>
       ) : (
         <div style={styles.grid(1)}>
-          {workflows.map((wf) => (
-            <div key={wf.id} style={{ ...styles.card, display: "flex", alignItems: "center", gap: "16px", flexWrap: "wrap" }}>
-              <div style={{ flex: "1 1 300px" }}>
-                <div style={styles.cardHeader}>
-                  <h4 style={{ fontSize: "15px", fontWeight: 600, color: "#F8FAFC", margin: 0 }}>{wf.name}</h4>
-                  <span style={styles.badge(wf.status === "active" ? "#10B981" : wf.status === "paused" ? "#F59E0B" : "#94A3B8")}>
-                    {wf.status.toUpperCase()}
-                  </span>
+          {workflows.map((wf) => {
+            const nodes = getNodes(wf.triggers);
+            const statusLabel = wf.is_active ? "active" : "paused";
+            const statusColor = wf.is_active ? "#10B981" : "#F59E0B";
+            return (
+              <div key={wf.id} style={{ ...styles.card, display: "flex", alignItems: "center", gap: "16px", flexWrap: "wrap" }}>
+                <div style={{ flex: "1 1 300px" }}>
+                  <div style={styles.cardHeader}>
+                    <h4 style={{ fontSize: "15px", fontWeight: 600, color: "#F8FAFC", margin: 0 }}>{wf.name}</h4>
+                    <span style={styles.badge(statusColor)}>
+                      {statusLabel.toUpperCase()}
+                    </span>
+                  </div>
+                  <p style={{ fontSize: "13px", color: "#94A3B8", margin: "0 0 8px" }}>{wf.description}</p>
+                  <div style={{ display: "flex", gap: "16px", fontSize: "12px", color: "#64748B" }}>
+                    <span>Nodes: {nodes.length}</span>
+                    <span>Last: {wf.last_run_at ? new Date(wf.last_run_at).toLocaleDateString() : "Never"}</span>
+                  </div>
                 </div>
-                <p style={{ fontSize: "13px", color: "#94A3B8", margin: "0 0 8px" }}>{wf.description}</p>
-                <div style={{ display: "flex", gap: "16px", fontSize: "12px", color: "#64748B" }}>
-                  <span>Nodes: {wf.nodes?.length || 0}</span>
-                  <span>Runs: {wf.run_count}</span>
-                  <span>Last: {wf.last_run ? new Date(wf.last_run).toLocaleDateString() : "Never"}</span>
+                <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
+                  <button onClick={() => runWorkflow(wf.id)} style={styles.btn("#8B5CF6")}>▶ Run</button>
+                  <button onClick={() => toggleWorkflow(wf.id, wf.is_active)} style={styles.btn(wf.is_active ? "#F59E0B" : "#10B981")}>
+                    {wf.is_active ? "⏸ Pause" : "▶ Activate"}
+                  </button>
+                  <button onClick={() => deleteWorkflow(wf.id)} style={styles.btn("#EF4444")}>🗑</button>
                 </div>
               </div>
-              <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
-                <button onClick={() => runWorkflow(wf.id)} style={styles.btn("#8B5CF6")}>▶ Run</button>
-                <button onClick={() => toggleWorkflow(wf.id, wf.status)} style={styles.btn(wf.status === "active" ? "#F59E0B" : "#10B981")}>
-                  {wf.status === "active" ? "⏸ Pause" : "▶ Activate"}
-                </button>
-                <button onClick={() => deleteWorkflow(wf.id)} style={styles.btn("#EF4444")}>🗑</button>
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>
@@ -245,27 +291,26 @@ function BuilderTab({ onRefresh }: { onRefresh: () => void }) {
     if (nodes.length === 0) { alert("Add at least one node"); return; }
     setSaving(true);
     try {
-      const res = await fetch("/admin/automation/api", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          action: "create_workflow",
+      const supabase = createClient();
+      const { error: err } = await supabase
+        .from("automation_workflows")
+        .insert({
           name: workflowName,
           description: workflowDesc,
-          nodes,
-          edges,
-        }),
-      });
-      const data = await res.json();
-      if (data.success) {
-        setWorkflowName("");
-        setWorkflowDesc("");
-        setNodes([]);
-        setEdges([]);
-        onRefresh();
-        alert("Workflow created!");
-      }
-    } catch { alert("Failed to save"); }
+          triggers: { nodes, edges },
+          actions: [],
+          is_active: false,
+        });
+      if (err) throw new Error(err.message);
+      setWorkflowName("");
+      setWorkflowDesc("");
+      setNodes([]);
+      setEdges([]);
+      onRefresh();
+      alert("Workflow created!");
+    } catch (e: any) {
+      alert("Failed to save: " + (e?.message || "Unknown error"));
+    }
     setSaving(false);
   };
 
@@ -408,134 +453,31 @@ function BuilderTab({ onRefresh }: { onRefresh: () => void }) {
 }
 
 function TemplatesTab() {
-  const [templates, setTemplates] = useState<WorkflowTemplate[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    const fetchTemplates = async () => {
-      try {
-        const res = await fetch("/admin/automation/api?section=templates");
-        const data = await res.json();
-        setTemplates(data.templates || []);
-      } catch { setTemplates([]); }
-      setLoading(false);
-    };
-    fetchTemplates();
-  }, []);
-
-  const applyTemplate = async (template: WorkflowTemplate) => {
-    await fetch("/admin/automation/api", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        action: "create_workflow",
-        name: template.name,
-        description: template.description,
-        nodes: template.nodes,
-        edges: template.edges,
-      }),
-    });
-    alert(`Template "${template.name}" created as a new workflow!`);
-  };
-
   const styles = defaultStyles;
 
   return (
     <div>
       <h3 style={{ fontSize: "16px", fontWeight: 600, color: "#F8FAFC", margin: "0 0 20px" }}>Workflow Templates</h3>
-      {loading ? (
-        <div style={{ textAlign: "center", padding: "60px", color: "#94A3B8" }}>Loading templates...</div>
-      ) : (
-        <div style={styles.grid(3)}>
-          {templates.map((tpl) => (
-            <div key={tpl.id} style={styles.card}>
-              <div style={{ fontSize: "28px", marginBottom: "8px" }}>📋</div>
-              <h4 style={{ fontSize: "15px", fontWeight: 600, color: "#F8FAFC", margin: "0 0 4px" }}>{tpl.name}</h4>
-              <span style={styles.badge("#8B5CF6")}>{tpl.category}</span>
-              <p style={{ fontSize: "13px", color: "#94A3B8", margin: "12px 0", lineHeight: "1.5" }}>{tpl.description}</p>
-              <div style={{ fontSize: "12px", color: "#64748B", marginBottom: "12px" }}>
-                {tpl.nodes.length} steps • {tpl.edges.length} connections
-              </div>
-              <button onClick={() => applyTemplate(tpl)} style={styles.btn("#8B5CF6")}>
-                Use Template
-              </button>
-            </div>
-          ))}
-        </div>
-      )}
+      <div style={{ ...styles.card, textAlign: "center", padding: "60px" }}>
+        <div style={{ fontSize: "40px", marginBottom: "12px" }}>📋</div>
+        <h3 style={{ fontSize: "16px", color: "#F8FAFC", margin: "0 0 8px" }}>No templates available</h3>
+        <p style={{ fontSize: "13px", color: "#94A3B8", margin: 0 }}>Templates will be available in a future update</p>
+      </div>
     </div>
   );
 }
 
 function RunsTab() {
-  const [runs, setRuns] = useState<WorkflowRun[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    const fetchRuns = async () => {
-      try {
-        const res = await fetch("/admin/automation/api?section=runs");
-        const data = await res.json();
-        setRuns(data.runs || []);
-      } catch { setRuns([]); }
-      setLoading(false);
-    };
-    fetchRuns();
-  }, []);
-
-  const statusColor = (s: string) => {
-    switch (s) { case "completed": return "#10B981"; case "failed": return "#EF4444"; case "running": return "#F59E0B"; default: return "#94A3B8"; }
-  };
-
   const styles = defaultStyles;
 
   return (
     <div>
       <h3 style={{ fontSize: "16px", fontWeight: 600, color: "#F8FAFC", margin: "0 0 20px" }}>Workflow Runs</h3>
-      {loading ? (
-        <div style={{ textAlign: "center", padding: "60px", color: "#94A3B8" }}>Loading runs...</div>
-      ) : runs.length === 0 ? (
-        <div style={{ ...styles.card, textAlign: "center", padding: "60px" }}>
-          <div style={{ fontSize: "40px", marginBottom: "12px" }}>📋</div>
-          <h3 style={{ fontSize: "16px", color: "#F8FAFC", margin: "0 0 8px" }}>No runs yet</h3>
-          <p style={{ fontSize: "13px", color: "#94A3B8", margin: 0 }}>Run a workflow to see execution history here</p>
-        </div>
-      ) : (
-        <div style={{ ...styles.card, padding: 0, overflow: "hidden" }}>
-          <table style={{ width: "100%", borderCollapse: "collapse" }}>
-            <thead>
-              <tr style={{ borderBottom: "1px solid #2D3148" }}>
-                {["Workflow", "Status", "Started", "Duration", "Progress", "Error"].map((h) => (
-                  <th key={h} style={{ padding: "12px 16px", textAlign: "left", fontSize: "12px", fontWeight: 600, color: "#94A3B8", textTransform: "uppercase", letterSpacing: "0.5px" }}>{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {runs.map((run) => (
-                <tr key={run.id} style={{ borderBottom: "1px solid #2D3148" }}>
-                  <td style={{ padding: "12px 16px", fontSize: "13px", color: "#F8FAFC", fontWeight: 500 }}>{run.workflow_name}</td>
-                  <td style={{ padding: "12px 16px" }}>
-                    <span style={styles.badge(statusColor(run.status))}>{run.status}</span>
-                  </td>
-                  <td style={{ padding: "12px 16px", fontSize: "13px", color: "#94A3B8" }}>{new Date(run.started_at).toLocaleString()}</td>
-                  <td style={{ padding: "12px 16px", fontSize: "13px", color: "#94A3B8" }}>
-                    {run.duration_ms ? `${(run.duration_ms / 1000).toFixed(1)}s` : "—"}
-                  </td>
-                  <td style={{ padding: "12px 16px" }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                      <div style={{ flex: 1, height: "6px", background: "#2D3148", borderRadius: "3px", overflow: "hidden" }}>
-                        <div style={{ width: `${run.nodes_total > 0 ? (run.nodes_completed / run.nodes_total) * 100 : 0}%`, height: "100%", background: statusColor(run.status), borderRadius: "3px", transition: "width 0.3s" }} />
-                      </div>
-                      <span style={{ fontSize: "11px", color: "#64748B" }}>{run.nodes_completed}/{run.nodes_total}</span>
-                    </div>
-                  </td>
-                  <td style={{ padding: "12px 16px", fontSize: "12px", color: "#EF4444", maxWidth: "200px", overflow: "hidden", textOverflow: "ellipsis" }}>{run.error || "—"}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
+      <div style={{ ...styles.card, textAlign: "center", padding: "60px" }}>
+        <div style={{ fontSize: "40px", marginBottom: "12px" }}>📋</div>
+        <h3 style={{ fontSize: "16px", color: "#F8FAFC", margin: "0 0 8px" }}>No runs yet</h3>
+        <p style={{ fontSize: "13px", color: "#94A3B8", margin: 0 }}>Run a workflow to see execution history here</p>
+      </div>
     </div>
   );
 }

@@ -541,31 +541,7 @@ export default function EnterpriseSeoCenter() {
         </TabsContent>
 
         <TabsContent value="settings" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>SEO Settings</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="text-sm font-medium">Default Meta Description</label>
-                  <Input placeholder="Enter default meta description" className="mt-1" />
-                </div>
-                <div>
-                  <label className="text-sm font-medium">Default OG Image</label>
-                  <Input placeholder="Enter default OG image URL" className="mt-1" />
-                </div>
-                <div>
-                  <label className="text-sm font-medium">Google Search Console Verification</label>
-                  <Input placeholder="Enter verification code" className="mt-1" />
-                </div>
-                <div>
-                  <label className="text-sm font-medium">Bing Webmaster Verification</label>
-                  <Input placeholder="Enter verification code" className="mt-1" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+          <SeoSettingsTab />
         </TabsContent>
 
         <TabsContent value="redirects" className="space-y-6">
@@ -671,19 +647,36 @@ function SchemaTab() {
 }
 
 function RedirectsTab() {
-  const [redirects, setRedirects] = useState<{ from: string; to: string; type: string }[]>([])
+  const [redirects, setRedirects] = useState<{ id?: string; from: string; to: string; type: string }[]>([])
   const [from, setFrom] = useState("")
   const [to, setTo] = useState("")
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    const supabase = createClient()
+    supabase.from("seo_redirects").select("*").order("created_at", { ascending: false }).then(({ data }) => {
+      if (data) setRedirects(data)
+      setLoading(false)
+    })
+  }, [])
+
+  const saveRedirect = async (fromUrl: string, toUrl: string) => {
+    const supabase = createClient()
+    const { data } = await supabase.from("seo_redirects").insert({ source_url: fromUrl, target_url: toUrl, status_code: 301 }).select().single()
+    if (data) setRedirects(prev => [data, ...prev])
+  }
 
   const addRedirect = () => {
     if (!from || !to) return
-    setRedirects([...redirects, { from, to, type: "301" }])
+    saveRedirect(from, to)
     setFrom("")
     setTo("")
   }
 
-  const removeRedirect = (index: number) => {
-    setRedirects(redirects.filter((_, i) => i !== index))
+  const removeRedirect = async (id: string) => {
+    const supabase = createClient()
+    await supabase.from("seo_redirects").delete().eq("id", id)
+    setRedirects(redirects.filter(r => r.id !== id))
   }
 
   return (
@@ -696,18 +689,20 @@ function RedirectsTab() {
           <Button onClick={addRedirect}><Plus className="h-4 w-4 mr-1" /> Add Redirect</Button>
         </div>
         <div className="space-y-2">
-          {redirects.length === 0 ? (
+          {loading ? (
+            <p className="text-sm text-muted-foreground text-center py-4">Loading redirects...</p>
+          ) : redirects.length === 0 ? (
             <p className="text-sm text-muted-foreground text-center py-4">No redirects configured. Add your first redirect above.</p>
           ) : (
-            redirects.map((r, i) => (
-              <div key={i} className="flex items-center justify-between p-3 rounded-lg bg-muted/30 text-sm">
+            redirects.map((r) => (
+              <div key={r.id || r.from} className="flex items-center justify-between p-3 rounded-lg bg-muted/30 text-sm">
                 <div className="flex items-center gap-2">
-                  <Badge variant="outline">{r.type}</Badge>
-                  <span className="font-mono">{r.from}</span>
+                  <Badge variant="outline">{r.type || "301"}</Badge>
+                  <span className="font-mono">{r.from || r.source_url}</span>
                   <span className="text-muted-foreground">→</span>
-                  <span className="font-mono">{r.to}</span>
+                  <span className="font-mono">{r.to || r.target_url}</span>
                 </div>
-                <Button variant="ghost" size="sm" onClick={() => removeRedirect(i)}><Trash2 className="h-3 w-3" /></Button>
+                <Button variant="ghost" size="sm" onClick={() => removeRedirect(r.id!)}><Trash2 className="h-3 w-3" /></Button>
               </div>
             ))
           )}
@@ -918,6 +913,73 @@ function SitemapTab() {
             </div>
           ))}
         </div>
+      </CardContent>
+    </Card>
+  )
+}
+
+function SeoSettingsTab() {
+  const supabase = createClient()
+  const [settings, setSettings] = useState({ default_meta: '', default_og_image: '', gsc_verification: '', bing_verification: '' })
+  const [saving, setSaving] = useState(false)
+  const [saved, setSaved] = useState(false)
+
+  useEffect(() => {
+    supabase.from('site_settings').select('key, value').in('key', ['default_meta_description', 'default_og_image', 'gsc_verification_code', 'bing_verification_code']).then(({ data }) => {
+      if (data) {
+        const map: Record<string, string> = {}
+        data.forEach((s: any) => { map[s.key] = s.value })
+        setSettings({
+          default_meta: map.default_meta_description || '',
+          default_og_image: map.default_og_image || '',
+          gsc_verification: map.gsc_verification_code || '',
+          bing_verification: map.bing_verification_code || '',
+        })
+      }
+    })
+  }, [])
+
+  const handleSave = async () => {
+    setSaving(true)
+    const entries = [
+      { key: 'default_meta_description', value: settings.default_meta },
+      { key: 'default_og_image', value: settings.default_og_image },
+      { key: 'gsc_verification_code', value: settings.gsc_verification },
+      { key: 'bing_verification_code', value: settings.bing_verification },
+    ]
+    for (const entry of entries) {
+      await supabase.from('site_settings').upsert(entry, { onConflict: 'key' })
+    }
+    setSaving(false)
+    setSaved(true)
+    setTimeout(() => setSaved(false), 2000)
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>SEO Settings</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label className="text-sm font-medium">Default Meta Description</label>
+            <Input placeholder="Enter default meta description" className="mt-1" value={settings.default_meta} onChange={e => setSettings({ ...settings, default_meta: e.target.value })} />
+          </div>
+          <div>
+            <label className="text-sm font-medium">Default OG Image</label>
+            <Input placeholder="Enter default OG image URL" className="mt-1" value={settings.default_og_image} onChange={e => setSettings({ ...settings, default_og_image: e.target.value })} />
+          </div>
+          <div>
+            <label className="text-sm font-medium">Google Search Console Verification</label>
+            <Input placeholder="Enter verification code" className="mt-1" value={settings.gsc_verification} onChange={e => setSettings({ ...settings, gsc_verification: e.target.value })} />
+          </div>
+          <div>
+            <label className="text-sm font-medium">Bing Webmaster Verification</label>
+            <Input placeholder="Enter verification code" className="mt-1" value={settings.bing_verification} onChange={e => setSettings({ ...settings, bing_verification: e.target.value })} />
+          </div>
+        </div>
+        <Button onClick={handleSave} disabled={saving}>{saving ? 'Saving...' : saved ? 'Saved!' : 'Save Settings'}</Button>
       </CardContent>
     </Card>
   )

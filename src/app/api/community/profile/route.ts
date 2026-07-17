@@ -24,6 +24,9 @@ export async function PUT(request: NextRequest) {
       bio: body.bio,
       location: body.location,
       website: body.website,
+      avatar_url: body.avatar_url,
+      cover_url: body.cover_url,
+      social_links: body.social_links,
       updated_at: new Date().toISOString(),
     })
     .select()

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
+import { createClient as createAdminClient } from "@/lib/supabase/admin"
 
 export async function GET() {
   try {
@@ -21,6 +22,7 @@ export async function POST(request: Request) {
   try {
     const body = await request.json()
     const supabase = await createClient()
+    const adminSupabase = createAdminClient()
 
     switch (body.action) {
       case "invite": {
@@ -28,25 +30,31 @@ export async function POST(request: Request) {
           return NextResponse.json({ error: "Email is required" }, { status: 400 })
         }
 
-        const { data: existing } = await supabase
-          .from("profiles")
+        const { data: existingProfile } = await supabase
+          .from("user_profiles")
           .select("id")
-          .eq("email", body.email)
-          .single()
+          .eq("username", body.email.split("@")[0])
+          .maybeSingle()
 
-        if (existing) {
+        if (existingProfile) {
           return NextResponse.json({ error: "User with this email already exists" }, { status: 409 })
         }
 
-        const { error: inviteErr } = await supabase.from("profiles").insert({
-          email: body.email,
-          role: body.role || "reporter",
-          full_name: body.email.split("@")[0],
-          username: body.email.split("@")[0],
-          created_at: new Date().toISOString(),
+        const { data: newUser, error: createError } = await adminSupabase.auth.admin.inviteUserByEmail(body.email, {
+          data: { role: body.role || "reporter", full_name: body.email.split("@")[0] },
         })
 
-        if (inviteErr) throw inviteErr
+        if (createError) throw createError
+
+        if (newUser?.user?.id) {
+          const { error: profileError } = await supabase.from("user_profiles").upsert({
+            id: newUser.user.id,
+            username: body.email.split("@")[0],
+            full_name: body.email.split("@")[0],
+            role: body.role || "reporter",
+          })
+          if (profileError) console.error("Profile creation error:", profileError)
+        }
 
         await supabase.from("audit_logs").insert({
           action: "user_invited",
@@ -55,7 +63,7 @@ export async function POST(request: Request) {
           created_at: new Date().toISOString(),
         })
 
-        return NextResponse.json({ success: true })
+        return NextResponse.json({ success: true, message: `Invitation sent to ${body.email}` })
       }
 
       case "update-role": {
@@ -63,7 +71,7 @@ export async function POST(request: Request) {
           return NextResponse.json({ error: "user_id and role are required" }, { status: 400 })
         }
         const { error } = await supabase
-          .from("profiles")
+          .from("user_profiles")
           .update({ role: body.role })
           .eq("id", body.user_id)
         if (error) throw error

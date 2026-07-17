@@ -23,6 +23,6 @@ export async function POST(request: NextRequest) {
     .insert({ poll_id, option_id, user_id: user.id });
   if (error) return NextResponse.json({ error: error.message }, { status: 400 });
 
-  await supabase.rpc('increment_poll_votes', { p_poll_id: poll_id, p_option_id: option_id });
+  await supabase.rpc('increment_poll_votes', { poll_id, option_id });
   return NextResponse.json({ success: true });
 }

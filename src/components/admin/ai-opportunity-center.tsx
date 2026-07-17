@@ -31,7 +31,7 @@ export function AiOpportunityCenter() {
     
     // Get recent keywords and RSS items for opportunity analysis
     const [keywordsRes, rssRes, postsRes] = await Promise.all([
-      supabase.from("keywords").select("*").order("created_at", { ascending: false }).limit(20),
+      supabase.from("keyword_articles").select("*").order("created_at", { ascending: false }).limit(20),
       supabase.from("rss_feeds").select("id, feed_name").eq("is_active", true),
       supabase.from("posts").select("id, title, tags, seo_keywords").eq("status", "published").limit(50)
     ])

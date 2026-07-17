@@ -25,7 +25,7 @@ export async function POST(
 
   // Update reply count on the post
   try {
-    await supabase.rpc('increment_reply_count', { post_id: id });
+    await supabase.rpc('increment_reply_count', { target_post_id: id });
   } catch {
     // Fallback: manually increment
     const { data: post } = await supabase.from('forum_posts').select('reply_count').eq('id', id).single();

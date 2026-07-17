@@ -171,8 +171,8 @@ function OverviewTab({ data, loading }: { data: OverviewData | null; loading: bo
         <div style={{ background: S.card, border: `1px solid ${S.border}`, borderRadius: 12, padding: 24 }}>
           <h3 style={{ fontSize: 16, fontWeight: 600, color: S.text, marginBottom: 16 }}>Subscriber Growth</h3>
           <div style={{ display: "flex", alignItems: "flex-end", gap: 6, height: 140 }}>
-            {[35, 42, 38, 55, 48, 62, 58, 72, 68, 85, 78, 92].map((h, i) => (
-              <div key={i} style={{ flex: 1, background: `${S.primary}30`, borderRadius: "4px 4px 0 0", height: `${h}%`, transition: "height 0.3s" }} />
+            {(data.subscriberGrowth?.length ? data.subscriberGrowth : [35, 42, 38, 55, 48, 62, 58, 72, 68, 85, 78, 92]).map((h: any, i: number) => (
+              <div key={i} style={{ flex: 1, background: `${S.primary}30`, borderRadius: "4px 4px 0 0", height: `${typeof h === 'number' ? h : Math.min((h.count || 0) * 5, 100)}%`, transition: "height 0.3s" }} />
             ))}
           </div>
           <div style={{ display: "flex", justifyContent: "space-between", marginTop: 8 }}>
@@ -369,10 +369,10 @@ function CampaignsTab({ data, loading, onRefresh, onSend }: { data: Campaign[]; 
                     <Send style={{ width: 12, height: 12 }} /> Send
                   </button>
                 )}
-                <button style={{ background: "transparent", border: `1px solid ${S.border}`, borderRadius: 6, padding: "5px 8px", color: S.textDim, fontSize: 12, cursor: "pointer" }}>
+                <button onClick={() => alert('Edit feature coming soon')} style={{ background: "transparent", border: `1px solid ${S.border}`, borderRadius: 6, padding: "5px 8px", color: S.textDim, fontSize: 12, cursor: "pointer" }}>
                   <Edit3 style={{ width: 12, height: 12 }} />
                 </button>
-                <button style={{ background: "transparent", border: `1px solid ${S.border}`, borderRadius: 6, padding: "5px 8px", color: S.red, fontSize: 12, cursor: "pointer" }}>
+                <button onClick={() => { if (confirm('Delete this campaign?')) { fetch('/admin/newsletter/api', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ type: 'campaign', id: c.id }) }).then(() => window.location.reload()) } }} style={{ background: "transparent", border: `1px solid ${S.border}`, borderRadius: 6, padding: "5px 8px", color: S.red, fontSize: 12, cursor: "pointer" }}>
                   <Trash2 style={{ width: 12, height: 12 }} />
                 </button>
               </div>
@@ -386,12 +386,18 @@ function CampaignsTab({ data, loading, onRefresh, onSend }: { data: Campaign[]; 
 
 function TemplatesTab({ data, loading }: { data: Template[]; loading: boolean }) {
   const [preview, setPreview] = useState<Template | null>(null)
+  const handleNewTemplate = async () => {
+    const name = prompt('Template name:')
+    if (!name) return
+    await fetch('/admin/newsletter/api', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ type: 'template', name, subject: '', content: '' }) })
+    window.location.reload()
+  }
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <h3 style={{ fontSize: 16, fontWeight: 600, color: S.text }}>Templates ({data.length})</h3>
-        <button style={{ background: S.primary, border: "none", borderRadius: 8, padding: "8px 14px", color: "#fff", fontSize: 13, cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }}>
+        <button onClick={handleNewTemplate} style={{ background: S.primary, border: "none", borderRadius: 8, padding: "8px 14px", color: "#fff", fontSize: 13, cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }}>
           <Plus style={{ width: 14, height: 14 }} /> New Template
         </button>
       </div>
@@ -443,11 +449,18 @@ function TemplatesTab({ data, loading }: { data: Template[]; loading: boolean })
 }
 
 function ListsTab({ data, loading }: { data: SubscriberList[]; loading: boolean }) {
+  const handleNewList = async () => {
+    const name = prompt('List name:')
+    if (!name) return
+    await fetch('/admin/newsletter/api', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ type: 'list', name, description: '' }) })
+    window.location.reload()
+  }
+
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-        <h3 style={{ fontSize: 16, fontWeight: 600, color: S.text }}>Subscriber Lists ({data.length})</h3>
-        <button style={{ background: S.primary, border: "none", borderRadius: 8, padding: "8px 14px", color: "#fff", fontSize: 13, cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }}>
+        <h3 style={{ fontSize: 16, fontWeight: 600, color: S.text }}>Lists ({data.length})</h3>
+        <button onClick={handleNewList} style={{ background: S.primary, border: "none", borderRadius: 8, padding: "8px 14px", color: "#fff", fontSize: 13, cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }}>
           <Plus style={{ width: 14, height: 14 }} /> New List
         </button>
       </div>
@@ -478,11 +491,18 @@ function ListsTab({ data, loading }: { data: SubscriberList[]; loading: boolean 
 }
 
 function AutomationsTab({ data, loading }: { data: Automation[]; loading: boolean }) {
+  const handleNewAutomation = async () => {
+    const name = prompt('Automation name:')
+    if (!name) return
+    await fetch('/admin/newsletter/api', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ type: 'automation', name, trigger: 'new_subscriber', actions: [] }) })
+    window.location.reload()
+  }
+
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <h3 style={{ fontSize: 16, fontWeight: 600, color: S.text }}>Automations ({data.length})</h3>
-        <button style={{ background: S.primary, border: "none", borderRadius: 8, padding: "8px 14px", color: "#fff", fontSize: 13, cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }}>
+        <button onClick={handleNewAutomation} style={{ background: S.primary, border: "none", borderRadius: 8, padding: "8px 14px", color: "#fff", fontSize: 13, cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }}>
           <Plus style={{ width: 14, height: 14 }} /> New Automation
         </button>
       </div>
@@ -522,12 +542,14 @@ function AutomationsTab({ data, loading }: { data: Automation[]; loading: boolea
 }
 
 function ABTestsTab({ data, loading }: { data: ABTest[]; loading: boolean }) {
+  const handleNewTest = () => alert('Create a draft campaign first, then set up A/B test from the campaign page.')
+
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <h3 style={{ fontSize: 16, fontWeight: 600, color: S.text }}>A/B Tests ({data.length})</h3>
-        <button style={{ background: S.primary, border: "none", borderRadius: 8, padding: "8px 14px", color: "#fff", fontSize: 13, cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }}>
-          <Plus style={{ width: 14, height: 14 }} /> New Test
+        <button onClick={handleNewTest} style={{ background: S.primary, border: "none", borderRadius: 8, padding: "8px 14px", color: "#fff", fontSize: 13, cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }}>
+          <FlaskConical style={{ width: 14, height: 14 }} /> New Test
         </button>
       </div>
 

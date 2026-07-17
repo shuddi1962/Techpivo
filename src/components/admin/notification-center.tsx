@@ -136,7 +136,18 @@ export function NotificationCenter() {
   const dismissNotification = (id: string) => {
     setNotifications(notifications.filter(n => n.id !== id))
     setUnreadCount(prev => Math.max(0, prev - 1))
+    const dismissed = JSON.parse(localStorage.getItem('dismissed-notifications') || '[]')
+    dismissed.push(id)
+    localStorage.setItem('dismissed-notifications', JSON.stringify(dismissed))
   }
+
+  useEffect(() => {
+    const dismissed = JSON.parse(localStorage.getItem('dismissed-notifications') || '[]')
+    if (dismissed.length > 0) {
+      setNotifications(prev => prev.filter(n => !dismissed.includes(n.id)))
+      setUnreadCount(prev => Math.max(0, notifications.filter(n => !dismissed.includes(n.id) && !n.read).length))
+    }
+  }, [notifications.length])
 
   if (loading) {
     return (

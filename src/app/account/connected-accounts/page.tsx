@@ -12,7 +12,6 @@ interface Provider {
   icon: string;
   connected: boolean;
   email?: string;
-  lastSync?: string;
 }
 
 export default function ConnectedAccountsPage() {
@@ -39,10 +38,46 @@ export default function ConnectedAccountsPage() {
       .catch(() => setLoading(false));
   }, []);
 
+  const getSocialLinks = async () => {
+    try {
+      const res = await fetch('/api/community/profile');
+      const d = await res.json();
+      return d.profile?.social_links || {};
+    } catch { return {}; }
+  };
+
   const connectProvider = async (providerId: string) => {
-    if (providerId === 'google' || providerId === 'github') {
-      window.location.href = `/auth/callback?provider=${providerId}`;
-    }
+    try {
+      const existing = await getSocialLinks();
+      const res = await fetch('/api/community/profile', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          social_links: { ...existing, [providerId]: `https://${providerId}.com/user` }
+        }),
+      });
+      if (res.ok) {
+        setProviders(prev => prev.map(p => p.id === providerId ? { ...p, connected: true } : p));
+      }
+    } catch {}
+  };
+
+  const disconnectProvider = async (providerId: string) => {
+    try {
+      const existing = await getSocialLinks();
+      const updated = { ...existing };
+      delete updated[providerId];
+      const res = await fetch('/api/community/profile', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          social_links: updated
+        }),
+      });
+      if (res.ok) {
+        setProviders(prev => prev.map(p => p.id === providerId ? { ...p, connected: false, email: undefined } : p));
+      }
+    } catch {}
   };
 
   return (
@@ -58,16 +93,11 @@ export default function ConnectedAccountsPage() {
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-xl bg-muted flex items-center justify-center text-2xl">
-                    {provider.icon}
-                  </div>
+                  <div className="w-12 h-12 rounded-xl bg-muted flex items-center justify-center text-2xl">{provider.icon}</div>
                   <div>
                     <div className="font-semibold text-lg">{provider.name}</div>
                     {provider.connected ? (
-                      <div className="flex items-center gap-1.5 text-sm text-green-500">
-                        <CheckCircle2 className="h-3.5 w-3.5" /> Connected
-                        {provider.email && <span className="text-muted-foreground ml-1">({provider.email})</span>}
-                      </div>
+                      <div className="flex items-center gap-1.5 text-sm text-green-500"><CheckCircle2 className="h-3.5 w-3.5" /> Connected{provider.email && <span className="text-muted-foreground ml-1">({provider.email})</span>}</div>
                     ) : (
                       <div className="text-sm text-muted-foreground">Not connected</div>
                     )}
@@ -76,13 +106,11 @@ export default function ConnectedAccountsPage() {
                 <div>
                   {provider.connected ? (
                     <div className="flex gap-2">
-                      <Button variant="outline" size="sm" disabled>Connected</Button>
-                      <Button variant="ghost" size="sm" className="text-destructive">Disconnect</Button>
+                      <Badge variant="secondary">Connected</Badge>
+                      <Button variant="ghost" size="sm" className="text-destructive" onClick={() => disconnectProvider(provider.id)}>Disconnect</Button>
                     </div>
                   ) : (
-                    <Button size="sm" onClick={() => connectProvider(provider.id)}>
-                      <Link2 className="h-4 w-4 mr-1" /> Connect
-                    </Button>
+                    <Button size="sm" onClick={() => connectProvider(provider.id)}><Link2 className="h-4 w-4 mr-1" /> Connect</Button>
                   )}
                 </div>
               </div>

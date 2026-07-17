@@ -541,14 +541,17 @@ export default function AdminAffiliatePage() {
             <div style={cardStyle()}>
               <h3 style={{ color: TEXT, fontSize: 16, margin: "0 0 16px" }}>Click Trend (Last 30 Days)</h3>
               <div style={{ display: "flex", alignItems: "flex-end", gap: 4, height: 200 }}>
-                {Array.from({ length: 30 }).map((_, i) => {
-                  const h = 10 + Math.random() * 90
-                  return (
-                    <div key={i} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
-                      <div style={{ width: "100%", background: `${ACCENT}33`, borderRadius: 4, height: `${h}%`, minHeight: 4 }} />
-                    </div>
-                  )
-                })}
+                {(() => {
+                  const maxClick = Math.max(...reports.slice(0, 30).map(r => r.clicks), 1)
+                  return reports.slice(0, 30).reverse().map((r, i) => {
+                    const h = (r.clicks / maxClick) * 100
+                    return (
+                      <div key={i} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
+                        <div style={{ width: "100%", background: `${ACCENT}33`, borderRadius: 4, height: `${Math.max(h, 2)}%`, minHeight: 4, position: 'relative' }} title={`${r.date}: ${r.clicks} clicks`} />
+                      </div>
+                    )
+                  })
+                })()}
               </div>
               <div style={{ display: "flex", justifyContent: "space-between", marginTop: 8 }}>
                 <span style={{ color: TEXT_DIM, fontSize: 11 }}>30 days ago</span>

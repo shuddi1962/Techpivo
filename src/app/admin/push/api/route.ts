@@ -70,13 +70,17 @@ export async function GET(request: Request) {
         const deliveryRates = Array.from({ length: 30 }, (_, i) => {
           const d = new Date()
           d.setDate(d.getDate() - (29 - i))
-          return { date: d.toISOString().slice(0, 10), rate: +(85 + Math.random() * 14).toFixed(1) }
+          const dayNotifs = (notifData || []).filter((n: any) => n.sent_at?.startsWith(d.toISOString().slice(0, 10)))
+          const totalSent = dayNotifs.reduce((sum: number, n: any) => sum + (n.sent_count || 0), 0)
+          const totalOpens = dayNotifs.reduce((sum: number, n: any) => sum + (n.open_count || 0), 0)
+          const rate = totalSent > 0 ? +(totalOpens / totalSent * 100).toFixed(1) : 0
+          return { date: d.toISOString().slice(0, 10), rate }
         })
 
         const clickRates = Array.from({ length: 30 }, (_, i) => {
           const d = new Date()
           d.setDate(d.getDate() - (29 - i))
-          return { date: d.toISOString().slice(0, 10), rate: +(3 + Math.random() * 15).toFixed(1) }
+          return { date: d.toISOString().slice(0, 10), rate: 0 }
         })
 
         return NextResponse.json({

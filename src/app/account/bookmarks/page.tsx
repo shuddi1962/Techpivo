@@ -30,12 +30,12 @@ export default function BookmarksPage() {
       .catch(() => setLoading(false));
   }, []);
 
-  const removeBookmark = async (id: string) => {
-    setBookmarks(prev => prev.filter(b => b.id !== id));
+  const removeBookmark = async (bookmark: Bookmark) => {
+    setBookmarks(prev => prev.filter(b => b.id !== bookmark.id));
     await fetch('/api/community/bookmarks', {
       method: 'DELETE',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id }),
+      body: JSON.stringify({ item_type: bookmark.item_type, item_id: bookmark.item_id }),
     });
   };
 
@@ -101,7 +101,7 @@ export default function BookmarksPage() {
                         </Button>
                       </Link>
                     )}
-                    <Button variant="ghost" size="sm" onClick={() => removeBookmark(bookmark.id)} className="text-destructive hover:text-destructive">
+                    <Button variant="ghost" size="sm" onClick={() => removeBookmark(bookmark)} className="text-destructive hover:text-destructive">
                       <Trash2 className="h-3 w-3" />
                     </Button>
                   </div>

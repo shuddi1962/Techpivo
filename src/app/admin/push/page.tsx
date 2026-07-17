@@ -272,7 +272,7 @@ function NotificationsTab({ data, loading, onRefresh, onSend }: { data: PushNoti
                     <Send style={{ width: 12, height: 12 }} /> Send
                   </button>
                 )}
-                <button style={{ background: "transparent", border: `1px solid ${S.border}`, borderRadius: 6, padding: "5px 8px", color: S.red, fontSize: 12, cursor: "pointer" }}>
+                <button onClick={() => { if (confirm('Delete this notification?')) { fetch('/admin/push/api', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ type: 'notification', id: n.id }) }).then(() => window.location.reload()) } }} style={{ background: "transparent", border: `1px solid ${S.border}`, borderRadius: 6, padding: "5px 8px", color: S.red, fontSize: 12, cursor: "pointer" }}>
                   <Trash2 style={{ width: 12, height: 12 }} />
                 </button>
               </div>

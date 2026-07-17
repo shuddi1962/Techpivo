@@ -120,10 +120,23 @@ export async function GET(request: Request) {
           .select("id, program_name")
           .eq("is_active", true)
 
+        const programIds = (programStats || []).map(p => p.id)
+        const { data: programClicks } = programIds.length > 0 ? await supabase
+          .from("affiliate_clicks")
+          .select("program_id, converted, conversion_amount")
+          .in("program_id", programIds) : { data: [] }
+
+        const clickMap: Record<string, { clicks: number; revenue: number }> = {}
+        for (const c of (programClicks || [])) {
+          if (!clickMap[c.program_id]) clickMap[c.program_id] = { clicks: 0, revenue: 0 }
+          clickMap[c.program_id].clicks++
+          if (c.converted) clickMap[c.program_id].revenue += c.conversion_amount || 0
+        }
+
         const topPrograms = (programStats || []).map((p: any) => ({
           name: p.program_name,
-          clicks: Math.floor(Math.random() * 500),
-          revenue: Math.round(Math.random() * 2000 * 100) / 100,
+          clicks: clickMap[p.id]?.clicks || 0,
+          revenue: Math.round((clickMap[p.id]?.revenue || 0) * 100) / 100,
         })).sort((a: any, b: any) => b.revenue - a.revenue).slice(0, 5)
 
         return NextResponse.json({

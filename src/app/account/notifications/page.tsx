@@ -2,33 +2,42 @@
 
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Bell, Mail, MessageSquare, Heart, UserPlus, Trophy, BookOpen, Settings, Check } from 'lucide-react';
 
 export default function NotificationsPage() {
   const [notifications, setNotifications] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [preferences, setPreferences] = useState({
-    email_notifications: true,
-    push_notifications: true,
-    forum_replies: true,
-    quiz_results: true,
-    new_followers: true,
-    article_comments: true,
-    badges_earned: true,
-    weekly_digest: true,
-  });
+  const [preferences, setPreferences] = useState<Record<string, boolean>>({});
+  const [saving, setSaving] = useState<string | null>(null);
 
-  useEffect(() => {
+  const load = () => {
+    setLoading(true);
     fetch('/api/community/notifications')
       .then(r => r.json())
       .then(d => {
         setNotifications(d.notifications || []);
+        if (d.preferences) setPreferences(d.preferences);
         setLoading(false);
       })
       .catch(() => setLoading(false));
-  }, []);
+  };
+
+  useEffect(() => { load() }, []);
+
+  const togglePref = async (key: string) => {
+    const next = { ...preferences, [key]: !preferences[key] };
+    setPreferences(next);
+    setSaving(key);
+    try {
+      await fetch('/api/community/notifications', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(next),
+      });
+    } catch {}
+    setSaving(null);
+  };
 
   const getIcon = (type: string) => {
     switch (type) {
@@ -48,7 +57,6 @@ export default function NotificationsPage() {
         <p className="text-muted-foreground mt-1">Manage your notification preferences and view recent alerts</p>
       </div>
 
-      {/* Preferences */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -77,14 +85,11 @@ export default function NotificationsPage() {
                   </div>
                 </div>
                 <button
-                  onClick={() => setPreferences({ ...preferences, [item.key]: !preferences[item.key as keyof typeof preferences] })}
-                  className={`w-10 h-6 rounded-full transition-colors ${
-                    preferences[item.key as keyof typeof preferences] ? 'bg-primary' : 'bg-muted'
-                  }`}
+                  onClick={() => togglePref(item.key)}
+                  disabled={saving === item.key}
+                  className={`w-10 h-6 rounded-full transition-colors ${preferences[item.key] ? 'bg-primary' : 'bg-muted'} disabled:opacity-50`}
                 >
-                  <div className={`w-4 h-4 rounded-full bg-white transition-transform ${
-                    preferences[item.key as keyof typeof preferences] ? 'translate-x-5' : 'translate-x-1'
-                  }`} />
+                  <div className={`w-4 h-4 rounded-full bg-white transition-transform ${preferences[item.key] ? 'translate-x-5' : 'translate-x-1'}`} />
                 </button>
               </div>
             ))}
@@ -92,7 +97,6 @@ export default function NotificationsPage() {
         </CardContent>
       </Card>
 
-      {/* Recent Notifications */}
       <Card>
         <CardHeader>
           <CardTitle>Recent Notifications</CardTitle>

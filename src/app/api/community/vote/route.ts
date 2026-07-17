@@ -13,7 +13,7 @@ export async function POST(request: NextRequest) {
   const query = supabase.from('forum_votes').select('id, vote_type').eq('user_id', user.id);
   if (post_id) query.eq('post_id', post_id);
   if (reply_id) query.eq('reply_id', reply_id);
-  const { data: existing } = await query.single();
+  const { data: existing } = await query.maybeSingle();
 
   if (existing) {
     if (existing.vote_type === vote_type) {

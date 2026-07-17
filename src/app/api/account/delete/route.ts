@@ -17,27 +17,14 @@ export async function POST(request: Request) {
     const tables = [
       "user_profiles", "user_follows", "user_bookmarks", "user_reading_history",
       "user_badges", "user_xp_log", "user_notifications", "forum_posts",
-      "comments", "reactions", "newsletter_sends", "analytics_events", 
-      "reading_list", "social_posts_log", "affiliate_clicks", "seo_audits",
-      "keyword_rankings", "seo_issues", "internal_link_suggestions", 
-      "content_decay", "article_workflow", "article_versions", 
-      "article_comments", "article_versions", "launch_event_articles",
-      "knowledge_article_links", "content_experiments", "content_briefs",
-      "editorial_calendar", "content_decay", "article_discussions",
-      "content_gaps", "product_launches", "email_queues"
+      "forum_replies", "forum_votes", "quiz_attempts", "poll_votes",
+      "article_discussions", "discussion_replies", "event_rsvps"
     ]
     
     for (const table of tables) {
-      await supabase.from(table).delete().eq("user_id", userId)
+      const col = table === "user_profiles" ? "id" : table === "forum_posts" || table === "forum_replies" ? "author_id" : "user_id"
+      await supabase.from(table).delete().eq(col, userId)
     }
-    
-    await supabase.from("data_deletion_requests").insert({
-      user_id: userId,
-      provider: "self-service",
-      status: "completed",
-      confirmation_code: crypto.randomUUID().slice(0, 16),
-      completed_at: new Date().toISOString(),
-    })
     
     await supabase.auth.signOut()
     

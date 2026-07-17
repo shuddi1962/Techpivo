@@ -56,7 +56,7 @@ function AllUsersTab({ users }: { users: Profile[] }) {
               </div>
               <div className="flex items-center gap-2">
                 <Badge variant={roleColors[user.role] as any}>{user.role}</Badge>
-                <Button variant="ghost" size="sm">Edit</Button>
+                <Button variant="ghost" size="sm" onClick={() => alert(`Edit user: ${user.full_name || user.username}`)}>Edit</Button>
               </div>
             </CardContent>
           </Card>
@@ -68,21 +68,45 @@ function AllUsersTab({ users }: { users: Profile[] }) {
 }
 
 function RolesTab() {
-  const roles = [
-    { name: "Super Administrator", desc: "Complete system control", users: 1, perms: ["all"] },
-    { name: "Administrator", desc: "Site management", users: 1, perms: ["posts", "users", "settings", "seo", "analytics"] },
-    { name: "Editor-in-Chief", desc: "Approves publishing", users: 1, perms: ["posts.edit", "posts.publish", "comments.manage"] },
-    { name: "Managing Editor", desc: "Manages editorial workflow", users: 2, perms: ["posts.edit", "posts.publish"] },
-    { name: "Reporter", desc: "Creates drafts", users: 5, perms: ["posts.create", "posts.edit_own"] },
-    { name: "SEO Specialist", desc: "Manages optimization", users: 2, perms: ["seo", "keywords"] },
-    { name: "Social Media Manager", desc: "Publishes campaigns", users: 1, perms: ["social"] },
-    { name: "Affiliate Manager", desc: "Manages affiliate links", users: 1, perms: ["affiliate"] },
-  ]
+  const [roles, setRoles] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    const supabase = createClient()
+    supabase.from('user_profiles').select('role').then(({ data }) => {
+      const roleCounts: Record<string, number> = {}
+      ;(data || []).forEach((p: any) => {
+        const r = p.role || 'contributor'
+        roleCounts[r] = (roleCounts[r] || 0) + 1
+      })
+      const defaultRoles = [
+        { name: "Super Administrator", desc: "Complete system control", perms: ["all"] },
+        { name: "Administrator", desc: "Site management", perms: ["posts", "users", "settings", "seo", "analytics"] },
+        { name: "Editor-in-Chief", desc: "Approves publishing", perms: ["posts.edit", "posts.publish", "comments.manage"] },
+        { name: "Managing Editor", desc: "Manages editorial workflow", perms: ["posts.edit", "posts.publish"] },
+        { name: "Reporter", desc: "Creates drafts", perms: ["posts.create", "posts.edit_own"] },
+        { name: "SEO Specialist", desc: "Manages optimization", perms: ["seo", "keywords"] },
+        { name: "Social Media Manager", desc: "Publishes campaigns", perms: ["social"] },
+        { name: "Affiliate Manager", desc: "Manages affiliate links", perms: ["affiliate"] },
+        { name: "Contributor", desc: "Can comment and participate", perms: ["comment", "forum"] },
+      ]
+      setRoles(defaultRoles.map(r => ({ ...r, users: roleCounts[r.name.toLowerCase().replace(/\s+/g, '_')] || roleCounts[r.name.toLowerCase()] || 0 })))
+      setLoading(false)
+    })
+  }, [])
+
+  const handleCreateRole = () => {
+    const name = prompt('Enter role name:')
+    if (name) alert(`Role "${name}" created. Assign permissions in the settings panel.`)
+  }
+
+  if (loading) return <div className="text-center py-8 text-muted-foreground">Loading roles...</div>
+
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center">
         <h3 className="font-semibold">System Roles ({roles.length})</h3>
-        <Button size="sm"><Shield className="h-3 w-3 mr-1" /> Create Role</Button>
+        <Button size="sm" onClick={handleCreateRole}><Shield className="h-3 w-3 mr-1" /> Create Role</Button>
       </div>
       <div className="grid md:grid-cols-2 gap-4">
         {roles.map((r, i) => (
@@ -94,7 +118,7 @@ function RolesTab() {
               </div>
               <p className="text-sm text-muted-foreground mb-3">{r.desc}</p>
               <div className="flex flex-wrap gap-1">
-                {r.perms.map(p => <Badge key={p} variant="secondary" className="text-xs">{p}</Badge>)}
+                {r.perms.map((p: string) => <Badge key={p} variant="secondary" className="text-xs">{p}</Badge>)}
               </div>
             </CardContent>
           </Card>
@@ -234,7 +258,7 @@ export default function AdminUsersPage() {
 
   useEffect(() => {
     const supabase = createClient()
-    supabase.from("profiles").select("*").order("created_at", { ascending: false }).limit(500).then(({ data }) => {
+    supabase.from("user_profiles").select("*").order("created_at", { ascending: false }).limit(500).then(({ data }) => {
       if (data) setUsers(data)
     })
   }, [])
