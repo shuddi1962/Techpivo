@@ -19,6 +19,7 @@ The user provides admin sections ONE BY ONE. For each section:
 | 2026-08-06 | Setup + memory storage | DONE | ADMIN_SESSION.md | — |
 | 2026-08-06 | Baseline commit + deploy | DONE | 89 files committed (66cfa02), Vercel production green | — |
 | 2026-08-06 | Premium admin sidebar redesign | DONE | sidebar.tsx, globals.css (98f3345): hover flyout panels, grouped nav with icons, mobile accordion, quick create button, `/` search shortcut, build green | — |
+| 2026-08-06 | Vercel-style sidebar v2 | DONE | sidebar.tsx, globals.css (d010499): flat grouped nav, no search/flyouts, mature muted colors, simple collapsed icon rail, build green | — |
 
 ## Sections Completed
 
