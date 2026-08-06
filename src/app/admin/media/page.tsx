@@ -6,7 +6,8 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Upload, Trash2, FileText, Download, Copy, Check, Search, Image, File, FileArchive, X, Loader2 } from "lucide-react"
+import Image from "next/image"
+import { Upload, Trash2, FileText, Download, Copy, Check, Search, Image as ImageIcon, File, FileArchive, X, Loader2 } from "lucide-react"
 
 type MediaFile = {
   name: string
@@ -39,8 +40,8 @@ function getFileType(file: MediaFile): FileType {
 
 function getFileIcon(file: MediaFile) {
   const type = getFileType(file)
-  if (type === "images") return Image
-  if (type === "documents") return File
+    if (type === "images") return ImageIcon
+    if (type === "documents") return File
   return FileArchive
 }
 
@@ -72,7 +73,7 @@ export default function AdminMediaPage() {
     }
     setFiles(allFiles)
     setLoading(false)
-  }, [])
+  }, [supabase])
 
   useEffect(() => {
     loadFiles()
@@ -308,9 +309,11 @@ export default function AdminMediaPage() {
               <Card key={file.name} className={`overflow-hidden group ${isUploading ? "opacity-60" : ""}`}>
                 <div className="aspect-video bg-muted relative flex items-center justify-center overflow-hidden">
                   {isImage(file) && !isUploading ? (
-                    <img
+                    <Image
                       src={getUrl(file.name)}
                       alt={file.name}
+                      width={800}
+                      height={450}
                       className="object-cover w-full h-full"
                       loading="lazy"
                     />

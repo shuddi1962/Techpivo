@@ -1,4 +1,5 @@
 import type { Metadata } from "next"
+import Image from "next/image"
 import Link from "next/link"
 import { SITE_URL } from "@/lib/constants"
 
@@ -15,7 +16,7 @@ export default function DisclaimerPage() {
     <div className="w-full">
       {/* Hero */}
       <div className="relative overflow-hidden mb-12 min-h-[320px] flex items-center">
-        <img src="https://images.pexels.com/photos/6863515/pexels-photo-6863515.jpeg" alt="Legal disclaimer" className="absolute inset-0 w-full h-full object-cover" />
+        <Image src="https://images.pexels.com/photos/6863515/pexels-photo-6863515.jpeg" alt="Legal disclaimer" width={1200} height={675} className="absolute inset-0 w-full h-full object-cover" />
         <div className="absolute inset-0 bg-black/40" />
         <div className="relative z-10 px-6 md:px-12 lg:px-16 py-16 text-white max-w-4xl">
           <div className="text-5xl mb-4">⚖️</div>
@@ -29,7 +30,7 @@ export default function DisclaimerPage() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         <section className="bg-card border rounded-2xl p-6">
           <div className="relative h-36 rounded-xl overflow-hidden mb-4">
-            <img src="https://images.pexels.com/photos/4476377/pexels-photo-4476377.jpeg" alt="Affiliate" className="absolute inset-0 w-full h-full object-cover" />
+            <Image src="https://images.pexels.com/photos/4476377/pexels-photo-4476377.jpeg" alt="Affiliate" width={800} height={450} className="absolute inset-0 w-full h-full object-cover" />
           </div>
           <div className="w-12 h-12 rounded-xl bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center text-xl mb-3">🔗</div>
           <h2 className="text-xl font-bold mb-2">Affiliate Disclosure</h2>
@@ -38,7 +39,7 @@ export default function DisclaimerPage() {
 
         <section className="bg-card border rounded-2xl p-6">
           <div className="relative h-36 rounded-xl overflow-hidden mb-4">
-            <img src="https://images.pexels.com/photos/3184291/pexels-photo-3184291.jpeg" alt="Advertising" className="absolute inset-0 w-full h-full object-cover" />
+            <Image src="https://images.pexels.com/photos/3184291/pexels-photo-3184291.jpeg" alt="Advertising" width={800} height={450} className="absolute inset-0 w-full h-full object-cover" />
           </div>
           <div className="w-12 h-12 rounded-xl bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center text-xl mb-3">📢</div>
           <h2 className="text-xl font-bold mb-2">Advertising Disclosure</h2>
@@ -47,7 +48,7 @@ export default function DisclaimerPage() {
 
         <section className="bg-card border rounded-2xl p-6">
           <div className="relative h-36 rounded-xl overflow-hidden mb-4">
-            <img src="https://images.pexels.com/photos/1181671/pexels-photo-1181671.jpeg" alt="Sponsored content" className="absolute inset-0 w-full h-full object-cover" />
+            <Image src="https://images.pexels.com/photos/1181671/pexels-photo-1181671.jpeg" alt="Sponsored content" width={800} height={450} className="absolute inset-0 w-full h-full object-cover" />
           </div>
           <div className="w-12 h-12 rounded-xl bg-green-100 dark:bg-green-900/30 flex items-center justify-center text-xl mb-3">💳</div>
           <h2 className="text-xl font-bold mb-2">Paid Content</h2>

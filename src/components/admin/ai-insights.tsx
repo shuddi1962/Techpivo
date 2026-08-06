@@ -116,7 +116,7 @@ export function AiInsights() {
 
     setInsights(newInsights)
     setLoading(false)
-  }, [])
+  }, [supabase])
 
   useEffect(() => { generateInsights() }, [generateInsights])
 

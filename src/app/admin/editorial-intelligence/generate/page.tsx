@@ -1,12 +1,14 @@
 "use client"
 
-import { useState, useEffect, Suspense } from "react"
+import { useState, useEffect, useCallback, Suspense } from "react"
 import Link from "next/link"
-import { useSearchParams } from "next/navigation"
+import { useSearchParams, useRouter } from "next/navigation"
+import { createClient } from "@/lib/supabase/client"
 import { ArrowLeft, Zap, RefreshCw, FileText, Search, Image, Share2, CheckCircle, Copy, ExternalLink, Loader2 } from "lucide-react"
 
 function GenerateContent() {
   const searchParams = useSearchParams()
+  const router = useRouter()
   const initialTopic = searchParams.get("topic") || ""
   const initialCategory = searchParams.get("category") || ""
 
@@ -14,65 +16,78 @@ function GenerateContent() {
   const [category, setCategory] = useState(initialCategory)
   const [plan, setPlan] = useState<any>(null)
   const [loading, setLoading] = useState(false)
+  const [saving, setSaving] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
   const [activeSection, setActiveSection] = useState<"outline" | "seo" | "social" | "images">("outline")
 
-  useEffect(() => {
-    if (initialTopic) generatePlan()
-  }, [])
-
-  const generatePlan = async () => {
+  const generatePlan = useCallback(async () => {
     if (!topic.trim()) return
     setLoading(true)
-    await new Promise(r => setTimeout(r, 800))
-    const slug = topic.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "")
-    setPlan({
-      title: `The Complete Guide to ${topic} in 2026`,
-      seo_title: `${topic}: Complete Guide, Features & Best Practices [2026]`,
-      slug,
-      meta_description: `Everything you need to know about ${topic} in 2026. Features, comparisons, tutorials, and expert recommendations.`,
-      outline: [
-        { heading: `What is ${topic}?`, points: ["Definition and overview", "Why it matters in 2026", "Key capabilities and features"] },
-        { heading: `How ${topic} Works`, points: ["Core technology explained", "Architecture overview", "Key components"] },
-        { heading: `Top ${topic} Tools & Solutions`, points: ["Tool 1 vs Tool 2 vs Tool 3", "Comparison table", "Pricing breakdown"] },
-        { heading: `Getting Started Guide`, points: ["Prerequisites", "Step-by-step setup", "Configuration tips"] },
-        { heading: `Best Practices`, points: ["Performance optimization", "Security considerations", "Common mistakes to avoid"] },
-        { heading: `FAQs`, points: ["5 frequently asked questions with detailed answers"] },
-      ],
-      faqs: [
-        { question: `What is ${topic}?`, answer: `${topic} is a technology that enables developers and businesses to...` },
-        { question: `Why is ${topic} important in 2026?`, answer: `${topic} has become increasingly important due to the rise of...` },
-        { question: `How do I get started with ${topic}?`, answer: `To get started with ${topic}, you'll need to...` },
-        { question: `What are the best ${topic} tools?`, answer: `The top ${topic} tools include...` },
-        { question: `Is ${topic} free to use?`, answer: `${topic} pricing varies by provider, but many offer free tiers...` },
-      ],
-      primary_keyword: topic.toLowerCase(),
-      supporting_keywords: [`${topic} tutorial`, `${topic} guide`, `best ${topic} tools`, `${topic} 2026`, `what is ${topic}`],
-      question_keywords: [`what is ${topic}`, `how to use ${topic}`, `why ${topic}`, `${topic} vs alternatives`, `best ${topic} tools`],
-      external_references: [
-        { url: "#", title: `Official ${topic} Documentation`, authority: "Official" },
-        { url: "#", title: `${topic} GitHub Repository`, authority: "Developer Docs" },
-        { url: "#", title: `${topic} on MDN Web Docs`, authority: "Documentation" },
-      ],
-      image_suggestions: [
-        { query: `${topic} dashboard interface`, source: "Pexels" },
-        { query: `${topic} code example screenshot`, source: "AI Generated" },
-        { query: `${topic} architecture diagram`, source: "AI Generated" },
-        { query: `${topic} comparison infographic`, source: "AI Generated" },
-      ],
-      tags: [topic, category || "Technology", "Tutorial", "Guide", "2026", "AI"],
-      reading_time: "12 min read",
-      schema_type: "Article",
-      suggested_category: category || "Programming",
-      category_confidence: 97,
-      social_drafts: [
-        { platform: "X (Twitter)", content: `Just published: The Complete Guide to ${topic} in 2026. Everything you need to know — features, tools, and best practices. #TechPivo #${topic.replace(/\s/g, "")}` },
-        { platform: "LinkedIn", content: `New article: ${topic} — A comprehensive guide covering features, comparisons, and best practices for 2026. Essential reading for tech professionals.` },
-        { platform: "Facebook", content: `New on TechPivo: ${topic} complete guide. Learn everything about this trending technology in one comprehensive article.` },
-        { platform: "Newsletter", content: `This week we dive deep into ${topic}. Our complete guide covers everything from basics to advanced best practices.` },
-      ],
-    })
+    try {
+      const res = await fetch("/admin/editorial-intelligence/brief", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ topic, category: category || "Technology" }),
+      })
+      if (!res.ok) throw new Error("Generation failed")
+      const data = await res.json()
+      setPlan(data.plan)
+    } catch (e) {
+      console.error(e)
+    }
     setLoading(false)
+  }, [topic, category])
+
+  useEffect(() => {
+    if (initialTopic) generatePlan()
+  }, [initialTopic, generatePlan])
+
+  const saveAsDraft = async () => {
+    if (!plan) return
+    setSaving("draft")
+    try {
+      const supabase = createClient()
+      const { error } = await supabase.from("posts").insert({
+        title: plan.title,
+        content: JSON.stringify(plan.outline),
+        category_id: plan.suggested_category,
+        status: "draft",
+        tags: plan.tags,
+        seo_title: plan.seo_title,
+        meta_description: plan.meta_description,
+        slug: plan.slug,
+      })
+      if (!error) {
+        router.push("/admin/posts")
+      }
+    } catch (e) {
+      console.error(e)
+    }
+    setSaving(null)
+  }
+
+  const approveAndPublish = async () => {
+    if (!plan) return
+    setSaving("publish")
+    try {
+      const supabase = createClient()
+      const { error } = await supabase.from("posts").insert({
+        title: plan.title,
+        content: JSON.stringify(plan.outline),
+        category_id: plan.suggested_category,
+        status: "published",
+        tags: plan.tags,
+        seo_title: plan.seo_title,
+        meta_description: plan.meta_description,
+        slug: plan.slug,
+      })
+      if (!error) {
+        router.push("/admin/posts")
+      }
+    } catch (e) {
+      console.error(e)
+    }
+    setSaving(null)
   }
 
   return (
@@ -153,11 +168,11 @@ function GenerateContent() {
 
           {activeSection === "outline" && (
             <div className="space-y-4">
-              {plan.outline.map((section: any, i: number) => (
+              {plan.outline?.map((section: any, i: number) => (
                 <div key={i} className="p-4 rounded-xl border bg-card">
                   <h3 className="font-semibold text-sm mb-2">{i + 1}. {section.heading}</h3>
                   <ul className="space-y-1 ml-4">
-                    {section.points.map((point: string, j: number) => (
+                    {section.points?.map((point: string, j: number) => (
                       <li key={j} className="text-sm text-muted-foreground list-disc">{point}</li>
                     ))}
                   </ul>
@@ -166,7 +181,7 @@ function GenerateContent() {
               <div className="p-4 rounded-xl border bg-card">
                 <h3 className="font-semibold text-sm mb-2">Frequently Asked Questions</h3>
                 <div className="space-y-2">
-                  {plan.faqs.map((faq: any, i: number) => (
+                  {plan.faqs?.map((faq: any, i: number) => (
                     <div key={i} className="p-3 rounded-lg bg-muted/30">
                       <div className="text-sm font-medium">{faq.question}</div>
                       <div className="text-xs text-muted-foreground mt-1">{faq.answer}</div>
@@ -177,7 +192,7 @@ function GenerateContent() {
               <div className="p-4 rounded-xl border bg-card">
                 <h3 className="font-semibold text-sm mb-2">External References</h3>
                 <div className="space-y-2">
-                  {plan.external_references.map((ref: any, i: number) => (
+                  {plan.external_references?.map((ref: any, i: number) => (
                     <div key={i} className="flex items-center justify-between p-2 rounded-lg bg-muted/30">
                       <div className="flex items-center gap-2">
                         <ExternalLink className="h-3 w-3 text-muted-foreground" />
@@ -217,7 +232,7 @@ function GenerateContent() {
               <div className="p-4 rounded-xl border bg-card">
                 <h3 className="font-semibold text-sm mb-2">Supporting Keywords</h3>
                 <div className="flex flex-wrap gap-2">
-                  {plan.supporting_keywords.map((kw: string, i: number) => (
+                  {plan.supporting_keywords?.map((kw: string, i: number) => (
                     <span key={i} className="px-3 py-1 rounded-lg bg-muted text-sm">{kw}</span>
                   ))}
                 </div>
@@ -225,7 +240,7 @@ function GenerateContent() {
               <div className="p-4 rounded-xl border bg-card">
                 <h3 className="font-semibold text-sm mb-2">Question Keywords</h3>
                 <div className="flex flex-wrap gap-2">
-                  {plan.question_keywords.map((kw: string, i: number) => (
+                  {plan.question_keywords?.map((kw: string, i: number) => (
                     <span key={i} className="px-3 py-1 rounded-lg bg-amber-100 text-amber-700 dark:bg-amber-900/30 text-sm">{kw}</span>
                   ))}
                 </div>
@@ -233,7 +248,7 @@ function GenerateContent() {
               <div className="p-4 rounded-xl border bg-card">
                 <h3 className="font-semibold text-sm mb-2">Tags</h3>
                 <div className="flex flex-wrap gap-2">
-                  {plan.tags.map((tag: string, i: number) => (
+                  {plan.tags?.map((tag: string, i: number) => (
                     <span key={i} className="px-3 py-1 rounded-lg bg-muted text-sm">{tag}</span>
                   ))}
                 </div>
@@ -246,7 +261,7 @@ function GenerateContent() {
               <div className="p-4 rounded-xl border bg-card">
                 <h3 className="font-semibold text-sm mb-3">Image Options</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  {plan.image_suggestions.map((img: any, i: number) => (
+                  {plan.image_suggestions?.map((img: any, i: number) => (
                     <div key={i} className="p-4 rounded-lg border bg-muted/30">
                       <div className="flex items-center justify-between mb-2">
                         <span className="text-sm font-medium">{img.query}</span>
@@ -264,24 +279,12 @@ function GenerateContent() {
                   ))}
                 </div>
               </div>
-              <div className="p-4 rounded-xl border bg-card">
-                <h3 className="font-semibold text-sm mb-2">Smart Image Ranking</h3>
-                <p className="text-xs text-muted-foreground mb-3">Each image is scored on: Relevance, Resolution, Orientation, Visual Quality, Brand Safety, File Size</p>
-                <div className="grid grid-cols-3 md:grid-cols-6 gap-2">
-                  {["Relevance", "Resolution", "Orientation", "Visual Quality", "Brand Safety", "File Size"].map((metric, i) => (
-                    <div key={i} className="p-2 rounded-lg bg-muted/30 text-center">
-                      <div className="text-sm font-bold text-primary">{85 + Math.floor(Math.random() * 15)}</div>
-                      <div className="text-[10px] text-muted-foreground">{metric}</div>
-                    </div>
-                  ))}
-                </div>
-              </div>
             </div>
           )}
 
           {activeSection === "social" && (
             <div className="space-y-4">
-              {plan.social_drafts.map((draft: any, i: number) => (
+              {plan.social_drafts?.map((draft: any, i: number) => (
                 <div key={i} className="p-4 rounded-xl border bg-card">
                   <div className="flex items-center justify-between mb-2">
                     <h3 className="font-semibold text-sm">{draft.platform}</h3>
@@ -300,12 +303,20 @@ function GenerateContent() {
           )}
 
           <div className="flex justify-center gap-3 p-5">
-            <button className="px-6 py-3 bg-primary text-white rounded-lg text-sm font-medium hover:bg-primary/90 flex items-center gap-2">
-              <CheckCircle className="h-4 w-4" />
+            <button
+              onClick={approveAndPublish}
+              disabled={saving !== null}
+              className="px-6 py-3 bg-primary text-white rounded-lg text-sm font-medium hover:bg-primary/90 disabled:opacity-50 flex items-center gap-2"
+            >
+              {saving === "publish" ? <RefreshCw className="h-4 w-4 animate-spin" /> : <CheckCircle className="h-4 w-4" />}
               Approve & Publish
             </button>
-            <button className="px-6 py-3 bg-secondary text-secondary-foreground rounded-lg text-sm font-medium hover:bg-secondary/80 flex items-center gap-2">
-              <FileText className="h-4 w-4" />
+            <button
+              onClick={saveAsDraft}
+              disabled={saving !== null}
+              className="px-6 py-3 bg-secondary text-secondary-foreground rounded-lg text-sm font-medium hover:bg-secondary/80 disabled:opacity-50 flex items-center gap-2"
+            >
+              {saving === "draft" ? <RefreshCw className="h-4 w-4 animate-spin" /> : <FileText className="h-4 w-4" />}
               Save as Draft
             </button>
             <button onClick={generatePlan} className="px-6 py-3 bg-muted text-muted-foreground rounded-lg text-sm font-medium hover:bg-muted/80 flex items-center gap-2">

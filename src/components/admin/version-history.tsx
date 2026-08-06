@@ -33,7 +33,7 @@ export function VersionHistory({ postId }: { postId: string }) {
 
     setVersions(data || [])
     setLoading(false)
-  }, [postId])
+  }, [postId, supabase])
 
   useEffect(() => { fetchVersions() }, [fetchVersions])
 

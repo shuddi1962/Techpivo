@@ -54,17 +54,19 @@ export function PostReactions({ postId }: PostReactionsProps) {
         .select("type")
         .eq("post_id", postId)
       if (data) {
-        const newCounts = { ...counts }
-        data.forEach((r) => {
-          const key = r.type as keyof ReactionCounts
-          if (key in newCounts) newCounts[key]++
+        setCounts(prev => {
+          const newCounts = { ...prev }
+          data.forEach((r) => {
+            const key = r.type as keyof ReactionCounts
+            if (key in newCounts) newCounts[key]++
+          })
+          return newCounts
         })
-        setCounts(newCounts)
       }
       setLoading(false)
     }
     fetchReactions()
-  }, [postId])
+  }, [postId, supabase])
 
   const handleReaction = useCallback(async (type: string) => {
     if (userReactions.has(type)) return

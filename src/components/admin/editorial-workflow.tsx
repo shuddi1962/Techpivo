@@ -47,7 +47,7 @@ export function EditorialWorkflow() {
     const { data } = await query
     setPosts(data || [])
     setLoading(false)
-  }, [filter])
+  }, [filter, supabase])
 
   useEffect(() => { fetchPosts() }, [fetchPosts])
 

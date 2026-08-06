@@ -6,7 +6,7 @@ import {
   Brain, Zap, Target, Shield, AlertTriangle, CheckCircle,
   Clock, Activity, TrendingUp, TrendingDown, Pause, Play,
   XCircle, RefreshCw, BarChart3, DollarSign, Eye, FileText,
-  Settings, Save, RotateCcw
+  Settings, Save, RotateCcw, Search
 } from "lucide-react"
 
 interface AITask {
@@ -17,6 +17,14 @@ interface AITask {
   progress: number
   started_at: string
   model: string
+}
+
+interface DiscoveryItem {
+  topic: string
+  score: number
+  intent: string
+  traffic: string
+  priority: string
 }
 
 interface GuardrailConfig {
@@ -30,7 +38,9 @@ export default function AICommandCenterPage() {
   const supabase = createClient()
   const [activeTab, setActiveTab] = useState<"live" | "discovery" | "performance" | "rules">("live")
   const [tasks, setTasks] = useState<AITask[]>([])
+  const [opportunities, setOpportunities] = useState<DiscoveryItem[]>([])
   const [loading, setLoading] = useState(true)
+  const [discoveryLoading, setDiscoveryLoading] = useState(true)
   const [stats, setStats] = useState({
     articlesThisMonth: 0,
     publishedThisMonth: 0,
@@ -60,11 +70,12 @@ export default function AICommandCenterPage() {
     try {
       const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()
 
-      const [postsRes, geminiRes] = await Promise.all([
+      const [postsRes, geminiRes, guardrailsRes] = await Promise.all([
         supabase.from("posts").select("id, title, status, ai_rewritten, published_at, created_at")
           .gte("created_at", thirtyDaysAgo),
         supabase.from("gemini_usage_log").select("*")
           .gte("created_at", thirtyDaysAgo).limit(5000),
+        supabase.from("ai_settings").select("value").eq("key", "guardrails").single(),
       ])
 
       const posts = postsRes.data || []
@@ -76,27 +87,112 @@ export default function AICommandCenterPage() {
       setStats({
         articlesThisMonth: posts.length,
         publishedThisMonth: published.length,
-        avgEditsPerDraft: 1.2,
-        factCheckCatchRate: 87,
+        avgEditsPerDraft: 0,
+        factCheckCatchRate: 0,
         totalCostCents: geminiLogs.length * 250,
         costPerArticle: aiGenerated.length > 0 ? Math.round((geminiLogs.length * 250) / aiGenerated.length) : 0,
       })
 
-      // Simulate active tasks
-      const simulatedTasks: AITask[] = [
-        { id: "1", type: "research", status: "running", title: "Researching: AI Agent Frameworks 2026", progress: 65, started_at: new Date(Date.now() - 120000).toISOString(), model: "Gemini 2.5 Flash" },
-        { id: "2", type: "draft", status: "running", title: "Drafting: Best Laptops Under $1000", progress: 30, started_at: new Date(Date.now() - 60000).toISOString(), model: "Gemini 2.5 Flash" },
-        { id: "3", type: "fact_check", status: "queued", title: "Verifying: Samsung Galaxy S26 Specs", progress: 0, started_at: "", model: "Gemini 2.5 Flash" },
-        { id: "4", type: "seo", status: "completed", title: "SEO Pass: Chrome Extensions Guide", progress: 100, started_at: new Date(Date.now() - 300000).toISOString(), model: "Gemini 2.5 Flash" },
-      ]
-      setTasks(simulatedTasks)
+      // Derive real tasks from actual posts in the AI pipeline
+      const aiPosts = posts.filter(p => p.ai_rewritten)
+      const derivedTasks: AITask[] = aiPosts.slice(0, 10).map((post, i) => {
+        let type = "draft"
+        let status = "completed"
+        let progress = 100
+        let model = "Gemini 2.5 Flash"
+
+        if (post.status === "draft" || post.status === "review") {
+          status = "running"
+          progress = post.status === "draft" ? 40 : 75
+          type = "draft"
+        } else if (post.status === "published") {
+          status = "completed"
+          progress = 100
+          type = "seo"
+        } else if (post.status === "scheduled") {
+          status = "queued"
+          progress = 0
+          type = "draft"
+        }
+
+        return {
+          id: post.id,
+          type,
+          status,
+          title: `AI: ${post.title || "Untitled"}`,
+          progress,
+          started_at: post.created_at,
+          model,
+        }
+      })
+
+      // Also add recent gemini_usage_log entries as research tasks
+      const researchTasks: AITask[] = (geminiLogs.slice(0, 5) as any[]).map((log, i) => ({
+        id: `gemini-${i}`,
+        type: "research",
+        status: "completed",
+        title: `Research: ${log.used_for || "AI Query"} (${new Date(log.created_at || Date.now()).toLocaleDateString()})`,
+        progress: 100,
+        started_at: log.created_at || "",
+        model: log.model || "Gemini 2.5 Flash",
+      }))
+
+      setTasks([...derivedTasks, ...researchTasks])
+
+      if (guardrailsRes.data?.value) {
+        setGuardrails(guardrailsRes.data.value as GuardrailConfig)
+      }
     } catch (err) {
       console.error("AI Command Center fetch error:", err)
     }
     setLoading(false)
   }, [supabase])
 
+  const fetchDiscoveryData = useCallback(async () => {
+    setDiscoveryLoading(true)
+    try {
+      // Fetch real trend predictions from the editorial intelligence tables
+      const [trendsRes, briefsRes] = await Promise.all([
+        supabase.from("trend_predictions").select("*")
+          .eq("status", "active")
+          .order("probability", { ascending: false })
+          .limit(10),
+        supabase.from("content_briefs").select("*")
+          .in("status", ["generated", "reviewing"])
+          .order("opportunity_score", { ascending: false })
+          .limit(10),
+      ])
+
+      const trends = (trendsRes.data || []) as any[]
+      const briefs = (briefsRes.data || []) as any[]
+
+      const mapped: DiscoveryItem[] = [
+        ...trends.map((t: any) => ({
+          topic: t.topic || "Untitled Trend",
+          score: t.probability || 50,
+          intent: "Informational",
+          traffic: t.probability >= 80 ? "High" : t.probability >= 50 ? "Medium" : "Low",
+          priority: t.probability >= 80 ? "★★★★★" : t.probability >= 50 ? "★★★☆☆" : "★★☆☆☆",
+        })),
+        ...briefs.map((b: any) => ({
+          topic: b.topic || "Untitled Brief",
+          score: b.opportunity_score || 50,
+          intent: "Informational",
+          traffic: (b.opportunity_score || 0) >= 80 ? "High" : (b.opportunity_score || 0) >= 50 ? "Medium" : "Low",
+          priority: (b.opportunity_score || 0) >= 80 ? "★★★★★" : (b.opportunity_score || 0) >= 50 ? "★★★☆☆" : "★★☆☆☆",
+        })),
+      ]
+
+      setOpportunities(mapped)
+    } catch (err) {
+      console.error("Discovery data fetch error:", err)
+      setOpportunities([])
+    }
+    setDiscoveryLoading(false)
+  }, [supabase])
+
   useEffect(() => { fetchData() }, [fetchData])
+  useEffect(() => { fetchDiscoveryData() }, [fetchDiscoveryData])
 
   const tabs = [
     { id: "live" as const, label: "Live Operations", icon: Activity },
@@ -115,7 +211,7 @@ export default function AICommandCenterPage() {
           </h1>
           <p className="text-sm text-muted-foreground mt-1">Monitor, control, and optimize AI operations</p>
         </div>
-        <button onClick={fetchData} className="flex items-center gap-2 px-4 py-2 text-sm font-medium border rounded-lg hover:bg-muted transition-colors">
+        <button onClick={() => { fetchData(); fetchDiscoveryData() }} className="flex items-center gap-2 px-4 py-2 text-sm font-medium border rounded-lg hover:bg-muted transition-colors">
           <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
           Refresh
         </button>
@@ -126,8 +222,8 @@ export default function AICommandCenterPage() {
         {[
           { label: "Articles This Month", value: stats.articlesThisMonth, icon: FileText, color: "text-blue-500" },
           { label: "Published", value: stats.publishedThisMonth, icon: CheckCircle, color: "text-green-500" },
-          { label: "Avg Edits/Draft", value: stats.avgEditsPerDraft.toFixed(1), icon: Eye, color: "text-amber-500" },
-          { label: "Fact-Check Catch Rate", value: `${stats.factCheckCatchRate}%`, icon: Shield, color: "text-purple-500" },
+          { label: "Avg Edits/Draft", value: stats.avgEditsPerDraft > 0 ? stats.avgEditsPerDraft.toFixed(1) : "—", icon: Eye, color: "text-amber-500" },
+          { label: "Fact-Check Catch Rate", value: stats.factCheckCatchRate > 0 ? `${stats.factCheckCatchRate}%` : "—", icon: Shield, color: "text-purple-500" },
           { label: "Monthly AI Cost", value: `$${(stats.totalCostCents / 100).toFixed(2)}`, icon: DollarSign, color: "text-red-500" },
           { label: "Cost Per Article", value: `$${(stats.costPerArticle / 100).toFixed(2)}`, icon: TrendingUp, color: "text-cyan-500" },
         ].map((stat) => (
@@ -168,6 +264,7 @@ export default function AICommandCenterPage() {
             <div className="bg-white dark:bg-[#111827] border rounded-xl p-12 text-center">
               <Activity className="h-12 w-12 text-muted-foreground/30 mx-auto mb-4" />
               <p className="text-muted-foreground">No active AI tasks</p>
+              <p className="text-xs text-muted-foreground mt-2">Tasks appear here when AI-generated articles or research are in progress</p>
             </div>
           ) : (
             tasks.map((task) => (
@@ -228,43 +325,61 @@ export default function AICommandCenterPage() {
 
       {activeTab === "discovery" && (
         <div className="bg-white dark:bg-[#111827] border rounded-xl p-6">
-          <h3 className="font-semibold mb-4 flex items-center gap-2">
-            <Target className="h-5 w-5 text-amber-500" />
-            Story Opportunities
-          </h3>
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="font-semibold flex items-center gap-2">
+              <Target className="h-5 w-5 text-amber-500" />
+              Story Opportunities
+            </h3>
+            <button onClick={fetchDiscoveryData} className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium border rounded-md hover:bg-muted transition-colors">
+              <RefreshCw className={`h-3 w-3 ${discoveryLoading ? "animate-spin" : ""}`} />
+              Refresh
+            </button>
+          </div>
           <div className="space-y-3">
-            {[
-              { topic: "GPT-5 Release Rumors", score: 92, intent: "Informational", traffic: "High", priority: "★★★★★" },
-              { topic: "Best Budget Phones 2026", score: 85, intent: "Commercial", traffic: "Very High", priority: "★★★★★" },
-              { topic: "Windows 12 Features", score: 78, intent: "Informational", traffic: "High", priority: "★★★★☆" },
-              { topic: "React 20 Release", score: 71, intent: "Informational", traffic: "Medium", priority: "★★★☆☆" },
-              { topic: "Cybersecurity Trends 2026", score: 68, intent: "Informational", traffic: "Medium", priority: "★★★☆☆" },
-            ].map((item, i) => (
-              <div key={i} className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50 transition-colors">
-                <div className="flex items-center gap-3">
-                  <div className={`w-10 h-10 rounded-lg flex items-center justify-center text-sm font-bold ${
-                    item.score >= 80 ? "bg-green-500/10 text-green-500" :
-                    item.score >= 60 ? "bg-amber-500/10 text-amber-500" :
-                    "bg-red-500/10 text-red-500"
-                  }`}>
-                    {item.score}
-                  </div>
-                  <div>
-                    <p className="font-medium text-sm">{item.topic}</p>
-                    <p className="text-xs text-muted-foreground">{item.intent} · {item.traffic} traffic potential</p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-amber-500 text-sm">{item.priority}</span>
-                  <button className="px-3 py-1 bg-primary text-primary-foreground rounded-md text-xs font-medium hover:bg-primary/90">
-                    Assign to AI
-                  </button>
-                  <button className="px-3 py-1 border rounded-md text-xs font-medium hover:bg-muted">
-                    Dismiss
-                  </button>
-                </div>
+            {discoveryLoading ? (
+              <div className="py-8 text-center text-muted-foreground text-sm">Loading opportunities...</div>
+            ) : opportunities.length === 0 ? (
+              <div className="py-8 text-center">
+                <Search className="h-10 w-10 text-muted-foreground/30 mx-auto mb-3" />
+                <p className="text-muted-foreground text-sm">No discovery opportunities found</p>
+                <p className="text-xs text-muted-foreground/60 mt-1">
+                  Opportunities appear here when trend predictions or content briefs are generated via AI Research
+                </p>
+                <button
+                  onClick={() => window.location.href = "/admin/editorial-intelligence/generate"}
+                  className="mt-4 px-4 py-2 text-xs font-medium bg-primary text-primary-foreground rounded-md hover:bg-primary/90"
+                >
+                  Run AI Research
+                </button>
               </div>
-            ))}
+            ) : (
+              opportunities.map((item, i) => (
+                <div key={i} className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50 transition-colors">
+                  <div className="flex items-center gap-3">
+                    <div className={`w-10 h-10 rounded-lg flex items-center justify-center text-sm font-bold ${
+                      item.score >= 80 ? "bg-green-500/10 text-green-500" :
+                      item.score >= 60 ? "bg-amber-500/10 text-amber-500" :
+                      "bg-red-500/10 text-red-500"
+                    }`}>
+                      {item.score}
+                    </div>
+                    <div>
+                      <p className="font-medium text-sm">{item.topic}</p>
+                      <p className="text-xs text-muted-foreground">{item.intent} · {item.traffic} traffic potential</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-amber-500 text-sm">{item.priority}</span>
+                    <button className="px-3 py-1 bg-primary text-primary-foreground rounded-md text-xs font-medium hover:bg-primary/90">
+                      Assign to AI
+                    </button>
+                    <button className="px-3 py-1 border rounded-md text-xs font-medium hover:bg-muted">
+                      Dismiss
+                    </button>
+                  </div>
+                </div>
+              ))
+            )}
           </div>
         </div>
       )}
@@ -279,7 +394,7 @@ export default function AICommandCenterPage() {
             <div className="space-y-4">
               {[
                 { label: "Articles Drafted", value: stats.articlesThisMonth, sub: "this month" },
-                { label: "Articles Published", value: stats.publishedThisMonth, sub: "conversion rate" },
+                { label: "Articles Published", value: stats.publishedThisMonth, sub: "this month" },
                 { label: "Avg Edits Per Draft", value: stats.avgEditsPerDraft.toFixed(1), sub: "lower is better" },
                 { label: "Fact-Check Catch Rate", value: `${stats.factCheckCatchRate}%`, sub: "errors caught before publish" },
               ].map((item) => (
@@ -302,14 +417,15 @@ export default function AICommandCenterPage() {
               {[
                 { label: "Total Monthly Cost", value: `$${(stats.totalCostCents / 100).toFixed(2)}` },
                 { label: "Cost Per Article", value: `$${(stats.costPerArticle / 100).toFixed(2)}` },
-                { label: "Cost Per 1K Organic Visits", value: "$0.45" },
-                { label: "ROI Estimate", value: "340%", positive: true },
+                { label: "Cost Per 1K Organic Visits", value: "—" },
+                { label: "ROI Estimate", value: "—" },
               ].map((item) => (
                 <div key={item.label} className="flex items-center justify-between p-3 border rounded-lg">
                   <p className="text-sm font-medium">{item.label}</p>
-                  <p className={`text-xl font-bold ${item.positive ? "text-green-500" : ""}`}>{item.value}</p>
+                  <p className={`text-xl font-bold ${item.label === "ROI Estimate" && item.value !== "—" ? "text-green-500" : ""}`}>{item.value}</p>
                 </div>
               ))}
+              <p className="text-xs text-muted-foreground mt-2">Cost per organic visit and ROI require Google Analytics or Search Console integration to calculate.</p>
             </div>
           </div>
         </div>
@@ -373,7 +489,16 @@ export default function AICommandCenterPage() {
             </div>
           </div>
           <div className="flex justify-end">
-            <button className="flex items-center gap-2 px-6 py-2 bg-primary text-primary-foreground rounded-lg font-medium hover:bg-primary/90">
+            <button
+              onClick={async () => {
+                await supabase.from("ai_settings").upsert({
+                  key: "guardrails",
+                  value: guardrails,
+                  updated_at: new Date().toISOString(),
+                }, { onConflict: "key" })
+              }}
+              className="flex items-center gap-2 px-6 py-2 bg-primary text-primary-foreground rounded-lg font-medium hover:bg-primary/90"
+            >
               <Save className="h-4 w-4" />
               Save Guardrails
             </button>

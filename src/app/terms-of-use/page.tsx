@@ -1,4 +1,5 @@
 import type { Metadata } from "next"
+import Image from "next/image"
 import { SITE_URL } from "@/lib/constants"
 
 export const metadata: Metadata = {
@@ -14,7 +15,7 @@ export default function TermsOfUsePage() {
     <div className="w-full">
       {/* Hero */}
       <div className="relative overflow-hidden mb-12 min-h-[320px] flex items-center">
-        <img src="https://images.pexels.com/photos/1181263/pexels-photo-1181263.jpeg" alt="Legal documents" className="absolute inset-0 w-full h-full object-cover" />
+        <Image src="https://images.pexels.com/photos/1181263/pexels-photo-1181263.jpeg" alt="Legal documents" width={1200} height={675} className="absolute inset-0 w-full h-full object-cover" />
         <div className="absolute inset-0 bg-black/40" />
         <div className="relative z-10 px-6 md:px-12 lg:px-16 py-16 text-white max-w-4xl">
           <div className="text-5xl mb-4">📜</div>
@@ -33,7 +34,7 @@ export default function TermsOfUsePage() {
 
         <section className="bg-card border rounded-2xl p-6 md:col-span-2">
           <div className="relative h-40 rounded-xl overflow-hidden mb-4">
-            <img src="https://images.pexels.com/photos/577585/pexels-photo-577585.jpeg" alt="Intellectual property" className="absolute inset-0 w-full h-full object-cover" />
+            <Image src="https://images.pexels.com/photos/577585/pexels-photo-577585.jpeg" alt="Intellectual property" width={800} height={450} className="absolute inset-0 w-full h-full object-cover" />
           </div>
           <h2 className="text-2xl font-bold mb-4">2. Intellectual Property Rights</h2>
           <p className="text-muted-foreground mb-3">All content published on Techpivo, including articles, images, graphics, logos, and code, is the property of Techpivo or its content providers.</p>
@@ -58,7 +59,7 @@ export default function TermsOfUsePage() {
 
         <section className="bg-card border rounded-2xl p-6">
           <div className="relative h-32 rounded-xl overflow-hidden mb-4">
-            <img src="https://images.pexels.com/photos/1714208/pexels-photo-1714208.jpeg" alt="User content" className="absolute inset-0 w-full h-full object-cover" />
+            <Image src="https://images.pexels.com/photos/1714208/pexels-photo-1714208.jpeg" alt="User content" width={800} height={450} className="absolute inset-0 w-full h-full object-cover" />
           </div>
           <h2 className="text-2xl font-bold mb-4">4. User-Generated Content</h2>
           <p className="text-muted-foreground">By submitting comments or content, you grant us a non-exclusive, royalty-free license. We reserve the right to moderate or remove content that violates our policies.</p>
@@ -66,7 +67,7 @@ export default function TermsOfUsePage() {
 
         <section className="bg-card border rounded-2xl p-6">
           <div className="relative h-32 rounded-xl overflow-hidden mb-4">
-            <img src="https://images.pexels.com/photos/4476377/pexels-photo-4476377.jpeg" alt="Affiliate" className="absolute inset-0 w-full h-full object-cover" />
+            <Image src="https://images.pexels.com/photos/4476377/pexels-photo-4476377.jpeg" alt="Affiliate" width={800} height={450} className="absolute inset-0 w-full h-full object-cover" />
           </div>
           <h2 className="text-2xl font-bold mb-4">5. Affiliate Disclosure</h2>
           <p className="text-muted-foreground">Techpivo participates in affiliate marketing programs. We may earn commissions on purchases through links on our site at no additional cost to you.</p>

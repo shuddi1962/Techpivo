@@ -1,3 +1,4 @@
+import Image from 'next/image';
 import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -90,7 +91,7 @@ export default async function PublicProfilePage({ params }: { params: Promise<{ 
     <div className="min-h-screen bg-background">
       <div className="relative h-48 bg-gradient-to-r from-primary/20 to-primary/5">
         {profile.cover_url && (
-          <img src={profile.cover_url} alt="" className="absolute inset-0 w-full h-full object-cover" />
+          <Image src={profile.cover_url} alt="" width={1920} height={600} className="absolute inset-0 w-full h-full object-cover" />
         )}
       </div>
 
@@ -98,7 +99,7 @@ export default async function PublicProfilePage({ params }: { params: Promise<{ 
         <div className="flex flex-col md:flex-row items-start gap-6 mb-8">
           <div className="w-28 h-28 rounded-full bg-primary/10 border-4 border-background flex items-center justify-center text-3xl font-bold text-primary">
             {profile.avatar_url ? (
-              <img src={profile.avatar_url} alt="" className="w-full h-full rounded-full object-cover" />
+              <Image src={profile.avatar_url} alt="" width={48} height={48} className="w-full h-full rounded-full object-cover" />
             ) : (
               profile.full_name?.[0] || username[0]
             )}

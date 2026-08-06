@@ -45,7 +45,7 @@ function OverviewTab() {
       setLoading(false)
     }
     fetchData()
-  }, [])
+  }, [supabase])
 
   return (
     <div className="space-y-6">
@@ -73,20 +73,10 @@ function ConnectedAccountsTab() {
       try {
         const { data } = await supabase.from("social_accounts").select("*")
         if (data) setAccounts(data)
-      } catch { /* ignore */ }
+      } catch (err) { console.error("Failed to fetch social accounts:", err) }
       setLoading(false)
     })()
-  }, [])
-
-  const defaultAccounts = [
-    { platform: "X", handle: "—", connected: false, follower_count: null },
-    { platform: "Facebook", handle: "—", connected: false, follower_count: null },
-    { platform: "LinkedIn", handle: "—", connected: false, follower_count: null },
-    { platform: "Instagram", handle: "—", connected: false, follower_count: null },
-    { platform: "Telegram", handle: "—", connected: false, follower_count: null },
-  ]
-
-  const displayAccounts = accounts.length > 0 ? accounts : defaultAccounts
+  }, [supabase])
 
   return (
     <div className="space-y-4">
@@ -95,8 +85,16 @@ function ConnectedAccountsTab() {
         <CardContent className="space-y-3">
           {loading ? (
             <p className="text-sm text-muted-foreground text-center py-4">Loading connected accounts...</p>
+          ) : accounts.length === 0 ? (
+            <div className="text-center py-6">
+              <p className="text-sm text-muted-foreground">No social accounts connected yet.</p>
+              <p className="text-xs text-muted-foreground mt-1">Connect your social media accounts in the Integrations section to enable auto-publishing.</p>
+              <Button variant="outline" size="sm" className="mt-4" asChild>
+                <Link href="/admin/integrations">Go to Integrations</Link>
+              </Button>
+            </div>
           ) : (
-            displayAccounts.map((a, i) => (
+            accounts.map((a, i) => (
               <div key={i} className="flex items-center justify-between p-3 rounded-lg bg-muted/30">
                 <div className="flex items-center gap-3">
                   <div className={`w-2 h-2 rounded-full ${a.connected ? 'bg-green-500' : 'bg-muted-foreground'}`} />
@@ -133,7 +131,7 @@ function QueueTab() {
       } catch { /* ignore */ }
       setLoading(false)
     })()
-  }, [])
+  }, [supabase])
 
   return (
     <div className="space-y-4">
@@ -170,11 +168,19 @@ function ImageStudioTab() {
       <Card>
         <CardHeader><CardTitle>Social Image Generator</CardTitle></CardHeader>
         <CardContent className="space-y-4">
-          <p className="text-sm text-muted-foreground">Generate optimized images for each social platform automatically from your articles. Available image formats below.</p>
+          <p className="text-sm text-muted-foreground">Generate optimized images for each social platform automatically from your articles. When an article is published, the system can auto-generate platform-specific images using Pexels API or AI-generated graphics.</p>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             {["Facebook (1200x630)", "X (1200x675)", "LinkedIn (1200x627)", "Instagram (1080x1080)", "Pinterest (1000x1500)", "YouTube Thumbnail", "Instagram Story", "Threads (1080x1080)"].map((format, i) => (
               <div key={i} className="p-3 rounded-lg bg-muted/30 text-center text-sm">{format}</div>
             ))}
+          </div>
+          <div className="p-4 rounded-lg bg-amber-500/10 border border-amber-500/20">
+            <p className="text-sm font-medium text-amber-600 dark:text-amber-400">How it works</p>
+            <p className="text-xs text-muted-foreground mt-1">
+              Image generation is triggered automatically in the publishing workflow. When an article is published with a featured image,
+              the system generates cropped and resized versions for each platform. Configure your preferred image sources (Pexels, Unsplash, AI)
+              in the Integrations section.
+            </p>
           </div>
         </CardContent>
       </Card>
@@ -205,7 +211,7 @@ function AnalyticsTab() {
       setLoading(false)
     }
     fetchData()
-  }, [])
+  }, [supabase])
 
   return (
     <div className="space-y-6">

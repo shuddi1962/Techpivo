@@ -47,7 +47,7 @@ export default function KnowledgeGraphPage() {
     const { data } = await query
     setEntities(data || [])
     setLoading(false)
-  }, [typeFilter, search])
+  }, [typeFilter, search, supabase])
 
   useEffect(() => { fetchEntities() }, [fetchEntities])
 

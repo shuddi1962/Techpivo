@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server';
+import { createClient } from '@/lib/supabase/admin';
 import { getRankTitle } from '@/lib/community-utils';
 export { LEVELS, BADGES, FORUM_CATEGORIES, getLevelForXP, getXPForLevel, getXPForAction, getStreakReward, getRankTitle, getStarRating, formatNumber, timeAgo } from '@/lib/community-utils';
 
@@ -212,7 +212,7 @@ export async function getForumCategories() {
     .select('*')
     .eq('is_active', true)
     .order('sort_order');
-  return data as ForumCategory[];
+  return (data || []) as ForumCategory[];
 }
 
 export async function getForumPosts(categoryId?: string, limit: number = 20) {
@@ -226,7 +226,7 @@ export async function getForumPosts(categoryId?: string, limit: number = 20) {
     .limit(limit);
   if (categoryId) query = query.eq('category_id', categoryId);
   const { data } = await query;
-  return data as ForumPost[];
+  return (data || []) as ForumPost[];
 }
 
 export async function getQuizzes(limit: number = 20) {

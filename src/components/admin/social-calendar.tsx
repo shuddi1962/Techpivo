@@ -38,7 +38,7 @@ export function SocialCalendar() {
 
     setPosts(data || [])
     setLoading(false)
-  }, [currentDate])
+  }, [currentDate, supabase])
 
   useEffect(() => { fetchPosts() }, [fetchPosts])
 

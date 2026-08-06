@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useState, useCallback } from "react"
+import Image from "next/image"
 import { createClient } from "@/lib/supabase/client"
 import type { User } from "@supabase/supabase-js"
 import { Button } from "@/components/ui/button"
@@ -54,7 +55,7 @@ export function PostComments({ postId }: PostCommentsProps) {
         })
       }
     })
-  }, [])
+  }, [supabase])
 
   const fetchComments = useCallback(async () => {
     const { data: discussions } = await supabase
@@ -86,7 +87,7 @@ export function PostComments({ postId }: PostCommentsProps) {
 
     setComments(enriched)
     setLoading(false)
-  }, [postId, user])
+  }, [postId, user, supabase])
 
   useEffect(() => { fetchComments() }, [fetchComments])
 
@@ -310,7 +311,7 @@ function CommentThread({ comment, postId, user, userProfile, onReply, fetchRepli
         <div className="flex items-center gap-2.5 mb-2.5">
           <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center text-sm font-bold text-primary">
             {comment.author?.avatar_url ? (
-              <img src={comment.author.avatar_url} alt="" className="w-full h-full rounded-full object-cover" />
+              <Image src={comment.author.avatar_url} alt="" width={48} height={48} className="w-full h-full rounded-full object-cover" />
             ) : (
               authorName[0]
             )}
@@ -368,7 +369,7 @@ function CommentThread({ comment, postId, user, userProfile, onReply, fetchRepli
                 <div className="flex items-center gap-2 mb-1.5">
                   <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center text-[10px] font-bold text-primary">
                     {reply.author?.avatar_url ? (
-                      <img src={reply.author.avatar_url} alt="" className="w-full h-full rounded-full object-cover" />
+                      <Image src={reply.author.avatar_url} alt="" width={48} height={48} className="w-full h-full rounded-full object-cover" />
                     ) : (
                       rName[0]
                     )}

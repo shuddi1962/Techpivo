@@ -3,9 +3,10 @@
 import { useState, useMemo } from "react"
 import { useParams, useRouter } from "next/navigation"
 import Link from "next/link"
+import Image from "next/image"
 import {
   Braces, FileJson, Binary, Link2, Hash, Key, Shield, Lock,
-  Type, Globe, Search, FileText, Image, Minimize2, Palette,
+  Type, Globe, Search, FileText, Image as ImageIcon, Minimize2, Palette,
   Calculator, Clock, ArrowLeft, Copy, Check, RefreshCw
 } from "lucide-react"
 
@@ -22,7 +23,7 @@ const TOOLS: Record<string, { name: string; icon: any; color: string; category: 
   "slug-generator": { name: "Slug Generator", icon: Globe, color: "text-blue-500", category: "SEO" },
   "meta-tag-generator": { name: "Meta Tag Generator", icon: Search, color: "text-green-500", category: "SEO" },
   "readability-checker": { name: "Readability Checker", icon: FileText, color: "text-purple-500", category: "SEO" },
-  "image-compressor": { name: "Image Compressor", icon: Image, color: "text-cyan-500", category: "Image" },
+  "image-compressor": { name: "Image Compressor", icon: ImageIcon, color: "text-cyan-500", category: "Image" },
   "image-resizer": { name: "Image Resizer", icon: Minimize2, color: "text-pink-500", category: "Image" },
   "color-picker": { name: "Color Picker", icon: Palette, color: "text-amber-500", category: "Image" },
   "unit-converter": { name: "Unit Converter", icon: Calculator, color: "text-green-500", category: "Calculator" },
@@ -429,7 +430,7 @@ function ImageCompressorTool() {
       {compressedSize !== null && (
         <div>
           <p className="text-sm text-green-600">Compressed: {(compressedSize / 1024).toFixed(1)} KB (saved {((1 - compressedSize / originalSize) * 100).toFixed(0)}%)</p>
-          {preview && <img src={preview} alt="Preview" className="mt-2 max-w-xs rounded-lg border" />}
+          {preview && <Image src={preview} alt="Preview" width={800} height={450} className="mt-2 max-w-xs rounded-lg border" />}
         </div>
       )}
     </div>
@@ -465,7 +466,7 @@ function ImageResizerTool() {
         <input type="number" value={height} onChange={e => setHeight(parseInt(e.target.value) || 0)} className="w-24 p-2 text-sm border rounded-lg bg-muted/30" placeholder="Height" />
         <button onClick={resize} disabled={!file} className="px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary/90 disabled:opacity-50">Resize</button>
       </div>
-      {result && <div className="max-w-xs border rounded-lg overflow-hidden"><img src={result} alt="Resized" /></div>}
+      {result && <div className="max-w-xs border rounded-lg overflow-hidden"><Image src={result} alt="Resized" width={800} height={450} /></div>}
     </div>
   )
 }
@@ -494,13 +495,13 @@ function UnitConverterTool() {
   const [value, setValue] = useState("1")
   const [fromUnit, setFromUnit] = useState("km")
   const [toUnit, setToUnit] = useState("mi")
-  const units: Record<string, number> = { km: 1, mi: 1.609344, m: 0.001, ft: 0.0003048, in: 0.0000254, cm: 0.00001, mm: 0.000001 }
+  const units = useMemo<Record<string, number>>(() => ({ km: 1, mi: 1.609344, m: 0.001, ft: 0.0003048, in: 0.0000254, cm: 0.00001, mm: 0.000001 }), [])
   const result = useMemo(() => {
     const v = parseFloat(value)
     if (isNaN(v)) return ""
     const meters = v * (units[fromUnit] || 1)
     return (meters / (units[toUnit] || 1)).toFixed(4)
-  }, [value, fromUnit, toUnit])
+  }, [value, fromUnit, toUnit, units])
   return (
     <div className="space-y-3">
       <input type="number" className="w-full p-3 text-sm border rounded-lg bg-muted/30" value={value} onChange={e => setValue(e.target.value)} placeholder="Value" />

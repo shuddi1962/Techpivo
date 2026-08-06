@@ -42,9 +42,33 @@ export default function ResearchCenterPage() {
   const [expandedBrief, setExpandedBrief] = useState<string | null>(null)
 
   const fetchSavedBriefs = useCallback(async () => {
+    try {
+      const { data: briefs, error: briefsErr } = await supabase
+        .from("content_briefs")
+        .select("id, topic, status, created_at")
+        .order("created_at", { ascending: false })
+        .limit(20)
+
+      if (!briefsErr && briefs && briefs.length > 0) {
+        setSavedBriefs(briefs.map(b => ({
+          id: b.id,
+          topic: b.topic,
+          status: b.status || "draft",
+          created_at: b.created_at,
+          tags: [],
+        })))
+        setLoading(false)
+        return
+      }
+
+      if (briefsErr) console.warn("content_briefs query failed, falling back to posts:", briefsErr)
+    } catch (e) {
+      console.warn("content_briefs table unavailable, falling back to posts:", e)
+    }
+
     const { data: posts } = await supabase
       .from("posts")
-      .select("id, title, slug, status, created_at, tags, seo_keywords")
+      .select("id, title, slug, status, created_at, tags")
       .order("created_at", { ascending: false })
       .limit(20)
 

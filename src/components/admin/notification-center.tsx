@@ -147,7 +147,7 @@ export function NotificationCenter() {
       setNotifications(prev => prev.filter(n => !dismissed.includes(n.id)))
       setUnreadCount(prev => Math.max(0, notifications.filter(n => !dismissed.includes(n.id) && !n.read).length))
     }
-  }, [notifications.length])
+  }, [notifications])
 
   if (loading) {
     return (

@@ -1,3 +1,4 @@
+import Image from "next/image"
 import { createClient } from "@/lib/supabase/server"
 import { notFound } from "next/navigation"
 import Link from "next/link"
@@ -33,7 +34,7 @@ export default async function PreviewPage({ params }: Props) {
             <article className="prose prose-invert max-w-none">
               <h1>{draft.title}</h1>
               {draft.featured_image && (
-                <img src={draft.featured_image} alt="" className="w-full rounded-lg" />
+                <Image src={draft.featured_image} alt="" width={1200} height={675} className="w-full rounded-lg" />
               )}
               <div dangerouslySetInnerHTML={{ __html: draft.content || "" }} />
             </article>
@@ -54,7 +55,7 @@ export default async function PreviewPage({ params }: Props) {
         <article className="prose prose-invert max-w-none">
           <h1>{post.title}</h1>
           {post.featured_image && (
-            <img src={post.featured_image} alt="" className="w-full rounded-lg" />
+            <Image src={post.featured_image} alt="" width={1200} height={675} className="w-full rounded-lg" />
           )}
           <div className="text-sm text-[#9CA3AF] mb-8">
             {post.category?.name && <span>{post.category.name} • </span>}

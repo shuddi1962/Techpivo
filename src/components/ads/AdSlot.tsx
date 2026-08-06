@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useState, useRef } from "react"
+import Image from "next/image"
 import { createClient } from "@/lib/supabase/client"
 import { cn } from "@/lib/utils"
 import { AD_POSITIONS } from "@/lib/constants"
@@ -122,10 +123,10 @@ export function AdSlot({ positionKey, className, preview }: AdSlotProps) {
           )}
           {campaign.destination_url ? (
             <a href={preview ? "#" : campaign.destination_url} target="_blank" rel="noopener">
-              <img src={campaign.ad_image_url} alt={campaign.advertiser_name} className="max-w-full h-auto" />
+              <Image src={campaign.ad_image_url} alt={campaign.advertiser_name} width={800} height={450} className="max-w-full h-auto" />
             </a>
           ) : (
-            <img src={campaign.ad_image_url} alt={campaign.advertiser_name} className="max-w-full h-auto" />
+            <Image src={campaign.ad_image_url} alt={campaign.advertiser_name} width={800} height={450} className="max-w-full h-auto" />
           )}
         </div>
       )

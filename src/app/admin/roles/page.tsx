@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, useCallback } from "react"
 import { createClient } from "@/lib/supabase/client"
 
 interface Profile {
@@ -18,10 +18,10 @@ export default function AdminRolesPage() {
   const [updating, setUpdating] = useState<string | null>(null)
   const supabase = createClient()
 
-  const load = async () => {
+  const load = useCallback(async () => {
     setLoading(true)
     const [profilesRes, emailRes] = await Promise.all([
-      supabase.from("profiles").select("*").order("created_at", { ascending: false }).limit(500),
+      supabase.from("user_profiles").select("*").order("created_at", { ascending: false }).limit(500),
       fetch("/api/admin/users"),
     ])
     const emailMap: Record<string, string> = (await emailRes.json()).users || {}
@@ -29,13 +29,13 @@ export default function AdminRolesPage() {
       setProfiles(profilesRes.data.map((p: any) => ({ ...p, email: emailMap[p.id] || "" })))
     }
     setLoading(false)
-  }
+  }, [supabase])
 
-  useEffect(() => { load() }, [])
+  useEffect(() => { load() }, [load])
 
   const changeRole = async (userId: string, newRole: string) => {
     setUpdating(userId)
-    await supabase.from("profiles").update({ role: newRole }).eq("id", userId)
+    await supabase.from("user_profiles").update({ role: newRole }).eq("id", userId)
     setProfiles(prev => prev.map(p => p.id === userId ? { ...p, role: newRole } : p))
     setUpdating(null)
   }

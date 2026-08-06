@@ -69,7 +69,7 @@ export function SecurityDashboard() {
 
     setRecentEvents(logsRes.data || [])
     setLoading(false)
-  }, [])
+  }, [supabase])
 
   useEffect(() => { fetchSecurityData() }, [fetchSecurityData])
 

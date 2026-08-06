@@ -452,57 +452,7 @@ export default function EnterpriseSeoCenter() {
         </TabsContent>
 
         <TabsContent value="technical" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Technical SEO</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                <div className="p-4 border rounded-lg">
-                  <div className="flex items-center gap-2 mb-2">
-                    <Globe className="h-5 w-5 text-blue-600" />
-                    <h3 className="font-medium">Core Web Vitals</h3>
-                  </div>
-                  <p className="text-sm text-muted-foreground">Monitor LCP, INP, and CLS scores</p>
-                </div>
-                <div className="p-4 border rounded-lg">
-                  <div className="flex items-center gap-2 mb-2">
-                    <Link className="h-5 w-5 text-green-600" />
-                    <h3 className="font-medium">Redirect Manager</h3>
-                  </div>
-                  <p className="text-sm text-muted-foreground">Manage 301 and 302 redirects</p>
-                </div>
-                <div className="p-4 border rounded-lg">
-                  <div className="flex items-center gap-2 mb-2">
-                    <FileText className="h-5 w-5 text-purple-600" />
-                    <h3 className="font-medium">Sitemap Manager</h3>
-                  </div>
-                  <p className="text-sm text-muted-foreground">Generate and submit sitemaps</p>
-                </div>
-                <div className="p-4 border rounded-lg">
-                  <div className="flex items-center gap-2 mb-2">
-                    <Shield className="h-5 w-5 text-red-600" />
-                    <h3 className="font-medium">Robots.txt Manager</h3>
-                  </div>
-                  <p className="text-sm text-muted-foreground">Configure crawl rules</p>
-                </div>
-                <div className="p-4 border rounded-lg">
-                  <div className="flex items-center gap-2 mb-2">
-                    <Search className="h-5 w-5 text-yellow-600" />
-                    <h3 className="font-medium">Duplicate Detection</h3>
-                  </div>
-                  <p className="text-sm text-muted-foreground">Find and fix duplicate content</p>
-                </div>
-                <div className="p-4 border rounded-lg">
-                  <div className="flex items-center gap-2 mb-2">
-                    <TrendingUp className="h-5 w-5 text-indigo-600" />
-                    <h3 className="font-medium">Google Discover</h3>
-                  </div>
-                  <p className="text-sm text-muted-foreground">Optimize for Discover eligibility</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+          <TechnicalSeoTab />
         </TabsContent>
 
         <TabsContent value="authority" className="space-y-6">
@@ -587,10 +537,10 @@ function InternalLinksTab() {
       try {
         const { data } = await supabase.from("posts").select("id, title, slug, content").eq("status", "published").limit(20)
         if (data) setPosts(data)
-      } catch { /* ignore */ }
+      } catch (err) { console.error("Failed to fetch internal links:", err) }
       setLoading(false)
     })()
-  }, [])
+  }, [supabase])
 
   return (
     <Card>
@@ -617,32 +567,137 @@ function InternalLinksTab() {
 }
 
 function SchemaTab() {
+  const supabase = createClient()
+  const [schemaType, setSchemaType] = useState("Article")
+  const [postSlug, setPostSlug] = useState("")
+  const [generated, setGenerated] = useState("")
+  const [savedTemplates, setSavedTemplates] = useState<string[]>([])
+  const [loading, setLoading] = useState(true)
+  const [saveStatus, setSaveStatus] = useState("")
+
+  useEffect(() => {
+    supabase.from("site_settings").select("value").eq("key", "schema_templates").single().then(({ data }) => {
+      if (data?.value) {
+        try {
+          const parsed = JSON.parse(data.value)
+          if (Array.isArray(parsed)) setSavedTemplates(parsed)
+        } catch {}
+      }
+      setLoading(false)
+    })
+  }, [supabase])
+
+  const generateSchema = () => {
+    const base: any = {
+      "@context": "https://schema.org",
+      "@type": schemaType,
+    }
+    if (postSlug) {
+      const url = typeof window !== "undefined" ? `${window.location.origin}/${postSlug}` : `https://techpivo.com/${postSlug}`
+      base.url = url
+      base.mainEntityOfPage = url
+    }
+    if (schemaType === "FAQPage") {
+      base.mainEntity = [
+        { "@type": "Question", name: "", acceptedAnswer: { "@type": "Answer", text: "" } },
+        { "@type": "Question", name: "", acceptedAnswer: { "@type": "Answer", text: "" } },
+      ]
+    }
+    if (schemaType === "HowTo") {
+      base.name = ""
+      base.step = [{ "@type": "HowToStep", name: "", text: "" }]
+    }
+    setGenerated(JSON.stringify(base, null, 2))
+  }
+
+  const saveAsTemplate = async () => {
+    if (!generated) return
+    setSaveStatus("saving")
+    const updated = [...savedTemplates, generated]
+    await supabase.from("site_settings").upsert({ key: "schema_templates", value: JSON.stringify(updated) }, { onConflict: "key" })
+    setSavedTemplates(updated)
+    setSaveStatus("saved")
+    setTimeout(() => setSaveStatus(""), 2000)
+  }
+
+  const loadTemplate = (tmpl: string) => {
+    setGenerated(tmpl)
+    try {
+      const parsed = JSON.parse(tmpl)
+      if (parsed["@type"]) setSchemaType(parsed["@type"])
+    } catch {}
+  }
+
+  const deleteTemplate = async (idx: number) => {
+    const updated = savedTemplates.filter((_, i) => i !== idx)
+    await supabase.from("site_settings").upsert({ key: "schema_templates", value: JSON.stringify(updated) }, { onConflict: "key" })
+    setSavedTemplates(updated)
+  }
+
   return (
-    <Card>
-      <CardHeader><CardTitle>Schema Generator</CardTitle></CardHeader>
-      <CardContent>
-        <p className="text-sm text-muted-foreground mb-4">Recommended schema types for your content:</p>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-          {[
-            { type: "Article", desc: "Standard blog posts", recommended: true },
-            { type: "NewsArticle", desc: "Breaking news content", recommended: true },
-            { type: "BlogPosting", desc: "Blog-style articles", recommended: true },
-            { type: "FAQPage", desc: "Articles with FAQs", recommended: true },
-            { type: "HowTo", desc: "Tutorials and guides", recommended: true },
-            { type: "Review", desc: "Product reviews", recommended: true },
-          ].map((s) => (
-            <div key={s.type} className="p-3 rounded-lg bg-muted/30 border border-border">
-              <div className="flex items-center justify-between mb-1">
-                <p className="text-sm font-medium">{s.type}</p>
-                {s.recommended && <Badge variant="default" className="text-[10px]">Recommended</Badge>}
+    <div className="space-y-6">
+      <Card>
+        <CardHeader><CardTitle>Schema Generator</CardTitle></CardHeader>
+        <CardContent className="space-y-4">
+          <p className="text-sm text-muted-foreground mb-4">Recommended schema types for your content:</p>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 mb-6">
+            {[
+              { type: "Article", desc: "Standard blog posts" },
+              { type: "NewsArticle", desc: "Breaking news content" },
+              { type: "BlogPosting", desc: "Blog-style articles" },
+              { type: "FAQPage", desc: "Articles with FAQs" },
+              { type: "HowTo", desc: "Tutorials and guides" },
+              { type: "Review", desc: "Product reviews" },
+            ].map((s) => (
+              <div key={s.type} className="p-3 rounded-lg bg-muted/30 border border-border">
+                <div className="flex items-center justify-between mb-1">
+                  <p className="text-sm font-medium">{s.type}</p>
+                  <Badge variant="default" className="text-[10px]">Recommended</Badge>
+                </div>
+                <p className="text-xs text-muted-foreground">{s.desc}</p>
               </div>
-              <p className="text-xs text-muted-foreground">{s.desc}</p>
+            ))}
+          </div>
+          <div className="p-4 rounded-lg bg-muted/30 space-y-3">
+            <h4 className="text-sm font-medium">Quick Schema Generator</h4>
+            <div className="flex gap-2 flex-wrap">
+              <select value={schemaType} onChange={e => setSchemaType(e.target.value)}
+                className="h-9 rounded-md border border-input bg-background px-3 text-sm">
+                {["Article", "NewsArticle", "BlogPosting", "FAQPage", "HowTo", "Review"].map(t => (
+                  <option key={t} value={t}>{t}</option>
+                ))}
+              </select>
+              <Input placeholder="Post slug (optional)" value={postSlug} onChange={e => setPostSlug(e.target.value)} className="w-48" />
+              <Button size="sm" onClick={generateSchema}>Generate</Button>
             </div>
-          ))}
-        </div>
-        <p className="text-xs text-muted-foreground mt-4">Schema markup is automatically generated for your articles on the frontend.</p>
-      </CardContent>
-    </Card>
+            {generated && (
+              <div className="relative">
+                <pre className="text-xs bg-background p-3 rounded-lg overflow-x-auto max-h-48">{generated}</pre>
+                <div className="absolute top-2 right-2 flex gap-1">
+                  <Button variant="ghost" size="sm" onClick={() => { navigator.clipboard.writeText(generated) }}><Copy className="h-3 w-3" /></Button>
+                  <Button variant="ghost" size="sm" onClick={saveAsTemplate}>{saveStatus === "saved" ? "Saved!" : "Save"}</Button>
+                </div>
+              </div>
+            )}
+          </div>
+          {!loading && savedTemplates.length > 0 && (
+            <div className="space-y-2">
+              <h4 className="text-sm font-medium">Saved Templates</h4>
+              {savedTemplates.map((tmpl, idx) => (
+                <div key={idx} className="flex items-center justify-between p-2 rounded bg-muted/20 text-sm">
+                  <span className="font-mono text-xs truncate flex-1">{tmpl.slice(0, 80)}...</span>
+                  <div className="flex gap-1 shrink-0">
+                    <Button variant="ghost" size="sm" onClick={() => loadTemplate(tmpl)}><Eye className="h-3 w-3" /></Button>
+                    <Button variant="ghost" size="sm" onClick={() => deleteTemplate(idx)}><Trash2 className="h-3 w-3" /></Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+          <p className="text-xs text-muted-foreground">Schema markup is automatically generated for your articles on the frontend. Use this tool to preview or generate custom schema for special cases.</p>
+        </CardContent>
+      </Card>
+    </div>
   )
 }
 
@@ -722,18 +777,38 @@ function DuplicatesTab() {
       try {
         const { data } = await supabase.from("posts").select("id, title, slug").eq("status", "published").limit(50)
         if (data) setPosts(data)
-      } catch { /* ignore */ }
+      } catch (err) { console.error("Failed to fetch duplicates:", err) }
       setLoading(false)
     })()
-  }, [])
+  }, [supabase])
+
+  const getBigrams = (s: string): Set<string> => {
+    const tokens = s.toLowerCase().split(/\s+/).filter(Boolean)
+    const bigrams = new Set<string>()
+    for (let i = 0; i < tokens.length - 1; i++) {
+      bigrams.add(`${tokens[i]} ${tokens[i + 1]}`)
+    }
+    return bigrams
+  }
 
   const findSimilar = (title: string, allPosts: any[]) => {
-    const words = title.toLowerCase().split(/\s+/)
+    const words = title.toLowerCase().split(/\s+/).filter(Boolean)
+    const titleBigrams = getBigrams(title)
     return allPosts.filter(p => {
       if (p.title === title) return false
-      const pWords = p.title.toLowerCase().split(/\s+/)
-      const overlap = words.filter(w => pWords.includes(w)).length
-      return overlap >= Math.min(3, words.length / 2)
+      const pWords = p.title.toLowerCase().split(/\s+/).filter(Boolean)
+      const wordOverlap = words.filter(w => pWords.includes(w)).length
+      const pBigrams = getBigrams(p.title)
+      let bigramOverlap = 0
+      titleBigrams.forEach(b => { if (pBigrams.has(b)) bigramOverlap++ })
+      const unionSize = new Set([...titleBigrams, ...pBigrams]).size
+      const jaccard = unionSize > 0 ? bigramOverlap / unionSize : 0
+      // Flag as duplicate if word overlap >= 4 words with >= 40% word match,
+      // or Jaccard similarity on bigrams >= 0.3
+      const wordMatchRatio = Math.max(words.length, pWords.length) > 0
+        ? wordOverlap / Math.max(words.length, pWords.length)
+        : 0
+      return (wordOverlap >= 4 && wordMatchRatio >= 0.4) || jaccard >= 0.3
     }).slice(0, 3)
   }
 
@@ -789,11 +864,11 @@ function ContentDecayTab() {
           }).slice(0, 10)
           setDecayingPosts(decaying)
         }
-      } catch { /* ignore */ }
+      } catch (err) { console.error("Failed to fetch content decay:", err) }
       setLoading(false)
     }
     fetchDecay()
-  }, [])
+  }, [supabase])
 
   return (
     <Card>
@@ -829,12 +904,127 @@ function ContentDecayTab() {
   )
 }
 
-function RobotsTab() {
-  const [robotsContent, setRobotsContent] = useState(
-    `User-agent: *\nAllow: /\nDisallow: /admin/\nDisallow: /api/\n\nUser-agent: GPTBot\nDisallow: /\n\nSitemap: https://techpivo.com/sitemap.xml`
+function TechnicalSeoTab() {
+  const supabase = createClient()
+  const [loading, setLoading] = useState(true)
+  const [techStats, setTechStats] = useState({
+    totalPosts: 0,
+    indexedPosts: 0,
+    totalRedirects: 0,
+    pendingIssues: 0,
+    auditsPerformed: 0,
+    avgTechnicalScore: 0,
+  })
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const [postsRes, indexedRes, redirectsRes, issuesRes, auditsRes] = await Promise.all([
+          supabase.from("posts").select("*", { count: "exact", head: true }).eq("status", "published"),
+          supabase.from("posts").select("*", { count: "exact", head: true }).eq("status", "published").eq("google_indexed", true),
+          supabase.from("seo_redirects").select("*", { count: "exact", head: true }),
+          supabase.from("seo_issues").select("*", { count: "exact", head: true }).eq("resolved", false),
+          supabase.from("seo_audits").select("technical_health_score").limit(100),
+        ])
+
+        const audits = auditsRes.data || []
+        const avgTech = audits.length > 0
+          ? Math.round(audits.reduce((s, a) => s + (a.technical_health_score || 0), 0) / audits.length)
+          : 0
+
+        setTechStats({
+          totalPosts: postsRes.count || 0,
+          indexedPosts: indexedRes.count || 0,
+          totalRedirects: redirectsRes.count || 0,
+          pendingIssues: issuesRes.count || 0,
+          auditsPerformed: audits.length,
+          avgTechnicalScore: avgTech,
+        })
+      } catch (err) { console.error("Failed to fetch technical SEO data:", err) }
+      setLoading(false)
+    }
+    fetchData()
+  }, [supabase])
+
+  if (loading) return <p className="text-sm text-muted-foreground">Loading...</p>
+
+  return (
+    <div className="space-y-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="p-4 border rounded-lg">
+          <div className="flex items-center gap-2 mb-2">
+            <Globe className="h-5 w-5 text-blue-600" />
+            <h3 className="font-medium">Published Posts</h3>
+          </div>
+          <p className="text-2xl font-bold">{techStats.totalPosts}</p>
+          <p className="text-sm text-muted-foreground">{techStats.indexedPosts} indexed ({techStats.totalPosts ? Math.round(techStats.indexedPosts / techStats.totalPosts * 100) : 0}%)</p>
+        </div>
+        <div className="p-4 border rounded-lg">
+          <div className="flex items-center gap-2 mb-2">
+            <Link className="h-5 w-5 text-green-600" />
+            <h3 className="font-medium">Redirects</h3>
+          </div>
+          <p className="text-2xl font-bold">{techStats.totalRedirects}</p>
+          <p className="text-sm text-muted-foreground">301 redirects configured</p>
+        </div>
+        <div className="p-4 border rounded-lg">
+          <div className="flex items-center gap-2 mb-2">
+            <FileText className="h-5 w-5 text-purple-600" />
+            <h3 className="font-medium">Sitemap Coverage</h3>
+          </div>
+          <p className="text-2xl font-bold">{techStats.totalPosts}</p>
+          <p className="text-sm text-muted-foreground">URLs in sitemap</p>
+        </div>
+        <div className="p-4 border rounded-lg">
+          <div className="flex items-center gap-2 mb-2">
+            <AlertTriangle className="h-5 w-5 text-red-600" />
+            <h3 className="font-medium">Pending Issues</h3>
+          </div>
+          <p className={`text-2xl font-bold ${techStats.pendingIssues > 0 ? "text-red-600" : "text-green-600"}`}>{techStats.pendingIssues}</p>
+          <p className="text-sm text-muted-foreground">Unresolved SEO issues</p>
+        </div>
+        <div className="p-4 border rounded-lg">
+          <div className="flex items-center gap-2 mb-2">
+            <Shield className="h-5 w-5 text-orange-600" />
+            <h3 className="font-medium">Technical Health</h3>
+          </div>
+          <p className={`text-2xl font-bold ${techStats.avgTechnicalScore >= 70 ? "text-green-600" : techStats.avgTechnicalScore >= 50 ? "text-yellow-600" : "text-red-600"}`}>
+            {techStats.avgTechnicalScore || "N/A"}%
+          </p>
+          <p className="text-sm text-muted-foreground">Avg from {techStats.auditsPerformed} audits</p>
+        </div>
+        <div className="p-4 border rounded-lg">
+          <div className="flex items-center gap-2 mb-2">
+            <BarChart3 className="h-5 w-5 text-indigo-600" />
+            <h3 className="font-medium">SEO Audits</h3>
+          </div>
+          <p className="text-2xl font-bold">{techStats.auditsPerformed}</p>
+          <p className="text-sm text-muted-foreground">Audits performed</p>
+        </div>
+      </div>
+    </div>
   )
+}
+
+function RobotsTab() {
+  const [robotsContent, setRobotsContent] = useState("")
   const [saved, setSaved] = useState(false)
+  const [loading, setLoading] = useState(true)
   const siteUrl = typeof window !== "undefined" ? window.location.origin : "https://techpivo.com"
+
+  useEffect(() => {
+    const supabase = createClient()
+    supabase.from("site_settings").select("value").eq("key", "robots_txt").single().then(({ data }) => {
+      if (data?.value) {
+        setRobotsContent(data.value)
+      } else {
+        setRobotsContent(
+          `User-agent: *\nAllow: /\nDisallow: /admin/\nDisallow: /api/\n\nUser-agent: GPTBot\nDisallow: /\n\nSitemap: ${siteUrl}/sitemap.xml`
+        )
+      }
+      setLoading(false)
+    })
+  }, [siteUrl])
 
   const handleSave = async () => {
     const supabase = createClient()
@@ -851,7 +1041,10 @@ function RobotsTab() {
     <Card>
       <CardHeader><CardTitle>Robots.txt Manager</CardTitle></CardHeader>
       <CardContent>
-        <textarea
+        {loading ? (
+          <p className="text-sm text-muted-foreground">Loading...</p>
+        ) : (
+        <><textarea
           className="w-full h-48 p-3 font-mono text-sm border rounded-lg bg-muted/30"
           value={robotsContent}
           onChange={(e) => setRobotsContent(e.target.value)}
@@ -861,6 +1054,7 @@ function RobotsTab() {
           <Button variant="outline" onClick={handlePreview}>Preview</Button>
         </div>
         <p className="text-xs text-muted-foreground mt-2">Your robots.txt will be served at {siteUrl}/robots.txt</p>
+        </>)}
       </CardContent>
     </Card>
   )
@@ -877,11 +1071,11 @@ function SitemapTab() {
         const { count: total } = await supabase.from("posts").select("*", { count: "exact", head: true }).eq("status", "published")
         const { count: indexed } = await supabase.from("posts").select("*", { count: "exact", head: true }).eq("status", "published").eq("google_indexed", true)
         setStats({ total: total || 0, indexed: indexed || 0 })
-      } catch { /* ignore */ }
+      } catch (err) { console.error("Failed to fetch sitemap stats:", err) }
       setLoading(false)
     }
     fetchSitemap()
-  }, [])
+  }, [supabase])
 
   return (
     <Card>
@@ -937,7 +1131,7 @@ function SeoSettingsTab() {
         })
       }
     })
-  }, [])
+  }, [supabase])
 
   const handleSave = async () => {
     setSaving(true)
@@ -988,42 +1182,59 @@ function SeoSettingsTab() {
 function CoreWebVitalsTab() {
   const supabase = createClient()
   const [loading, setLoading] = useState(true)
-  const [vitals, setVitals] = useState<any[]>([])
+  const [hasData, setHasData] = useState(false)
 
   useEffect(() => {
-    const fetchVitals = async () => {
+    const checkData = async () => {
       try {
-        const { data } = await supabase.from("analytics_events").select("created_at").eq("event_type", "page_view").limit(1000)
-        const loadTime = data?.length
-          ? Math.round(data.reduce((s: number) => s + Math.random() * 500 + 500, 0) / data.length)
-          : null
-        setVitals([
-          { metric: "LCP", value: loadTime ? `${(loadTime / 1000).toFixed(1)}s` : "—", status: "Good", target: "< 2.5s" },
-          { metric: "INP", value: "—", status: "Needs Data", target: "< 200ms" },
-          { metric: "CLS", value: "—", status: "Needs Data", target: "< 0.1" },
-        ])
-      } catch { /* ignore */ }
+        const { count: auditCount } = await supabase.from("seo_audits").select("*", { count: "exact", head: true }).limit(1)
+        const hasAuditData = (auditCount || 0) > 0
+        const { data: rumSetting } = await supabase.from("site_settings").select("value").eq("key", "rum_web_vitals_enabled").single()
+        const rumEnabled = rumSetting?.value === true || rumSetting?.value === "true"
+        setHasData(hasAuditData || rumEnabled)
+      } catch (err) {
+        console.error("Failed to check vitals data:", err)
+      }
       setLoading(false)
     }
-    fetchVitals()
-  }, [])
+    checkData()
+  }, [supabase])
+
+  if (loading) return <p className="text-sm text-muted-foreground">Loading...</p>
+
+  if (!hasData) {
+    return (
+      <div className="bg-muted/30 border border-border rounded-lg p-8 text-center space-y-3">
+        <BarChart3 className="h-12 w-12 text-muted-foreground mx-auto" />
+        <h3 className="font-medium text-lg">No Core Web Vitals Data Yet</h3>
+        <p className="text-sm text-muted-foreground max-w-lg mx-auto">
+          Core Web Vitals require a Real User Monitoring (RUM) integration to collect real visitor data.
+          Add the <code className="bg-muted px-1.5 rounded text-xs">web-vitals</code> library to your frontend
+          and set <code className="bg-muted px-1.5 rounded text-xs">rum_web_vitals_enabled</code> to true in Site Settings.
+        </p>
+        <p className="text-xs text-muted-foreground">
+          Once configured, LCP (target: &lt; 2.5s), INP (target: &lt; 200ms), and CLS (target: &lt; 0.1) will appear here.
+        </p>
+      </div>
+    )
+  }
 
   return (
-    <div className="space-y-6">
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {vitals.map((m, i) => (
-          <Card key={i}>
-            <CardContent className="p-4 text-center">
-              <p className="text-sm text-muted-foreground">{m.metric}</p>
-              <p className={`text-3xl font-bold ${m.status === 'Good' ? 'text-green-500' : 'text-yellow-500'}`}>
-                {loading ? "..." : m.value}
-              </p>
-              <Badge variant={m.status === 'Good' ? 'default' : 'secondary'} className="mt-1">{m.status}</Badge>
-              <p className="text-xs text-muted-foreground mt-1">Target: {m.target}</p>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      {[
+        { metric: "LCP", target: "< 2.5s" },
+        { metric: "INP", target: "< 200ms" },
+        { metric: "CLS", target: "< 0.1" },
+      ].map((m, i) => (
+        <Card key={i}>
+          <CardContent className="p-4 text-center">
+            <p className="text-sm text-muted-foreground">{m.metric}</p>
+            <p className="text-3xl font-bold text-yellow-500">&mdash;</p>
+            <Badge variant="outline" className="mt-1">Collecting Data</Badge>
+            <p className="text-xs text-muted-foreground mt-1">Target: {m.target}</p>
+          </CardContent>
+        </Card>
+      ))}
     </div>
   )
 }
@@ -1031,52 +1242,87 @@ function CoreWebVitalsTab() {
 function ImageSeoTab() {
   const supabase = createClient()
   const [loading, setLoading] = useState(true)
-  const [issues, setIssues] = useState<any[]>([])
+  const [imageStats, setImageStats] = useState({
+    total: 0,
+    missingFeatured: 0,
+    noImagesInContent: 0,
+    withImages: 0,
+  })
 
   useEffect(() => {
     const fetchImages = async () => {
       try {
         const { data } = await supabase.from("posts").select("featured_image, content")
-          .eq("status", "published").limit(100)
+          .eq("status", "published").limit(200)
 
-        let missingAlt = 0
-        let largeImages = 0
+        const posts = data || []
+        let missingFeatured = 0
+        let noImagesInContent = 0
 
-        ;(data || []).forEach((p) => {
-          if (!p.featured_image) missingAlt++
-          if (p.content && p.content.length > 5000) largeImages++
+        posts.forEach((p) => {
+          if (!p.featured_image) missingFeatured++
+          const content = p.content || ""
+          const imgTagCount = (content.match(/<img[^>]+>/gi) || []).length
+          const mdImgCount = (content.match(/!\[.*?\]\(.*?\)/g) || []).length
+          if (imgTagCount === 0 && mdImgCount === 0) noImagesInContent++
         })
 
-        setIssues([
-          { issue: "Missing featured image", count: missingAlt, severity: "warning" },
-          { issue: "Long content without images", count: largeImages, severity: "info" },
-        ])
-      } catch { /* ignore */ }
+        setImageStats({
+          total: posts.length,
+          missingFeatured,
+          noImagesInContent,
+          withImages: posts.length - noImagesInContent,
+        })
+      } catch (err) { console.error("Failed to fetch image SEO data:", err) }
       setLoading(false)
     }
     fetchImages()
-  }, [])
+  }, [supabase])
+
+  if (loading) return <p className="text-sm text-muted-foreground">Loading...</p>
 
   return (
-    <Card>
-      <CardHeader><CardTitle>Image SEO Audit</CardTitle></CardHeader>
-      <CardContent className="space-y-3">
-        {loading ? (
-          <p className="text-sm text-muted-foreground">Loading...</p>
-        ) : (
-          issues.map((i, idx) => (
-            <div key={idx} className="flex items-center justify-between p-3 rounded-lg bg-muted/30">
-              <div className="flex items-center gap-2">
-                <Image className="h-4 w-4 text-muted-foreground" />
-                <span className="text-sm font-medium">{i.issue}</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <Badge variant={i.severity === 'warning' ? 'secondary' : 'outline'}>{i.count} articles</Badge>
-              </div>
-            </div>
-          ))
-        )}
-      </CardContent>
-    </Card>
+    <div className="space-y-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="p-4 border rounded-lg text-center">
+          <p className="text-2xl font-bold">{imageStats.total}</p>
+          <p className="text-sm text-muted-foreground">Articles Scanned</p>
+        </div>
+        <div className="p-4 border rounded-lg text-center">
+          <p className={`text-2xl font-bold ${imageStats.missingFeatured > 0 ? "text-yellow-600" : "text-green-600"}`}>{imageStats.missingFeatured}</p>
+          <p className="text-sm text-muted-foreground">Missing Featured Image</p>
+        </div>
+        <div className="p-4 border rounded-lg text-center">
+          <p className={`text-2xl font-bold ${imageStats.noImagesInContent > 0 ? "text-red-600" : "text-green-600"}`}>{imageStats.noImagesInContent}</p>
+          <p className="text-sm text-muted-foreground">No Images in Content</p>
+        </div>
+        <div className="p-4 border rounded-lg text-center">
+          <p className={`text-2xl font-bold ${imageStats.total > 0 ? "text-green-600" : "text-muted-foreground"}`}>{imageStats.withImages}</p>
+          <p className="text-sm text-muted-foreground">Articles With Images</p>
+        </div>
+      </div>
+      {imageStats.missingFeatured > 0 && (
+        <div className="flex items-center justify-between p-3 rounded-lg bg-yellow-50 border border-yellow-200">
+          <div className="flex items-center gap-2">
+            <Image className="h-4 w-4 text-yellow-600" />
+            <span className="text-sm font-medium text-yellow-800">Missing featured images</span>
+          </div>
+          <Badge variant="secondary" className="bg-yellow-100 text-yellow-800">{imageStats.missingFeatured} articles</Badge>
+        </div>
+      )}
+      {imageStats.noImagesInContent > 0 && (
+        <div className="flex items-center justify-between p-3 rounded-lg bg-red-50 border border-red-200">
+          <div className="flex items-center gap-2">
+            <Image className="h-4 w-4 text-red-600" />
+            <span className="text-sm font-medium text-red-800">Content without any image markup</span>
+          </div>
+          <Badge variant="secondary" className="bg-red-100 text-red-800">{imageStats.noImagesInContent} articles</Badge>
+        </div>
+      )}
+      {imageStats.missingFeatured === 0 && imageStats.noImagesInContent === 0 && (
+        <p className="text-sm text-muted-foreground text-center py-4">All scanned articles have featured images and content images. Good job!</p>
+      )}
+    </div>
   )
 }
+

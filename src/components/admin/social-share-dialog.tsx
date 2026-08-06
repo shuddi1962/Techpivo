@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import NextImage from "next/image"
 import { X, Share2, Check, ExternalLink, Copy, Image as ImageIcon, Loader2 } from "lucide-react"
 import { SITE_URL } from "@/lib/constants"
 
@@ -266,9 +267,11 @@ export function SocialShareDialog({ open, onClose, post }: SocialShareDialogProp
                 {image && (
                   <div className="px-4 pb-1.5">
                     <div className="relative w-full aspect-[16/9] rounded-lg overflow-hidden bg-gray-100 dark:bg-[#0A0F1E] border border-gray-100 dark:border-[#1F2937]">
-                      <img
+                      <NextImage
                         src={image}
                         alt=""
+                        width={1200}
+                        height={675}
                         className="w-full h-full object-cover"
                         onError={(e) => { (e.target as HTMLImageElement).style.display = "none" }}
                       />

@@ -7,6 +7,9 @@ import { Badge } from "@/components/ui/badge"
 import { BarChart3, Users, Globe, TrendingUp, Share2, Mail, Swords, Brain, Download, RefreshCw } from "lucide-react"
 import { RevenueAnalytics } from "@/components/admin/revenue-analytics"
 import { AiInsights } from "@/components/admin/ai-insights"
+import { ChartLine, ChartBar, ChartArea, ChartPie, ChartRadar, ChartLeaderboard, ChartGeoMap } from "@/components/charts"
+
+const COLORS = ["#3b82f6", "#22c55e", "#f59e0b", "#ef4444", "#8b5cf6", "#ec4899", "#14b8a6", "#f97316", "#6366f1", "#84cc16"]
 
 const tabs = [
   { id: "overview", label: "Overview", icon: BarChart3 },
@@ -69,16 +72,24 @@ function OverviewTab() {
           const name = p.categories?.name || "Uncategorized"
           catMap[name] = (catMap[name] || 0) + 1
         })
-        const totalCat = Object.values(catMap).reduce((s, v) => s + v, 0) || 1
+
+        const dailyChart = Array.from({ length: 30 }).map((_, i) => {
+          const d = new Date()
+          d.setDate(d.getDate() - (29 - i))
+          const dayStr = d.toDateString()
+          const label = d.toLocaleDateString("en-US", { month: "short", day: "numeric" })
+          const count = dailyData ? dailyData.filter((e: any) => new Date(e.created_at).toDateString() === dayStr).length : 0
+          return { date: label, views: count }
+        })
 
         setData({
           users: users.count || 0,
           sessions: sessions.count || 0,
           pageViews: pageViews.count || 0,
           postsCount: postsCount.count || 0,
-          dailyData,
+          dailyChart,
           topPages: sortedPages,
-          categories: Object.entries(catMap).map(([name, count]) => ({ name, pct: Math.round((count / totalCat) * 100) })),
+          categories: Object.entries(catMap).map(([name, count]) => ({ name, count })),
         })
       } catch (err) {
         console.error("Failed to fetch analytics:", err)
@@ -86,95 +97,109 @@ function OverviewTab() {
       setLoading(false)
     }
     fetchData()
-  }, [])
+  }, [supabase])
 
   if (loading) return <div className="flex items-center justify-center h-64 text-muted-foreground">Loading analytics...</div>
   if (!data) return <div className="flex items-center justify-center h-64 text-muted-foreground">No data available yet</div>
 
-  const dailyHeights = data.dailyData
-    ? Array.from({ length: 30 }).map((_, i) => {
-        const d = new Date()
-        d.setDate(d.getDate() - (29 - i))
-        const dayStr = d.toDateString()
-        const count = data.dailyData.filter((e: any) => new Date(e.created_at).toDateString() === dayStr).length
-        return count
-      })
-    : []
+  const topPagesChart = data.topPages.map(([url, count]: [string, number]) => ({
+    page: url.length > 30 ? url.substring(0, 30) + "..." : url,
+    views: count,
+  }))
 
-  const maxH = Math.max(...dailyHeights, 1)
+  const catChart = data.categories.map((c: any) => ({ category: c.name, articles: c.count }))
 
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-        {[
-          { label: "Users", value: data.users.toLocaleString(), change: "+" + data.users, up: true },
-          { label: "Sessions (30d)", value: data.sessions.toLocaleString(), change: "Last 30 days", up: true },
-          { label: "Page Views", value: data.pageViews.toLocaleString(), change: "All time", up: true },
-          { label: "Published Posts", value: data.postsCount.toLocaleString(), change: "Total", up: true },
-          { label: "Avg Daily Views", value: Math.round(data.pageViews / (data.postsCount || 1)).toLocaleString(), change: "Per post", up: true },
-          { label: "Returning", value: "—", change: "Track with GA", up: true },
-        ].map((k) => (
-          <Card key={k.label}>
-            <CardContent className="p-4">
-              <p className="text-xs text-muted-foreground">{k.label}</p>
-              <p className="text-2xl font-bold mt-1">{k.value}</p>
-              <p className="text-xs mt-1 text-green-500">{k.change}</p>
-            </CardContent>
-          </Card>
-        ))}
+        <Card>
+          <CardContent className="p-4">
+            <p className="text-xs text-muted-foreground flex items-center gap-1"><Users className="h-3 w-3" /> Users</p>
+            <p className="text-2xl font-bold mt-1">{data.users.toLocaleString()}</p>
+            <p className="text-xs mt-1 text-emerald-500 flex items-center gap-0.5"><TrendingUp className="h-3 w-3" /> Total registered</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">
+            <p className="text-xs text-muted-foreground flex items-center gap-1"><BarChart3 className="h-3 w-3" /> Sessions (30d)</p>
+            <p className="text-2xl font-bold mt-1">{data.sessions.toLocaleString()}</p>
+            <p className="text-xs mt-1 text-muted-foreground">Last 30 days</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">
+            <p className="text-xs text-muted-foreground flex items-center gap-1"><Globe className="h-3 w-3" /> Page Views</p>
+            <p className="text-2xl font-bold mt-1">{data.pageViews.toLocaleString()}</p>
+            <p className="text-xs mt-1 text-emerald-500 flex items-center gap-0.5"><TrendingUp className="h-3 w-3" /> All time</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">
+            <p className="text-xs text-muted-foreground flex items-center gap-1"><BarChart3 className="h-3 w-3" /> Published Posts</p>
+            <p className="text-2xl font-bold mt-1">{data.postsCount.toLocaleString()}</p>
+            <p className="text-xs mt-1 text-muted-foreground">Total articles</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">
+            <p className="text-xs text-muted-foreground flex items-center gap-1"><TrendingUp className="h-3 w-3" /> Avg Daily Views</p>
+            <p className="text-2xl font-bold mt-1">{Math.round(data.pageViews / 30).toLocaleString()}</p>
+            <p className="text-xs mt-1 text-muted-foreground">Per day (30d avg)</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">
+            <p className="text-xs text-muted-foreground flex items-center gap-1"><TrendingUp className="h-3 w-3" /> Views Per Post</p>
+            <p className="text-2xl font-bold mt-1">{data.postsCount > 0 ? Math.round(data.pageViews / data.postsCount).toLocaleString() : "—"}</p>
+            <p className="text-xs mt-1 text-muted-foreground">Avg per article</p>
+          </CardContent>
+        </Card>
       </div>
+
       <Card>
         <CardHeader><CardTitle>Daily Views (Last 30 Days)</CardTitle></CardHeader>
         <CardContent>
-          <div className="h-48 flex items-end gap-1">
-            {dailyHeights.map((h, i) => (
-              <div
-                key={i}
-                className="flex-1 bg-primary/20 rounded-t hover:bg-primary/40 transition-colors relative group"
-                style={{ height: `${(h / maxH) * 100}%` }}
-              >
-                <span className="absolute -top-6 left-1/2 -translate-x-1/2 text-[10px] text-muted-foreground opacity-0 group-hover:opacity-100 whitespace-nowrap">
-                  {h} views
-                </span>
-              </div>
-            ))}
-          </div>
-          <p className="text-xs text-muted-foreground mt-2 text-center">Daily page views — last 30 days</p>
+          <ChartLine
+            data={data.dailyChart}
+            xKey="date"
+            lines={[{ key: "views", color: COLORS[0], name: "Page Views" }]}
+            height={250}
+            showDots={false}
+          />
         </CardContent>
       </Card>
+
       <div className="grid md:grid-cols-2 gap-6">
         <Card>
           <CardHeader><CardTitle>Top Pages</CardTitle></CardHeader>
-          <CardContent className="space-y-2">
-            {data.topPages.length === 0 ? (
-              <p className="text-sm text-muted-foreground text-center py-4">No page data yet</p>
+          <CardContent>
+            {topPagesChart.length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-8">No page data yet</p>
             ) : (
-              data.topPages.map(([url, count]: [string, number], i: number) => (
-                <div key={i} className="flex items-center justify-between text-sm">
-                  <span className="truncate font-mono text-xs">{url}</span>
-                  <span className="text-muted-foreground">{count} views</span>
-                </div>
-              ))
+              <ChartBar
+                data={topPagesChart}
+                xKey="page"
+                bars={[{ key: "views", color: COLORS[0], name: "Views" }]}
+                height={220}
+                layout="vertical"
+                showValues
+              />
             )}
           </CardContent>
         </Card>
         <Card>
           <CardHeader><CardTitle>Content by Category</CardTitle></CardHeader>
-          <CardContent className="space-y-2">
-            {data.categories.length === 0 ? (
-              <p className="text-sm text-muted-foreground text-center py-4">No categories yet</p>
+          <CardContent>
+            {catChart.length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-8">No categories yet</p>
             ) : (
-              data.categories.map((c: any, i: number) => (
-                <div key={i} className="flex items-center justify-between text-sm">
-                  <span>{c.name}</span>
-                  <div className="flex items-center gap-2">
-                    <div className="w-24 h-2 bg-muted rounded-full overflow-hidden">
-                      <div className="h-full bg-primary rounded-full" style={{ width: `${c.pct}%` }} />
-                    </div>
-                    <span className="text-muted-foreground text-xs">{c.pct}%</span>
-                  </div>
-                </div>
-              ))
+              <ChartBar
+                data={catChart}
+                xKey="category"
+                bars={[{ key: "articles", color: COLORS[1], name: "Articles" }]}
+                height={220}
+                showValues
+              />
             )}
           </CardContent>
         </Card>
@@ -188,88 +213,121 @@ function RealTimeTab() {
   const [stats, setStats] = useState({ activeNow: 0, today: 0, thisHour: 0, newToday: 0 })
   const [pages, setPages] = useState<{ page: string; visitors: number }[]>([])
   const [countries, setCountries] = useState<{ name: string; count: number }[]>([])
+  const [loading, setLoading] = useState(true)
+
+  const fetchRealtime = useCallback(async () => {
+    try {
+      const now = new Date()
+      const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString()
+      const hourAgo = new Date(now.getTime() - 60 * 60 * 1000).toISOString()
+
+      const [todayRes, hourRes, pageRes, countryRes] = await Promise.all([
+        supabase.from("analytics_events").select("*", { count: "exact", head: true }).eq("event_type", "page_view").gte("created_at", todayStart),
+        supabase.from("analytics_events").select("*", { count: "exact", head: true }).eq("event_type", "page_view").gte("created_at", hourAgo),
+        supabase.from("analytics_events").select("page_url").eq("event_type", "page_view").gte("created_at", hourAgo).limit(500),
+        supabase.from("analytics_events").select("country").eq("event_type", "page_view").gte("created_at", todayStart).limit(500),
+      ])
+
+      const pageMap: Record<string, number> = {}
+      ;(pageRes.data || []).forEach((p: any) => {
+        const url = p.page_url || "/"
+        pageMap[url] = (pageMap[url] || 0) + 1
+      })
+
+      const countryMap: Record<string, number> = {}
+      ;(countryRes.data || []).forEach((c: any) => {
+        if (c.country) countryMap[c.country] = (countryMap[c.country] || 0) + 1
+      })
+
+      setStats({
+        activeNow: hourRes.count || 0,
+        today: todayRes.count || 0,
+        thisHour: hourRes.count || 0,
+        newToday: todayRes.count || 0,
+      })
+      setPages(Object.entries(pageMap).sort((a, b) => b[1] - a[1]).slice(0, 5).map(([page, visitors]) => ({ page, visitors })))
+      setCountries(Object.entries(countryMap).sort((a, b) => b[1] - a[1]).slice(0, 8).map(([name, count]) => ({ name, count })))
+    } catch (err) {
+      console.error("Realtime fetch error:", err)
+    }
+    setLoading(false)
+  }, [supabase])
 
   useEffect(() => {
-    const fetchRealtime = async () => {
-      try {
-        const now = new Date()
-        const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString()
-        const hourAgo = new Date(now.getTime() - 60 * 60 * 1000).toISOString()
-
-        const [todayRes, hourRes, pageRes, countryRes] = await Promise.all([
-          supabase.from("analytics_events").select("*", { count: "exact", head: true }).eq("event_type", "page_view").gte("created_at", todayStart),
-          supabase.from("analytics_events").select("*", { count: "exact", head: true }).eq("event_type", "page_view").gte("created_at", hourAgo),
-          supabase.from("analytics_events").select("page_url").eq("event_type", "page_view").gte("created_at", hourAgo).limit(500),
-          supabase.from("analytics_events").select("country").eq("event_type", "page_view").gte("created_at", todayStart).limit(500),
-        ])
-
-        const pageMap: Record<string, number> = {}
-        ;(pageRes.data || []).forEach((p: any) => {
-          const url = p.page_url || "/"
-          pageMap[url] = (pageMap[url] || 0) + 1
-        })
-
-        const countryMap: Record<string, number> = {}
-        ;(countryRes.data || []).forEach((c: any) => {
-          if (c.country) countryMap[c.country] = (countryMap[c.country] || 0) + 1
-        })
-
-        setStats({
-          activeNow: hourRes.count || 0,
-          today: todayRes.count || 0,
-          thisHour: hourRes.count || 0,
-          newToday: todayRes.count || 0,
-        })
-        setPages(Object.entries(pageMap).sort((a, b) => b[1] - a[1]).slice(0, 5).map(([page, visitors]) => ({ page, visitors })))
-        setCountries(Object.entries(countryMap).sort((a, b) => b[1] - a[1]).slice(0, 8).map(([name, count]) => ({ name, count })))
-      } catch (err) {
-        console.error("Realtime fetch error:", err)
-      }
-    }
     fetchRealtime()
     const interval = setInterval(fetchRealtime, 30000)
     return () => clearInterval(interval)
-  }, [])
+  }, [fetchRealtime])
+
+  if (loading) return <div className="flex items-center justify-center h-64 text-muted-foreground">Loading real-time data...</div>
+
+  const pagesChart = pages.map(p => ({ page: p.page.length > 25 ? p.page.substring(0, 25) + "..." : p.page, visitors: p.visitors }))
 
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <Card><CardContent className="p-4 text-center"><p className="text-3xl font-bold text-green-500">{stats.activeNow}</p><p className="text-xs text-muted-foreground">Active (Last Hour)</p></CardContent></Card>
-        <Card><CardContent className="p-4 text-center"><p className="text-3xl font-bold">{stats.today.toLocaleString()}</p><p className="text-xs text-muted-foreground">Today</p></CardContent></Card>
-        <Card><CardContent className="p-4 text-center"><p className="text-3xl font-bold">{stats.thisHour.toLocaleString()}</p><p className="text-xs text-muted-foreground">This Hour</p></CardContent></Card>
-        <Card><CardContent className="p-4 text-center"><p className="text-3xl font-bold">{stats.newToday.toLocaleString()}</p><p className="text-xs text-muted-foreground">Views Today</p></CardContent></Card>
+        <Card>
+          <CardContent className="p-4 text-center">
+            <div className="relative inline-flex">
+              <span className="absolute -top-1 -right-1 h-3 w-3">
+                <span className="animate-ping absolute h-3 w-3 rounded-full bg-green-400 opacity-75" />
+                <span className="relative h-3 w-3 rounded-full bg-green-500 inline-block" />
+              </span>
+              <p className="text-3xl font-bold">{stats.activeNow}</p>
+            </div>
+            <p className="text-xs text-muted-foreground mt-1">Active (Last Hour)</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4 text-center">
+            <p className="text-3xl font-bold text-primary">{stats.today.toLocaleString()}</p>
+            <p className="text-xs text-muted-foreground mt-1">Today</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4 text-center">
+            <p className="text-3xl font-bold">{stats.thisHour.toLocaleString()}</p>
+            <p className="text-xs text-muted-foreground mt-1">This Hour</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4 text-center">
+            <p className="text-3xl font-bold text-emerald-500">{stats.newToday.toLocaleString()}</p>
+            <p className="text-xs text-muted-foreground mt-1">Views Today</p>
+          </CardContent>
+        </Card>
       </div>
       <div className="grid md:grid-cols-2 gap-6">
         <Card>
           <CardHeader><CardTitle>Pages (Last Hour)</CardTitle></CardHeader>
-          <CardContent className="space-y-2">
-            {pages.length === 0 ? (
-              <p className="text-sm text-muted-foreground text-center py-4">No recent page views</p>
+          <CardContent>
+            {pagesChart.length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-8">No recent page views</p>
             ) : (
-              pages.map((p, i) => (
-                <div key={i} className="flex items-center justify-between text-sm">
-                  <span className="font-mono text-xs truncate">{p.page}</span>
-                  <Badge variant="outline">{p.visitors} views</Badge>
-                </div>
-              ))
+              <ChartBar
+                data={pagesChart}
+                xKey="page"
+                bars={[{ key: "visitors", color: COLORS[5], name: "Visitors" }]}
+                height={240}
+                layout="vertical"
+                showValues
+              />
             )}
           </CardContent>
         </Card>
         <Card>
           <CardHeader><CardTitle>Countries (Today)</CardTitle></CardHeader>
           <CardContent>
-            <div className="grid grid-cols-2 gap-3">
-              {countries.length === 0 ? (
-                <p className="text-sm text-muted-foreground col-span-2 text-center py-4">No country data yet</p>
-              ) : (
-                countries.map((c, i) => (
-                  <div key={i} className="text-center p-2 rounded-lg bg-muted/30">
-                    <p className="text-xs font-medium">{c.name}</p>
-                    <p className="text-xs text-muted-foreground">{c.count} views</p>
-                  </div>
-                ))
-              )}
-            </div>
+            {countries.length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-8">No country data yet</p>
+            ) : (
+              <ChartLeaderboard
+                data={countries}
+                nameKey="name"
+                valueKey="count"
+                valueLabel="views"
+              />
+            )}
           </CardContent>
         </Card>
       </div>
@@ -303,49 +361,91 @@ function AudienceTab() {
           if (e.country) countryMap[e.country] = (countryMap[e.country] || 0) + 1
         })
 
-        const total = (v: Record<string, number>) => Object.values(v).reduce((s, c) => s + c, 0) || 1
-
         setData({
-          devices: Object.entries(deviceMap).map(([k, v]) => ({ name: k, pct: Math.round((v / total(deviceMap)) * 100) })),
-          browsers: Object.entries(browserMap).map(([k, v]) => ({ name: k, pct: Math.round((v / total(browserMap)) * 100) })),
-          os: Object.entries(osMap).map(([k, v]) => ({ name: k, pct: Math.round((v / total(osMap)) * 100) })),
-          countries: Object.entries(countryMap).sort((a, b) => b[1] - a[1]).slice(0, 5).map(([k, v]) => ({ name: k, pct: Math.round((v / total(countryMap)) * 100) })),
+          devices: Object.entries(deviceMap).sort((a, b) => b[1] - a[1]).map(([k, v]) => ({ name: k, value: v })),
+          browsers: Object.entries(browserMap).sort((a, b) => b[1] - a[1]).map(([k, v]) => ({ name: k, value: v })),
+          os: Object.entries(osMap).sort((a, b) => b[1] - a[1]).map(([k, v]) => ({ name: k, value: v })),
+          countries: Object.entries(countryMap).sort((a, b) => b[1] - a[1]).slice(0, 5).map(([k, v]) => ({ name: k, value: v })),
         })
       } catch (err) { console.error("Audience fetch error:", err) }
       setLoading(false)
     }
     fetchAudience()
-  }, [])
+  }, [supabase])
 
-  if (loading) return <div className="h-64 flex items-center justify-center text-muted-foreground">Loading...</div>
+  if (loading) return <div className="h-64 flex items-center justify-center text-muted-foreground">Loading audience data...</div>
   if (!data) return <div className="h-64 flex items-center justify-center text-muted-foreground">No audience data yet. Data appears as visitors browse the site.</div>
 
-  const renderBar = (items: { name: string; pct: number }[]) => (
-    <div className="space-y-3">
-      {items.map((item, i) => (
-        <div key={i}>
-          <div className="flex justify-between text-sm mb-1"><span>{item.name}</span><span>{item.pct}%</span></div>
-          <div className="w-full h-2 bg-muted rounded-full"><div className="h-full bg-primary rounded-full" style={{ width: `${item.pct}%` }} /></div>
-        </div>
-      ))}
-    </div>
-  )
+  const radarData = [
+    { metric: "Desktop", value: (data.devices.find((d: any) => d.name.toLowerCase().includes("desktop") || d.name.toLowerCase().includes("windows"))?.value || 0) > 0 ? 100 : 50 },
+    { metric: "Mobile", value: (data.devices.find((d: any) => d.name.toLowerCase().includes("mobile") || d.name.toLowerCase().includes("android") || d.name.toLowerCase().includes("ios"))?.value || 0) > 0 ? 100 : 50 },
+    { metric: "Tablet", value: (data.devices.find((d: any) => d.name.toLowerCase().includes("tablet"))?.value || 0) > 0 ? 80 : 20 },
+    { metric: "Chrome", value: (data.browsers.find((d: any) => d.name.toLowerCase().includes("chrome"))?.value || 0) > 0 ? 100 : 50 },
+    { metric: "Safari", value: (data.browsers.find((d: any) => d.name.toLowerCase().includes("safari"))?.value || 0) > 0 ? 80 : 30 },
+    { metric: "Firefox", value: (data.browsers.find((d: any) => d.name.toLowerCase().includes("firefox"))?.value || 0) > 0 ? 60 : 20 },
+  ]
 
   return (
     <div className="space-y-6">
+      <div className="grid md:grid-cols-3 gap-6">
+        <Card>
+          <CardHeader><CardTitle>Devices</CardTitle></CardHeader>
+          <CardContent>
+            {data.devices.length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-8">No device data</p>
+            ) : (
+              <ChartPie data={data.devices} nameKey="name" valueKey="value" donut height={260} showLabel />
+            )}
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader><CardTitle>Browsers</CardTitle></CardHeader>
+          <CardContent>
+            {data.browsers.length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-8">No browser data</p>
+            ) : (
+              <ChartPie data={data.browsers} nameKey="name" valueKey="value" donut height={260} showLabel />
+            )}
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader><CardTitle>Operating Systems</CardTitle></CardHeader>
+          <CardContent>
+            {data.os.length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-8">No OS data</p>
+            ) : (
+              <ChartPie data={data.os} nameKey="name" valueKey="value" donut height={260} showLabel />
+            )}
+          </CardContent>
+        </Card>
+      </div>
       <div className="grid md:grid-cols-2 gap-6">
-        <Card><CardHeader><CardTitle>Devices</CardTitle></CardHeader><CardContent>{renderBar(data.devices)}</CardContent></Card>
-        <Card><CardHeader><CardTitle>Browsers</CardTitle></CardHeader><CardContent>{renderBar(data.browsers)}</CardContent></Card>
-        <Card><CardHeader><CardTitle>Operating Systems</CardTitle></CardHeader><CardContent>{renderBar(data.os)}</CardContent></Card>
+        <Card>
+          <CardHeader><CardTitle>Audience Comparison</CardTitle></CardHeader>
+          <CardContent>
+            <ChartRadar
+              data={radarData}
+              angleKey="metric"
+              metrics={[{ key: "value", color: "#8b5cf6", name: "Engagement" }]}
+              height={300}
+            />
+          </CardContent>
+        </Card>
         <Card>
           <CardHeader><CardTitle>Top Countries</CardTitle></CardHeader>
-          <CardContent className="space-y-2">
-            {data.countries.map((c: any, i: number) => (
-              <div key={i} className="flex items-center justify-between text-sm">
-                <span>{c.name}</span>
-                <Badge variant="outline">{c.pct}%</Badge>
-              </div>
-            ))}
+          <CardContent>
+            {data.countries.length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-8">No country data</p>
+            ) : (
+              <ChartBar
+                data={data.countries}
+                xKey="name"
+                bars={[{ key: "value", color: COLORS[2], name: "Visitors" }]}
+                height={260}
+                layout="vertical"
+                showValues
+              />
+            )}
           </CardContent>
         </Card>
       </div>
@@ -375,49 +475,59 @@ function TrafficSourcesTab() {
           refMap[ref] = (refMap[ref] || 0) + 1
         })
 
-        const total = Object.values(refMap).reduce((s, c) => s + c, 0) || 1
         const sorted = Object.entries(refMap).sort((a, b) => b[1] - a[1])
+        const total = sorted.reduce((s, [, v]) => s + v, 0) || 1
 
         const socialRefs = ["facebook", "twitter", "x.com", "linkedin", "reddit", "t.co", "instagram"]
         const social = sorted.filter(([k]) => socialRefs.some(s => k.includes(s)))
-        const socialTotal = social.reduce((s, [, v]) => s + v, 0) || 1
 
         setData({
-          sources: sorted.slice(0, 6).map(([k, v]) => ({ source: k, pct: Math.round((v / total) * 100), sessions: v })),
-          social: social.map(([k, v]) => ({ platform: k, sessions: v, pct: Math.round((v / socialTotal) * 100) })),
+          sources: sorted.slice(0, 8).map(([k, v]) => ({ source: k === "Direct" ? "Direct" : k, sessions: v, pct: Math.round((v / total) * 100) })),
+          social: social.map(([k, v]) => ({ platform: k, sessions: v })),
         })
       } catch (err) { console.error("Traffic fetch error:", err) }
       setLoading(false)
     }
     fetchTraffic()
-  }, [])
+  }, [supabase])
 
-  if (loading) return <div className="h-64 flex items-center justify-center text-muted-foreground">Loading...</div>
+  if (loading) return <div className="h-64 flex items-center justify-center text-muted-foreground">Loading traffic data...</div>
   if (!data || data.sources.length === 0) return <div className="h-64 flex items-center justify-center text-muted-foreground">No traffic data yet. Data appears as visitors come from external sites.</div>
 
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-        {data.sources.slice(0, 6).map((s: any, i: number) => (
-          <Card key={i}>
-            <CardContent className="p-4">
-              <p className="text-xs text-muted-foreground truncate">{s.source}</p>
-              <p className="text-2xl font-bold mt-1">{s.pct}%</p>
-              <p className="text-xs text-muted-foreground">{s.sessions} sessions</p>
-            </CardContent>
-          </Card>
-        ))}
+      <div className="grid md:grid-cols-2 gap-6">
+        <Card>
+          <CardHeader><CardTitle>Traffic Sources</CardTitle></CardHeader>
+          <CardContent>
+            <ChartPie data={data.sources} nameKey="source" valueKey="sessions" donut height={300} showLabel />
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader><CardTitle>Source Breakdown</CardTitle></CardHeader>
+          <CardContent>
+            <ChartBar
+              data={data.sources}
+              xKey="source"
+              bars={[{ key: "sessions", color: COLORS[3], name: "Sessions" }]}
+              height={280}
+              layout="vertical"
+              showValues
+            />
+          </CardContent>
+        </Card>
       </div>
       {data.social.length > 0 && (
         <Card>
-          <CardHeader><CardTitle>Social Media Breakdown</CardTitle></CardHeader>
-          <CardContent className="space-y-3">
-            {data.social.map((p: any, i: number) => (
-              <div key={i}>
-                <div className="flex justify-between text-sm mb-1"><span>{p.platform}</span><span>{p.sessions} ({p.pct}%)</span></div>
-                <div className="w-full h-2 bg-muted rounded-full"><div className="h-full bg-primary rounded-full" style={{ width: `${p.pct}%` }} /></div>
-              </div>
-            ))}
+          <CardHeader><CardTitle>Social Media Referrals</CardTitle></CardHeader>
+          <CardContent>
+            <ChartBar
+              data={data.social}
+              xKey="platform"
+              bars={[{ key: "sessions", color: COLORS[4], name: "Sessions" }]}
+              height={250}
+              showValues
+            />
           </CardContent>
         </Card>
       )}
@@ -452,35 +562,57 @@ function SocialTab() {
           }
         })
 
-        setData({ accounts: accounts || [], socialEvents })
+        const socialChart = Object.entries(socialEvents).map(([k, v]) => ({
+          platform: k === "t.co" ? "X (t.co)" : k,
+          referrals: v,
+        }))
+
+        setData({ accounts: accounts || [], socialChart })
       } catch (err) { console.error("Social fetch error:", err) }
       setLoading(false)
     }
     fetchSocial()
-  }, [])
+  }, [supabase])
 
-  if (loading) return <div className="h-64 flex items-center justify-center text-muted-foreground">Loading...</div>
+  if (loading) return <div className="h-64 flex items-center justify-center text-muted-foreground">Loading social data...</div>
+
+  const displayAccounts = data?.accounts?.length > 0 ? data.accounts : [
+    { platform: "X", follower_count: null },
+    { platform: "Facebook", follower_count: null },
+    { platform: "LinkedIn", follower_count: null },
+    { platform: "Threads", follower_count: null },
+  ]
 
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        {(data?.accounts?.length > 0 ? data.accounts : [
-          { platform: "X", follower_count: null },
-          { platform: "Facebook", follower_count: null },
-          { platform: "LinkedIn", follower_count: null },
-          { platform: "Threads", follower_count: null },
-        ]).slice(0, 4).map((p: any, i: number) => (
+        {displayAccounts.slice(0, 4).map((p: any, i: number) => (
           <Card key={i}>
-            <CardContent className="p-4">
-              <p className="font-medium">{p.platform}</p>
-              <p className="text-2xl font-bold">{p.follower_count?.toLocaleString() || "—"}</p>
-              <p className="text-xs text-muted-foreground">
-                {data?.socialEvents?.[p.platform.toLowerCase()] ? `${data.socialEvents[p.platform.toLowerCase()]} referrals` : "No data yet"}
-              </p>
+            <CardContent className="p-4 text-center">
+              <p className="font-medium text-sm">{p.platform}</p>
+              <p className="text-2xl font-bold mt-1">{p.follower_count?.toLocaleString() || "—"}</p>
+              <p className="text-xs text-muted-foreground mt-1">Followers</p>
             </CardContent>
           </Card>
         ))}
       </div>
+      {data?.socialChart?.length > 0 && (
+        <Card>
+          <CardHeader><CardTitle>Social Referral Traffic</CardTitle></CardHeader>
+          <CardContent>
+            <ChartBar
+              data={data.socialChart}
+              xKey="platform"
+              bars={[{ key: "referrals", color: COLORS[6], name: "Referrals" }]}
+              height={280}
+              showValues
+            />
+          </CardContent>
+        </Card>
+      )}
+      {(!data?.socialChart || data.socialChart.length === 0) && (
+        <p className="text-sm text-muted-foreground text-center py-8">No social referral traffic yet. Connect your social accounts to start tracking.</p>
+      )}
     </div>
   )
 }
@@ -493,28 +625,75 @@ function NewsletterTab() {
   useEffect(() => {
     const fetchNewsletter = async () => {
       try {
-        const [subsRes, campaignsRes] = await Promise.all([
+        const [subsRes, campaignsRes, subGrowthRes] = await Promise.all([
           supabase.from("subscribers").select("*", { count: "exact", head: true }).eq("status", "active"),
           supabase.from("newsletter_campaigns").select("*").order("created_at", { ascending: false }).limit(5),
+          supabase.from("subscribers").select("created_at").eq("status", "active").limit(2000),
         ])
+
+        const growthMap: Record<string, number> = {}
+        ;(subGrowthRes.data || []).forEach((s: any) => {
+          const d = new Date(s.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric" })
+          growthMap[d] = (growthMap[d] || 0) + 1
+        })
+        const growthChart = Object.entries(growthMap).slice(-30).map(([date, subs]) => ({ date, subscribers: subs }))
+
         setData({
           subscribers: subsRes.count || 0,
           campaigns: campaignsRes.data || [],
+          growthChart,
         })
       } catch (err) { console.error("Newsletter fetch error:", err) }
       setLoading(false)
     }
     fetchNewsletter()
-  }, [])
+  }, [supabase])
 
-  if (loading) return <div className="h-64 flex items-center justify-center text-muted-foreground">Loading...</div>
+  if (loading) return <div className="h-64 flex items-center justify-center text-muted-foreground">Loading newsletter data...</div>
 
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <Card><CardContent className="p-4 text-center"><p className="text-2xl font-bold">{data?.subscribers?.toLocaleString() || 0}</p><p className="text-xs text-muted-foreground">Active Subscribers</p></CardContent></Card>
-        <Card><CardContent className="p-4 text-center"><p className="text-2xl font-bold">{data?.campaigns?.length || 0}</p><p className="text-xs text-muted-foreground">Campaigns</p></CardContent></Card>
+        <Card>
+          <CardContent className="p-4 text-center">
+            <p className="text-3xl font-bold text-primary">{data?.subscribers?.toLocaleString() || 0}</p>
+            <p className="text-xs text-muted-foreground mt-1">Active Subscribers</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4 text-center">
+            <p className="text-3xl font-bold">{data?.campaigns?.length || 0}</p>
+            <p className="text-xs text-muted-foreground mt-1">Campaigns Sent</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4 text-center">
+            <p className="text-3xl font-bold text-emerald-500">{data?.growthChart?.length || 0}</p>
+            <p className="text-xs text-muted-foreground mt-1">Days with Growth</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4 text-center">
+            <p className="text-3xl font-bold">{data?.campaigns?.reduce((s: number, c: any) => s + (c.opens || 0), 0) || 0}</p>
+            <p className="text-xs text-muted-foreground mt-1">Total Opens</p>
+          </CardContent>
+        </Card>
       </div>
+
+      {data?.growthChart?.length > 0 && (
+        <Card>
+          <CardHeader><CardTitle>Subscriber Growth</CardTitle></CardHeader>
+          <CardContent>
+            <ChartArea
+              data={data.growthChart}
+              xKey="date"
+              areas={[{ key: "subscribers", color: COLORS[0], name: "New Subscribers" }]}
+              height={250}
+            />
+          </CardContent>
+        </Card>
+      )}
+
       {data?.campaigns?.length > 0 && (
         <Card>
           <CardHeader><CardTitle>Recent Campaigns</CardTitle></CardHeader>
@@ -558,12 +737,54 @@ function CompetitorsTab() {
 
 function ExportsTab() {
   const [generating, setGenerating] = useState<string | null>(null)
+  const supabase = createClient()
 
-  const handleExport = async (name: string, _type: string) => {
+  const handleExport = async (name: string, type: string) => {
     setGenerating(name)
-    await new Promise(r => setTimeout(r, 1500))
+    try {
+      if (type === "csv") {
+        const { data: events } = await supabase
+          .from("analytics_events")
+          .select("page_url, referrer, country, device, browser, os, created_at")
+          .eq("event_type", "page_view")
+          .limit(5000)
+
+        const headers = ["page_url", "referrer", "country", "device", "browser", "os", "created_at"]
+        const csvRows = [headers.join(",")]
+        ;(events || []).forEach((e: any) => {
+          csvRows.push(headers.map(h => JSON.stringify(e[h] ?? "")).join(","))
+        })
+        const blob = new Blob([csvRows.join("\n")], { type: "text/csv" })
+        const url = window.URL.createObjectURL(blob)
+        const a = document.createElement("a")
+        a.href = url
+        a.download = `${name.toLowerCase().replace(/\s+/g, "_")}.csv`
+        a.click()
+        window.URL.revokeObjectURL(url)
+      } else {
+        const { data: events } = await supabase
+          .from("analytics_events")
+          .select("page_url, referrer, created_at")
+          .eq("event_type", "page_view")
+          .limit(5000)
+
+        const rows = [
+          ["Report", name],
+          ["Generated", new Date().toISOString()],
+          ["Total Events", String(events?.length || 0)],
+        ]
+        const blob = new Blob([rows.map(r => r.join("\t")).join("\n")], { type: "text/tab-separated-values" })
+        const url = window.URL.createObjectURL(blob)
+        const a = document.createElement("a")
+        a.href = url
+        a.download = `${name.toLowerCase().replace(/\s+/g, "_")}.txt`
+        a.click()
+        window.URL.revokeObjectURL(url)
+      }
+    } catch (err) {
+      console.error("Export failed:", err)
+    }
     setGenerating(null)
-    alert(`${name} export initiated. The file will be available shortly.`)
   }
 
   return (
@@ -572,9 +793,9 @@ function ExportsTab() {
         <CardHeader><CardTitle>Export Analytics</CardTitle></CardHeader>
         <CardContent className="space-y-4">
           {[
-            { name: "Traffic Report", type: "pdf" },
+            { name: "Traffic Report", type: "txt" },
             { name: "Content Performance", type: "csv" },
-            { name: "SEO Overview", type: "excel" },
+            { name: "SEO Overview", type: "txt" },
           ].map((r, i) => (
             <div key={i} className="flex items-center justify-between p-3 rounded-lg bg-muted/30">
               <span className="text-sm font-medium">{r.name}</span>

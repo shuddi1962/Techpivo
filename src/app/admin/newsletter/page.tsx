@@ -1,7 +1,6 @@
 "use client"
 
 import { useEffect, useState, useCallback } from "react"
-import { createClient } from "@/lib/supabase/client"
 import {
   Mail, Users, Send, FileText, List, Zap, FlaskConical, BarChart3,
   Plus, Search, Download, Upload, Eye, MousePointerClick, UserMinus,
@@ -157,28 +156,32 @@ function OverviewTab({ data, loading }: { data: OverviewData | null; loading: bo
   if (loading) return <LoadingSpinner />
   if (!data) return <p style={{ color: S.textMuted, padding: 24 }}>No data available</p>
 
+  const maxGrowth = Math.max(...data.subscriberGrowth.map(g => g.count), 1)
+
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: 16 }}>
-        <StatCard label="Total Subscribers" value={data.totalSubscribers.toLocaleString()} change="+12% this month" icon={Users} color={S.primary} />
-        <StatCard label="Active Subscribers" value={data.activeSubscribers.toLocaleString()} change="+8% this month" icon={Mail} color={S.green} />
+        <StatCard label="Total Subscribers" value={data.totalSubscribers.toLocaleString()} icon={Users} color={S.primary} />
+        <StatCard label="Active Subscribers" value={data.activeSubscribers.toLocaleString()} icon={Mail} color={S.green} />
         <StatCard label="Total Campaigns" value={data.totalCampaigns.toString()} icon={Send} color={S.purple} />
         <StatCard label="Sent Campaigns" value={data.sentCampaigns.toString()} icon={CheckCircle} color={S.green} />
-        <StatCard label="Avg Open Rate" value={`${data.avgOpenRate.toFixed(1)}%`} change="+2.3%" icon={Eye} color={S.primary} />
-        <StatCard label="Avg Click Rate" value={`${data.avgClickRate.toFixed(1)}%`} change="+1.1%" icon={MousePointerClick} color={S.yellow} />
+        <StatCard label="Avg Open Rate" value={`${data.avgOpenRate.toFixed(1)}%`} icon={Eye} color={S.primary} />
+        <StatCard label="Avg Click Rate" value={`${data.avgClickRate.toFixed(1)}%`} icon={MousePointerClick} color={S.yellow} />
       </div>
 
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
         <div style={{ background: S.card, border: `1px solid ${S.border}`, borderRadius: 12, padding: 24 }}>
           <h3 style={{ fontSize: 16, fontWeight: 600, color: S.text, marginBottom: 16 }}>Subscriber Growth</h3>
           <div style={{ display: "flex", alignItems: "flex-end", gap: 6, height: 140 }}>
-            {(data.subscriberGrowth?.length ? data.subscriberGrowth : [35, 42, 38, 55, 48, 62, 58, 72, 68, 85, 78, 92]).map((h: any, i: number) => (
-              <div key={i} style={{ flex: 1, background: `${S.primary}30`, borderRadius: "4px 4px 0 0", height: `${typeof h === 'number' ? h : Math.min((h.count || 0) * 5, 100)}%`, transition: "height 0.3s" }} />
+            {data.subscriberGrowth.length === 0 ? (
+              <p style={{ color: S.textMuted, fontSize: 13, width: "100%", textAlign: "center", alignSelf: "center" }}>No subscriber data yet</p>
+            ) : data.subscriberGrowth.map((g, i) => (
+              <div key={i} style={{ flex: 1, background: `${S.primary}30`, borderRadius: "4px 4px 0 0", height: `${(g.count / maxGrowth) * 100}%`, minHeight: 4, transition: "height 0.3s" }} />
             ))}
           </div>
           <div style={{ display: "flex", justifyContent: "space-between", marginTop: 8 }}>
-            {["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"].map(m => (
-              <span key={m} style={{ fontSize: 10, color: S.textDim }}>{m}</span>
+            {data.subscriberGrowth.map((g, i) => (
+              <span key={i} style={{ flex: 1, textAlign: "center", fontSize: 10, color: S.textDim }}>{g.month}</span>
             ))}
           </div>
         </div>
@@ -289,6 +292,10 @@ function SubscribersTab({ data, loading, onRefresh }: { data: Subscriber[]; load
 function CampaignsTab({ data, loading, onRefresh, onSend }: { data: Campaign[]; loading: boolean; onRefresh: () => void; onSend: (id: string) => void }) {
   const [showCreate, setShowCreate] = useState(false)
   const [newCampaign, setNewCampaign] = useState({ name: "", subject: "" })
+  const [editingCampaign, setEditingCampaign] = useState<Campaign | null>(null)
+  const [editName, setEditName] = useState("")
+  const [editSubject, setEditSubject] = useState("")
+  const [editSaving, setEditSaving] = useState(false)
 
   const handleCreate = async () => {
     if (!newCampaign.name || !newCampaign.subject) return
@@ -370,7 +377,7 @@ function CampaignsTab({ data, loading, onRefresh, onSend }: { data: Campaign[]; 
                     <Send style={{ width: 12, height: 12 }} /> Send
                   </button>
                 )}
-                <button onClick={() => alert('Edit feature coming soon')} style={{ background: "transparent", border: `1px solid ${S.border}`, borderRadius: 6, padding: "5px 8px", color: S.textDim, fontSize: 12, cursor: "pointer" }}>
+                <button onClick={() => { setEditingCampaign(c); setEditName(c.name); setEditSubject(c.subject); }} style={{ background: "transparent", border: `1px solid ${S.border}`, borderRadius: 6, padding: "5px 8px", color: S.textDim, fontSize: 12, cursor: "pointer" }}>
                   <Edit3 style={{ width: 12, height: 12 }} />
                 </button>
                 <button onClick={() => { if (confirm('Delete this campaign?')) { fetch('/admin/newsletter/api', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ type: 'campaign', id: c.id }) }).then(() => window.location.reload()) } }} style={{ background: "transparent", border: `1px solid ${S.border}`, borderRadius: 6, padding: "5px 8px", color: S.red, fontSize: 12, cursor: "pointer" }}>
@@ -381,6 +388,32 @@ function CampaignsTab({ data, loading, onRefresh, onSend }: { data: Campaign[]; 
           </div>
         ))}
       </div>
+
+      {editingCampaign && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.7)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000, padding: 40 }}>
+          <div style={{ background: S.card, border: `1px solid ${S.border}`, borderRadius: 12, width: "100%", maxWidth: 500, padding: 24 }}>
+            <h3 style={{ fontSize: 18, fontWeight: 600, color: S.text, marginBottom: 16 }}>Edit Campaign</h3>
+            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+              <input value={editName} onChange={e => setEditName(e.target.value)} placeholder="Campaign name"
+                style={{ background: S.input, border: `1px solid ${S.border}`, borderRadius: 8, padding: "10px 14px", color: S.text, fontSize: 13, outline: "none" }} />
+              <input value={editSubject} onChange={e => setEditSubject(e.target.value)} placeholder="Email subject line"
+                style={{ background: S.input, border: `1px solid ${S.border}`, borderRadius: 8, padding: "10px 14px", color: S.text, fontSize: 13, outline: "none" }} />
+              <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+                <button onClick={() => setEditingCampaign(null)} style={{ background: S.input, border: `1px solid ${S.border}`, borderRadius: 8, padding: "8px 16px", color: S.textMuted, fontSize: 13, cursor: "pointer" }}>Cancel</button>
+                <button onClick={async () => {
+                  setEditSaving(true)
+                  try {
+                    await fetch('/admin/newsletter/api', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ type: 'campaign', id: editingCampaign.id, name: editName, subject: editSubject }) })
+                    setEditingCampaign(null)
+                    onRefresh()
+                  } catch (err) { console.error("Failed to update campaign:", err) }
+                  setEditSaving(false)
+                }} disabled={editSaving} style={{ background: S.primary, border: "none", borderRadius: 8, padding: "8px 16px", color: "#fff", fontSize: 13, cursor: "pointer" }}>{editSaving ? "Saving..." : "Save"}</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

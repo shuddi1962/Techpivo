@@ -93,7 +93,7 @@ export default function AdminKeywordsPage() {
         if (!res.ok) return
         const data = await res.json()
         if (data.suggestions?.length) { setSuggestions(data.suggestions); setShowSuggestions(true) }
-      } catch {}
+      } catch (err) { console.error("Failed to fetch suggestions:", err) }
     }, 300)
   }, [])
 
@@ -137,7 +137,7 @@ export default function AdminKeywordsPage() {
     try {
       const res = await fetch("/api/admin/trigger-keyword-write")
       fetchData()
-    } catch {}
+    } catch (err) { console.error("Failed to write all drafts:", err) }
     setGeneratingAll(false)
   }
 

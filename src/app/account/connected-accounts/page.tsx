@@ -4,81 +4,99 @@ import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Link2, CheckCircle2, ExternalLink, AlertCircle } from 'lucide-react';
+import { Link2, CheckCircle2, ExternalLink, AlertCircle, X } from 'lucide-react';
 
 interface Provider {
   id: string;
   name: string;
   icon: string;
   connected: boolean;
-  email?: string;
+  url: string | null;
 }
 
 export default function ConnectedAccountsPage() {
-  const [providers, setProviders] = useState<Provider[]>([
-    { id: 'google', name: 'Google', icon: '🔵', connected: false },
-    { id: 'github', name: 'GitHub', icon: '⚫', connected: false },
-    { id: 'twitter', name: 'X (Twitter)', icon: '🐦', connected: false },
-  ]);
+  const [providers, setProviders] = useState<Provider[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
+  const [connectDialog, setConnectDialog] = useState<{ providerId: string; providerName: string } | null>(null);
+  const [profileUrl, setProfileUrl] = useState('');
 
-  useEffect(() => {
-    fetch('/api/community/profile')
+  const load = () => {
+    setLoading(true);
+    fetch('/api/community/connected-accounts')
       .then(r => r.json())
       .then(d => {
-        if (d.profile?.social_links) {
-          setProviders(prev => prev.map(p => ({
-            ...p,
-            connected: !!d.profile.social_links[p.id],
-            email: d.profile.social_links[p.id] || undefined,
-          })));
-        }
+        setProviders(d.accounts || []);
         setLoading(false);
       })
       .catch(() => setLoading(false));
-  }, []);
-
-  const getSocialLinks = async () => {
-    try {
-      const res = await fetch('/api/community/profile');
-      const d = await res.json();
-      return d.profile?.social_links || {};
-    } catch { return {}; }
   };
 
-  const connectProvider = async (providerId: string) => {
+  useEffect(() => { load() }, []);
+
+  const connectProvider = async (providerId: string, url: string) => {
+    setError('');
     try {
-      const existing = await getSocialLinks();
-      const res = await fetch('/api/community/profile', {
-        method: 'PUT',
+      const res = await fetch('/api/community/connected-accounts', {
+        method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          social_links: { ...existing, [providerId]: `https://${providerId}.com/user` }
-        }),
+        body: JSON.stringify({ provider_id: providerId, url }),
       });
       if (res.ok) {
-        setProviders(prev => prev.map(p => p.id === providerId ? { ...p, connected: true } : p));
+        setSuccess(`${providerId} account connected successfully`);
+        setConnectDialog(null);
+        load();
+      } else {
+        const data = await res.json().catch(() => ({}));
+        setError(data.error || 'Failed to connect account');
       }
-    } catch {}
+    } catch {
+      setError('Something went wrong. Please try again.');
+    }
   };
 
   const disconnectProvider = async (providerId: string) => {
+    setError('');
     try {
-      const existing = await getSocialLinks();
-      const updated = { ...existing };
-      delete updated[providerId];
-      const res = await fetch('/api/community/profile', {
-        method: 'PUT',
+      const res = await fetch('/api/community/connected-accounts', {
+        method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          social_links: updated
-        }),
+        body: JSON.stringify({ provider_id: providerId }),
       });
       if (res.ok) {
-        setProviders(prev => prev.map(p => p.id === providerId ? { ...p, connected: false, email: undefined } : p));
+        setSuccess(`${providerId} account disconnected`);
+        load();
+      } else {
+        const data = await res.json().catch(() => ({}));
+        setError(data.error || 'Failed to disconnect account');
       }
-    } catch {}
+    } catch {
+      setError('Something went wrong. Please try again.');
+    }
   };
+
+  const handleConnectClick = (providerId: string, providerName: string) => {
+    setConnectDialog({ providerId, providerName });
+    setProfileUrl('');
+    setError('');
+  };
+
+  if (loading) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h2 className="text-2xl font-bold">Connected Accounts</h2>
+          <p className="text-muted-foreground mt-1">Link your social accounts for easier sign-in</p>
+        </div>
+        <div className="space-y-3">
+          {[1, 2, 3].map(i => (
+            <div key={i} className="h-20 bg-muted rounded-lg animate-pulse" />
+          ))}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -86,6 +104,22 @@ export default function ConnectedAccountsPage() {
         <h2 className="text-2xl font-bold">Connected Accounts</h2>
         <p className="text-muted-foreground mt-1">Link your social accounts for easier sign-in</p>
       </div>
+
+      {error && (
+        <div className="flex items-center gap-2 p-3 bg-red-500/10 border border-red-500/20 rounded-lg text-sm text-red-600 dark:text-red-400">
+          <AlertCircle className="h-4 w-4 shrink-0" />
+          {error}
+          <button onClick={() => setError('')} className="ml-auto"><X className="h-4 w-4" /></button>
+        </div>
+      )}
+
+      {success && (
+        <div className="flex items-center gap-2 p-3 bg-green-500/10 border border-green-500/20 rounded-lg text-sm text-green-600 dark:text-green-400">
+          <CheckCircle2 className="h-4 w-4 shrink-0" />
+          {success}
+          <button onClick={() => setSuccess('')} className="ml-auto"><X className="h-4 w-4" /></button>
+        </div>
+      )}
 
       <div className="space-y-4">
         {providers.map(provider => (
@@ -96,8 +130,15 @@ export default function ConnectedAccountsPage() {
                   <div className="w-12 h-12 rounded-xl bg-muted flex items-center justify-center text-2xl">{provider.icon}</div>
                   <div>
                     <div className="font-semibold text-lg">{provider.name}</div>
-                    {provider.connected ? (
-                      <div className="flex items-center gap-1.5 text-sm text-green-500"><CheckCircle2 className="h-3.5 w-3.5" /> Connected{provider.email && <span className="text-muted-foreground ml-1">({provider.email})</span>}</div>
+                    {provider.connected && provider.url ? (
+                      <div className="flex items-center gap-1.5 text-sm text-green-500">
+                        <CheckCircle2 className="h-3.5 w-3.5" /> Connected
+                        <a href={provider.url} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline ml-1 inline-flex items-center gap-1">
+                          {new URL(provider.url).hostname} <ExternalLink className="h-3 w-3" />
+                        </a>
+                      </div>
+                    ) : provider.connected ? (
+                      <div className="flex items-center gap-1.5 text-sm text-green-500"><CheckCircle2 className="h-3.5 w-3.5" /> Connected</div>
                     ) : (
                       <div className="text-sm text-muted-foreground">Not connected</div>
                     )}
@@ -110,7 +151,7 @@ export default function ConnectedAccountsPage() {
                       <Button variant="ghost" size="sm" className="text-destructive" onClick={() => disconnectProvider(provider.id)}>Disconnect</Button>
                     </div>
                   ) : (
-                    <Button size="sm" onClick={() => connectProvider(provider.id)}><Link2 className="h-4 w-4 mr-1" /> Connect</Button>
+                    <Button size="sm" onClick={() => handleConnectClick(provider.id, provider.name)}><Link2 className="h-4 w-4 mr-1" /> Connect</Button>
                   )}
                 </div>
               </div>
@@ -131,6 +172,28 @@ export default function ConnectedAccountsPage() {
           </div>
         </CardContent>
       </Card>
+
+      {connectDialog && (
+        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center" onClick={() => setConnectDialog(null)}>
+          <div className="bg-background rounded-xl p-6 w-full max-w-md shadow-lg border" onClick={e => e.stopPropagation()}>
+            <h3 className="font-semibold text-lg mb-1">Connect {connectDialog.providerName}</h3>
+            <p className="text-sm text-muted-foreground mb-4">Enter your profile URL to display on your account</p>
+            <input
+              value={profileUrl}
+              onChange={e => setProfileUrl(e.target.value)}
+              placeholder={`https://${connectDialog.providerId}.com/your-profile`}
+              className="w-full px-3 py-2 border rounded-lg bg-background text-sm mb-4"
+              onKeyDown={e => e.key === 'Enter' && profileUrl.trim() && connectProvider(connectDialog.providerId, profileUrl.trim())}
+            />
+            <div className="flex justify-end gap-2">
+              <Button variant="ghost" onClick={() => setConnectDialog(null)}>Cancel</Button>
+              <Button onClick={() => profileUrl.trim() && connectProvider(connectDialog.providerId, profileUrl.trim())} disabled={!profileUrl.trim()}>
+                <Link2 className="h-4 w-4 mr-1" /> Connect
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

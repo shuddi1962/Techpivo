@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -16,33 +16,7 @@ export default function FbTokenHelperPage() {
   const [error, setError] = useState("")
   const [saving, setSaving] = useState<string | null>(null)
 
-  // Auto-detect token from URL hash (redirected back from Facebook OAuth)
-  useEffect(() => {
-    const hash = window.location.hash
-    if (hash && hash.includes("access_token=")) {
-      const params = new URLSearchParams(hash.replace("#", "?"))
-      const token = params.get("access_token")
-      if (token) {
-        setUserToken(token)
-        window.location.hash = ""
-        setTimeout(() => exchangeToken(token), 500)
-      }
-    }
-  }, [])
-
-  // Redirect the main window to Facebook OAuth (most reliable, no SDK needed)
-  const redirectToFacebook = () => {
-    const redirectUri = window.location.href.split("#")[0].split("?")[0]
-    const url =
-      `https://www.facebook.com/v19.0/dialog/oauth?` +
-      `client_id=${FB_APP_ID}&` +
-      `redirect_uri=${encodeURIComponent(redirectUri)}&` +
-      `scope=instagram_basic,instagram_content_publish&` +
-      `response_type=token`
-    window.location.href = url
-  }
-
-  const exchangeToken = async (token?: string) => {
+  const exchangeToken = useCallback(async (token?: string) => {
     const t = token || userToken.trim()
     if (!t) return
     setLoading(true)
@@ -65,7 +39,7 @@ export default function FbTokenHelperPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [userToken])
 
   const savePageToken = async (pageAccessToken: string, pageId: string, pageName: string, extra: Record<string, any> = {}) => {
     const id = extra?.instagramUserId || pageId
@@ -88,6 +62,32 @@ export default function FbTokenHelperPage() {
       setSaving(null)
     }
   }
+
+  // Redirect the main window to Facebook OAuth (most reliable, no SDK needed)
+  const redirectToFacebook = () => {
+    const redirectUri = window.location.href.split("#")[0].split("?")[0]
+    const url =
+      `https://www.facebook.com/v19.0/dialog/oauth?` +
+      `client_id=${FB_APP_ID}&` +
+      `redirect_uri=${encodeURIComponent(redirectUri)}&` +
+      `scope=instagram_basic,instagram_content_publish&` +
+      `response_type=token`
+    window.location.href = url
+  }
+
+  // Auto-detect token from URL hash (redirected back from Facebook OAuth)
+  useEffect(() => {
+    const hash = window.location.hash
+    if (hash && hash.includes("access_token=")) {
+      const params = new URLSearchParams(hash.replace("#", "?"))
+      const token = params.get("access_token")
+      if (token) {
+        setUserToken(token)
+        window.location.hash = ""
+        setTimeout(() => exchangeToken(token), 500)
+      }
+    }
+  }, [exchangeToken])
 
   return (
     <div className="space-y-6">

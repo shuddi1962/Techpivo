@@ -20,7 +20,7 @@ export default function EditorialCalendarPage() {
   const [loading, setLoading] = useState(true)
   const [currentMonth, setCurrentMonth] = useState(new Date())
   const [events, setEvents] = useState<CalendarEvent[]>([])
-  const [view] = useState<"month" | "week">("month")
+  const [view, setView] = useState<"month" | "week" | "list">("month")
   const [error, setError] = useState("")
 
   const fetchData = useCallback(async () => {
@@ -28,38 +28,24 @@ export default function EditorialCalendarPage() {
     try {
       const { data: posts, error: postsErr } = await supabase
         .from("posts")
-        .select("id, title, status, published_at, scheduled_at, created_at, category_id, categories!inner(name)")
+        .select("id, title, status, published_at, scheduled_at, created_at, category_id")
         .in("status", ["published", "scheduled", "draft"])
         .order("published_at", { ascending: false })
         .limit(100)
 
-      if (postsErr) {
-        const { data: postsFallback, error: fallbackErr } = await supabase
-          .from("posts")
-          .select("id, title, status, published_at, scheduled_at, created_at, category_id")
-          .in("status", ["published", "scheduled", "draft"])
-          .order("published_at", { ascending: false })
-          .limit(100)
-        if (fallbackErr) throw fallbackErr
-        if (postsFallback) {
-          const { data: categories } = await supabase.from("categories").select("id, name")
-          const catMap: Record<string, string> = {}
-          if (categories) categories.forEach(c => { catMap[c.id] = c.name })
-          setEvents(postsFallback.map(p => ({
-            id: p.id,
-            title: p.title,
-            date: p.published_at || p.scheduled_at || p.created_at,
-            status: p.status as "draft" | "scheduled" | "published",
-            category: catMap[p.category_id] || "Uncategorized",
-          })))
-        }
-      } else if (posts) {
+      if (postsErr) throw postsErr
+
+      const { data: categories } = await supabase.from("categories").select("id, name")
+      const catMap: Record<string, string> = {}
+      if (categories) categories.forEach(c => { catMap[c.id] = c.name })
+
+      if (posts) {
         setEvents(posts.map(p => ({
           id: p.id,
           title: p.title,
           date: p.published_at || p.scheduled_at || p.created_at,
           status: p.status as "draft" | "scheduled" | "published",
-          category: (p as any).categories?.name || "Uncategorized",
+          category: catMap[p.category_id] || "Uncategorized",
         })))
       }
     } catch (err) {
@@ -100,10 +86,13 @@ export default function EditorialCalendarPage() {
         </div>
         <div className="flex items-center gap-2">
           <div className="flex border rounded-lg p-0.5">
-            <button className="px-3 py-1 rounded-md text-sm bg-background shadow-sm">
+            <button onClick={() => setView("month")} className={`px-3 py-1 rounded-md text-sm ${view === "month" ? "bg-background shadow-sm" : "text-muted-foreground hover:text-foreground"}`}>
               <LayoutGrid className="h-4 w-4" />
             </button>
-            <button className="px-3 py-1 rounded-md text-sm text-muted-foreground">
+            <button onClick={() => setView("week")} className={`px-3 py-1 rounded-md text-sm ${view === "week" ? "bg-background shadow-sm" : "text-muted-foreground hover:text-foreground"}`}>
+              <Calendar className="h-4 w-4" />
+            </button>
+            <button onClick={() => setView("list")} className={`px-3 py-1 rounded-md text-sm ${view === "list" ? "bg-background shadow-sm" : "text-muted-foreground hover:text-foreground"}`}>
               <List className="h-4 w-4" />
             </button>
           </div>

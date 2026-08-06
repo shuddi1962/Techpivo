@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react"
 import Link from "next/link"
+import Image from "next/image"
 import { createClient } from "@/lib/supabase/client"
 import type { AffiliateProduct } from "@/types/database"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -59,9 +60,11 @@ export function AffiliateWidget({ categoryId }: AffiliateWidgetProps) {
         {/* Image */}
         <div className="w-full aspect-[4/3] rounded-md bg-muted overflow-hidden">
           {product.product_image_url ? (
-            <img
+            <Image
               src={product.product_image_url}
               alt={product.product_name}
+              width={800}
+              height={450}
               className="w-full h-full object-cover"
               loading="lazy"
             />

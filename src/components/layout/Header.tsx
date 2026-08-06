@@ -136,7 +136,7 @@ export function Header() {
             {user ? (
               <Link href="/account" className="login-btn header-account-btn">
                 {user.user_metadata?.avatar_url ? (
-                  <img src={user.user_metadata.avatar_url} alt="" className="header-avatar" />
+                  <Image src={user.user_metadata.avatar_url} alt="" width={48} height={48} className="header-avatar" />
                 ) : (
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
                 )}

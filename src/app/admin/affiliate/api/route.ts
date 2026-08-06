@@ -4,23 +4,16 @@ import { createClient } from "@/lib/supabase/server"
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url)
   const section = searchParams.get("section") || "overview"
-  const supabase = createClient()
+  const supabase = await createClient()
 
   try {
     switch (section) {
       case "links": {
         const { data: links } = await supabase
           .from("affiliate_links")
-          .select("*, affiliate_products(product_name), affiliate_programs(program_name)")
+          .select("*")
           .order("created_at", { ascending: false })
-        const formatted = (links || []).map((l: any) => ({
-          ...l,
-          product_name: l.affiliate_products?.product_name || null,
-          program_name: l.affiliate_programs?.program_name || null,
-          affiliate_products: undefined,
-          affiliate_programs: undefined,
-        }))
-        return NextResponse.json({ links: formatted })
+        return NextResponse.json({ links: links || [] })
       }
 
       case "products": {
@@ -31,41 +24,37 @@ export async function GET(request: Request) {
         return NextResponse.json({ products: products || [] })
       }
 
-      case "rules": {
-        const { data: rules } = await supabase
-          .from("affiliate_rules")
-          .select("*")
-          .order("priority", { ascending: false })
-        return NextResponse.json({ rules: rules || [] })
-      }
+      case "rules":
+        return NextResponse.json({ rules: [] })
 
-      case "campaigns": {
-        const { data: campaigns } = await supabase
-          .from("affiliate_campaigns")
-          .select("*")
-          .order("created_at", { ascending: false })
-        return NextResponse.json({ campaigns: campaigns || [] })
-      }
+      case "campaigns":
+        return NextResponse.json({ campaigns: [] })
 
       case "revenue": {
-        const { data: revenue } = await supabase
-          .from("affiliate_sales")
+        const { data: links } = await supabase
+          .from("affiliate_links")
           .select("*")
-          .order("recorded_at", { ascending: false })
+          .order("created_at", { ascending: false })
           .limit(100)
-        return NextResponse.json({ revenue: revenue || [] })
+
+        const revenueEntries = (links || []).map((l: any) => ({
+          id: l.id,
+          source: l.code || "affiliate",
+          impressions: l.clicks || 0,
+          clicks: l.clicks || 0,
+          revenue: l.revenue || 0,
+          cpm: (l.clicks || 0) > 0 ? Math.round(((l.revenue || 0) / (l.clicks || 0)) * 1000 * 100) / 100 : 0,
+          cpc: (l.clicks || 0) > 0 ? Math.round(((l.revenue || 0) / (l.clicks || 0)) * 100) / 100 : 0,
+          date: l.created_at ? new Date(l.created_at).toISOString().slice(0, 10) : "",
+        }))
+
+        return NextResponse.json({ revenue: revenueEntries })
       }
 
       case "reports": {
-        const { data: sales } = await supabase
-          .from("affiliate_sales")
-          .select("amount, commission, recorded_at")
-          .order("recorded_at", { ascending: false })
-          .limit(365)
-
         const { data: clicks } = await supabase
           .from("affiliate_clicks")
-          .select("clicked_at, converted, conversion_amount")
+          .select("clicked_at, program")
           .order("clicked_at", { ascending: false })
           .limit(1000)
 
@@ -74,15 +63,18 @@ export async function GET(request: Request) {
           const day = new Date(c.clicked_at).toISOString().slice(0, 10)
           if (!dailyMap[day]) dailyMap[day] = { clicks: 0, conversions: 0, revenue: 0 }
           dailyMap[day].clicks++
-          if (c.converted) {
-            dailyMap[day].conversions++
-            dailyMap[day].revenue += c.conversion_amount || 0
-          }
         }
-        for (const s of sales || []) {
-          const day = new Date(s.recorded_at).toISOString().slice(0, 10)
-          if (!dailyMap[day]) dailyMap[day] = { clicks: 0, conversions: 0, revenue: 0 }
-          dailyMap[day].revenue += s.commission || 0
+
+        const { data: linkRevenue } = await supabase
+          .from("affiliate_links")
+          .select("revenue, created_at")
+
+        for (const l of linkRevenue || []) {
+          if (l.created_at && l.revenue) {
+            const day = new Date(l.created_at).toISOString().slice(0, 10)
+            if (!dailyMap[day]) dailyMap[day] = { clicks: 0, conversions: 0, revenue: 0 }
+            dailyMap[day].revenue += Number(l.revenue)
+          }
         }
 
         const reports = Object.entries(dailyMap)
@@ -98,46 +90,28 @@ export async function GET(request: Request) {
           .from("affiliate_links")
           .select("*", { count: "exact", head: true })
 
-        const { data: allClicks } = await supabase
+        const { data: allLinks } = await supabase
+          .from("affiliate_links")
+          .select("clicks, conversions, revenue")
+
+        const totalClicks = (allLinks || []).reduce((sum: number, l: any) => sum + (l.clicks || 0), 0)
+        const totalConversions = (allLinks || []).reduce((sum: number, l: any) => sum + (l.conversions || 0), 0)
+        const totalRevenue = (allLinks || []).reduce((sum: number, l: any) => sum + Number(l.revenue || 0), 0)
+
+        const { data: clicksData } = await supabase
           .from("affiliate_clicks")
-          .select("id, converted, conversion_amount")
-        const totalClicks = allClicks?.length || 0
-        const totalConversions = allClicks?.filter(c => c.converted).length || 0
-        const totalRevenue = allClicks?.reduce((sum, c) => sum + (c.conversion_amount || 0), 0) || 0
+          .select("program")
+          .limit(5000)
 
-        const { count: activeRules } = await supabase
-          .from("affiliate_rules")
-          .select("*", { count: "exact", head: true })
-          .eq("is_active", true)
-
-        const { count: activeCampaigns } = await supabase
-          .from("affiliate_campaigns")
-          .select("*", { count: "exact", head: true })
-          .eq("status", "active")
-
-        const { data: programStats } = await supabase
-          .from("affiliate_programs")
-          .select("id, program_name")
-          .eq("is_active", true)
-
-        const programIds = (programStats || []).map(p => p.id)
-        const { data: programClicks } = programIds.length > 0 ? await supabase
-          .from("affiliate_clicks")
-          .select("program_id, converted, conversion_amount")
-          .in("program_id", programIds) : { data: [] }
-
-        const clickMap: Record<string, { clicks: number; revenue: number }> = {}
-        for (const c of (programClicks || [])) {
-          if (!clickMap[c.program_id]) clickMap[c.program_id] = { clicks: 0, revenue: 0 }
-          clickMap[c.program_id].clicks++
-          if (c.converted) clickMap[c.program_id].revenue += c.conversion_amount || 0
+        const clickCountByProgram: Record<string, number> = {}
+        for (const c of clicksData || []) {
+          clickCountByProgram[c.program] = (clickCountByProgram[c.program] || 0) + 1
         }
 
-        const topPrograms = (programStats || []).map((p: any) => ({
-          name: p.program_name,
-          clicks: clickMap[p.id]?.clicks || 0,
-          revenue: Math.round((clickMap[p.id]?.revenue || 0) * 100) / 100,
-        })).sort((a: any, b: any) => b.revenue - a.revenue).slice(0, 5)
+        const topPrograms = Object.entries(clickCountByProgram)
+          .sort((a, b) => b[1] - a[1])
+          .slice(0, 5)
+          .map(([name, clicks]) => ({ name, clicks, revenue: 0 }))
 
         return NextResponse.json({
           overview: {
@@ -145,34 +119,35 @@ export async function GET(request: Request) {
             total_clicks: totalClicks,
             total_conversions: totalConversions,
             total_revenue: totalRevenue,
-            conversion_rate: totalClicks > 0 ? (totalConversions / totalClicks) * 100 : 0,
-            active_rules: activeRules || 0,
-            active_campaigns: activeCampaigns || 0,
+            conversion_rate: totalClicks > 0 ? Math.round((totalConversions / totalClicks) * 10000) / 100 : 0,
+            active_rules: 0,
+            active_campaigns: 0,
             top_programs: topPrograms,
           },
         })
       }
     }
   } catch (error) {
+    console.error("Affiliate API error:", error)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
   }
 }
 
 export async function POST(request: Request) {
-  const supabase = createClient()
+  const supabase = await createClient()
   const body = await request.json()
   const { type } = body
 
   try {
     if (type === "link") {
-      const slug = body.custom_slug || `aff-${Date.now().toString(36)}`
       const { data, error } = await supabase
         .from("affiliate_links")
         .insert({
-          destination_url: body.destination_url,
-          custom_slug: slug,
-          product_id: body.product_id || null,
-          program_id: body.program_id || null,
+          code: body.custom_slug || `aff-${Date.now().toString(36)}`,
+          commission_rate: body.commission_rate || 0,
+          clicks: 0,
+          conversions: 0,
+          revenue: 0,
         })
         .select()
         .single()
@@ -180,40 +155,25 @@ export async function POST(request: Request) {
       return NextResponse.json({ link: data })
     }
 
-    if (type === "rule") {
+    if (type === "product") {
       const { data, error } = await supabase
-        .from("affiliate_rules")
+        .from("affiliate_products")
         .insert({
-          name: body.name,
-          description: body.description || "",
-          match_type: body.match_type,
-          match_value: body.match_value,
-          program_id: body.program_id || null,
-          placement: body.placement || "inline",
-          priority: body.priority || 0,
-          revenue_per_click: body.revenue_per_click || 0,
+          program_key: body.program_key || null,
+          product_name: body.product_name,
+          product_description: body.product_description || null,
+          product_image_url: body.product_image_url || null,
+          affiliate_link: body.affiliate_link || "",
+          original_price: body.original_price || null,
+          sale_price: body.sale_price || null,
+          clicks: 0,
+          conversions: 0,
+          is_active: true,
         })
         .select()
         .single()
       if (error) throw error
-      return NextResponse.json({ rule: data })
-    }
-
-    if (type === "campaign") {
-      const { data, error } = await supabase
-        .from("affiliate_campaigns")
-        .insert({
-          name: body.name,
-          description: body.description || "",
-          start_date: body.start_date || null,
-          end_date: body.end_date || null,
-          budget: body.budget || 0,
-          status: body.status || "active",
-        })
-        .select()
-        .single()
-      if (error) throw error
-      return NextResponse.json({ campaign: data })
+      return NextResponse.json({ product: data })
     }
 
     return NextResponse.json({ error: "Invalid type" }, { status: 400 })
@@ -223,7 +183,7 @@ export async function POST(request: Request) {
 }
 
 export async function PUT(request: Request) {
-  const supabase = createClient()
+  const supabase = await createClient()
   const body = await request.json()
   const { type, id, ...updates } = body
 
@@ -232,57 +192,14 @@ export async function PUT(request: Request) {
       const { data, error } = await supabase
         .from("affiliate_links")
         .update({
-          destination_url: updates.destination_url,
-          custom_slug: updates.custom_slug,
-          product_id: updates.product_id || null,
-          program_id: updates.program_id || null,
-          updated_at: new Date().toISOString(),
+          code: updates.custom_slug,
+          commission_rate: updates.commission_rate,
         })
         .eq("id", id)
         .select()
         .single()
       if (error) throw error
       return NextResponse.json({ link: data })
-    }
-
-    if (type === "rule") {
-      const { data, error } = await supabase
-        .from("affiliate_rules")
-        .update({
-          name: updates.name,
-          description: updates.description,
-          match_type: updates.match_type,
-          match_value: updates.match_value,
-          program_id: updates.program_id || null,
-          placement: updates.placement,
-          priority: updates.priority,
-          revenue_per_click: updates.revenue_per_click,
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", id)
-        .select()
-        .single()
-      if (error) throw error
-      return NextResponse.json({ rule: data })
-    }
-
-    if (type === "campaign") {
-      const { data, error } = await supabase
-        .from("affiliate_campaigns")
-        .update({
-          name: updates.name,
-          description: updates.description,
-          start_date: updates.start_date || null,
-          end_date: updates.end_date || null,
-          budget: updates.budget,
-          status: updates.status,
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", id)
-        .select()
-        .single()
-      if (error) throw error
-      return NextResponse.json({ campaign: data })
     }
 
     return NextResponse.json({ error: "Invalid type" }, { status: 400 })
@@ -292,25 +209,13 @@ export async function PUT(request: Request) {
 }
 
 export async function DELETE(request: Request) {
-  const supabase = createClient()
+  const supabase = await createClient()
   const body = await request.json()
   const { type, id } = body
 
   try {
     if (type === "link") {
       const { error } = await supabase.from("affiliate_links").delete().eq("id", id)
-      if (error) throw error
-      return NextResponse.json({ success: true })
-    }
-
-    if (type === "rule") {
-      const { error } = await supabase.from("affiliate_rules").delete().eq("id", id)
-      if (error) throw error
-      return NextResponse.json({ success: true })
-    }
-
-    if (type === "campaign") {
-      const { error } = await supabase.from("affiliate_campaigns").delete().eq("id", id)
       if (error) throw error
       return NextResponse.json({ success: true })
     }

@@ -1,11 +1,12 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, useCallback } from "react"
 import { createClient } from "@/lib/supabase/client"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Lightbulb, TrendingUp, Clock, ArrowRight, Sparkles, RefreshCw } from "lucide-react"
+import { calculateOpportunityScore } from "@/lib/editorial-intelligence"
 
 interface Opportunity {
   id: string
@@ -22,62 +23,61 @@ export function AiOpportunityCenter() {
   const [opportunities, setOpportunities] = useState<Opportunity[]>([])
   const [loading, setLoading] = useState(true)
 
-  useEffect(() => {
-    generateOpportunities()
-  }, [])
-
-  const generateOpportunities = async () => {
+  const generateOpportunities = useCallback(async () => {
     const supabase = createClient()
     
-    // Get recent keywords and RSS items for opportunity analysis
-    const [keywordsRes, rssRes, postsRes] = await Promise.all([
-      supabase.from("keyword_articles").select("*").order("created_at", { ascending: false }).limit(20),
-      supabase.from("rss_feeds").select("id, feed_name").eq("is_active", true),
+    const [keywordsRes, postsRes] = await Promise.all([
+      supabase.from("keyword_articles").select("*").order("search_volume", { ascending: false }).limit(20),
       supabase.from("posts").select("id, title, tags, seo_keywords").eq("status", "published").limit(50)
     ])
 
     const keywords = keywordsRes.data || []
     const posts = postsRes.data || []
+    const existingTitles = posts.map(p => p.title?.toLowerCase() || "")
 
-    // Generate opportunities based on keywords and content gaps
     const opps: Opportunity[] = []
 
-    // Trending keywords as opportunities
-    keywords.slice(0, 5).forEach((kw, i) => {
+    keywords.slice(0, 10).forEach((kw, i) => {
+      const searchDemand = Math.min(100, Math.max(10, (kw.search_volume || 1000) / 200))
+      const competitionInv = Math.max(10, 100 - (kw.competition || 50))
+      const existingCoverage = existingTitles.some(t => t.includes((kw.keyword || "").toLowerCase())) ? 20 : 80
+
+      const score = calculateOpportunityScore({
+        search_demand: searchDemand,
+        trend_direction: (kw.trend_direction || 50) * 20,
+        freshness: 70,
+        competition_inverse: competitionInv,
+        existing_coverage_inverse: existingCoverage,
+        reader_interest: 50,
+        business_value: searchDemand * 0.8,
+        expertise: Math.round(searchDemand * 0.7),
+      })
+
       opps.push({
         id: kw.id || `kw-${i}`,
-        topic: kw.keyword || kw.name,
-        score: Math.floor(Math.random() * 40) + 60,
-        searchVolume: kw.volume || "1K-10K",
-        competition: i % 3 === 0 ? "low" : i % 3 === 1 ? "medium" : "high",
-        category: kw.category || "Technology",
-        priority: i < 2 ? "high" : i < 4 ? "medium" : "low",
-        reason: "Trending keyword with growth potential"
-      })
-    })
-
-    // Content gap opportunities
-    const gaps = [
-      { topic: "AI Coding Assistants Comparison 2024", score: 85, reason: "High search demand, limited coverage" },
-      { topic: "Best Laptops for Developers", score: 78, reason: "Evergreen content opportunity" },
-      { topic: "Cybersecurity Best Practices", score: 72, reason: "Consistent search volume" }
-    ]
-
-    gaps.forEach((gap, i) => {
-      opps.push({
-        id: `gap-${i}`,
-        topic: gap.topic,
-        score: gap.score,
-        searchVolume: "10K-50K",
-        competition: "medium",
+        topic: kw.keyword || "Unknown Topic",
+        score: score.score,
+        searchVolume: formatVolume(kw.search_volume),
+        competition: competitionInv > 70 ? "low" : competitionInv > 40 ? "medium" : "high",
         category: "Technology",
-        priority: gap.score >= 80 ? "high" : "medium",
-        reason: gap.reason
+        priority: score.score >= 80 ? "high" : score.score >= 60 ? "medium" : "low",
+        reason: score.recommendation
       })
     })
 
     setOpportunities(opps.sort((a, b) => b.score - a.score).slice(0, 6))
     setLoading(false)
+  }, [])
+
+  useEffect(() => { generateOpportunities() }, [generateOpportunities])
+
+  const formatVolume = (vol: number | null | undefined): string => {
+    if (!vol) return "1K-10K"
+    if (vol >= 100000) return "100K+"
+    if (vol >= 50000) return "50K-100K"
+    if (vol >= 10000) return "10K-50K"
+    if (vol >= 1000) return "1K-10K"
+    return "Under 1K"
   }
 
   const getScoreColor = (score: number) => {

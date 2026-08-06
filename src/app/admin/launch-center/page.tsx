@@ -9,14 +9,16 @@ import {
 
 interface LaunchEvent {
   id: string
-  name: string
-  company: string
-  event_type: string
-  expected_date: string
-  actual_date: string
+  title: string
   description: string
-  status: string
-  url: string
+  event_type: string
+  category: string
+  brand: string
+  product_name: string
+  event_date: string
+  source_url: string
+  image_url: string
+  is_published: boolean
   created_at: string
 }
 
@@ -34,8 +36,8 @@ export default function LaunchCenterPage() {
   const [filter, setFilter] = useState("upcoming")
   const [search, setSearch] = useState("")
   const [newEvent, setNewEvent] = useState({
-    name: "", company: "", event_type: "Smartphone Launch",
-    expected_date: "", description: "", url: "",
+    title: "", brand: "", event_type: "Smartphone Launch",
+    event_date: "", description: "", source_url: "", category: "",
   })
 
   const fetchEvents = useCallback(async () => {
@@ -43,23 +45,32 @@ export default function LaunchCenterPage() {
     let query = supabase
       .from("launch_events")
       .select("*")
-      .order("expected_date", { ascending: true })
+      .order("event_date", { ascending: true, nullsFirst: false })
 
-    if (filter === "upcoming") query = query.gte("expected_date", new Date().toISOString().split("T")[0])
-    if (filter === "past") query = query.lt("expected_date", new Date().toISOString().split("T")[0])
-    if (search) query = query.or(`name.ilike.%${search}%,company.ilike.%${search}%`)
+    if (filter === "upcoming") query = query.gte("event_date", new Date().toISOString().split("T")[0])
+    if (filter === "past") query = query.lt("event_date", new Date().toISOString().split("T")[0])
+    if (search) query = query.or(`title.ilike.%${search}%,brand.ilike.%${search}%`)
 
     const { data } = await query
     setEvents(data || [])
     setLoading(false)
-  }, [filter, search])
+  }, [filter, search, supabase])
 
   useEffect(() => { fetchEvents() }, [fetchEvents])
 
   const createEvent = async () => {
-    if (!newEvent.name) return
-    await supabase.from("launch_events").insert({ ...newEvent, status: "expected" })
-    setNewEvent({ name: "", company: "", event_type: "Smartphone Launch", expected_date: "", description: "", url: "" })
+    if (!newEvent.title) return
+    await supabase.from("launch_events").insert({
+      title: newEvent.title,
+      brand: newEvent.brand,
+      event_type: newEvent.event_type,
+      event_date: newEvent.event_date || null,
+      description: newEvent.description,
+      source_url: newEvent.source_url,
+      category: newEvent.category,
+      is_published: true,
+    })
+    setNewEvent({ title: "", brand: "", event_type: "Smartphone Launch", event_date: "", description: "", source_url: "", category: "" })
     setShowCreate(false)
     fetchEvents()
   }
@@ -67,6 +78,15 @@ export default function LaunchCenterPage() {
   const deleteEvent = async (id: string) => {
     await supabase.from("launch_events").delete().eq("id", id)
     fetchEvents()
+  }
+
+  const getStatus = (event: LaunchEvent) => {
+    if (!event.event_date) return "expected"
+    const diff = new Date(event.event_date).getTime() - Date.now()
+    if (diff < 0 && Math.abs(diff) < 86400000) return "launched"
+    if (diff < 0) return "launched"
+    if (diff < 7 * 86400000) return "confirmed"
+    return "rumored"
   }
 
   const statusColor = (status: string) => {
@@ -96,20 +116,24 @@ export default function LaunchCenterPage() {
       {showCreate && (
         <div className="bg-white dark:bg-[#111827] border-2 border-gray-200 dark:border-[#374151] rounded-xl p-4 space-y-3">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <input type="text" value={newEvent.name} onChange={e => setNewEvent({ ...newEvent, name: e.target.value })}
+            <input type="text" value={newEvent.title} onChange={e => setNewEvent({ ...newEvent, title: e.target.value })}
               placeholder="Event name" className="px-3 py-2 text-sm bg-gray-50 dark:bg-[#1F2937] border border-gray-200 dark:border-[#374151] rounded-lg text-gray-900 dark:text-white" />
-            <input type="text" value={newEvent.company} onChange={e => setNewEvent({ ...newEvent, company: e.target.value })}
-              placeholder="Company" className="px-3 py-2 text-sm bg-gray-50 dark:bg-[#1F2937] border border-gray-200 dark:border-[#374151] rounded-lg text-gray-900 dark:text-white" />
+            <input type="text" value={newEvent.brand} onChange={e => setNewEvent({ ...newEvent, brand: e.target.value })}
+              placeholder="Brand/Company" className="px-3 py-2 text-sm bg-gray-50 dark:bg-[#1F2937] border border-gray-200 dark:border-[#374151] rounded-lg text-gray-900 dark:text-white" />
             <select value={newEvent.event_type} onChange={e => setNewEvent({ ...newEvent, event_type: e.target.value })}
               className="px-3 py-2 text-sm bg-gray-50 dark:bg-[#1F2937] border border-gray-200 dark:border-[#374151] rounded-lg text-gray-700 dark:text-gray-300">
               {EVENT_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
             </select>
-            <input type="date" value={newEvent.expected_date} onChange={e => setNewEvent({ ...newEvent, expected_date: e.target.value })}
+            <input type="date" value={newEvent.event_date} onChange={e => setNewEvent({ ...newEvent, event_date: e.target.value })}
               className="px-3 py-2 text-sm bg-gray-50 dark:bg-[#1F2937] border border-gray-200 dark:border-[#374151] rounded-lg text-gray-900 dark:text-white" />
-            <input type="text" value={newEvent.url} onChange={e => setNewEvent({ ...newEvent, url: e.target.value })}
-              placeholder="URL (optional)" className="px-3 py-2 text-sm bg-gray-50 dark:bg-[#1F2937] border border-gray-200 dark:border-[#374151] rounded-lg text-gray-900 dark:text-white" />
-            <input type="text" value={newEvent.description} onChange={e => setNewEvent({ ...newEvent, description: e.target.value })}
-              placeholder="Description" className="px-3 py-2 text-sm bg-gray-50 dark:bg-[#1F2937] border border-gray-200 dark:border-[#374151] rounded-lg text-gray-900 dark:text-white" />
+            <input type="text" value={newEvent.category} onChange={e => setNewEvent({ ...newEvent, category: e.target.value })}
+              placeholder="Category (optional)" className="px-3 py-2 text-sm bg-gray-50 dark:bg-[#1F2937] border border-gray-200 dark:border-[#374151] rounded-lg text-gray-900 dark:text-white" />
+            <input type="url" value={newEvent.source_url} onChange={e => setNewEvent({ ...newEvent, source_url: e.target.value })}
+              placeholder="Source URL (optional)" className="px-3 py-2 text-sm bg-gray-50 dark:bg-[#1F2937] border border-gray-200 dark:border-[#374151] rounded-lg text-gray-900 dark:text-white" />
+            <div className="sm:col-span-2">
+              <input type="text" value={newEvent.description} onChange={e => setNewEvent({ ...newEvent, description: e.target.value })}
+                placeholder="Description" className="w-full px-3 py-2 text-sm bg-gray-50 dark:bg-[#1F2937] border border-gray-200 dark:border-[#374151] rounded-lg text-gray-900 dark:text-white" />
+            </div>
           </div>
           <div className="flex gap-2">
             <button onClick={createEvent} className="px-4 py-2 text-sm font-semibold bg-[#F59E0B] text-white rounded-lg">Create</button>
@@ -145,37 +169,40 @@ export default function LaunchCenterPage() {
         </div>
       ) : (
         <div className="space-y-3">
-          {events.map(event => (
-            <div key={event.id} className="bg-white dark:bg-[#111827] border-2 border-gray-200 dark:border-[#374151] rounded-xl p-4 hover:border-[#F59E0B] transition-colors">
-              <div className="flex items-start justify-between">
-                <div className="flex-1">
-                  <div className="flex items-center gap-2">
-                    <Rocket className="h-4 w-4 text-[#F59E0B]" />
-                    <h3 className="text-sm font-bold text-gray-900 dark:text-white">{event.name}</h3>
-                    <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${statusColor(event.status)}`}>
-                      {event.status}
-                    </span>
+          {events.map(event => {
+            const status = getStatus(event)
+            return (
+              <div key={event.id} className="bg-white dark:bg-[#111827] border-2 border-gray-200 dark:border-[#374151] rounded-xl p-4 hover:border-[#F59E0B] transition-colors">
+                <div className="flex items-start justify-between">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2">
+                      <Rocket className="h-4 w-4 text-[#F59E0B]" />
+                      <h3 className="text-sm font-bold text-gray-900 dark:text-white">{event.title}</h3>
+                      <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${statusColor(status)}`}>
+                        {status}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-4 mt-1.5 text-xs text-gray-500 dark:text-gray-400">
+                      <span className="flex items-center gap-1"><Tag className="h-3 w-3" />{event.brand || "N/A"}</span>
+                      <span className="flex items-center gap-1"><Calendar className="h-3 w-3" />{event.event_date ? new Date(event.event_date).toLocaleDateString() : "TBA"}</span>
+                      <span className="flex items-center gap-1"><Clock className="h-3 w-3" />{event.event_type}</span>
+                    </div>
+                    {event.description && <p className="text-xs text-gray-400 dark:text-gray-500 mt-2">{event.description}</p>}
                   </div>
-                  <div className="flex items-center gap-4 mt-1.5 text-xs text-gray-500 dark:text-gray-400">
-                    <span className="flex items-center gap-1"><Tag className="h-3 w-3" />{event.company}</span>
-                    <span className="flex items-center gap-1"><Calendar className="h-3 w-3" />{event.expected_date ? new Date(event.expected_date).toLocaleDateString() : "TBA"}</span>
-                    <span className="flex items-center gap-1"><Clock className="h-3 w-3" />{event.event_type}</span>
+                  <div className="flex items-center gap-1">
+                    {event.source_url && (
+                      <a href={event.source_url} target="_blank" rel="noopener noreferrer" className="p-1.5 hover:bg-gray-100 dark:hover:bg-[#1F2937] rounded-lg">
+                        <ExternalLink className="h-4 w-4 text-gray-400" />
+                      </a>
+                    )}
+                    <button onClick={() => deleteEvent(event.id)} className="p-1.5 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg">
+                      <Trash2 className="h-4 w-4 text-red-400" />
+                    </button>
                   </div>
-                  {event.description && <p className="text-xs text-gray-400 dark:text-gray-500 mt-2">{event.description}</p>}
-                </div>
-                <div className="flex items-center gap-1">
-                  {event.url && (
-                    <a href={event.url} target="_blank" rel="noopener noreferrer" className="p-1.5 hover:bg-gray-100 dark:hover:bg-[#1F2937] rounded-lg">
-                      <ExternalLink className="h-4 w-4 text-gray-400" />
-                    </a>
-                  )}
-                  <button onClick={() => deleteEvent(event.id)} className="p-1.5 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg">
-                    <Trash2 className="h-4 w-4 text-red-400" />
-                  </button>
                 </div>
               </div>
-            </div>
-          ))}
+            )
+          })}
         </div>
       )}
     </div>

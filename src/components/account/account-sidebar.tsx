@@ -6,6 +6,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { BADGES } from '@/lib/community-utils';
+import Image from 'next/image';
 import {
   User, Shield, Bell, Link2, Activity, BookMarked, History,
   Settings, LogOut, ChevronRight, Flame, Star, Trophy, Zap
@@ -41,14 +42,14 @@ export default function AccountSidebar({ profile, levelInfo }: AccountSidebarPro
       <Card className="overflow-hidden">
         <div className="h-20 bg-gradient-to-r from-primary/20 to-primary/5 relative">
           {profile?.cover_url && (
-            <img src={profile.cover_url} alt="" className="absolute inset-0 w-full h-full object-cover" />
+            <Image src={profile.cover_url} alt="" width={1200} height={675} className="absolute inset-0 w-full h-full object-cover" />
           )}
         </div>
         <CardContent className="p-4 -mt-8 relative z-10">
           <div className="flex items-end gap-3 mb-3">
             <div className="w-16 h-16 rounded-full bg-primary/10 border-2 border-background flex items-center justify-center text-xl font-bold text-primary overflow-hidden shrink-0">
               {profile?.avatar_url ? (
-                <img src={profile.avatar_url} alt="" className="w-full h-full object-cover" />
+                <Image src={profile.avatar_url} alt="" width={48} height={48} className="w-full h-full object-cover" />
               ) : (
                 profile?.full_name?.[0] || profile?.username?.[0] || '?'
               )}

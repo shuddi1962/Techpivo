@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
+import { BADGES } from '@/lib/community-utils';
 import { Activity, Star, Trophy, Flame, BookOpen, MessageSquare, Award, Target, Calendar } from 'lucide-react';
 
 interface XpLogEntry {
@@ -159,7 +160,7 @@ export default function ActivityPage() {
           <CardContent>
             <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
               {badges.map((badgeId: string) => {
-                const badge = getBadgeInfo(badgeId);
+                const badge = BADGES.find(b => b.id === badgeId);
                 return badge ? (
                   <div key={badgeId} className="flex items-center gap-3 p-3 rounded-lg bg-muted/30">
                     <div className="text-2xl">{badge.icon}</div>
@@ -214,23 +215,4 @@ export default function ActivityPage() {
   );
 }
 
-function getBadgeInfo(id: string) {
-  const badges: Record<string, { name: string; icon: string; description: string }> = {
-    early_member: { name: 'Early Member', icon: '🔥', description: 'Joined during the first year' },
-    programmer: { name: 'Programmer', icon: '💻', description: 'Read 20 programming articles' },
-    ai_expert: { name: 'AI Expert', icon: '🤖', description: 'Read 20 AI articles' },
-    cyber_pro: { name: 'Cybersecurity Pro', icon: '🛡', description: 'Read 20 cybersecurity articles' },
-    gadget_lover: { name: 'Gadget Lover', icon: '📱', description: 'Read 15 gadget reviews' },
-    tutorial_master: { name: 'Tutorial Master', icon: '🎓', description: 'Completed 10 tutorials' },
-    quiz_champion: { name: 'Quiz Champion', icon: '🏆', description: 'Scored 100% on 5 quizzes' },
-    top_commenter: { name: 'Top Commenter', icon: '⭐', description: '50 comments with 10+ likes' },
-    community_helper: { name: 'Community Helper', icon: '💬', description: '20 accepted forum answers' },
-    daily_visitor: { name: 'Daily Visitor', icon: '🚀', description: '30-day login streak' },
-    first_post: { name: 'First Post', icon: '📝', description: 'Created first forum post' },
-    quiz_beginner: { name: 'Quiz Beginner', icon: '🎯', description: 'Completed 1 quiz' },
-    knowledge_seeker: { name: 'Knowledge Seeker', icon: '📚', description: 'Read 50 articles' },
-    social_butterfly: { name: 'Social Butterfly', icon: '🦋', description: 'Followed 10 users' },
-    bookmark_collector: { name: 'Bookmark Collector', icon: '🔖', description: 'Saved 25 bookmarks' },
-  };
-  return badges[id];
-}
+

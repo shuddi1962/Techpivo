@@ -38,9 +38,9 @@ export default function BriefsPage() {
   async function fetchBriefs() {
     setLoading(true);
     try {
-      const res = await fetch("/admin/editorial-intelligence/api?section=opportunities");
+      const res = await fetch("/admin/editorial-intelligence/api?section=briefs");
       const data = await res.json();
-      setBriefs(data.briefs || data.opportunities || []);
+      setBriefs(data.briefs || []);
     } catch {
       setBriefs([]);
     } finally {
@@ -77,11 +77,23 @@ export default function BriefsPage() {
 
   async function generateNewBrief() {
     try {
-      await fetch("/admin/editorial-intelligence/brief", { method: "POST" });
+      await fetch("/admin/editorial-intelligence/brief", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ topic: "New Technology Topic", category: "Technology" }),
+      });
       fetchBriefs();
     } catch {
       // silent
     }
+  }
+
+  const viewBrief = (brief: Brief) => {
+    window.open(`/admin/editorial-intelligence/generate?topic=${encodeURIComponent(brief.topic)}&category=${encodeURIComponent(brief.category)}`, "_blank")
+  }
+
+  const deleteBrief = (id: string) => {
+    setBriefs(prev => prev.filter(b => b.id !== id))
   }
 
   return (
@@ -223,10 +235,16 @@ export default function BriefsPage() {
                         {brief.opportunity_score}
                       </div>
                       <div className="flex items-center gap-1">
-                        <button className="p-1.5 rounded-lg hover:bg-accent transition-colors text-muted-foreground hover:text-foreground">
+                        <button
+                          onClick={() => viewBrief(brief)}
+                          className="p-1.5 rounded-lg hover:bg-accent transition-colors text-muted-foreground hover:text-foreground"
+                        >
                           <Eye className="h-4 w-4" />
                         </button>
-                        <button className="p-1.5 rounded-lg hover:bg-accent transition-colors text-muted-foreground hover:text-red-400">
+                        <button
+                          onClick={() => deleteBrief(brief.id)}
+                          className="p-1.5 rounded-lg hover:bg-accent transition-colors text-muted-foreground hover:text-red-400"
+                        >
                           <Trash2 className="h-4 w-4" />
                         </button>
                       </div>

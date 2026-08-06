@@ -24,32 +24,33 @@ export default function AdminIndexingPage() {
     setSubmitting(true)
     const supabase = createClient()
     const unindexed = queue.filter((q) => q.status === "pending")
-    let successCount = 0
-    for (const item of unindexed) {
-      try {
-        // Call IndexNow API for real indexing
-        const siteUrl = window.location.origin
-        const indexNowRes = await fetch("https://api.indexnow.org/indexnow", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            host: new URL(siteUrl).host,
-            key: "techpivo-indexing-key",
-            keyLocation: `${siteUrl}/techpivo-indexing-key.txt`,
-            urlList: [item.url],
-          }),
-        })
-        if (indexNowRes.ok) {
-          await supabase.from("google_indexing_queue").update({ status: "submitted", submitted_at: new Date().toISOString() }).eq("id", item.id)
-          successCount++
-        }
-      } catch {
+    const urls = unindexed.map((q) => q.url)
+    if (urls.length === 0) {
+      alert("No pending URLs to submit.")
+      setSubmitting(false)
+      return
+    }
+    try {
+      const res = await fetch("/admin/indexing/api", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ urls }),
+      })
+      const data = await res.json()
+      if (res.ok) {
+        alert(`Submitted ${data.submitted} of ${unindexed.length} URLs to IndexNow API`)
+      } else {
+        alert(`Error: ${data.error}`)
+      }
+    } catch (err) {
+      alert("Failed to submit URLs to IndexNow API. Check console for details.")
+      console.error("Indexing error:", err)
+      for (const item of unindexed) {
         await supabase.from("google_indexing_queue").update({ status: "failed", submitted_at: new Date().toISOString() }).eq("id", item.id)
       }
     }
-    alert(`Submitted ${successCount} of ${unindexed.length} URLs to IndexNow API`)
-    const { data } = await supabase.from("google_indexing_queue").select("*").order("created_at", { ascending: false }).limit(50)
-    if (data) setQueue(data)
+    const { data: refetch } = await supabase.from("google_indexing_queue").select("*").order("created_at", { ascending: false }).limit(50)
+    if (refetch) setQueue(refetch)
     setSubmitting(false)
   }
 

@@ -44,7 +44,7 @@ export function AuditLogViewer() {
     setLogs(data || [])
     setTotal(count || 0)
     setLoading(false)
-  }, [page, actionFilter])
+  }, [page, actionFilter, supabase])
 
   useEffect(() => { fetchLogs() }, [fetchLogs])
 

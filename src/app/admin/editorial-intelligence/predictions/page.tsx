@@ -13,10 +13,10 @@ import {
 } from "lucide-react";
 
 interface Prediction {
-  id: string;
+  id?: string;
   topic: string;
   probability: number;
-  confidence: "high" | "medium" | "low";
+  confidence: number;
   time_window: string;
   recommendation: string;
   sources: string[];
@@ -35,14 +35,20 @@ export default function PredictionsPage() {
   async function fetchPredictions() {
     setLoading(true);
     try {
-      const res = await fetch("/admin/editorial-intelligence/api?section=trends");
+      const res = await fetch("/admin/editorial-intelligence/api?section=predictions");
       const data = await res.json();
-      setPredictions(data.predictions || data.trends || []);
+      setPredictions(data.predictions || []);
     } catch {
       setPredictions([]);
     } finally {
       setLoading(false);
     }
+  }
+
+  function getConfidenceLabel(conf: number): string {
+    if (conf >= 75) return "high";
+    if (conf >= 50) return "medium";
+    return "low";
   }
 
   const confidenceColors: Record<string, string> = {
@@ -122,7 +128,7 @@ export default function PredictionsPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {predictions.map((pred) => (
               <div
-                key={pred.id}
+                  key={pred.id || pred.topic}
                 className="rounded-xl border bg-card p-5 space-y-4 hover:bg-accent/50 transition-colors"
               >
                 {/* Topic & Category */}
@@ -151,8 +157,8 @@ export default function PredictionsPage() {
                 <div className="flex items-center gap-3">
                   <div className="flex items-center gap-1.5">
                     <Target className="h-3 w-3 text-muted-foreground" />
-                    <span className={`px-2 py-0.5 rounded-full text-xs border ${confidenceColors[pred.confidence] || "bg-secondary text-secondary-foreground"}`}>
-                      {pred.confidence} confidence
+                    <span className={`px-2 py-0.5 rounded-full text-xs border ${confidenceColors[getConfidenceLabel(pred.confidence)] || "bg-secondary text-secondary-foreground"}`}>
+                      {getConfidenceLabel(pred.confidence)} confidence
                     </span>
                   </div>
                   <div className="flex items-center gap-1.5 text-xs text-muted-foreground">

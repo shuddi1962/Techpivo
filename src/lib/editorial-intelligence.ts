@@ -1,4 +1,4 @@
-import { createClient } from "@/lib/supabase/server"
+import { createClient } from "@/lib/supabase/admin"
 
 export interface OpportunityScore {
   topic: string
@@ -165,45 +165,42 @@ export async function generateTodayOpportunities(): Promise<OpportunityScore[]> 
   const [{ data: posts }, { data: categories }, { data: keywords }] = await Promise.all([
     supabase.from("posts").select("id, title, category_id, views, created_at, status").eq("status", "published"),
     supabase.from("categories").select("id, name"),
-    supabase.from("keywords").select("id, keyword, search_volume, competition, category_id, trend_direction, last_updated"),
+    supabase.from("keyword_articles").select("id, keyword, search_volume, competition, category_id, trend_direction, last_updated").order("search_volume", { ascending: false }).limit(50),
   ])
 
-  const trendingTopics = [
-    { topic: "AI Agents", category: "AI & Automation", search_demand: 95, trend: 92, competition: 40, interest: 90, value: 85, expertise: 88 },
-    { topic: "Claude 4 Release", category: "AI & Automation", search_demand: 98, trend: 95, competition: 30, interest: 95, value: 90, expertise: 85 },
-    { topic: "Windows 12 Features", category: "Desktops", search_demand: 88, trend: 85, competition: 50, interest: 80, value: 75, expertise: 80 },
-    { topic: "Rust Programming Growth", category: "Programming", search_demand: 82, trend: 78, competition: 35, interest: 75, value: 70, expertise: 85 },
-    { topic: "Zero Trust Security", category: "Cybersecurity", search_demand: 85, trend: 80, competition: 45, interest: 78, value: 80, expertise: 82 },
-    { topic: "Next.js 16", category: "Web Development", search_demand: 90, trend: 88, competition: 40, interest: 85, value: 80, expertise: 90 },
-    { topic: "NVIDIA Blackwell GPUs", category: "Gadgets", search_demand: 92, trend: 90, competition: 55, interest: 88, value: 85, expertise: 78 },
-    { topic: "GitHub Copilot X", category: "Programming", search_demand: 87, trend: 82, competition: 35, interest: 82, value: 78, expertise: 88 },
-    { topic: "Smart Home AI Integration", category: "Gadgets", search_demand: 78, trend: 75, competition: 40, interest: 72, value: 70, expertise: 75 },
-    { topic: "Linux Desktop Gaming", category: "Programming", search_demand: 75, trend: 70, competition: 30, interest: 68, value: 65, expertise: 80 },
-    { topic: "Cybersecurity Trends 2026", category: "Cybersecurity", search_demand: 90, trend: 85, competition: 50, interest: 82, value: 85, expertise: 85 },
-    { topic: "AI Image Generation Tools", category: "AI & Automation", search_demand: 88, trend: 82, competition: 45, interest: 85, value: 80, expertise: 82 },
-  ]
-
   const existingTitles = (posts || []).map(p => p.title?.toLowerCase() || "")
+  const catMap = new Map((categories || []).map(c => [c.id, c.name]))
 
-  return trendingTopics
-    .filter(t => !existingTitles.some(et => et.includes(t.topic.toLowerCase().split(" ")[0])))
-    .map(t => {
+  const opportunities: OpportunityScore[] = (keywords || [])
+    .filter(kw => !existingTitles.some(et => et.includes(kw.keyword?.toLowerCase()?.split(" ")[0] || "")))
+    .slice(0, 20)
+    .map(kw => {
+      const searchDemand = Math.min(100, Math.max(10, (kw.search_volume || 1000) / 200))
+      const trend = Math.min(100, Math.max(10, (kw.trend_direction || 50) * 20))
+      const competitionInv = Math.max(10, 100 - (kw.competition || 50))
+      const categoryName = catMap.get(kw.category_id || "") || "Technology"
+      const catPosts = (posts || []).filter(p => p.category_id === kw.category_id)
+      const catViews = catPosts.reduce((s, p) => s + (p.views || 0), 0)
+      const interest = Math.min(100, Math.max(10, catPosts.length > 0 ? Math.round(catViews / catPosts.length / 20) : 30))
+
       const score = calculateOpportunityScore({
-        search_demand: t.search_demand,
-        trend_direction: t.trend,
-        freshness: 85,
-        competition_inverse: 100 - t.competition,
-        existing_coverage_inverse: 80,
-        reader_interest: t.interest,
-        business_value: t.value,
-        expertise: t.expertise,
+        search_demand: searchDemand,
+        trend_direction: trend,
+        freshness: 70,
+        competition_inverse: competitionInv,
+        existing_coverage_inverse: 70,
+        reader_interest: interest,
+        business_value: Math.round(searchDemand * 0.8),
+        expertise: Math.round(searchDemand * 0.7),
       })
-      score.topic = t.topic
-      score.category = t.category
+      score.topic = kw.keyword || "Unknown Topic"
+      score.category = categoryName
       return score
     })
     .sort((a, b) => b.score - a.score)
     .slice(0, 10)
+
+  return opportunities
 }
 
 export async function generateCategoryIntelligence(): Promise<CategoryIntelligence[]> {
@@ -241,157 +238,223 @@ export async function generateCategoryIntelligence(): Promise<CategoryIntelligen
 }
 
 export async function generateTrendPredictions(): Promise<TrendPrediction[]> {
-  return [
-    { topic: "AI Browser Agents", probability: 87, confidence: 82, time_window: "48 hours", sources: ["Google Trends", "TechCrunch", "HackerNews"], recommendation: "Write Within 48 Hours", category: "AI & Automation" },
-    { topic: "Windows AI Features Expansion", probability: 82, confidence: 78, time_window: "1 week", sources: ["Microsoft Blog", "The Verge"], recommendation: "Prepare This Week", category: "Desktops" },
-    { topic: "Next.js Server Components Maturity", probability: 79, confidence: 75, time_window: "2 weeks", sources: ["Vercel Blog", "GitHub Trending"], recommendation: "Plan Tutorial", category: "Web Development" },
-    { topic: "Ransomware-as-a-Service Growth", probability: 85, confidence: 80, time_window: "1 week", sources: ["CISA", "BleepingComputer"], recommendation: "Publish Security Alert", category: "Cybersecurity" },
-    { topic: "Open Source AI Models Surge", probability: 83, confidence: 77, time_window: "2 weeks", sources: ["Hugging Face", "GitHub"], recommendation: "Create Comparison Guide", category: "AI & Automation" },
-    { topic: "Edge Computing 2.0", probability: 72, confidence: 68, time_window: "1 month", sources: ["IEEE", "Cloudflare Blog"], recommendation: "Plan Evergreen Content", category: "Networking & IT" },
-    { topic: "WebAssembly Production Adoption", probability: 76, confidence: 72, time_window: "2 weeks", sources: ["Mozilla", "Chrome Blog"], recommendation: "Write Tutorial Series", category: "Programming" },
-    { topic: "AI Code Review Tools", probability: 81, confidence: 76, time_window: "1 week", sources: ["GitHub Blog", "Dev.to"], recommendation: "Write Comparison", category: "Programming" },
-  ].sort((a, b) => b.probability - a.probability)
+  const supabase = createClient()
+  const { data } = await supabase.from("trend_predictions").select("*").order("probability", { ascending: false }).limit(20)
+  return (data || []).map(t => ({
+    topic: t.topic,
+    probability: t.probability,
+    confidence: t.confidence,
+    time_window: t.time_window,
+    sources: t.sources || [],
+    recommendation: t.recommendation || "Monitor",
+    category: t.category || "Technology",
+  }))
 }
 
-export function generateCompanyStories(): CompanyStory[] {
-  return [
-    { company: "Google", headline: "Gemini 3.0 announced with enhanced reasoning capabilities", source: "Official Blog", date: new Date().toISOString(), category: "AI & Automation", relevance: 95 },
-    { company: "Apple", headline: "M5 chip benchmarks reveal significant performance gains", source: "9to5Mac", date: new Date().toISOString(), category: "Gadgets", relevance: 90 },
-    { company: "Microsoft", headline: "Windows 12 preview build includes AI shell integration", source: "Windows Insider Blog", date: new Date().toISOString(), category: "Desktops", relevance: 88 },
-    { company: "OpenAI", headline: "GPT-5 Turbo API pricing reduced by 40%", source: "OpenAI Blog", date: new Date().toISOString(), category: "AI & Automation", relevance: 92 },
-    { company: "NVIDIA", headline: "Blackwell Ultra GPU samples sent to cloud partners", source: "NVIDIA Newsroom", date: new Date().toISOString(), category: "Gadgets", relevance: 85 },
-    { company: "Meta", headline: "Llama 4 release date confirmed for Q3 2026", source: "Meta AI Blog", date: new Date().toISOString(), category: "AI & Automation", relevance: 88 },
-    { company: "Samsung", headline: "Galaxy S26 Ultra camera system leaked with 200MP sensor", source: "Samsung Newsroom", date: new Date().toISOString(), category: "Gadgets", relevance: 82 },
-    { company: "Anthropic", headline: "Claude 4 Opus sets new benchmarks on reasoning tasks", source: "Anthropic Blog", date: new Date().toISOString(), category: "AI & Automation", relevance: 93 },
-    { company: "AMD", headline: "Ryzen 9000X3D gaming benchmarks surface ahead of launch", source: "AMD Community", date: new Date().toISOString(), category: "Gadgets", relevance: 80 },
-    { company: "Adobe", headline: "Photoshop AI generative fill gets video support", source: "Adobe Blog", date: new Date().toISOString(), category: "AI & Automation", relevance: 78 },
-  ].sort((a, b) => b.relevance - a.relevance)
+export async function generateCompanyStories(): Promise<CompanyStory[]> {
+  const supabase = createClient()
+  const { data } = await supabase.from("company_watchlist").select("*").order("created_at", { ascending: false }).limit(20)
+  return (data || []).map(c => ({
+    company: c.company,
+    headline: c.headline || `${c.company} — latest updates`,
+    source: c.source || "Industry News",
+    date: c.created_at || new Date().toISOString(),
+    category: c.category || "Technology",
+    relevance: c.relevance || 70,
+    url: c.url,
+  }))
 }
 
-export function generateBreakingNews() {
-  return [
-    { title: "Google releases Gemini 3.0 with native tool use", category: "AI & Automation", source: "Google AI Blog", time: "2 hours ago", urgency: "high", url: "#" },
-    { title: "Critical zero-day vulnerability found in Chrome 130", category: "Cybersecurity", source: "CISA Advisory", time: "4 hours ago", urgency: "high", url: "#" },
-    { title: "GitHub Copilot now supports 50+ programming languages", category: "Programming", source: "GitHub Blog", time: "6 hours ago", urgency: "medium", url: "#" },
-    { title: "Apple MacBook Pro M5 Pro benchmarks leaked", category: "Gadgets", source: "MacRumors", time: "8 hours ago", urgency: "medium", url: "#" },
-    { title: "React 20 release candidate published", category: "Web Development", source: "React Blog", time: "10 hours ago", urgency: "medium", url: "#" },
-    { title: "New ransomware group targets healthcare sector", category: "Cybersecurity", source: "BleepingComputer", time: "12 hours ago", urgency: "high", url: "#" },
-    { title: "Docker Desktop 5.0 introduces AI-powered debugging", category: "Programming", source: "Docker Blog", time: "14 hours ago", urgency: "low", url: "#" },
-    { title: "Samsung Galaxy AI features expand to older devices", category: "Gadgets", source: "Samsung Newsroom", time: "16 hours ago", urgency: "low", url: "#" },
-  ]
+export async function generateBreakingNews() {
+  const supabase = createClient()
+  const { data: posts } = await supabase
+    .from("posts")
+    .select("id, title, category_id, created_at, status")
+    .eq("status", "published")
+    .order("created_at", { ascending: false })
+    .limit(10)
+
+  return (posts || []).map(p => {
+    const hoursAgo = Math.floor((Date.now() - new Date(p.created_at || 0).getTime()) / 3600000)
+    return {
+      title: p.title || "Untitled",
+      category: p.category_id || "Technology",
+      source: "TechPivo",
+      time: hoursAgo <= 1 ? "1 hour ago" : `${hoursAgo} hours ago`,
+      urgency: hoursAgo < 6 ? "high" as const : hoursAgo < 24 ? "medium" as const : "low" as const,
+      url: `/posts/${p.id}`,
+    }
+  })
 }
 
-export function generateContentGaps(): ContentGap[] {
-  return [
-    { topic: "AI Coding Assistants Comparison 2026", category: "Programming", search_volume: 12000, competition_level: "Medium", competitor_coverage: ["TechCrunch", "The Verge", "Ars Technica"], gap_type: "high_demand_no_coverage", priority: 9 },
-    { topic: "Best Laptops for Developers", category: "Reviews", search_volume: 18000, competition_level: "High", competitor_coverage: ["Tom's Hardware", "NotebookCheck", "LaptopMag"], gap_type: "competitor_only", priority: 8 },
-    { topic: "Kubernetes vs Docker Swarm", category: "Networking & IT", search_volume: 9500, competition_level: "Low", competitor_coverage: ["DigitalOcean", "Linode"], gap_type: "competitor_only", priority: 7 },
-    { topic: "Rust vs Go Performance", category: "Programming", search_volume: 8200, competition_level: "Medium", competitor_coverage: ["HackerNoon", "Dev.to"], gap_type: "trending_not_covered", priority: 8 },
-    { topic: "Home Network Security Guide", category: "Cybersecurity", search_volume: 14000, competition_level: "Low", competitor_coverage: ["CISA", "KrebsOnSecurity"], gap_type: "high_demand_no_coverage", priority: 7 },
-    { topic: "AI Image Generation Tools Compared", category: "AI & Automation", search_volume: 22000, competition_level: "High", competitor_coverage: ["TechRadar", "PCMag", "CreativeBloq"], gap_type: "competitor_only", priority: 9 },
-    { topic: "Windows 12 Upgrade Guide", category: "Desktops", search_volume: 15000, competition_level: "Medium", competitor_coverage: ["How-To Geek", "MajorGeeks"], gap_type: "seasonal", priority: 8 },
-    { topic: "Mechanical Keyboard Guide for Programmers", category: "Reviews", search_volume: 7800, competition_level: "Low", competitor_coverage: ["Keychron", "Reddit"], gap_type: "competitor_only", priority: 6 },
-  ]
+export async function generateContentGaps(): Promise<ContentGap[]> {
+  const supabase = createClient()
+  const { data } = await supabase.from("content_gaps").select("*").order("priority", { ascending: false }).limit(20)
+  return (data || []).map(g => ({
+    topic: g.topic,
+    category: g.category || "Technology",
+    search_volume: g.search_volume || 0,
+    competition_level: g.competition_level || "Medium",
+    competitor_coverage: g.competitor_coverage || [],
+    gap_type: g.gap_type || "discovered",
+    priority: g.priority || 5,
+  }))
 }
 
-export function generateCompetitorData(): CompetitorData[] {
-  return [
-    { name: "TechCrunch", website: "techcrunch.com", category_focus: ["AI & Automation", "Digital Business", "Tech News"], publishing_frequency: "50+ articles/day", trending_topics: ["AI Startups", "VC Funding", "Crypto"], estimated_da: 95, overlap_score: 65 },
-    { name: "The Verge", website: "theverge.com", category_focus: ["Gadgets", "AI & Automation", "Reviews"], publishing_frequency: "30+ articles/day", trending_topics: ["Apple Products", "AI Hardware", "Streaming"], estimated_da: 94, overlap_score: 72 },
-    { name: "Ars Technica", website: "arstechnica.com", category_focus: ["Programming", "Cybersecurity", "Science"], publishing_frequency: "20+ articles/day", trending_topics: ["Open Source", "Security Research", "Chip Design"], estimated_da: 93, overlap_score: 58 },
-    { name: "BleepingComputer", website: "bleepingcomputer.com", category_focus: ["Cybersecurity", "Tech News"], publishing_frequency: "15+ articles/day", trending_topics: ["Ransomware", "Data Breaches", "Malware"], estimated_da: 90, overlap_score: 45 },
-    { name: "How-To Geek", website: "howtogeek.com", category_focus: ["Tutorials", "Desktops", "Gadgets"], publishing_frequency: "10+ articles/day", trending_topics: ["Windows Tips", "Android", "Smart Home"], estimated_da: 88, overlap_score: 55 },
-    { name: "Tom's Hardware", website: "tomshardware.com", category_focus: ["Gadgets", "Desktops", "Reviews"], publishing_frequency: "15+ articles/day", trending_topics: ["GPU Reviews", "CPU Benchmarks", "PC Building"], estimated_da: 92, overlap_score: 50 },
-  ]
+export async function generateCompetitorData(): Promise<CompetitorData[]> {
+  const supabase = createClient()
+  const { data } = await supabase.from("competitor_watch").select("*").limit(20)
+  return (data || []).map(c => ({
+    name: c.name,
+    website: c.website,
+    category_focus: c.category_focus || [],
+    publishing_frequency: c.publishing_frequency || "Unknown",
+    trending_topics: c.trending_topics || [],
+    estimated_da: c.estimated_da || 0,
+    overlap_score: c.overlap_score || 0,
+  }))
 }
 
-export function generateProductLaunches(): ProductLaunch[] {
-  return [
-    { company: "Apple", product_name: "iPhone 17 Pro", product_type: "Smartphone", launch_date: "2026-09-15", status: "upcoming", article_ideas: ["iPhone 17 Pro specs leaked", "iPhone 17 vs Samsung Galaxy S26", "Best iPhone 17 cases"] },
-    { company: "Google", product_name: "Pixel 10 Pro", product_type: "Smartphone", launch_date: "2026-10-01", status: "upcoming", article_ideas: ["Pixel 10 Pro AI features", "Tensor G5 benchmarks", "Pixel 10 camera samples"] },
-    { company: "NVIDIA", product_name: "RTX 6090", product_type: "GPU", launch_date: "2026-08-20", status: "announced", article_ideas: ["RTX 6090 specs and pricing", "RTX 6090 vs RTX 5090", "Best GPUs for AI development"] },
-    { company: "Microsoft", product_name: "Windows 12", product_type: "Operating System", launch_date: "2026-10-15", status: "upcoming", article_ideas: ["Windows 12 new features", "Windows 12 upgrade guide", "Windows 12 vs macOS"] },
-    { company: "Samsung", product_name: "Galaxy S26 Ultra", product_type: "Smartphone", launch_date: "2026-07-25", status: "announced", article_ideas: ["Galaxy S26 Ultra review", "S26 Ultra camera comparison", "Galaxy AI features"] },
-    { company: "OpenAI", product_name: "GPT-5 Turbo", product_type: "AI Model", launch_date: "2026-08-01", status: "upcoming", article_ideas: ["GPT-5 Turbo capabilities", "GPT-5 vs Claude 4", "GPT-5 pricing breakdown"] },
-    { company: "AMD", product_name: "Ryzen 9 9950X3D", product_type: "CPU", launch_date: "2026-09-01", status: "upcoming", article_ideas: ["Ryzen 9 9950X3D gaming benchmarks", "Best AMD CPUs 2026", "AMD vs Intel comparison"] },
-    { company: "Apple", product_name: "MacBook Pro M5 Pro", product_type: "Laptop", launch_date: "2026-11-01", status: "upcoming", article_ideas: ["M5 Pro benchmarks", "MacBook Pro 2026 review", "M5 Pro vs M4 Pro"] },
-  ]
+export async function generateProductLaunches(): Promise<ProductLaunch[]> {
+  const supabase = createClient()
+  const { data } = await supabase.from("product_launches").select("*").order("launch_date", { ascending: true }).limit(20)
+  return (data || []).map(p => ({
+    company: p.company,
+    product_name: p.product_name,
+    product_type: p.product_type || "Product",
+    launch_date: p.launch_date,
+    status: p.status || "upcoming",
+    article_ideas: p.article_ideas || [],
+  }))
 }
 
-export function generateEditorialQueue(): EditorialQueueItem[] {
-  return [
-    { id: "1", title: "AI Agents Complete Guide", category: "AI & Automation", stage: "draft_generation", priority: 9, created_at: new Date().toISOString() },
-    { id: "2", title: "Windows 12 Features Breakdown", category: "Desktops", stage: "keyword_analysis", priority: 8, created_at: new Date().toISOString() },
-    { id: "3", title: "Best Cybersecurity Tools 2026", category: "Cybersecurity", stage: "researching", priority: 7, created_at: new Date().toISOString() },
-    { id: "4", title: "React 20 Migration Guide", category: "Programming", stage: "seo_optimization", priority: 8, created_at: new Date().toISOString() },
-    { id: "5", title: "Samsung Galaxy S26 Review", category: "Reviews", stage: "editorial_review", priority: 9, created_at: new Date().toISOString() },
-    { id: "6", title: "Rust Programming Tutorial", category: "Tutorials", stage: "image_processing", priority: 6, created_at: new Date().toISOString() },
-  ]
+export async function generateEditorialQueue(): Promise<EditorialQueueItem[]> {
+  const supabase = createClient()
+  const { data } = await supabase.from("editorial_queue").select("*").order("priority", { ascending: false }).limit(20)
+  return (data || []).map(q => ({
+    id: q.id,
+    title: q.title,
+    category: q.category || "Technology",
+    stage: q.stage || "researching",
+    priority: q.priority || 5,
+    created_at: q.created_at || new Date().toISOString(),
+  }))
 }
 
-export function generateSmartCalendar() {
+export async function generateSmartCalendar() {
+  const supabase = createClient()
+  const { data: posts } = await supabase
+    .from("posts")
+    .select("created_at, status")
+    .order("created_at", { ascending: false })
+    .limit(100)
+
+  const postDates = new Map<string, number>()
+  ;(posts || []).forEach(p => {
+    if (p.created_at) {
+      const d = p.created_at.split("T")[0]
+      postDates.set(d, (postDates.get(d) || 0) + 1)
+    }
+  })
+
+  const { data: launches } = await supabase.from("product_launches").select("launch_date").limit(20)
+  const launchDates = new Set((launches || []).map(l => l.launch_date))
+
   const today = new Date()
   return Array.from({ length: 30 }, (_, i) => {
     const date = new Date(today)
     date.setDate(today.getDate() + i)
+    const dateStr = date.toISOString().split("T")[0]
     const dayName = date.toLocaleDateString("en-US", { weekday: "short" })
-    const articles = i === 0 ? 3 : i < 7 ? Math.floor(Math.random() * 3) + 1 : Math.floor(Math.random() * 2)
+    const historicalCount = postDates.get(dateStr) || 0
+    const articles = i === 0 ? Math.max(1, historicalCount) : historicalCount > 0 ? historicalCount : Math.floor(Math.random() * 2)
+
     return {
-      date: date.toISOString().split("T")[0],
+      date: dateStr,
       day: dayName,
       articles_count: articles,
-      has_launch: i === 14 || i === 21,
+      has_launch: launchDates.has(dateStr) || i === 14 || i === 21,
       has_event: i === 7,
     }
   })
 }
 
-export function generateDailyBriefing() {
+export async function generateDailyBriefing() {
+  const supabase = createClient()
+
+  const now = new Date()
+  const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString()
+
+  const [{ count: recentPosts }, { count: totalPosts }, { count: totalViews }] = await Promise.all([
+    supabase.from("posts").select("*", { count: "exact", head: true }).gte("created_at", sevenDaysAgo),
+    supabase.from("posts").select("*", { count: "exact", head: true }).eq("status", "published"),
+    supabase.from("analytics_events").select("*", { count: "exact", head: true }).eq("event_type", "page_view").gte("created_at", sevenDaysAgo),
+  ])
+
   return {
-    summary: "Organic traffic is up 12% compared to yesterday. AI & Automation continues to lead with strong engagement. Three articles entered the Top 10 search results. Five articles are losing traffic and should be refreshed. Cybersecurity searches are increasing ahead of the CISA conference. Estimated revenue is trending above forecast.",
+    summary: `You have ${totalPosts || 0} published posts. ${recentPosts || 0} published in the last 7 days with ${totalViews || 0} page views tracked.`,
     key_metrics: {
-      traffic_change: "+12%",
-      new_rankings: 3,
-      declining_articles: 5,
-      trending_categories: ["AI & Automation", "Cybersecurity", "Programming"],
-      revenue_trend: "above_forecast",
+      traffic_change: totalViews && totalViews > 0 ? "+Active" : "No data",
+      new_rankings: recentPosts || 0,
+      declining_articles: 0,
+      trending_categories: [],
+      revenue_trend: "unknown",
     },
     top_actions: [
-      "Publish AI Agents guide within 24 hours — opportunity score 98",
-      "Refresh 'Best VPN 2025' article — traffic declining 30%",
-      "Prepare Windows 12 coverage — launch announced",
-      "Schedule cybersecurity content for CISA conference week",
+      "Review keyword opportunities for your next article",
+      "Check that all posts have proper meta descriptions",
+      "Ensure internal links are up to date",
     ],
   }
 }
 
-export function generateResearchResults(topic: string) {
+export async function generateResearchResults(topic: string) {
+  const supabase = createClient()
+
+  const { data: existingPosts } = await supabase
+    .from("posts")
+    .select("id, title, views")
+    .ilike("title", `%${topic}%`)
+    .limit(5)
+
+  const { data: keywords } = await supabase
+    .from("keyword_articles")
+    .select("keyword, search_volume, competition")
+    .ilike("keyword", `%${topic}%`)
+    .limit(10)
+
+  const { data: categories } = await supabase
+    .from("categories")
+    .select("id, name")
+
+  const catSuggestion = categories?.find(c =>
+    [c.name, topic].some(s => s?.toLowerCase().includes(c.name?.toLowerCase() || ""))
+  )
+
   return {
     topic,
     official_sources: [
-      { title: `Official ${topic} documentation`, url: "#", authority: "High" },
-      { title: `${topic} press release`, url: "#", authority: "High" },
+      { title: `Search for "${topic}"`, url: `https://google.com/search?q=${encodeURIComponent(topic)}`, authority: "Search" },
     ],
-    news_coverage: [
-      { title: `Latest ${topic} developments`, source: "TechCrunch", date: new Date().toISOString() },
-      { title: `${topic} analysis and implications`, source: "The Verge", date: new Date().toISOString() },
-    ],
-    existing_articles: [
-      { title: `Previous ${topic} coverage on TechPivo`, url: "#", views: 1200 },
-    ],
-    keywords: [
-      { keyword: topic.toLowerCase(), volume: 12000, difficulty: 45 },
-      { keyword: `${topic} tutorial`, volume: 8000, difficulty: 30 },
-      { keyword: `${topic} vs alternatives`, volume: 6000, difficulty: 35 },
-      { keyword: `best ${topic} tools`, volume: 9500, difficulty: 40 },
-      { keyword: `${topic} guide 2026`, volume: 7000, difficulty: 25 },
-    ],
+    news_coverage: existingPosts?.length ? existingPosts.map(p => ({
+      title: p.title,
+      source: "TechPivo",
+      date: new Date().toISOString(),
+    })) : [{ title: `No existing coverage found for "${topic}"`, source: "TechPivo", date: new Date().toISOString() }],
+    existing_articles: (existingPosts || []).map(p => ({
+      title: p.title || "Untitled",
+      url: `/posts/${p.id}`,
+      views: p.views || 0,
+    })),
+    keywords: (keywords || []).map(k => ({
+      keyword: k.keyword,
+      volume: k.search_volume || 0,
+      difficulty: k.competition || 50,
+    })),
     faqs: [
-      `What is ${topic}?`,
-      `How does ${topic} work?`,
-      `Why is ${topic} important in 2026?`,
-      `What are the best ${topic} tools?`,
-      `How to get started with ${topic}?`,
+      { q: `What is ${topic}?`, a: `Research requires manual verification. ${topic} is a topic you're researching.` },
+      { q: `Why is ${topic} important?`, a: `Based on your keyword data, assess relevance to your audience.` },
+      { q: `How to get started with ${topic}?`, a: `Gather official documentation and trusted sources for ${topic}.` },
     ],
   }
 }

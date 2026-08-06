@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, useCallback } from "react"
 import { createClient } from "@/lib/supabase/client"
 
 interface Profile {
@@ -25,18 +25,18 @@ export default function AdminReportersPage() {
   const [error, setError] = useState("")
   const supabase = createClient()
 
-  const load = async () => {
+  const load = useCallback(async () => {
     setLoading(true)
     const { data } = await supabase
-      .from("profiles")
+      .from("user_profiles")
       .select("*")
       .in("role", ["author", "contributor", "editor"])
       .order("created_at", { ascending: false })
     if (data) setReporters(data)
     setLoading(false)
-  }
+  }, [supabase])
 
-  useEffect(() => { load() }, [])
+  useEffect(() => { load() }, [load])
 
   const createReporter = async (e: React.FormEvent) => {
     e.preventDefault()

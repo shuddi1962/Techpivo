@@ -1,3 +1,4 @@
+import Image from "next/image"
 import { createClient } from "@/lib/supabase/server"
 import Link from "next/link"
 import { SITE_NAME, SITE_URL } from "@/lib/constants"
@@ -157,7 +158,7 @@ export default async function SitemapPage() {
                 {profiles.map(profile => (
                   <Link key={profile.username} href={`/author/${profile.username}`} className="flex items-center gap-3 rounded-lg border bg-card px-4 py-2.5 hover:border-accent/50 hover:bg-accent/5 transition-colors group">
                     {profile.avatar_url ? (
-                      <img src={profile.avatar_url} alt="" className="h-6 w-6 rounded-full object-cover" />
+                      <Image src={profile.avatar_url} alt="" width={24} height={24} className="rounded-full object-cover" />
                     ) : (
                       <div className="h-6 w-6 rounded-full bg-accent/20 flex items-center justify-center text-xs font-bold text-accent">
                         {(profile.full_name || profile.username)[0]}

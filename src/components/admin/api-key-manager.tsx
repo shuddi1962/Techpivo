@@ -35,7 +35,7 @@ export function ApiKeyManager() {
 
     setKeys(data || [])
     setLoading(false)
-  }, [])
+  }, [supabase])
 
   useEffect(() => { fetchKeys() }, [fetchKeys])
 

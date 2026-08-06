@@ -13,40 +13,10 @@ export default function ResearchPage() {
     if (!topic.trim()) return
     setLoading(true)
     try {
-      const res = await fetch("/admin/editorial-intelligence/api?section=briefing")
-      await res.json()
-      setResults({
-        topic,
-        official_sources: [
-          { title: `Official ${topic} documentation`, url: "#", authority: "High" },
-          { title: `${topic} press release`, url: "#", authority: "High" },
-          { title: `${topic} product page`, url: "#", authority: "High" },
-        ],
-        news_coverage: [
-          { title: `Latest ${topic} developments from major outlets`, source: "TechCrunch", date: new Date().toISOString() },
-          { title: `${topic} analysis and industry implications`, source: "The Verge", date: new Date().toISOString() },
-          { title: `${topic} expert opinions and predictions`, source: "Ars Technica", date: new Date().toISOString() },
-        ],
-        existing_articles: [
-          { title: `Previous ${topic} coverage on TechPivo`, url: "#", views: 1200 },
-        ],
-        keywords: [
-          { keyword: topic.toLowerCase(), volume: 12000, difficulty: 45 },
-          { keyword: `${topic} tutorial`, volume: 8000, difficulty: 30 },
-          { keyword: `${topic} vs alternatives`, volume: 6000, difficulty: 35 },
-          { keyword: `best ${topic} tools`, volume: 9500, difficulty: 40 },
-          { keyword: `${topic} guide 2026`, volume: 7000, difficulty: 25 },
-          { keyword: `what is ${topic}`, volume: 5000, difficulty: 20 },
-          { keyword: `${topic} examples`, volume: 4500, difficulty: 28 },
-        ],
-        faqs: [
-          { q: `What is ${topic}?`, a: `${topic} is a technology/methodology that enables...` },
-          { q: `Why is ${topic} important in 2026?`, a: `${topic} has become increasingly important due to...` },
-          { q: `How to get started with ${topic}?`, a: `Getting started with ${topic} involves...` },
-          { q: `What are the best ${topic} tools?`, a: `The top ${topic} tools include...` },
-          { q: `${topic} vs alternatives — which is better?`, a: `When comparing ${topic} to alternatives...` },
-        ],
-      })
+      const res = await fetch(`/admin/editorial-intelligence/brief?topic=${encodeURIComponent(topic)}`)
+      if (!res.ok) throw new Error("Research failed")
+      const data = await res.json()
+      setResults(data)
     } catch (e) {
       console.error(e)
     }
@@ -92,15 +62,15 @@ export default function ResearchPage() {
         <div className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="p-4 rounded-xl border bg-card text-center">
-              <div className="text-2xl font-bold text-primary">{results.official_sources.length + results.news_coverage.length}</div>
+              <div className="text-2xl font-bold text-primary">{results.official_sources?.length + results.news_coverage?.length || 0}</div>
               <div className="text-xs text-muted-foreground">Sources Found</div>
             </div>
             <div className="p-4 rounded-xl border bg-card text-center">
-              <div className="text-2xl font-bold text-primary">{results.keywords.length}</div>
+              <div className="text-2xl font-bold text-primary">{results.keywords?.length || 0}</div>
               <div className="text-xs text-muted-foreground">Keywords Identified</div>
             </div>
             <div className="p-4 rounded-xl border bg-card text-center">
-              <div className="text-2xl font-bold text-primary">{results.faqs.length}</div>
+              <div className="text-2xl font-bold text-primary">{results.faqs?.length || 0}</div>
               <div className="text-xs text-muted-foreground">FAQs Generated</div>
             </div>
           </div>
@@ -112,7 +82,7 @@ export default function ResearchPage() {
                 Official Sources
               </h3>
               <div className="space-y-2">
-                {results.official_sources.map((s: any, i: number) => (
+                {results.official_sources?.map((s: any, i: number) => (
                   <div key={i} className="flex items-center justify-between p-3 rounded-lg bg-muted/30">
                     <div className="flex items-center gap-2">
                       <ExternalLink className="h-3 w-3 text-muted-foreground" />
@@ -130,7 +100,7 @@ export default function ResearchPage() {
                 News Coverage
               </h3>
               <div className="space-y-2">
-                {results.news_coverage.map((s: any, i: number) => (
+                {results.news_coverage?.map((s: any, i: number) => (
                   <div key={i} className="p-3 rounded-lg bg-muted/30">
                     <div className="text-sm font-medium">{s.title}</div>
                     <div className="text-xs text-muted-foreground">{s.source}</div>
@@ -146,18 +116,18 @@ export default function ResearchPage() {
               Keyword Intelligence
             </h3>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
-              {results.keywords.map((kw: any, i: number) => (
+              {results.keywords?.map((kw: any, i: number) => (
                 <div key={i} className="flex items-center justify-between p-3 rounded-lg bg-muted/30">
                   <div>
                     <div className="text-sm font-medium">{kw.keyword}</div>
-                    <div className="text-xs text-muted-foreground">Vol: {kw.volume.toLocaleString()}</div>
+                    <div className="text-xs text-muted-foreground">Vol: {(kw.volume || 0).toLocaleString()}</div>
                   </div>
                   <span className={`px-2 py-0.5 rounded text-[10px] font-medium ${
-                    kw.difficulty < 30 ? "bg-green-100 text-green-700 dark:bg-green-900/30" :
-                    kw.difficulty < 50 ? "bg-amber-100 text-amber-700 dark:bg-amber-900/30" :
+                    (kw.difficulty || 50) < 30 ? "bg-green-100 text-green-700 dark:bg-green-900/30" :
+                    (kw.difficulty || 50) < 50 ? "bg-amber-100 text-amber-700 dark:bg-amber-900/30" :
                     "bg-red-100 text-red-700 dark:bg-red-900/30"
                   }`}>
-                    KD: {kw.difficulty}
+                    KD: {kw.difficulty || 50}
                   </span>
                 </div>
               ))}
@@ -170,10 +140,10 @@ export default function ResearchPage() {
               Frequently Asked Questions
             </h3>
             <div className="space-y-2">
-              {results.faqs.map((faq: any, i: number) => (
+              {results.faqs?.map((faq: any, i: number) => (
                 <div key={i} className="p-3 rounded-lg bg-muted/30">
-                  <div className="text-sm font-medium">{faq.q}</div>
-                  <div className="text-xs text-muted-foreground mt-1">{faq.a}</div>
+                  <div className="text-sm font-medium">{faq.q || faq.question}</div>
+                  <div className="text-xs text-muted-foreground mt-1">{faq.a || faq.answer}</div>
                 </div>
               ))}
             </div>

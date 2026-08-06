@@ -11,7 +11,7 @@ export async function GET(request: Request) {
     switch (section) {
       case "subscribers": {
         const { data, error } = await supabase
-          .from("newsletter_subscribers")
+          .from("subscribers")
           .select("*")
           .order("subscribed_at", { ascending: false })
           .limit(200)
@@ -21,63 +21,43 @@ export async function GET(request: Request) {
 
       case "campaigns": {
         const { data, error } = await supabase
-          .from("newsletter_campaigns")
+          .from("newsletter_sends")
           .select("*")
-          .order("created_at", { ascending: false })
+          .order("sent_at", { ascending: false })
           .limit(100)
         if (error) throw error
-        return NextResponse.json({ campaigns: data || [] })
+        const campaigns = (data || []).map((s: any) => ({
+          id: s.id,
+          name: s.subject || "Campaign",
+          subject: s.subject || "",
+          status: s.sent_at ? "sent" : "draft",
+          list_id: null,
+          template_id: null,
+          sent_at: s.sent_at,
+          scheduled_at: null,
+          created_at: s.sent_at || new Date().toISOString(),
+          open_rate: s.sent_count > 0 ? Math.round((s.open_count / s.sent_count) * 10000) / 100 : null,
+          click_rate: s.sent_count > 0 ? Math.round((s.click_count / s.sent_count) * 10000) / 100 : null,
+          recipients: s.sent_count || 0,
+        }))
+        return NextResponse.json({ campaigns })
       }
 
-      case "templates": {
-        const { data, error } = await supabase
-          .from("newsletter_templates")
-          .select("*")
-          .order("updated_at", { ascending: false })
-        if (error) throw error
-        return NextResponse.json({ templates: data || [] })
-      }
+      case "templates":
+        return NextResponse.json({ templates: [] })
 
-      case "lists": {
-        const { data: lists, error: listsErr } = await supabase
-          .from("newsletter_lists")
-          .select("*")
-          .order("created_at", { ascending: false })
-        if (listsErr) throw listsErr
+      case "lists":
+        return NextResponse.json({ lists: [] })
 
-        const listsWithCounts = await Promise.all(
-          (lists || []).map(async (list) => {
-            const { count } = await supabase
-              .from("newsletter_subscribers")
-              .select("*", { count: "exact", head: true })
-              .eq("list_id", list.id)
-            return { ...list, subscriber_count: count || 0 }
-          })
-        )
-        return NextResponse.json({ lists: listsWithCounts })
-      }
+      case "automations":
+        return NextResponse.json({ automations: [] })
 
-      case "automations": {
-        const { data, error } = await supabase
-          .from("newsletter_automations")
-          .select("*")
-          .order("created_at", { ascending: false })
-        if (error) throw error
-        return NextResponse.json({ automations: data || [] })
-      }
-
-      case "abtests": {
-        const { data, error } = await supabase
-          .from("newsletter_ab_tests")
-          .select("*")
-          .order("created_at", { ascending: false })
-        if (error) throw error
-        return NextResponse.json({ abTests: data || [] })
-      }
+      case "abtests":
+        return NextResponse.json({ abTests: [] })
 
       case "analytics": {
         const { data: subsGrowth } = await supabase
-          .from("newsletter_subscribers")
+          .from("subscribers")
           .select("subscribed_at")
           .order("subscribed_at", { ascending: true })
 
@@ -87,40 +67,45 @@ export async function GET(request: Request) {
           const key = d.toLocaleString("default", { month: "short", year: "numeric" })
           monthMap[key] = (monthMap[key] || 0) + 1
         })
-        const subscriberGrowth = Object.entries(monthMap)
-          .slice(-12)
-          .map(([month, count]) => ({ month, count }))
+        const subscriberGrowth = Object.entries(monthMap).slice(-12).map(([month, count]) => ({ month, count }))
 
         const { data: campData } = await supabase
-          .from("newsletter_campaigns")
-          .select("name, open_rate, click_rate, recipients")
-          .eq("status", "sent")
+          .from("newsletter_sends")
+          .select("*")
           .order("sent_at", { ascending: false })
-          .limit(10)
+          .limit(50)
 
         const campaignPerformance = (campData || []).map((c: any) => ({
-          name: c.name,
-          opens: Math.round((c.recipients || 0) * (c.open_rate || 0) / 100),
-          clicks: Math.round((c.recipients || 0) * (c.click_rate || 0) / 100),
-          sent: c.recipients || 0,
+          name: c.subject || "Campaign",
+          opens: c.open_count || 0,
+          clicks: c.click_count || 0,
+          sent: c.sent_count || 0,
         }))
 
-        const openRateHistory = Array.from({ length: 30 }, (_, i) => {
-          const d = new Date()
-          d.setDate(d.getDate() - (29 - i))
-          return { date: d.toISOString().slice(0, 10), rate: +(20 + Math.random() * 30).toFixed(1) }
-        })
+        const allSends = (campData || []).filter((s: any) => s.sent_at).reverse()
 
-        const clickRateHistory = Array.from({ length: 30 }, (_, i) => {
-          const d = new Date()
-          d.setDate(d.getDate() - (29 - i))
-          return { date: d.toISOString().slice(0, 10), rate: +(3 + Math.random() * 12).toFixed(1) }
-        })
+        const openRateHistory = allSends.map((s: any) => ({
+          date: s.sent_at ? new Date(s.sent_at).toISOString().slice(0, 10) : "",
+          rate: s.sent_count > 0 ? Math.round((s.open_count / s.sent_count) * 10000) / 100 : 0,
+        }))
+
+        const clickRateHistory = allSends.map((s: any) => ({
+          date: s.sent_at ? new Date(s.sent_at).toISOString().slice(0, 10) : "",
+          rate: s.sent_count > 0 ? Math.round((s.click_count / s.sent_count) * 10000) / 100 : 0,
+        }))
 
         const topCampaigns = (campData || [])
-          .sort((a: any, b: any) => (b.open_rate || 0) - (a.open_rate || 0))
+          .sort((a: any, b: any) => {
+            const aRate = a.sent_count > 0 ? a.open_count / a.sent_count : 0
+            const bRate = b.sent_count > 0 ? b.open_count / b.sent_count : 0
+            return bRate - aRate
+          })
           .slice(0, 5)
-          .map((c: any) => ({ name: c.name, openRate: c.open_rate || 0, clickRate: c.click_rate || 0 }))
+          .map((c: any) => ({
+            name: c.subject || "Campaign",
+            openRate: c.sent_count > 0 ? Math.round((c.open_count / c.sent_count) * 10000) / 100 : 0,
+            clickRate: c.sent_count > 0 ? Math.round((c.click_count / c.sent_count) * 10000) / 100 : 0,
+          }))
 
         return NextResponse.json({
           analytics: { subscriberGrowth, campaignPerformance, openRateHistory, clickRateHistory, topCampaigns },
@@ -128,22 +113,29 @@ export async function GET(request: Request) {
       }
 
       default: {
-        const [totalRes, activeRes, campaignsRes, sentRes] = await Promise.all([
-          supabase.from("newsletter_subscribers").select("*", { count: "exact", head: true }),
-          supabase.from("newsletter_subscribers").select("*", { count: "exact", head: true }).eq("status", "active"),
-          supabase.from("newsletter_campaigns").select("*", { count: "exact", head: true }),
-          supabase.from("newsletter_campaigns").select("*", { count: "exact", head: true }).eq("status", "sent"),
+        const [totalRes, activeRes] = await Promise.all([
+          supabase.from("subscribers").select("*", { count: "exact", head: true }),
+          supabase.from("subscribers").select("*", { count: "exact", head: true }).eq("status", "active"),
         ])
 
+        const { count: totalCampaigns } = await supabase
+          .from("newsletter_sends")
+          .select("*", { count: "exact", head: true })
+
+        const { count: sentCampaigns } = await supabase
+          .from("newsletter_sends")
+          .select("*", { count: "exact", head: true })
+          .not("sent_at", "is", null)
+
         const { data: recentSubs } = await supabase
-          .from("newsletter_subscribers")
+          .from("subscribers")
           .select("email, subscribed_at")
           .order("subscribed_at", { ascending: false })
           .limit(3)
 
         const { data: recentCampaigns } = await supabase
-          .from("newsletter_campaigns")
-          .select("name, sent_at, status")
+          .from("newsletter_sends")
+          .select("subject, sent_at")
           .order("sent_at", { ascending: false })
           .limit(3)
 
@@ -159,20 +151,25 @@ export async function GET(request: Request) {
           if (c.sent_at) {
             recentActivity.push({
               type: "campaign",
-              message: `Campaign "${c.name}" was sent`,
+              message: `Campaign "${c.subject}" was sent`,
               time: new Date(c.sent_at).toLocaleDateString(),
             })
           }
         })
         recentActivity.sort((a, b) => b.time.localeCompare(a.time))
 
-        const openRates = (await supabase.from("newsletter_campaigns").select("open_rate").eq("status", "sent")).data || []
-        const clickRates = (await supabase.from("newsletter_campaigns").select("click_rate").eq("status", "sent")).data || []
-        const avgOpen = openRates.length > 0 ? openRates.reduce((s: number, r: any) => s + (r.open_rate || 0), 0) / openRates.length : 0
-        const avgClick = clickRates.length > 0 ? clickRates.reduce((s: number, r: any) => s + (r.click_rate || 0), 0) / clickRates.length : 0
+        const { data: allSends } = await supabase
+          .from("newsletter_sends")
+          .select("open_count, click_count, sent_count")
+
+        const totalSent = (allSends || []).reduce((sum: number, s: any) => sum + (s.sent_count || 0), 0)
+        const totalOpens = (allSends || []).reduce((sum: number, s: any) => sum + (s.open_count || 0), 0)
+        const totalClicks = (allSends || []).reduce((sum: number, s: any) => sum + (s.click_count || 0), 0)
+        const avgOpenRate = totalSent > 0 ? Math.round((totalOpens / totalSent) * 10000) / 100 : 0
+        const avgClickRate = totalSent > 0 ? Math.round((totalClicks / totalSent) * 10000) / 100 : 0
 
         const { data: subsGrowth } = await supabase
-          .from("newsletter_subscribers")
+          .from("subscribers")
           .select("subscribed_at")
           .order("subscribed_at", { ascending: true })
 
@@ -182,17 +179,15 @@ export async function GET(request: Request) {
           const key = d.toLocaleString("default", { month: "short", year: "numeric" })
           monthMap[key] = (monthMap[key] || 0) + 1
         })
-        const subscriberGrowth = Object.entries(monthMap)
-          .slice(-12)
-          .map(([month, count]) => ({ month, count }))
+        const subscriberGrowth = Object.entries(monthMap).slice(-12).map(([month, count]) => ({ month, count }))
 
         return NextResponse.json({
           totalSubscribers: totalRes.count || 0,
           activeSubscribers: activeRes.count || 0,
-          totalCampaigns: campaignsRes.count || 0,
-          sentCampaigns: sentRes.count || 0,
-          avgOpenRate: avgOpen,
-          avgClickRate: avgClick,
+          totalCampaigns: totalCampaigns || 0,
+          sentCampaigns: sentCampaigns || 0,
+          avgOpenRate,
+          avgClickRate,
           recentActivity,
           subscriberGrowth,
         })
@@ -212,80 +207,50 @@ export async function POST(request: Request) {
     switch (body.action) {
       case "create-campaign": {
         const { data, error } = await supabase
-          .from("newsletter_campaigns")
+          .from("newsletter_sends")
           .insert({
-            name: body.name,
             subject: body.subject,
-            status: "draft",
-            created_at: new Date().toISOString(),
+            sent_count: 0,
+            open_count: 0,
+            click_count: 0,
           })
           .select()
           .single()
         if (error) throw error
-        return NextResponse.json({ campaign: data })
+        return NextResponse.json({ campaign: { ...data, name: data.subject } })
       }
 
       case "send-campaign": {
         const { data: campaign, error: fetchErr } = await supabase
-          .from("newsletter_campaigns")
+          .from("newsletter_sends")
           .select("*")
           .eq("id", body.id)
           .single()
         if (fetchErr) throw fetchErr
 
         const { count } = await supabase
-          .from("newsletter_subscribers")
+          .from("subscribers")
           .select("*", { count: "exact", head: true })
           .eq("status", "active")
 
         const { error } = await supabase
-          .from("newsletter_campaigns")
+          .from("newsletter_sends")
           .update({
-            status: "sent",
             sent_at: new Date().toISOString(),
-            recipients: count || 0,
+            sent_count: count || 0,
           })
           .eq("id", body.id)
         if (error) throw error
         return NextResponse.json({ success: true, recipients: count || 0 })
       }
 
-      case "create-template": {
-        const { data, error } = await supabase
-          .from("newsletter_templates")
-          .insert({
-            name: body.name,
-            subject: body.subject,
-            html: body.html || "",
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
-          })
-          .select()
-          .single()
-        if (error) throw error
-        return NextResponse.json({ template: data })
-      }
-
-      case "create-list": {
-        const { data, error } = await supabase
-          .from("newsletter_lists")
-          .insert({
-            name: body.name,
-            description: body.description || null,
-            created_at: new Date().toISOString(),
-          })
-          .select()
-          .single()
-        if (error) throw error
-        return NextResponse.json({ list: data })
-      }
-
-      case "subscribe": {
+      case "subscribe":
+      case "create-subscriber": {
         if (!body.email) return NextResponse.json({ error: "Email is required" }, { status: 400 })
         const { data, error } = await supabase
-          .from("newsletter_subscribers")
+          .from("subscribers")
           .upsert(
-            { email: body.email, name: body.name || null, status: "active", source: body.source || "api", subscribed_at: new Date().toISOString() },
+            { email: body.email, name: body.name || null, status: "active", subscribed_at: new Date().toISOString() },
             { onConflict: "email" }
           )
           .select()
@@ -308,18 +273,18 @@ export async function PUT(request: Request) {
     const body = await request.json()
     const supabase = await createClient()
 
-    if (body.id && body.updates) {
-      const { data, error } = await supabase
-        .from("newsletter_campaigns")
-        .update(body.updates)
-        .eq("id", body.id)
-        .select()
-        .single()
-      if (error) throw error
-      return NextResponse.json({ campaign: data })
-    }
+    const updates: Record<string, any> = {}
+    if (body.name) updates.subject = body.name
+    if (body.subject) updates.subject = body.subject
 
-    return NextResponse.json({ error: "id and updates required" }, { status: 400 })
+    const { data, error } = await supabase
+      .from("newsletter_sends")
+      .update(updates)
+      .eq("id", body.id)
+      .select()
+      .single()
+    if (error) throw error
+    return NextResponse.json({ campaign: { ...data, name: data.subject } })
   } catch (error) {
     console.error("Newsletter PUT error:", error)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
@@ -329,11 +294,15 @@ export async function PUT(request: Request) {
 export async function DELETE(request: Request) {
   try {
     const { searchParams } = new URL(request.url)
-    const id = searchParams.get("id")
+    let id = searchParams.get("id")
+    if (!id) {
+      const body = await request.json().catch(() => ({}))
+      id = body.id
+    }
     if (!id) return NextResponse.json({ error: "id is required" }, { status: 400 })
 
     const supabase = await createClient()
-    const { error } = await supabase.from("newsletter_campaigns").delete().eq("id", id)
+    const { error } = await supabase.from("newsletter_sends").delete().eq("id", id)
     if (error) throw error
     return NextResponse.json({ success: true })
   } catch (error) {

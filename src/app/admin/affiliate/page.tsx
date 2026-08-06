@@ -1,77 +1,38 @@
 "use client"
 
 import { useState, useEffect, useCallback } from "react"
-import { createClient } from "@/lib/supabase/client"
-
-const BG = "#0F1117"
-const CARD = "#1C1F2E"
-const BORDER = "#2A2D3E"
-const ACCENT = "#F59E0B"
-const ACCENT_DIM = "rgba(245,158,11,0.15)"
-const TEXT = "#E5E7EB"
-const TEXT_DIM = "#9CA3AF"
-const SUCCESS = "#10B981"
-const DANGER = "#EF4444"
-const WARN = "#F59E0B"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import {
+  BarChart3, Link, Package, TrendingUp, DollarSign, FileText,
+  Plus, Search, RefreshCw, Trash2, Edit3, ExternalLink
+} from "lucide-react"
 
 interface AffiliateLink {
   id: string
-  product_id: string | null
-  program_id: string | null
-  custom_slug: string | null
-  destination_url: string
-  tracking_params: Record<string, unknown>
-  total_clicks: number
-  total_conversions: number
-  total_revenue: number
-  is_active: boolean
-  created_at: string
-  product_name?: string
-  program_name?: string
-}
-
-interface AffiliateRule {
-  id: string
-  name: string
-  description: string
-  match_type: string
-  match_value: string
-  program_id: string | null
-  placement: string
-  priority: number
-  is_active: boolean
-  revenue_per_click: number
-  created_at: string
-}
-
-interface AffiliateCampaign {
-  id: string
-  name: string
-  description: string
-  program_ids: string[]
-  start_date: string | null
-  end_date: string | null
-  budget: number
-  spent: number
-  total_clicks: number
-  total_conversions: number
-  total_revenue: number
-  status: string
-  created_at: string
+  code: string
+  commission_rate: number | null
+  clicks: number | null
+  conversions: number | null
+  revenue: number | null
+  created_at: string | null
 }
 
 interface AffiliateProduct {
   id: string
+  program_key: string | null
   product_name: string
   product_description: string | null
   product_image_url: string | null
   affiliate_link: string
   original_price: number | null
   sale_price: number | null
-  clicks: number
-  conversions: number
+  clicks: number | null
+  conversions: number | null
   is_active: boolean
-  program_key: string | null
+  created_at: string | null
 }
 
 interface OverviewData {
@@ -104,65 +65,13 @@ interface ReportRow {
 }
 
 const TABS = [
-  { id: "overview", label: "Overview" },
-  { id: "links", label: "Links" },
-  { id: "products", label: "Products" },
-  { id: "performance", label: "Performance" },
-  { id: "revenue", label: "Revenue" },
-  { id: "rules", label: "Rules" },
-  { id: "campaigns", label: "Campaigns" },
-  { id: "reports", label: "Reports" },
+  { id: "overview", label: "Overview", icon: BarChart3 },
+  { id: "links", label: "Links", icon: Link },
+  { id: "products", label: "Products", icon: Package },
+  { id: "performance", label: "Performance", icon: TrendingUp },
+  { id: "revenue", label: "Revenue", icon: DollarSign },
+  { id: "reports", label: "Reports", icon: FileText },
 ]
-
-const cardStyle = (extra?: React.CSSProperties): React.CSSProperties => ({
-  background: CARD,
-  border: `1px solid ${BORDER}`,
-  borderRadius: 12,
-  padding: 20,
-  ...extra,
-})
-
-const inputStyle: React.CSSProperties = {
-  background: BG,
-  border: `1px solid ${BORDER}`,
-  borderRadius: 8,
-  padding: "10px 14px",
-  color: TEXT,
-  fontSize: 14,
-  width: "100%",
-  outline: "none",
-}
-
-const btnPrimary: React.CSSProperties = {
-  background: ACCENT,
-  color: "#000",
-  border: "none",
-  borderRadius: 8,
-  padding: "10px 20px",
-  fontWeight: 600,
-  cursor: "pointer",
-  fontSize: 14,
-}
-
-const btnSecondary: React.CSSProperties = {
-  background: "transparent",
-  color: TEXT_DIM,
-  border: `1px solid ${BORDER}`,
-  borderRadius: 8,
-  padding: "8px 16px",
-  cursor: "pointer",
-  fontSize: 13,
-}
-
-const badge = (color: string): React.CSSProperties => ({
-  display: "inline-block",
-  padding: "2px 10px",
-  borderRadius: 20,
-  fontSize: 12,
-  fontWeight: 600,
-  background: `${color}22`,
-  color,
-})
 
 const fmt = (n: number) => n.toLocaleString()
 const fmtCurrency = (n: number) => `$${n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
@@ -173,8 +82,6 @@ export default function AdminAffiliatePage() {
   const [overview, setOverview] = useState<OverviewData | null>(null)
   const [links, setLinks] = useState<AffiliateLink[]>([])
   const [products, setProducts] = useState<AffiliateProduct[]>([])
-  const [rules, setRules] = useState<AffiliateRule[]>([])
-  const [campaigns, setCampaigns] = useState<AffiliateCampaign[]>([])
   const [revenueData, setRevenueData] = useState<RevenueEntry[]>([])
   const [reports, setReports] = useState<ReportRow[]>([])
 
@@ -184,24 +91,14 @@ export default function AdminAffiliatePage() {
   const [reportPeriod, setReportPeriod] = useState("daily")
 
   const [showLinkForm, setShowLinkForm] = useState(false)
-  const [showRuleForm, setShowRuleForm] = useState(false)
-  const [showCampaignForm, setShowCampaignForm] = useState(false)
-
-  const [linkForm, setLinkForm] = useState({ destination_url: "", custom_slug: "", product_id: "", program_id: "" })
-  const [ruleForm, setRuleForm] = useState({ name: "", description: "", match_type: "keyword", match_value: "", program_id: "", placement: "inline", priority: 0, revenue_per_click: 0 })
-  const [campaignForm, setCampaignForm] = useState({ name: "", description: "", start_date: "", end_date: "", budget: 0, status: "active" })
+  const [linkForm, setLinkForm] = useState({ code: "", commission_rate: 0 })
 
   const [editingLink, setEditingLink] = useState<AffiliateLink | null>(null)
-  const [editingRule, setEditingRule] = useState<AffiliateRule | null>(null)
-  const [editingCampaign, setEditingCampaign] = useState<AffiliateCampaign | null>(null)
-
-  const supabase = createClient()
 
   const fetchData = useCallback(async (section: string) => {
     try {
       const res = await fetch(`/admin/affiliate/api?section=${section}`)
-      const data = await res.json()
-      return data
+      return await res.json()
     } catch {
       return null
     }
@@ -210,20 +107,16 @@ export default function AdminAffiliatePage() {
   useEffect(() => {
     const load = async () => {
       setLoading(true)
-      const [ov, lk, pr, rl, cm, rv, rp] = await Promise.all([
+      const [ov, lk, pr, rv, rp] = await Promise.all([
         fetchData("overview"),
         fetchData("links"),
         fetchData("products"),
-        fetchData("rules"),
-        fetchData("campaigns"),
         fetchData("revenue"),
         fetchData("reports"),
       ])
       if (ov) setOverview(ov.overview)
       if (lk) setLinks(lk.links || [])
       if (pr) setProducts(pr.products || [])
-      if (rl) setRules(rl.rules || [])
-      if (cm) setCampaigns(cm.campaigns || [])
       if (rv) setRevenueData(rv.revenue || [])
       if (rp) setReports(rp.reports || [])
       setLoading(false)
@@ -232,32 +125,17 @@ export default function AdminAffiliatePage() {
   }, [fetchData])
 
   const handleCreateLink = async () => {
-    if (!linkForm.destination_url) return
+    if (!linkForm.code) return
     const res = await fetch("/admin/affiliate/api", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ type: "link", ...linkForm }),
+      body: JSON.stringify({ type: "link", custom_slug: linkForm.code, commission_rate: linkForm.commission_rate }),
     })
     if (res.ok) {
       const data = await res.json()
       setLinks(prev => [data.link, ...prev])
       setShowLinkForm(false)
-      setLinkForm({ destination_url: "", custom_slug: "", product_id: "", program_id: "" })
-    }
-  }
-
-  const handleUpdateLink = async () => {
-    if (!editingLink) return
-    const res = await fetch("/admin/affiliate/api", {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ type: "link", id: editingLink.id, ...linkForm }),
-    })
-    if (res.ok) {
-      const data = await res.json()
-      setLinks(prev => prev.map(l => l.id === editingLink.id ? { ...l, ...data.link } : l))
-      setEditingLink(null)
-      setShowLinkForm(false)
+      setLinkForm({ code: "", commission_rate: 0 })
     }
   }
 
@@ -271,60 +149,10 @@ export default function AdminAffiliatePage() {
     if (res.ok) setLinks(prev => prev.filter(l => l.id !== id))
   }
 
-  const handleCreateRule = async () => {
-    if (!ruleForm.name || !ruleForm.match_value) return
-    const res = await fetch("/admin/affiliate/api", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ type: "rule", ...ruleForm }),
-    })
-    if (res.ok) {
-      const data = await res.json()
-      setRules(prev => [data.rule, ...prev])
-      setShowRuleForm(false)
-      setRuleForm({ name: "", description: "", match_type: "keyword", match_value: "", program_id: "", placement: "inline", priority: 0, revenue_per_click: 0 })
-    }
-  }
-
-  const handleDeleteRule = async (id: string) => {
-    if (!confirm("Delete this rule?")) return
-    const res = await fetch("/admin/affiliate/api", {
-      method: "DELETE",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ type: "rule", id }),
-    })
-    if (res.ok) setRules(prev => prev.filter(r => r.id !== id))
-  }
-
-  const handleCreateCampaign = async () => {
-    if (!campaignForm.name) return
-    const res = await fetch("/admin/affiliate/api", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ type: "campaign", ...campaignForm }),
-    })
-    if (res.ok) {
-      const data = await res.json()
-      setCampaigns(prev => [data.campaign, ...prev])
-      setShowCampaignForm(false)
-      setCampaignForm({ name: "", description: "", start_date: "", end_date: "", budget: 0, status: "active" })
-    }
-  }
-
-  const handleDeleteCampaign = async (id: string) => {
-    if (!confirm("Delete this campaign?")) return
-    const res = await fetch("/admin/affiliate/api", {
-      method: "DELETE",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ type: "campaign", id }),
-    })
-    if (res.ok) setCampaigns(prev => prev.filter(c => c.id !== id))
-  }
-
   const filteredLinks = links.filter(l => {
     if (!linkSearch) return true
     const q = linkSearch.toLowerCase()
-    return l.destination_url.toLowerCase().includes(q) || l.custom_slug?.toLowerCase().includes(q) || l.product_name?.toLowerCase().includes(q) || l.program_name?.toLowerCase().includes(q)
+    return l.code.toLowerCase().includes(q)
   })
 
   const filteredProducts = products.filter(p => {
@@ -335,188 +163,222 @@ export default function AdminAffiliatePage() {
 
   if (loading) {
     return (
-      <div style={{ background: BG, minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center" }}>
-        <div style={{ color: ACCENT, fontSize: 18 }}>Loading Affiliate Center...</div>
+      <div className="bg-[#0F1117] min-h-screen flex items-center justify-center">
+        <div className="text-amber-500 text-lg">Loading Affiliate Center...</div>
       </div>
     )
   }
 
   return (
-    <div style={{ background: BG, minHeight: "100vh", padding: 24 }}>
-      <div style={{ maxWidth: 1400, margin: "0 auto" }}>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 24 }}>
+    <div className="bg-[#0F1117] min-h-screen p-6">
+      <div className="max-w-[1400px] mx-auto">
+        <div className="flex items-center justify-between mb-6">
           <div>
-            <h1 style={{ color: TEXT, fontSize: 28, fontWeight: 700, margin: 0 }}>Affiliate Center</h1>
-            <p style={{ color: TEXT_DIM, fontSize: 14, margin: "4px 0 0" }}>Manage affiliate links, products, campaigns and revenue</p>
+            <h1 className="text-slate-100 text-2xl font-bold m-0">Affiliate Center</h1>
+            <p className="text-slate-400 text-sm mt-1">Manage affiliate links, products, and revenue</p>
           </div>
-          <div style={{ display: "flex", gap: 12 }}>
-            <button onClick={() => setShowLinkForm(true)} style={btnPrimary}>+ New Link</button>
-          </div>
+          <Button onClick={() => setShowLinkForm(true)} className="bg-amber-500 hover:bg-amber-600 text-black font-semibold">
+            <Plus className="w-4 h-4 mr-1" /> New Link
+          </Button>
         </div>
 
-        <div style={{ display: "flex", gap: 4, marginBottom: 24, borderBottom: `1px solid ${BORDER}`, paddingBottom: 0, overflowX: "auto" }}>
-          {TABS.map(t => (
-            <button
-              key={t.id}
-              onClick={() => setActiveTab(t.id)}
-              style={{
-                padding: "12px 20px",
-                background: "transparent",
-                color: activeTab === t.id ? ACCENT : TEXT_DIM,
-                border: "none",
-                borderBottom: activeTab === t.id ? `2px solid ${ACCENT}` : "2px solid transparent",
-                cursor: "pointer",
-                fontSize: 14,
-                fontWeight: activeTab === t.id ? 600 : 400,
-                whiteSpace: "nowrap",
-                transition: "all 0.2s",
-              }}
-            >
-              {t.label}
-            </button>
-          ))}
+        <div className="flex gap-1 mb-6 border-b border-slate-700/50 overflow-x-auto">
+          {TABS.map(t => {
+            const Icon = t.icon
+            const isActive = activeTab === t.id
+            return (
+              <button
+                key={t.id}
+                onClick={() => setActiveTab(t.id)}
+                className={`flex items-center gap-1.5 px-4 py-3 text-sm font-medium whitespace-nowrap transition-colors border-b-2 cursor-pointer ${
+                  isActive
+                    ? "text-amber-500 border-amber-500"
+                    : "text-slate-400 border-transparent hover:text-slate-300"
+                }`}
+              >
+                <Icon className="w-4 h-4" /> {t.label}
+              </button>
+            )
+          })}
         </div>
 
         {activeTab === "overview" && overview && (
           <div>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: 16, marginBottom: 24 }}>
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7 gap-4 mb-6">
               {[
-                { label: "Total Links", value: fmt(overview.total_links), color: ACCENT },
-                { label: "Total Clicks", value: fmt(overview.total_clicks), color: "#3B82F6" },
-                { label: "Conversions", value: fmt(overview.total_conversions), color: SUCCESS },
-                { label: "Revenue", value: fmtCurrency(overview.total_revenue), color: SUCCESS },
-                { label: "Conversion Rate", value: `${overview.conversion_rate.toFixed(1)}%`, color: ACCENT },
-                { label: "Active Rules", value: fmt(overview.active_rules), color: "#8B5CF6" },
-                { label: "Active Campaigns", value: fmt(overview.active_campaigns), color: "#3B82F6" },
+                { label: "Total Links", value: fmt(overview.total_links), color: "text-amber-500" },
+                { label: "Total Clicks", value: fmt(overview.total_clicks), color: "text-blue-500" },
+                { label: "Conversions", value: fmt(overview.total_conversions), color: "text-emerald-500" },
+                { label: "Revenue", value: fmtCurrency(overview.total_revenue), color: "text-emerald-500" },
+                { label: "Conv. Rate", value: `${overview.conversion_rate.toFixed(1)}%`, color: "text-amber-500" },
+                { label: "Active Rules", value: fmt(overview.active_rules), color: "text-violet-500" },
+                { label: "Active Campaigns", value: fmt(overview.active_campaigns), color: "text-blue-500" },
               ].map((k, i) => (
-                <div key={i} style={cardStyle({ textAlign: "center" })}>
-                  <div style={{ color: TEXT_DIM, fontSize: 12, marginBottom: 8 }}>{k.label}</div>
-                  <div style={{ color: k.color, fontSize: 28, fontWeight: 700 }}>{k.value}</div>
-                </div>
+                <Card key={i} className="bg-[#1C1F2E] border-slate-700/50 text-center">
+                  <CardContent className="p-4">
+                    <div className="text-slate-400 text-xs mb-2">{k.label}</div>
+                    <div className={`${k.color} text-2xl font-bold`}>{k.value}</div>
+                  </CardContent>
+                </Card>
               ))}
             </div>
-            <div style={cardStyle()}>
-              <h3 style={{ color: TEXT, fontSize: 16, margin: "0 0 16px" }}>Top Programs</h3>
-              {overview.top_programs.length === 0 ? (
-                <p style={{ color: TEXT_DIM, fontSize: 14 }}>No program data yet</p>
-              ) : (
-                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                  {overview.top_programs.map((p, i) => (
-                    <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 16px", background: BG, borderRadius: 8 }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                        <div style={{ width: 32, height: 32, borderRadius: 8, background: ACCENT_DIM, display: "flex", alignItems: "center", justifyContent: "center", color: ACCENT, fontWeight: 700, fontSize: 14 }}>{p.name.charAt(0)}</div>
-                        <span style={{ color: TEXT, fontSize: 14, fontWeight: 500 }}>{p.name}</span>
-                      </div>
-                      <div style={{ display: "flex", gap: 24, alignItems: "center" }}>
-                        <div style={{ textAlign: "right" }}>
-                          <div style={{ color: TEXT, fontSize: 14, fontWeight: 600 }}>{fmt(p.clicks)}</div>
-                          <div style={{ color: TEXT_DIM, fontSize: 11 }}>clicks</div>
+
+            <Card className="bg-[#1C1F2E] border-slate-700/50">
+              <CardHeader>
+                <CardTitle className="text-slate-100 text-base">Top Programs</CardTitle>
+              </CardHeader>
+              <CardContent>
+                {overview.top_programs.length === 0 ? (
+                  <p className="text-slate-400 text-sm">No program data yet</p>
+                ) : (
+                  <div className="flex flex-col gap-2">
+                    {overview.top_programs.map((p, i) => (
+                      <div key={i} className="flex justify-between items-center p-3 bg-[#0F1117] rounded-lg">
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 rounded-lg bg-amber-500/20 flex items-center justify-center text-amber-500 font-bold text-sm">
+                            {p.name.charAt(0)}
+                          </div>
+                          <span className="text-slate-200 text-sm font-medium">{p.name}</span>
                         </div>
-                        <div style={{ textAlign: "right" }}>
-                          <div style={{ color: SUCCESS, fontSize: 14, fontWeight: 600 }}>{fmtCurrency(p.revenue)}</div>
-                          <div style={{ color: TEXT_DIM, fontSize: 11 }}>revenue</div>
+                        <div className="flex gap-6 items-center">
+                          <div className="text-right">
+                            <div className="text-slate-200 text-sm font-semibold">{fmt(p.clicks)}</div>
+                            <div className="text-slate-500 text-xs">clicks</div>
+                          </div>
+                          <div className="text-right">
+                            <div className="text-emerald-500 text-sm font-semibold">{fmtCurrency(p.revenue)}</div>
+                            <div className="text-slate-500 text-xs">revenue</div>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
           </div>
         )}
 
         {activeTab === "links" && (
           <div>
-            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 16 }}>
-              <input
+            <div className="flex justify-between mb-4">
+              <Input
                 placeholder="Search links..."
                 value={linkSearch}
                 onChange={e => setLinkSearch(e.target.value)}
-                style={{ ...inputStyle, maxWidth: 400 }}
+                className="max-w-md bg-[#0F1117] border-slate-700/50 text-slate-200"
               />
-              <button onClick={() => { setShowLinkForm(true); setEditingLink(null); setLinkForm({ destination_url: "", custom_slug: "", product_id: "", program_id: "" }) }} style={btnPrimary}>+ New Link</button>
+              <Button onClick={() => { setShowLinkForm(true); setEditingLink(null); setLinkForm({ code: "", commission_rate: 0 }) }} className="bg-amber-500 hover:bg-amber-600 text-black font-semibold">
+                <Plus className="w-4 h-4 mr-1" /> New Link
+              </Button>
             </div>
-            <div style={cardStyle({ padding: 0, overflow: "hidden" })}>
-              <table style={{ width: "100%", borderCollapse: "collapse" }}>
-                <thead>
-                  <tr style={{ borderBottom: `1px solid ${BORDER}` }}>
-                    {["Destination", "Slug", "Program", "Clicks", "Conversions", "Revenue", "Status", "Actions"].map(h => (
-                      <th key={h} style={{ padding: "12px 16px", textAlign: "left", color: TEXT_DIM, fontSize: 12, fontWeight: 600, textTransform: "uppercase", letterSpacing: 0.5 }}>{h}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredLinks.map(l => (
-                    <tr key={l.id} style={{ borderBottom: `1px solid ${BORDER}` }}>
-                      <td style={{ padding: "12px 16px", color: TEXT, fontSize: 13, maxWidth: 300, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{l.destination_url}</td>
-                      <td style={{ padding: "12px 16px" }}>
-                        {l.custom_slug ? <span style={{ ...badge(ACCENT) }}>{l.custom_slug}</span> : <span style={{ color: TEXT_DIM, fontSize: 12 }}>—</span>}
-                      </td>
-                      <td style={{ padding: "12px 16px", color: TEXT, fontSize: 13 }}>{l.program_name || "—"}</td>
-                      <td style={{ padding: "12px 16px", color: TEXT, fontSize: 13 }}>{fmt(l.total_clicks)}</td>
-                      <td style={{ padding: "12px 16px", color: SUCCESS, fontSize: 13 }}>{fmt(l.total_conversions)}</td>
-                      <td style={{ padding: "12px 16px", color: SUCCESS, fontSize: 13, fontWeight: 600 }}>{fmtCurrency(l.total_revenue)}</td>
-                      <td style={{ padding: "12px 16px" }}>
-                        <span style={badge(l.is_active ? SUCCESS : DANGER)}>{l.is_active ? "Active" : "Inactive"}</span>
-                      </td>
-                      <td style={{ padding: "12px 16px" }}>
-                        <div style={{ display: "flex", gap: 8 }}>
-                          <button onClick={() => { setEditingLink(l); setLinkForm({ destination_url: l.destination_url, custom_slug: l.custom_slug || "", product_id: l.product_id || "", program_id: l.program_id || "" }); setShowLinkForm(true) }} style={{ ...btnSecondary, padding: "4px 10px", fontSize: 12 }}>Edit</button>
-                          <button onClick={() => handleDeleteLink(l.id)} style={{ ...btnSecondary, padding: "4px 10px", fontSize: 12, color: DANGER, borderColor: `${DANGER}44` }}>Delete</button>
-                        </div>
-                      </td>
+
+            <Card className="bg-[#1C1F2E] border-slate-700/50 overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="w-full border-collapse">
+                  <thead>
+                    <tr className="border-b border-slate-700/50">
+                      {["Code", "Clicks", "Conversions", "Revenue", "Rate", "Created"].map(h => (
+                        <th key={h} className="p-3 text-left text-slate-400 text-xs font-semibold uppercase tracking-wider">{h}</th>
+                      ))}
+                      <th className="p-3 text-right text-slate-400 text-xs font-semibold uppercase tracking-wider">Actions</th>
                     </tr>
-                  ))}
-                  {filteredLinks.length === 0 && (
-                    <tr><td colSpan={8} style={{ padding: 40, textAlign: "center", color: TEXT_DIM }}>No affiliate links found</td></tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
+                  </thead>
+                  <tbody>
+                    {filteredLinks.map(l => (
+                      <tr key={l.id} className="border-b border-slate-700/50 hover:bg-slate-800/30">
+                        <td className="p-3 text-slate-200 text-sm font-mono">{l.code}</td>
+                        <td className="p-3 text-slate-200 text-sm">{fmt(l.clicks || 0)}</td>
+                        <td className="p-3 text-emerald-500 text-sm">{fmt(l.conversions || 0)}</td>
+                        <td className="p-3 text-emerald-500 text-sm font-semibold">{fmtCurrency(l.revenue || 0)}</td>
+                        <td className="p-3">
+                          {l.commission_rate != null && (
+                            <Badge variant="outline" className="border-amber-500/30 text-amber-500 bg-amber-500/10">
+                              {(l.commission_rate * 100).toFixed(1)}%
+                            </Badge>
+                          )}
+                        </td>
+                        <td className="p-3 text-slate-400 text-xs">{l.created_at ? new Date(l.created_at).toLocaleDateString() : "—"}</td>
+                        <td className="p-3 text-right">
+                          <div className="flex gap-2 justify-end">
+                            <Button variant="ghost" size="sm" onClick={() => handleDeleteLink(l.id)} className="text-red-400 hover:text-red-300 hover:bg-red-500/10">
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </Button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                    {filteredLinks.length === 0 && (
+                      <tr><td colSpan={7} className="p-10 text-center text-slate-400">No affiliate links found</td></tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </Card>
           </div>
         )}
 
         {activeTab === "products" && (
           <div>
-            <div style={{ display: "flex", gap: 12, marginBottom: 16 }}>
-              <input placeholder="Search products..." value={productSearch} onChange={e => setProductSearch(e.target.value)} style={{ ...inputStyle, maxWidth: 400 }} />
-              <select value={productFilter} onChange={e => setProductFilter(e.target.value)} style={{ ...inputStyle, maxWidth: 160, cursor: "pointer" }}>
+            <div className="flex gap-3 mb-4">
+              <Input placeholder="Search products..." value={productSearch} onChange={e => setProductSearch(e.target.value)} className="max-w-md bg-[#0F1117] border-slate-700/50 text-slate-200" />
+              <select value={productFilter} onChange={e => setProductFilter(e.target.value)} className="bg-[#0F1117] border border-slate-700/50 rounded-lg px-3 py-2 text-slate-200 text-sm cursor-pointer outline-none max-w-[140px]">
                 <option value="all">All Status</option>
                 <option value="active">Active</option>
                 <option value="inactive">Inactive</option>
               </select>
             </div>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))", gap: 16 }}>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {filteredProducts.map(p => (
-                <div key={p.id} style={cardStyle()}>
-                  <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 12 }}>
-                    <span style={badge(p.is_active ? SUCCESS : DANGER)}>{p.is_active ? "Active" : "Inactive"}</span>
-                    {p.program_key && <span style={{ ...badge(ACCENT) }}>{p.program_key}</span>}
-                  </div>
-                  <h4 style={{ color: TEXT, fontSize: 15, margin: "0 0 8px", lineHeight: 1.4 }}>{p.product_name}</h4>
-                  {p.product_description && <p style={{ color: TEXT_DIM, fontSize: 13, margin: "0 0 12px", lineHeight: 1.5 }}>{p.product_description.slice(0, 100)}{p.product_description.length > 100 ? "..." : ""}</p>}
-                  <div style={{ display: "flex", gap: 16, marginBottom: 12 }}>
-                    {p.original_price && <span style={{ color: TEXT_DIM, fontSize: 13, textDecoration: "line-through" }}>{fmtCurrency(p.original_price)}</span>}
-                    {p.sale_price && <span style={{ color: SUCCESS, fontSize: 15, fontWeight: 700 }}>{fmtCurrency(p.sale_price)}</span>}
-                  </div>
-                  <div style={{ display: "flex", gap: 20, borderTop: `1px solid ${BORDER}`, paddingTop: 12 }}>
-                    <div style={{ textAlign: "center" }}>
-                      <div style={{ color: TEXT, fontSize: 16, fontWeight: 700 }}>{fmt(p.clicks)}</div>
-                      <div style={{ color: TEXT_DIM, fontSize: 11 }}>Clicks</div>
+                <Card key={p.id} className="bg-[#1C1F2E] border-slate-700/50">
+                  <CardContent className="p-4">
+                    <div className="flex justify-between mb-3">
+                      <Badge variant="outline" className={p.is_active ? "border-emerald-500/30 text-emerald-500 bg-emerald-500/10" : "border-red-500/30 text-red-500 bg-red-500/10"}>
+                        {p.is_active ? "Active" : "Inactive"}
+                      </Badge>
+                      {p.program_key && <Badge variant="outline" className="border-amber-500/30 text-amber-500 bg-amber-500/10">{p.program_key}</Badge>}
                     </div>
-                    <div style={{ textAlign: "center" }}>
-                      <div style={{ color: SUCCESS, fontSize: 16, fontWeight: 700 }}>{fmt(p.conversions)}</div>
-                      <div style={{ color: TEXT_DIM, fontSize: 11 }}>Conversions</div>
+                    <h4 className="text-slate-200 text-sm font-medium mb-2 leading-tight">{p.product_name}</h4>
+                    {p.product_description && (
+                      <p className="text-slate-400 text-xs mb-3 leading-relaxed">
+                        {p.product_description.slice(0, 100)}{p.product_description.length > 100 ? "..." : ""}
+                      </p>
+                    )}
+                    <div className="flex gap-4 mb-3">
+                      {p.original_price && <span className="text-slate-500 text-xs line-through">{fmtCurrency(p.original_price)}</span>}
+                      {p.sale_price && <span className="text-emerald-500 text-sm font-bold">{fmtCurrency(p.sale_price)}</span>}
+                      {p.affiliate_link && (
+                        <a href={p.affiliate_link} target="_blank" rel="noopener noreferrer" className="ml-auto text-amber-500 hover:text-amber-400">
+                          <ExternalLink className="w-4 h-4" />
+                        </a>
+                      )}
                     </div>
-                    <div style={{ textAlign: "center" }}>
-                      <div style={{ color: ACCENT, fontSize: 16, fontWeight: 700 }}>{p.clicks > 0 ? ((p.conversions / p.clicks) * 100).toFixed(1) : "0"}%</div>
-                      <div style={{ color: TEXT_DIM, fontSize: 11 }}>Conv. Rate</div>
+                    <div className="flex gap-6 border-t border-slate-700/50 pt-3">
+                      <div className="text-center">
+                        <div className="text-slate-200 text-base font-bold">{fmt(p.clicks || 0)}</div>
+                        <div className="text-slate-500 text-xs">Clicks</div>
+                      </div>
+                      <div className="text-center">
+                        <div className="text-emerald-500 text-base font-bold">{fmt(p.conversions || 0)}</div>
+                        <div className="text-slate-500 text-xs">Conv.</div>
+                      </div>
+                      <div className="text-center">
+                        <div className="text-amber-500 text-base font-bold">
+                          {(p.clicks || 0) > 0 ? ((p.conversions || 0) / (p.clicks || 0) * 100).toFixed(1) : "0"}%
+                        </div>
+                        <div className="text-slate-500 text-xs">Rate</div>
+                      </div>
                     </div>
-                  </div>
-                </div>
+                  </CardContent>
+                </Card>
               ))}
               {filteredProducts.length === 0 && (
-                <div style={{ ...cardStyle({ gridColumn: "1 / -1" }), textAlign: "center", padding: 60, color: TEXT_DIM }}>No products found</div>
+                <div className="col-span-full">
+                  <Card className="bg-[#1C1F2E] border-slate-700/50">
+                    <CardContent className="p-16 text-center text-slate-400">No products found</CardContent>
+                  </Card>
+                </div>
               )}
             </div>
           </div>
@@ -524,305 +386,153 @@ export default function AdminAffiliatePage() {
 
         {activeTab === "performance" && (
           <div>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: 16, marginBottom: 24 }}>
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 mb-6">
               {[
-                { label: "Total Clicks", value: fmt(overview?.total_clicks || 0), color: "#3B82F6" },
-                { label: "Total Conversions", value: fmt(overview?.total_conversions || 0), color: SUCCESS },
-                { label: "Conversion Rate", value: `${overview?.conversion_rate?.toFixed(1) || "0"}%`, color: ACCENT },
-                { label: "Revenue", value: fmtCurrency(overview?.total_revenue || 0), color: SUCCESS },
-                { label: "Earnings Per Click", value: fmtCurrency((overview?.total_clicks || 0) > 0 ? (overview?.total_revenue || 0) / (overview?.total_clicks || 0) : 0), color: ACCENT },
+                { label: "Total Clicks", value: fmt(overview?.total_clicks || 0), color: "text-blue-500" },
+                { label: "Total Conversions", value: fmt(overview?.total_conversions || 0), color: "text-emerald-500" },
+                { label: "Conversion Rate", value: `${overview?.conversion_rate?.toFixed(1) || "0"}%`, color: "text-amber-500" },
+                { label: "Revenue", value: fmtCurrency(overview?.total_revenue || 0), color: "text-emerald-500" },
+                { label: "EPC", value: fmtCurrency((overview?.total_clicks || 0) > 0 ? (overview?.total_revenue || 0) / (overview?.total_clicks || 0) : 0), color: "text-amber-500" },
               ].map((k, i) => (
-                <div key={i} style={cardStyle({ textAlign: "center" })}>
-                  <div style={{ color: TEXT_DIM, fontSize: 12, marginBottom: 8 }}>{k.label}</div>
-                  <div style={{ color: k.color, fontSize: 24, fontWeight: 700 }}>{k.value}</div>
-                </div>
+                <Card key={i} className="bg-[#1C1F2E] border-slate-700/50 text-center">
+                  <CardContent className="p-4">
+                    <div className="text-slate-400 text-xs mb-2">{k.label}</div>
+                    <div className={`${k.color} text-xl font-bold`}>{k.value}</div>
+                  </CardContent>
+                </Card>
               ))}
             </div>
-            <div style={cardStyle()}>
-              <h3 style={{ color: TEXT, fontSize: 16, margin: "0 0 16px" }}>Click Trend (Last 30 Days)</h3>
-              <div style={{ display: "flex", alignItems: "flex-end", gap: 4, height: 200 }}>
-                {(() => {
-                  const maxClick = Math.max(...reports.slice(0, 30).map(r => r.clicks), 1)
-                  return reports.slice(0, 30).reverse().map((r, i) => {
-                    const h = (r.clicks / maxClick) * 100
-                    return (
-                      <div key={i} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
-                        <div style={{ width: "100%", background: `${ACCENT}33`, borderRadius: 4, height: `${Math.max(h, 2)}%`, minHeight: 4, position: 'relative' }} title={`${r.date}: ${r.clicks} clicks`} />
-                      </div>
-                    )
-                  })
-                })()}
-              </div>
-              <div style={{ display: "flex", justifyContent: "space-between", marginTop: 8 }}>
-                <span style={{ color: TEXT_DIM, fontSize: 11 }}>30 days ago</span>
-                <span style={{ color: TEXT_DIM, fontSize: 11 }}>Today</span>
-              </div>
-            </div>
+
+            <Card className="bg-[#1C1F2E] border-slate-700/50">
+              <CardHeader>
+                <CardTitle className="text-slate-100 text-base">Click Trend (Last 30 Days)</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="flex items-end gap-1 h-48">
+                  {(() => {
+                    const maxClick = Math.max(...reports.slice(0, 30).map(r => r.clicks), 1)
+                    return reports.slice(0, 30).reverse().map((r, i) => {
+                      const h = (r.clicks / maxClick) * 100
+                      return (
+                        <div key={i} className="flex-1 flex flex-col items-center gap-1">
+                          <div
+                            className="w-full bg-amber-500/20 rounded-sm"
+                            style={{ height: `${Math.max(h, 2)}%`, minHeight: 4 }}
+                            title={`${r.date}: ${r.clicks} clicks`}
+                          />
+                        </div>
+                      )
+                    })
+                  })()}
+                </div>
+                <div className="flex justify-between mt-2">
+                  <span className="text-slate-500 text-xs">30 days ago</span>
+                  <span className="text-slate-500 text-xs">Today</span>
+                </div>
+              </CardContent>
+            </Card>
           </div>
         )}
 
         {activeTab === "revenue" && (
-          <div>
-            <div style={cardStyle({ padding: 0, overflow: "hidden" })}>
-              <div style={{ padding: "16px 20px", borderBottom: `1px solid ${BORDER}` }}>
-                <h3 style={{ color: TEXT, fontSize: 16, margin: 0 }}>Revenue by Source</h3>
-              </div>
-              <table style={{ width: "100%", borderCollapse: "collapse" }}>
+          <Card className="bg-[#1C1F2E] border-slate-700/50 overflow-hidden">
+            <CardHeader>
+              <CardTitle className="text-slate-100 text-base">Revenue by Source</CardTitle>
+            </CardHeader>
+            <div className="overflow-x-auto">
+              <table className="w-full border-collapse">
                 <thead>
-                  <tr style={{ borderBottom: `1px solid ${BORDER}` }}>
+                  <tr className="border-b border-slate-700/50">
                     {["Date", "Source", "Impressions", "Clicks", "Revenue", "CPM", "CPC"].map(h => (
-                      <th key={h} style={{ padding: "12px 16px", textAlign: "left", color: TEXT_DIM, fontSize: 12, fontWeight: 600, textTransform: "uppercase" }}>{h}</th>
+                      <th key={h} className="p-3 text-left text-slate-400 text-xs font-semibold uppercase">{h}</th>
                     ))}
                   </tr>
                 </thead>
                 <tbody>
                   {revenueData.map(r => (
-                    <tr key={r.id} style={{ borderBottom: `1px solid ${BORDER}` }}>
-                      <td style={{ padding: "12px 16px", color: TEXT, fontSize: 13 }}>{r.date}</td>
-                      <td style={{ padding: "12px 16px" }}><span style={badge(ACCENT)}>{r.source}</span></td>
-                      <td style={{ padding: "12px 16px", color: TEXT, fontSize: 13 }}>{fmt(r.impressions)}</td>
-                      <td style={{ padding: "12px 16px", color: TEXT, fontSize: 13 }}>{fmt(r.clicks)}</td>
-                      <td style={{ padding: "12px 16px", color: SUCCESS, fontSize: 13, fontWeight: 600 }}>{fmtCurrency(r.revenue)}</td>
-                      <td style={{ padding: "12px 16px", color: TEXT, fontSize: 13 }}>{fmtCurrency(r.cpm)}</td>
-                      <td style={{ padding: "12px 16px", color: TEXT, fontSize: 13 }}>{fmtCurrency(r.cpc)}</td>
+                    <tr key={r.id} className="border-b border-slate-700/50">
+                      <td className="p-3 text-slate-200 text-sm">{r.date}</td>
+                      <td className="p-3"><Badge variant="outline" className="border-amber-500/30 text-amber-500 bg-amber-500/10">{r.source}</Badge></td>
+                      <td className="p-3 text-slate-200 text-sm">{fmt(r.impressions)}</td>
+                      <td className="p-3 text-slate-200 text-sm">{fmt(r.clicks)}</td>
+                      <td className="p-3 text-emerald-500 text-sm font-semibold">{fmtCurrency(r.revenue)}</td>
+                      <td className="p-3 text-slate-200 text-sm">{fmtCurrency(r.cpm)}</td>
+                      <td className="p-3 text-slate-200 text-sm">{fmtCurrency(r.cpc)}</td>
                     </tr>
                   ))}
                   {revenueData.length === 0 && (
-                    <tr><td colSpan={7} style={{ padding: 40, textAlign: "center", color: TEXT_DIM }}>No revenue data yet</td></tr>
+                    <tr><td colSpan={7} className="p-10 text-center text-slate-400">No revenue data yet</td></tr>
                   )}
                 </tbody>
               </table>
             </div>
-          </div>
-        )}
-
-        {activeTab === "rules" && (
-          <div>
-            <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 16 }}>
-              <button onClick={() => { setShowRuleForm(true); setEditingRule(null); setRuleForm({ name: "", description: "", match_type: "keyword", match_value: "", program_id: "", placement: "inline", priority: 0, revenue_per_click: 0 }) }} style={btnPrimary}>+ New Rule</button>
-            </div>
-            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-              {rules.map(r => (
-                <div key={r.id} style={cardStyle({ display: "flex", justifyContent: "space-between", alignItems: "center" })}>
-                  <div>
-                    <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 4 }}>
-                      <span style={{ color: TEXT, fontSize: 15, fontWeight: 600 }}>{r.name}</span>
-                      <span style={badge(ACCENT)}>{r.match_type}</span>
-                      <span style={badge("#8B5CF6")}>{r.placement}</span>
-                      {!r.is_active && <span style={badge(DANGER)}>Disabled</span>}
-                    </div>
-                    <div style={{ color: TEXT_DIM, fontSize: 13 }}>
-                      Match: <span style={{ color: TEXT }}>{r.match_value}</span> · Priority: <span style={{ color: TEXT }}>{r.priority}</span> · RPC: <span style={{ color: SUCCESS }}>{fmtCurrency(r.revenue_per_click)}</span>
-                    </div>
-                    {r.description && <div style={{ color: TEXT_DIM, fontSize: 12, marginTop: 4 }}>{r.description}</div>}
-                  </div>
-                  <div style={{ display: "flex", gap: 8 }}>
-                    <button onClick={() => { setEditingRule(r); setRuleForm({ name: r.name, description: r.description, match_type: r.match_type, match_value: r.match_value, program_id: r.program_id || "", placement: r.placement, priority: r.priority, revenue_per_click: r.revenue_per_click }); setShowRuleForm(true) }} style={{ ...btnSecondary, padding: "4px 10px", fontSize: 12 }}>Edit</button>
-                    <button onClick={() => handleDeleteRule(r.id)} style={{ ...btnSecondary, padding: "4px 10px", fontSize: 12, color: DANGER, borderColor: `${DANGER}44` }}>Delete</button>
-                  </div>
-                </div>
-              ))}
-              {rules.length === 0 && <div style={cardStyle({ textAlign: "center", padding: 60, color: TEXT_DIM })}>No auto-insertion rules configured</div>}
-            </div>
-          </div>
-        )}
-
-        {activeTab === "campaigns" && (
-          <div>
-            <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 16 }}>
-              <button onClick={() => { setShowCampaignForm(true); setEditingCampaign(null); setCampaignForm({ name: "", description: "", start_date: "", end_date: "", budget: 0, status: "active" }) }} style={btnPrimary}>+ New Campaign</button>
-            </div>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(340px, 1fr))", gap: 16 }}>
-              {campaigns.map(c => (
-                <div key={c.id} style={cardStyle()}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "start", marginBottom: 12 }}>
-                    <h4 style={{ color: TEXT, fontSize: 16, margin: 0 }}>{c.name}</h4>
-                    <span style={badge(c.status === "active" ? SUCCESS : c.status === "paused" ? WARN : TEXT_DIM)}>{c.status}</span>
-                  </div>
-                  {c.description && <p style={{ color: TEXT_DIM, fontSize: 13, margin: "0 0 12px" }}>{c.description}</p>}
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 12 }}>
-                    <div>
-                      <div style={{ color: TEXT_DIM, fontSize: 11 }}>Budget</div>
-                      <div style={{ color: TEXT, fontSize: 14, fontWeight: 600 }}>{fmtCurrency(c.budget)}</div>
-                    </div>
-                    <div>
-                      <div style={{ color: TEXT_DIM, fontSize: 11 }}>Spent</div>
-                      <div style={{ color: c.spent > c.budget ? DANGER : TEXT, fontSize: 14, fontWeight: 600 }}>{fmtCurrency(c.spent)}</div>
-                    </div>
-                    <div>
-                      <div style={{ color: TEXT_DIM, fontSize: 11 }}>Clicks</div>
-                      <div style={{ color: TEXT, fontSize: 14, fontWeight: 600 }}>{fmt(c.total_clicks)}</div>
-                    </div>
-                    <div>
-                      <div style={{ color: TEXT_DIM, fontSize: 11 }}>Revenue</div>
-                      <div style={{ color: SUCCESS, fontSize: 14, fontWeight: 600 }}>{fmtCurrency(c.total_revenue)}</div>
-                    </div>
-                  </div>
-                  {c.start_date && (
-                    <div style={{ color: TEXT_DIM, fontSize: 12, borderTop: `1px solid ${BORDER}`, paddingTop: 8 }}>
-                      {c.start_date}{c.end_date ? ` → ${c.end_date}` : " → ongoing"}
-                    </div>
-                  )}
-                  <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
-                    <button onClick={() => { setEditingCampaign(c); setCampaignForm({ name: c.name, description: c.description, start_date: c.start_date || "", end_date: c.end_date || "", budget: c.budget, status: c.status }); setShowCampaignForm(true) }} style={{ ...btnSecondary, flex: 1, textAlign: "center" }}>Edit</button>
-                    <button onClick={() => handleDeleteCampaign(c.id)} style={{ ...btnSecondary, color: DANGER, borderColor: `${DANGER}44` }}>Delete</button>
-                  </div>
-                </div>
-              ))}
-              {campaigns.length === 0 && <div style={{ ...cardStyle({ gridColumn: "1 / -1" }), textAlign: "center", padding: 60, color: TEXT_DIM }}>No campaigns yet</div>}
-            </div>
-          </div>
+          </Card>
         )}
 
         {activeTab === "reports" && (
           <div>
-            <div style={{ display: "flex", gap: 12, marginBottom: 16 }}>
+            <div className="flex gap-3 mb-4">
               {["daily", "weekly", "monthly"].map(p => (
-                <button key={p} onClick={() => setReportPeriod(p)} style={{ ...btnSecondary, background: reportPeriod === p ? ACCENT_DIM : "transparent", color: reportPeriod === p ? ACCENT : TEXT_DIM, borderColor: reportPeriod === p ? ACCENT : BORDER }}>{p.charAt(0).toUpperCase() + p.slice(1)}</button>
+                <button
+                  key={p}
+                  onClick={() => setReportPeriod(p)}
+                  className={`px-4 py-2 rounded-lg text-sm font-medium cursor-pointer transition-colors ${
+                    reportPeriod === p
+                      ? "bg-amber-500/20 text-amber-500 border border-amber-500"
+                      : "bg-transparent text-slate-400 border border-slate-700/50 hover:text-slate-300"
+                  }`}
+                >
+                  {p.charAt(0).toUpperCase() + p.slice(1)}
+                </button>
               ))}
             </div>
-            <div style={cardStyle({ padding: 0, overflow: "hidden" })}>
-              <table style={{ width: "100%", borderCollapse: "collapse" }}>
-                <thead>
-                  <tr style={{ borderBottom: `1px solid ${BORDER}` }}>
-                    {["Date", "Clicks", "Conversions", "Revenue"].map(h => (
-                      <th key={h} style={{ padding: "12px 16px", textAlign: "left", color: TEXT_DIM, fontSize: 12, fontWeight: 600, textTransform: "uppercase" }}>{h}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {reports.map((r, i) => (
-                    <tr key={i} style={{ borderBottom: `1px solid ${BORDER}` }}>
-                      <td style={{ padding: "12px 16px", color: TEXT, fontSize: 13 }}>{r.date}</td>
-                      <td style={{ padding: "12px 16px", color: TEXT, fontSize: 13 }}>{fmt(r.clicks)}</td>
-                      <td style={{ padding: "12px 16px", color: SUCCESS, fontSize: 13 }}>{fmt(r.conversions)}</td>
-                      <td style={{ padding: "12px 16px", color: SUCCESS, fontSize: 13, fontWeight: 600 }}>{fmtCurrency(r.revenue)}</td>
+
+            <Card className="bg-[#1C1F2E] border-slate-700/50 overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="w-full border-collapse">
+                  <thead>
+                    <tr className="border-b border-slate-700/50">
+                      {["Date", "Clicks", "Conversions", "Revenue"].map(h => (
+                        <th key={h} className="p-3 text-left text-slate-400 text-xs font-semibold uppercase">{h}</th>
+                      ))}
                     </tr>
-                  ))}
-                  {reports.length === 0 && (
-                    <tr><td colSpan={4} style={{ padding: 40, textAlign: "center", color: TEXT_DIM }}>No report data</td></tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
+                  </thead>
+                  <tbody>
+                    {reports.map((r, i) => (
+                      <tr key={i} className="border-b border-slate-700/50">
+                        <td className="p-3 text-slate-200 text-sm">{r.date}</td>
+                        <td className="p-3 text-slate-200 text-sm">{fmt(r.clicks)}</td>
+                        <td className="p-3 text-emerald-500 text-sm">{fmt(r.conversions)}</td>
+                        <td className="p-3 text-emerald-500 text-sm font-semibold">{fmtCurrency(r.revenue)}</td>
+                      </tr>
+                    ))}
+                    {reports.length === 0 && (
+                      <tr><td colSpan={4} className="p-10 text-center text-slate-400">No report data</td></tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </Card>
           </div>
         )}
       </div>
 
       {showLinkForm && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.7)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }} onClick={() => { setShowLinkForm(false); setEditingLink(null) }}>
-          <div style={{ ...cardStyle({ width: 520, maxHeight: "80vh", overflow: "auto" }) }} onClick={e => e.stopPropagation()}>
-            <h3 style={{ color: TEXT, fontSize: 18, margin: "0 0 20px" }}>{editingLink ? "Edit Link" : "New Affiliate Link"}</h3>
-            <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50" onClick={() => { setShowLinkForm(false); setEditingLink(null) }}>
+          <div className="bg-[#1C1F2E] border border-slate-700/50 rounded-xl w-[520px] max-h-[80vh] overflow-auto p-6" onClick={e => e.stopPropagation()}>
+            <h3 className="text-slate-200 text-lg font-semibold mb-5">{editingLink ? "Edit Link" : "New Affiliate Link"}</h3>
+            <div className="flex flex-col gap-4">
               <div>
-                <label style={{ color: TEXT_DIM, fontSize: 12, display: "block", marginBottom: 6 }}>Destination URL *</label>
-                <input value={linkForm.destination_url} onChange={e => setLinkForm(p => ({ ...p, destination_url: e.target.value }))} placeholder="https://..." style={inputStyle} />
-              </div>
-              <div>
-                <label style={{ color: TEXT_DIM, fontSize: 12, display: "block", marginBottom: 6 }}>Custom Slug</label>
-                <input value={linkForm.custom_slug} onChange={e => setLinkForm(p => ({ ...p, custom_slug: e.target.value }))} placeholder="my-product" style={inputStyle} />
-              </div>
-              <div style={{ display: "flex", gap: 12 }}>
-                <button onClick={editingLink ? handleUpdateLink : handleCreateLink} style={btnPrimary}>{editingLink ? "Update" : "Create"}</button>
-                <button onClick={() => { setShowLinkForm(false); setEditingLink(null) }} style={btnSecondary}>Cancel</button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {showRuleForm && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.7)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }} onClick={() => { setShowRuleForm(false); setEditingRule(null) }}>
-          <div style={{ ...cardStyle({ width: 520, maxHeight: "80vh", overflow: "auto" }) }} onClick={e => e.stopPropagation()}>
-            <h3 style={{ color: TEXT, fontSize: 18, margin: "0 0 20px" }}>{editingRule ? "Edit Rule" : "New Auto-Insertion Rule"}</h3>
-            <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-              <div>
-                <label style={{ color: TEXT_DIM, fontSize: 12, display: "block", marginBottom: 6 }}>Rule Name *</label>
-                <input value={ruleForm.name} onChange={e => setRuleForm(p => ({ ...p, name: e.target.value }))} placeholder="e.g. AI Product Links" style={inputStyle} />
+                <label className="text-slate-400 text-xs block mb-1.5">Tracking Code *</label>
+                <Input value={linkForm.code} onChange={e => setLinkForm(p => ({ ...p, code: e.target.value }))} placeholder="my-product-code" className="bg-[#0F1117] border-slate-700/50 text-slate-200" />
               </div>
               <div>
-                <label style={{ color: TEXT_DIM, fontSize: 12, display: "block", marginBottom: 6 }}>Match Type</label>
-                <select value={ruleForm.match_type} onChange={e => setRuleForm(p => ({ ...p, match_type: e.target.value }))} style={inputStyle}>
-                  <option value="keyword">Keyword</option>
-                  <option value="category">Category</option>
-                  <option value="tag">Tag</option>
-                  <option value="regex">Regex</option>
-                  <option value="manual">Manual</option>
-                </select>
+                <label className="text-slate-400 text-xs block mb-1.5">Commission Rate</label>
+                <Input type="number" step="0.01" value={linkForm.commission_rate} onChange={e => setLinkForm(p => ({ ...p, commission_rate: parseFloat(e.target.value) || 0 }))} placeholder="0.10" className="bg-[#0F1117] border-slate-700/50 text-slate-200" />
               </div>
-              <div>
-                <label style={{ color: TEXT_DIM, fontSize: 12, display: "block", marginBottom: 6 }}>Match Value *</label>
-                <input value={ruleForm.match_value} onChange={e => setRuleForm(p => ({ ...p, match_value: e.target.value }))} placeholder="e.g. chatgpt, openai" style={inputStyle} />
-              </div>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-                <div>
-                  <label style={{ color: TEXT_DIM, fontSize: 12, display: "block", marginBottom: 6 }}>Placement</label>
-                  <select value={ruleForm.placement} onChange={e => setRuleForm(p => ({ ...p, placement: e.target.value }))} style={inputStyle}>
-                    <option value="inline">Inline</option>
-                    <option value="sidebar">Sidebar</option>
-                    <option value="banner">Banner</option>
-                    <option value="popup">Popup</option>
-                  </select>
-                </div>
-                <div>
-                  <label style={{ color: TEXT_DIM, fontSize: 12, display: "block", marginBottom: 6 }}>Priority</label>
-                  <input type="number" value={ruleForm.priority} onChange={e => setRuleForm(p => ({ ...p, priority: parseInt(e.target.value) || 0 }))} style={inputStyle} />
-                </div>
-              </div>
-              <div>
-                <label style={{ color: TEXT_DIM, fontSize: 12, display: "block", marginBottom: 6 }}>Description</label>
-                <input value={ruleForm.description} onChange={e => setRuleForm(p => ({ ...p, description: e.target.value }))} placeholder="Optional description" style={inputStyle} />
-              </div>
-              <div style={{ display: "flex", gap: 12 }}>
-                <button onClick={handleCreateRule} style={btnPrimary}>{editingRule ? "Update" : "Create"}</button>
-                <button onClick={() => { setShowRuleForm(false); setEditingRule(null) }} style={btnSecondary}>Cancel</button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {showCampaignForm && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.7)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }} onClick={() => { setShowCampaignForm(false); setEditingCampaign(null) }}>
-          <div style={{ ...cardStyle({ width: 520, maxHeight: "80vh", overflow: "auto" }) }} onClick={e => e.stopPropagation()}>
-            <h3 style={{ color: TEXT, fontSize: 18, margin: "0 0 20px" }}>{editingCampaign ? "Edit Campaign" : "New Campaign"}</h3>
-            <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-              <div>
-                <label style={{ color: TEXT_DIM, fontSize: 12, display: "block", marginBottom: 6 }}>Campaign Name *</label>
-                <input value={campaignForm.name} onChange={e => setCampaignForm(p => ({ ...p, name: e.target.value }))} placeholder="e.g. Holiday Promo" style={inputStyle} />
-              </div>
-              <div>
-                <label style={{ color: TEXT_DIM, fontSize: 12, display: "block", marginBottom: 6 }}>Description</label>
-                <input value={campaignForm.description} onChange={e => setCampaignForm(p => ({ ...p, description: e.target.value }))} placeholder="Campaign description" style={inputStyle} />
-              </div>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-                <div>
-                  <label style={{ color: TEXT_DIM, fontSize: 12, display: "block", marginBottom: 6 }}>Start Date</label>
-                  <input type="date" value={campaignForm.start_date} onChange={e => setCampaignForm(p => ({ ...p, start_date: e.target.value }))} style={inputStyle} />
-                </div>
-                <div>
-                  <label style={{ color: TEXT_DIM, fontSize: 12, display: "block", marginBottom: 6 }}>End Date</label>
-                  <input type="date" value={campaignForm.end_date} onChange={e => setCampaignForm(p => ({ ...p, end_date: e.target.value }))} style={inputStyle} />
-                </div>
-              </div>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-                <div>
-                  <label style={{ color: TEXT_DIM, fontSize: 12, display: "block", marginBottom: 6 }}>Budget ($)</label>
-                  <input type="number" step="0.01" value={campaignForm.budget} onChange={e => setCampaignForm(p => ({ ...p, budget: parseFloat(e.target.value) || 0 }))} style={inputStyle} />
-                </div>
-                <div>
-                  <label style={{ color: TEXT_DIM, fontSize: 12, display: "block", marginBottom: 6 }}>Status</label>
-                  <select value={campaignForm.status} onChange={e => setCampaignForm(p => ({ ...p, status: e.target.value }))} style={inputStyle}>
-                    <option value="active">Active</option>
-                    <option value="paused">Paused</option>
-                    <option value="completed">Completed</option>
-                    <option value="archived">Archived</option>
-                  </select>
-                </div>
-              </div>
-              <div style={{ display: "flex", gap: 12 }}>
-                <button onClick={handleCreateCampaign} style={btnPrimary}>{editingCampaign ? "Update" : "Create"}</button>
-                <button onClick={() => { setShowCampaignForm(false); setEditingCampaign(null) }} style={btnSecondary}>Cancel</button>
+              <div className="flex gap-3">
+                <Button onClick={handleCreateLink} className="bg-amber-500 hover:bg-amber-600 text-black font-semibold">Create</Button>
+                <Button variant="outline" onClick={() => { setShowLinkForm(false); setEditingLink(null) }} className="border-slate-700/50 text-slate-400">Cancel</Button>
               </div>
             </div>
           </div>

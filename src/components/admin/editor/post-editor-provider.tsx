@@ -128,7 +128,7 @@ export function PostEditorProvider({
     if (!post.title && !post.content) return
     const seo = calculateSeoScore(seoKeyword, post)
     setPost(prev => ({ ...prev, seo_score: seo.score }))
-  }, [post.title, post.content, post.slug, post.seo_title, post.seo_description, post.excerpt, post.featured_image, post.schema_type, seoKeyword])
+  }, [post.title, post.content, post.slug, post.seo_title, post.seo_description, post.excerpt, post.featured_image, post.schema_type, seoKeyword, post])
 
   const updatePost = useCallback((partial: Partial<EditorPostState>) => {
     setPost(prev => ({ ...prev, ...partial }))
@@ -182,7 +182,9 @@ export function PostEditorProvider({
       setDirty(false)
       localStorage.removeItem(DRAFT_KEY)
     } catch (err) {
+      console.error("Error saving draft:", err)
       localStorage.setItem(DRAFT_KEY, JSON.stringify(postRef.current))
+      alert("Failed to save draft. Your changes have been saved locally as a backup.")
       throw err
     }
     setIsSaving(false)
@@ -205,8 +207,16 @@ export function PostEditorProvider({
 
   const publish = useCallback(async () => {
     const supabase = createClient()
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return
+    const { data: { user }, error: authErr } = await supabase.auth.getUser()
+    if (authErr) {
+      console.error("Publish auth error:", authErr)
+      alert("Authentication error. Please sign in again.")
+      return
+    }
+    if (!user) {
+      alert("You must be signed in to publish.")
+      return
+    }
 
     const wordCount = post.content.replace(/<[^>]*>/g, "").split(/\s+/).filter(Boolean).length
     if (wordCount < 100) {
@@ -283,23 +293,66 @@ export function PostEditorProvider({
       localStorage.removeItem(DRAFT_KEY)
       router.push(`/admin/posts`)
     } catch (err) {
-      alert("Error publishing post.")
+      console.error("Error publishing post:", err)
+      alert("Failed to publish post. Check console for details.")
     }
     setIsSaving(false)
   }, [post, seoKeyword, categories, router])
 
   const schedule = useCallback(async (when: string) => {
     const supabase = createClient()
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return
+    const { data: { user }, error: authErr } = await supabase.auth.getUser()
+    if (authErr) {
+      console.error("Schedule auth error:", authErr)
+      alert("Authentication error. Please sign in again.")
+      return
+    }
+    if (!user) {
+      alert("You must be signed in to schedule.")
+      return
+    }
 
     setIsSaving(true)
+    const now = new Date().toISOString()
     const payload = {
-      ...post,
+      title: post.title,
+      slug: post.slug || slugify(post.title),
+      content: post.content,
+      excerpt: post.excerpt,
+      featured_image: post.featured_image,
+      category_id: post.category_id,
+      subcategory_id: post.subcategory_id,
       author_id: user.id,
       status: "scheduled" as PostStatus,
+      tags: post.tags,
       scheduled_at: when,
-      updated_at: new Date().toISOString(),
+      reading_time: Math.max(1, Math.ceil((post.content.replace(/<[^>]*>/g, "").split(/\s+/).filter(Boolean).length || 1) / 200)),
+      seo_title: post.seo_title || post.title,
+      seo_description: post.seo_description || post.excerpt || "",
+      seo_keywords: seoKeyword ? [seoKeyword, ...post.secondary_keywords] : post.seo_keywords,
+      seo_score: calculateSeoScore(seoKeyword, post).score,
+      focus_keyword: seoKeyword,
+      canonical_url: post.canonical_url,
+      robots_noindex: post.robots_noindex,
+      robots_nofollow: post.robots_nofollow,
+      breadcrumb_title: post.breadcrumb_title || post.title,
+      og_title: post.og_title || post.seo_title || post.title,
+      og_description: post.og_description || post.seo_description || post.excerpt || "",
+      og_image: post.og_image || post.featured_image,
+      twitter_title: post.twitter_title || post.og_title || post.seo_title || post.title,
+      twitter_description: post.twitter_description || post.og_description || post.seo_description || post.excerpt || "",
+      twitter_image: post.twitter_image || post.og_image || post.featured_image,
+      schema_type: post.schema_type || "Article",
+      post_format: post.post_format || "standard",
+      is_sticky: post.is_sticky,
+      is_featured: post.is_featured,
+      is_breaking: post.is_breaking,
+      is_sponsored: post.is_sponsored,
+      enable_comments: post.enable_comments,
+      secondary_keywords: post.secondary_keywords,
+      source_name: post.source_name,
+      original_source_url: post.original_source_url,
+      updated_at: now,
     }
 
     try {
@@ -314,11 +367,12 @@ export function PostEditorProvider({
       setLastSaved(new Date())
       setDirty(false)
       router.push("/admin/posts")
-    } catch {
-      alert("Error scheduling post.")
+    } catch (err) {
+      console.error("Error scheduling post:", err)
+      alert("Failed to schedule post. Check console for details.")
     }
     setIsSaving(false)
-  }, [post, router])
+  }, [post, seoKeyword, router])
 
   const uploadImage = useCallback(async (file: File): Promise<string | null> => {
     const supabase = createClient()

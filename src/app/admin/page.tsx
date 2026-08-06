@@ -12,14 +12,13 @@ import { ExecutiveKpiCards } from "@/components/admin/executive-kpi-cards"
 import {
   RefreshCw, TrendingUp, TrendingDown,
   BarChart3, Activity, Globe, MousePointerClick, Smartphone,
-  FileText, Clock, ArrowUpRight,
+  FileText, Clock, ArrowUpRight, Eye, Users,
 } from "lucide-react"
 import {
-  ComposedChart, Line, Bar, BarChart, XAxis, YAxis, CartesianGrid,
-  Tooltip, ResponsiveContainer, RadialBarChart, RadialBar, Cell,
-} from "recharts"
+  ChartLine, ChartBar, ChartArea, ChartPie, ChartComposed, ChartLeaderboard, ChartRealTimeMap
+} from "@/components/charts"
 
-const COLORS = ["#F59E0B", "#10B981", "#F59E0B", "#EF4444", "#F59E0B", "#EC4899", "#06B6D4", "#84CC16"]
+const COLORS = ["#3b82f6", "#22c55e", "#f59e0b", "#ef4444", "#8b5cf6", "#ec4899", "#14b8a6", "#f97316"]
 
 const COUNTRY_FLAGS: Record<string, string> = {
   "United States": "🇺🇸", "US": "🇺🇸", "India": "🇮🇳", "United Kingdom": "🇬🇧", "UK": "🇬🇧",
@@ -40,6 +39,122 @@ function flag(name: string): string {
   return COUNTRY_FLAGS[name] || ""
 }
 
+const COUNTRY_COORDS: Record<string, { lat: number; lng: number }> = {
+  "United States": { lat: 37.0902, lng: -95.7129 },
+  "US": { lat: 37.0902, lng: -95.7129 },
+  "India": { lat: 20.5937, lng: 78.9629 },
+  "United Kingdom": { lat: 55.3781, lng: -3.4360 },
+  "UK": { lat: 55.3781, lng: -3.4360 },
+  "Germany": { lat: 51.1657, lng: 10.4515 },
+  "France": { lat: 46.6034, lng: 1.8883 },
+  "Canada": { lat: 56.1304, lng: -106.3468 },
+  "Australia": { lat: -25.2744, lng: 133.7751 },
+  "Brazil": { lat: -14.2350, lng: -51.9253 },
+  "Japan": { lat: 36.2048, lng: 138.2529 },
+  "China": { lat: 35.8617, lng: 104.1954 },
+  "Russia": { lat: 61.5240, lng: 105.3188 },
+  "South Korea": { lat: 35.9078, lng: 127.7669 },
+  "Netherlands": { lat: 52.1326, lng: 5.2913 },
+  "Spain": { lat: 40.4637, lng: -3.7492 },
+  "Italy": { lat: 41.8719, lng: 12.5674 },
+  "Sweden": { lat: 60.1282, lng: 18.6435 },
+  "Norway": { lat: 60.4720, lng: 8.4689 },
+  "Denmark": { lat: 56.2639, lng: 9.5018 },
+  "Finland": { lat: 61.9241, lng: 25.7482 },
+  "Poland": { lat: 51.9194, lng: 19.1451 },
+  "Turkey": { lat: 38.9637, lng: 35.2433 },
+  "Indonesia": { lat: -0.7893, lng: 113.9213 },
+  "Mexico": { lat: 23.6345, lng: -102.5528 },
+  "Argentina": { lat: -38.4161, lng: -63.6167 },
+  "Nigeria": { lat: 9.0820, lng: 8.6753 },
+  "South Africa": { lat: -30.5595, lng: 22.9375 },
+  "Egypt": { lat: 26.8206, lng: 30.8025 },
+  "Kenya": { lat: -0.0236, lng: 37.9062 },
+  "Saudi Arabia": { lat: 23.8859, lng: 45.0792 },
+  "UAE": { lat: 23.4241, lng: 53.8478 },
+  "United Arab Emirates": { lat: 23.4241, lng: 53.8478 },
+  "Singapore": { lat: 1.3521, lng: 103.8198 },
+  "Hong Kong": { lat: 22.3193, lng: 114.1694 },
+  "Switzerland": { lat: 46.8182, lng: 8.2275 },
+  "Belgium": { lat: 50.8503, lng: 4.3517 },
+  "Austria": { lat: 47.5162, lng: 14.5501 },
+  "Ireland": { lat: 53.1424, lng: -7.6921 },
+  "New Zealand": { lat: -40.9006, lng: 174.8860 },
+  "Portugal": { lat: 39.3999, lng: -8.2245 },
+  "Greece": { lat: 39.0742, lng: 21.8243 },
+  "Czech Republic": { lat: 49.8175, lng: 15.4730 },
+  "Romania": { lat: 45.9432, lng: 24.9668 },
+  "Ukraine": { lat: 48.3794, lng: 31.1656 },
+  "Hungary": { lat: 47.1625, lng: 19.5033 },
+  "Israel": { lat: 31.0461, lng: 34.8516 },
+  "Thailand": { lat: 15.8700, lng: 100.9925 },
+  "Vietnam": { lat: 14.0583, lng: 108.2772 },
+  "Philippines": { lat: 12.8797, lng: 121.7740 },
+  "Malaysia": { lat: 4.2105, lng: 101.9758 },
+  "Pakistan": { lat: 30.3753, lng: 69.3451 },
+  "Bangladesh": { lat: 23.6850, lng: 90.3563 },
+  "Colombia": { lat: 4.5709, lng: -74.2973 },
+  "Chile": { lat: -35.6751, lng: -71.5430 },
+  "Peru": { lat: -9.1900, lng: -75.0152 },
+  "Taiwan": { lat: 23.6978, lng: 120.9605 },
+  "Morocco": { lat: 31.7917, lng: -7.0926 },
+  "Iran": { lat: 32.4279, lng: 53.6880 },
+  "Iraq": { lat: 33.2232, lng: 43.6793 },
+  "Kazakhstan": { lat: 48.0196, lng: 66.9237 },
+  "Qatar": { lat: 25.3548, lng: 51.1839 },
+  "Kuwait": { lat: 29.3117, lng: 47.4818 },
+  "Venezuela": { lat: 6.4238, lng: -66.5897 },
+  "Serbia": { lat: 44.0165, lng: 21.0059 },
+  "Croatia": { lat: 45.1000, lng: 15.2000 },
+  "Bulgaria": { lat: 42.7339, lng: 25.4858 },
+  "Slovakia": { lat: 48.6690, lng: 19.6990 },
+  "Slovenia": { lat: 46.1512, lng: 14.9955 },
+  "Lithuania": { lat: 55.1694, lng: 23.8783 },
+  "Latvia": { lat: 56.8796, lng: 24.6032 },
+  "Estonia": { lat: 58.5953, lng: 25.0136 },
+  "Belarus": { lat: 53.7098, lng: 27.9534 },
+  "Azerbaijan": { lat: 40.1431, lng: 47.5769 },
+  "Georgia": { lat: 42.3154, lng: 43.3569 },
+  "Tunisia": { lat: 33.8869, lng: 9.5375 },
+  "Cuba": { lat: 21.5218, lng: -77.7812 },
+  "Jamaica": { lat: 18.1096, lng: -77.2975 },
+  "Dominican Republic": { lat: 18.7357, lng: -70.1627 },
+  "Puerto Rico": { lat: 18.2208, lng: -66.5901 },
+  "Costa Rica": { lat: 9.7489, lng: -83.7534 },
+  "Panama": { lat: 8.5380, lng: -80.7821 },
+  "Guatemala": { lat: 15.7835, lng: -90.2308 },
+  "Ecuador": { lat: -1.8312, lng: -78.1834 },
+  "Bolivia": { lat: -16.2902, lng: -63.5887 },
+  "Paraguay": { lat: -23.4425, lng: -58.4438 },
+  "Uruguay": { lat: -32.5228, lng: -55.7658 },
+  "Ghana": { lat: 7.9465, lng: -1.0232 },
+  "Ethiopia": { lat: 9.1450, lng: 40.4897 },
+  "Tanzania": { lat: -6.3690, lng: 34.8888 },
+  "Uganda": { lat: 1.3733, lng: 32.2903 },
+  "Angola": { lat: -11.2027, lng: 17.8739 },
+  "Mozambique": { lat: -18.6657, lng: 35.5296 },
+  "Sri Lanka": { lat: 7.8731, lng: 80.7718 },
+  "Nepal": { lat: 28.3949, lng: 84.1240 },
+  "Myanmar": { lat: 21.9162, lng: 95.9560 },
+  "Cambodia": { lat: 12.5657, lng: 104.9910 },
+  "Jordan": { lat: 30.5852, lng: 36.2384 },
+  "Lebanon": { lat: 33.8547, lng: 35.8623 },
+  "Bahrain": { lat: 26.0667, lng: 50.5577 },
+  "Mongolia": { lat: 46.8625, lng: 103.8467 },
+  "Afghanistan": { lat: 33.9391, lng: 67.7100 },
+}
+
+function getCoords(country: string): { lat: number; lng: number } | null {
+  const c = COUNTRY_COORDS[country]
+  if (c) return c
+  const fallback = COUNTRY_COORDS[Object.keys(COUNTRY_COORDS).find(k =>
+    k.toLowerCase() === country.toLowerCase() ||
+    country.toLowerCase().includes(k.toLowerCase()) ||
+    k.toLowerCase().includes(country.toLowerCase())
+  ) || ""]
+  return fallback || null
+}
+
 export default function AdminDashboard() {
   const supabaseRef = useRef(createClient())
   const [viewsOverTime, setViewsOverTime] = useState<{ date: string; views: number }[]>([])
@@ -48,15 +163,22 @@ export default function AdminDashboard() {
   const [regions, setRegions] = useState<{ name: string; value: number }[]>([])
   const [pages, setPages] = useState<{ name: string; value: number }[]>([])
   const [referrers, setReferrers] = useState<{ name: string; value: number }[]>([])
+  const [geoData, setGeoData] = useState<{ country: string; lat: number; lng: number; value: number; label?: string }[]>([])
+  const [liveVisitors, setLiveVisitors] = useState(0)
+  const [viewsToday, setViewsToday] = useState(0)
   const [loading, setLoading] = useState(true)
 
   const fetchData = useCallback(async () => {
     try {
       const supabase = supabaseRef.current
+      const now = new Date()
+      const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString()
+      const fiveMinAgo = new Date(now.getTime() - 5 * 60 * 1000).toISOString()
 
       const [
         topPostsRes, dailyViewsRes, statusCounts,
         regionRes, pageRes, referrerRes,
+        viewsTodayRes, liveRes,
       ] = await Promise.all([
         supabase.from("posts").select("id, title, slug, views").eq("status", "published").order("views", { ascending: false }).limit(5),
         supabase.from("analytics_events").select("created_at").eq("event_type", "page_view").gte("created_at", new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()),
@@ -69,12 +191,13 @@ export default function AdminDashboard() {
         supabase.from("analytics_events").select("country").eq("event_type", "page_view").not("country", "is", null).limit(500),
         supabase.from("analytics_events").select("page_url").eq("event_type", "page_view").not("page_url", "is", null).limit(500),
         supabase.from("analytics_events").select("referrer").eq("event_type", "page_view").not("referrer", "is", null).limit(500),
+        supabase.from("analytics_events").select("*", { count: "exact", head: true }).eq("event_type", "page_view").gte("created_at", todayStart),
+        supabase.from("analytics_events").select("*", { count: "exact", head: true }).eq("event_type", "page_view").gte("created_at", fiveMinAgo),
       ])
 
       if (topPostsRes.data) setTopPosts(topPostsRes.data)
 
       const dailyMap: Record<string, number> = {}
-      const now = new Date()
       for (let i = 6; i >= 0; i--) {
         const d = new Date(now)
         d.setDate(d.getDate() - i)
@@ -99,7 +222,20 @@ export default function AdminDashboard() {
         const name = r.country || "Unknown"
         regionMap[name] = (regionMap[name] || 0) + 1
       })
-      setRegions(Object.entries(regionMap).sort((a, b) => b[1] - a[1]).slice(0, 6).map(([name, value]) => ({ name: flag(name) ? `${flag(name)} ${name}` : name, value })))
+      const sortedRegions = Object.entries(regionMap).sort((a, b) => b[1] - a[1]).slice(0, 10)
+      setRegions(sortedRegions.map(([name, value]) => ({ name: flag(name) ? `${flag(name)} ${name}` : name, value })))
+
+      const geo: { country: string; lat: number; lng: number; value: number; label?: string }[] = []
+      sortedRegions.forEach(([country, value]) => {
+        const coords = getCoords(country)
+        if (coords) {
+          geo.push({ country, lat: coords.lat, lng: coords.lng, value, label: country })
+        }
+      })
+      setGeoData(geo)
+
+      setLiveVisitors(liveRes.count || 0)
+      setViewsToday(viewsTodayRes.count || 0)
 
       const pageMap: Record<string, number> = {}
       ;(pageRes.data || []).forEach((r: any) => {
@@ -130,20 +266,50 @@ export default function AdminDashboard() {
       .on("postgres_changes", { event: "UPDATE", schema: "public", table: "posts" }, () => { fetchData() })
       .on("postgres_changes", { event: "INSERT", schema: "public", table: "analytics_events" }, () => { fetchData() })
       .subscribe()
-    return () => { supabaseRef.current.removeChannel(channel) }
+    const interval = setInterval(fetchData, 30000)
+    return () => {
+      client.removeChannel(channel)
+      clearInterval(interval)
+    }
   }, [fetchData])
+
+  const statusPieData = statusDist.filter(s => s.value > 0)
+
+  const weekTotal = viewsOverTime.reduce((s, d) => s + d.views, 0)
+  const hasViewsData = viewsOverTime.length > 0 && !viewsOverTime.every(d => d.views === 0)
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Dashboard</h1>
-          <p className="text-sm text-muted-foreground">Your publishing command center</p>
+      {/* ── Header with live counter ── */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="flex items-center gap-4">
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight">Dashboard</h1>
+            <p className="text-sm text-muted-foreground">Your publishing command center</p>
+          </div>
+          {!loading && (
+            <div className="hidden sm:flex items-center gap-3 pl-4 border-l border-border">
+              <div className="flex items-center gap-2">
+                <span className="relative flex h-2.5 w-2.5">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                  <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500" />
+                </span>
+                <span className="text-xs text-muted-foreground">Live</span>
+              </div>
+              <div className="text-right">
+                <span className="text-xl font-bold text-emerald-500 tabular-nums">{liveVisitors}</span>
+                <span className="text-xs text-muted-foreground ml-1.5">visitors / 5min</span>
+              </div>
+              <div className="text-right">
+                <span className="text-xl font-bold text-amber-500 tabular-nums">{viewsToday.toLocaleString()}</span>
+                <span className="text-xs text-muted-foreground ml-1.5">today</span>
+              </div>
+            </div>
+          )}
         </div>
         <div className="flex items-center gap-2">
           <span className="text-xs text-muted-foreground hidden sm:inline">
-            Last updated: {new Date().toLocaleTimeString()}
+            {new Date().toLocaleTimeString()}
           </span>
           <button
             onClick={fetchData}
@@ -155,25 +321,48 @@ export default function AdminDashboard() {
         </div>
       </div>
 
-      {/* Executive KPI Cards */}
-      <ExecutiveKpiCards />
+      {/* ── Mobile live counter ── */}
+      {!loading && (
+        <div className="flex sm:hidden items-center justify-around bg-card border rounded-xl p-4">
+          <div className="text-center">
+            <div className="flex items-center justify-center gap-1.5 mb-1">
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
+              </span>
+              <span className="text-xs text-muted-foreground">Live</span>
+            </div>
+            <span className="text-2xl font-bold text-emerald-500 tabular-nums">{liveVisitors}</span>
+            <p className="text-[10px] text-muted-foreground">visitors / 5min</p>
+          </div>
+          <div className="w-px h-10 bg-border" />
+          <div className="text-center">
+            <Eye className="h-4 w-4 text-amber-500 mx-auto mb-1" />
+            <span className="text-2xl font-bold text-amber-500 tabular-nums">{viewsToday.toLocaleString()}</span>
+            <p className="text-[10px] text-muted-foreground">views today</p>
+          </div>
+          <div className="w-px h-10 bg-border" />
+          <div className="text-center">
+            <BarChart3 className="h-4 w-4 text-blue-500 mx-auto mb-1" />
+            <span className="text-2xl font-bold text-blue-500 tabular-nums">{weekTotal.toLocaleString()}</span>
+            <p className="text-[10px] text-muted-foreground">this week</p>
+          </div>
+        </div>
+      )}
 
-      {/* AI Quota */}
+      <ExecutiveKpiCards />
       <GeminiQuotaWidget />
 
-      {/* AI Widgets Row */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <AiExecutiveSummary />
         <AiOpportunityCenter />
       </div>
 
-      {/* Publishing + Notifications */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <LivePublishingQueue />
         <NotificationCenter />
       </div>
 
-      {/* Charts Row */}
       <div className="grid grid-cols-1 lg:grid-cols-7 gap-6">
         <div className="lg:col-span-4 bg-card border rounded-xl p-5">
           <div className="flex items-center justify-between mb-5">
@@ -183,7 +372,7 @@ export default function AdminDashboard() {
             </div>
             {!loading && (
               <span className="text-xs font-medium text-muted-foreground bg-muted/50 px-2.5 py-1 rounded-md border">
-                {viewsOverTime.reduce((s, d) => s + d.views, 0).toLocaleString()} total
+                {weekTotal.toLocaleString()} total
               </span>
             )}
           </div>
@@ -191,52 +380,40 @@ export default function AdminDashboard() {
             <div className="h-64 flex items-center justify-center text-sm text-muted-foreground">
               <RefreshCw className="h-4 w-4 animate-spin mr-2" /> Loading...
             </div>
+          ) : !hasViewsData ? (
+            <div className="h-64 flex items-center justify-center text-sm text-muted-foreground">No data yet</div>
           ) : (
-            <ResponsiveContainer width="100%" height={260}>
-              <ComposedChart data={viewsOverTime}>
-                <CartesianGrid strokeDasharray="3 3" stroke="currentColor" className="stroke-border/50" />
-                <XAxis dataKey="date" tick={{ fill: "currentColor", fontSize: 12 }} className="text-muted-foreground" axisLine={false} tickLine={false} />
-                <YAxis tick={{ fill: "currentColor", fontSize: 12 }} className="text-muted-foreground" axisLine={false} tickLine={false} />
-                <Tooltip
-                  contentStyle={{
-                    background: "hsl(var(--popover))",
-                    border: "1px solid hsl(var(--border))",
-                    borderRadius: "8px",
-                    color: "hsl(var(--popover-foreground))",
-                  }}
-                  labelStyle={{ color: "hsl(var(--muted-foreground))" }}
-                />
-                <Bar dataKey="views" fill="#F59E0B" radius={[4, 4, 0, 0]} barSize={24} opacity={0.7} />
-                <Line type="monotone" dataKey="views" stroke="#10B981" strokeWidth={2.5} dot={{ fill: "#10B981", stroke: "hsl(var(--background))", strokeWidth: 2, r: 3 }} />
-              </ComposedChart>
-            </ResponsiveContainer>
+            <ChartArea
+              data={viewsOverTime}
+              xKey="date"
+              areas={[{ key: "views", color: "#f59e0b", name: "Views" }]}
+              height={260}
+            />
           )}
         </div>
 
         <div className="lg:col-span-3 bg-card border rounded-xl p-5">
           <div className="flex items-center gap-2.5 mb-5">
             <BarChart3 className="h-5 w-5 text-amber-500" />
-            <h2 className="text-base font-semibold">Post Status</h2>
+            <h2 className="text-base font-semibold">Post Status Distribution</h2>
           </div>
           {loading ? (
             <div className="h-64 flex items-center justify-center text-sm text-muted-foreground">Loading...</div>
+          ) : statusPieData.length === 0 ? (
+            <div className="h-64 flex items-center justify-center text-sm text-muted-foreground">No posts yet</div>
           ) : (
             <div className="flex flex-col items-center">
-              <ResponsiveContainer width="100%" height={220}>
-                <RadialBarChart innerRadius="30%" outerRadius="90%" data={statusDist.map((d, i) => ({ ...d, fill: [COLORS[0], COLORS[2], COLORS[1], COLORS[3]][i] }))} startAngle={180} endAngle={0}>
-                  <RadialBar dataKey="value" cornerRadius={8} background={{ fill: "hsl(var(--muted))" }} />
-                  <Tooltip
-                    contentStyle={{
-                      background: "hsl(var(--popover))",
-                      border: "1px solid hsl(var(--border))",
-                      borderRadius: "8px",
-                      color: "hsl(var(--popover-foreground))",
-                    }}
-                  />
-                </RadialBarChart>
-              </ResponsiveContainer>
+              <ChartPie
+                data={statusPieData}
+                nameKey="name"
+                valueKey="value"
+                colors={[COLORS[0], COLORS[2], COLORS[1], COLORS[3]]}
+                height={220}
+                donut
+                showLabel
+              />
               <div className="flex flex-wrap justify-center gap-4 mt-2">
-                {statusDist.map((s, i) => s.value > 0 && (
+                {statusPieData.map((s, i) => s.value > 0 && (
                   <div key={s.name} className="flex items-center gap-1.5">
                     <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: [COLORS[0], COLORS[2], COLORS[1], COLORS[3]][i] }} />
                     <span className="text-xs font-medium text-muted-foreground">{s.name} ({s.value})</span>
@@ -248,9 +425,37 @@ export default function AdminDashboard() {
         </div>
       </div>
 
-      {/* Top Posts + Regions */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="bg-card border rounded-xl p-5">
+      {/* ── Geographic Map (full width) ── */}
+      <div className="bg-card border rounded-xl p-5">
+        <div className="flex items-center justify-between mb-5">
+          <div className="flex items-center gap-2.5">
+            <Globe className="h-5 w-5 text-emerald-500" />
+            <h2 className="text-base font-semibold">Geographic Traffic Map</h2>
+          </div>
+          {!loading && geoData.length > 0 && (
+            <span className="text-xs font-medium text-muted-foreground bg-muted/50 px-2.5 py-1 rounded-md border">
+              {geoData.length} countries
+            </span>
+          )}
+        </div>
+        {loading ? (
+          <div className="h-80 flex items-center justify-center text-sm text-muted-foreground">
+            <RefreshCw className="h-4 w-4 animate-spin mr-2" /> Loading map...
+          </div>
+        ) : geoData.length === 0 ? (
+          <div className="h-80 flex flex-col items-center justify-center text-sm text-muted-foreground">
+            <Globe className="h-12 w-12 text-muted-foreground/30 mb-3" />
+            <p>No geographic data yet</p>
+            <p className="text-xs mt-1">Data appears as visitors arrive from different countries</p>
+          </div>
+        ) : (
+          <ChartRealTimeMap data={geoData} height={420} />
+        )}
+      </div>
+
+      {/* ── Top Posts + Top Regions + Top Pages ── */}
+      <div className="grid grid-cols-1 lg:grid-cols-7 gap-6">
+        <div className="lg:col-span-3 bg-card border rounded-xl p-5">
           <div className="flex items-center gap-2.5 mb-5">
             <BarChart3 className="h-5 w-5 text-emerald-500" />
             <h2 className="text-base font-semibold">Top Posts by Views</h2>
@@ -260,28 +465,38 @@ export default function AdminDashboard() {
           ) : topPosts.length === 0 ? (
             <div className="h-64 flex items-center justify-center text-sm text-muted-foreground">No published posts yet</div>
           ) : (
-            <ResponsiveContainer width="100%" height={280}>
-              <BarChart data={topPosts.map((p: any) => ({ name: p.title.length > 30 ? p.title.slice(0, 27) + "..." : p.title, views: p.views || 0 }))} layout="vertical" margin={{ left: 10 }}>
-                <CartesianGrid strokeDasharray="3 3" className="stroke-border/50" horizontal={false} />
-                <XAxis type="number" tick={{ fill: "currentColor", fontSize: 11 }} className="text-muted-foreground" axisLine={false} tickLine={false} />
-                <YAxis type="category" dataKey="name" tick={{ fill: "currentColor", fontSize: 11 }} className="text-muted-foreground" axisLine={false} tickLine={false} width={160} />
-                <Tooltip
-                  contentStyle={{
-                    background: "hsl(var(--popover))",
-                    border: "1px solid hsl(var(--border))",
-                    borderRadius: "8px",
-                    color: "hsl(var(--popover-foreground))",
-                  }}
-                />
-                <Bar dataKey="views" radius={[0, 6, 6, 0]} barSize={22}>
-                  {topPosts.map((_, i) => (<Cell key={i} fill={COLORS[i % COLORS.length]} />))}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
+            <div className="space-y-2">
+              {topPosts.map((p: any, i: number) => (
+                <Link
+                  key={p.id}
+                  href={`/admin/posts/${p.id}`}
+                  className="flex items-center gap-3 p-2.5 rounded-lg hover:bg-muted/40 transition-colors group"
+                >
+                  <span className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0"
+                    style={{
+                      background: i < 3 ? [`linear-gradient(135deg,#f59e0b,#d97706)`,`linear-gradient(135deg,#94a3b8,#64748b)`,`linear-gradient(135deg,#b45309,#92400e)`][i] : "hsl(var(--muted))",
+                      color: i < 3 ? "#fff" : "hsl(var(--muted-foreground))",
+                      boxShadow: i < 3 ? `0 2px 8px ${[`rgba(245,158,11,0.3)`,`rgba(148,163,184,0.25)`,`rgba(180,83,9,0.25)`][i]}` : "none",
+                    }}
+                  >
+                    {i + 1}
+                  </span>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium truncate group-hover:text-emerald-500 transition-colors">
+                      {p.title}
+                    </p>
+                    <p className="text-xs text-muted-foreground truncate mt-0.5">/{p.slug}</p>
+                  </div>
+                  <span className="text-sm font-bold tabular-nums text-emerald-500">
+                    {(p.views || 0).toLocaleString()}
+                  </span>
+                </Link>
+              ))}
+            </div>
           )}
         </div>
 
-        <div className="bg-card border rounded-xl p-5">
+        <div className="lg:col-span-2 bg-card border rounded-xl p-5">
           <div className="flex items-center gap-2.5 mb-5">
             <Globe className="h-5 w-5 text-amber-500" />
             <h2 className="text-base font-semibold">Top Regions</h2>
@@ -295,31 +510,16 @@ export default function AdminDashboard() {
               <p className="text-xs mt-1">Data appears as visitors view posts</p>
             </div>
           ) : (
-            <ResponsiveContainer width="100%" height={280}>
-              <BarChart data={regions} layout="vertical" margin={{ left: 10 }}>
-                <CartesianGrid strokeDasharray="3 3" className="stroke-border/50" horizontal={false} />
-                <XAxis type="number" tick={{ fill: "currentColor", fontSize: 11 }} className="text-muted-foreground" axisLine={false} tickLine={false} />
-                <YAxis type="category" dataKey="name" tick={{ fill: "currentColor", fontSize: 11 }} className="text-muted-foreground" axisLine={false} tickLine={false} width={100} />
-                <Tooltip
-                  contentStyle={{
-                    background: "hsl(var(--popover))",
-                    border: "1px solid hsl(var(--border))",
-                    borderRadius: "8px",
-                    color: "hsl(var(--popover-foreground))",
-                  }}
-                />
-                <Bar dataKey="value" radius={[0, 6, 6, 0]} barSize={22}>
-                  {regions.map((_, i) => (<Cell key={i} fill={COLORS[i % COLORS.length]} />))}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
+            <ChartLeaderboard
+              data={regions.slice(0, 7).map(r => ({ name: r.name, value: r.value }))}
+              nameKey="name"
+              valueKey="value"
+              valueLabel="visitors"
+            />
           )}
         </div>
-      </div>
 
-      {/* Pages + Traffic Sources */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="bg-card border rounded-xl p-5">
+        <div className="lg:col-span-2 bg-card border rounded-xl p-5">
           <div className="flex items-center gap-2.5 mb-5">
             <MousePointerClick className="h-5 w-5 text-cyan-500" />
             <h2 className="text-base font-semibold">Top Pages</h2>
@@ -333,61 +533,55 @@ export default function AdminDashboard() {
               <p className="text-xs mt-1">Data appears as visitors view posts</p>
             </div>
           ) : (
-            <ResponsiveContainer width="100%" height={280}>
-              <BarChart data={pages} layout="vertical" margin={{ left: 10 }}>
-                <CartesianGrid strokeDasharray="3 3" className="stroke-border/50" horizontal={false} />
-                <XAxis type="number" tick={{ fill: "currentColor", fontSize: 11 }} className="text-muted-foreground" axisLine={false} tickLine={false} />
-                <YAxis type="category" dataKey="name" tick={{ fill: "currentColor", fontSize: 11 }} className="text-muted-foreground" axisLine={false} tickLine={false} width={160} />
-                <Tooltip
-                  contentStyle={{
-                    background: "hsl(var(--popover))",
-                    border: "1px solid hsl(var(--border))",
-                    borderRadius: "8px",
-                    color: "hsl(var(--popover-foreground))",
-                  }}
-                />
-                <Bar dataKey="value" radius={[0, 6, 6, 0]} barSize={22}>
-                  {pages.map((_, i) => (<Cell key={i} fill={COLORS[(i + 2) % COLORS.length]} />))}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
-          )}
-        </div>
-
-        <div className="bg-card border rounded-xl p-5">
-          <div className="flex items-center gap-2.5 mb-5">
-            <Smartphone className="h-5 w-5 text-lime-500" />
-            <h2 className="text-base font-semibold">Traffic Sources</h2>
-          </div>
-          {loading ? (
-            <div className="h-64 flex items-center justify-center text-sm text-muted-foreground">Loading...</div>
-          ) : referrers.length === 0 ? (
-            <div className="h-64 flex flex-col items-center justify-center text-sm text-muted-foreground">
-              <TrendingUp className="h-10 w-10 text-muted-foreground/30 mb-3" />
-              <p>No traffic source data yet</p>
-              <p className="text-xs mt-1">Data appears as visitors come from external sites</p>
+            <div className="space-y-1">
+              {pages.map((p, i) => (
+                <div key={i} className="flex items-center justify-between py-2 px-1 border-b border-border/50 last:border-0">
+                  <span className="text-sm text-muted-foreground truncate flex-1 min-w-0" title={p.name}>
+                    {p.name.length > 28 ? p.name.slice(0, 25) + "..." : p.name}
+                  </span>
+                  <span className="text-sm font-semibold tabular-nums ml-3">{p.value.toLocaleString()}</span>
+                </div>
+              ))}
             </div>
-          ) : (
-            <ResponsiveContainer width="100%" height={280}>
-              <BarChart data={referrers} layout="vertical" margin={{ left: 10 }}>
-                <CartesianGrid strokeDasharray="3 3" className="stroke-border/50" horizontal={false} />
-                <XAxis type="number" tick={{ fill: "currentColor", fontSize: 11 }} className="text-muted-foreground" axisLine={false} tickLine={false} />
-                <YAxis type="category" dataKey="name" tick={{ fill: "currentColor", fontSize: 11 }} className="text-muted-foreground" axisLine={false} tickLine={false} width={120} />
-                <Tooltip
-                  contentStyle={{
-                    background: "hsl(var(--popover))",
-                    border: "1px solid hsl(var(--border))",
-                    borderRadius: "8px",
-                    color: "hsl(var(--popover-foreground))",
-                  }}
-                />
-                <Bar dataKey="value" radius={[0, 6, 6, 0]} barSize={22}>
-                  {referrers.map((_, i) => (<Cell key={i} fill={COLORS[(i + 4) % COLORS.length]} />))}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
           )}
         </div>
+      </div>
+
+      {/* ── Traffic Sources ── */}
+      <div className="bg-card border rounded-xl p-5">
+        <div className="flex items-center gap-2.5 mb-5">
+          <Smartphone className="h-5 w-5 text-lime-500" />
+          <h2 className="text-base font-semibold">Traffic Sources</h2>
+        </div>
+        {loading ? (
+          <div className="h-64 flex items-center justify-center text-sm text-muted-foreground">Loading...</div>
+        ) : referrers.length === 0 ? (
+          <div className="h-64 flex flex-col items-center justify-center text-sm text-muted-foreground">
+            <TrendingUp className="h-10 w-10 text-muted-foreground/30 mb-3" />
+            <p>No traffic source data yet</p>
+            <p className="text-xs mt-1">Data appears as visitors come from external sites</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
+            {referrers.map((r, i) => {
+              const pct = weekTotal > 0 ? ((r.value / weekTotal) * 100).toFixed(1) : "0"
+              return (
+                <div key={i} className="flex items-center gap-3 p-3 rounded-lg bg-muted/20 border border-border/50">
+                  <div className="w-9 h-9 rounded-lg flex items-center justify-center" style={{ backgroundColor: COLORS[i % COLORS.length] + "20" }}>
+                    <TrendingUp className="h-4 w-4" style={{ color: COLORS[i % COLORS.length] }} />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-medium truncate" title={r.name}>{r.name}</p>
+                    <div className="flex items-center gap-2 mt-0.5">
+                      <span className="text-xs font-bold tabular-nums">{r.value.toLocaleString()}</span>
+                      <span className="text-[10px] text-muted-foreground">{pct}%</span>
+                    </div>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        )}
       </div>
     </div>
   )

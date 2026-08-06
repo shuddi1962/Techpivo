@@ -36,7 +36,7 @@ export function CampaignManager() {
 
     setCampaigns(data || [])
     setLoading(false)
-  }, [])
+  }, [supabase])
 
   useEffect(() => { fetchCampaigns() }, [fetchCampaigns])
 

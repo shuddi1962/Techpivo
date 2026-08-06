@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react"
 import Link from "next/link"
+import Image from "next/image"
 import { createClient } from "@/lib/supabase/client"
 import type { AffiliateProduct } from "@/types/database"
 import { ShoppingCart } from "lucide-react"
@@ -52,9 +53,11 @@ export function AffiliateStrip() {
                 {/* Image */}
                 <div className="w-full h-28 bg-muted overflow-hidden">
                   {product.product_image_url ? (
-                    <img
+                    <Image
                       src={product.product_image_url}
                       alt={product.product_name}
+                      width={800}
+                      height={450}
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                       loading="lazy"
                     />

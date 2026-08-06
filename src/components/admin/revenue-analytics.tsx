@@ -68,7 +68,7 @@ export function RevenueAnalytics() {
       rpm: totalViews > 0 ? (totalRev / totalViews) * 1000 : 0,
     })
     setLoading(false)
-  }, [])
+  }, [supabase])
 
   useEffect(() => { fetchRevenue() }, [fetchRevenue])
 

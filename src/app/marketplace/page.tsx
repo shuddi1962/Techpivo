@@ -1,5 +1,6 @@
 "use client"
 
+import Image from "next/image"
 import { useEffect, useState } from "react"
 import { createClient } from "@/lib/supabase/client"
 import { AFFILIATE_PROGRAMS } from "@/lib/constants"
@@ -117,7 +118,7 @@ export default function MarketplacePage() {
             <div key={product.id} className="bg-card border rounded-xl overflow-hidden group hover:border-accent transition-colors">
               <div className="aspect-square bg-muted relative overflow-hidden">
                 {product.product_image_url ? (
-                  <img src={product.product_image_url} alt={product.product_name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+                  <Image src={product.product_image_url} alt={product.product_name} width={800} height={450} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
                 ) : (
                   <div className="w-full h-full flex items-center justify-center text-muted-foreground">
                     <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>

@@ -19,6 +19,7 @@ import { common, createLowlight } from "lowlight"
 import { usePostEditor } from "./post-editor-provider"
 import { EditorToolbar } from "./editor-toolbar"
 import { createClient } from "@/lib/supabase/client"
+import Image from "next/image"
 import { Search, Loader2, X } from "lucide-react"
 
 const lowlight = createLowlight(common)
@@ -261,7 +262,7 @@ export function RichTextEditor() {
                   {webResults.map((img, i) => (
                     <button key={i} onClick={() => insertWebImage(img.src)}
                       className="relative group rounded-xl overflow-hidden border-2 border-gray-200 dark:border-[#374151] hover:border-[#F59E0B] transition-all">
-                      <img src={img.src} alt={img.alt} className="w-full h-24 object-cover" />
+                      <Image src={img.src} alt={img.alt} width={120} height={80} className="w-full h-24 object-cover" />
                       <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors" />
                     </button>
                   ))}

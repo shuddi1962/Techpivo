@@ -14,6 +14,10 @@ interface WorkflowEdge {
   to: string;
 }
 
+function logError(context: string, err: unknown) {
+  console.error(`[automation api] ${context}:`, err);
+}
+
 export async function GET(request: NextRequest) {
   try {
     const supabase = await createClient();
@@ -21,12 +25,13 @@ export async function GET(request: NextRequest) {
 
     if (section === "workflows") {
       const { data: workflows, error } = await supabase
-        .from("automation_workflows" as any)
+        .from("automation_workflows")
         .select("*")
         .order("created_at", { ascending: false });
 
-      if (error && error.code === "42P01") {
-        return NextResponse.json({ workflows: [] });
+      if (error) {
+        logError("GET workflows", error);
+        return NextResponse.json({ workflows: [], error: "Workflows table not available" });
       }
       return NextResponse.json({ workflows: workflows || [] });
     }
@@ -102,13 +107,14 @@ export async function GET(request: NextRequest) {
 
     if (section === "runs") {
       const { data: runs, error } = await supabase
-        .from("automation_runs" as any)
+        .from("automation_runs")
         .select("*, automation_workflows(name)")
         .order("started_at", { ascending: false })
         .limit(50);
 
-      if (error && error.code === "42P01") {
-        return NextResponse.json({ runs: [] });
+      if (error) {
+        logError("GET runs", error);
+        return NextResponse.json({ runs: [], error: "Runs table not available" });
       }
 
       const enriched = (runs || []).map((run: any) => ({
@@ -120,6 +126,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ error: "Invalid section" }, { status: 400 });
   } catch (err) {
+    logError("GET", err);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
@@ -135,7 +142,7 @@ export async function POST(request: NextRequest) {
       if (!name) return NextResponse.json({ error: "Name required" }, { status: 400 });
 
       const { data, error } = await supabase
-        .from("automation_workflows" as any)
+        .from("automation_workflows")
         .insert({
           name,
           description: description || "",
@@ -148,10 +155,10 @@ export async function POST(request: NextRequest) {
         .select()
         .single();
 
-      if (error && error.code === "42P01") {
-        return NextResponse.json({ success: true, message: "Workflow saved (mock)" });
+      if (error) {
+        logError("POST create_workflow", error);
+        return NextResponse.json({ success: false, error: "Workflows table not available: " + error.message }, { status: 500 });
       }
-      if (error) throw error;
       return NextResponse.json({ success: true, workflow: data });
     }
 
@@ -160,19 +167,21 @@ export async function POST(request: NextRequest) {
       if (!workflow_id) return NextResponse.json({ error: "workflow_id required" }, { status: 400 });
 
       const { data: workflow, error: fetchErr } = await supabase
-        .from("automation_workflows" as any)
+        .from("automation_workflows")
         .select("*")
         .eq("id", workflow_id)
         .single();
 
-      if (fetchErr && fetchErr.code === "42P01") {
-        return NextResponse.json({ success: true, message: "Workflow run started (mock)" });
+      if (fetchErr) {
+        logError("POST run_workflow fetch", fetchErr);
+        return NextResponse.json({ success: false, error: "Workflows table not available: " + fetchErr.message }, { status: 500 });
       }
 
-      const nodesCount = Array.isArray((workflow as any)?.nodes) ? (workflow as any).nodes.length : 0;
+      const wf = workflow as { nodes?: unknown[]; run_count?: number } | null;
+      const nodesCount = Array.isArray(wf?.nodes) ? wf.nodes.length : 0;
 
       const { error: runErr } = await supabase
-        .from("automation_runs" as any)
+        .from("automation_runs")
         .insert({
           workflow_id,
           status: "running",
@@ -184,12 +193,15 @@ export async function POST(request: NextRequest) {
           error: null,
         });
 
-      if (runErr && runErr.code !== "42P01") throw runErr;
+      if (runErr) {
+        logError("POST run_workflow insert", runErr);
+        return NextResponse.json({ success: false, error: "Failed to create workflow run: " + runErr.message }, { status: 500 });
+      }
 
       await supabase
-        .from("automation_workflows" as any)
+        .from("automation_workflows")
         .update({
-          run_count: ((workflow as any)?.run_count || 0) + 1,
+          run_count: (wf?.run_count || 0) + 1,
           last_run: new Date().toISOString(),
           status: "active",
         })
@@ -200,6 +212,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ error: "Invalid action" }, { status: 400 });
   } catch (err) {
+    logError("POST", err);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
@@ -215,10 +228,13 @@ export async function PUT(request: NextRequest) {
     if (action === "update_status") {
       const { status } = body;
       const { error } = await supabase
-        .from("automation_workflows" as any)
+        .from("automation_workflows")
         .update({ status, updated_at: new Date().toISOString() })
         .eq("id", workflow_id);
-      if (error && error.code !== "42P01") throw error;
+      if (error) {
+        logError("PUT update_status", error);
+        return NextResponse.json({ error: "Database error: " + error.message }, { status: 500 });
+      }
       return NextResponse.json({ success: true });
     }
 
@@ -231,15 +247,19 @@ export async function PUT(request: NextRequest) {
       if (edges !== undefined) updates.edges = edges;
 
       const { error } = await supabase
-        .from("automation_workflows" as any)
+        .from("automation_workflows")
         .update(updates)
         .eq("id", workflow_id);
-      if (error && error.code !== "42P01") throw error;
+      if (error) {
+        logError("PUT update_workflow", error);
+        return NextResponse.json({ error: "Database error: " + error.message }, { status: 500 });
+      }
       return NextResponse.json({ success: true });
     }
 
     return NextResponse.json({ error: "Invalid action" }, { status: 400 });
   } catch (err) {
+    logError("PUT", err);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
@@ -253,25 +273,32 @@ export async function DELETE(request: NextRequest) {
     if (action === "delete_workflow") {
       if (!workflow_id) return NextResponse.json({ error: "workflow_id required" }, { status: 400 });
       const { error } = await supabase
-        .from("automation_workflows" as any)
+        .from("automation_workflows")
         .delete()
         .eq("id", workflow_id);
-      if (error && error.code !== "42P01") throw error;
+      if (error) {
+        logError("DELETE workflow", error);
+        return NextResponse.json({ error: "Database error: " + error.message }, { status: 500 });
+      }
       return NextResponse.json({ success: true });
     }
 
     if (action === "delete_run") {
       if (!run_id) return NextResponse.json({ error: "run_id required" }, { status: 400 });
       const { error } = await supabase
-        .from("automation_runs" as any)
+        .from("automation_runs")
         .delete()
         .eq("id", run_id);
-      if (error && error.code !== "42P01") throw error;
+      if (error) {
+        logError("DELETE run", error);
+        return NextResponse.json({ error: "Database error: " + error.message }, { status: 500 });
+      }
       return NextResponse.json({ success: true });
     }
 
     return NextResponse.json({ error: "Invalid action" }, { status: 400 });
   } catch (err) {
+    logError("DELETE", err);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }

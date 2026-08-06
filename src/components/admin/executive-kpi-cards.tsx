@@ -36,7 +36,7 @@ export function ExecutiveKpiCards() {
       try {
         const supabase = supabaseRef.current
 
-        const [postsCount, postsViews, rssFeeds, subsRes, lastMonthViews] = await Promise.all([
+        const [postsCount, postsViews, rssFeeds, subsRes, lastMonthViews, adRevenue, affSales] = await Promise.all([
           supabase.from("posts").select("*", { count: "exact", head: true }).eq("status", "published"),
           supabase.from("posts").select("views"),
           supabase.from("rss_feeds").select("*", { count: "exact", head: true }).eq("is_active", true),
@@ -44,6 +44,8 @@ export function ExecutiveKpiCards() {
           supabase.from("analytics_events").select("created_at").eq("event_type", "page_view")
             .gte("created_at", new Date(Date.now() - 60 * 24 * 60 * 60 * 1000).toISOString())
             .lt("created_at", new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()),
+          supabase.from("ad_revenue").select("amount"),
+          supabase.from("affiliate_sales").select("commission"),
         ])
 
         const totalV = (postsViews.data || []).reduce((s: number, p: any) => s + (p.views || 0), 0)
@@ -54,16 +56,21 @@ export function ExecutiveKpiCards() {
         const lastMonthCount = lastMonthViews.data?.length || 0
         const viewsTrend = viewDiff > 0 ? "up" : viewDiff < 0 ? "down" : "neutral"
 
+        const adTotal = (adRevenue.data || []).reduce((s: number, r: any) => s + (r.amount || 0), 0)
+        const affTotal = (affSales.data || []).reduce((s: number, r: any) => s + (r.commission || 0), 0)
+        const revenueTotal = adTotal + affTotal
+        const revChange = revenueTotal > 0 ? `+${revenueTotal > 1000 ? Math.round(revenueTotal / 100) : revenueTotal}` : "+0"
+
         setCards((prev) => {
           const updated = [...prev]
           updated[0] = { ...updated[0], value: postsCount.count || 0, change: `+${(postsCount.count || 0) - (typeof prev[0].value === 'number' ? prev[0].value : 0)}`, trend: "up" }
           updated[1] = { ...updated[1], value: totalV, change: viewDiff >= 0 ? `+${viewDiff}` : `${viewDiff}`, trend: viewsTrend }
-          updated[2] = { ...updated[2], value: 0, change: viewsTrend === "up" ? "+12%" : "-3%", trend: viewsTrend }
+          updated[2] = { ...updated[2], value: revenueTotal, change: revChange + "%", trend: revenueTotal > 0 ? "up" : "neutral" }
           updated[3] = { ...updated[3], value: rssFeeds.count || 0, change: "0", trend: "neutral" }
           updated[4] = { ...updated[4], value: subsRes.count || 0, change: `+${(subsRes.count || 0) - (typeof prev[4].value === 'number' ? prev[4].value : 0)}`, trend: subsRes.count && subsRes.count > 0 ? "up" : "neutral" }
           return updated
         })
-      } catch {}
+      } catch (err) { console.error("Failed to fetch KPI data:", err) }
       setLoading(false)
     }
 

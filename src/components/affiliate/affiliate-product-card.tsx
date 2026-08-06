@@ -1,6 +1,7 @@
 "use client"
 
 import Link from "next/link"
+import Image from "next/image"
 import type { AffiliateProduct } from "@/types/database"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -31,9 +32,11 @@ export function AffiliateProductCard({ product, compact }: AffiliateProductCardP
             )}
           >
             {product.product_image_url ? (
-              <img
+              <Image
                 src={product.product_image_url}
                 alt={product.product_name}
+                width={compact ? 48 : 800}
+                height={compact ? 48 : 450}
                 className="w-full h-full object-cover"
                 loading="lazy"
               />

@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, useRef, useCallback } from "react"
 import { createClient } from "@/lib/supabase/client"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -10,9 +10,11 @@ import { Label } from "@/components/ui/label"
 
 export default function AdminSettingsPage() {
   const [settings, setSettings] = useState<Record<string, any>>({})
+  const [dirty, setDirty] = useState<Set<string>>(new Set())
+  const timers = useRef<Record<string, NodeJS.Timeout>>({})
+  const supabase = createClient()
 
   useEffect(() => {
-    const supabase = createClient()
     supabase.from("site_settings").select("*").then(({ data }) => {
       if (data) {
         const map: Record<string, any> = {}
@@ -20,12 +22,35 @@ export default function AdminSettingsPage() {
         setSettings(map)
       }
     })
-  }, [])
+  }, [supabase])
 
-  const updateSetting = async (key: string, value: any) => {
-    const supabase = createClient()
+  const saveSetting = useCallback(async (key: string, value: any) => {
     await supabase.from("site_settings").upsert({ key, value })
-    setSettings({ ...settings, [key]: value })
+  }, [supabase])
+
+  const updateLocalSetting = (key: string, value: any) => {
+    setSettings((prev) => ({ ...prev, [key]: value }))
+  }
+
+  const handleInputChange = (key: string, value: any) => {
+    updateLocalSetting(key, value)
+    setDirty((prev) => new Set(prev).add(key))
+    if (timers.current[key]) clearTimeout(timers.current[key])
+    timers.current[key] = setTimeout(() => {
+      saveSetting(key, value)
+      setDirty((prev) => { const next = new Set(prev); next.delete(key); return next })
+    }, 800)
+  }
+
+  const handleBlur = (key: string, value: any) => {
+    if (timers.current[key]) clearTimeout(timers.current[key])
+    saveSetting(key, value)
+    setDirty((prev) => { const next = new Set(prev); next.delete(key); return next })
+  }
+
+  const handleToggle = (key: string, value: boolean) => {
+    updateLocalSetting(key, value)
+    saveSetting(key, value)
   }
 
   return (
@@ -39,7 +64,10 @@ export default function AdminSettingsPage() {
             {["site_name", "site_tagline", "site_url"].map((key) => (
               <div key={key}>
                 <Label className="text-sm capitalize mb-1 block">{key.replace(/_/g, " ")}</Label>
-                <Input value={settings[key] || ""} onChange={(e) => updateSetting(key, e.target.value)} />
+                <div className="relative">
+                  <Input value={settings[key] || ""} onChange={(e) => handleInputChange(key, e.target.value)} onBlur={() => handleBlur(key, settings[key])} />
+                  {dirty.has(key) && <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] text-amber-500">unsaved</span>}
+                </div>
               </div>
             ))}
           </CardContent>
@@ -57,7 +85,7 @@ export default function AdminSettingsPage() {
             ].map(({ key, label }) => (
               <div key={key} className="flex items-center justify-between">
                 <Label>{label}</Label>
-                <Switch checked={!!settings[key]} onCheckedChange={(v) => updateSetting(key, v)} />
+                <Switch checked={!!settings[key]} onCheckedChange={(v) => handleToggle(key, v)} />
               </div>
             ))}
           </CardContent>
@@ -77,7 +105,8 @@ export default function AdminSettingsPage() {
                 <Input
                   type="password"
                   value={settings[key] || ""}
-                  onChange={(e) => updateSetting(key, e.target.value)}
+                  onChange={(e) => handleInputChange(key, e.target.value)}
+                  onBlur={() => handleBlur(key, settings[key])}
                   className="font-mono"
                 />
               </div>

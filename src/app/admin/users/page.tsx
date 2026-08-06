@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { createClient } from "@/lib/supabase/client"
+import type { UserRole } from "@/types/database"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -17,15 +18,49 @@ const tabs = [
   { id: "invite", label: "Invite User", icon: UserPlus },
 ]
 
-function AllUsersTab({ users }: { users: Profile[] }) {
+function AllUsersTab({ users, onUserUpdate }: { users: Profile[]; onUserUpdate?: (id: string, updates: Partial<Profile>) => void }) {
   const [search, setSearch] = useState("")
   const [roleFilter, setRoleFilter] = useState("all")
+  const [editingUser, setEditingUser] = useState<Profile | null>(null)
+  const [editName, setEditName] = useState("")
+  const [editRole, setEditRole] = useState("")
+  const [saving, setSaving] = useState(false)
+  const supabase = createClient()
+
   const filtered = users.filter(u => {
     const matchSearch = !search || u.full_name?.toLowerCase().includes(search.toLowerCase()) || u.username?.toLowerCase().includes(search.toLowerCase())
     const matchRole = roleFilter === "all" || u.role === roleFilter
     return matchSearch && matchRole
   })
   const roleColors: Record<string, string> = { admin: "destructive", editor: "default", author: "secondary", contributor: "outline", reporter: "outline" }
+
+  const openEdit = (user: Profile) => {
+    setEditingUser(user)
+    setEditName(user.full_name || "")
+    setEditRole(user.role || "contributor")
+  }
+
+  const saveEdit = async () => {
+    if (!editingUser) return
+    setSaving(true)
+    try {
+      const { error } = await supabase
+        .from("user_profiles")
+        .update({ full_name: editName, role: editRole })
+        .eq("id", editingUser.id)
+      if (error) {
+        console.error("Failed to update user:", error)
+      }
+    } catch (err) {
+      console.error("Failed to update user:", err)
+    }
+    setSaving(false)
+    setEditingUser(null)
+    if (onUserUpdate && editingUser) {
+      onUserUpdate(editingUser.id, { full_name: editName, role: editRole as UserRole })
+    }
+  }
+
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap gap-3">
@@ -56,48 +91,120 @@ function AllUsersTab({ users }: { users: Profile[] }) {
               </div>
               <div className="flex items-center gap-2">
                 <Badge variant={roleColors[user.role] as any}>{user.role}</Badge>
-                <Button variant="ghost" size="sm" onClick={() => alert(`Edit user: ${user.full_name || user.username}`)}>Edit</Button>
+                <Button variant="ghost" size="sm" onClick={() => openEdit(user)}>Edit</Button>
               </div>
             </CardContent>
           </Card>
         ))}
         {filtered.length === 0 && <p className="text-center text-muted-foreground py-8">No users found</p>}
       </div>
+
+      {editingUser && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="bg-background rounded-xl border shadow-lg p-6 w-full max-w-md mx-4">
+            <h3 className="font-semibold text-lg mb-4">Edit User</h3>
+            <div className="space-y-3">
+              <div>
+                <label className="text-sm font-medium mb-1 block">Full Name</label>
+                <Input value={editName} onChange={(e) => setEditName(e.target.value)} />
+              </div>
+              <div>
+                <label className="text-sm font-medium mb-1 block">Role</label>
+                <select value={editRole} onChange={(e) => setEditRole(e.target.value)}
+                  className="w-full h-10 rounded-lg border border-input bg-background px-3 text-sm">
+                  {["admin", "editor", "author", "contributor", "reporter", "seo_specialist", "social_media_manager"].map(r => (
+                    <option key={r} value={r}>{r.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase())}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+            <div className="flex justify-end gap-2 mt-6">
+              <Button variant="outline" onClick={() => setEditingUser(null)}>Cancel</Button>
+              <Button onClick={saveEdit} disabled={saving}>{saving ? "Saving..." : "Save"}</Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
 
 function RolesTab() {
-  const [roles, setRoles] = useState<any[]>([])
+  const [customRoles, setCustomRoles] = useState<any[]>([])
+  const [roleCounts, setRoleCounts] = useState<Record<string, number>>({})
   const [loading, setLoading] = useState(true)
+  const [showCreateModal, setShowCreateModal] = useState(false)
+  const [newRoleName, setNewRoleName] = useState("")
+  const [newRoleDesc, setNewRoleDesc] = useState("")
+  const [creating, setCreating] = useState(false)
+  const [error, setError] = useState("")
+  const supabase = createClient()
 
   useEffect(() => {
-    const supabase = createClient()
-    supabase.from('user_profiles').select('role').then(({ data }) => {
-      const roleCounts: Record<string, number> = {}
-      ;(data || []).forEach((p: any) => {
-        const r = p.role || 'contributor'
-        roleCounts[r] = (roleCounts[r] || 0) + 1
-      })
-      const defaultRoles = [
-        { name: "Super Administrator", desc: "Complete system control", perms: ["all"] },
-        { name: "Administrator", desc: "Site management", perms: ["posts", "users", "settings", "seo", "analytics"] },
-        { name: "Editor-in-Chief", desc: "Approves publishing", perms: ["posts.edit", "posts.publish", "comments.manage"] },
-        { name: "Managing Editor", desc: "Manages editorial workflow", perms: ["posts.edit", "posts.publish"] },
-        { name: "Reporter", desc: "Creates drafts", perms: ["posts.create", "posts.edit_own"] },
-        { name: "SEO Specialist", desc: "Manages optimization", perms: ["seo", "keywords"] },
-        { name: "Social Media Manager", desc: "Publishes campaigns", perms: ["social"] },
-        { name: "Affiliate Manager", desc: "Manages affiliate links", perms: ["affiliate"] },
-        { name: "Contributor", desc: "Can comment and participate", perms: ["comment", "forum"] },
-      ]
-      setRoles(defaultRoles.map(r => ({ ...r, users: roleCounts[r.name.toLowerCase().replace(/\s+/g, '_')] || roleCounts[r.name.toLowerCase()] || 0 })))
-      setLoading(false)
-    })
-  }, [])
+    const fetchData = async () => {
+      try {
+        const [rolesRes, profilesRes] = await Promise.all([
+          supabase.from("custom_roles").select("*").order("name"),
+          supabase.from("user_profiles").select("role"),
+        ])
 
-  const handleCreateRole = () => {
-    const name = prompt('Enter role name:')
-    if (name) alert(`Role "${name}" created. Assign permissions in the settings panel.`)
+        const counts: Record<string, number> = {}
+        ;(profilesRes.data || []).forEach((p: any) => {
+          const r = p.role || "contributor"
+          counts[r] = (counts[r] || 0) + 1
+        })
+        setRoleCounts(counts)
+
+        if (rolesRes.data && rolesRes.data.length > 0) {
+          setCustomRoles(rolesRes.data.map((r: any) => ({
+            id: r.id,
+            name: r.name,
+            desc: r.description || "",
+            perms: Array.isArray(r.permissions) ? r.permissions : [],
+            users: counts[r.name] || 0,
+          })))
+        } else {
+          // No custom roles defined yet — show empty state
+          setCustomRoles([])
+        }
+      } catch { /* ignore */ }
+      setLoading(false)
+    }
+    fetchData()
+  }, [supabase])
+
+  const handleCreateRole = async () => {
+    if (!newRoleName.trim()) return
+    setCreating(true)
+    setError("")
+    try {
+      const { error: insertError } = await supabase.from("custom_roles").insert({
+        name: newRoleName.trim(),
+        description: newRoleDesc.trim(),
+        permissions: [],
+      })
+      if (insertError) {
+        setError(insertError.message)
+      } else {
+        setShowCreateModal(false)
+        setNewRoleName("")
+        setNewRoleDesc("")
+        // Refresh
+        const { data } = await supabase.from("custom_roles").select("*").order("name")
+        if (data) {
+          setCustomRoles(data.map((r: any) => ({
+            id: r.id,
+            name: r.name,
+            desc: r.description || "",
+            perms: Array.isArray(r.permissions) ? r.permissions : [],
+            users: roleCounts[r.name] || 0,
+          })))
+        }
+      }
+    } catch (e: any) {
+      setError(e.message || "Failed to create role")
+    }
+    setCreating(false)
   }
 
   if (loading) return <div className="text-center py-8 text-muted-foreground">Loading roles...</div>
@@ -105,25 +212,84 @@ function RolesTab() {
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center">
-        <h3 className="font-semibold">System Roles ({roles.length})</h3>
-        <Button size="sm" onClick={handleCreateRole}><Shield className="h-3 w-3 mr-1" /> Create Role</Button>
+        <h3 className="font-semibold">Custom Roles ({customRoles.length})</h3>
+        <Button size="sm" onClick={() => setShowCreateModal(true)}>
+          <Shield className="h-3 w-3 mr-1" /> Create Role
+        </Button>
       </div>
-      <div className="grid md:grid-cols-2 gap-4">
-        {roles.map((r, i) => (
-          <Card key={i}>
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between mb-2">
-                <p className="font-medium">{r.name}</p>
-                <Badge variant="outline">{r.users} user{r.users !== 1 ? 's' : ''}</Badge>
+
+      {customRoles.length === 0 ? (
+        <Card>
+          <CardContent className="p-8 text-center">
+            <Shield className="h-10 w-10 text-muted-foreground/30 mx-auto mb-3" />
+            <p className="text-muted-foreground">No custom roles defined yet</p>
+            <p className="text-xs text-muted-foreground mt-1">
+              Roles like &ldquo;admin&rdquo;, &ldquo;editor&rdquo;, &ldquo;author&rdquo;, and &ldquo;contributor&rdquo; are assigned via user profiles.
+              Create custom roles with specific permissions here.
+            </p>
+            <Button size="sm" className="mt-4" onClick={() => setShowCreateModal(true)}>
+              Create Your First Role
+            </Button>
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="grid md:grid-cols-2 gap-4">
+          {customRoles.map((r, i) => (
+            <Card key={r.id || i}>
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between mb-2">
+                  <p className="font-medium">{r.name}</p>
+                  <Badge variant="outline">{r.users} user{r.users !== 1 ? "s" : ""}</Badge>
+                </div>
+                {r.desc && <p className="text-sm text-muted-foreground mb-3">{r.desc}</p>}
+                <div className="flex flex-wrap gap-1">
+                  {r.perms.length > 0 ? r.perms.map((p: string) => (
+                    <Badge key={p} variant="secondary" className="text-xs">{p}</Badge>
+                  )) : (
+                    <span className="text-xs text-muted-foreground">No specific permissions set</span>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
+
+      {/* Create Role Modal */}
+      {showCreateModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="bg-background rounded-xl border shadow-lg p-6 w-full max-w-md mx-4">
+            <h3 className="font-semibold text-lg mb-4">Create Custom Role</h3>
+            <div className="space-y-3">
+              <div>
+                <label className="text-sm font-medium mb-1 block">Role Name</label>
+                <Input
+                  value={newRoleName}
+                  onChange={(e) => setNewRoleName(e.target.value)}
+                  placeholder="e.g. Content Strategist"
+                />
               </div>
-              <p className="text-sm text-muted-foreground mb-3">{r.desc}</p>
-              <div className="flex flex-wrap gap-1">
-                {r.perms.map((p: string) => <Badge key={p} variant="secondary" className="text-xs">{p}</Badge>)}
+              <div>
+                <label className="text-sm font-medium mb-1 block">Description (optional)</label>
+                <Input
+                  value={newRoleDesc}
+                  onChange={(e) => setNewRoleDesc(e.target.value)}
+                  placeholder="e.g. Plans and schedules content campaigns"
+                />
               </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+              {error && <p className="text-sm text-red-500">{error}</p>}
+            </div>
+            <div className="flex justify-end gap-2 mt-6">
+              <Button variant="outline" onClick={() => { setShowCreateModal(false); setNewRoleName(""); setNewRoleDesc(""); setError("") }}>
+                Cancel
+              </Button>
+              <Button onClick={handleCreateRole} disabled={!newRoleName.trim() || creating}>
+                {creating ? "Creating..." : "Create Role"}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
@@ -263,9 +429,13 @@ export default function AdminUsersPage() {
     })
   }, [])
 
+  const handleUserUpdate = (id: string, updates: Partial<Profile>) => {
+    setUsers((prev) => prev.map((u) => (u.id === id ? { ...u, ...updates } : u)))
+  }
+
   const renderTab = () => {
     switch (activeTab) {
-      case "all": return <AllUsersTab users={users} />
+      case "all": return <AllUsersTab users={users} onUserUpdate={handleUserUpdate} />
       case "roles": return <RolesTab />
       case "activity": return <ActivityTab />
       case "invite": return <InviteTab />
@@ -296,3 +466,4 @@ export default function AdminUsersPage() {
     </div>
   )
 }
+

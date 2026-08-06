@@ -43,8 +43,8 @@ export default function AIUsageCenterPage() {
       totalRequests: allLogs.length,
       todayRequests: todayCount,
       monthlyCost: Math.round(allLogs.length * 0.025 * 100) / 100,
-      avgResponseTime: 3200,
-      successRate: 100,
+      avgResponseTime: 0,
+      successRate: 0,
       quotaUsed: todayCount,
       quotaCap: 100,
     })
@@ -125,8 +125,8 @@ export default function AIUsageCenterPage() {
           { label: "Total Requests (30d)", value: stats.totalRequests, icon: Activity, color: "text-blue-500" },
           { label: "Today's Requests", value: stats.todayRequests, icon: Zap, color: "text-purple-500" },
           { label: "Monthly Cost", value: `$${stats.monthlyCost.toFixed(2)}`, icon: DollarSign, color: "text-green-500" },
-          { label: "Avg Response Time", value: `${stats.avgResponseTime}ms`, icon: Clock, color: "text-amber-500" },
-          { label: "Success Rate", value: `${stats.successRate}%`, icon: CheckCircle, color: "text-green-500" },
+          { label: "Avg Response Time", value: stats.avgResponseTime > 0 ? `${stats.avgResponseTime}ms` : "—", icon: Clock, color: "text-amber-500" },
+          { label: "Success Rate", value: stats.successRate > 0 ? `${stats.successRate}%` : "—", icon: CheckCircle, color: "text-green-500" },
         ].map((stat) => (
           <div key={stat.label} className="bg-white dark:bg-[#111827] border rounded-xl p-4">
             <div className="flex items-center gap-2 mb-2">

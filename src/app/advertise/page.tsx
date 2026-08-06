@@ -1,4 +1,5 @@
 import type { Metadata } from "next"
+import Image from "next/image"
 import Link from "next/link"
 import { SITE_URL } from "@/lib/constants"
 
@@ -15,7 +16,7 @@ export default function AdvertisePage() {
     <div className="w-full">
       {/* Hero */}
       <div className="relative overflow-hidden mb-12 min-h-[320px] flex items-center">
-        <img src="https://images.pexels.com/photos/3184291/pexels-photo-3184291.jpeg" alt="Advertise with us" className="absolute inset-0 w-full h-full object-cover" />
+        <Image src="https://images.pexels.com/photos/3184291/pexels-photo-3184291.jpeg" alt="Advertise with us" width={1200} height={675} className="absolute inset-0 w-full h-full object-cover" />
         <div className="absolute inset-0 bg-black/40" />
         <div className="relative z-10 px-6 md:px-12 lg:px-16 py-16 text-white max-w-4xl">
           <h1 className="text-4xl font-bold mb-4">Advertise With Us</h1>
@@ -70,7 +71,7 @@ export default function AdvertisePage() {
           ].map((item) => (
             <div key={item.title} className="bg-card border rounded-xl overflow-hidden">
               <div className="relative h-40">
-                <img src={item.img} alt={item.title} className="absolute inset-0 w-full h-full object-cover" />
+                <Image src={item.img} alt={item.title} width={800} height={450} className="absolute inset-0 w-full h-full object-cover" />
               </div>
               <div className="p-5">
                 <h3 className="font-bold mb-2">{item.title}</h3>

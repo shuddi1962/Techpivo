@@ -1,54 +1,85 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect, useCallback } from "react"
 import Link from "next/link"
+import { createClient } from "@/lib/supabase/client"
 import {
   Wrench, Code, Shield, Image, FileJson, Hash, Key,
   Type, Calculator, Globe, Lock, Search, FileText, Link2,
   Palette, Binary, Clock, Terminal, Braces, Minimize2,
+  CheckCircle, Unlock, Server, Tags, Layout, Bot, Map,
+  BookOpen, Eye, RefreshCw, Maximize, Scissors, Percent,
+  Repeat, DollarSign, Sparkles, User, HelpCircle, Mail,
+  LucideIcon,
 } from "lucide-react"
 
+const ICON_MAP: Record<string, LucideIcon> = {
+  code: Code, "check-circle": CheckCircle, lock: Lock, unlock: Unlock,
+  link: Link2, hash: Hash, key: Key, shield: Shield, mail: Mail,
+  globe: Globe, server: Server, search: Search, tags: Tags, layout: Layout,
+  bot: Bot, map: Map, "book-open": BookOpen, type: Type, eye: Eye,
+  image: Image, "refresh-cw": RefreshCw, maximize: Maximize, scissors: Scissors,
+  palette: Palette, "file-text": FileText, minimize: Minimize2, file: FileText,
+  "dollar-sign": DollarSign, percent: Percent, repeat: Repeat,
+  sparkles: Sparkles, user: User, "help-circle": HelpCircle,
+}
+
+const CATEGORY_COLORS: Record<string, string> = {
+  developer: "text-blue-500", security: "text-red-500", seo: "text-orange-500",
+  image: "text-cyan-500", networking: "text-purple-500", pdf: "text-pink-500",
+  calculator: "text-green-500", ai: "text-amber-500",
+}
+
+const CATEGORY_LABELS: Record<string, string> = {
+  developer: "Developer", security: "Security", seo: "SEO",
+  image: "Image", networking: "Networking", pdf: "PDF",
+  calculator: "Calculator", ai: "AI",
+}
+
 interface Tool {
+  id: string
   name: string
   slug: string
   description: string
-  icon: any
   category: string
-  color: string
+  icon: string
+  is_active: boolean
+  is_ai_tool: boolean
+  usage_count: number
 }
 
-const tools: Tool[] = [
-  { name: "JSON Formatter", slug: "json-formatter", description: "Format, validate, and beautify JSON data", icon: Braces, category: "Developer", color: "text-blue-500" },
-  { name: "JSON Validator", slug: "json-validator", description: "Validate JSON syntax and structure", icon: FileJson, category: "Developer", color: "text-green-500" },
-  { name: "Base64 Encoder", slug: "base64-encoder", description: "Encode and decode Base64 strings", icon: Binary, category: "Developer", color: "text-purple-500" },
-  { name: "URL Encoder", slug: "url-encoder", description: "Encode and decode URLs", icon: Link2, category: "Developer", color: "text-cyan-500" },
-  { name: "Hash Generator", slug: "hash-generator", description: "Generate MD5, SHA-1, SHA-256 hashes", icon: Hash, category: "Security", color: "text-red-500" },
-  { name: "Password Generator", slug: "password-generator", description: "Generate secure random passwords", icon: Key, category: "Security", color: "text-amber-500" },
-  { name: "Password Strength", slug: "password-strength", description: "Check password strength and security", icon: Shield, category: "Security", color: "text-green-500" },
-  { name: "Email Validator", slug: "email-validator", description: "Validate email address format", icon: Lock, category: "Security", color: "text-pink-500" },
-  { name: "Word Counter", slug: "word-counter", description: "Count words, characters, and sentences", icon: Type, category: "SEO", color: "text-orange-500" },
-  { name: "Slug Generator", slug: "slug-generator", description: "Generate SEO-friendly URL slugs", icon: Globe, category: "SEO", color: "text-blue-500" },
-  { name: "Meta Tag Generator", slug: "meta-tag-generator", description: "Generate meta tags for SEO", icon: Search, category: "SEO", color: "text-green-500" },
-  { name: "Readability Checker", slug: "readability-checker", description: "Check content readability score", icon: FileText, category: "SEO", color: "text-purple-500" },
-  { name: "Image Compressor", slug: "image-compressor", description: "Compress images without quality loss", icon: Image, category: "Image", color: "text-cyan-500" },
-  { name: "Image Resizer", slug: "image-resizer", description: "Resize images to any dimension", icon: Minimize2, category: "Image", color: "text-pink-500" },
-  { name: "Color Picker", slug: "color-picker", description: "Pick and convert color codes", icon: Palette, category: "Image", color: "text-amber-500" },
-  { name: "Unit Converter", slug: "unit-converter", description: "Convert between measurement units", icon: Calculator, category: "Calculator", color: "text-green-500" },
-  { name: "Percentage Calculator", slug: "percentage-calculator", description: "Calculate percentages quickly", icon: Calculator, category: "Calculator", color: "text-blue-500" },
-  { name: "Date Calculator", slug: "date-calculator", description: "Calculate date differences", icon: Clock, category: "Calculator", color: "text-purple-500" },
-]
-
-const categories = ["All", "Developer", "Security", "SEO", "Image", "Calculator"]
-
 export default function ToolsPage() {
+  const supabase = createClient()
+  const [tools, setTools] = useState<Tool[]>([])
+  const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState("")
   const [category, setCategory] = useState("All")
 
+  const fetchTools = useCallback(async () => {
+    const { data } = await supabase
+      .from("tools")
+      .select("*")
+      .eq("is_active", true)
+      .order("usage_count", { ascending: false })
+    setTools(data || [])
+    setLoading(false)
+  }, [supabase])
+
+  useEffect(() => { fetchTools() }, [fetchTools])
+
+  const categories = ["All", ...new Set(tools.map(t => CATEGORY_LABELS[t.category] || t.category))]
+
   const filtered = tools.filter(t => {
-    const matchSearch = t.name.toLowerCase().includes(search.toLowerCase()) || t.description.toLowerCase().includes(search.toLowerCase())
-    const matchCat = category === "All" || t.category === category
+    const cat = CATEGORY_LABELS[t.category] || t.category
+    const matchSearch = t.name.toLowerCase().includes(search.toLowerCase()) || t.description?.toLowerCase().includes(search.toLowerCase())
+    const matchCat = category === "All" || cat === category
     return matchSearch && matchCat
   })
+
+  const getIcon = (iconName: string) => {
+    const Icon = ICON_MAP[iconName] || Wrench
+    return <Icon className="h-5 w-5" />
+  }
 
   return (
     <div className="space-y-6">
@@ -83,31 +114,37 @@ export default function ToolsPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        {filtered.map(tool => {
-          const Icon = tool.icon
-          return (
-            <Link
-              key={tool.slug}
-              href={`/admin/tools/${tool.slug}`}
-              className="bg-white dark:bg-[#111827] border-2 border-gray-200 dark:border-[#374151] rounded-xl p-5 hover:border-[#F59E0B] hover:shadow-lg transition-all group"
-            >
-              <div className="flex items-start gap-3">
-                <div className={`p-2.5 rounded-lg bg-gray-50 dark:bg-[#1F2937] group-hover:bg-amber-50 dark:group-hover:bg-amber-900/20 transition-colors`}>
-                  <Icon className={`h-5 w-5 ${tool.color}`} />
+      {loading ? (
+        <div className="h-48 flex items-center justify-center text-sm text-gray-400">Loading...</div>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {filtered.map(tool => {
+            const color = CATEGORY_COLORS[tool.category] || "text-gray-500"
+            return (
+              <Link
+                key={tool.id}
+                href={`/admin/tools/${tool.slug}`}
+                className="bg-white dark:bg-[#111827] border-2 border-gray-200 dark:border-[#374151] rounded-xl p-5 hover:border-[#F59E0B] hover:shadow-lg transition-all group"
+              >
+                <div className="flex items-start gap-3">
+                  <div className={`p-2.5 rounded-lg bg-gray-50 dark:bg-[#1F2937] group-hover:bg-amber-50 dark:group-hover:bg-amber-900/20 transition-colors ${color}`}>
+                    {getIcon(tool.icon)}
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-bold text-gray-900 dark:text-white group-hover:text-[#F59E0B] transition-colors">{tool.name}</h3>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{tool.description}</p>
+                    <span className="inline-block text-[10px] font-semibold text-gray-400 dark:text-gray-500 mt-2 px-2 py-0.5 rounded-full bg-gray-100 dark:bg-[#1F2937]">
+                      {CATEGORY_LABELS[tool.category] || tool.category}
+                    </span>
+                  </div>
                 </div>
-                <div>
-                  <h3 className="text-sm font-bold text-gray-900 dark:text-white group-hover:text-[#F59E0B] transition-colors">{tool.name}</h3>
-                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{tool.description}</p>
-                  <span className="inline-block text-[10px] font-semibold text-gray-400 dark:text-gray-500 mt-2 px-2 py-0.5 rounded-full bg-gray-100 dark:bg-[#1F2937]">{tool.category}</span>
-                </div>
-              </div>
-            </Link>
-          )
-        })}
-      </div>
+              </Link>
+            )
+          })}
+        </div>
+      )}
 
-      {filtered.length === 0 && (
+      {!loading && filtered.length === 0 && (
         <div className="h-48 flex flex-col items-center justify-center text-sm text-gray-400">
           <Wrench className="h-8 w-8 text-gray-300 dark:text-gray-600 mb-2" />
           <p>No tools found matching &quot;{search}&quot;</p>

@@ -1,5 +1,6 @@
 "use client"
 
+import Image from "next/image"
 import { useState } from "react"
 import { contactFormSchema, getFieldErrors, type ContactFormData } from "@/lib/validation"
 import { sanitize, sanitizeEmail } from "@/lib/sanitize"
@@ -70,7 +71,7 @@ export default function ContactPage() {
     <div className="w-full">
       {/* Hero */}
       <div className="relative overflow-hidden mb-12 min-h-[320px] flex items-center">
-        <img src="https://images.pexels.com/photos/8204327/pexels-photo-8204327.jpeg" alt="Customer service team" className="absolute inset-0 w-full h-full object-cover" />
+        <Image src="https://images.pexels.com/photos/8204327/pexels-photo-8204327.jpeg" alt="Customer service team" width={1200} height={675} className="absolute inset-0 w-full h-full object-cover" />
         <div className="absolute inset-0 bg-black/40" />
         <div className="relative z-10 px-6 md:px-12 lg:px-16 py-16 text-white max-w-4xl">
           <div className="text-5xl mb-4">✉️</div>

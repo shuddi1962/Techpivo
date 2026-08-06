@@ -91,7 +91,7 @@ export default function AdminPostsPage() {
     fetchCounts()
     fetchPage(1)
     setPage(1)
-  }, [search, statusFilter, aiFilter])
+  }, [search, statusFilter, aiFilter, fetchCounts, fetchPage])
 
   useEffect(() => {
     fetchPage(page)

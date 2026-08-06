@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
+import Image from 'next/image';
 import { User, Save, Camera, MapPin, Globe, Calendar, Flame, Star, Trophy, Target } from 'lucide-react';
 
 export default function AccountPage() {
@@ -101,7 +102,7 @@ export default function AccountPage() {
           <div className="flex items-center gap-6">
             <div className="w-24 h-24 rounded-full bg-primary/10 border-2 border-primary/20 flex items-center justify-center text-3xl font-bold text-primary overflow-hidden">
               {profile?.avatar_url ? (
-                <img src={profile.avatar_url} alt="" className="w-full h-full object-cover" />
+                <Image src={profile.avatar_url} alt="" width={48} height={48} className="w-full h-full object-cover" />
               ) : (
                 profile?.full_name?.[0] || profile?.username?.[0] || '?'
               )}

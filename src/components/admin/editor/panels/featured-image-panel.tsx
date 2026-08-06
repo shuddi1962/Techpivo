@@ -3,6 +3,7 @@
 import { useRef, useState, useCallback } from "react"
 import { usePostEditor } from "../post-editor-provider"
 import { CollapsibleSection } from "../collapsible-section"
+import NextImage from "next/image"
 import { Image, Upload, X, Search, Loader2 } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
 
@@ -51,9 +52,11 @@ export function FeaturedImagePanel() {
       <div className="space-y-3">
         {post.featured_image ? (
           <div className="relative group rounded-xl overflow-hidden border-2 border-gray-200 dark:border-[#1F2937]">
-            <img
+            <NextImage
               src={post.featured_image}
               alt="Featured"
+              width={800}
+              height={450}
               className="w-full h-40 object-cover"
               onError={(e) => { (e.target as HTMLImageElement).src = "/api/placeholder/400/225" }}
             />
@@ -107,7 +110,7 @@ export function FeaturedImagePanel() {
                   onClick={() => setField("featured_image", img.src)}
                   className="relative group rounded-lg overflow-hidden border-2 border-gray-200 dark:border-[#1F2937]"
                 >
-                  <img src={img.src} alt={img.alt} className="w-full h-16 object-cover" />
+                  <NextImage src={img.src} alt={img.alt} width={120} height={80} className="w-full h-16 object-cover" />
                   <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors" />
                 </button>
               ))}
