@@ -89,6 +89,11 @@ html { overflow-x: clip; }
 body { overflow-x: clip; max-width: 100vw; }
 body { position: relative; }
 
+@keyframes flyoutIn {
+  from { opacity: 0; transform: translateX(-6px) scale(0.98); }
+  to { opacity: 1; transform: translateX(0) scale(1); }
+}
+
 @layer components {
   .prose-custom {
     @apply prose prose-lg max-w-none prose-headings:font-bold prose-a:text-brand-amber prose-a:no-underline hover:prose-a:underline prose-pre:bg-brand-navy prose-pre:text-white prose-code:text-brand-amber;

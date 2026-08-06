@@ -17,6 +17,7 @@ The user provides admin sections ONE BY ONE. For each section:
 | Date | Section | Status | Files Changed | Migration |
 |------|---------|--------|---------------|-----------|
 | 2026-08-06 | Setup + memory storage | DONE | ADMIN_SESSION.md | — |
+| 2026-08-06 | Baseline commit + deploy | DONE | 89 files committed (66cfa02), Vercel production green | — |
 
 ## Sections Completed
 
@@ -43,7 +44,7 @@ The user provides admin sections ONE BY ONE. For each section:
 - Branch: main
 - Remote: https://github.com/shuddi1962/Techpivo.git
 - Vercel: prj_OBSMY0BVKOYYUY9tnURMyqy9WMja / team_rqpTlSuuVJE0OepvQVHOAJLr
-- Uncommitted at setup: 84 modified files + 3 untracked (migration 037, indexing/api, connected-accounts api, charts component) — commit + deploy next
+- Commit 66cfa02 pushed to origin/main, Vercel production deployed (https://techpivo.com) — GREEN
 
 ## Deploy Command
 
