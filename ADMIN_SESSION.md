@@ -18,6 +18,7 @@ The user provides admin sections ONE BY ONE. For each section:
 |------|---------|--------|---------------|-----------|
 | 2026-08-06 | Setup + memory storage | DONE | ADMIN_SESSION.md | — |
 | 2026-08-06 | Baseline commit + deploy | DONE | 89 files committed (66cfa02), Vercel production green | — |
+| 2026-08-06 | Premium admin sidebar redesign | DONE | sidebar.tsx, globals.css (98f3345): hover flyout panels, grouped nav with icons, mobile accordion, quick create button, `/` search shortcut, build green | — |
 
 ## Sections Completed
 
@@ -44,7 +45,7 @@ The user provides admin sections ONE BY ONE. For each section:
 - Branch: main
 - Remote: https://github.com/shuddi1962/Techpivo.git
 - Vercel: prj_OBSMY0BVKOYYUY9tnURMyqy9WMja / team_rqpTlSuuVJE0OepvQVHOAJLr
-- Commit 66cfa02 pushed to origin/main, Vercel production deployed (https://techpivo.com) — GREEN
+- Commit 98f3345 pushed to origin/main (sidebar redesign). Build green with NODE_OPTIONS=--max-old-space-size=6144 (default heap OOMs on type-check).
 
 ## Deploy Command
 
