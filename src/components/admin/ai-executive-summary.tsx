@@ -20,21 +20,26 @@ export function AiExecutiveSummary() {
 
   useEffect(() => {
     generateInsights()
+    const interval = setInterval(generateInsights, 60000)
+    return () => clearInterval(interval)
   }, [])
 
   const generateInsights = async () => {
     const supabase = createClient()
     setLoading(true)
 
-    const [postsRes, analyticsRes, seoRes] = await Promise.all([
+    const [postsRes, analyticsRes, seoRes, categoriesRes] = await Promise.all([
       supabase.from("posts").select("id, title, status, published_at, created_at, views, category_id").eq("status", "published"),
       supabase.from("analytics_events").select("created_at").eq("event_type", "page_view").gte("created_at", new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()),
-      supabase.from("seo_issues").select("id, severity").eq("resolved", false)
+      supabase.from("seo_issues").select("id, severity").eq("resolved", false),
+      supabase.from("categories").select("id, name")
     ])
 
     const posts = postsRes.data || []
     const analytics = analyticsRes.data || []
     const seoIssues = seoRes.data || []
+    const categories = categoriesRes.data || []
+    const categoryNames = new Map(categories.map((c: any) => [c.id, c.name]))
 
     const newInsights: AiInsight[] = []
 
@@ -108,11 +113,12 @@ export function AiExecutiveSummary() {
 
     const topCategory = Object.entries(categoryCounts).sort((a, b) => b[1] - a[1])[0]
     if (topCategory) {
+      const catName = categoryNames.get(topCategory[0]) || topCategory[0]
       newInsights.push({
         type: "neutral",
-        message: `Your strongest category has ${topCategory[1]} published articles`,
+        message: `Your strongest category is ${catName} with ${topCategory[1]} published articles`,
         metric: "Top Category",
-        value: topCategory[1] + " articles"
+        value: catName
       })
     }
 

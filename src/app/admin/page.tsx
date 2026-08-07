@@ -3,7 +3,6 @@
 import { useState, useEffect, useCallback, useRef } from "react"
 import Link from "next/link"
 import { createClient } from "@/lib/supabase/client"
-import { GeminiQuotaWidget } from "@/components/admin/GeminiQuotaWidget"
 import { AiExecutiveSummary } from "@/components/admin/ai-executive-summary"
 import { AiOpportunityCenter } from "@/components/admin/ai-opportunity-center"
 import { LivePublishingQueue } from "@/components/admin/live-publishing-queue"
@@ -20,139 +19,207 @@ import {
 
 const COLORS = ["#3b82f6", "#22c55e", "#f59e0b", "#ef4444", "#8b5cf6", "#ec4899", "#14b8a6", "#f97316"]
 
-const COUNTRY_FLAGS: Record<string, string> = {
-  "United States": "🇺🇸", "US": "🇺🇸", "India": "🇮🇳", "United Kingdom": "🇬🇧", "UK": "🇬🇧",
-  "Germany": "🇩🇪", "France": "🇫🇷", "Canada": "🇨🇦", "Australia": "🇦🇺", "Brazil": "🇧🇷",
-  "Japan": "🇯🇵", "China": "🇨🇳", "Russia": "🇷🇺", "South Korea": "🇰🇷", "Netherlands": "🇳🇱",
-  "Spain": "🇪🇸", "Italy": "🇮🇹", "Sweden": "🇸🇪", "Norway": "🇳🇴", "Denmark": "🇩🇰",
-  "Finland": "🇫🇮", "Poland": "🇵🇱", "Turkey": "🇹🇷", "Indonesia": "🇮🇩", "Mexico": "🇲🇽",
-  "Argentina": "🇦🇷", "Nigeria": "🇳🇬", "South Africa": "🇿🇦", "Egypt": "🇪🇬", "Kenya": "🇰🇪",
-  "Saudi Arabia": "🇸🇦", "UAE": "🇦🇪", "United Arab Emirates": "🇦🇪", "Singapore": "🇸🇬",
-  "Hong Kong": "🇭🇰", "Switzerland": "🇨🇭", "Belgium": "🇧🇪", "Austria": "🇦🇹", "Ireland": "🇮🇪",
-  "New Zealand": "🇳🇿", "Portugal": "🇵🇹", "Greece": "🇬🇷", "Czech Republic": "🇨🇿", "Romania": "🇷🇴",
-  "Ukraine": "🇺🇦", "Hungary": "🇭🇺", "Israel": "🇮🇱", "Thailand": "🇹🇭", "Vietnam": "🇻🇳",
-  "Philippines": "🇵🇭", "Malaysia": "🇲🇾", "Pakistan": "🇵🇰", "Bangladesh": "🇧🇩", "Colombia": "🇨🇴",
-  "Chile": "🇨🇱", "Peru": "🇵🇪",
+interface CountryMeta { name: string; flag: string; lat: number; lng: number }
+
+const COUNTRY_META: Record<string, CountryMeta> = {
+  "US": { name: "United States", flag: "🇺🇸", lat: 37.0902, lng: -95.7129 },
+  "United States": { name: "United States", flag: "🇺🇸", lat: 37.0902, lng: -95.7129 },
+  "GB": { name: "United Kingdom", flag: "🇬🇧", lat: 55.3781, lng: -3.4360 },
+  "UK": { name: "United Kingdom", flag: "🇬🇧", lat: 55.3781, lng: -3.4360 },
+  "United Kingdom": { name: "United Kingdom", flag: "🇬🇧", lat: 55.3781, lng: -3.4360 },
+  "IN": { name: "India", flag: "🇮🇳", lat: 20.5937, lng: 78.9629 },
+  "India": { name: "India", flag: "🇮🇳", lat: 20.5937, lng: 78.9629 },
+  "DE": { name: "Germany", flag: "🇩🇪", lat: 51.1657, lng: 10.4515 },
+  "Germany": { name: "Germany", flag: "🇩🇪", lat: 51.1657, lng: 10.4515 },
+  "FR": { name: "France", flag: "🇫🇷", lat: 46.6034, lng: 1.8883 },
+  "France": { name: "France", flag: "🇫🇷", lat: 46.6034, lng: 1.8883 },
+  "CA": { name: "Canada", flag: "🇨🇦", lat: 56.1304, lng: -106.3468 },
+  "Canada": { name: "Canada", flag: "🇨🇦", lat: 56.1304, lng: -106.3468 },
+  "AU": { name: "Australia", flag: "🇦🇺", lat: -25.2744, lng: 133.7751 },
+  "Australia": { name: "Australia", flag: "🇦🇺", lat: -25.2744, lng: 133.7751 },
+  "BR": { name: "Brazil", flag: "🇧🇷", lat: -14.2350, lng: -51.9253 },
+  "Brazil": { name: "Brazil", flag: "🇧🇷", lat: -14.2350, lng: -51.9253 },
+  "JP": { name: "Japan", flag: "🇯🇵", lat: 36.2048, lng: 138.2529 },
+  "Japan": { name: "Japan", flag: "🇯🇵", lat: 36.2048, lng: 138.2529 },
+  "CN": { name: "China", flag: "🇨🇳", lat: 35.8617, lng: 104.1954 },
+  "China": { name: "China", flag: "🇨🇳", lat: 35.8617, lng: 104.1954 },
+  "RU": { name: "Russia", flag: "🇷🇺", lat: 61.5240, lng: 105.3188 },
+  "Russia": { name: "Russia", flag: "🇷🇺", lat: 61.5240, lng: 105.3188 },
+  "KR": { name: "South Korea", flag: "🇰🇷", lat: 35.9078, lng: 127.7669 },
+  "South Korea": { name: "South Korea", flag: "🇰🇷", lat: 35.9078, lng: 127.7669 },
+  "NL": { name: "Netherlands", flag: "🇳🇱", lat: 52.1326, lng: 5.2913 },
+  "Netherlands": { name: "Netherlands", flag: "🇳🇱", lat: 52.1326, lng: 5.2913 },
+  "ES": { name: "Spain", flag: "🇪🇸", lat: 40.4637, lng: -3.7492 },
+  "Spain": { name: "Spain", flag: "🇪🇸", lat: 40.4637, lng: -3.7492 },
+  "IT": { name: "Italy", flag: "🇮🇹", lat: 41.8719, lng: 12.5674 },
+  "Italy": { name: "Italy", flag: "🇮🇹", lat: 41.8719, lng: 12.5674 },
+  "SE": { name: "Sweden", flag: "🇸🇪", lat: 60.1282, lng: 18.6435 },
+  "Sweden": { name: "Sweden", flag: "🇸🇪", lat: 60.1282, lng: 18.6435 },
+  "NO": { name: "Norway", flag: "🇳🇴", lat: 60.4720, lng: 8.4689 },
+  "Norway": { name: "Norway", flag: "🇳🇴", lat: 60.4720, lng: 8.4689 },
+  "DK": { name: "Denmark", flag: "🇩🇰", lat: 56.2639, lng: 9.5018 },
+  "Denmark": { name: "Denmark", flag: "🇩🇰", lat: 56.2639, lng: 9.5018 },
+  "FI": { name: "Finland", flag: "🇫🇮", lat: 61.9241, lng: 25.7482 },
+  "Finland": { name: "Finland", flag: "🇫🇮", lat: 61.9241, lng: 25.7482 },
+  "PL": { name: "Poland", flag: "🇵🇱", lat: 51.9194, lng: 19.1451 },
+  "Poland": { name: "Poland", flag: "🇵🇱", lat: 51.9194, lng: 19.1451 },
+  "TR": { name: "Turkey", flag: "🇹🇷", lat: 38.9637, lng: 35.2433 },
+  "Turkey": { name: "Turkey", flag: "🇹🇷", lat: 38.9637, lng: 35.2433 },
+  "ID": { name: "Indonesia", flag: "🇮🇩", lat: -0.7893, lng: 113.9213 },
+  "Indonesia": { name: "Indonesia", flag: "🇮🇩", lat: -0.7893, lng: 113.9213 },
+  "MX": { name: "Mexico", flag: "🇲🇽", lat: 23.6345, lng: -102.5528 },
+  "Mexico": { name: "Mexico", flag: "🇲🇽", lat: 23.6345, lng: -102.5528 },
+  "AR": { name: "Argentina", flag: "🇦🇷", lat: -38.4161, lng: -63.6167 },
+  "Argentina": { name: "Argentina", flag: "🇦🇷", lat: -38.4161, lng: -63.6167 },
+  "NG": { name: "Nigeria", flag: "🇳🇬", lat: 9.0820, lng: 8.6753 },
+  "Nigeria": { name: "Nigeria", flag: "🇳🇬", lat: 9.0820, lng: 8.6753 },
+  "ZA": { name: "South Africa", flag: "🇿🇦", lat: -30.5595, lng: 22.9375 },
+  "South Africa": { name: "South Africa", flag: "🇿🇦", lat: -30.5595, lng: 22.9375 },
+  "EG": { name: "Egypt", flag: "🇪🇬", lat: 26.8206, lng: 30.8025 },
+  "Egypt": { name: "Egypt", flag: "🇪🇬", lat: 26.8206, lng: 30.8025 },
+  "KE": { name: "Kenya", flag: "🇰🇪", lat: -0.0236, lng: 37.9062 },
+  "Kenya": { name: "Kenya", flag: "🇰🇪", lat: -0.0236, lng: 37.9062 },
+  "SA": { name: "Saudi Arabia", flag: "🇸🇦", lat: 23.8859, lng: 45.0792 },
+  "Saudi Arabia": { name: "Saudi Arabia", flag: "🇸🇦", lat: 23.8859, lng: 45.0792 },
+  "AE": { name: "UAE", flag: "🇦🇪", lat: 23.4241, lng: 53.8478 },
+  "UAE": { name: "UAE", flag: "🇦🇪", lat: 23.4241, lng: 53.8478 },
+  "United Arab Emirates": { name: "UAE", flag: "🇦🇪", lat: 23.4241, lng: 53.8478 },
+  "SG": { name: "Singapore", flag: "🇸🇬", lat: 1.3521, lng: 103.8198 },
+  "Singapore": { name: "Singapore", flag: "🇸🇬", lat: 1.3521, lng: 103.8198 },
+  "HK": { name: "Hong Kong", flag: "🇭🇰", lat: 22.3193, lng: 114.1694 },
+  "Hong Kong": { name: "Hong Kong", flag: "🇭🇰", lat: 22.3193, lng: 114.1694 },
+  "CH": { name: "Switzerland", flag: "🇨🇭", lat: 46.8182, lng: 8.2275 },
+  "Switzerland": { name: "Switzerland", flag: "🇨🇭", lat: 46.8182, lng: 8.2275 },
+  "BE": { name: "Belgium", flag: "🇧🇪", lat: 50.8503, lng: 4.3517 },
+  "Belgium": { name: "Belgium", flag: "🇧🇪", lat: 50.8503, lng: 4.3517 },
+  "AT": { name: "Austria", flag: "🇦🇹", lat: 47.5162, lng: 14.5501 },
+  "Austria": { name: "Austria", flag: "🇦🇹", lat: 47.5162, lng: 14.5501 },
+  "IE": { name: "Ireland", flag: "🇮🇪", lat: 53.1424, lng: -7.6921 },
+  "Ireland": { name: "Ireland", flag: "🇮🇪", lat: 53.1424, lng: -7.6921 },
+  "NZ": { name: "New Zealand", flag: "🇳🇿", lat: -40.9006, lng: 174.8860 },
+  "New Zealand": { name: "New Zealand", flag: "🇳🇿", lat: -40.9006, lng: 174.8860 },
+  "PT": { name: "Portugal", flag: "🇵🇹", lat: 39.3999, lng: -8.2245 },
+  "Portugal": { name: "Portugal", flag: "🇵🇹", lat: 39.3999, lng: -8.2245 },
+  "GR": { name: "Greece", flag: "🇬🇷", lat: 39.0742, lng: 21.8243 },
+  "Greece": { name: "Greece", flag: "🇬🇷", lat: 39.0742, lng: 21.8243 },
+  "CZ": { name: "Czech Republic", flag: "🇨🇿", lat: 49.8175, lng: 15.4730 },
+  "Czech Republic": { name: "Czech Republic", flag: "🇨🇿", lat: 49.8175, lng: 15.4730 },
+  "RO": { name: "Romania", flag: "🇷🇴", lat: 45.9432, lng: 24.9668 },
+  "Romania": { name: "Romania", flag: "🇷🇴", lat: 45.9432, lng: 24.9668 },
+  "UA": { name: "Ukraine", flag: "🇺🇦", lat: 48.3794, lng: 31.1656 },
+  "Ukraine": { name: "Ukraine", flag: "🇺🇦", lat: 48.3794, lng: 31.1656 },
+  "HU": { name: "Hungary", flag: "🇭🇺", lat: 47.1625, lng: 19.5033 },
+  "Hungary": { name: "Hungary", flag: "🇭🇺", lat: 47.1625, lng: 19.5033 },
+  "IL": { name: "Israel", flag: "🇮🇱", lat: 31.0461, lng: 34.8516 },
+  "Israel": { name: "Israel", flag: "🇮🇱", lat: 31.0461, lng: 34.8516 },
+  "TH": { name: "Thailand", flag: "🇹🇭", lat: 15.8700, lng: 100.9925 },
+  "Thailand": { name: "Thailand", flag: "🇹🇭", lat: 15.8700, lng: 100.9925 },
+  "VN": { name: "Vietnam", flag: "🇻🇳", lat: 14.0583, lng: 108.2772 },
+  "Vietnam": { name: "Vietnam", flag: "🇻🇳", lat: 14.0583, lng: 108.2772 },
+  "PH": { name: "Philippines", flag: "🇵🇭", lat: 12.8797, lng: 121.7740 },
+  "Philippines": { name: "Philippines", flag: "🇵🇭", lat: 12.8797, lng: 121.7740 },
+  "MY": { name: "Malaysia", flag: "🇲🇾", lat: 4.2105, lng: 101.9758 },
+  "Malaysia": { name: "Malaysia", flag: "🇲🇾", lat: 4.2105, lng: 101.9758 },
+  "PK": { name: "Pakistan", flag: "🇵🇰", lat: 30.3753, lng: 69.3451 },
+  "Pakistan": { name: "Pakistan", flag: "🇵🇰", lat: 30.3753, lng: 69.3451 },
+  "BD": { name: "Bangladesh", flag: "🇧🇩", lat: 23.6850, lng: 90.3563 },
+  "Bangladesh": { name: "Bangladesh", flag: "🇧🇩", lat: 23.6850, lng: 90.3563 },
+  "CO": { name: "Colombia", flag: "🇨🇴", lat: 4.5709, lng: -74.2973 },
+  "Colombia": { name: "Colombia", flag: "🇨🇴", lat: 4.5709, lng: -74.2973 },
+  "CL": { name: "Chile", flag: "🇨🇱", lat: -35.6751, lng: -71.5430 },
+  "Chile": { name: "Chile", flag: "🇨🇱", lat: -35.6751, lng: -71.5430 },
+  "PE": { name: "Peru", flag: "🇵🇪", lat: -9.1900, lng: -75.0152 },
+  "Peru": { name: "Peru", flag: "🇵🇪", lat: -9.1900, lng: -75.0152 },
+  "TW": { name: "Taiwan", flag: "🇹🇼", lat: 23.6978, lng: 120.9605 },
+  "Taiwan": { name: "Taiwan", flag: "🇹🇼", lat: 23.6978, lng: 120.9605 },
+  "MA": { name: "Morocco", flag: "🇲🇦", lat: 31.7917, lng: -7.0926 },
+  "Morocco": { name: "Morocco", flag: "🇲🇦", lat: 31.7917, lng: -7.0926 },
+  "QA": { name: "Qatar", flag: "🇶🇦", lat: 25.3548, lng: 51.1839 },
+  "Qatar": { name: "Qatar", flag: "🇶🇦", lat: 25.3548, lng: 51.1839 },
+  "KW": { name: "Kuwait", flag: "🇰🇼", lat: 29.3117, lng: 47.4818 },
+  "Kuwait": { name: "Kuwait", flag: "🇰🇼", lat: 29.3117, lng: 47.4818 },
+  "VE": { name: "Venezuela", flag: "🇻🇪", lat: 6.4238, lng: -66.5897 },
+  "Venezuela": { name: "Venezuela", flag: "🇻🇪", lat: 6.4238, lng: -66.5897 },
+  "RS": { name: "Serbia", flag: "🇷🇸", lat: 44.0165, lng: 21.0059 },
+  "Serbia": { name: "Serbia", flag: "🇷🇸", lat: 44.0165, lng: 21.0059 },
+  "HR": { name: "Croatia", flag: "🇭🇷", lat: 45.1000, lng: 15.2000 },
+  "Croatia": { name: "Croatia", flag: "🇭🇷", lat: 45.1000, lng: 15.2000 },
+  "BG": { name: "Bulgaria", flag: "🇧🇬", lat: 42.7339, lng: 25.4858 },
+  "Bulgaria": { name: "Bulgaria", flag: "🇧🇬", lat: 42.7339, lng: 25.4858 },
+  "SK": { name: "Slovakia", flag: "🇸🇰", lat: 48.6690, lng: 19.6990 },
+  "Slovakia": { name: "Slovakia", flag: "🇸🇰", lat: 48.6690, lng: 19.6990 },
+  "SI": { name: "Slovenia", flag: "🇸🇮", lat: 46.1512, lng: 14.9955 },
+  "Slovenia": { name: "Slovenia", flag: "🇸🇮", lat: 46.1512, lng: 14.9955 },
+  "LT": { name: "Lithuania", flag: "🇱🇹", lat: 55.1694, lng: 23.8783 },
+  "Lithuania": { name: "Lithuania", flag: "🇱🇹", lat: 55.1694, lng: 23.8783 },
+  "LV": { name: "Latvia", flag: "🇱🇻", lat: 56.8796, lng: 24.6032 },
+  "Latvia": { name: "Latvia", flag: "🇱🇻", lat: 56.8796, lng: 24.6032 },
+  "EE": { name: "Estonia", flag: "🇪🇪", lat: 58.5953, lng: 25.0136 },
+  "Estonia": { name: "Estonia", flag: "🇪🇪", lat: 58.5953, lng: 25.0136 },
+  "GE": { name: "Georgia", flag: "🇬🇪", lat: 42.3154, lng: 43.3569 },
+  "Georgia": { name: "Georgia", flag: "🇬🇪", lat: 42.3154, lng: 43.3569 },
+  "TN": { name: "Tunisia", flag: "🇹🇳", lat: 33.8869, lng: 9.5375 },
+  "Tunisia": { name: "Tunisia", flag: "🇹🇳", lat: 33.8869, lng: 9.5375 },
+  "CU": { name: "Cuba", flag: "🇨🇺", lat: 21.5218, lng: -77.7812 },
+  "Cuba": { name: "Cuba", flag: "🇨🇺", lat: 21.5218, lng: -77.7812 },
+  "JM": { name: "Jamaica", flag: "🇯🇲", lat: 18.1096, lng: -77.2975 },
+  "Jamaica": { name: "Jamaica", flag: "🇯🇲", lat: 18.1096, lng: -77.2975 },
+  "DO": { name: "Dominican Republic", flag: "🇩🇴", lat: 18.7357, lng: -70.1627 },
+  "Dominican Republic": { name: "Dominican Republic", flag: "🇩🇴", lat: 18.7357, lng: -70.1627 },
+  "CR": { name: "Costa Rica", flag: "🇨🇷", lat: 9.7489, lng: -83.7534 },
+  "Costa Rica": { name: "Costa Rica", flag: "🇨🇷", lat: 9.7489, lng: -83.7534 },
+  "PA": { name: "Panama", flag: "🇵🇦", lat: 8.5380, lng: -80.7821 },
+  "Panama": { name: "Panama", flag: "🇵🇦", lat: 8.5380, lng: -80.7821 },
+  "GT": { name: "Guatemala", flag: "🇬🇹", lat: 15.7835, lng: -90.2308 },
+  "Guatemala": { name: "Guatemala", flag: "🇬🇹", lat: 15.7835, lng: -90.2308 },
+  "EC": { name: "Ecuador", flag: "🇪🇨", lat: -1.8312, lng: -78.1834 },
+  "Ecuador": { name: "Ecuador", flag: "🇪🇨", lat: -1.8312, lng: -78.1834 },
+  "BO": { name: "Bolivia", flag: "🇧🇴", lat: -16.2902, lng: -63.5887 },
+  "Bolivia": { name: "Bolivia", flag: "🇧🇴", lat: -16.2902, lng: -63.5887 },
+  "PY": { name: "Paraguay", flag: "🇵🇾", lat: -23.4425, lng: -58.4438 },
+  "Paraguay": { name: "Paraguay", flag: "🇵🇾", lat: -23.4425, lng: -58.4438 },
+  "UY": { name: "Uruguay", flag: "🇺🇾", lat: -32.5228, lng: -55.7658 },
+  "Uruguay": { name: "Uruguay", flag: "🇺🇾", lat: -32.5228, lng: -55.7658 },
+  "GH": { name: "Ghana", flag: "🇬🇭", lat: 7.9465, lng: -1.0232 },
+  "Ghana": { name: "Ghana", flag: "🇬🇭", lat: 7.9465, lng: -1.0232 },
+  "ET": { name: "Ethiopia", flag: "🇪🇹", lat: 9.1450, lng: 40.4897 },
+  "Ethiopia": { name: "Ethiopia", flag: "🇪🇹", lat: 9.1450, lng: 40.4897 },
+  "TZ": { name: "Tanzania", flag: "🇹🇿", lat: -6.3690, lng: 34.8888 },
+  "Tanzania": { name: "Tanzania", flag: "🇹🇿", lat: -6.3690, lng: 34.8888 },
+  "UG": { name: "Uganda", flag: "🇺🇬", lat: 1.3733, lng: 32.2903 },
+  "Uganda": { name: "Uganda", flag: "🇺🇬", lat: 1.3733, lng: 32.2903 },
+  "AO": { name: "Angola", flag: "🇦🇴", lat: -11.2027, lng: 17.8739 },
+  "Angola": { name: "Angola", flag: "🇦🇴", lat: -11.2027, lng: 17.8739 },
+  "LK": { name: "Sri Lanka", flag: "🇱🇰", lat: 7.8731, lng: 79.8612 },
+  "Sri Lanka": { name: "Sri Lanka", flag: "🇱🇰", lat: 7.8731, lng: 79.8612 },
+  "NP": { name: "Nepal", flag: "🇳🇵", lat: 28.3949, lng: 84.1240 },
+  "Nepal": { name: "Nepal", flag: "🇳🇵", lat: 28.3949, lng: 84.1240 },
+  "MM": { name: "Myanmar", flag: "🇲🇲", lat: 21.9162, lng: 95.9560 },
+  "Myanmar": { name: "Myanmar", flag: "🇲🇲", lat: 21.9162, lng: 95.9560 },
+  "KH": { name: "Cambodia", flag: "🇰🇭", lat: 12.5657, lng: 104.9910 },
+  "Cambodia": { name: "Cambodia", flag: "🇰🇭", lat: 12.5657, lng: 104.9910 },
+  "JO": { name: "Jordan", flag: "🇯🇴", lat: 30.5852, lng: 36.2384 },
+  "Jordan": { name: "Jordan", flag: "🇯🇴", lat: 30.5852, lng: 36.2384 },
+  "LB": { name: "Lebanon", flag: "🇱🇧", lat: 33.8547, lng: 35.8623 },
+  "Lebanon": { name: "Lebanon", flag: "🇱🇧", lat: 33.8547, lng: 35.8623 },
+  "BH": { name: "Bahrain", flag: "🇧🇭", lat: 26.0667, lng: 50.5577 },
+  "Bahrain": { name: "Bahrain", flag: "🇧🇭", lat: 26.0667, lng: 50.5577 },
+  "MN": { name: "Mongolia", flag: "🇲🇳", lat: 46.8625, lng: 103.8467 },
+  "Mongolia": { name: "Mongolia", flag: "🇲🇳", lat: 46.8625, lng: 103.8467 },
+  "AF": { name: "Afghanistan", flag: "🇦🇫", lat: 33.9391, lng: 67.7100 },
+  "Afghanistan": { name: "Afghanistan", flag: "🇦🇫", lat: 33.9391, lng: 67.7100 },
 }
 
-function flag(name: string): string {
-  return COUNTRY_FLAGS[name] || ""
-}
-
-const COUNTRY_COORDS: Record<string, { lat: number; lng: number }> = {
-  "United States": { lat: 37.0902, lng: -95.7129 },
-  "US": { lat: 37.0902, lng: -95.7129 },
-  "India": { lat: 20.5937, lng: 78.9629 },
-  "United Kingdom": { lat: 55.3781, lng: -3.4360 },
-  "UK": { lat: 55.3781, lng: -3.4360 },
-  "Germany": { lat: 51.1657, lng: 10.4515 },
-  "France": { lat: 46.6034, lng: 1.8883 },
-  "Canada": { lat: 56.1304, lng: -106.3468 },
-  "Australia": { lat: -25.2744, lng: 133.7751 },
-  "Brazil": { lat: -14.2350, lng: -51.9253 },
-  "Japan": { lat: 36.2048, lng: 138.2529 },
-  "China": { lat: 35.8617, lng: 104.1954 },
-  "Russia": { lat: 61.5240, lng: 105.3188 },
-  "South Korea": { lat: 35.9078, lng: 127.7669 },
-  "Netherlands": { lat: 52.1326, lng: 5.2913 },
-  "Spain": { lat: 40.4637, lng: -3.7492 },
-  "Italy": { lat: 41.8719, lng: 12.5674 },
-  "Sweden": { lat: 60.1282, lng: 18.6435 },
-  "Norway": { lat: 60.4720, lng: 8.4689 },
-  "Denmark": { lat: 56.2639, lng: 9.5018 },
-  "Finland": { lat: 61.9241, lng: 25.7482 },
-  "Poland": { lat: 51.9194, lng: 19.1451 },
-  "Turkey": { lat: 38.9637, lng: 35.2433 },
-  "Indonesia": { lat: -0.7893, lng: 113.9213 },
-  "Mexico": { lat: 23.6345, lng: -102.5528 },
-  "Argentina": { lat: -38.4161, lng: -63.6167 },
-  "Nigeria": { lat: 9.0820, lng: 8.6753 },
-  "South Africa": { lat: -30.5595, lng: 22.9375 },
-  "Egypt": { lat: 26.8206, lng: 30.8025 },
-  "Kenya": { lat: -0.0236, lng: 37.9062 },
-  "Saudi Arabia": { lat: 23.8859, lng: 45.0792 },
-  "UAE": { lat: 23.4241, lng: 53.8478 },
-  "United Arab Emirates": { lat: 23.4241, lng: 53.8478 },
-  "Singapore": { lat: 1.3521, lng: 103.8198 },
-  "Hong Kong": { lat: 22.3193, lng: 114.1694 },
-  "Switzerland": { lat: 46.8182, lng: 8.2275 },
-  "Belgium": { lat: 50.8503, lng: 4.3517 },
-  "Austria": { lat: 47.5162, lng: 14.5501 },
-  "Ireland": { lat: 53.1424, lng: -7.6921 },
-  "New Zealand": { lat: -40.9006, lng: 174.8860 },
-  "Portugal": { lat: 39.3999, lng: -8.2245 },
-  "Greece": { lat: 39.0742, lng: 21.8243 },
-  "Czech Republic": { lat: 49.8175, lng: 15.4730 },
-  "Romania": { lat: 45.9432, lng: 24.9668 },
-  "Ukraine": { lat: 48.3794, lng: 31.1656 },
-  "Hungary": { lat: 47.1625, lng: 19.5033 },
-  "Israel": { lat: 31.0461, lng: 34.8516 },
-  "Thailand": { lat: 15.8700, lng: 100.9925 },
-  "Vietnam": { lat: 14.0583, lng: 108.2772 },
-  "Philippines": { lat: 12.8797, lng: 121.7740 },
-  "Malaysia": { lat: 4.2105, lng: 101.9758 },
-  "Pakistan": { lat: 30.3753, lng: 69.3451 },
-  "Bangladesh": { lat: 23.6850, lng: 90.3563 },
-  "Colombia": { lat: 4.5709, lng: -74.2973 },
-  "Chile": { lat: -35.6751, lng: -71.5430 },
-  "Peru": { lat: -9.1900, lng: -75.0152 },
-  "Taiwan": { lat: 23.6978, lng: 120.9605 },
-  "Morocco": { lat: 31.7917, lng: -7.0926 },
-  "Iran": { lat: 32.4279, lng: 53.6880 },
-  "Iraq": { lat: 33.2232, lng: 43.6793 },
-  "Kazakhstan": { lat: 48.0196, lng: 66.9237 },
-  "Qatar": { lat: 25.3548, lng: 51.1839 },
-  "Kuwait": { lat: 29.3117, lng: 47.4818 },
-  "Venezuela": { lat: 6.4238, lng: -66.5897 },
-  "Serbia": { lat: 44.0165, lng: 21.0059 },
-  "Croatia": { lat: 45.1000, lng: 15.2000 },
-  "Bulgaria": { lat: 42.7339, lng: 25.4858 },
-  "Slovakia": { lat: 48.6690, lng: 19.6990 },
-  "Slovenia": { lat: 46.1512, lng: 14.9955 },
-  "Lithuania": { lat: 55.1694, lng: 23.8783 },
-  "Latvia": { lat: 56.8796, lng: 24.6032 },
-  "Estonia": { lat: 58.5953, lng: 25.0136 },
-  "Belarus": { lat: 53.7098, lng: 27.9534 },
-  "Azerbaijan": { lat: 40.1431, lng: 47.5769 },
-  "Georgia": { lat: 42.3154, lng: 43.3569 },
-  "Tunisia": { lat: 33.8869, lng: 9.5375 },
-  "Cuba": { lat: 21.5218, lng: -77.7812 },
-  "Jamaica": { lat: 18.1096, lng: -77.2975 },
-  "Dominican Republic": { lat: 18.7357, lng: -70.1627 },
-  "Puerto Rico": { lat: 18.2208, lng: -66.5901 },
-  "Costa Rica": { lat: 9.7489, lng: -83.7534 },
-  "Panama": { lat: 8.5380, lng: -80.7821 },
-  "Guatemala": { lat: 15.7835, lng: -90.2308 },
-  "Ecuador": { lat: -1.8312, lng: -78.1834 },
-  "Bolivia": { lat: -16.2902, lng: -63.5887 },
-  "Paraguay": { lat: -23.4425, lng: -58.4438 },
-  "Uruguay": { lat: -32.5228, lng: -55.7658 },
-  "Ghana": { lat: 7.9465, lng: -1.0232 },
-  "Ethiopia": { lat: 9.1450, lng: 40.4897 },
-  "Tanzania": { lat: -6.3690, lng: 34.8888 },
-  "Uganda": { lat: 1.3733, lng: 32.2903 },
-  "Angola": { lat: -11.2027, lng: 17.8739 },
-  "Mozambique": { lat: -18.6657, lng: 35.5296 },
-  "Sri Lanka": { lat: 7.8731, lng: 80.7718 },
-  "Nepal": { lat: 28.3949, lng: 84.1240 },
-  "Myanmar": { lat: 21.9162, lng: 95.9560 },
-  "Cambodia": { lat: 12.5657, lng: 104.9910 },
-  "Jordan": { lat: 30.5852, lng: 36.2384 },
-  "Lebanon": { lat: 33.8547, lng: 35.8623 },
-  "Bahrain": { lat: 26.0667, lng: 50.5577 },
-  "Mongolia": { lat: 46.8625, lng: 103.8467 },
-  "Afghanistan": { lat: 33.9391, lng: 67.7100 },
-}
-
-function getCoords(country: string): { lat: number; lng: number } | null {
-  const c = COUNTRY_COORDS[country]
-  if (c) return c
-  const fallback = COUNTRY_COORDS[Object.keys(COUNTRY_COORDS).find(k =>
-    k.toLowerCase() === country.toLowerCase() ||
-    country.toLowerCase().includes(k.toLowerCase()) ||
-    k.toLowerCase().includes(country.toLowerCase())
-  ) || ""]
-  return fallback || null
+function resolveCountry(raw: string | null): CountryMeta | null {
+  if (!raw) return null
+  const key = raw.trim()
+  if (!key || key === "UTC" || key === "Unknown" || key === "Etc") return null
+  const direct = COUNTRY_META[key]
+  if (direct) return direct
+  const match = Object.keys(COUNTRY_META).find(k =>
+    k.length > 2 && (key.toLowerCase().includes(k.toLowerCase()) || k.toLowerCase().includes(key.toLowerCase()))
+  )
+  return (match && COUNTRY_META[match]) || null
 }
 
 export default function AdminDashboard() {
@@ -222,14 +289,20 @@ export default function AdminDashboard() {
         const name = r.country || "Unknown"
         regionMap[name] = (regionMap[name] || 0) + 1
       })
-      const sortedRegions = Object.entries(regionMap).sort((a, b) => b[1] - a[1]).slice(0, 10)
-      setRegions(sortedRegions.map(([name, value]) => ({ name: flag(name) ? `${flag(name)} ${name}` : name, value })))
+      const sortedRegions = Object.entries(regionMap)
+        .filter(([name]) => name !== "Unknown" && name !== "UTC" && name !== "Etc" && name !== "")
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 10)
+      setRegions(sortedRegions.map(([raw, value]) => {
+        const meta = resolveCountry(raw)
+        return { name: meta ? `${meta.flag} ${meta.name}` : raw, value }
+      }))
 
       const geo: { country: string; lat: number; lng: number; value: number; label?: string }[] = []
-      sortedRegions.forEach(([country, value]) => {
-        const coords = getCoords(country)
-        if (coords) {
-          geo.push({ country, lat: coords.lat, lng: coords.lng, value, label: country })
+      sortedRegions.forEach(([raw, value]) => {
+        const meta = resolveCountry(raw)
+        if (meta) {
+          geo.push({ country: meta.name, lat: meta.lat, lng: meta.lng, value, label: `${meta.flag} ${meta.name}` })
         }
       })
       setGeoData(geo)
@@ -351,7 +424,6 @@ export default function AdminDashboard() {
       )}
 
       <ExecutiveKpiCards />
-      <GeminiQuotaWidget />
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <AiExecutiveSummary />
@@ -469,7 +541,7 @@ export default function AdminDashboard() {
               {topPosts.map((p: any, i: number) => (
                 <Link
                   key={p.id}
-                  href={`/admin/posts/${p.id}`}
+                  href={`/admin/posts/${p.id}/edit`}
                   className="flex items-center gap-3 p-2.5 rounded-lg hover:bg-muted/40 transition-colors group"
                 >
                   <span className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0"

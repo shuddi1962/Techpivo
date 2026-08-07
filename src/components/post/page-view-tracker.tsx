@@ -25,16 +25,18 @@ export function PageViewTracker() {
 
     try {
       const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone
-      const region = timeZone.split("/")[0] || ""
-      if (region && region !== "Etc") {
-        const countryMap: Record<string, string> = {
-          "America": "US", "Europe": "GB", "Asia": "IN", "Africa": "ZA",
-          "Australia": "AU", "Pacific": "NZ", "Atlantic": "US",
-        }
-        data.country = timeZone.includes("/")
-          ? (timeZone.split("/")[1]?.length === 2 ? timeZone.split("/")[1] : countryMap[region] || region)
-          : region
+      if (!timeZone || timeZone === "UTC") return
+      const parts = timeZone.split("/")
+      const region = parts[0] || ""
+      if (!region || region === "Etc") return
+      const countryMap: Record<string, string> = {
+        "America": "US", "Europe": "GB", "Asia": "IN", "Africa": "ZA",
+        "Australia": "AU", "Pacific": "NZ", "Atlantic": "US",
       }
+      const detected = parts.length === 2
+        ? (parts[1]?.length === 2 ? parts[1] : countryMap[region] || region)
+        : countryMap[region] || null
+      if (detected) data.country = detected
     } catch {}
 
     fetch("/api/increment-views", {

@@ -783,6 +783,7 @@ export function ChartRealTimeMap({ data, height = 400 }: RealTimeGeoMapProps) {
   const mapRef = useRef<HTMLDivElement>(null)
   const mapInstanceRef = useRef<any>(null)
   const markersRef = useRef<any[]>([])
+  const fittedRef = useRef("")
   const [isClient, setIsClient] = useState(false)
 
   useEffect(() => { setIsClient(true) }, [])
@@ -863,7 +864,11 @@ export function ChartRealTimeMap({ data, height = 400 }: RealTimeGeoMapProps) {
         })
 
         if (bounds.length > 0) {
-          mapInstanceRef.current.fitBounds(L.latLngBounds(bounds), { padding: [30, 30], maxZoom: 5 })
+          const key = data.map((d) => d.country).sort().join("|")
+          if (fittedRef.current !== key) {
+            fittedRef.current = key
+            mapInstanceRef.current.fitBounds(L.latLngBounds(bounds), { padding: [30, 30], maxZoom: 5 })
+          }
         }
       } catch (e) {
         console.error("Map init error:", e)

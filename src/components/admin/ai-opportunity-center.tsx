@@ -82,7 +82,11 @@ export function AiOpportunityCenter() {
     setLoading(false)
   }, [])
 
-  useEffect(() => { generateOpportunities() }, [generateOpportunities])
+  useEffect(() => {
+    generateOpportunities()
+    const interval = setInterval(generateOpportunities, 60000)
+    return () => clearInterval(interval)
+  }, [generateOpportunities])
 
   const generateBrief = async (opp: Opportunity) => {
     setBusyTopic(opp.topic)
