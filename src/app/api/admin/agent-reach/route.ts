@@ -15,42 +15,43 @@ export async function POST(request: NextRequest) {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
 
-    const { channel, query, url } = await request.json()
+    const { channel, query, url, q } = await request.json()
+    const text = String(query || q || url || "").trim()
 
     switch (channel) {
       case "web": {
-        if (!url) return NextResponse.json({ error: "URL required" }, { status: 400 })
-        const result = await webFetch(String(url))
+        if (!text) return NextResponse.json({ error: "URL required" }, { status: 400 })
+        const result = await webFetch(text)
         return NextResponse.json({ result })
       }
       case "search": {
-        if (!query) return NextResponse.json({ error: "Query required" }, { status: 400 })
-        const result = await webSearch(String(query))
+        if (!text) return NextResponse.json({ error: "Query required" }, { status: 400 })
+        const result = await webSearch(text)
         return NextResponse.json({ result })
       }
       case "youtube": {
-        if (!url) return NextResponse.json({ error: "YouTube URL required" }, { status: 400 })
-        const result = await youtubeInfo(String(url))
+        if (!text) return NextResponse.json({ error: "YouTube URL required" }, { status: 400 })
+        const result = await youtubeInfo(text)
         return NextResponse.json({ result })
       }
       case "github": {
-        if (!query) return NextResponse.json({ error: "Query required" }, { status: 400 })
-        const result = await githubSearch(String(query))
+        if (!text) return NextResponse.json({ error: "Query required" }, { status: 400 })
+        const result = await githubSearch(text)
         return NextResponse.json({ result })
       }
       case "rss": {
-        if (!url) return NextResponse.json({ error: "RSS URL required" }, { status: 400 })
-        const result = await rssFetch(String(url))
+        if (!text) return NextResponse.json({ error: "RSS URL required" }, { status: 400 })
+        const result = await rssFetch(text)
         return NextResponse.json({ result })
       }
       case "linkedin": {
-        if (!query) return NextResponse.json({ error: "Username required" }, { status: 400 })
-        const result = await linkedinProfile(String(query))
+        if (!text) return NextResponse.json({ error: "Username required" }, { status: 400 })
+        const result = await linkedinProfile(text)
         return NextResponse.json({ result })
       }
       case "suggest": {
-        if (!query) return NextResponse.json({ suggestions: [] })
-        const suggestions = await searchSuggest(String(query))
+        if (!text) return NextResponse.json({ suggestions: [] })
+        const suggestions = await searchSuggest(text)
         return NextResponse.json({ suggestions })
       }
       case "trending": {
