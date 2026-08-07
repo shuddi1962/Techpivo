@@ -4,17 +4,19 @@ import { createClient } from "@/lib/supabase/admin"
 export async function POST(req: Request) {
   try {
     const { postId, pageUrl, referrer, country } = await req.json()
-    if (!postId) {
-      return NextResponse.json({ error: "postId required" }, { status: 400 })
+    if (!postId && !pageUrl) {
+      return NextResponse.json({ error: "postId or pageUrl required" }, { status: 400 })
     }
 
     const supabase = createClient()
 
-    await supabase.rpc("increment_post_views", { post_id: postId })
+    if (postId) {
+      await supabase.rpc("increment_post_views", { post_id: postId })
+    }
 
     await supabase.from("analytics_events").insert({
       event_type: "page_view",
-      post_id: postId,
+      post_id: postId || null,
       page_url: pageUrl || null,
       referrer: referrer || null,
       country: country || null,

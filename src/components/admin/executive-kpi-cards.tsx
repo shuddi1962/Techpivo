@@ -21,13 +21,12 @@ interface KpiCard {
 
 export function ExecutiveKpiCards() {
   const supabaseRef = useRef(createClient())
-  const prevViewsRef = useRef(0)
   const [cards, setCards] = useState<KpiCard[]>([
-    { label: "Published Posts", value: 0, change: "+0", trend: "neutral", icon: FileText, color: "#F59E0B", href: "/admin/posts" },
-    { label: "Total Views", value: 0, change: "+0", trend: "neutral", icon: Eye, color: "#10B981", href: "/admin/analytics", format: "views" },
-    { label: "Revenue", value: 0, change: "+0%", trend: "neutral", icon: DollarSign, color: "#8B5CF6", href: "/admin/revenue-intelligence", format: "currency" },
-    { label: "Active RSS Feeds", value: 0, change: "0", trend: "neutral", icon: Rss, color: "#F59E0B", href: "/admin/rss-feeds" },
-    { label: "Subscribers", value: 0, change: "+0", trend: "neutral", icon: Users, color: "#EC4899", href: "/admin/newsletter" },
+    { label: "Published Posts", value: 0, change: "—", trend: "neutral", icon: FileText, color: "#F59E0B", href: "/admin/posts" },
+    { label: "Total Views", value: 0, change: "—", trend: "neutral", icon: Eye, color: "#10B981", href: "/admin/analytics", format: "views" },
+    { label: "Revenue", value: 0, change: "—", trend: "neutral", icon: DollarSign, color: "#8B5CF6", href: "/admin/revenue-intelligence", format: "currency" },
+    { label: "Active RSS Feeds", value: 0, change: "—", trend: "neutral", icon: Rss, color: "#F59E0B", href: "/admin/rss-feeds" },
+    { label: "Subscribers", value: 0, change: "—", trend: "neutral", icon: Users, color: "#EC4899", href: "/admin/newsletter" },
   ])
   const [loading, setLoading] = useState(true)
 
@@ -36,38 +35,68 @@ export function ExecutiveKpiCards() {
       try {
         const supabase = supabaseRef.current
 
-        const [postsCount, postsViews, rssFeeds, subsRes, lastMonthViews, adRevenue, affSales] = await Promise.all([
+        const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()
+        const monthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString()
+        const lastMonthStart = new Date(new Date().getFullYear(), new Date().getMonth() - 1, 1).toISOString()
+
+        const [postsCount, postsViews, publishedThisWeek, rssFeeds, subsRes, subsThisWeek, viewsThisWeek, adRevenue, affSales] = await Promise.all([
           supabase.from("posts").select("*", { count: "exact", head: true }).eq("status", "published"),
           supabase.from("posts").select("views"),
-          supabase.from("rss_feeds").select("*", { count: "exact", head: true }).eq("is_active", true),
+          supabase.from("posts").select("*", { count: "exact", head: true }).eq("status", "published").gte("published_at", weekAgo),
+          supabase.from("rss_feeds").select("id, is_active"),
           supabase.from("subscribers").select("*", { count: "exact", head: true }).eq("status", "active"),
-          supabase.from("analytics_events").select("created_at").eq("event_type", "page_view")
-            .gte("created_at", new Date(Date.now() - 60 * 24 * 60 * 60 * 1000).toISOString())
-            .lt("created_at", new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()),
-          supabase.from("ad_revenue").select("amount"),
-          supabase.from("affiliate_sales").select("commission"),
+          supabase.from("subscribers").select("*", { count: "exact", head: true }).eq("status", "active").gte("subscribed_at", weekAgo),
+          supabase.from("analytics_events").select("*", { count: "exact", head: true }).eq("event_type", "page_view").gte("created_at", weekAgo),
+          supabase.from("ad_revenue").select("revenue, date"),
+          supabase.from("affiliate_sales").select("commission, converted_at"),
         ])
 
         const totalV = (postsViews.data || []).reduce((s: number, p: any) => s + (p.views || 0), 0)
-        const prevV = prevViewsRef.current
-        const viewDiff = totalV - prevV
-        prevViewsRef.current = totalV
+        const weekViews = viewsThisWeek.count || 0
 
-        const lastMonthCount = lastMonthViews.data?.length || 0
-        const viewsTrend = viewDiff > 0 ? "up" : viewDiff < 0 ? "down" : "neutral"
-
-        const adTotal = (adRevenue.data || []).reduce((s: number, r: any) => s + (r.amount || 0), 0)
+        const adTotal = (adRevenue.data || []).reduce((s: number, r: any) => s + (r.revenue || 0), 0)
         const affTotal = (affSales.data || []).reduce((s: number, r: any) => s + (r.commission || 0), 0)
         const revenueTotal = adTotal + affTotal
-        const revChange = revenueTotal > 0 ? `+${revenueTotal > 1000 ? Math.round(revenueTotal / 100) : revenueTotal}` : "+0"
+
+        const monthRevenue = (adRevenue.data || []).filter((r: any) => r.date >= monthStart).reduce((s: number, r: any) => s + (r.revenue || 0), 0)
+        const lastMonthRevenue = (adRevenue.data || []).filter((r: any) => r.date >= lastMonthStart && r.date < monthStart).reduce((s: number, r: any) => s + (r.revenue || 0), 0)
+        const affMonthRevenue = (affSales.data || []).filter((r: any) => r.converted_at >= monthStart).reduce((s: number, r: any) => s + (r.commission || 0), 0)
+        const affLastMonthRevenue = (affSales.data || []).filter((r: any) => r.converted_at >= lastMonthStart && r.converted_at < monthStart).reduce((s: number, r: any) => s + (r.commission || 0), 0)
+
+        const revThisMonth = monthRevenue + affMonthRevenue
+        const revLastMonth = lastMonthRevenue + affLastMonthRevenue
+        const revChangePct = revLastMonth > 0 ? Math.round(((revThisMonth - revLastMonth) / revLastMonth) * 100) : (revThisMonth > 0 ? 100 : 0)
+
+        const rssList = rssFeeds.data || []
+        const activeFeeds = rssList.filter((f: any) => f.is_active).length
 
         setCards((prev) => {
           const updated = [...prev]
-          updated[0] = { ...updated[0], value: postsCount.count || 0, change: `+${(postsCount.count || 0) - (typeof prev[0].value === 'number' ? prev[0].value : 0)}`, trend: "up" }
-          updated[1] = { ...updated[1], value: totalV, change: viewDiff >= 0 ? `+${viewDiff}` : `${viewDiff}`, trend: viewsTrend }
-          updated[2] = { ...updated[2], value: revenueTotal, change: revChange + "%", trend: revenueTotal > 0 ? "up" : "neutral" }
-          updated[3] = { ...updated[3], value: rssFeeds.count || 0, change: "0", trend: "neutral" }
-          updated[4] = { ...updated[4], value: subsRes.count || 0, change: `+${(subsRes.count || 0) - (typeof prev[4].value === 'number' ? prev[4].value : 0)}`, trend: subsRes.count && subsRes.count > 0 ? "up" : "neutral" }
+          updated[0] = {
+            ...updated[0], value: postsCount.count || 0,
+            change: (publishedThisWeek.count || 0) > 0 ? `+${publishedThisWeek.count} wk` : "—",
+            trend: (publishedThisWeek.count || 0) > 0 ? "up" : "neutral",
+          }
+          updated[1] = {
+            ...updated[1], value: totalV,
+            change: weekViews > 0 ? `+${weekViews.toLocaleString()} wk` : "—",
+            trend: weekViews > 0 ? "up" : "neutral",
+          }
+          updated[2] = {
+            ...updated[2], value: revenueTotal,
+            change: revChangePct !== 0 ? `${revChangePct > 0 ? "+" : ""}${revChangePct}% mo` : "—",
+            trend: revChangePct > 0 ? "up" : revChangePct < 0 ? "down" : "neutral",
+          }
+          updated[3] = {
+            ...updated[3], value: activeFeeds,
+            change: `${rssList.length} total`,
+            trend: "neutral",
+          }
+          updated[4] = {
+            ...updated[4], value: subsRes.count || 0,
+            change: (subsThisWeek.count || 0) > 0 ? `+${subsThisWeek.count} wk` : "—",
+            trend: (subsThisWeek.count || 0) > 0 ? "up" : "neutral",
+          }
           return updated
         })
       } catch (err) { console.error("Failed to fetch KPI data:", err) }

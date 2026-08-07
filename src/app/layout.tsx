@@ -3,6 +3,7 @@ import Script from "next/script"
 import { ThemeProvider } from "@/components/theme-provider"
 import { LayoutWrapper } from "@/components/layout/layout-wrapper"
 import { PHProvider } from "@/components/posthog-provider"
+import { PageViewTracker } from "@/components/post/page-view-tracker"
 import { GoogleCMP } from "@/components/cookies/GoogleCMP"
 import { CookieConsentBanner } from "@/components/cookies/cookie-consent-banner"
 import { SITE_NAME, SITE_TAGLINE, SITE_URL } from "@/lib/constants"
@@ -124,6 +125,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <LayoutWrapper>{children}</LayoutWrapper>
           </PHProvider>
         </ThemeProvider>
+        <PageViewTracker />
         <GoogleCMP />
         <CookieConsentBanner />
       </body>

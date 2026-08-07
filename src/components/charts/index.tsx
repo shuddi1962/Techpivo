@@ -793,7 +793,10 @@ export function ChartRealTimeMap({ data, height = 400 }: RealTimeGeoMapProps) {
     { name: "Stadia", url: "https://tiles.stadiamaps.com/tiles/alidade_smooth/{z}/{x}/{y}{r}.png" },
   ], [])
 
-  const tileUrl = tileProviders[Math.floor(Math.random() * tileProviders.length)].url
+  const tileUrl = useMemo(
+    () => tileProviders[Math.floor(Math.random() * tileProviders.length)].url,
+    [tileProviders]
+  )
 
   useEffect(() => {
     if (!isClient || !mapRef.current || data.length === 0) return
@@ -802,6 +805,7 @@ export function ChartRealTimeMap({ data, height = 400 }: RealTimeGeoMapProps) {
 
     const initMap = async () => {
       try {
+        await import("leaflet/dist/leaflet.css")
         const L = (await import("leaflet")).default
 
         if (destroyed || !mapRef.current) return

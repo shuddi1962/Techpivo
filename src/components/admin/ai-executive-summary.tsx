@@ -24,10 +24,11 @@ export function AiExecutiveSummary() {
 
   const generateInsights = async () => {
     const supabase = createClient()
-    
+    setLoading(true)
+
     const [postsRes, analyticsRes, seoRes] = await Promise.all([
-      supabase.from("posts").select("id, status, published_at, created_at, views, category_id"),
-      supabase.from("analytics_events").select("created_at").gte("created_at", new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()),
+      supabase.from("posts").select("id, title, status, published_at, created_at, views, category_id").eq("status", "published"),
+      supabase.from("analytics_events").select("created_at").eq("event_type", "page_view").gte("created_at", new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()),
       supabase.from("seo_issues").select("id, severity").eq("resolved", false)
     ])
 
@@ -37,18 +38,34 @@ export function AiExecutiveSummary() {
 
     const newInsights: AiInsight[] = []
 
-    // Traffic trend
+    // Traffic trend vs previous week
+    const thisWeek = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()
+    const lastWeekStart = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString()
+    const thisWeekCount = analytics.filter(e => e.created_at >= thisWeek).length
+    const lastWeekCount = analytics.filter(e => e.created_at >= lastWeekStart && e.created_at < thisWeek).length
+
+    if (thisWeekCount > 0 || lastWeekCount > 0) {
+      const diff = thisWeekCount - lastWeekCount
+      newInsights.push({
+        type: diff >= 0 ? "positive" : "negative",
+        message: lastWeekCount > 0
+          ? `Page views are ${diff >= 0 ? "up" : "down"} ${Math.abs(Math.round((diff / lastWeekCount) * 100))}% compared with last week`
+          : `${thisWeekCount} page views recorded this week`,
+        metric: "Weekly Traffic",
+        value: `${thisWeekCount.toLocaleString()} views`
+      })
+    }
+
+    // Recent publishing activity
     const thisWeekPosts = posts.filter(p => {
       const pubDate = new Date(p.published_at || p.created_at)
-      const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
-      return pubDate >= weekAgo
+      return pubDate >= new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
     })
-
     if (thisWeekPosts.length > 0) {
       const totalViews = thisWeekPosts.reduce((sum, p) => sum + (p.views || 0), 0)
       newInsights.push({
         type: "positive",
-        message: `${thisWeekPosts.length} articles published this week with ${totalViews.toLocaleString()} total views`,
+        message: `${thisWeekPosts.length} articles published this week with ${totalViews.toLocaleString()} combined views`,
         metric: "Weekly Output",
         value: `${thisWeekPosts.length} articles`
       })
@@ -65,20 +82,30 @@ export function AiExecutiveSummary() {
       })
     }
 
-    // Content recommendations
-    newInsights.push({
-      type: "action",
-      message: "Consider refreshing your top 5 performing articles to maintain rankings",
-      metric: "Content Refresh",
-      value: "5 articles"
-    })
+    // Content refresh candidates: top-performing published posts older than 30 days
+    const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
+    const stalePosts = posts
+      .filter(p => new Date(p.published_at || p.created_at) < thirtyDaysAgo)
+      .sort((a, b) => (b.views || 0) - (a.views || 0))
+      .slice(0, 5)
 
-    // Top category
+    if (stalePosts.length > 0) {
+      const firstTitle = stalePosts[0].title.slice(0, 60)
+      const extra = stalePosts.length - 1 > 0 ? ` and ${stalePosts.length - 1} more` : ""
+      newInsights.push({
+        type: "action",
+        message: `Refresh "${firstTitle}"${extra} top articles to maintain rankings`,
+        metric: "Content Refresh",
+        value: `${stalePosts.length} articles`
+      })
+    }
+
+    // Top category (published posts only)
     const categoryCounts = posts.reduce((acc, p) => {
       acc[p.category_id] = (acc[p.category_id] || 0) + 1
       return acc
     }, {} as Record<string, number>)
-    
+
     const topCategory = Object.entries(categoryCounts).sort((a, b) => b[1] - a[1])[0]
     if (topCategory) {
       newInsights.push({
@@ -86,6 +113,16 @@ export function AiExecutiveSummary() {
         message: `Your strongest category has ${topCategory[1]} published articles`,
         metric: "Top Category",
         value: topCategory[1] + " articles"
+      })
+    }
+
+    // No data yet
+    if (newInsights.length === 0) {
+      newInsights.push({
+        type: "neutral",
+        message: "Publish your first article to start seeing AI insights here",
+        metric: "Getting Started",
+        value: "No data yet"
       })
     }
 

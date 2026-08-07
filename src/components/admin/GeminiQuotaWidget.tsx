@@ -8,10 +8,40 @@ export function GeminiQuotaWidget() {
     total: { today: number; cap: number; note: string }
     keywordArticles: { pending: number; publishedToday: number; note: string }
   } | null>(null)
+  const [error, setError] = useState(false)
 
   useEffect(() => {
-    fetch('/api/admin/ai-quota').then(r => r.json()).then(setData)
+    let cancelled = false
+    const load = async () => {
+      try {
+        const res = await fetch('/api/admin/ai-quota')
+        if (!res.ok) throw new Error('Quota API failed')
+        const json = await res.json()
+        if (!cancelled) {
+          setData(json)
+          setError(false)
+        }
+      } catch (err) {
+        console.error('Failed to load AI quota:', err)
+        if (!cancelled) setError(true)
+      }
+    }
+    load()
+    const interval = setInterval(load, 60000)
+    return () => {
+      cancelled = true
+      clearInterval(interval)
+    }
   }, [])
+
+  if (error) {
+    return (
+      <div className="bg-white dark:bg-[#111827] border-2 border-gray-200 dark:border-[#374151] rounded-xl p-5">
+        <h3 className="text-base font-bold text-gray-900 dark:text-white mb-2">🤖 AI Usage Today</h3>
+        <p className="text-sm text-red-400">Failed to load AI usage. Refresh to retry.</p>
+      </div>
+    )
+  }
 
   if (!data) return <div className="text-sm text-gray-400">Loading quota...</div>
 

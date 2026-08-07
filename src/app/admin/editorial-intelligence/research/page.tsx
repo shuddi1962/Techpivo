@@ -1,13 +1,30 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect, useRef, Suspense } from "react"
 import Link from "next/link"
+import { useSearchParams } from "next/navigation"
 import { ArrowLeft, Search, FileText, Globe, BookOpen, HelpCircle, RefreshCw, ExternalLink, Zap } from "lucide-react"
 
-export default function ResearchPage() {
-  const [topic, setTopic] = useState("")
+function ResearchPageInner() {
+  const searchParams = useSearchParams()
+  const [topic, setTopic] = useState(searchParams.get("topic") || "")
   const [results, setResults] = useState<any>(null)
   const [loading, setLoading] = useState(false)
+  const ranRef = useRef(false)
+
+  useEffect(() => {
+    const prefilled = searchParams.get("topic")
+    if (prefilled && !ranRef.current) {
+      ranRef.current = true
+      setTopic(prefilled)
+      setLoading(true)
+      fetch(`/admin/editorial-intelligence/brief?topic=${encodeURIComponent(prefilled)}`)
+        .then(res => res.ok ? res.json() : Promise.reject(new Error("Research failed")))
+        .then(data => setResults(data))
+        .catch(e => console.error(e))
+        .finally(() => setLoading(false))
+    }
+  }, [searchParams])
 
   const runResearch = async () => {
     if (!topic.trim()) return
@@ -158,5 +175,13 @@ export default function ResearchPage() {
         </div>
       )}
     </div>
+  )
+}
+
+export default function ResearchPage() {
+  return (
+    <Suspense fallback={<div className="p-8 text-sm text-muted-foreground">Loading research engine...</div>}>
+      <ResearchPageInner />
+    </Suspense>
   )
 }
