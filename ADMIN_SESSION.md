@@ -22,6 +22,7 @@ The user provides admin sections ONE BY ONE. For each section:
 | 2026-08-06 | Vercel-style sidebar v2 | DONE | sidebar.tsx, globals.css (d010499): flat grouped nav, no search/flyouts, mature muted colors, simple collapsed icon rail, build green | — |
 | 2026-08-06 | Dashboard follow-ups | DONE | admin/page.tsx, ai-executive-summary.tsx, ai-opportunity-center.tsx, charts/index.tsx, page-view-tracker.tsx (8b9b650): Top Posts links fixed → /admin/posts/[id]/edit, country flags in Top Regions via COUNTRY_META + resolveCountry (ISO-2 + full names, ~80 countries), junk country filtering (UTC/Etc/Unknown/null), GeminiQuotaWidget removed from dashboard, map only re-fits bounds when country set changes, AI summary shows real category names, both AI widgets auto-refresh 60s, tracker no longer emits UTC/Etc countries. Typecheck + build green. | — |
 | 2026-08-07 | Agent Reach Research Center | DONE | agent-reach.ts lib, agent-reach API route, agent-reach page, sidebar.tsx, admin-header.tsx (36937d3): live research channels — Web Reader (Jina Reader), Web Search (Jina Search w/ key else DuckDuckGo), YouTube oEmbed, GitHub REST, RSS (rss-parser), LinkedIn (Jina). Health check per channel. Every result has "Write article with Gemini" → /api/admin/research-keyword (live Google-grounded writing). No mock data. Build green. | — |
+| 2026-08-07 | Agent Reach live v2 | DONE | agent-reach.ts, agent-reach API route, agent-reach page (55e7901): JINA_API_KEY + GITHUB_TOKEN added to .env.local (gitignored, NOT committed — user must add both to Vercel env vars). Jina Search now POST s.jina.ai with JSON body + parser for `[n] Title/URL Source/Description` blocks (verified live: engine=jina, real results). Search tab = real search engine UX: live as-you-type suggestions (debounced 250ms, DuckDuckGo /ac/ API + Google suggest fallback, recursive string extractor), Enter runs search, engine badge (Jina AI / DuckDuckGo). Overview gains "Trending Right Now": Hacker News frontpage (hnrss.org) + GitHub Trending (via Jina Reader) with Open/Search/Write-article actions + clickable trending keyword chips (extractKeywords: stopwords + digit-token filter). All verified live via tsx. Build green. | — |
 
 ## Sections Completed
 
@@ -54,6 +55,7 @@ The user provides admin sections ONE BY ONE. For each section:
 - Commit 98f3345 pushed to origin/main (sidebar redesign). Build green with NODE_OPTIONS=--max-old-space-size=6144 (default heap OOMs on type-check).
 - Latest: 8b9b650 pushed to origin/main (dashboard follow-ups). Build green.
 - Latest: 36937d3 pushed to origin/main (Agent Reach Research Center). Build green.
+- Latest: 55e7901 pushed to origin/main (live Jina search + suggestions + trending). Build green.
 
 ## Deploy Command
 
