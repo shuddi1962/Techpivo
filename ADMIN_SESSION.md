@@ -23,7 +23,7 @@ The user provides admin sections ONE BY ONE. For each section:
 
 ## Sections Completed
 
-- (none yet — user feeds sections one by one)
+- **Dashboard (2026-08-06, b5b7429):** Leaflet map fixed (leaflet.css imported, tile URL no longer re-picks every render). KPI cards now show real weekly deltas (published this week, views this week, revenue MTD% vs last month, active/total RSS, new subscribers this week) instead of fake +0. AI Executive Summary computes real traffic trend vs last week, published-only top category, real content-refresh candidates. AI Opportunity Center: filters junk sports/betting keywords (49 deleted from keyword_articles 1231→1182), wired Research/Generate Brief/Generate Article buttons to research/generate pages + saves briefs to content_briefs. Global PageViewTracker mounted in root layout (records page_view without postId; increment-views API relaxed). GeminiQuotaWidget auto-refresh + error state. Research engine accepts ?topic= param (Suspense-bound). Build green.
 
 ## Sections In Progress
 
@@ -40,6 +40,7 @@ The user provides admin sections ONE BY ONE. For each section:
 ## Migrations Applied
 
 - 037_missing_admin_tables.sql (untracked, pending apply check)
+- 2026-08-06: keyword cleanup — deleted 49 junk sports/betting keywords from keyword_articles (data cleanup, no migration file)
 
 ## Current Git State
 
