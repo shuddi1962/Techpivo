@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import Link from "next/link";
 import {
   Globe,
@@ -15,9 +15,11 @@ import {
   XCircle,
   Sparkles,
   FileText,
-  Clock,
   AlertTriangle,
   Loader2,
+  Flame,
+  Hash,
+  TrendingUp,
 } from "lucide-react";
 
 type TabKey = "overview" | "web" | "search" | "youtube" | "github" | "rss" | "linkedin";
@@ -47,6 +49,19 @@ interface PublishInfo {
   postId?: string;
 }
 
+interface TrendingItem {
+  title: string;
+  url: string;
+  source: string;
+}
+
+interface TrendingBundle {
+  hackerNews: TrendingItem[];
+  github: TrendingItem[];
+  keywords: string[];
+  updatedAt: string;
+}
+
 const EMPTY_HEALTH: HealthState = {
   web: "loading",
   search: "loading",
@@ -61,6 +76,9 @@ export default function AgentReachPage() {
   const [health, setHealth] = useState<HealthState>(EMPTY_HEALTH);
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [searchMeta, setSearchMeta] = useState<{ engine: string; query: string } | null>(null);
+  const [suggestions, setSuggestions] = useState<string[]>([]);
+  const [suggestBusy, setSuggestBusy] = useState(false);
   const [webQuery, setWebQuery] = useState("");
   const [webContent, setWebContent] = useState<string>("");
   const [webSourceUrl, setWebSourceUrl] = useState<string>("");
@@ -76,6 +94,8 @@ export default function AgentReachPage() {
   const [error, setError] = useState<string>("");
   const [writing, setWriting] = useState(false);
   const [publishInfo, setPublishInfo] = useState<PublishInfo | null>(null);
+  const [trendingData, setTrendingData] = useState<TrendingBundle | null>(null);
+  const [trendingBusy, setTrendingBusy] = useState(false);
 
   const runChannel = useCallback(
     async (channel: string, body: any): Promise<any> => {
@@ -97,6 +117,28 @@ export default function AgentReachPage() {
     []
   );
 
+  const loadTrending = useCallback(async () => {
+    setTrendingBusy(true);
+    try {
+      const res = await fetch("/api/admin/agent-reach", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ channel: "trending" }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Trending fetch failed");
+      setTrendingData(data.result);
+    } catch (e: any) {
+      setError(e.message || "Trending fetch failed");
+    } finally {
+      setTrendingBusy(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadTrending();
+  }, [loadTrending]);
+
   const checkHealth = useCallback(async () => {
     setHealth(EMPTY_HEALTH);
     try {
@@ -113,47 +155,77 @@ export default function AgentReachPage() {
     }
   }, []);
 
-  const runSearch = useCallback(async () => {
+  const runSearch = useCallback(
+    async (q?: string) => {
+      const query = (q ?? searchQuery).trim();
+      if (!query) return;
+      setSuggestions([]);
+      const data = await runChannel("search", { q: query });
+      setSearchResults(data.result.results || []);
+      setSearchMeta({ engine: data.result.engine || "jina", query });
+    },
+    [searchQuery, runChannel]
+  );
+
+  useEffect(() => {
     const q = searchQuery.trim();
-    if (!q) return;
-    const data = await runChannel("search", { q });
-    setSearchResults(data.results || []);
-  }, [searchQuery, runChannel]);
+    if (activeTab !== "search" || q.length < 2) {
+      setSuggestions([]);
+      return;
+    }
+    const timer = setTimeout(async () => {
+      setSuggestBusy(true);
+      try {
+        const res = await fetch("/api/admin/agent-reach", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ channel: "suggest", q }),
+        });
+        const data = await res.json();
+        if (res.ok) setSuggestions(data.suggestions || []);
+      } catch {
+        setSuggestions([]);
+      } finally {
+        setSuggestBusy(false);
+      }
+    }, 250);
+    return () => clearTimeout(timer);
+  }, [searchQuery, activeTab]);
 
   const runWeb = useCallback(async () => {
     const url = webQuery.trim();
     if (!url) return;
     const data = await runChannel("web", { url });
     setWebSourceUrl(url);
-    setWebContent((data.content || "").slice(0, 6000));
+    setWebContent((data.result.content || "").slice(0, 6000));
   }, [webQuery, runChannel]);
 
   const runYoutube = useCallback(async () => {
     const q = ytQuery.trim();
     if (!q) return;
     const data = await runChannel("youtube", { q });
-    setYtResults(data.results || []);
+    setYtResults([data.result]);
   }, [ytQuery, runChannel]);
 
   const runGithub = useCallback(async () => {
     const q = ghQuery.trim();
     if (!q) return;
     const data = await runChannel("github", { q });
-    setGhResults(data.results || []);
+    setGhResults(data.result.items || []);
   }, [ghQuery, runChannel]);
 
   const runRss = useCallback(async () => {
     const url = rssUrl.trim();
     if (!url) return;
     const data = await runChannel("rss", { url });
-    setRssResults(data.results || []);
+    setRssResults(data.result.items || []);
   }, [rssUrl, runChannel]);
 
   const runLinkedin = useCallback(async () => {
     const url = liUrl.trim();
     if (!url) return;
     const data = await runChannel("linkedin", { url });
-    setLiProfile((data.content || "").slice(0, 4000));
+    setLiProfile((data.result.content || "").slice(0, 4000));
   }, [liUrl, runChannel]);
 
   const writeArticle = useCallback(
@@ -181,6 +253,15 @@ export default function AgentReachPage() {
       }
     },
     []
+  );
+
+  const searchFromChip = useCallback(
+    (term: string) => {
+      setSearchQuery(term);
+      setActiveTab("search");
+      runSearch(term);
+    },
+    [runSearch]
   );
 
   return (
@@ -287,6 +368,69 @@ export default function AgentReachPage() {
               </div>
             ))}
           </div>
+
+          <div className="rounded-lg border">
+            <div className="flex items-center justify-between border-b px-4 py-3">
+              <div className="flex items-center gap-2">
+                <Flame className="h-4 w-4 text-orange-500" />
+                <h2 className="font-semibold">Trending Right Now</h2>
+                {trendingData && (
+                  <span className="text-xs text-muted-foreground">
+                    Updated {new Date(trendingData.updatedAt).toLocaleTimeString()}
+                  </span>
+                )}
+              </div>
+              <button
+                onClick={loadTrending}
+                disabled={trendingBusy}
+                className="inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-xs font-medium hover:bg-muted disabled:opacity-50"
+              >
+                {trendingBusy ? (
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                ) : (
+                  <RefreshCw className="h-3 w-3" />
+                )}
+                Refresh
+              </button>
+            </div>
+            <div className="grid gap-4 p-4 md:grid-cols-2">
+              <TrendingList
+                title="Hacker News"
+                items={trendingData?.hackerNews || []}
+                onWrite={writeArticle}
+                writing={writing}
+                onSearch={searchFromChip}
+              />
+              <TrendingList
+                title="GitHub Trending"
+                items={trendingData?.github || []}
+                onWrite={writeArticle}
+                writing={writing}
+                onSearch={searchFromChip}
+              />
+            </div>
+            {trendingData && trendingData.keywords.length > 0 && (
+              <div className="border-t px-4 py-3">
+                <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground mb-2">
+                  <Hash className="h-3.5 w-3.5" />
+                  Trending keywords — click to search
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {trendingData.keywords.map((kw) => (
+                    <button
+                      key={kw}
+                      onClick={() => searchFromChip(kw)}
+                      className="inline-flex items-center gap-1 rounded-full border px-3 py-1 text-xs font-medium hover:bg-muted"
+                    >
+                      <TrendingUp className="h-3 w-3 text-orange-500" />
+                      {kw}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+
           <p className="text-sm text-muted-foreground">
             Click &quot;Channel Health&quot; to test all channels. Then use any tab to research a topic,
             and hit &quot;Write article with Gemini&quot; to publish a fully researched, SEO-ready article.
@@ -347,22 +491,53 @@ export default function AgentReachPage() {
 
       {activeTab === "search" && (
         <div className="space-y-4">
-          <div className="flex gap-2">
-            <input
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Latest AI model release 2026"
-              className="flex-1 rounded-md border bg-background px-3 py-2 text-sm"
-            />
+          <div className="relative flex gap-2">
+            <div className="relative flex-1">
+              <input
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") runSearch();
+                }}
+                placeholder="Search the web — suggestions appear as you type…"
+                className="w-full rounded-md border bg-background px-3 py-2 pr-8 text-sm"
+              />
+              {suggestBusy && (
+                <Loader2 className="absolute right-2.5 top-2.5 h-4 w-4 animate-spin text-muted-foreground" />
+              )}
+              {suggestions.length > 0 && searchQuery.trim().length >= 2 && (
+                <div className="absolute z-20 mt-1 w-full overflow-hidden rounded-md border bg-background shadow-lg">
+                  {suggestions.map((s) => (
+                    <button
+                      key={s}
+                      onClick={() => {
+                        setSearchQuery(s);
+                        runSearch(s);
+                      }}
+                      className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-muted"
+                    >
+                      <Search className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                      <span className="truncate">{s}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
             <button
-              onClick={runSearch}
+              onClick={() => runSearch()}
               disabled={busy || !searchQuery.trim()}
-              className="inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground disabled:opacity-50"
+              className="inline-flex shrink-0 items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground disabled:opacity-50"
             >
               {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
               Search
             </button>
           </div>
+          {searchMeta && (
+            <p className="text-xs text-muted-foreground">
+              {searchResults.length} results from{" "}
+              {searchMeta.engine === "jina" ? "Jina AI" : "DuckDuckGo"} for &quot;{searchMeta.query}&quot;
+            </p>
+          )}
           <div className="space-y-3">
             {searchResults.map((r: any, i: number) => (
               <div key={i} className="rounded-lg border p-4">
@@ -413,14 +588,11 @@ export default function AgentReachPage() {
             {ytResults.map((r: any, i: number) => (
               <div key={i} className="rounded-lg border p-4">
                 <p className="font-medium">{r.title}</p>
-                <p className="mt-1 text-sm text-muted-foreground line-clamp-2">{r.description}</p>
-                <p className="mt-1 text-xs text-muted-foreground">
-                  {r.channel} · {r.views} · {r.published}
-                </p>
+                <p className="mt-1 text-sm text-muted-foreground line-clamp-2">{r.author_name}</p>
                 <div className="mt-3">
                   <WriteBar
-                    topic={r.title || r.url}
-                    onWrite={() => writeArticle(r.title || r.url)}
+                    topic={r.title || ytQuery}
+                    onWrite={() => writeArticle(r.title || ytQuery)}
                     writing={writing}
                   />
                 </div>
@@ -551,6 +723,82 @@ export default function AgentReachPage() {
             </p>
           )}
         </div>
+      )}
+    </div>
+  );
+}
+
+function TrendingList({
+  title,
+  items,
+  onWrite,
+  onSearch,
+  writing,
+}: {
+  title: string;
+  items: TrendingItem[];
+  onWrite: (topic: string) => void;
+  onSearch: (term: string) => void;
+  writing: boolean;
+}) {
+  return (
+    <div>
+      <div className="flex items-center gap-2 mb-2">
+        <Flame className="h-4 w-4 text-orange-500" />
+        <h3 className="text-sm font-semibold">{title}</h3>
+        <span className="text-xs text-muted-foreground">{items.length} stories</span>
+      </div>
+      {items.length === 0 ? (
+        <div className="flex items-center gap-2 rounded-md border border-dashed px-3 py-4 text-sm text-muted-foreground">
+          <Loader2 className="h-4 w-4 animate-spin" />
+          Loading live trends…
+        </div>
+      ) : (
+        <ol className="space-y-2">
+          {items.slice(0, 10).map((item, i) => (
+            <li key={i} className="flex items-start gap-2 text-sm">
+              <span className="mt-0.5 shrink-0 text-xs font-semibold text-muted-foreground">
+                {i + 1}.
+              </span>
+              <div className="min-w-0 flex-1">
+                <a
+                  href={item.url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="font-medium leading-snug hover:underline"
+                >
+                  {item.title}
+                </a>
+                <div className="mt-1 flex items-center gap-2">
+                  <a
+                    href={item.url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:underline"
+                  >
+                    <ExternalLink className="h-3 w-3" />
+                    Open
+                  </a>
+                  <button
+                    onClick={() => onSearch(item.title)}
+                    className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:underline"
+                  >
+                    <Search className="h-3 w-3" />
+                    Search
+                  </button>
+                  <button
+                    onClick={() => onWrite(item.title)}
+                    disabled={writing}
+                    className="inline-flex items-center gap-1 text-xs font-medium text-violet-600 hover:underline disabled:opacity-50"
+                  >
+                    <Sparkles className="h-3 w-3" />
+                    Write article
+                  </button>
+                </div>
+              </div>
+            </li>
+          ))}
+        </ol>
       )}
     </div>
   );

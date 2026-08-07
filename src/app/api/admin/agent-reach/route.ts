@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server"
 import {
   webFetch, webSearch, youtubeInfo, githubSearch,
   rssFetch, linkedinProfile, channelHealth,
+  searchSuggest, trending,
 } from "@/lib/agent-reach"
 
 export const dynamic = "force-dynamic"
@@ -45,6 +46,15 @@ export async function POST(request: NextRequest) {
       case "linkedin": {
         if (!query) return NextResponse.json({ error: "Username required" }, { status: 400 })
         const result = await linkedinProfile(String(query))
+        return NextResponse.json({ result })
+      }
+      case "suggest": {
+        if (!query) return NextResponse.json({ suggestions: [] })
+        const suggestions = await searchSuggest(String(query))
+        return NextResponse.json({ suggestions })
+      }
+      case "trending": {
+        const result = await trending()
         return NextResponse.json({ result })
       }
       default:

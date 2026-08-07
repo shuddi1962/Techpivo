@@ -6,7 +6,8 @@ const JINA_API_KEY = process.env.JINA_API_KEY || ""
 const GITHUB_TOKEN = process.env.GITHUB_TOKEN || ""
 const TIMEOUT_MS = 30000
 
-async function jinaFetch(url: string, mode: "reader" | "search"): Promise<string> {
+async function jinaReaderFetch(url: string): Promise<string> {
+  const target = url.replace(/^https?:\/\//, "").replace(/^\/+/, "")
   const headers: Record<string, string> = {
     "Accept": "text/markdown",
     "X-Return-Format": "markdown",
@@ -14,12 +15,28 @@ async function jinaFetch(url: string, mode: "reader" | "search"): Promise<string
   }
   if (JINA_API_KEY) headers["Authorization"] = `Bearer ${JINA_API_KEY}`
 
-  const endpoint = mode === "reader"
-    ? `${JINA_READER}/${url}`
-    : `${JINA_SEARCH}/${url}`
+  const res = await fetch(`${JINA_READER}/${target}`, {
+    headers,
+    signal: AbortSignal.timeout(TIMEOUT_MS),
+  })
+  if (!res.ok) throw new Error(`Web reader failed (${res.status})`)
+  return res.text()
+}
 
-  const res = await fetch(endpoint, { headers, signal: AbortSignal.timeout(TIMEOUT_MS) })
-  if (!res.ok) throw new Error(`Jina ${mode === "reader" ? "reader" : "search"} failed (${res.status})`)
+async function jinaSearchFetch(query: string, topK = 10): Promise<string> {
+  const body = JSON.stringify({ q: query, top_k: topK })
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+  }
+  if (JINA_API_KEY) headers["Authorization"] = `Bearer ${JINA_API_KEY}`
+
+  const res = await fetch(JINA_SEARCH, {
+    method: "POST",
+    headers,
+    body,
+    signal: AbortSignal.timeout(TIMEOUT_MS),
+  })
+  if (!res.ok) throw new Error(`Jina search failed (${res.status})`)
   return res.text()
 }
 
@@ -43,6 +60,19 @@ export interface RssItem {
   contentSnippet?: string
   author?: string
   categories?: string[]
+}
+
+export interface TrendingItem {
+  title: string
+  url: string
+  source: string
+}
+
+export interface TrendingBundle {
+  hackerNews: TrendingItem[]
+  github: TrendingItem[]
+  keywords: string[]
+  updatedAt: string
 }
 
 export interface ChannelStatus {
@@ -82,30 +112,43 @@ function extractDuckDuckGoResults(html: string): WebResult[] {
 
 function extractJinaSearchResults(markdown: string): WebResult[] {
   const results: WebResult[] = []
-  const lines = markdown.split("\n")
-  let currentUrl = ""
+  const blockRe = /^\[(\d+)\] (Title|URL Source|Description): (.*)$/gm
+  const blocks: Record<number, Partial<WebResult>> = {}
+  let lastIndex = -1
 
+  for (const m of markdown.matchAll(blockRe)) {
+    const idx = parseInt(m[1], 10)
+    const key = m[2]
+    const value = m[3].trim()
+    if (idx !== lastIndex) {
+      lastIndex = idx
+      blocks[idx] = {}
+    }
+    if (key === "Title") blocks[idx].title = value
+    else if (key === "URL Source") blocks[idx].url = value
+    else if (key === "Description") blocks[idx].snippet = value.slice(0, 300)
+  }
+
+  for (const idx of Object.keys(blocks).sort((a, b) => Number(a) - Number(b))) {
+    const b = blocks[Number(idx)]
+    if (b.url) results.push({ url: b.url, title: b.title, snippet: b.snippet })
+  }
+
+  if (results.length > 0) return results
+
+  // Fallback: markdown link parsing (older Jina response shape)
+  const lines = markdown.split("\n")
   for (const line of lines) {
     const urlMatch = line.match(/\[(.*?)\]\((https?:\/\/[^\s)]+)\)/)
     if (urlMatch) {
       results.push({ url: urlMatch[2], title: urlMatch[1] })
-      currentUrl = urlMatch[2]
-      continue
-    }
-    const bareMatch = line.match(/^\s*(https?:\/\/[^\s]+)$/)
-    if (bareMatch && results.length > 0) {
-      const last = results[results.length - 1]
-      if (!last.url || last.url.length > 200) {
-        last.url = bareMatch[1]
-      }
     }
   }
-  return results.filter(r => r.url)
+  return results
 }
 
 export async function webFetch(url: string): Promise<{ url: string; content: string }> {
-  const target = url.replace(/^https?:\/\//, "").replace(/^\/+/, "")
-  const content = await jinaFetch(target, "reader")
+  const content = await jinaReaderFetch(url)
   if (!content || content.trim().length < 50) {
     throw new Error("No readable content returned from the URL")
   }
@@ -115,7 +158,7 @@ export async function webFetch(url: string): Promise<{ url: string; content: str
 export async function webSearch(query: string): Promise<SearchChannel> {
   if (JINA_API_KEY) {
     try {
-      const markdown = await jinaFetch(encodeURIComponent(query), "search")
+      const markdown = await jinaSearchFetch(query)
       const results = extractJinaSearchResults(markdown)
       if (results.length > 0) return { engine: "jina", results }
     } catch {
@@ -135,6 +178,139 @@ export async function webSearch(query: string): Promise<SearchChannel> {
   const results = extractDuckDuckGoResults(html)
   if (results.length === 0) throw new Error("No results found for query")
   return { engine: "duckduckgo", results }
+}
+
+export async function searchSuggest(query: string): Promise<string[]> {
+  const q = query.trim()
+  if (q.length < 2) return []
+
+  // Primary: DuckDuckGo autocomplete (no key needed)
+  try {
+    const res = await fetch(
+      `https://duckduckgo.com/ac/?q=${encodeURIComponent(q)}&type=list`,
+      { headers: { "User-Agent": "Mozilla/5.0" }, signal: AbortSignal.timeout(8000) }
+    )
+    if (res.ok) {
+      const data: unknown = await res.json()
+      const suggestions = extractSuggestions(data, q)
+      if (suggestions.length > 0) return suggestions
+    }
+  } catch {
+    // fall through to Google suggest
+  }
+
+  // Fallback: Google suggest (firefox client returns simple JSON)
+  try {
+    const res = await fetch(
+      `https://suggestqueries.google.com/complete/search?client=firefox&hl=en&q=${encodeURIComponent(q)}`,
+      { headers: { "User-Agent": "Mozilla/5.0" }, signal: AbortSignal.timeout(8000) }
+    )
+    if (res.ok) {
+      const data: unknown = await res.json()
+      const suggestions = extractSuggestions(data, q)
+      if (suggestions.length > 0) return suggestions
+    }
+  } catch {
+    // give up silently
+  }
+
+  return []
+}
+
+function extractSuggestions(data: unknown, query: string): string[] {
+  const out: string[] = []
+  const seen = new Set<string>()
+
+  const walk = (value: unknown) => {
+    if (typeof value === "string") {
+      if (value.length >= 2 && value.length <= 120 && !seen.has(value)) {
+        seen.add(value)
+        out.push(value)
+      }
+      return
+    }
+    if (Array.isArray(value)) {
+      for (const item of value) walk(item)
+      return
+    }
+    if (value && typeof value === "object") {
+      for (const key of Object.keys(value as Record<string, unknown>)) walk((value as Record<string, unknown>)[key])
+    }
+  }
+
+  walk(data)
+  return out.filter((s) => s.toLowerCase() !== query.toLowerCase()).slice(0, 10)
+}
+
+export async function trending(): Promise<TrendingBundle> {
+  const [hn, gh] = await Promise.allSettled([
+    rssFetch("https://hnrss.org/frontpage"),
+    githubTrending(),
+  ])
+
+  const hackerNews: TrendingItem[] =
+    hn.status === "fulfilled"
+      ? hn.value.items.slice(0, 12).map((item) => ({
+          title: item.title || "Untitled",
+          url: item.link || "https://news.ycombinator.com",
+          source: "Hacker News",
+        }))
+      : []
+
+  const github: TrendingItem[] = gh.status === "fulfilled" ? gh.value : []
+
+  const keywords = extractKeywords([...hackerNews, ...github])
+
+  return {
+    hackerNews,
+    github,
+    keywords,
+    updatedAt: new Date().toISOString(),
+  }
+}
+
+async function githubTrending(): Promise<TrendingItem[]> {
+  const markdown = await jinaReaderFetch("https://github.com/trending?since=daily")
+  const repoRe = /\b([A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+)\b/g
+  const seen = new Set<string>()
+  const repos: TrendingItem[] = []
+  for (const m of markdown.matchAll(repoRe)) {
+    const name = m[1]
+    if (seen.has(name)) continue
+    seen.add(name)
+    repos.push({ title: name, url: `https://github.com/${name}`, source: "GitHub Trending" })
+    if (repos.length >= 12) break
+  }
+  return repos
+}
+
+function extractKeywords(items: TrendingItem[]): string[] {
+  const counts = new Map<string, number>()
+  for (const item of items) {
+    const words = item.title
+      .replace(/[^A-Za-z0-9\s-]/g, " ")
+      .split(/\s+/)
+      .map((w) => w.trim().toLowerCase())
+      .filter((w) => w.length > 3 && !/^\d+$/.test(w) && !["with", "from", "that", "this", "your", "into", "have", "their", "about", "after", "before", "over", "what", "when", "how", "why", "more", "most", "new", "now", "the", "for", "and", "are", "not", "you", "our", "can", "its", "has", "was", "latest", "today"].includes(w))
+    const countsPerItem = new Map<string, number>()
+    for (const w of words) countsPerItem.set(w, (countsPerItem.get(w) || 0) + 1)
+    for (const [w, c] of countsPerItem) counts.set(w, (counts.get(w) || 0) + c)
+  }
+  const top = [...counts.entries()].sort((a, b) => b[1] - a[1]).map(([w]) => w)
+  const pairs: string[] = []
+  for (const item of items) {
+    const titleWords = item.title
+      .replace(/[^A-Za-z0-9\s-]/g, " ")
+      .split(/\s+/)
+      .map((w) => w.trim().toLowerCase())
+      .filter((w) => w.length > 3 && !/^\d+$/.test(w) && top.slice(0, 15).includes(w))
+    if (titleWords.length >= 2) {
+      const pair = titleWords.slice(0, 3).join(" ")
+      if (!pairs.includes(pair)) pairs.push(pair)
+    }
+  }
+  const result = [...top.slice(0, 12), ...pairs.slice(0, 6)]
+  return result.slice(0, 18)
 }
 
 export async function youtubeInfo(url: string): Promise<Record<string, any>> {
@@ -184,7 +360,7 @@ export async function rssFetch(url: string): Promise<{ feedTitle?: string; items
 
 export async function linkedinProfile(username: string): Promise<{ username: string; content: string }> {
   const clean = username.replace(/^https?:\/\/(www\.)?linkedin\.com\/in\//, "").replace(/\/.*$/, "")
-  const content = await jinaFetch(`https://www.linkedin.com/in/${clean}`, "reader")
+  const content = await jinaReaderFetch(`https://www.linkedin.com/in/${clean}`)
   if (!content || content.trim().length < 80) {
     throw new Error("Profile content unavailable (LinkedIn blocks anonymous reads on some profiles)")
   }
