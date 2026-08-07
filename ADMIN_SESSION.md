@@ -60,16 +60,18 @@ The user provides admin sections ONE BY ONE. For each section:
 ## Deploy Command
 
 ```bash
-# No token needed — CLI has a saved login (goodnewsonyematara2020-8483) at
-# %APPDATA%\com.vercel.cli\Data\auth.json that auto-refreshes. NEVER commit tokens.
-npx vercel --prod --yes --non-interactive
+# Token stored in .env.vercel (gitignored) — read it, never hardcode:
+$tok = ((Get-Content .env.vercel)[0]) -replace "^VERCEL_TOKEN=",""
+npx vercel --prod --yes --non-interactive --token $tok
+# Fallback: no token needed — CLI has a saved login (goodnewsonyematara2020-8483)
+# at %APPDATA%\com.vercel.cli\Data\auth.json that auto-refreshes.
 ```
 
 ## Vercel Deploy Notes
 
 - 2026-08-07: Deployed production via CLI (techpivo-iutoymota-...vercel.app, Ready). Git pushes auto-deploy (55e7901/53e80b5 already live).
 - 2026-08-07: Added env vars via CLI — JINA_API_KEY + GITHUB_TOKEN → Production (sensitive), Preview (sensitive), Development (non-sensitive). Commands used: `npx vercel env add <NAME> <env> --value <v> --sensitive --yes --force --non-interactive` (preview REQUIRES --non-interactive or it hangs on "Git branch?" prompt; --sensitive is rejected for development).
-- User-provided token `vcp_5JOwyud96eA4...` is INVALID (API returns 404 "User not found") — saved to `.env.vercel` (gitignored) but unusable. Saved CLI login is used instead.
+- 2026-08-07: User token VERIFIED (vcp_84RA... — whoami OK, account goodnewsonyematara2020-8483, project access OK). Stored in `.env.vercel` (gitignored, NOT committed). PREVIOUS token (vcp_5JOw...) was invalid (404 User not found) — replaced. NOTE: never write the token value into ADMIN_SESSION.md — GitHub push protection blocks commits containing Vercel token patterns.
 
 ## Resume Instructions
 
