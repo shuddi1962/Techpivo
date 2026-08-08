@@ -92,6 +92,7 @@ export default function AgentReachPage() {
   const [webQuery, setWebQuery] = useState("");
   const [webContent, setWebContent] = useState<string>("");
   const [webSourceUrl, setWebSourceUrl] = useState<string>("");
+  const [webVia, setWebVia] = useState<string>("");
   const [webTitle, setWebTitle] = useState<string>("");
   const [ytQuery, setYtQuery] = useState("");
   const [ytResults, setYtResults] = useState<any[]>([]);
@@ -241,9 +242,11 @@ export default function AgentReachPage() {
     const url = webQuery.trim();
     if (!url) return;
     setWebContent("");
+    setWebVia("");
     const data = await runChannel("web", { url });
     if (!data) return;
     setWebSourceUrl(url);
+    setWebVia(data.result.via || "");
     setWebContent((data.result.content || "").slice(0, 6000));
     setWebTitle(extractTitleFromContent(data.result.content || ""));
   }, [webQuery, runChannel, extractTitleFromContent]);
@@ -566,17 +569,24 @@ export default function AgentReachPage() {
             </button>
           </div>
           {webSourceUrl && (
-            <p className="text-xs text-muted-foreground">
-              Source:{" "}
-              <a
-                href={webSourceUrl}
-                target="_blank"
-                rel="noreferrer"
-                className="underline"
-              >
-                {webSourceUrl}
-              </a>
-            </p>
+            <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+              <span>
+                Source:{" "}
+                <a
+                  href={webSourceUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="underline"
+                >
+                  {webSourceUrl}
+                </a>
+              </span>
+              {webVia && (
+                <span className="inline-flex items-center rounded-full border border-sky-500/30 bg-sky-500/10 px-2 py-0.5 font-medium text-sky-600">
+                  via {webVia}
+                </span>
+              )}
+            </div>
           )}
           {busy && !webContent && (
             <p className="inline-flex items-center gap-2 text-sm text-muted-foreground">

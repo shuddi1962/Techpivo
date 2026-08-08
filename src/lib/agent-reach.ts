@@ -126,22 +126,63 @@ function htmlToText(html: string): string {
     .trim()
 }
 
+const ALTERNATE_UAS = [
+  "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.4 Safari/605.1.15",
+  "Mozilla/5.0 (iPhone; CPU iPhone OS 17_4 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.4 Mobile/15E148 Safari/604.1",
+]
+
 async function fetchPageDirect(url: string): Promise<string> {
-  const res = await fetch(url, {
-    headers: {
-      "User-Agent": BROWSER_UA,
-      "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-      "Accept-Language": "en-US,en;q=0.9",
-      "Referer": "https://www.google.com/",
-      "Cache-Control": "no-cache",
-    },
+  const attempts: string[] = []
+  const candidates = [BROWSER_UA, ...ALTERNATE_UAS]
+
+  for (const ua of candidates) {
+    try {
+      const res = await fetch(url, {
+        headers: {
+          "User-Agent": ua,
+          "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+          "Accept-Language": "en-US,en;q=0.9",
+          "Referer": "https://www.google.com/",
+          "Cache-Control": "no-cache",
+        },
+        redirect: "follow",
+        signal: AbortSignal.timeout(TIMEOUT_MS),
+      })
+      if (!res.ok) {
+        attempts.push(`direct ${res.status}`)
+        continue
+      }
+      const text = await res.text()
+      const cleaned = htmlToText(text)
+      if (cleaned.length >= 50) return cleaned.slice(0, 60000)
+      attempts.push("direct empty")
+    } catch (e) {
+      attempts.push(e instanceof Error ? e.message : "direct error")
+    }
+  }
+
+  throw new Error(`Direct fetch failed — ${attempts.join("; ")}`)
+}
+
+async function waybackFetch(url: string): Promise<string> {
+  const avail = await fetch(
+    `https://archive.org/wayback/available?url=${encodeURIComponent(url)}`,
+    { signal: AbortSignal.timeout(15000) }
+  )
+  if (!avail.ok) throw new Error(`Wayback availability check failed (${avail.status})`)
+  const data: unknown = await avail.json()
+  const snapshot = (data as any)?.archived_snapshots?.closest
+  if (!snapshot?.url) throw new Error("No archived snapshot of this page")
+
+  const res = await fetch(snapshot.url, {
+    headers: { "User-Agent": BROWSER_UA },
     redirect: "follow",
     signal: AbortSignal.timeout(TIMEOUT_MS),
   })
-  if (!res.ok) throw new Error(`Direct fetch failed (${res.status})`)
+  if (!res.ok) throw new Error(`Wayback fetch failed (${res.status})`)
   const text = await res.text()
   const cleaned = htmlToText(text)
-  if (cleaned.length < 50) throw new Error("No readable content extracted from page")
+  if (cleaned.length < 50) throw new Error("No readable content in archived copy")
   return cleaned.slice(0, 60000)
 }
 
@@ -238,24 +279,32 @@ function extractJinaSearchResults(markdown: string): WebResult[] {
   return results
 }
 
-export async function webFetch(url: string): Promise<{ url: string; content: string }> {
+export async function webFetch(url: string): Promise<{ url: string; content: string; via: string }> {
   const errors: string[] = []
 
-  // Primary: Jina Reader (clean markdown)
+  // 1. Primary: Jina Reader (clean markdown)
   try {
     const content = await jinaReaderFetch(url)
-    if (content && content.trim().length >= 50) return { url, content }
+    if (content && content.trim().length >= 50) return { url, content, via: "Jina Reader" }
     errors.push("Jina returned empty content")
   } catch (e) {
     errors.push(e instanceof Error ? e.message : "Jina reader failed")
   }
 
-  // Fallback: direct fetch + HTML→text
+  // 2. Fallback: direct fetch with browser UAs
   try {
     const content = await fetchPageDirect(url)
-    return { url, content }
+    return { url, content, via: "Direct Fetch" }
   } catch (e) {
     errors.push(e instanceof Error ? e.message : "Direct fetch failed")
+  }
+
+  // 3. Fallback: Wayback Machine archived copy
+  try {
+    const content = await waybackFetch(url)
+    return { url, content, via: "Wayback Machine (archive)" }
+  } catch (e) {
+    errors.push(e instanceof Error ? e.message : "Wayback fetch failed")
   }
 
   throw new Error(`Web fetch failed — ${errors.join("; ")}`)
