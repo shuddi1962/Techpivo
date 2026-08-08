@@ -85,6 +85,7 @@ export interface TrendingItem {
 export interface TrendingBundle {
   hackerNews: TrendingItem[]
   github: TrendingItem[]
+  trends: TrendingItem[]
   keywords: string[]
   updatedAt: string
 }
@@ -438,21 +439,38 @@ async function googleTrendingSearches(geos: string[] = ["US", "NG", "GB"]): Prom
 async function bingTrendingSearches(): Promise<TrendingItem[]> {
   try {
     const markdown = await jinaReaderFetch("https://www.bing.com/trending?form=MBSC")
-    const linkRe = /\[([^\]]{4,60})\]\(https:\/\/www\.bing\.com\/search\?q=([^)]+)\)/g
     const seen = new Set<string>()
     const out: TrendingItem[] = []
-    for (const m of markdown.matchAll(linkRe)) {
-      const title = m[1].trim()
-      const key = title.toLowerCase()
-      if (!title || seen.has(key)) continue
+
+    const push = (title: string, query: string) => {
+      const clean = title.replace(/^\d+[.)]\s*/, "").trim()
+      const key = clean.toLowerCase()
+      if (!clean || clean.length < 4 || clean.length > 60 || seen.has(key)) return
+      if (/^(home|videos|images|news|maps|shopping|trending|search)$/i.test(clean)) return
       seen.add(key)
       out.push({
-        title,
-        url: `https://www.bing.com/search?q=${m[2].replace(/&amp;/g, "&")}`,
+        title: clean,
+        url: `https://www.bing.com/search?q=${encodeURIComponent(query || clean)}`,
         source: "Bing Trends",
       })
+    }
+
+    // Pass 1: markdown links pointing at bing search
+    const linkRe = /\[([^\]]{4,60})\]\(https?:\/\/www\.bing\.com\/search\?q=([^)]+)\)/g
+    for (const m of markdown.matchAll(linkRe)) {
+      push(m[1], decodeURIComponent(m[2].replace(/&amp;/g, "&").split("&")[0]))
       if (out.length >= 15) break
     }
+
+    // Pass 2: Jina often renders trend titles as plain numbered lines
+    if (out.length < 10) {
+      const lineRe = /^[ \t]*(?:\d+[.)]\s*)?([A-Z][A-Za-z0-9][A-Za-z0-9 &'’\-.,:!?+%]{2,58})[ \t]*$/gm
+      for (const m of markdown.matchAll(lineRe)) {
+        push(m[1], m[1])
+        if (out.length >= 15) break
+      }
+    }
+
     return out
   } catch {
     return []
@@ -478,32 +496,33 @@ export async function trending(): Promise<TrendingBundle> {
 
   const github: TrendingItem[] = gh.status === "fulfilled" ? gh.value : []
 
-  const searchTrends = [
-    ...(gt.status === "fulfilled" ? gt.value : []),
-    ...(bt.status === "fulfilled" ? bt.value : []),
-  ]
+  // Dedupe Google + Bing trending searches into one list
+  const searchTrends: TrendingItem[] = []
+  {
+    const seen = new Set<string>()
+    const sources = [
+      ...(gt.status === "fulfilled" ? gt.value : []),
+      ...(bt.status === "fulfilled" ? bt.value : []),
+    ]
+    for (const t of sources) {
+      const key = t.title.toLowerCase()
+      if (seen.has(key)) continue
+      seen.add(key)
+      searchTrends.push(t)
+    }
+  }
 
-  // Real trending searches from Google & Bing (deduped, case-insensitive).
+  // Real trending searches from Google & Bing (factual).
   // Word-count extraction from HN/GitHub titles is only a last-resort fallback.
   const keywords =
     searchTrends.length > 0
-      ? (() => {
-          const seen = new Set<string>()
-          const out: string[] = []
-          for (const t of searchTrends) {
-            const key = t.title.toLowerCase()
-            if (seen.has(key)) continue
-            seen.add(key)
-            out.push(t.title)
-            if (out.length >= 15) break
-          }
-          return out
-        })()
+      ? searchTrends.slice(0, 15).map((t) => t.title)
       : extractKeywords([...hackerNews, ...github])
 
   return {
     hackerNews,
     github,
+    trends: searchTrends.slice(0, 20),
     keywords,
     updatedAt: new Date().toISOString(),
   }
@@ -587,10 +606,30 @@ export async function rssFetch(url: string): Promise<{ feedTitle?: string; items
     timeout: TIMEOUT_MS,
     headers: { "User-Agent": "Mozilla/5.0 (Techpivo RSS Reader)" },
   })
-  const feed = await parser.parseURL(url)
+
+  let feed: { title?: string; items: any[] } | null = null
+  try {
+    feed = await parser.parseURL(url)
+  } catch {
+    // parseURL uses http.get which does NOT follow redirects — some feeds
+    // (e.g. Google Trends RSS) redirect or serve a consent page. Fall back to
+    // fetch (follows redirects) + parseString.
+    const res = await fetch(url, {
+      headers: {
+        "User-Agent": "Mozilla/5.0 (Techpivo RSS Reader)",
+        "Accept": "application/rss+xml, application/xml, text/xml, */*",
+      },
+      redirect: "follow",
+      signal: AbortSignal.timeout(TIMEOUT_MS),
+    })
+    if (!res.ok) throw new Error(`RSS fetch failed (${res.status})`)
+    const text = await res.text()
+    feed = await parser.parseString(text)
+  }
+
   return {
-    feedTitle: feed.title,
-    items: (feed.items || []).slice(0, 25).map((item) => ({
+    feedTitle: feed?.title,
+    items: (feed?.items || []).slice(0, 25).map((item) => ({
       title: item.title,
       link: item.link,
       pubDate: item.pubDate,

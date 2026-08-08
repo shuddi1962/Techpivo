@@ -58,6 +58,7 @@ interface TrendingItem {
 interface TrendingBundle {
   hackerNews: TrendingItem[];
   github: TrendingItem[];
+  trends: TrendingItem[];
   keywords: string[];
   updatedAt: string;
 }
@@ -512,6 +513,13 @@ export default function AgentReachPage() {
               <TrendingList
                 title="GitHub Trending"
                 items={trendingData?.github || []}
+                onWrite={writeArticle}
+                writing={writing}
+                onSearch={searchFromChip}
+              />
+              <TrendingList
+                title="Google & Bing Trends"
+                items={trendingData?.trends || []}
                 onWrite={writeArticle}
                 writing={writing}
                 onSearch={searchFromChip}

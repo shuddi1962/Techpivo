@@ -163,13 +163,14 @@ export async function POST(request: NextRequest) {
         try {
           const result = await trending()
           const filtered = await filterAlreadyCovered(supabase, result)
-          const [hn, gh] = await Promise.all([
+          const [hn, gh, tr] = await Promise.all([
             filterVerified(filtered.hackerNews),
             filterVerified(filtered.github),
+            filterVerified(filtered.trends),
           ])
           // Trending auto-refreshes every minute — throttle its usage log
           await logChannel("success", 15)
-          return NextResponse.json({ result: { ...filtered, hackerNews: hn, github: gh } })
+          return NextResponse.json({ result: { ...filtered, hackerNews: hn, github: gh, trends: tr } })
         } catch (e) {
           await logChannel("error")
           throw e
