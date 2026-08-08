@@ -49,7 +49,6 @@ const navGroups: NavGroup[] = [
       { href: "/admin/posts", label: "Posts", icon: FileText },
       { href: "/admin/categories", label: "Categories", icon: FolderTree },
       { href: "/admin/media", label: "Media Library", icon: Image },
-      { href: "/admin/editorial-calendar", label: "Editorial Calendar", icon: Calendar },
       { href: "/admin/content-health", label: "Content Health", icon: HeartPulse },
     ],
   },
