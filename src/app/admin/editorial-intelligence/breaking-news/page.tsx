@@ -1,10 +1,9 @@
 "use client"
 
-import { useState, useEffect } from "react"
-import Link from "next/link"
+import { useState, useEffect, useCallback } from "react"
 import {
-  Newspaper, ArrowLeft, RefreshCw, Clock, Globe,
-  AlertTriangle, ChevronRight, Tag
+  Newspaper, RefreshCw, Clock, Globe, ExternalLink,
+  AlertTriangle, ChevronRight, Tag, Radio
 } from "lucide-react"
 
 interface BreakingStory {
@@ -16,16 +15,34 @@ interface BreakingStory {
   url?: string
 }
 
+const REFRESH_MS = 60_000
+
 export default function BreakingNewsPage() {
   const [stories, setStories] = useState<BreakingStory[]>([])
   const [loading, setLoading] = useState(true)
+  const [refreshing, setRefreshing] = useState(false)
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null)
+
+  const loadStories = useCallback(async (silent = false) => {
+    if (silent) setRefreshing(true)
+    try {
+      const res = await fetch("/admin/editorial-intelligence/api?section=breaking", { cache: "no-store" })
+      const data = await res.json()
+      setStories(data.breaking || [])
+      setLastUpdated(new Date())
+    } catch {
+      // keep previous stories on network failure
+    } finally {
+      setLoading(false)
+      setRefreshing(false)
+    }
+  }, [])
 
   useEffect(() => {
-    fetch("/admin/editorial-intelligence/api?section=breaking")
-      .then(r => r.json())
-      .then(d => { setStories(d.breaking || []); setLoading(false) })
-      .catch(() => setLoading(false))
-  }, [])
+    loadStories()
+    const interval = setInterval(() => loadStories(true), REFRESH_MS)
+    return () => clearInterval(interval)
+  }, [loadStories])
 
   if (loading) {
     return (
@@ -64,22 +81,73 @@ export default function BreakingNewsPage() {
   const mediumStories = stories.filter(s => s.urgency === "medium")
   const lowStories = stories.filter(s => s.urgency === "low")
 
+  const renderStory = (story: BreakingStory) => (
+    <div key={story.title + story.source} className="p-5 rounded-xl border bg-card flex items-start gap-4">
+      {urgencyBadge(story.urgency)}
+      <div className="flex-1 min-w-0">
+        {story.url ? (
+          <a
+            href={story.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="font-semibold text-base mb-1 block hover:text-primary transition-colors group"
+          >
+            <span className="flex items-start gap-1">
+              {story.title}
+              <ExternalLink className="h-3.5 w-3.5 shrink-0 mt-1 opacity-50 group-hover:opacity-100" />
+            </span>
+          </a>
+        ) : (
+          <h3 className="font-semibold text-base mb-1">{story.title}</h3>
+        )}
+        <div className="flex items-center gap-3 text-sm text-muted-foreground">
+          <span className="flex items-center gap-1">
+            <Globe className="h-3.5 w-3.5" />
+            {story.source}
+          </span>
+          <span className="flex items-center gap-1">
+            <Clock className="h-3.5 w-3.5" />
+            {story.time}
+          </span>
+          <span className="px-2 py-0.5 rounded bg-muted text-xs flex items-center gap-1">
+            <Tag className="h-3 w-3" />
+            {story.category}
+          </span>
+        </div>
+      </div>
+    </div>
+  )
+
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-4">
         <div>
-          <Link href="/admin/editorial-intelligence" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground mb-2">
-            <ArrowLeft className="h-3 w-3" />
-            Back to Editorial Intelligence
-          </Link>
           <h1 className="text-2xl font-bold flex items-center gap-2">
             <Newspaper className="h-6 w-6 text-red-500" />
             Breaking News
+            <span className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-red-500/10 text-red-500 text-xs font-bold">
+              <span className="h-2 w-2 rounded-full bg-red-500 animate-pulse" />
+              LIVE
+            </span>
           </h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            Real-time news feeds from official sources
+          <p className="text-sm text-muted-foreground mt-1 flex items-center gap-1.5">
+            <Radio className="h-3.5 w-3.5" />
+            Live feeds from The Verge, TechCrunch, Ars Technica, The Hacker News, BleepingComputer & more — auto-refreshes every 60s
+            {lastUpdated && (
+              <span className="text-muted-foreground/70">
+                · Updated {lastUpdated.toLocaleTimeString()}
+              </span>
+            )}
           </p>
         </div>
+        <button
+          onClick={() => loadStories(true)}
+          disabled={refreshing}
+          className="inline-flex items-center gap-2 px-3 py-2 rounded-lg border bg-card text-sm font-medium hover:bg-muted disabled:opacity-50"
+        >
+          <RefreshCw className={`h-4 w-4 ${refreshing ? "animate-spin" : ""}`} />
+          Refresh
+        </button>
       </div>
 
       <div className="grid grid-cols-3 gap-3">
@@ -112,28 +180,7 @@ export default function BreakingNewsPage() {
             <AlertTriangle className="h-4 w-4" />
             High Priority
           </h2>
-          {highStories.map((story, i) => (
-            <div key={i} className="p-5 rounded-xl border bg-card flex items-start gap-4">
-              {urgencyBadge(story.urgency)}
-              <div className="flex-1 min-w-0">
-                <h3 className="font-semibold text-base mb-1">{story.title}</h3>
-                <div className="flex items-center gap-3 text-sm text-muted-foreground">
-                  <span className="flex items-center gap-1">
-                    <Globe className="h-3.5 w-3.5" />
-                    {story.source}
-                  </span>
-                  <span className="flex items-center gap-1">
-                    <Clock className="h-3.5 w-3.5" />
-                    {story.time}
-                  </span>
-                  <span className="px-2 py-0.5 rounded bg-muted text-xs flex items-center gap-1">
-                    <Tag className="h-3 w-3" />
-                    {story.category}
-                  </span>
-                </div>
-              </div>
-            </div>
-          ))}
+          {highStories.map(renderStory)}
         </div>
       )}
 
@@ -143,28 +190,7 @@ export default function BreakingNewsPage() {
             <ChevronRight className="h-4 w-4" />
             Medium Priority
           </h2>
-          {mediumStories.map((story, i) => (
-            <div key={i} className="p-4 rounded-xl border bg-card flex items-start gap-4">
-              {urgencyBadge(story.urgency)}
-              <div className="flex-1 min-w-0">
-                <h3 className="font-semibold text-sm mb-1">{story.title}</h3>
-                <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                  <span className="flex items-center gap-1">
-                    <Globe className="h-3 w-3" />
-                    {story.source}
-                  </span>
-                  <span className="flex items-center gap-1">
-                    <Clock className="h-3 w-3" />
-                    {story.time}
-                  </span>
-                  <span className="px-2 py-0.5 rounded bg-muted text-[10px] flex items-center gap-1">
-                    <Tag className="h-2.5 w-2.5" />
-                    {story.category}
-                  </span>
-                </div>
-              </div>
-            </div>
-          ))}
+          {mediumStories.map(renderStory)}
         </div>
       )}
 
@@ -174,28 +200,7 @@ export default function BreakingNewsPage() {
             <ChevronRight className="h-4 w-4" />
             Lower Priority
           </h2>
-          {lowStories.map((story, i) => (
-            <div key={i} className="p-4 rounded-xl border bg-card flex items-start gap-4">
-              {urgencyBadge(story.urgency)}
-              <div className="flex-1 min-w-0">
-                <h3 className="font-semibold text-sm mb-1">{story.title}</h3>
-                <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                  <span className="flex items-center gap-1">
-                    <Globe className="h-3 w-3" />
-                    {story.source}
-                  </span>
-                  <span className="flex items-center gap-1">
-                    <Clock className="h-3 w-3" />
-                    {story.time}
-                  </span>
-                  <span className="px-2 py-0.5 rounded bg-muted text-[10px] flex items-center gap-1">
-                    <Tag className="h-2.5 w-2.5" />
-                    {story.category}
-                  </span>
-                </div>
-              </div>
-            </div>
-          ))}
+          {lowStories.map(renderStory)}
         </div>
       )}
 

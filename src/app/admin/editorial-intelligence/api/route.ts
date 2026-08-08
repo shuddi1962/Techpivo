@@ -13,6 +13,8 @@ import {
   generateDailyBriefing,
 } from "@/lib/editorial-intelligence"
 
+export const maxDuration = 60
+
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url)
   const section = searchParams.get("section") || "all"

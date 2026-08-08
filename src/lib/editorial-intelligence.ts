@@ -1,4 +1,6 @@
 import { createClient } from "@/lib/supabase/admin"
+import { rssFetch } from "@/lib/agent-reach"
+import { RSS_FEEDS } from "@/lib/rss-feeds"
 
 export interface OpportunityScore {
   topic: string
@@ -265,24 +267,68 @@ export async function generateCompanyStories(): Promise<CompanyStory[]> {
   }))
 }
 
+const BREAKING_NEWS_FEEDS = [
+  "The Verge", "TechCrunch", "Ars Technica", "BleepingComputer",
+  "The Hacker News", "VentureBeat AI", "TechCrunch AI",
+  "9to5Mac", "9to5Google", "Android Authority",
+  "GitHub Blog", "Hacker News Best", "Cloudflare Blog", "The Register", "PCWorld",
+]
+
+function normalizeForDedup(s: string): string {
+  return s.toLowerCase().replace(/[^a-z0-9\s-]/g, " ").replace(/\s+/g, " ").trim()
+}
+
 export async function generateBreakingNews() {
   const supabase = createClient()
+  const feeds = RSS_FEEDS.filter(f => BREAKING_NEWS_FEEDS.includes(f.name))
+
+  const results = await Promise.allSettled(
+    feeds.map(async (f) => {
+      try {
+        const feed = await rssFetch(f.url)
+        return feed.items.slice(0, 4).map((item) => ({
+          title: item.title || "Untitled",
+          url: item.link || "",
+          source: f.name,
+          category: f.category,
+          iso: item.isoDate ? new Date(item.isoDate).getTime() : Date.now(),
+        }))
+      } catch {
+        return []
+      }
+    })
+  )
+
+  const items = results.flatMap(r => (r.status === "fulfilled" ? r.value : []))
+
+  const seen = new Set<string>()
+  const unique: typeof items = []
+  for (const item of items.sort((a, b) => b.iso - a.iso)) {
+    const key = normalizeForDedup(item.title)
+    if (key && !seen.has(key)) {
+      seen.add(key)
+      unique.push(item)
+    }
+  }
+
   const { data: posts } = await supabase
     .from("posts")
-    .select("id, title, category_id, created_at, status")
-    .eq("status", "published")
-    .order("created_at", { ascending: false })
-    .limit(10)
+    .select("title")
+    .limit(2000)
+  const coveredTitles = new Set((posts || []).map(p => normalizeForDedup(p.title || "")))
+  const fresh = unique.filter(item => !coveredTitles.has(normalizeForDedup(item.title)))
 
-  return (posts || []).map(p => {
-    const hoursAgo = Math.floor((Date.now() - new Date(p.created_at || 0).getTime()) / 3600000)
+  return fresh.slice(0, 30).map(item => {
+    const hoursAgo = Math.max(0, Math.floor((Date.now() - item.iso) / 3600000))
+    const minutesAgo = Math.max(0, Math.floor((Date.now() - item.iso) / 60000))
+    const time = minutesAgo < 60 ? `${Math.max(1, minutesAgo)} min ago` : hoursAgo < 1 ? "1 hour ago" : `${hoursAgo} hours ago`
     return {
-      title: p.title || "Untitled",
-      category: p.category_id || "Technology",
-      source: "TechPivo",
-      time: hoursAgo <= 1 ? "1 hour ago" : `${hoursAgo} hours ago`,
-      urgency: hoursAgo < 6 ? "high" as const : hoursAgo < 24 ? "medium" as const : "low" as const,
-      url: `/posts/${p.id}`,
+      title: item.title,
+      category: item.category,
+      source: item.source,
+      time,
+      urgency: minutesAgo < 180 ? "high" as const : minutesAgo < 1440 ? "medium" as const : "low" as const,
+      url: item.url,
     }
   })
 }
