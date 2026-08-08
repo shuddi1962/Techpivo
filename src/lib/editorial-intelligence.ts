@@ -1,6 +1,8 @@
 import { createClient } from "@/lib/supabase/admin"
 import { rssFetch } from "@/lib/agent-reach"
 import { RSS_FEEDS } from "@/lib/rss-feeds"
+import { filterVerified } from "@/lib/link-verify"
+import { logAIUsageThrottled } from "@/lib/ai-usage"
 
 export interface OpportunityScore {
   topic: string
@@ -279,6 +281,7 @@ function normalizeForDedup(s: string): string {
 }
 
 export async function generateBreakingNews() {
+  const startTime = Date.now()
   const supabase = createClient()
   const feeds = RSS_FEEDS.filter(f => BREAKING_NEWS_FEEDS.includes(f.name))
 
@@ -318,7 +321,9 @@ export async function generateBreakingNews() {
   const coveredTitles = new Set((posts || []).map(p => normalizeForDedup(p.title || "")))
   const fresh = unique.filter(item => !coveredTitles.has(normalizeForDedup(item.title)))
 
-  return fresh.slice(0, 30).map(item => {
+  // Verify links before showing — drop anything that 404s, times out, or is dead
+  const verified = await filterVerified(fresh.slice(0, 30))
+  const stories = verified.slice(0, 30).map(item => {
     const hoursAgo = Math.max(0, Math.floor((Date.now() - item.iso) / 3600000))
     const minutesAgo = Math.max(0, Math.floor((Date.now() - item.iso) / 60000))
     const time = minutesAgo < 60 ? `${Math.max(1, minutesAgo)} min ago` : hoursAgo < 1 ? "1 hour ago" : `${hoursAgo} hours ago`
@@ -331,6 +336,17 @@ export async function generateBreakingNews() {
       url: item.url,
     }
   })
+
+  // Track usage (throttled — the page polls every 60s)
+  await logAIUsageThrottled(
+    "breaking-news",
+    15,
+    stories[0]?.title || "Breaking news feed poll",
+    "success",
+    Date.now() - startTime,
+  )
+
+  return stories
 }
 
 export async function generateContentGaps(): Promise<ContentGap[]> {

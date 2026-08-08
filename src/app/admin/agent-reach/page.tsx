@@ -521,7 +521,7 @@ export default function AgentReachPage() {
               <div className="border-t px-4 py-3">
                 <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground mb-2">
                   <Hash className="h-3.5 w-3.5" />
-                  Trending keywords — click to search
+                  Trending searches on Google &amp; Bing — click to explore
                 </div>
                 <div className="flex flex-wrap gap-2">
                   {trendingData.keywords.map((kw) => (

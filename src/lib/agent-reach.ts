@@ -407,10 +407,64 @@ function extractSuggestions(data: unknown, query: string): string[] {
   return out.filter((s) => s.toLowerCase() !== query.toLowerCase()).slice(0, 10)
 }
 
+// Factual trending searches from Google Trends RSS (official feed, geo-scoped)
+async function googleTrendingSearches(geos: string[] = ["US", "NG", "GB"]): Promise<TrendingItem[]> {
+  const feeds = await Promise.allSettled(
+    geos.map((geo) => rssFetch(`https://trends.google.com/trending/rss?geo=${geo}`))
+  )
+
+  const seen = new Set<string>()
+  const out: TrendingItem[] = []
+  for (const r of feeds) {
+    if (r.status !== "fulfilled") continue
+    for (const item of r.value.items) {
+      const title = (item.title || "").trim()
+      const key = title.toLowerCase()
+      if (!title || seen.has(key)) continue
+      seen.add(key)
+      out.push({
+        title,
+        url: item.link || `https://www.google.com/search?q=${encodeURIComponent(title)}`,
+        source: "Google Trends",
+      })
+      if (out.length >= 20) break
+    }
+    if (out.length >= 20) break
+  }
+  return out
+}
+
+// Factual trending searches from Bing's trending page, read through Jina
+async function bingTrendingSearches(): Promise<TrendingItem[]> {
+  try {
+    const markdown = await jinaReaderFetch("https://www.bing.com/trending?form=MBSC")
+    const linkRe = /\[([^\]]{4,60})\]\(https:\/\/www\.bing\.com\/search\?q=([^)]+)\)/g
+    const seen = new Set<string>()
+    const out: TrendingItem[] = []
+    for (const m of markdown.matchAll(linkRe)) {
+      const title = m[1].trim()
+      const key = title.toLowerCase()
+      if (!title || seen.has(key)) continue
+      seen.add(key)
+      out.push({
+        title,
+        url: `https://www.bing.com/search?q=${m[2].replace(/&amp;/g, "&")}`,
+        source: "Bing Trends",
+      })
+      if (out.length >= 15) break
+    }
+    return out
+  } catch {
+    return []
+  }
+}
+
 export async function trending(): Promise<TrendingBundle> {
-  const [hn, gh] = await Promise.allSettled([
+  const [hn, gh, gt, bt] = await Promise.allSettled([
     rssFetch("https://hnrss.org/frontpage"),
     githubTrending(),
+    googleTrendingSearches(),
+    bingTrendingSearches(),
   ])
 
   const hackerNews: TrendingItem[] =
@@ -424,7 +478,28 @@ export async function trending(): Promise<TrendingBundle> {
 
   const github: TrendingItem[] = gh.status === "fulfilled" ? gh.value : []
 
-  const keywords = extractKeywords([...hackerNews, ...github])
+  const searchTrends = [
+    ...(gt.status === "fulfilled" ? gt.value : []),
+    ...(bt.status === "fulfilled" ? bt.value : []),
+  ]
+
+  // Real trending searches from Google & Bing (deduped, case-insensitive).
+  // Word-count extraction from HN/GitHub titles is only a last-resort fallback.
+  const keywords =
+    searchTrends.length > 0
+      ? (() => {
+          const seen = new Set<string>()
+          const out: string[] = []
+          for (const t of searchTrends) {
+            const key = t.title.toLowerCase()
+            if (seen.has(key)) continue
+            seen.add(key)
+            out.push(t.title)
+            if (out.length >= 15) break
+          }
+          return out
+        })()
+      : extractKeywords([...hackerNews, ...github])
 
   return {
     hackerNews,

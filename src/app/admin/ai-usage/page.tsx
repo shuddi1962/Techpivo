@@ -3,13 +3,36 @@
 import { useState, useEffect, useCallback } from "react"
 import { createClient } from "@/lib/supabase/client"
 import {
-  Cpu, DollarSign, Activity, CheckCircle, XCircle, Clock,
+  Cpu, DollarSign, Activity, CheckCircle, Clock,
   RefreshCw, BarChart3, Zap, TrendingUp
 } from "lucide-react"
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
-  ResponsiveContainer, LineChart, Line
+  ResponsiveContainer
 } from "recharts"
+
+const GEMINI_COST_PER_REQ = 0.025
+const FEATURE_COST_PER_REQ = 0.005
+const GEMINI_DAILY_CAP = 100
+
+const FEATURE_LABELS: Record<string, string> = {
+  manual: "Manual Write",
+  rewrite: "Article Rewrite",
+  "write-keyword-article": "Keyword Article",
+  "breaking-news": "Breaking News",
+  web: "Web Fetch",
+  search: "Web Search",
+  youtube: "YouTube",
+  github: "GitHub",
+  rss: "RSS",
+  linkedin: "LinkedIn",
+  suggest: "Suggestions",
+  trending: "Trending",
+}
+
+const featureLabel = (key: string) =>
+  FEATURE_LABELS[key] ||
+  key.replace(/_/g, " ").replace(/\b\w/g, (l) => l.toUpperCase())
 
 export default function AIUsageCenterPage() {
   const supabase = createClient()
@@ -19,9 +42,9 @@ export default function AIUsageCenterPage() {
     todayRequests: 0,
     monthlyCost: 0,
     avgResponseTime: 0,
-    successRate: 100,
+    successRate: 0,
     quotaUsed: 0,
-    quotaCap: 100,
+    quotaCap: GEMINI_DAILY_CAP,
   })
   const [usageByFeature, setUsageByFeature] = useState<{ name: string; requests: number; cost: number }[]>([])
   const [dailyUsage, setDailyUsage] = useState<{ date: string; requests: number; cost: number }[]>([])
@@ -31,50 +54,80 @@ export default function AIUsageCenterPage() {
     const todayStart = new Date()
     todayStart.setUTCHours(0, 0, 0, 0)
 
-    const [allTimeRes, todayRes] = await Promise.all([
+    const [geminiRes, featureRes] = await Promise.all([
       supabase.from("gemini_usage_log").select("*").gte("created_at", thirtyDaysAgo),
-      supabase.from("gemini_usage_log").select("*", { count: "exact", head: true }).gte("created_at", todayStart.toISOString()),
+      supabase.from("ai_feature_usage").select("*").gte("created_at", thirtyDaysAgo),
     ])
 
-    const allLogs = allTimeRes.data || []
-    const todayCount = todayRes.count || 0
+    const geminiLogs = (geminiRes.data || []) as any[]
+    const featureLogs = (featureRes.data || []) as any[]
+    const allLogs = [...geminiLogs, ...featureLogs]
+
+    const geminiToday = geminiLogs.filter((l) => new Date(l.created_at) >= todayStart).length
+    const featureToday = featureLogs.filter((l) => new Date(l.created_at) >= todayStart).length
+    const todayCount = geminiToday + featureToday
+
+    const monthlyCost =
+      geminiLogs.length * GEMINI_COST_PER_REQ + featureLogs.length * FEATURE_COST_PER_REQ
+
+    const durations = featureLogs
+      .filter((l) => typeof l.duration_ms === "number" && l.duration_ms > 0)
+      .map((l) => l.duration_ms as number)
+    const avgResponseTime = durations.length
+      ? Math.round(durations.reduce((a, b) => a + b, 0) / durations.length)
+      : 0
+
+    const featureSuccess = featureLogs.filter((l) => l.status !== "error").length
+    const successRate = allLogs.length
+      ? Math.round(((featureSuccess + geminiLogs.length) / allLogs.length) * 100)
+      : 0
 
     setStats({
       totalRequests: allLogs.length,
       todayRequests: todayCount,
-      monthlyCost: Math.round(allLogs.length * 0.025 * 100) / 100,
-      avgResponseTime: 0,
-      successRate: 0,
-      quotaUsed: todayCount,
-      quotaCap: 100,
+      monthlyCost: Math.round(monthlyCost * 100) / 100,
+      avgResponseTime,
+      successRate,
+      quotaUsed: geminiToday,
+      quotaCap: GEMINI_DAILY_CAP,
     })
 
-    // Group by feature
-    const featureMap: Record<string, number> = {}
-    allLogs.forEach(log => {
-      const feature = (log as any).used_for || "unknown"
-      featureMap[feature] = (featureMap[feature] || 0) + 1
+    // Group by feature (both sources merged)
+    const featureMap: Record<string, { requests: number; cost: number }> = {}
+    geminiLogs.forEach((log) => {
+      const feature = featureLabel(log.used_for || "unknown")
+      featureMap[feature] = featureMap[feature] || { requests: 0, cost: 0 }
+      featureMap[feature].requests++
+      featureMap[feature].cost += GEMINI_COST_PER_REQ
+    })
+    featureLogs.forEach((log) => {
+      const feature = featureLabel(log.feature || "unknown")
+      featureMap[feature] = featureMap[feature] || { requests: 0, cost: 0 }
+      featureMap[feature].requests++
+      featureMap[feature].cost += FEATURE_COST_PER_REQ
     })
     setUsageByFeature(
-      Object.entries(featureMap).map(([name, requests]) => ({
-        name: name.replace("_", " ").replace(/\b\w/g, l => l.toUpperCase()),
-        requests,
-        cost: Math.round(requests * 0.025 * 100) / 100,
-      }))
+      Object.entries(featureMap)
+        .map(([name, data]) => ({
+          name,
+          requests: data.requests,
+          cost: Math.round(data.cost * 100) / 100,
+        }))
+        .sort((a, b) => b.requests - a.requests)
     )
 
-    // Daily usage
+    // Daily usage (merged)
     const dailyMap: Record<string, { requests: number; cost: number }> = {}
     for (let i = 29; i >= 0; i--) {
       const d = new Date(Date.now() - i * 24 * 60 * 60 * 1000)
       const key = d.toLocaleDateString("en-US", { month: "short", day: "numeric" })
       dailyMap[key] = { requests: 0, cost: 0 }
     }
-    allLogs.forEach(log => {
-      const key = new Date((log as any).created_at).toLocaleDateString("en-US", { month: "short", day: "numeric" })
+    allLogs.forEach((log) => {
+      const key = new Date(log.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric" })
       if (dailyMap[key]) {
         dailyMap[key].requests++
-        dailyMap[key].cost = Math.round(dailyMap[key].requests * 0.025 * 100) / 100
+        dailyMap[key].cost = Math.round(dailyMap[key].requests * (log.status ? FEATURE_COST_PER_REQ : GEMINI_COST_PER_REQ) * 100) / 100
       }
     })
     setDailyUsage(Object.entries(dailyMap).map(([date, data]) => ({ date, ...data })))
@@ -94,7 +147,9 @@ export default function AIUsageCenterPage() {
             <Cpu className="h-6 w-6 text-purple-500" />
             AI Usage Center
           </h1>
-          <p className="text-sm text-muted-foreground mt-1">Track AI usage, costs, and performance</p>
+          <p className="text-sm text-muted-foreground mt-1">
+            Track AI usage, costs, and performance across Gemini, Breaking News, Agent Reach &amp; more
+          </p>
         </div>
         <button onClick={fetchData} className="flex items-center gap-2 px-4 py-2 text-sm font-medium border rounded-lg hover:bg-muted transition-colors">
           <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
@@ -105,7 +160,7 @@ export default function AIUsageCenterPage() {
       {/* Quota Bar */}
       <div className="bg-white dark:bg-[#111827] border rounded-xl p-6">
         <div className="flex items-center justify-between mb-3">
-          <h3 className="font-semibold">Daily Quota</h3>
+          <h3 className="font-semibold">Gemini Daily Quota</h3>
           <span className="text-sm text-muted-foreground">{stats.quotaUsed} / {stats.quotaCap} requests today</span>
         </div>
         <div className="h-4 bg-muted rounded-full overflow-hidden">

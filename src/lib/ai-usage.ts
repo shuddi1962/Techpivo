@@ -1,5 +1,53 @@
 import { createClient } from "@/lib/supabase/admin"
 
+// Fire-and-forget usage logging for non-Gemini AI features
+// (breaking news polling, agent-reach channels, editorial intelligence, etc.)
+// Gemini API calls are logged separately to gemini_usage_log by ai-rewriter.ts.
+export async function logAIUsage(
+  feature: string,
+  headline?: string,
+  status: "success" | "error" = "success",
+  durationMs?: number,
+): Promise<void> {
+  try {
+    const supabase = createClient()
+    await supabase.from("ai_feature_usage").insert({
+      feature,
+      headline: headline ? String(headline).slice(0, 150) : null,
+      status,
+      duration_ms: durationMs ? Math.round(durationMs) : null,
+      created_at: new Date().toISOString(),
+    })
+  } catch (e) {
+    console.warn(`[Techpivo AI Usage] Could not log ${feature}:`, e)
+  }
+}
+
+// Same as logAIUsage but only writes once per window — used by auto-polling
+// features (breaking news refreshes every 60s, trending every 60s) so they
+// don't flood the log. Always logs if the feature has no recent row.
+export async function logAIUsageThrottled(
+  feature: string,
+  windowMinutes: number,
+  headline?: string,
+  status: "success" | "error" = "success",
+  durationMs?: number,
+): Promise<void> {
+  try {
+    const supabase = createClient()
+    const since = new Date(Date.now() - windowMinutes * 60 * 1000).toISOString()
+    const { count } = await supabase
+      .from("ai_feature_usage")
+      .select("*", { count: "exact", head: true })
+      .eq("feature", feature)
+      .gte("created_at", since)
+    if (count && count > 0) return
+    await logAIUsage(feature, headline, status, durationMs)
+  } catch (e) {
+    console.warn(`[Techpivo AI Usage] Could not check/log ${feature}:`, e)
+  }
+}
+
 export interface AIUsageStats {
   totalRequests: number
   totalTokensInput: number
