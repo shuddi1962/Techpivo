@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import Link from "next/link";
 import {
   Globe,
@@ -20,6 +20,7 @@ import {
   Flame,
   Hash,
   TrendingUp,
+  Activity,
 } from "lucide-react";
 
 type TabKey = "overview" | "web" | "search" | "youtube" | "github" | "rss" | "linkedin";
@@ -34,13 +35,12 @@ const TABS: { key: TabKey; label: string; icon: typeof Globe }[] = [
   { key: "linkedin", label: "LinkedIn", icon: Briefcase },
 ];
 
-interface HealthState {
-  web: "loading" | "ok" | "down";
-  search: "loading" | "ok" | "down";
-  youtube: "loading" | "ok" | "down";
-  github: "loading" | "ok" | "down";
-  rss: "loading" | "ok" | "down";
-  linkedin: "loading" | "ok" | "down";
+type HealthKey = "web" | "search" | "youtube" | "github" | "rss" | "linkedin";
+
+type HealthState = Record<HealthKey, "loading" | "ok" | "down">;
+
+interface HealthDetails {
+  [key: string]: string;
 }
 
 interface PublishInfo {
@@ -62,6 +62,8 @@ interface TrendingBundle {
   updatedAt: string;
 }
 
+const HEALTH_KEYS: HealthKey[] = ["web", "search", "youtube", "github", "rss", "linkedin"];
+
 const EMPTY_HEALTH: HealthState = {
   web: "loading",
   search: "loading",
@@ -71,9 +73,17 @@ const EMPTY_HEALTH: HealthState = {
   linkedin: "loading",
 };
 
+const ENGINE_NAMES: Record<string, string> = {
+  jina: "Jina AI",
+  bing: "Bing",
+  duckduckgo: "DuckDuckGo",
+};
+
 export default function AgentReachPage() {
   const [activeTab, setActiveTab] = useState<TabKey>("overview");
   const [health, setHealth] = useState<HealthState>(EMPTY_HEALTH);
+  const [healthDetails, setHealthDetails] = useState<HealthDetails>({});
+  const [healthCheckedAt, setHealthCheckedAt] = useState<string>("");
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const [searchMeta, setSearchMeta] = useState<{ engine: string; query: string } | null>(null);
@@ -82,6 +92,7 @@ export default function AgentReachPage() {
   const [webQuery, setWebQuery] = useState("");
   const [webContent, setWebContent] = useState<string>("");
   const [webSourceUrl, setWebSourceUrl] = useState<string>("");
+  const [webTitle, setWebTitle] = useState<string>("");
   const [ytQuery, setYtQuery] = useState("");
   const [ytResults, setYtResults] = useState<any[]>([]);
   const [ghQuery, setGhQuery] = useState("");
@@ -96,9 +107,16 @@ export default function AgentReachPage() {
   const [publishInfo, setPublishInfo] = useState<PublishInfo | null>(null);
   const [trendingData, setTrendingData] = useState<TrendingBundle | null>(null);
   const [trendingBusy, setTrendingBusy] = useState(false);
+  const [now, setNow] = useState<number>(Date.now());
+  const mountedRef = useRef(false);
+
+  useEffect(() => {
+    const timer = setInterval(() => setNow(Date.now()), 30000);
+    return () => clearInterval(timer);
+  }, []);
 
   const runChannel = useCallback(
-    async (channel: string, body: any): Promise<any> => {
+    async (channel: string, body: any): Promise<any | null> => {
       setBusy(true);
       setError("");
       try {
@@ -110,6 +128,9 @@ export default function AgentReachPage() {
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || "Request failed");
         return data;
+      } catch (e: any) {
+        setError(e.message || "Request failed");
+        return null;
       } finally {
         setBusy(false);
       }
@@ -137,6 +158,8 @@ export default function AgentReachPage() {
 
   useEffect(() => {
     loadTrending();
+    const timer = setInterval(loadTrending, 5 * 60 * 1000);
+    return () => clearInterval(timer);
   }, [loadTrending]);
 
   const checkHealth = useCallback(async () => {
@@ -145,22 +168,37 @@ export default function AgentReachPage() {
       const res = await fetch("/api/admin/agent-reach");
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Health check failed");
+      const h = data.health || data;
       const next = { ...EMPTY_HEALTH };
-      for (const c of ["web", "search", "youtube", "github", "rss", "linkedin"] as const) {
-        next[c] = data[c] ? "ok" : "down";
+      const details: HealthDetails = {};
+      for (const c of HEALTH_KEYS) {
+        next[c] = h[c]?.status === "ok" ? "ok" : "down";
+        if (h[c]?.detail && h[c].detail !== "Connected") details[c] = h[c].detail;
       }
       setHealth(next);
+      setHealthDetails(details);
+      setHealthCheckedAt(new Date().toISOString());
     } catch (e: any) {
       setError(e.message || "Health check failed");
     }
   }, []);
+
+  useEffect(() => {
+    if (mountedRef.current) return;
+    mountedRef.current = true;
+    checkHealth();
+    const timer = setInterval(checkHealth, 60 * 1000);
+    return () => clearInterval(timer);
+  }, [checkHealth]);
 
   const runSearch = useCallback(
     async (q?: string) => {
       const query = (q ?? searchQuery).trim();
       if (!query) return;
       setSuggestions([]);
+      setSearchResults([]);
       const data = await runChannel("search", { q: query });
+      if (!data) return;
       setSearchResults(data.result.results || []);
       setSearchMeta({ engine: data.result.engine || "jina", query });
     },
@@ -192,18 +230,29 @@ export default function AgentReachPage() {
     return () => clearTimeout(timer);
   }, [searchQuery, activeTab]);
 
+  const extractTitleFromContent = useCallback((content: string): string => {
+    const m = content.match(/^Title:\s*(.+)$/m);
+    if (m && m[1].trim()) return m[1].trim().slice(0, 120);
+    const firstLine = content.split("\n").find((l) => l.trim().length > 10);
+    return (firstLine || "").trim().slice(0, 120);
+  }, []);
+
   const runWeb = useCallback(async () => {
     const url = webQuery.trim();
     if (!url) return;
+    setWebContent("");
     const data = await runChannel("web", { url });
+    if (!data) return;
     setWebSourceUrl(url);
     setWebContent((data.result.content || "").slice(0, 6000));
-  }, [webQuery, runChannel]);
+    setWebTitle(extractTitleFromContent(data.result.content || ""));
+  }, [webQuery, runChannel, extractTitleFromContent]);
 
   const runYoutube = useCallback(async () => {
     const q = ytQuery.trim();
     if (!q) return;
     const data = await runChannel("youtube", { q });
+    if (!data) return;
     setYtResults([data.result]);
   }, [ytQuery, runChannel]);
 
@@ -211,6 +260,7 @@ export default function AgentReachPage() {
     const q = ghQuery.trim();
     if (!q) return;
     const data = await runChannel("github", { q });
+    if (!data) return;
     setGhResults(data.result.items || []);
   }, [ghQuery, runChannel]);
 
@@ -218,6 +268,7 @@ export default function AgentReachPage() {
     const url = rssUrl.trim();
     if (!url) return;
     const data = await runChannel("rss", { url });
+    if (!data) return;
     setRssResults(data.result.items || []);
   }, [rssUrl, runChannel]);
 
@@ -225,6 +276,7 @@ export default function AgentReachPage() {
     const url = liUrl.trim();
     if (!url) return;
     const data = await runChannel("linkedin", { url });
+    if (!data) return;
     setLiProfile((data.result.content || "").slice(0, 4000));
   }, [liUrl, runChannel]);
 
@@ -242,7 +294,7 @@ export default function AgentReachPage() {
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || "Article generation failed");
         setPublishInfo({
-          headline: data.post?.title || data.title || topic,
+          headline: data.post?.title || data.headline || topic,
           qualityScore: data.qualityScore ?? 0,
           postId: data.post?.id,
         });
@@ -264,6 +316,21 @@ export default function AgentReachPage() {
     [runSearch]
   );
 
+  const healthSummary = useCallback(() => {
+    const ok = HEALTH_KEYS.filter((k) => health[k] === "ok").length;
+    const down = HEALTH_KEYS.filter((k) => health[k] === "down").length;
+    if (down === 0 && ok > 0) return `${ok}/${HEALTH_KEYS.length} channels live`;
+    if (down > 0) return `${down} channel${down > 1 ? "s" : ""} down`;
+    return "Checking…";
+  }, [health]);
+
+  const ago = (iso: string) => {
+    const seconds = Math.max(0, Math.round((now - new Date(iso).getTime()) / 1000));
+    if (seconds < 60) return `${seconds}s ago`;
+    if (seconds < 3600) return `${Math.round(seconds / 60)}m ago`;
+    return `${Math.round(seconds / 3600)}h ago`;
+  };
+
   return (
     <div className="p-6 space-y-6">
       <div className="flex items-start justify-between">
@@ -274,19 +341,39 @@ export default function AgentReachPage() {
             mock data. Writing is handled by Gemini like a human expert reporter.
           </p>
         </div>
-        <button
-          onClick={checkHealth}
-          className="inline-flex items-center gap-2 rounded-md border px-3 py-1.5 text-sm font-medium hover:bg-muted"
-        >
-          <RefreshCw className="h-4 w-4" />
-          Channel Health
-        </button>
+        <div className="flex items-center gap-2">
+          <span
+            className={`inline-flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-xs font-medium ${
+              healthSummary().includes("down")
+                ? "border-red-500/30 bg-red-500/10 text-red-600"
+                : healthSummary().includes("Checking")
+                ? "border-muted text-muted-foreground"
+                : "border-emerald-500/30 bg-emerald-500/10 text-emerald-600"
+            }`}
+          >
+            <Activity className="h-3.5 w-3.5" />
+            {healthSummary()}
+            {healthCheckedAt && <span className="opacity-70">· {ago(healthCheckedAt)}</span>}
+          </span>
+          <button
+            onClick={checkHealth}
+            className="inline-flex items-center gap-2 rounded-md border px-3 py-1.5 text-sm font-medium hover:bg-muted"
+          >
+            <RefreshCw className={`h-4 w-4 ${health.web === "loading" ? "animate-spin" : ""}`} />
+            Check Now
+          </button>
+        </div>
       </div>
 
       {error && (
-        <div className="flex items-center gap-2 rounded-md border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-600">
-          <AlertTriangle className="h-4 w-4 shrink-0" />
-          {error}
+        <div className="flex items-start gap-2 rounded-md border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-600">
+          <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
+          <div>
+            <p className="font-medium">{error}</p>
+            <p className="mt-0.5 text-xs text-red-500/80">
+              Try again — the research engine retries across multiple providers automatically.
+            </p>
+          </div>
         </div>
       )}
 
@@ -317,12 +404,12 @@ export default function AgentReachPage() {
         </div>
       )}
 
-      <div className="flex gap-1 border-b">
+      <div className="flex gap-1 border-b overflow-x-auto">
         {TABS.map((t) => (
           <button
             key={t.key}
             onClick={() => setActiveTab(t.key)}
-            className={`inline-flex items-center gap-1.5 border-b-2 px-3 py-2 text-sm font-medium ${
+            className={`inline-flex items-center gap-1.5 border-b-2 px-3 py-2 text-sm font-medium whitespace-nowrap ${
               activeTab === t.key
                 ? "border-primary text-primary"
                 : "border-transparent text-muted-foreground hover:text-foreground"
@@ -339,8 +426,8 @@ export default function AgentReachPage() {
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {(
               [
-                ["web", "Web Reader", "Jina Reader — fetch any URL as clean markdown", health.web],
-                ["search", "Web Search", "Live search (Jina Search or DuckDuckGo)", health.search],
+                ["web", "Web Reader", "Jina Reader + direct fetch fallback — any URL as clean text", health.web],
+                ["search", "Web Search", "Live search with auto-failover (Jina → Bing → DuckDuckGo)", health.search],
                 ["youtube", "YouTube", "Video metadata via oEmbed", health.youtube],
                 ["github", "GitHub", "Repositories, code and issues via REST API", health.github],
                 ["rss", "RSS Feeds", "Any feed URL parsed with rss-parser", health.rss],
@@ -365,6 +452,11 @@ export default function AgentReachPage() {
                   )}
                 </div>
                 <p className="mt-1 text-sm text-muted-foreground">{desc}</p>
+                {healthDetails[key] && (
+                  <p className="mt-1.5 text-xs text-red-500/80" title={healthDetails[key]}>
+                    {healthDetails[key].slice(0, 80)}
+                  </p>
+                )}
               </div>
             ))}
           </div>
@@ -375,10 +467,17 @@ export default function AgentReachPage() {
                 <Flame className="h-4 w-4 text-orange-500" />
                 <h2 className="font-semibold">Trending Right Now</h2>
                 {trendingData && (
-                  <span className="text-xs text-muted-foreground">
-                    Updated {new Date(trendingData.updatedAt).toLocaleTimeString()}
+                  <span className="inline-flex items-center gap-1 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-[11px] font-medium text-emerald-600">
+                    <span className="relative flex h-1.5 w-1.5">
+                      <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-500 opacity-75" />
+                      <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                    </span>
+                    LIVE
                   </span>
                 )}
+                <span className="text-xs text-muted-foreground">
+                  {trendingData ? `Updated ${ago(trendingData.updatedAt)}` : "Fetching live trends…"}
+                </span>
               </div>
               <button
                 onClick={loadTrending}
@@ -432,8 +531,9 @@ export default function AgentReachPage() {
           </div>
 
           <p className="text-sm text-muted-foreground">
-            Click &quot;Channel Health&quot; to test all channels. Then use any tab to research a topic,
-            and hit &quot;Write article with Gemini&quot; to publish a fully researched, SEO-ready article.
+            Channel health auto-checks every 60 seconds; trending auto-refreshes every 5 minutes.
+            Use any tab to research a topic, then hit &quot;Write article with Gemini&quot; to
+            publish a fully researched, SEO-ready article.
           </p>
         </div>
       )}
@@ -444,6 +544,9 @@ export default function AgentReachPage() {
             <input
               value={webQuery}
               onChange={(e) => setWebQuery(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") runWeb();
+              }}
               placeholder="https://example.com/article"
               className="flex-1 rounded-md border bg-background px-3 py-2 text-sm"
             />
@@ -469,22 +572,30 @@ export default function AgentReachPage() {
               </a>
             </p>
           )}
+          {busy && !webContent && (
+            <p className="inline-flex items-center gap-2 text-sm text-muted-foreground">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Reading page live…
+            </p>
+          )}
           {webContent ? (
             <>
               <pre className="max-h-96 overflow-auto rounded-lg border bg-muted/40 p-4 text-xs leading-relaxed whitespace-pre-wrap">
                 {webContent}
               </pre>
               <WriteBar
-                topic={webSourceUrl.replace(/^https?:\/\//, "").replace(/\/$/, "")}
-                onWrite={() => writeArticle(webSourceUrl)}
+                topic={webTitle || webSourceUrl.replace(/^https?:\/\//, "").replace(/\/$/, "")}
+                onWrite={() => writeArticle(webTitle || webSourceUrl)}
                 writing={writing}
               />
             </>
           ) : (
-            <p className="text-sm text-muted-foreground">
-              Enter a URL to read it as clean markdown. Works with most pages, news articles,
-              and documentation.
-            </p>
+            !busy && (
+              <p className="text-sm text-muted-foreground">
+                Enter a URL to read it live as clean markdown. Works with most pages, news
+                articles, and documentation — falls back to direct fetching automatically.
+              </p>
+            )
           )}
         </div>
       )}
@@ -532,10 +643,16 @@ export default function AgentReachPage() {
               Search
             </button>
           </div>
+          {busy && searchResults.length === 0 && (
+            <p className="inline-flex items-center gap-2 text-sm text-muted-foreground">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Searching live across providers…
+            </p>
+          )}
           {searchMeta && (
             <p className="text-xs text-muted-foreground">
               {searchResults.length} results from{" "}
-              {searchMeta.engine === "jina" ? "Jina AI" : "DuckDuckGo"} for &quot;{searchMeta.query}&quot;
+              {ENGINE_NAMES[searchMeta.engine] || searchMeta.engine} for &quot;{searchMeta.query}&quot;
             </p>
           )}
           <div className="space-y-3">
@@ -562,6 +679,11 @@ export default function AgentReachPage() {
                 </div>
               </div>
             ))}
+            {!busy && searchMeta && searchResults.length === 0 && (
+              <p className="text-sm text-muted-foreground">
+                No results returned. Try a different query.
+              </p>
+            )}
           </div>
         </div>
       )}
@@ -572,6 +694,9 @@ export default function AgentReachPage() {
             <input
               value={ytQuery}
               onChange={(e) => setYtQuery(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") runYoutube();
+              }}
               placeholder="YouTube video URL"
               className="flex-1 rounded-md border bg-background px-3 py-2 text-sm"
             />
@@ -587,8 +712,15 @@ export default function AgentReachPage() {
           <div className="space-y-3">
             {ytResults.map((r: any, i: number) => (
               <div key={i} className="rounded-lg border p-4">
+                {r.thumbnail_url && (
+                  <img
+                    src={r.thumbnail_url}
+                    alt={r.title || "YouTube thumbnail"}
+                    className="mb-3 max-h-56 w-full rounded-md object-cover"
+                  />
+                )}
                 <p className="font-medium">{r.title}</p>
-                <p className="mt-1 text-sm text-muted-foreground line-clamp-2">{r.author_name}</p>
+                <p className="mt-1 text-sm text-muted-foreground">{r.author_name}</p>
                 <div className="mt-3">
                   <WriteBar
                     topic={r.title || ytQuery}
@@ -608,6 +740,9 @@ export default function AgentReachPage() {
             <input
               value={ghQuery}
               onChange={(e) => setGhQuery(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") runGithub();
+              }}
               placeholder="Search GitHub repositories"
               className="flex-1 rounded-md border bg-background px-3 py-2 text-sm"
             />
@@ -657,6 +792,9 @@ export default function AgentReachPage() {
             <input
               value={rssUrl}
               onChange={(e) => setRssUrl(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") runRss();
+              }}
               placeholder="https://hnrss.org/frontpage"
               className="flex-1 rounded-md border bg-background px-3 py-2 text-sm"
             />
@@ -700,6 +838,9 @@ export default function AgentReachPage() {
             <input
               value={liUrl}
               onChange={(e) => setLiUrl(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") runLinkedin();
+              }}
               placeholder="https://www.linkedin.com/in/username"
               className="flex-1 rounded-md border bg-background px-3 py-2 text-sm"
             />

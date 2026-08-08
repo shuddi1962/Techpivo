@@ -5,6 +5,8 @@ const JINA_SEARCH = "https://s.jina.ai"
 const JINA_API_KEY = process.env.JINA_API_KEY || ""
 const GITHUB_TOKEN = process.env.GITHUB_TOKEN || ""
 const TIMEOUT_MS = 30000
+const BROWSER_UA =
+  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36"
 
 async function jinaReaderFetch(url: string): Promise<string> {
   const target = url.replace(/^https?:\/\//, "").replace(/^\/+/, "")
@@ -12,6 +14,8 @@ async function jinaReaderFetch(url: string): Promise<string> {
     "Accept": "text/markdown",
     "X-Return-Format": "markdown",
     "X-Timeout": "20",
+    "X-No-Cache": "true",
+    "User-Agent": "Mozilla/5.0 (Techpivo Agent Reach)",
   }
   if (JINA_API_KEY) headers["Authorization"] = `Bearer ${JINA_API_KEY}`
 
@@ -23,19 +27,22 @@ async function jinaReaderFetch(url: string): Promise<string> {
   return res.text()
 }
 
-async function jinaSearchFetch(query: string, topK = 10): Promise<string> {
-  const body = JSON.stringify({ q: query, top_k: topK })
+async function jinaSearchFetch(query: string): Promise<string> {
   const headers: Record<string, string> = {
-    "Content-Type": "application/json",
+    "Accept": "text/markdown",
+    "X-Return-Format": "markdown",
+    "X-No-Cache": "true",
+    "User-Agent": "Mozilla/5.0 (Techpivo Agent Reach)",
   }
   if (JINA_API_KEY) headers["Authorization"] = `Bearer ${JINA_API_KEY}`
 
-  const res = await fetch(JINA_SEARCH, {
-    method: "POST",
-    headers,
-    body,
-    signal: AbortSignal.timeout(TIMEOUT_MS),
-  })
+  const res = await fetch(
+    `${JINA_SEARCH}/?q=${encodeURIComponent(query)}&top_k=10`,
+    {
+      headers,
+      signal: AbortSignal.timeout(TIMEOUT_MS),
+    }
+  )
   if (!res.ok) throw new Error(`Jina search failed (${res.status})`)
   return res.text()
 }
@@ -48,7 +55,7 @@ export interface WebResult {
 }
 
 export interface SearchChannel {
-  engine: "duckduckgo" | "jina"
+  engine: "jina" | "bing" | "duckduckgo"
   results: WebResult[]
 }
 
@@ -91,6 +98,44 @@ export interface ChannelHealth {
   updatedAt: string
 }
 
+function htmlToText(html: string): string {
+  return html
+    .replace(/<script[\s\S]*?<\/script>/gi, " ")
+    .replace(/<style[\s\S]*?<\/style>/gi, " ")
+    .replace(/<noscript[\s\S]*?<\/noscript>/gi, " ")
+    .replace(/<svg[\s\S]*?<\/svg>/gi, " ")
+    .replace(/<!--[\s\S]*?-->/g, " ")
+    .replace(/<br\s*\/?>/gi, "\n")
+    .replace(/<\/(p|div|h[1-6]|li|section|article|tr)>/gi, "\n")
+    .replace(/<[^>]+>/g, " ")
+    .replace(/&nbsp;/g, " ")
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;|&apos;/g, "'")
+    .replace(/[ \t]+/g, " ")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim()
+}
+
+async function fetchPageDirect(url: string): Promise<string> {
+  const res = await fetch(url, {
+    headers: {
+      "User-Agent": BROWSER_UA,
+      "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+      "Accept-Language": "en-US,en;q=0.9",
+    },
+    redirect: "follow",
+    signal: AbortSignal.timeout(TIMEOUT_MS),
+  })
+  if (!res.ok) throw new Error(`Direct fetch failed (${res.status})`)
+  const text = await res.text()
+  const cleaned = htmlToText(text)
+  if (cleaned.length < 50) throw new Error("No readable content extracted from page")
+  return cleaned.slice(0, 60000)
+}
+
 function extractDuckDuckGoResults(html: string): WebResult[] {
   const results: WebResult[] = []
   const blockRe = /<a[^>]*class="result__a"[^>]*href="([^"]*)"[^>]*>(.*?)<\/a>/gi
@@ -108,6 +153,43 @@ function extractDuckDuckGoResults(html: string): WebResult[] {
   })
 
   return results
+}
+
+async function duckDuckGoSearch(query: string): Promise<WebResult[]> {
+  const res = await fetch(
+    `https://html.duckduckgo.com/html/?q=${encodeURIComponent(query)}`,
+    {
+      headers: { "User-Agent": BROWSER_UA },
+      signal: AbortSignal.timeout(TIMEOUT_MS),
+    }
+  )
+  if (!res.ok) throw new Error(`DuckDuckGo search failed (${res.status})`)
+  const html = await res.text()
+  return extractDuckDuckGoResults(html)
+}
+
+async function bingSearch(query: string): Promise<WebResult[]> {
+  const res = await fetch(
+    `https://www.bing.com/search?q=${encodeURIComponent(query)}&format=rss&count=10`,
+    {
+      headers: {
+        "User-Agent": BROWSER_UA,
+        "Accept": "application/rss+xml, application/xml, text/xml;q=0.9, */*;q=0.8",
+      },
+      signal: AbortSignal.timeout(TIMEOUT_MS),
+    }
+  )
+  if (!res.ok) throw new Error(`Bing search failed (${res.status})`)
+  const xml = await res.text()
+  const parser = new Parser()
+  const feed = await parser.parseString(xml)
+  return (feed.items || [])
+    .map((item) => ({
+      url: item.link || "",
+      title: item.title || "",
+      snippet: (item.contentSnippet || item.content || "").slice(0, 300),
+    }))
+    .filter((r) => r.url)
 }
 
 function extractJinaSearchResults(markdown: string): WebResult[] {
@@ -148,36 +230,61 @@ function extractJinaSearchResults(markdown: string): WebResult[] {
 }
 
 export async function webFetch(url: string): Promise<{ url: string; content: string }> {
-  const content = await jinaReaderFetch(url)
-  if (!content || content.trim().length < 50) {
-    throw new Error("No readable content returned from the URL")
+  const errors: string[] = []
+
+  // Primary: Jina Reader (clean markdown)
+  try {
+    const content = await jinaReaderFetch(url)
+    if (content && content.trim().length >= 50) return { url, content }
+    errors.push("Jina returned empty content")
+  } catch (e) {
+    errors.push(e instanceof Error ? e.message : "Jina reader failed")
   }
-  return { url, content }
+
+  // Fallback: direct fetch + HTML→text
+  try {
+    const content = await fetchPageDirect(url)
+    return { url, content }
+  } catch (e) {
+    errors.push(e instanceof Error ? e.message : "Direct fetch failed")
+  }
+
+  throw new Error(`Web fetch failed — ${errors.join("; ")}`)
 }
 
 export async function webSearch(query: string): Promise<SearchChannel> {
-  if (JINA_API_KEY) {
-    try {
-      const markdown = await jinaSearchFetch(query)
-      const results = extractJinaSearchResults(markdown)
-      if (results.length > 0) return { engine: "jina", results }
-    } catch {
-      // fall through to DuckDuckGo
-    }
+  const jinaP = JINA_API_KEY
+    ? jinaSearchFetch(query)
+    : Promise.reject(new Error("JINA_API_KEY not configured"))
+  const [jina, bing, ddg] = await Promise.allSettled([jinaP, bingSearch(query), duckDuckGoSearch(query)])
+
+  const errors: string[] = []
+
+  if (jina.status === "fulfilled") {
+    const results = extractJinaSearchResults(jina.value)
+    if (results.length > 0) return { engine: "jina", results: results.slice(0, 10) }
+    errors.push("jina: no results")
+  } else {
+    errors.push(`jina: ${jina.reason instanceof Error ? jina.reason.message : "failed"}`)
   }
 
-  const res = await fetch(
-    `https://html.duckduckgo.com/html/?q=${encodeURIComponent(query)}`,
-    {
-      headers: { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36" },
-      signal: AbortSignal.timeout(TIMEOUT_MS),
-    }
-  )
-  if (!res.ok) throw new Error(`Search failed (${res.status})`)
-  const html = await res.text()
-  const results = extractDuckDuckGoResults(html)
-  if (results.length === 0) throw new Error("No results found for query")
-  return { engine: "duckduckgo", results }
+  if (bing.status === "fulfilled") {
+    const results = bing.value
+    if (results.length > 0) return { engine: "bing", results: results.slice(0, 10) }
+    errors.push("bing: no results")
+  } else {
+    errors.push(`bing: ${bing.reason instanceof Error ? bing.reason.message : "failed"}`)
+  }
+
+  if (ddg.status === "fulfilled") {
+    const results = ddg.value
+    if (results.length > 0) return { engine: "duckduckgo", results: results.slice(0, 10) }
+    errors.push("duckduckgo: no results")
+  } else {
+    errors.push(`duckduckgo: ${ddg.reason instanceof Error ? ddg.reason.message : "failed"}`)
+  }
+
+  throw new Error(`Search failed — ${errors.join("; ")}`)
 }
 
 export async function searchSuggest(query: string): Promise<string[]> {
