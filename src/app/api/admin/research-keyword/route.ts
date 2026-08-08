@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/admin"
 import { manualWriteFromTopic, getGeminiQuotaStatus } from "@/lib/ai-rewriter"
 import { SITE_URL } from "@/lib/constants"
+import { storeRemoteImage } from "@/lib/media"
 
 export const dynamic = "force-dynamic"
 export const maxDuration = 300
@@ -107,8 +108,10 @@ export async function POST(request: Request) {
     const catSlug = CATEGORY_SLUG_MAP[article.suggestedCategory] || "tech-news"
     const categoryId = catMap.get(catSlug) || null
 
-    let image = await pexelsSearch(trimmed)
-    if (!image) image = await pexelsSearch(catSlug.replace("-", " ") + " technology")
+    let remoteImage = await pexelsSearch(trimmed)
+    if (!remoteImage) remoteImage = await pexelsSearch(catSlug.replace("-", " ") + " technology")
+    // Store the picked image in the Media Library bucket (falls back to remote URL)
+    const image = remoteImage ? (await storeRemoteImage(remoteImage, "featured")) || remoteImage : null
 
     const internalLinks = await findInternalLinks(trimmed)
     let finalContent = article.content

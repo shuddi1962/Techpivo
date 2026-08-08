@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/admin"
 import { manualWriteFromTopic, manualWriteFromUrl, getGeminiQuotaStatus } from "@/lib/ai-rewriter"
 import { SITE_URL } from "@/lib/constants"
 import { logAIUsage } from "@/lib/ai-usage"
+import { storeRemoteImage } from "@/lib/media"
 
 export const dynamic = "force-dynamic"
 export const maxDuration = 300
@@ -141,8 +142,10 @@ export async function POST(request: Request) {
     const categoryId = catMap.get(catSlug) || null
 
     const searchTerm = headline.split(/\s+/).slice(0, 4).join(" ")
-    let image = await pexelsSearch(searchTerm)
-    if (!image) image = await pexelsSearch(catSlug.replace("-", " ") + " technology")
+    let remoteImage = await pexelsSearch(searchTerm)
+    if (!remoteImage) remoteImage = await pexelsSearch(catSlug.replace("-", " ") + " technology")
+    // Store the picked image in the Media Library bucket (falls back to remote URL)
+    const image = remoteImage ? (await storeRemoteImage(remoteImage, "featured")) || remoteImage : null
 
     const internalLinks = await findInternalLinks(headline)
     let finalContent = article.content
