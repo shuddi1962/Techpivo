@@ -111,7 +111,7 @@ export default function AgentReachPage() {
   const mountedRef = useRef(false);
 
   useEffect(() => {
-    const timer = setInterval(() => setNow(Date.now()), 30000);
+    const timer = setInterval(() => setNow(Date.now()), 5000);
     return () => clearInterval(timer);
   }, []);
 
@@ -158,7 +158,7 @@ export default function AgentReachPage() {
 
   useEffect(() => {
     loadTrending();
-    const timer = setInterval(loadTrending, 5 * 60 * 1000);
+    const timer = setInterval(loadTrending, 60 * 1000);
     return () => clearInterval(timer);
   }, [loadTrending]);
 
@@ -331,6 +331,10 @@ export default function AgentReachPage() {
     return `${Math.round(seconds / 3600)}h ago`;
   };
 
+  const trendingCountdown = trendingData
+    ? Math.max(0, 60 - Math.round((now - new Date(trendingData.updatedAt).getTime()) / 1000))
+    : 60;
+
   return (
     <div className="p-6 space-y-6">
       <div className="flex items-start justify-between">
@@ -476,7 +480,9 @@ export default function AgentReachPage() {
                   </span>
                 )}
                 <span className="text-xs text-muted-foreground">
-                  {trendingData ? `Updated ${ago(trendingData.updatedAt)}` : "Fetching live trends…"}
+                  {trendingData
+                    ? `Updated ${ago(trendingData.updatedAt)} · auto-refreshes in ${trendingCountdown}s`
+                    : "Fetching live trends…"}
                 </span>
               </div>
               <button
@@ -531,7 +537,7 @@ export default function AgentReachPage() {
           </div>
 
           <p className="text-sm text-muted-foreground">
-            Channel health auto-checks every 60 seconds; trending auto-refreshes every 5 minutes.
+            Channel health auto-checks every 60 seconds; trending auto-refreshes every minute.
             Use any tab to research a topic, then hit &quot;Write article with Gemini&quot; to
             publish a fully researched, SEO-ready article.
           </p>
@@ -930,7 +936,7 @@ function TrendingList({
                   <button
                     onClick={() => onWrite(item.title)}
                     disabled={writing}
-                    className="inline-flex items-center gap-1 text-xs font-medium text-violet-600 hover:underline disabled:opacity-50"
+                    className="inline-flex items-center gap-1 text-xs font-medium text-sky-600 hover:underline disabled:opacity-50"
                   >
                     <Sparkles className="h-3 w-3" />
                     Write article
@@ -961,7 +967,7 @@ function WriteBar({
       <button
         onClick={onWrite}
         disabled={writing}
-        className="inline-flex shrink-0 items-center gap-1.5 rounded-md bg-gradient-to-r from-violet-600 to-fuchsia-600 px-3 py-1.5 text-xs font-medium text-white disabled:opacity-50"
+        className="inline-flex shrink-0 items-center gap-1.5 rounded-md bg-gradient-to-r from-sky-600 to-blue-600 px-3 py-1.5 text-xs font-medium text-white disabled:opacity-50"
       >
         {writing ? (
           <Loader2 className="h-3.5 w-3.5 animate-spin" />

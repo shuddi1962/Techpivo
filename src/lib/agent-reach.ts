@@ -10,39 +10,46 @@ const BROWSER_UA =
 
 async function jinaReaderFetch(url: string): Promise<string> {
   const target = url.replace(/^https?:\/\//, "").replace(/^\/+/, "")
-  const headers: Record<string, string> = {
-    "Accept": "text/markdown",
-    "X-Return-Format": "markdown",
-    "X-Timeout": "20",
-    "X-No-Cache": "true",
-    "User-Agent": "Mozilla/5.0 (Techpivo Agent Reach)",
-  }
-  if (JINA_API_KEY) headers["Authorization"] = `Bearer ${JINA_API_KEY}`
 
-  const res = await fetch(`${JINA_READER}/${target}`, {
-    headers,
-    signal: AbortSignal.timeout(TIMEOUT_MS),
-  })
+  const attempt = async (key?: string): Promise<Response> => {
+    const headers: Record<string, string> = {
+      "Accept": "text/markdown",
+      "X-Return-Format": "markdown",
+      "X-Timeout": "20",
+      "X-No-Cache": "true",
+      "User-Agent": "Mozilla/5.0 (Techpivo Agent Reach)",
+    }
+    if (key) headers["Authorization"] = `Bearer ${key}`
+    return fetch(`${JINA_READER}/${target}`, {
+      headers,
+      signal: AbortSignal.timeout(TIMEOUT_MS),
+    })
+  }
+
+  let res = await attempt(JINA_API_KEY)
+  // Invalid/expired key on this environment — retry on the free tier
+  if (!res.ok && JINA_API_KEY && res.status === 401) res = await attempt()
   if (!res.ok) throw new Error(`Web reader failed (${res.status})`)
   return res.text()
 }
 
 async function jinaSearchFetch(query: string): Promise<string> {
-  const headers: Record<string, string> = {
-    "Accept": "text/markdown",
-    "X-Return-Format": "markdown",
-    "X-No-Cache": "true",
-    "User-Agent": "Mozilla/5.0 (Techpivo Agent Reach)",
-  }
-  if (JINA_API_KEY) headers["Authorization"] = `Bearer ${JINA_API_KEY}`
-
-  const res = await fetch(
-    `${JINA_SEARCH}/?q=${encodeURIComponent(query)}&top_k=10`,
-    {
-      headers,
-      signal: AbortSignal.timeout(TIMEOUT_MS),
+  const attempt = async (key?: string): Promise<Response> => {
+    const headers: Record<string, string> = {
+      "Accept": "text/markdown",
+      "X-Return-Format": "markdown",
+      "X-No-Cache": "true",
+      "User-Agent": "Mozilla/5.0 (Techpivo Agent Reach)",
     }
-  )
+    if (key) headers["Authorization"] = `Bearer ${key}`
+    return fetch(
+      `${JINA_SEARCH}/?q=${encodeURIComponent(query)}&top_k=10`,
+      { headers, signal: AbortSignal.timeout(TIMEOUT_MS) }
+    )
+  }
+
+  let res = await attempt(JINA_API_KEY)
+  if (!res.ok && JINA_API_KEY && res.status === 401) res = await attempt()
   if (!res.ok) throw new Error(`Jina search failed (${res.status})`)
   return res.text()
 }
@@ -125,6 +132,8 @@ async function fetchPageDirect(url: string): Promise<string> {
       "User-Agent": BROWSER_UA,
       "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
       "Accept-Language": "en-US,en;q=0.9",
+      "Referer": "https://www.google.com/",
+      "Cache-Control": "no-cache",
     },
     redirect: "follow",
     signal: AbortSignal.timeout(TIMEOUT_MS),
@@ -430,17 +439,21 @@ export async function youtubeInfo(url: string): Promise<Record<string, any>> {
 }
 
 export async function githubSearch(query: string, type: "repositories" | "issues" | "commits" | "users" = "repositories"): Promise<Record<string, any>> {
-  const headers: Record<string, string> = {
-    "Accept": "application/vnd.github+json",
-    "User-Agent": "Techpivo-Admin",
-    "X-GitHub-Api-Version": "2022-11-28",
-  }
-  if (GITHUB_TOKEN) headers["Authorization"] = `Bearer ${GITHUB_TOKEN}`
+  const url = `https://api.github.com/search/${type}?q=${encodeURIComponent(query)}&sort=stars&order=desc&per_page=10`
 
-  const res = await fetch(
-    `https://api.github.com/search/${type}?q=${encodeURIComponent(query)}&sort=stars&order=desc&per_page=10`,
-    { headers, signal: AbortSignal.timeout(TIMEOUT_MS) }
-  )
+  const attempt = async (token?: string): Promise<Response> => {
+    const headers: Record<string, string> = {
+      "Accept": "application/vnd.github+json",
+      "User-Agent": "Techpivo-Admin",
+      "X-GitHub-Api-Version": "2022-11-28",
+    }
+    if (token) headers["Authorization"] = `Bearer ${token}`
+    return fetch(url, { headers, signal: AbortSignal.timeout(TIMEOUT_MS) })
+  }
+
+  let res = await attempt(GITHUB_TOKEN)
+  // Invalid/expired token on this environment — retry unauthenticated
+  if (!res.ok && GITHUB_TOKEN && res.status === 401) res = await attempt()
   if (!res.ok) throw new Error(`GitHub search failed (${res.status})`)
   return res.json()
 }
