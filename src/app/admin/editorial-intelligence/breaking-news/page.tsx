@@ -3,8 +3,8 @@
 import { useState, useEffect } from "react"
 import Link from "next/link"
 import {
-  Newspaper, ArrowLeft, RefreshCw, Clock, Globe, Zap,
-  AlertTriangle, ChevronRight, ExternalLink, Tag
+  Newspaper, ArrowLeft, RefreshCw, Clock, Globe,
+  AlertTriangle, ChevronRight, Tag
 } from "lucide-react"
 
 interface BreakingStory {
@@ -132,13 +132,6 @@ export default function BreakingNewsPage() {
                   </span>
                 </div>
               </div>
-              <Link
-                href={`/admin/editorial-intelligence/generate?topic=${encodeURIComponent(story.title)}&category=${encodeURIComponent(story.category)}`}
-                className="px-4 py-2 bg-red-500 text-white rounded-lg text-sm font-medium hover:bg-red-600 flex items-center gap-1.5 shrink-0"
-              >
-                <Zap className="h-3.5 w-3.5" />
-                Cover Story
-              </Link>
             </div>
           ))}
         </div>
@@ -170,12 +163,6 @@ export default function BreakingNewsPage() {
                   </span>
                 </div>
               </div>
-              <Link
-                href={`/admin/editorial-intelligence/generate?topic=${encodeURIComponent(story.title)}&category=${encodeURIComponent(story.category)}`}
-                className="px-3 py-1.5 bg-amber-500 text-white rounded text-xs font-medium hover:bg-amber-600 shrink-0"
-              >
-                Cover Story
-              </Link>
             </div>
           ))}
         </div>
@@ -207,12 +194,6 @@ export default function BreakingNewsPage() {
                   </span>
                 </div>
               </div>
-              <Link
-                href={`/admin/editorial-intelligence/generate?topic=${encodeURIComponent(story.title)}&category=${encodeURIComponent(story.category)}`}
-                className="px-3 py-1.5 bg-blue-500 text-white rounded text-xs font-medium hover:bg-blue-600 shrink-0"
-              >
-                Cover Story
-              </Link>
             </div>
           ))}
         </div>
