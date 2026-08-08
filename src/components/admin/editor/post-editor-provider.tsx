@@ -127,8 +127,8 @@ export function PostEditorProvider({
   useEffect(() => {
     if (!post.title && !post.content) return
     const seo = calculateSeoScore(seoKeyword, post)
-    setPost(prev => ({ ...prev, seo_score: seo.score }))
-  }, [post.title, post.content, post.slug, post.seo_title, post.seo_description, post.excerpt, post.featured_image, post.schema_type, seoKeyword, post])
+    setPost(prev => (prev.seo_score === seo.score ? prev : { ...prev, seo_score: seo.score }))
+  }, [post.title, post.content, post.slug, post.seo_title, post.seo_description, post.excerpt, post.featured_image, post.schema_type, seoKeyword])
 
   const updatePost = useCallback((partial: Partial<EditorPostState>) => {
     setPost(prev => ({ ...prev, ...partial }))
