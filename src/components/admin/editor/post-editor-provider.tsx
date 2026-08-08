@@ -377,15 +377,23 @@ export function PostEditorProvider({
   const uploadImage = useCallback(async (file: File): Promise<string | null> => {
     const supabase = createClient()
     const ext = file.name.split(".").pop()
-    const fileName = `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`
+    const fileName = `uploads/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`
 
-    const { error } = await supabase.storage.from("post-images").upload(fileName, file)
+    const { error } = await supabase.storage.from("media").upload(fileName, file)
     if (error) {
       alert("Upload failed: " + error.message)
       return null
     }
 
-    const { data: { publicUrl } } = supabase.storage.from("post-images").getPublicUrl(fileName)
+    const { data: { publicUrl } } = supabase.storage.from("media").getPublicUrl(fileName)
+    // Track in the Media Library (best-effort)
+    supabase.from("media_files").insert({
+      name: file.name,
+      path: fileName,
+      url: publicUrl,
+      mimetype: file.type || null,
+      size: file.size,
+    }).then(() => {}, () => {})
     return publicUrl
   }, [])
 

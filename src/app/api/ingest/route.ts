@@ -437,11 +437,18 @@ async function run(req: NextRequest) {
           const rawBuf = await imgRes.arrayBuffer()
           const imgBuf = await watermarkImage(Buffer.from(rawBuf))
           const ext = finalImage.includes('.png') ? '.png' : '.jpg'
-          const filename = `post-${Date.now()}-${Math.random().toString(36).slice(2, 8)}${ext}`
-          const { error: upErr } = await supabase.storage.from('post-images').upload(filename, imgBuf as any, {
+          const filename = `featured/post-${Date.now()}-${Math.random().toString(36).slice(2, 8)}${ext}`
+          const { error: upErr } = await supabase.storage.from('media').upload(filename, imgBuf as any, {
             contentType: imgRes.headers.get('content-type') || 'image/jpeg', upsert: true,
           })
-          if (!upErr) { const { data: pub } = supabase.storage.from('post-images').getPublicUrl(filename); finalImage = pub.publicUrl }
+          if (!upErr) {
+            const { data: pub } = supabase.storage.from('media').getPublicUrl(filename)
+            finalImage = pub.publicUrl
+            await supabase.from('media_files').insert({
+              name: filename.split('/').pop(), path: filename, url: pub.publicUrl,
+              mimetype: imgRes.headers.get('content-type') || 'image/jpeg', size: (imgBuf as Buffer).length,
+            })
+          }
         }
       } catch {}
 

@@ -11,12 +11,12 @@ export async function POST(req: Request) {
 
     const supabase = createClient()
     const ext = file.name.split(".").pop() || "jpg"
-    const fileName = `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`
+    const fileName = `uploads/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`
 
     const buffer = Buffer.from(await file.arrayBuffer())
 
     const { error } = await supabase.storage
-      .from("post-images")
+      .from("media")
       .upload(fileName, buffer, {
         contentType: file.type,
         cacheControl: "3600",
@@ -27,7 +27,15 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: error.message }, { status: 500 })
     }
 
-    const { data: { publicUrl } } = supabase.storage.from("post-images").getPublicUrl(fileName)
+    const { data: { publicUrl } } = supabase.storage.from("media").getPublicUrl(fileName)
+
+    await supabase.from("media_files").insert({
+      name: file.name,
+      path: fileName,
+      url: publicUrl,
+      mimetype: file.type || null,
+      size: file.size,
+    })
 
     return NextResponse.json({ url: publicUrl })
   } catch (error) {
