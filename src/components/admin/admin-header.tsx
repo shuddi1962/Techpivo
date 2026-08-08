@@ -6,7 +6,7 @@ import { useRouter, usePathname } from "next/navigation"
 import {
   Bell, ExternalLink, LogOut, Settings, User, Plus, Search,
   Moon, Sun, Menu, FileText, Image, Users, Hash, X,
-  ChevronRight, Home, Globe,
+  ChevronRight, Home, Globe, Zap,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
@@ -29,8 +29,6 @@ const breadcrumbMap: Record<string, string> = {
   "admin": "Dashboard",
   "editorial-intelligence": "AI Editorial Intelligence",
   "agent-reach": "Agent Reach Research Center",
-  "ai-command-center": "AI Command Center",
-  "research-center": "Research Center",
   "ai-usage": "AI Usage",
   "posts": "Posts",
   "categories": "Categories",
@@ -69,7 +67,7 @@ const breadcrumbMap: Record<string, string> = {
 
 const searchItems = [
   { href: "/admin", label: "Dashboard", icon: Home, category: "Overview" },
-  { href: "/admin/editorial-intelligence", label: "AI Editorial Intelligence", icon: FileText, category: "AI & Intelligence" },
+  { href: "/admin/editorial-intelligence/breaking-news", label: "Breaking News", icon: Zap, category: "AI & Intelligence" },
   { href: "/admin/agent-reach", label: "Agent Reach Research", icon: Globe, category: "AI & Intelligence" },
   { href: "/admin/posts", label: "Posts", icon: FileText, category: "Content" },
   { href: "/admin/categories", label: "Categories", icon: Hash, category: "Content" },

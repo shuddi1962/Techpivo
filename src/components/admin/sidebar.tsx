@@ -13,7 +13,7 @@ import {
   Brain, HeartPulse, Calendar, Swords,
   TrendingUp, FileBarChart, Cpu, Key, Wrench, Lock, Network, Rocket,
   Trophy, BookOpen, PanelLeftClose, PanelLeftOpen, Newspaper, PieChart,
-  Plus, ExternalLink, Radar, type LucideIcon,
+  Plus, ExternalLink, Radar, Zap, type LucideIcon,
 } from "lucide-react"
 import { Sheet, SheetContent } from "@/components/ui/sheet"
 import { useSidebar } from "./sidebar-context"
@@ -38,7 +38,7 @@ const navGroups: NavGroup[] = [
   {
     label: "AI & Intelligence",
     links: [
-      { href: "/admin/editorial-intelligence", label: "AI Editorial", icon: Brain, badge: "NEW" },
+      { href: "/admin/editorial-intelligence/breaking-news", label: "Breaking News", icon: Zap, badge: "LIVE" },
       { href: "/admin/agent-reach", label: "Agent Reach", icon: Radar, badge: "LIVE" },
       { href: "/admin/ai-usage", label: "AI Usage", icon: Cpu },
     ],
