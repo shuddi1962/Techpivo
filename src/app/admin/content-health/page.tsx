@@ -6,7 +6,7 @@ import { createClient } from "@/lib/supabase/client"
 import {
   HeartPulse, AlertTriangle, CheckCircle, TrendingDown, TrendingUp,
   RefreshCw, ExternalLink, Image, FileText, Link2, Search,
-  BarChart3, Clock, ArrowRight
+  BarChart3, Clock, ArrowRight, Wand2
 } from "lucide-react"
 
 interface HealthIssue {
@@ -43,6 +43,8 @@ export default function ContentHealthPage() {
     missingMeta: 0,
   })
   const [error, setError] = useState("")
+  const [fixing, setFixing] = useState<Record<string, string[]>>({})
+  const [fixMessage, setFixMessage] = useState("")
 
   const fetchData = useCallback(async () => {
     setError("")
@@ -148,6 +150,45 @@ export default function ContentHealthPage() {
 
   useEffect(() => { fetchData() }, [fetchData])
 
+  useEffect(() => {
+    const interval = setInterval(() => { fetchData() }, 60000)
+    return () => clearInterval(interval)
+  }, [fetchData])
+
+  const fixPost = async (postId: string, actions: string[]) => {
+    setFixing((prev) => ({ ...prev, [postId]: actions }))
+    setFixMessage("")
+    try {
+      const res = await fetch("/api/admin/content-health/fix", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ postId, actions }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || "Fix failed")
+      setFixMessage(`Fixed ${data.applied?.join(", ") || "nothing needed"}`)
+    } catch (err) {
+      setFixMessage(err instanceof Error ? err.message : "Fix failed")
+    }
+    setFixing((prev) => { const next = { ...prev }; delete next[postId]; return next })
+    fetchData()
+  }
+
+  const autoFixAll = () => {
+    const allNeeded: Record<string, string[]> = {}
+    for (const a of articles) {
+      const actions: string[] = []
+      if (a.issues.some((i) => i.type === "missing_meta")) actions.push("meta")
+      if (a.issues.some((i) => i.type === "missing_image")) actions.push("image")
+      if (a.issues.some((i) => i.type === "outdated")) actions.push("refresh")
+      if (actions.length) allNeeded[a.id] = actions
+    }
+    const ids = Object.keys(allNeeded)
+    if (ids.length === 0) { setFixMessage("Nothing to fix — all articles healthy"); return }
+    if (!confirm(`Auto-fix ${ids.length} article(s)? Meta will be generated, missing images fetched from Pexels, and stale articles refreshed.`)) return
+    for (const [id, actions] of Object.entries(allNeeded)) fixPost(id, actions)
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -158,11 +199,23 @@ export default function ContentHealthPage() {
           </h1>
           <p className="text-sm text-muted-foreground mt-1">Track content quality, freshness, and issues</p>
         </div>
-        <button onClick={fetchData} className="flex items-center gap-2 px-4 py-2 text-sm font-medium border rounded-lg hover:bg-muted transition-colors">
-          <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
-          Refresh
-        </button>
+        <div className="flex items-center gap-2">
+          <button onClick={autoFixAll} className="flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors" disabled={loading}>
+            <Wand2 className="h-4 w-4" />
+            Auto-fix All
+          </button>
+          <button onClick={fetchData} className="flex items-center gap-2 px-4 py-2 text-sm font-medium border rounded-lg hover:bg-muted transition-colors">
+            <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
+            Refresh
+          </button>
+        </div>
       </div>
+
+      {fixMessage && (
+        <div className="p-3 bg-green-500/10 border border-green-500/20 rounded-lg text-sm text-green-600 dark:text-green-400">
+          {fixMessage}
+        </div>
+      )}
 
       {error && (
         <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-lg text-sm text-red-600 dark:text-red-400">
@@ -240,7 +293,7 @@ export default function ContentHealthPage() {
                     </p>
                   </div>
                 </div>
-                <div className="flex items-center gap-2 shrink-0">
+                <div className="flex items-center gap-2 shrink-0 flex-wrap">
                   {article.issues.slice(0, 2).map((issue, i) => (
                     <span key={i} className={`px-2 py-1 rounded-full text-xs font-medium hidden sm:inline ${
                       issue.severity === "high" ? "bg-red-500/10 text-red-500" :
@@ -250,6 +303,26 @@ export default function ContentHealthPage() {
                       {issue.type.replace("_", " ")}
                     </span>
                   ))}
+                  {article.issues.some((i) => i.type === "missing_meta") && (
+                    <button
+                      onClick={() => fixPost(article.id, ["meta"])}
+                      disabled={!!fixing[article.id]}
+                      className="flex items-center gap-1 px-3 py-1 bg-amber-500/15 text-amber-600 dark:text-amber-400 rounded-md text-xs font-medium hover:bg-amber-500/25 transition-colors disabled:opacity-50"
+                    >
+                      {fixing[article.id]?.includes("meta") ? <RefreshCw className="h-3 w-3 animate-spin" /> : <Wand2 className="h-3 w-3" />}
+                      Fix Meta
+                    </button>
+                  )}
+                  {article.issues.some((i) => i.type === "missing_image") && (
+                    <button
+                      onClick={() => fixPost(article.id, ["image"])}
+                      disabled={!!fixing[article.id]}
+                      className="flex items-center gap-1 px-3 py-1 bg-blue-500/15 text-blue-600 dark:text-blue-400 rounded-md text-xs font-medium hover:bg-blue-500/25 transition-colors disabled:opacity-50"
+                    >
+                      {fixing[article.id]?.includes("image") ? <RefreshCw className="h-3 w-3 animate-spin" /> : <Image className="h-3 w-3" />}
+                      Fix Image
+                    </button>
+                  )}
                   <Link
                     href={`/admin/posts/${article.id}/edit`}
                     className="flex items-center gap-1 px-3 py-1 bg-primary text-primary-foreground rounded-md text-xs font-medium hover:bg-primary/90 transition-colors"

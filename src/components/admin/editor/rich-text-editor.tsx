@@ -19,8 +19,9 @@ import { common, createLowlight } from "lowlight"
 import { usePostEditor } from "./post-editor-provider"
 import { EditorToolbar } from "./editor-toolbar"
 import { createClient } from "@/lib/supabase/client"
+import { useMediaLibrary } from "@/lib/use-media-library"
 import Image from "next/image"
-import { Search, Loader2, X } from "lucide-react"
+import { Search, Loader2, X, Library, Upload } from "lucide-react"
 
 const lowlight = createLowlight(common)
 
@@ -33,7 +34,8 @@ export function RichTextEditor() {
   const [webQuery, setWebQuery] = useState("")
   const [webResults, setWebResults] = useState<{ src: string; alt: string }[]>([])
   const [webSearching, setWebSearching] = useState(false)
-  const [webSource, setWebSource] = useState<"pexels" | "google">("pexels")
+  const [webSource, setWebSource] = useState<"pexels" | "google" | "library">("pexels")
+  const { items: libraryItems, loading: libraryLoading, uploadFiles } = useMediaLibrary()
   const [selectedImage, setSelectedImage] = useState<string | null>(null)
   const [imageWidth, setImageWidth] = useState("100%")
   const [imageLink, setImageLink] = useState("")
@@ -46,16 +48,23 @@ export function RichTextEditor() {
     ed.chain().focus().setImage({ src: blobUrl }).run()
     const supabase = createClient()
     const ext = file.name.split(".").pop() || "jpg"
-    const fileName = `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`
-    const { error } = await supabase.storage.from("post-images").upload(fileName, file, {
+    const fileName = `uploads/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`
+    const { error } = await supabase.storage.from("media").upload(fileName, file, {
       contentType: file.type,
       cacheControl: "3600",
       upsert: false,
     })
     if (!error) {
-      const { data: { publicUrl } } = supabase.storage.from("post-images").getPublicUrl(fileName)
+      const { data: { publicUrl } } = supabase.storage.from("media").getPublicUrl(fileName)
       ed.commands.updateAttributes("image", { src: publicUrl })
       URL.revokeObjectURL(blobUrl)
+      supabase.from("media_files").insert({
+        name: file.name,
+        path: fileName,
+        url: publicUrl,
+        mimetype: file.type || null,
+        size: file.size,
+      }).then(() => {}, () => {})
     }
   }, [])
 
@@ -243,14 +252,50 @@ export function RichTextEditor() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
           <div className="bg-white dark:bg-[#111827] rounded-2xl shadow-2xl border-2 border-gray-200 dark:border-[#374151] w-full max-w-2xl max-h-[80vh] overflow-hidden">
             <div className="flex items-center justify-between px-6 py-4 border-b-2 border-gray-200 dark:border-[#1F2937]">
-              <h3 className="text-base font-bold text-gray-900 dark:text-white">Insert Image from Web</h3>
+              <h3 className="text-base font-bold text-gray-900 dark:text-white">Insert Image</h3>
               <button onClick={() => { setShowWebImage(false); setWebResults([]) }} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 p-1"><X className="h-5 w-5" /></button>
             </div>
             <div className="p-6 space-y-4">
               <div className="flex gap-2">
                 <button onClick={() => setWebSource("pexels")} className={`px-4 py-2 text-sm font-semibold rounded-lg border-2 transition-colors ${webSource === "pexels" ? "bg-[#F59E0B] text-white border-[#F59E0B]" : "bg-white dark:bg-[#0A0F1E] text-gray-600 dark:text-gray-300 border-gray-300 dark:border-[#374151] hover:border-[#F59E0B]"}`}>Pexels</button>
                 <button onClick={() => setWebSource("google")} className={`px-4 py-2 text-sm font-semibold rounded-lg border-2 transition-colors ${webSource === "google" ? "bg-[#F59E0B] text-white border-[#F59E0B]" : "bg-white dark:bg-[#0A0F1E] text-gray-600 dark:text-gray-300 border-gray-300 dark:border-[#374151] hover:border-[#F59E0B]"}`}>Google</button>
+                <button onClick={() => setWebSource("library")} className={`flex items-center gap-1.5 px-4 py-2 text-sm font-semibold rounded-lg border-2 transition-colors ${webSource === "library" ? "bg-[#F59E0B] text-white border-[#F59E0B]" : "bg-white dark:bg-[#0A0F1E] text-gray-600 dark:text-gray-300 border-gray-300 dark:border-[#374151] hover:border-[#F59E0B]"}`}><Library className="h-4 w-4" /> Library</button>
               </div>
+              {webSource === "library" ? (
+                <div className="space-y-3">
+                  <label className="flex items-center justify-center gap-2 w-full border-2 border-dashed border-gray-300 dark:border-[#374151] rounded-lg py-2.5 text-sm font-semibold text-gray-500 dark:text-gray-400 cursor-pointer hover:border-[#F59E0B] hover:text-[#F59E0B] transition-colors">
+                    <Upload className="h-4 w-4" /> Upload image to library and insert
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={async (e) => {
+                        const file = e.target.files?.[0]
+                        if (!file) return
+                        const [row] = await uploadFiles([file])
+                        if (row) insertWebImage(row.url)
+                        e.target.value = ""
+                      }}
+                    />
+                  </label>
+                  {libraryLoading ? (
+                    <div className="flex items-center justify-center py-10 text-gray-400"><Loader2 className="h-6 w-6 animate-spin" /></div>
+                  ) : libraryItems.filter(i => i.mimetype?.startsWith("image/")).length === 0 ? (
+                    <p className="text-sm text-gray-400 text-center py-10">No media yet. Upload an image to get started.</p>
+                  ) : (
+                    <div className="grid grid-cols-3 gap-3 max-h-60 overflow-y-auto">
+                      {libraryItems.filter(i => i.mimetype?.startsWith("image/")).map((item) => (
+                        <button key={item.id} onClick={() => insertWebImage(item.url)}
+                          title={item.name}
+                          className="relative group rounded-xl overflow-hidden border-2 border-gray-200 dark:border-[#374151] hover:border-[#F59E0B] transition-all">
+                          <Image src={item.url} alt={item.name} width={120} height={80} className="w-full h-24 object-cover" />
+                          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors" />
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ) : (<>
               <div className="flex gap-2">
                 <input value={webQuery} onChange={(e) => setWebQuery(e.target.value)} onKeyDown={(e) => e.key === "Enter" && searchWebImages()} placeholder={`Search ${webSource === "pexels" ? "free stock photos" : "the web"}...`} className="flex-1 bg-gray-50 dark:bg-[#0A0F1E] border-2 border-gray-300 dark:border-[#374151] rounded-lg px-4 py-2.5 text-sm text-gray-900 dark:text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#F59E0B] focus:border-transparent" />
                 <button onClick={searchWebImages} disabled={webSearching} className="bg-[#F59E0B] hover:bg-[#D97706] disabled:bg-gray-300 text-white px-4 py-2 rounded-lg transition-colors shadow-sm">
@@ -268,6 +313,7 @@ export function RichTextEditor() {
                   ))}
                 </div>
               )}
+              </>)}
             </div>
           </div>
         </div>

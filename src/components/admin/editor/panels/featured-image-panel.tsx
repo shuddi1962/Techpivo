@@ -4,16 +4,18 @@ import { useRef, useState, useCallback } from "react"
 import { usePostEditor } from "../post-editor-provider"
 import { CollapsibleSection } from "../collapsible-section"
 import NextImage from "next/image"
-import { Image, Upload, X, Search, Loader2 } from "lucide-react"
+import { Image, Upload, X, Search, Loader2, Trash2, Library } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
+import { useMediaLibrary } from "@/lib/use-media-library"
 
 export function FeaturedImagePanel() {
   const { post, setField, uploadImage } = usePostEditor()
+  const { items: libraryItems, loading: libraryLoading, uploadFiles, deleteItem } = useMediaLibrary()
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [query, setQuery] = useState("")
   const [results, setResults] = useState<{ src: string; alt: string }[]>([])
   const [searching, setSearching] = useState(false)
-  const [source, setSource] = useState<"pexels" | "google">("pexels")
+  const [source, setSource] = useState<"pexels" | "google" | "library">("pexels")
 
   const handleFileUpload = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -25,6 +27,17 @@ export function FeaturedImagePanel() {
     URL.revokeObjectURL(blobUrl)
     e.target.value = ""
   }, [setField, uploadImage])
+
+  const handleLibraryUpload = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    const blobUrl = URL.createObjectURL(file)
+    setField("featured_image", blobUrl)
+    const [row] = await uploadFiles([file])
+    if (row) setField("featured_image", row.url)
+    URL.revokeObjectURL(blobUrl)
+    e.target.value = ""
+  }, [setField, uploadFiles])
 
   const searchImages = async () => {
     if (!query) return
@@ -84,7 +97,42 @@ export function FeaturedImagePanel() {
           <div className="flex gap-2 mb-2">
             <button onClick={() => { setSource("pexels"); setResults([]) }} className={`px-3 py-1.5 text-xs font-semibold rounded-lg border-2 transition-colors ${source === "pexels" ? "bg-[#F59E0B] text-white border-[#F59E0B]" : "bg-white dark:bg-[#0A0F1E] text-gray-600 dark:text-gray-300 border-gray-300 dark:border-[#374151] hover:border-[#F59E0B]"}`}>Pexels</button>
             <button onClick={() => { setSource("google"); setResults([]) }} className={`px-3 py-1.5 text-xs font-semibold rounded-lg border-2 transition-colors ${source === "google" ? "bg-[#F59E0B] text-white border-[#F59E0B]" : "bg-white dark:bg-[#0A0F1E] text-gray-600 dark:text-gray-300 border-gray-300 dark:border-[#374151] hover:border-[#F59E0B]"}`}>Google</button>
+            <button onClick={() => { setSource("library"); setResults([]) }} className={`flex items-center gap-1 px-3 py-1.5 text-xs font-semibold rounded-lg border-2 transition-colors ${source === "library" ? "bg-[#F59E0B] text-white border-[#F59E0B]" : "bg-white dark:bg-[#0A0F1E] text-gray-600 dark:text-gray-300 border-gray-300 dark:border-[#374151] hover:border-[#F59E0B]"}`}><Library className="h-3 w-3" /> Library</button>
           </div>
+          {source === "library" ? (
+            <div className="space-y-3">
+              <label className="flex items-center justify-center gap-2 w-full border-2 border-dashed border-gray-300 dark:border-[#374151] rounded-lg py-2.5 text-xs font-semibold text-gray-500 dark:text-gray-400 cursor-pointer hover:border-[#F59E0B] hover:text-[#F59E0B] transition-colors">
+                <Upload className="h-4 w-4" /> Upload to Media Library
+                <input type="file" accept="image/*" className="hidden" onChange={handleLibraryUpload} />
+              </label>
+              {libraryLoading ? (
+                <div className="flex items-center justify-center py-6 text-gray-400"><Loader2 className="h-5 w-5 animate-spin" /></div>
+              ) : libraryItems.length === 0 ? (
+                <p className="text-xs text-gray-400 text-center py-6">No media yet. Upload an image or generate posts to fill the library.</p>
+              ) : (
+                <div className="grid grid-cols-3 gap-2 max-h-60 overflow-y-auto">
+                  {libraryItems.filter(i => i.mimetype?.startsWith("image/")).map((item) => (
+                    <div key={item.id} className="relative group rounded-lg overflow-hidden border-2 border-gray-200 dark:border-[#1F2937]">
+                      <button
+                        onClick={() => setField("featured_image", item.url)}
+                        title={item.name}
+                        className="w-full block"
+                      >
+                        <NextImage src={item.url} alt={item.name} width={120} height={80} className="w-full h-16 object-cover" />
+                      </button>
+                      <button
+                        onClick={() => { if (confirm(`Delete "${item.name}" from the media library?`)) deleteItem(item) }}
+                        className="absolute top-1 right-1 bg-black/70 hover:bg-red-600 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-all"
+                        title="Delete from library"
+                      >
+                        <Trash2 className="h-3 w-3" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          ) : (<>
           <div className="flex gap-2">
             <input
               value={query}
@@ -116,6 +164,7 @@ export function FeaturedImagePanel() {
               ))}
             </div>
           )}
+          </>)}
         </div>
       </div>
     </CollapsibleSection>
