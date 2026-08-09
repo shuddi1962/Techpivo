@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import { createClient } from "@/lib/supabase/client"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -10,8 +10,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import {
   Search, AlertTriangle, CheckCircle, TrendingUp, TrendingDown,
   FileText, Link, Image, Code, BarChart3, RefreshCw, Settings,
-  Globe, Shield, Zap, Target, ArrowUpRight, ArrowDownRight,
-  ExternalLink, Copy, Trash2, Plus, Eye, Clock
+  Globe, Shield, Zap, Target, ExternalLink, Copy, Trash2, Plus, Eye, Clock,
+  Loader2, ChevronDown, ChevronRight
 } from "lucide-react"
 
 interface SeoAudit {
@@ -31,6 +31,7 @@ interface SeoAudit {
   issues: any[]
   suggestions: any[]
   checked_at: string
+  created_at?: string
 }
 
 interface KeywordRanking {
@@ -66,13 +67,22 @@ interface TopicAuthority {
   category_name?: string
 }
 
+let realtimeSeq = 0
+
 export default function EnterpriseSeoCenter() {
+  const supabase = createClient()
   const [activeTab, setActiveTab] = useState("dashboard")
   const [audits, setAudits] = useState<SeoAudit[]>([])
   const [keywords, setKeywords] = useState<KeywordRanking[]>([])
   const [issues, setIssues] = useState<SeoIssue[]>([])
   const [topicAuthority, setTopicAuthority] = useState<TopicAuthority[]>([])
+  const [postsList, setPostsList] = useState<{ id: string; title: string }[]>([])
   const [loading, setLoading] = useState(true)
+  const [auditing, setAuditing] = useState(false)
+  const [auditMsg, setAuditMsg] = useState("")
+  const [expandedAudit, setExpandedAudit] = useState<string | null>(null)
+  const [newKeyword, setNewKeyword] = useState("")
+  const [newKeywordPost, setNewKeywordPost] = useState("")
   const [stats, setStats] = useState({
     totalAudits: 0,
     avgScore: 0,
@@ -82,54 +92,134 @@ export default function EnterpriseSeoCenter() {
     avgPosition: 0
   })
 
-  useEffect(() => {
-    loadData()
-  }, [])
-
-  const loadData = async () => {
-    const supabase = createClient()
-    
-    const [auditsRes, keywordsRes, issuesRes, topicRes, postsRes] = await Promise.all([
-      supabase.from("seo_audits").select("*").order("created_at", { ascending: false }).limit(100),
-      supabase.from("keyword_rankings").select("*").order("position", { ascending: true }).limit(100),
+  const loadData = useCallback(async () => {
+    const [auditsRes, keywordsRes, issuesRes, topicRes, postsRes, catRes] = await Promise.all([
+      supabase.from("seo_audits").select("*").order("checked_at", { ascending: false }).limit(100),
+      supabase.from("keyword_rankings").select("*").order("created_at", { ascending: false }).limit(100),
       supabase.from("seo_issues").select("*").eq("resolved", false).order("created_at", { ascending: false }).limit(100),
       supabase.from("topic_authority").select("*").order("authority_score", { ascending: false }).limit(200),
-      supabase.from("posts").select("id, status, google_indexed").limit(500)
+      supabase.from("posts").select("id, title, status, google_indexed").eq("status", "published").limit(300),
+      supabase.from("categories").select("id, name")
     ])
 
     if (auditsRes.data) setAudits(auditsRes.data)
     if (keywordsRes.data) setKeywords(keywordsRes.data)
     if (issuesRes.data) setIssues(issuesRes.data)
-    if (topicRes.data) setTopicAuthority(topicRes.data)
+    if (postsRes.data) setPostsList(postsRes.data.map(p => ({ id: p.id, title: p.title })))
+
+    const catMap: Record<string, string> = {}
+    catRes.data?.forEach((c: any) => { catMap[c.id] = c.name })
+    let topics: TopicAuthority[] = topicRes.data || []
+    if (topics.length === 0) {
+      const { data: postsAgg } = await supabase.from("posts")
+        .select("category_id, seo_score, quality_score").eq("status", "published").limit(500)
+      const grouped: Record<string, { count: number; seo: number[]; q: number[] }> = {}
+      ;(postsAgg || []).forEach((p: any) => {
+        if (!p.category_id) return
+        grouped[p.category_id] = grouped[p.category_id] || { count: 0, seo: [], q: [] }
+        grouped[p.category_id].count++
+        if (p.seo_score) grouped[p.category_id].seo.push(p.seo_score)
+        if (p.quality_score) grouped[p.category_id].q.push(p.quality_score)
+      })
+      topics = Object.entries(grouped).map(([cid, g]) => {
+        const avgSeo = g.seo.length ? Math.round(g.seo.reduce((a, b) => a + b, 0) / g.seo.length) : 0
+        const avgQ = g.q.length ? Math.round(g.q.reduce((a, b) => a + b, 0) / g.q.length) : 0
+        const authority = avgSeo || avgQ ? Math.round((avgSeo + avgQ) / 2) : Math.min(55 + g.count * 2, 95)
+        return {
+          id: cid, category_id: cid, category_name: catMap[cid] || cid,
+          article_count: g.count, avg_quality_score: avgQ, avg_seo_score: avgSeo, authority_score: authority,
+        }
+      }).sort((a, b) => b.authority_score - a.authority_score)
+    }
+    setTopicAuthority(topics.map(t => ({ ...t, category_name: t.category_name || catMap[t.category_id] || t.category_id })))
 
     const totalAudits = auditsRes.data?.length || 0
-    const avgScore = totalAudits > 0 
+    const avgScore = totalAudits > 0
       ? Math.round(auditsRes.data!.reduce((sum, a) => sum + a.overall_score, 0) / totalAudits)
       : 0
     const indexedPosts = postsRes.data?.filter(p => p.google_indexed).length || 0
     const pendingIssues = issuesRes.data?.length || 0
     const trackedKeywords = keywordsRes.data?.length || 0
-    const avgPosition = keywordsRes.data?.length 
-      ? Math.round(keywordsRes.data.filter(k => k.position).reduce((sum, k) => sum + (k.position || 0), 0) / keywordsRes.data.filter(k => k.position).length)
+    const positioned = (keywordsRes.data || []).filter(k => k.position)
+    const avgPosition = positioned.length
+      ? Math.round(positioned.reduce((sum, k) => sum + (k.position || 0), 0) / positioned.length)
       : 0
 
     setStats({ totalAudits, avgScore, indexedPosts, pendingIssues, trackedKeywords, avgPosition })
     setLoading(false)
-  }
+  }, [supabase])
+
+  useEffect(() => {
+    loadData()
+  }, [loadData])
+
+  useEffect(() => {
+    let mounted = true
+    const tables = ["seo_audits", "seo_issues", "keyword_rankings", "topic_authority", "seo_redirects"]
+    const channels = tables.map((t, i) =>
+      supabase
+        .channel(`seo_center_rt_${realtimeSeq++}_${i}_${t}`)
+        .on("postgres_changes", { event: "*", schema: "public", table: t }, () => {
+          if (mounted) loadData()
+        })
+        .subscribe()
+    )
+    const poll = setInterval(() => { if (mounted) loadData() }, 30000)
+    const onFocus = () => { if (mounted) loadData() }
+    window.addEventListener("focus", onFocus)
+    return () => {
+      mounted = false
+      channels.forEach(c => supabase.removeChannel(c))
+      clearInterval(poll)
+      window.removeEventListener("focus", onFocus)
+    }
+  }, [supabase, loadData])
 
   const runSeoAudit = async (postId: string) => {
-    const res = await fetch("/api/admin/seo/audit", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ postId })
-    })
-    if (res.ok) loadData()
+    if (auditing) return
+    setAuditing(true)
+    setAuditMsg("")
+    try {
+      const res = await fetch("/api/admin/seo/audit", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ postId })
+      })
+      if (res.ok) {
+        const data = await res.json()
+        setAuditMsg(data.audited !== undefined ? `Audited ${data.audited} of ${data.total} posts` : "Audit complete")
+        await loadData()
+      } else {
+        const err = await res.json().catch(() => ({}))
+        setAuditMsg(`Audit failed: ${err.error || res.status}`)
+      }
+    } catch (e) {
+      setAuditMsg(`Audit failed: ${String(e)}`)
+    }
+    setAuditing(false)
   }
 
   const resolveIssue = async (issueId: string) => {
-    const supabase = createClient()
     await supabase.from("seo_issues").update({ resolved: true, resolved_at: new Date().toISOString() }).eq("id", issueId)
     loadData()
+  }
+
+  const addKeyword = async () => {
+    if (!newKeyword.trim()) return
+    const { data } = await supabase.from("keyword_rankings").insert({
+      keyword: newKeyword.trim(),
+      post_id: newKeywordPost || null,
+    }).select().single()
+    if (data) {
+      setKeywords(prev => [data as KeywordRanking, ...prev])
+      setNewKeyword("")
+      setNewKeywordPost("")
+    }
+  }
+
+  const deleteKeyword = async (id: string) => {
+    await supabase.from("keyword_rankings").delete().eq("id", id)
+    setKeywords(k => k.filter(x => x.id !== id))
   }
 
   const getScoreColor = (score: number) => {
@@ -156,15 +246,20 @@ export default function EnterpriseSeoCenter() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-3xl font-bold">Enterprise SEO Center</h1>
           <p className="text-muted-foreground">Optimize, monitor, and improve your search performance</p>
         </div>
-        <Button onClick={() => runSeoAudit("all")}>
-          <RefreshCw className="h-4 w-4 mr-2" />
-          Run Full Audit
-        </Button>
+        <div className="flex items-center gap-3">
+          {auditMsg && (
+            <span className="text-sm text-muted-foreground">{auditMsg}</span>
+          )}
+          <Button onClick={() => runSeoAudit("all")} disabled={auditing}>
+            {auditing ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <RefreshCw className="h-4 w-4 mr-2" />}
+            {auditing ? "Auditing..." : "Run Full Audit"}
+          </Button>
+        </div>
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
@@ -188,14 +283,13 @@ export default function EnterpriseSeoCenter() {
         </TabsList>
 
         <TabsContent value="dashboard" className="space-y-6">
-          {/* KPI Cards */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             <Card>
               <CardContent className="p-4">
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm text-muted-foreground">Average SEO Score</p>
-                    <p className={`text-2xl font-bold ${getScoreColor(stats.avgScore)}`}>{stats.avgScore}%</p>
+                    <p className={`text-2xl font-bold ${getScoreColor(stats.avgScore)}`}>{loading ? "..." : `${stats.avgScore}%`}</p>
                   </div>
                   <div className={`p-2 rounded-full ${getScoreColor(stats.avgScore)}`}>
                     <Target className="h-6 w-6" />
@@ -208,7 +302,7 @@ export default function EnterpriseSeoCenter() {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm text-muted-foreground">Indexed Posts</p>
-                    <p className="text-2xl font-bold">{stats.indexedPosts}</p>
+                    <p className="text-2xl font-bold">{loading ? "..." : stats.indexedPosts}</p>
                   </div>
                   <div className="p-2 rounded-full bg-blue-50 text-blue-600">
                     <Globe className="h-6 w-6" />
@@ -222,7 +316,7 @@ export default function EnterpriseSeoCenter() {
                   <div>
                     <p className="text-sm text-muted-foreground">Pending Issues</p>
                     <p className={`text-2xl font-bold ${stats.pendingIssues > 0 ? 'text-red-600' : 'text-green-600'}`}>
-                      {stats.pendingIssues}
+                      {loading ? "..." : stats.pendingIssues}
                     </p>
                   </div>
                   <div className={`p-2 rounded-full ${stats.pendingIssues > 0 ? 'bg-red-50 text-red-600' : 'bg-green-50 text-green-600'}`}>
@@ -236,7 +330,7 @@ export default function EnterpriseSeoCenter() {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm text-muted-foreground">Avg. Keyword Position</p>
-                    <p className="text-2xl font-bold">{stats.avgPosition || '-'}</p>
+                    <p className="text-2xl font-bold">{loading ? "..." : (stats.avgPosition || '-')}</p>
                   </div>
                   <div className="p-2 rounded-full bg-purple-50 text-purple-600">
                     <TrendingUp className="h-6 w-6" />
@@ -246,59 +340,67 @@ export default function EnterpriseSeoCenter() {
             </Card>
           </div>
 
-          {/* Topic Authority */}
           <Card>
             <CardHeader>
               <CardTitle>Topic Authority by Category</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="space-y-4">
-                {topicAuthority.map((topic) => (
-                  <div key={topic.id} className="flex items-center justify-between p-3 border rounded-lg">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
-                        <Target className="h-5 w-5 text-primary" />
+              {loading ? (
+                <p className="text-sm text-muted-foreground py-4 text-center">Loading...</p>
+              ) : topicAuthority.length === 0 ? (
+                <p className="text-sm text-muted-foreground py-4 text-center">
+                  No category data yet. Run a full audit to generate topic authority scores.
+                </p>
+              ) : (
+                <div className="space-y-4">
+                  {topicAuthority.slice(0, 8).map((topic) => (
+                    <div key={topic.id} className="flex flex-wrap items-center justify-between gap-3 p-3 border rounded-lg">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                          <Target className="h-5 w-5 text-primary" />
+                        </div>
+                        <div className="min-w-0">
+                          <p className="font-medium truncate">{topic.category_name}</p>
+                          <p className="text-sm text-muted-foreground">{topic.article_count} articles</p>
+                        </div>
                       </div>
-                      <div>
-                        <p className="font-medium">{topic.category_name || topic.category_id}</p>
-                        <p className="text-sm text-muted-foreground">{topic.article_count} articles</p>
+                      <div className="flex items-center gap-4 shrink-0">
+                        <div className="text-right">
+                          <p className="text-sm text-muted-foreground">Authority</p>
+                          <p className={`font-bold ${getScoreColor(topic.authority_score)}`}>{topic.authority_score}%</p>
+                        </div>
+                        <div className="w-24 bg-gray-200 rounded-full h-2">
+                          <div
+                            className="bg-primary rounded-full h-2"
+                            style={{ width: `${topic.authority_score}%` }}
+                          />
+                        </div>
                       </div>
                     </div>
-                    <div className="flex items-center gap-4">
-                      <div className="text-right">
-                        <p className="text-sm text-muted-foreground">Authority</p>
-                        <p className={`font-bold ${getScoreColor(topic.authority_score)}`}>{topic.authority_score}%</p>
-                      </div>
-                      <div className="w-24 bg-gray-200 rounded-full h-2">
-                        <div 
-                          className="bg-primary rounded-full h-2" 
-                          style={{ width: `${topic.authority_score}%` }}
-                        />
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              )}
             </CardContent>
           </Card>
 
-          {/* Recent Issues */}
           <Card>
             <CardHeader>
               <CardTitle>Recent SEO Issues</CardTitle>
             </CardHeader>
             <CardContent>
-              {issues.length === 0 ? (
+              {loading ? (
+                <p className="text-sm text-muted-foreground py-4 text-center">Loading...</p>
+              ) : issues.length === 0 ? (
                 <p className="text-muted-foreground text-center py-4">No pending issues</p>
               ) : (
                 <div className="space-y-3">
                   {issues.slice(0, 5).map((issue) => (
-                    <div key={issue.id} className="flex items-center justify-between p-3 border rounded-lg">
-                      <div className="flex items-center gap-3">
+                    <div key={issue.id} className="flex flex-wrap items-center justify-between gap-2 p-3 border rounded-lg">
+                      <div className="flex items-center gap-3 min-w-0">
                         {getSeverityBadge(issue.severity)}
-                        <div>
+                        <div className="min-w-0">
                           <p className="font-medium">{issue.issue_type}</p>
-                          <p className="text-sm text-muted-foreground">{issue.description}</p>
+                          <p className="text-sm text-muted-foreground truncate">{issue.description}</p>
                         </div>
                       </div>
                       <Button variant="ghost" size="sm" onClick={() => resolveIssue(issue.id)}>
@@ -318,19 +420,21 @@ export default function EnterpriseSeoCenter() {
               <CardTitle>SEO Audit Results</CardTitle>
             </CardHeader>
             <CardContent>
-              {audits.length === 0 ? (
+              {loading ? (
+                <div className="text-center py-8"><p className="text-muted-foreground">Loading...</p></div>
+              ) : audits.length === 0 ? (
                 <div className="text-center py-8">
                   <p className="text-muted-foreground mb-4">No audits performed yet</p>
-                  <Button onClick={() => runSeoAudit("all")}>
-                    <RefreshCw className="h-4 w-4 mr-2" />
-                    Run First Audit
+                  <Button onClick={() => runSeoAudit("all")} disabled={auditing}>
+                    {auditing ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <RefreshCw className="h-4 w-4 mr-2" />}
+                    {auditing ? "Auditing..." : "Run First Audit"}
                   </Button>
                 </div>
               ) : (
                 <div className="space-y-4">
                   {audits.map((audit) => (
                     <div key={audit.id} className="border rounded-lg p-4">
-                      <div className="flex items-center justify-between mb-4">
+                      <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
                         <div className="flex items-center gap-3">
                           <div className={`text-2xl font-bold ${getScoreColor(audit.overall_score)}`}>
                             {audit.overall_score}
@@ -338,13 +442,13 @@ export default function EnterpriseSeoCenter() {
                           <div>
                             <p className="font-medium">Overall Score</p>
                             <p className="text-sm text-muted-foreground">
-                              {new Date(audit.checked_at).toLocaleDateString()}
+                              {new Date(audit.checked_at || audit.created_at || Date.now()).toLocaleString()}
                             </p>
                           </div>
                         </div>
-                        <Button variant="outline" size="sm">
-                          <Eye className="h-4 w-4 mr-2" />
-                          View Details
+                        <Button variant="outline" size="sm" onClick={() => setExpandedAudit(expandedAudit === audit.id ? null : audit.id)}>
+                          {expandedAudit === audit.id ? <ChevronUpIcon className="h-4 w-4 mr-2" /> : <Eye className="h-4 w-4 mr-2" />}
+                          {expandedAudit === audit.id ? "Hide Details" : "View Details"}
                         </Button>
                       </div>
                       <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3">
@@ -362,6 +466,41 @@ export default function EnterpriseSeoCenter() {
                           </div>
                         ))}
                       </div>
+                      {expandedAudit === audit.id && (
+                        <div className="mt-4 space-y-4 border-t pt-4">
+                          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
+                            {[
+                              { label: "External Links", score: audit.external_links_score },
+                              { label: "Keyword Coverage", score: audit.keyword_coverage_score },
+                              { label: "Technical Health", score: audit.technical_health_score },
+                              { label: "Freshness", score: audit.freshness_score },
+                              { label: "Internal Links", score: audit.internal_linking_score },
+                            ].map((item) => (
+                              <div key={item.label} className="text-center p-2 border rounded bg-muted/20">
+                                <p className={`text-lg font-bold ${getScoreColor(item.score)}`}>{item.score}</p>
+                                <p className="text-xs text-muted-foreground">{item.label}</p>
+                              </div>
+                            ))}
+                          </div>
+                          {Array.isArray(audit.issues) && audit.issues.length > 0 && (
+                            <div>
+                              <h4 className="text-sm font-medium mb-2">Found Issues</h4>
+                              <div className="space-y-2">
+                                {audit.issues.map((iss: any, i: number) => (
+                                  <div key={i} className="flex items-start gap-2 text-sm p-2 rounded bg-red-50/50 border border-red-100">
+                                    <AlertTriangle className="h-4 w-4 text-red-500 mt-0.5 shrink-0" />
+                                    <div>
+                                      <span className="font-medium">{iss.issue_type}</span>
+                                      <span className="text-muted-foreground"> — {iss.description}</span>
+                                      {iss.suggestion && <p className="text-xs text-blue-600 mt-0.5">Suggestion: {iss.suggestion}</p>}
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -375,31 +514,58 @@ export default function EnterpriseSeoCenter() {
             <CardHeader>
               <CardTitle>Keyword Rankings</CardTitle>
             </CardHeader>
-            <CardContent>
+            <CardContent className="space-y-4">
+              <div className="flex flex-wrap gap-2">
+                <Input
+                  placeholder="Add keyword to track (e.g., ai tutorials)"
+                  value={newKeyword}
+                  onChange={(e) => setNewKeyword(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && addKeyword()}
+                  className="flex-1 min-w-[200px]"
+                />
+                <select
+                  value={newKeywordPost}
+                  onChange={(e) => setNewKeywordPost(e.target.value)}
+                  className="h-9 rounded-md border border-input bg-background px-3 text-sm flex-1 min-w-[180px] max-w-[320px]"
+                >
+                  <option value="">No linked post</option>
+                  {postsList.map((p) => (
+                    <option key={p.id} value={p.id}>{p.title}</option>
+                  ))}
+                </select>
+                <Button onClick={addKeyword} disabled={!newKeyword.trim()}>
+                  <Plus className="h-4 w-4 mr-1" /> Track
+                </Button>
+              </div>
               {keywords.length === 0 ? (
-                <p className="text-muted-foreground text-center py-4">No keywords tracked yet</p>
+                <p className="text-muted-foreground text-center py-4">
+                  No keywords tracked yet. Add your first keyword above.
+                </p>
               ) : (
                 <div className="space-y-3">
                   {keywords.map((kw) => (
-                    <div key={kw.id} className="flex items-center justify-between p-3 border rounded-lg">
-                      <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center">
+                    <div key={kw.id} className="flex flex-wrap items-center justify-between gap-2 p-3 border rounded-lg">
+                      <div className="flex items-center gap-4 min-w-0">
+                        <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
                           <span className="text-lg font-bold text-primary">
                             {kw.position || '-'}
                           </span>
                         </div>
-                        <div>
-                          <p className="font-medium">{kw.keyword}</p>
+                        <div className="min-w-0">
+                          <p className="font-medium truncate">{kw.keyword}</p>
                           <p className="text-sm text-muted-foreground">
                             Volume: {kw.search_volume || 'N/A'} | Difficulty: {kw.difficulty || 'N/A'}
                           </p>
                         </div>
                       </div>
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 shrink-0">
                         {getTrendIcon(kw.position, kw.previous_position)}
                         <Badge variant={kw.position && kw.position <= 10 ? "default" : "secondary"}>
-                          {kw.position ? `#${kw.position}` : 'N/A'}
+                          {kw.position ? `#${kw.position}` : 'Untracked'}
                         </Badge>
+                        <Button variant="ghost" size="sm" onClick={() => deleteKeyword(kw.id)}>
+                          <Trash2 className="h-4 w-4 text-red-500" />
+                        </Button>
                       </div>
                     </div>
                   ))}
@@ -415,15 +581,17 @@ export default function EnterpriseSeoCenter() {
               <CardTitle>SEO Issues</CardTitle>
             </CardHeader>
             <CardContent>
-              {issues.length === 0 ? (
+              {loading ? (
+                <p className="text-muted-foreground text-center py-4">Loading...</p>
+              ) : issues.length === 0 ? (
                 <p className="text-muted-foreground text-center py-4">No issues found</p>
               ) : (
                 <div className="space-y-3">
                   {issues.map((issue) => (
-                    <div key={issue.id} className="flex items-center justify-between p-3 border rounded-lg">
-                      <div className="flex items-center gap-3">
+                    <div key={issue.id} className="flex flex-wrap items-center justify-between gap-2 p-3 border rounded-lg">
+                      <div className="flex items-center gap-3 min-w-0">
                         {getSeverityBadge(issue.severity)}
-                        <div>
+                        <div className="min-w-0">
                           <p className="font-medium">{issue.issue_type}</p>
                           <p className="text-sm text-muted-foreground">{issue.description}</p>
                           {issue.suggestion && (
@@ -461,31 +629,37 @@ export default function EnterpriseSeoCenter() {
               <CardTitle>Topic Authority Dashboard</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="space-y-4">
-                {topicAuthority.map((topic) => (
-                  <div key={topic.id} className="flex items-center justify-between p-4 border rounded-lg">
-                    <div className="flex items-center gap-4">
-                      <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
-                        <Target className="h-6 w-6 text-primary" />
+              {loading ? (
+                <p className="text-sm text-muted-foreground py-4 text-center">Loading...</p>
+              ) : topicAuthority.length === 0 ? (
+                <p className="text-sm text-muted-foreground py-4 text-center">No data yet</p>
+              ) : (
+                <div className="space-y-4">
+                  {topicAuthority.map((topic) => (
+                    <div key={topic.id} className="flex flex-wrap items-center justify-between gap-3 p-4 border rounded-lg">
+                      <div className="flex items-center gap-4 min-w-0">
+                        <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                          <Target className="h-6 w-6 text-primary" />
+                        </div>
+                        <div className="min-w-0">
+                          <p className="font-medium text-lg truncate">{topic.category_name}</p>
+                          <p className="text-sm text-muted-foreground">
+                            {topic.article_count} articles | Avg Quality: {topic.avg_quality_score} | Avg SEO: {topic.avg_seo_score}
+                          </p>
+                        </div>
                       </div>
-                      <div>
-                        <p className="font-medium text-lg">{topic.category_name || topic.category_id}</p>
-                        <p className="text-sm text-muted-foreground">
-                          {topic.article_count} articles | Avg Quality: {topic.avg_quality_score} | Avg SEO: {topic.avg_seo_score}
-                        </p>
+                      <div className="flex items-center gap-4 shrink-0">
+                        <div className="text-right">
+                          <p className="text-sm text-muted-foreground">Authority Score</p>
+                          <p className={`text-2xl font-bold ${getScoreColor(topic.authority_score)}`}>
+                            {topic.authority_score}%
+                          </p>
+                        </div>
                       </div>
                     </div>
-                    <div className="flex items-center gap-4">
-                      <div className="text-right">
-                        <p className="text-sm text-muted-foreground">Authority Score</p>
-                        <p className={`text-2xl font-bold ${getScoreColor(topic.authority_score)}`}>
-                          {topic.authority_score}%
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
@@ -527,6 +701,10 @@ export default function EnterpriseSeoCenter() {
   )
 }
 
+function ChevronUpIcon({ className }: { className?: string }) {
+  return <ChevronDown className={`${className} rotate-180`} />
+}
+
 function InternalLinksTab() {
   const supabase = createClient()
   const [posts, setPosts] = useState<any[]>([])
@@ -535,7 +713,7 @@ function InternalLinksTab() {
   useEffect(() => {
     (async () => {
       try {
-        const { data } = await supabase.from("posts").select("id, title, slug, content").eq("status", "published").limit(20)
+        const { data } = await supabase.from("posts").select("id, title, slug, content").eq("status", "published").limit(50)
         if (data) setPosts(data)
       } catch (err) { console.error("Failed to fetch internal links:", err) }
       setLoading(false)
@@ -550,15 +728,18 @@ function InternalLinksTab() {
           <p className="text-sm text-muted-foreground">Loading...</p>
         ) : (
           <div className="space-y-3">
-            {posts.slice(0, 5).map((post) => (
+            {posts.slice(0, 10).map((post) => (
               <div key={post.id} className="p-3 rounded-lg bg-muted/30">
-                <p className="font-medium text-sm">{post.title}</p>
+                <div className="flex items-center justify-between gap-2">
+                  <p className="font-medium text-sm truncate">{post.title}</p>
+                  <a href={`/admin/posts/${post.id}/edit`} className="text-xs text-blue-600 hover:underline shrink-0">Edit →</a>
+                </div>
                 <p className="text-xs text-muted-foreground mt-1">
-                  Content length: {post.content?.length || 0} chars · Slug: /{post.slug}
+                  Content length: {post.content?.length || 0} chars · Slug: /{post.slug} · Internal links: {((post.content || "").match(/<a[^>]+href="\/(?!https?:)[^"]+"/gi) || []).length}
                 </p>
               </div>
             ))}
-            <p className="text-xs text-muted-foreground mt-2">Showing {Math.min(posts.length, 5)} of {posts.length} published posts. Use the post editor to add internal links.</p>
+            <p className="text-xs text-muted-foreground mt-2">Showing {Math.min(posts.length, 10)} of {posts.length} published posts. Use the post editor to add internal links.</p>
           </div>
         )}
       </CardContent>
@@ -702,21 +883,20 @@ function SchemaTab() {
 }
 
 function RedirectsTab() {
+  const supabase = createClient()
   const [redirects, setRedirects] = useState<{ id?: string; source_url: string; target_url: string; status_code: number }[]>([])
   const [from, setFrom] = useState("")
   const [to, setTo] = useState("")
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    const supabase = createClient()
     supabase.from("seo_redirects").select("*").order("created_at", { ascending: false }).then(({ data }) => {
       if (data) setRedirects(data)
       setLoading(false)
     })
-  }, [])
+  }, [supabase])
 
   const saveRedirect = async (fromUrl: string, toUrl: string) => {
-    const supabase = createClient()
     const { data } = await supabase.from("seo_redirects").insert({ source_url: fromUrl, target_url: toUrl, status_code: 301 }).select().single()
     if (data) setRedirects(prev => [data, ...prev])
   }
@@ -729,7 +909,6 @@ function RedirectsTab() {
   }
 
   const removeRedirect = async (id: string) => {
-    const supabase = createClient()
     await supabase.from("seo_redirects").delete().eq("id", id)
     setRedirects(redirects.filter(r => r.id !== id))
   }
@@ -738,10 +917,10 @@ function RedirectsTab() {
     <Card>
       <CardHeader><CardTitle>Redirect Manager</CardTitle></CardHeader>
       <CardContent className="space-y-4">
-        <div className="flex gap-2">
-          <Input placeholder="Source URL (e.g., /old-page)" value={from} onChange={(e) => setFrom(e.target.value)} className="flex-1" />
-          <Input placeholder="Target URL (e.g., /new-page)" value={to} onChange={(e) => setTo(e.target.value)} className="flex-1" />
-          <Button onClick={addRedirect}><Plus className="h-4 w-4 mr-1" /> Add Redirect</Button>
+        <div className="flex gap-2 flex-wrap">
+          <Input placeholder="Source URL (e.g., /old-page)" value={from} onChange={(e) => setFrom(e.target.value)} className="flex-1 min-w-[150px]" />
+          <Input placeholder="Target URL (e.g., /new-page)" value={to} onChange={(e) => setTo(e.target.value)} className="flex-1 min-w-[150px]" />
+          <Button onClick={addRedirect} disabled={!from || !to}><Plus className="h-4 w-4 mr-1" /> Add Redirect</Button>
         </div>
         <div className="space-y-2">
           {loading ? (
@@ -750,12 +929,12 @@ function RedirectsTab() {
             <p className="text-sm text-muted-foreground text-center py-4">No redirects configured. Add your first redirect above.</p>
           ) : (
             redirects.map((r) => (
-              <div key={r.id || r.source_url} className="flex items-center justify-between p-3 rounded-lg bg-muted/30 text-sm">
-                <div className="flex items-center gap-2">
+              <div key={r.id || r.source_url} className="flex flex-wrap items-center justify-between gap-2 p-3 rounded-lg bg-muted/30 text-sm">
+                <div className="flex items-center gap-2 flex-wrap min-w-0">
                   <Badge variant="outline">{r.status_code?.toString() || "301"}</Badge>
-                  <span className="font-mono">{r.source_url}</span>
+                  <span className="font-mono text-xs">{r.source_url}</span>
                   <span className="text-muted-foreground">→</span>
-                  <span className="font-mono">{r.target_url}</span>
+                  <span className="font-mono text-xs">{r.target_url}</span>
                 </div>
                 <Button variant="ghost" size="sm" onClick={() => removeRedirect(r.id!)}><Trash2 className="h-3 w-3" /></Button>
               </div>
@@ -775,7 +954,7 @@ function DuplicatesTab() {
   useEffect(() => {
     (async () => {
       try {
-        const { data } = await supabase.from("posts").select("id, title, slug").eq("status", "published").limit(50)
+        const { data } = await supabase.from("posts").select("id, title, slug").eq("status", "published").limit(200)
         if (data) setPosts(data)
       } catch (err) { console.error("Failed to fetch duplicates:", err) }
       setLoading(false)
@@ -803,8 +982,6 @@ function DuplicatesTab() {
       titleBigrams.forEach(b => { if (pBigrams.has(b)) bigramOverlap++ })
       const unionSize = new Set([...titleBigrams, ...pBigrams]).size
       const jaccard = unionSize > 0 ? bigramOverlap / unionSize : 0
-      // Flag as duplicate if word overlap >= 4 words with >= 40% word match,
-      // or Jaccard similarity on bigrams >= 0.3
       const wordMatchRatio = Math.max(words.length, pWords.length) > 0
         ? wordOverlap / Math.max(words.length, pWords.length)
         : 0
@@ -854,7 +1031,7 @@ function ContentDecayTab() {
     const fetchDecay = async () => {
       try {
         const { data } = await supabase.from("posts").select("id, title, slug, views, updated_at, published_at")
-          .eq("status", "published").order("updated_at", { ascending: true }).limit(50)
+          .eq("status", "published").order("updated_at", { ascending: true }).limit(100)
 
         if (data) {
           const now = Date.now()
@@ -882,7 +1059,7 @@ function ContentDecayTab() {
           decayingPosts.map((p) => {
             const daysSinceUpdate = Math.floor((Date.now() - new Date(p.updated_at).getTime()) / (1000 * 60 * 60 * 24))
             return (
-              <div key={p.id} className="flex items-center justify-between p-3 rounded-lg bg-muted/30">
+              <div key={p.id} className="flex flex-wrap items-center justify-between gap-2 p-3 rounded-lg bg-muted/30">
                 <div className="min-w-0">
                   <p className="font-medium text-sm truncate">{p.title}</p>
                   <p className="text-xs text-muted-foreground">{daysSinceUpdate} days since update · {p.views || 0} views</p>
@@ -1010,6 +1187,7 @@ function RobotsTab() {
   const [robotsContent, setRobotsContent] = useState("")
   const [saved, setSaved] = useState(false)
   const [loading, setLoading] = useState(true)
+  const [showPreview, setShowPreview] = useState(false)
   const siteUrl = typeof window !== "undefined" ? window.location.origin : "https://techpivo.com"
 
   useEffect(() => {
@@ -1033,10 +1211,6 @@ function RobotsTab() {
     setTimeout(() => setSaved(false), 2000)
   }
 
-  const handlePreview = () => {
-    window.open(`/robots.txt?preview=${encodeURIComponent(robotsContent)}`, "_blank")
-  }
-
   return (
     <Card>
       <CardHeader><CardTitle>Robots.txt Manager</CardTitle></CardHeader>
@@ -1044,17 +1218,26 @@ function RobotsTab() {
         {loading ? (
           <p className="text-sm text-muted-foreground">Loading...</p>
         ) : (
-        <><textarea
-          className="w-full h-48 p-3 font-mono text-sm border rounded-lg bg-muted/30"
-          value={robotsContent}
-          onChange={(e) => setRobotsContent(e.target.value)}
-        />
-        <div className="flex gap-2 mt-3">
-          <Button onClick={handleSave}>{saved ? "Saved!" : "Save Robots.txt"}</Button>
-          <Button variant="outline" onClick={handlePreview}>Preview</Button>
-        </div>
-        <p className="text-xs text-muted-foreground mt-2">Your robots.txt will be served at {siteUrl}/robots.txt</p>
-        </>)}
+          <>
+            <textarea
+              className="w-full h-48 p-3 font-mono text-sm border rounded-lg bg-muted/30"
+              value={robotsContent}
+              onChange={(e) => setRobotsContent(e.target.value)}
+            />
+            <div className="flex gap-2 mt-3">
+              <Button onClick={handleSave}>{saved ? "Saved!" : "Save Robots.txt"}</Button>
+              <Button variant="outline" onClick={() => setShowPreview(v => !v)}>
+                <Eye className="h-4 w-4 mr-2" /> {showPreview ? "Hide Preview" : "Preview"}
+              </Button>
+            </div>
+            {showPreview && (
+              <pre className="mt-3 p-3 font-mono text-xs bg-background border rounded-lg whitespace-pre-wrap">{robotsContent}</pre>
+            )}
+            <p className="text-xs text-muted-foreground mt-2">
+              Saved content is served live at <a href="/robots.txt" target="_blank" rel="noreferrer" className="text-blue-600 hover:underline">{siteUrl}/robots.txt</a>
+            </p>
+          </>
+        )}
       </CardContent>
     </Card>
   )
@@ -1095,17 +1278,13 @@ function SitemapTab() {
           ))}
         </div>
         <div className="space-y-2">
-          {[
-            { url: `${typeof window !== "undefined" ? window.location.origin : "https://techpivo.com"}/sitemap.xml`, pages: stats.total, status: "Active" },
-          ].map((s, i) => (
-            <div key={i} className="flex items-center justify-between p-3 rounded-lg bg-muted/30 text-sm">
-              <span className="font-mono text-xs truncate">{s.url}</span>
-              <div className="flex items-center gap-2">
-                <span className="text-muted-foreground">{s.pages} pages</span>
-                <Badge variant="default">{s.status}</Badge>
-              </div>
+          <div className="flex flex-wrap items-center justify-between gap-2 p-3 rounded-lg bg-muted/30 text-sm">
+            <span className="font-mono text-xs truncate">{`${typeof window !== "undefined" ? window.location.origin : "https://techpivo.com"}/sitemap.xml`}</span>
+            <div className="flex items-center gap-2">
+              <span className="text-muted-foreground">{stats.total} pages</span>
+              <Badge variant="default">Active</Badge>
             </div>
-          ))}
+          </div>
         </div>
       </CardContent>
     </Card>
@@ -1253,7 +1432,7 @@ function ImageSeoTab() {
     const fetchImages = async () => {
       try {
         const { data } = await supabase.from("posts").select("featured_image, content")
-          .eq("status", "published").limit(200)
+          .eq("status", "published").limit(300)
 
         const posts = data || []
         let missingFeatured = 0
@@ -1325,4 +1504,3 @@ function ImageSeoTab() {
     </div>
   )
 }
-
