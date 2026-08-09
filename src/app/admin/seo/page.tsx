@@ -124,7 +124,10 @@ export default function EnterpriseSeoCenter() {
       topics = Object.entries(grouped).map(([cid, g]) => {
         const avgSeo = g.seo.length ? Math.round(g.seo.reduce((a, b) => a + b, 0) / g.seo.length) : 0
         const avgQ = g.q.length ? Math.round(g.q.reduce((a, b) => a + b, 0) / g.q.length) : 0
-        const authority = avgSeo || avgQ ? Math.round((avgSeo + avgQ) / 2) : Math.min(55 + g.count * 2, 95)
+        const authority = avgQ && avgSeo ? Math.round((avgSeo + avgQ) / 2)
+          : avgQ ? avgQ
+          : avgSeo ? avgSeo
+          : Math.min(55 + g.count * 2, 95)
         return {
           id: cid, category_id: cid, category_name: catMap[cid] || cid,
           article_count: g.count, avg_quality_score: avgQ, avg_seo_score: avgSeo, authority_score: authority,
@@ -175,28 +178,48 @@ export default function EnterpriseSeoCenter() {
     }
   }, [supabase, loadData])
 
-  const runSeoAudit = async (postId: string) => {
+  const [auditProgress, setAuditProgress] = useState<{ done: number; total: number } | null>(null)
+
+  const runSeoAudit = async (target: string) => {
     if (auditing) return
     setAuditing(true)
     setAuditMsg("")
+    setAuditProgress(null)
     try {
-      const res = await fetch("/api/admin/seo/audit", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ postId })
-      })
-      if (res.ok) {
-        const data = await res.json()
-        setAuditMsg(data.audited !== undefined ? `Audited ${data.audited} of ${data.total} posts` : "Audit complete")
-        await loadData()
+      let ids: string[] = []
+      if (target === "all") {
+        ids = postsList.map(p => p.id)
+        if (ids.length === 0) {
+          const { data } = await supabase.from("posts").select("id").eq("status", "published").limit(300)
+          ids = (data || []).map((p: any) => p.id)
+        }
       } else {
-        const err = await res.json().catch(() => ({}))
-        setAuditMsg(`Audit failed: ${err.error || res.status}`)
+        ids = [target]
       }
+
+      const total = ids.length
+      let done = 0
+      for (let i = 0; i < ids.length; i += 25) {
+        const chunk = ids.slice(i, i + 25)
+        const res = await fetch("/api/admin/seo/audit", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ postIds: chunk })
+        })
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}))
+          throw new Error(err.error || `HTTP ${res.status}`)
+        }
+        done += chunk.length
+        setAuditProgress({ done, total })
+      }
+      setAuditMsg(`Audit complete — ${total} posts checked`)
+      await loadData()
     } catch (e) {
       setAuditMsg(`Audit failed: ${String(e)}`)
     }
     setAuditing(false)
+    setAuditProgress(null)
   }
 
   const resolveIssue = async (issueId: string) => {
@@ -257,7 +280,9 @@ export default function EnterpriseSeoCenter() {
           )}
           <Button onClick={() => runSeoAudit("all")} disabled={auditing}>
             {auditing ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <RefreshCw className="h-4 w-4 mr-2" />}
-            {auditing ? "Auditing..." : "Run Full Audit"}
+            {auditing
+              ? (auditProgress ? `Auditing ${auditProgress.done}/${auditProgress.total}...` : "Auditing...")
+              : "Run Full Audit"}
           </Button>
         </div>
       </div>
@@ -297,6 +322,7 @@ export default function EnterpriseSeoCenter() {
                   <div>
                     <p className="text-sm text-muted-foreground">Indexed Posts</p>
                     <p className="text-2xl font-bold">{loading ? "..." : stats.indexedPosts}</p>
+                    <p className="text-xs text-muted-foreground">of {postsList.length} published</p>
                   </div>
                   <div className="p-2 rounded-full bg-blue-50 text-blue-600">
                     <Globe className="h-6 w-6" />
@@ -421,13 +447,18 @@ export default function EnterpriseSeoCenter() {
                   <p className="text-muted-foreground mb-4">No audits performed yet</p>
                   <Button onClick={() => runSeoAudit("all")} disabled={auditing}>
                     {auditing ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <RefreshCw className="h-4 w-4 mr-2" />}
-                    {auditing ? "Auditing..." : "Run First Audit"}
+                    {auditing
+                      ? (auditProgress ? `Auditing ${auditProgress.done}/${auditProgress.total}...` : "Auditing...")
+                      : "Run First Audit"}
                   </Button>
                 </div>
               ) : (
                 <div className="space-y-4">
                   {audits.map((audit) => (
                     <div key={audit.id} className="border rounded-lg p-4">
+                      <p className="text-sm font-medium mb-3">
+                        {postsList.find(p => p.id === audit.post_id)?.title || "Post removed"}
+                      </p>
                       <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
                         <div className="flex items-center gap-3">
                           <div className={`text-2xl font-bold ${getScoreColor(audit.overall_score)}`}>
@@ -969,25 +1000,31 @@ function ImageSeoTab() {
     noImagesInContent: 0,
     withImages: 0,
   })
+  const [missingImagePosts, setMissingImagePosts] = useState<{ id: string; title: string }[]>([])
 
   useEffect(() => {
     const fetchImages = async () => {
       try {
-        const { data } = await supabase.from("posts").select("featured_image, content")
+        const { data } = await supabase.from("posts").select("id, title, featured_image, content")
           .eq("status", "published").limit(300)
 
         const posts = data || []
         let missingFeatured = 0
         let noImagesInContent = 0
+        const missing: { id: string; title: string }[] = []
 
         posts.forEach((p) => {
           if (!p.featured_image) missingFeatured++
           const content = p.content || ""
           const imgTagCount = (content.match(/<img[^>]+>/gi) || []).length
           const mdImgCount = (content.match(/!\[.*?\]\(.*?\)/g) || []).length
-          if (imgTagCount === 0 && mdImgCount === 0) noImagesInContent++
+          if (imgTagCount === 0 && mdImgCount === 0) {
+            noImagesInContent++
+            if (missing.length < 10) missing.push({ id: p.id, title: p.title })
+          }
         })
 
+        setMissingImagePosts(missing)
         setImageStats({
           total: posts.length,
           missingFeatured,
@@ -1032,13 +1069,38 @@ function ImageSeoTab() {
         </div>
       )}
       {imageStats.noImagesInContent > 0 && (
-        <div className="flex items-center justify-between p-3 rounded-lg bg-red-50 border border-red-200">
-          <div className="flex items-center gap-2">
-            <Image className="h-4 w-4 text-red-600" />
-            <span className="text-sm font-medium text-red-800">Content without any image markup</span>
+        <>
+          <div className="flex items-center justify-between p-3 rounded-lg bg-red-50 border border-red-200">
+            <div className="flex items-center gap-2">
+              <Image className="h-4 w-4 text-red-600" />
+              <span className="text-sm font-medium text-red-800">Content without any image markup</span>
+            </div>
+            <Badge variant="secondary" className="bg-red-100 text-red-800">{imageStats.noImagesInContent} articles</Badge>
           </div>
-          <Badge variant="secondary" className="bg-red-100 text-red-800">{imageStats.noImagesInContent} articles</Badge>
-        </div>
+          <Card>
+            <CardHeader>
+              <CardTitle>Articles to Fix</CardTitle>
+              <p className="text-sm text-muted-foreground">
+                Open each article and add images throughout the content via the editor.
+              </p>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              {missingImagePosts.map((p) => (
+                <div key={p.id} className="flex items-center justify-between gap-2 p-3 rounded-lg bg-muted/30">
+                  <p className="font-medium text-sm truncate">{p.title}</p>
+                  <a href={`/admin/posts/${p.id}/edit`} className="text-sm text-blue-600 hover:underline shrink-0">
+                    Edit →
+                  </a>
+                </div>
+              ))}
+              {imageStats.noImagesInContent > 10 && (
+                <p className="text-xs text-muted-foreground">
+                  Showing 10 of {imageStats.noImagesInContent} articles needing images.
+                </p>
+              )}
+            </CardContent>
+          </Card>
+        </>
       )}
       {imageStats.missingFeatured === 0 && imageStats.noImagesInContent === 0 && (
         <p className="text-sm text-muted-foreground text-center py-4">All scanned articles have featured images and content images. Good job!</p>
