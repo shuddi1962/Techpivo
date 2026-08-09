@@ -36,6 +36,8 @@ export async function POST(request: Request) {
     }
 
     const auditResults: any[] = []
+    const auditRows: any[] = []
+    const issueRows: any[] = []
 
     for (const post of posts) {
       const scores = {
@@ -60,50 +62,50 @@ export async function POST(request: Request) {
       const issues = identifyIssues(post, scores)
       const suggestions = generateSuggestions(post, issues)
 
-      const { data: audit, error: auditError } = await supabase
-        .from("seo_audits")
-        .upsert({
-          post_id: post.id,
-          overall_score: overallScore,
-          seo_score: scores.seoScore,
-          readability_score: scores.readabilityScore,
-          eeat_score: scores.eeatScore,
-          media_score: scores.mediaScore,
-          internal_linking_score: scores.internalLinkingScore,
-          external_links_score: scores.externalLinksScore,
-          schema_score: scores.schemaScore,
-          keyword_coverage_score: scores.keywordCoverageScore,
-          technical_health_score: scores.technicalHealthScore,
-          freshness_score: scores.freshnessScore,
-          issues: issues,
-          suggestions: suggestions,
-          checked_at: new Date().toISOString()
-        }, { onConflict: "post_id" })
-        .select()
-        .single()
-
-      if (auditError) throw auditError
-      auditResults.push(audit)
-
-      // Write resolvable issue rows (preserve resolved state on re-audit)
-      const issueRows = issues.map((i: any) => ({
+      auditRows.push({
         post_id: post.id,
-        issue_type: i.type,
-        severity: i.severity,
-        description: i.description,
-        suggestion: i.suggestion,
-      }))
+        overall_score: overallScore,
+        seo_score: scores.seoScore,
+        readability_score: scores.readabilityScore,
+        eeat_score: scores.eeatScore,
+        media_score: scores.mediaScore,
+        internal_linking_score: scores.internalLinkingScore,
+        external_links_score: scores.externalLinksScore,
+        schema_score: scores.schemaScore,
+        keyword_coverage_score: scores.keywordCoverageScore,
+        technical_health_score: scores.technicalHealthScore,
+        freshness_score: scores.freshnessScore,
+        issues: issues,
+        suggestions: suggestions,
+        checked_at: new Date().toISOString()
+      })
 
-      if (issueRows.length > 0) {
-        const { error: issuesError } = await supabase
-          .from("seo_issues")
-          .upsert(issueRows, {
-            onConflict: "post_id,issue_type",
-            ignoreDuplicates: false,
-          })
-        if (issuesError) throw issuesError
-      }
+      issues.forEach((i: any) => {
+        issueRows.push({
+          post_id: post.id,
+          issue_type: i.type,
+          severity: i.severity,
+          description: i.description,
+          suggestion: i.suggestion,
+        })
+      })
     }
+
+    // Bulk write (2 roundtrips instead of ~50 per batch)
+    const { data: savedAudits, error: auditError } = await supabase
+      .from("seo_audits")
+      .upsert(auditRows, { onConflict: "post_id" })
+      .select()
+    if (auditError) throw auditError
+
+    if (issueRows.length > 0) {
+      const { error: issuesError } = await supabase
+        .from("seo_issues")
+        .upsert(issueRows, { onConflict: "post_id,issue_type" })
+      if (issuesError) throw issuesError
+    }
+
+    auditResults.push(...(savedAudits || []))
 
     return NextResponse.json({
       success: true,

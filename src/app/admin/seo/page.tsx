@@ -515,7 +515,7 @@ export default function EnterpriseSeoCenter() {
                                   <div key={i} className="flex items-start gap-2 text-sm p-2 rounded bg-red-50/50 border border-red-100">
                                     <AlertTriangle className="h-4 w-4 text-red-500 mt-0.5 shrink-0" />
                                     <div>
-                                      <span className="font-medium">{iss.issue_type}</span>
+                                      <span className="font-medium">{iss.issue_type || iss.type}</span>
                                       <span className="text-muted-foreground"> — {iss.description}</span>
                                       {iss.suggestion && <p className="text-xs text-blue-600 mt-0.5">Suggestion: {iss.suggestion}</p>}
                                     </div>
