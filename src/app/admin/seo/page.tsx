@@ -8,10 +8,10 @@ import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import {
-  Search, AlertTriangle, CheckCircle, TrendingUp, TrendingDown,
-  FileText, Link, Image, Code, BarChart3, RefreshCw, Settings,
-  Globe, Shield, Zap, Target, ExternalLink, Copy, Trash2, Plus, Eye, Clock,
-  Loader2, ChevronDown, ChevronRight
+  AlertTriangle, CheckCircle, TrendingUp, TrendingDown,
+  FileText, Link, Image, BarChart3, RefreshCw,
+  Globe, Shield, Target, Copy, Trash2, Plus, Eye,
+  Loader2, ChevronDown
 } from "lucide-react"
 
 interface SeoAudit {
@@ -268,18 +268,12 @@ export default function EnterpriseSeoCenter() {
           <TabsTrigger value="audit">SEO Audit</TabsTrigger>
           <TabsTrigger value="keywords">Keyword Tracking</TabsTrigger>
           <TabsTrigger value="issues">Issues</TabsTrigger>
-          <TabsTrigger value="internal-links">Internal Links</TabsTrigger>
-          <TabsTrigger value="schema">Schema</TabsTrigger>
           <TabsTrigger value="technical">Technical SEO</TabsTrigger>
           <TabsTrigger value="authority">Topic Authority</TabsTrigger>
           <TabsTrigger value="redirects">Redirects</TabsTrigger>
-          <TabsTrigger value="duplicates">Duplicates</TabsTrigger>
           <TabsTrigger value="content-decay">Content Decay</TabsTrigger>
           <TabsTrigger value="robots">Robots.txt</TabsTrigger>
-          <TabsTrigger value="sitemap">Sitemap</TabsTrigger>
-          <TabsTrigger value="cwv">Core Web Vitals</TabsTrigger>
           <TabsTrigger value="image-seo">Image SEO</TabsTrigger>
-          <TabsTrigger value="settings">Settings</TabsTrigger>
         </TabsList>
 
         <TabsContent value="dashboard" className="space-y-6">
@@ -611,14 +605,6 @@ export default function EnterpriseSeoCenter() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="internal-links" className="space-y-6">
-          <InternalLinksTab />
-        </TabsContent>
-
-        <TabsContent value="schema" className="space-y-6">
-          <SchemaTab />
-        </TabsContent>
-
         <TabsContent value="technical" className="space-y-6">
           <TechnicalSeoTab />
         </TabsContent>
@@ -664,16 +650,8 @@ export default function EnterpriseSeoCenter() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="settings" className="space-y-6">
-          <SeoSettingsTab />
-        </TabsContent>
-
         <TabsContent value="redirects" className="space-y-6">
           <RedirectsTab />
-        </TabsContent>
-
-        <TabsContent value="duplicates" className="space-y-6">
-          <DuplicatesTab />
         </TabsContent>
 
         <TabsContent value="content-decay" className="space-y-6">
@@ -682,14 +660,6 @@ export default function EnterpriseSeoCenter() {
 
         <TabsContent value="robots" className="space-y-6">
           <RobotsTab />
-        </TabsContent>
-
-        <TabsContent value="sitemap" className="space-y-6">
-          <SitemapTab />
-        </TabsContent>
-
-        <TabsContent value="cwv" className="space-y-6">
-          <CoreWebVitalsTab />
         </TabsContent>
 
         <TabsContent value="image-seo" className="space-y-6">
@@ -703,183 +673,6 @@ export default function EnterpriseSeoCenter() {
 
 function ChevronUpIcon({ className }: { className?: string }) {
   return <ChevronDown className={`${className} rotate-180`} />
-}
-
-function InternalLinksTab() {
-  const supabase = createClient()
-  const [posts, setPosts] = useState<any[]>([])
-  const [loading, setLoading] = useState(true)
-
-  useEffect(() => {
-    (async () => {
-      try {
-        const { data } = await supabase.from("posts").select("id, title, slug, content").eq("status", "published").limit(50)
-        if (data) setPosts(data)
-      } catch (err) { console.error("Failed to fetch internal links:", err) }
-      setLoading(false)
-    })()
-  }, [supabase])
-
-  return (
-    <Card>
-      <CardHeader><CardTitle>Internal Link Intelligence</CardTitle></CardHeader>
-      <CardContent>
-        {loading ? (
-          <p className="text-sm text-muted-foreground">Loading...</p>
-        ) : (
-          <div className="space-y-3">
-            {posts.slice(0, 10).map((post) => (
-              <div key={post.id} className="p-3 rounded-lg bg-muted/30">
-                <div className="flex items-center justify-between gap-2">
-                  <p className="font-medium text-sm truncate">{post.title}</p>
-                  <a href={`/admin/posts/${post.id}/edit`} className="text-xs text-blue-600 hover:underline shrink-0">Edit →</a>
-                </div>
-                <p className="text-xs text-muted-foreground mt-1">
-                  Content length: {post.content?.length || 0} chars · Slug: /{post.slug} · Internal links: {((post.content || "").match(/<a[^>]+href="\/(?!https?:)[^"]+"/gi) || []).length}
-                </p>
-              </div>
-            ))}
-            <p className="text-xs text-muted-foreground mt-2">Showing {Math.min(posts.length, 10)} of {posts.length} published posts. Use the post editor to add internal links.</p>
-          </div>
-        )}
-      </CardContent>
-    </Card>
-  )
-}
-
-function SchemaTab() {
-  const supabase = createClient()
-  const [schemaType, setSchemaType] = useState("Article")
-  const [postSlug, setPostSlug] = useState("")
-  const [generated, setGenerated] = useState("")
-  const [savedTemplates, setSavedTemplates] = useState<string[]>([])
-  const [loading, setLoading] = useState(true)
-  const [saveStatus, setSaveStatus] = useState("")
-
-  useEffect(() => {
-    supabase.from("site_settings").select("value").eq("key", "schema_templates").single().then(({ data }) => {
-      if (data?.value) {
-        try {
-          const parsed = JSON.parse(data.value)
-          if (Array.isArray(parsed)) setSavedTemplates(parsed)
-        } catch {}
-      }
-      setLoading(false)
-    })
-  }, [supabase])
-
-  const generateSchema = () => {
-    const base: any = {
-      "@context": "https://schema.org",
-      "@type": schemaType,
-    }
-    if (postSlug) {
-      const url = typeof window !== "undefined" ? `${window.location.origin}/${postSlug}` : `https://techpivo.com/${postSlug}`
-      base.url = url
-      base.mainEntityOfPage = url
-    }
-    if (schemaType === "FAQPage") {
-      base.mainEntity = [
-        { "@type": "Question", name: "", acceptedAnswer: { "@type": "Answer", text: "" } },
-        { "@type": "Question", name: "", acceptedAnswer: { "@type": "Answer", text: "" } },
-      ]
-    }
-    if (schemaType === "HowTo") {
-      base.name = ""
-      base.step = [{ "@type": "HowToStep", name: "", text: "" }]
-    }
-    setGenerated(JSON.stringify(base, null, 2))
-  }
-
-  const saveAsTemplate = async () => {
-    if (!generated) return
-    setSaveStatus("saving")
-    const updated = [...savedTemplates, generated]
-    await supabase.from("site_settings").upsert({ key: "schema_templates", value: JSON.stringify(updated) }, { onConflict: "key" })
-    setSavedTemplates(updated)
-    setSaveStatus("saved")
-    setTimeout(() => setSaveStatus(""), 2000)
-  }
-
-  const loadTemplate = (tmpl: string) => {
-    setGenerated(tmpl)
-    try {
-      const parsed = JSON.parse(tmpl)
-      if (parsed["@type"]) setSchemaType(parsed["@type"])
-    } catch {}
-  }
-
-  const deleteTemplate = async (idx: number) => {
-    const updated = savedTemplates.filter((_, i) => i !== idx)
-    await supabase.from("site_settings").upsert({ key: "schema_templates", value: JSON.stringify(updated) }, { onConflict: "key" })
-    setSavedTemplates(updated)
-  }
-
-  return (
-    <div className="space-y-6">
-      <Card>
-        <CardHeader><CardTitle>Schema Generator</CardTitle></CardHeader>
-        <CardContent className="space-y-4">
-          <p className="text-sm text-muted-foreground mb-4">Recommended schema types for your content:</p>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 mb-6">
-            {[
-              { type: "Article", desc: "Standard blog posts" },
-              { type: "NewsArticle", desc: "Breaking news content" },
-              { type: "BlogPosting", desc: "Blog-style articles" },
-              { type: "FAQPage", desc: "Articles with FAQs" },
-              { type: "HowTo", desc: "Tutorials and guides" },
-              { type: "Review", desc: "Product reviews" },
-            ].map((s) => (
-              <div key={s.type} className="p-3 rounded-lg bg-muted/30 border border-border">
-                <div className="flex items-center justify-between mb-1">
-                  <p className="text-sm font-medium">{s.type}</p>
-                  <Badge variant="default" className="text-[10px]">Recommended</Badge>
-                </div>
-                <p className="text-xs text-muted-foreground">{s.desc}</p>
-              </div>
-            ))}
-          </div>
-          <div className="p-4 rounded-lg bg-muted/30 space-y-3">
-            <h4 className="text-sm font-medium">Quick Schema Generator</h4>
-            <div className="flex gap-2 flex-wrap">
-              <select value={schemaType} onChange={e => setSchemaType(e.target.value)}
-                className="h-9 rounded-md border border-input bg-background px-3 text-sm">
-                {["Article", "NewsArticle", "BlogPosting", "FAQPage", "HowTo", "Review"].map(t => (
-                  <option key={t} value={t}>{t}</option>
-                ))}
-              </select>
-              <Input placeholder="Post slug (optional)" value={postSlug} onChange={e => setPostSlug(e.target.value)} className="w-48" />
-              <Button size="sm" onClick={generateSchema}>Generate</Button>
-            </div>
-            {generated && (
-              <div className="relative">
-                <pre className="text-xs bg-background p-3 rounded-lg overflow-x-auto max-h-48">{generated}</pre>
-                <div className="absolute top-2 right-2 flex gap-1">
-                  <Button variant="ghost" size="sm" onClick={() => { navigator.clipboard.writeText(generated) }}><Copy className="h-3 w-3" /></Button>
-                  <Button variant="ghost" size="sm" onClick={saveAsTemplate}>{saveStatus === "saved" ? "Saved!" : "Save"}</Button>
-                </div>
-              </div>
-            )}
-          </div>
-          {!loading && savedTemplates.length > 0 && (
-            <div className="space-y-2">
-              <h4 className="text-sm font-medium">Saved Templates</h4>
-              {savedTemplates.map((tmpl, idx) => (
-                <div key={idx} className="flex items-center justify-between p-2 rounded bg-muted/20 text-sm">
-                  <span className="font-mono text-xs truncate flex-1">{tmpl.slice(0, 80)}...</span>
-                  <div className="flex gap-1 shrink-0">
-                    <Button variant="ghost" size="sm" onClick={() => loadTemplate(tmpl)}><Eye className="h-3 w-3" /></Button>
-                    <Button variant="ghost" size="sm" onClick={() => deleteTemplate(idx)}><Trash2 className="h-3 w-3" /></Button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-          <p className="text-xs text-muted-foreground">Schema markup is automatically generated for your articles on the frontend. Use this tool to preview or generate custom schema for special cases.</p>
-        </CardContent>
-      </Card>
-    </div>
-  )
 }
 
 function RedirectsTab() {
@@ -941,82 +734,6 @@ function RedirectsTab() {
             ))
           )}
         </div>
-      </CardContent>
-    </Card>
-  )
-}
-
-function DuplicatesTab() {
-  const supabase = createClient()
-  const [posts, setPosts] = useState<any[]>([])
-  const [loading, setLoading] = useState(true)
-
-  useEffect(() => {
-    (async () => {
-      try {
-        const { data } = await supabase.from("posts").select("id, title, slug").eq("status", "published").limit(200)
-        if (data) setPosts(data)
-      } catch (err) { console.error("Failed to fetch duplicates:", err) }
-      setLoading(false)
-    })()
-  }, [supabase])
-
-  const getBigrams = (s: string): Set<string> => {
-    const tokens = s.toLowerCase().split(/\s+/).filter(Boolean)
-    const bigrams = new Set<string>()
-    for (let i = 0; i < tokens.length - 1; i++) {
-      bigrams.add(`${tokens[i]} ${tokens[i + 1]}`)
-    }
-    return bigrams
-  }
-
-  const findSimilar = (title: string, allPosts: any[]) => {
-    const words = title.toLowerCase().split(/\s+/).filter(Boolean)
-    const titleBigrams = getBigrams(title)
-    return allPosts.filter(p => {
-      if (p.title === title) return false
-      const pWords = p.title.toLowerCase().split(/\s+/).filter(Boolean)
-      const wordOverlap = words.filter(w => pWords.includes(w)).length
-      const pBigrams = getBigrams(p.title)
-      let bigramOverlap = 0
-      titleBigrams.forEach(b => { if (pBigrams.has(b)) bigramOverlap++ })
-      const unionSize = new Set([...titleBigrams, ...pBigrams]).size
-      const jaccard = unionSize > 0 ? bigramOverlap / unionSize : 0
-      const wordMatchRatio = Math.max(words.length, pWords.length) > 0
-        ? wordOverlap / Math.max(words.length, pWords.length)
-        : 0
-      return (wordOverlap >= 4 && wordMatchRatio >= 0.4) || jaccard >= 0.3
-    }).slice(0, 3)
-  }
-
-  return (
-    <Card>
-      <CardHeader><CardTitle>Duplicate Content Detection</CardTitle></CardHeader>
-      <CardContent>
-        {loading ? (
-          <p className="text-sm text-muted-foreground">Loading...</p>
-        ) : (
-          <div className="space-y-3">
-            {posts.slice(0, 10).map((post) => {
-              const similar = findSimilar(post.title, posts)
-              if (similar.length === 0) return null
-              return (
-                <div key={post.id} className="p-3 rounded-lg bg-muted/30">
-                  <Badge variant="outline" className="mb-2">Possible Duplicate</Badge>
-                  <p className="font-medium text-sm mb-1">{post.title}</p>
-                  <div className="space-y-1">
-                    {similar.map((s) => (
-                      <div key={s.id} className="text-xs text-muted-foreground pl-3 border-l-2 border-muted">
-                        {s.title}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )
-            })}
-            <p className="text-xs text-muted-foreground mt-2">{posts.length} articles scanned. Articles with similar titles are flagged above.</p>
-          </div>
-        )}
       </CardContent>
     </Card>
   )
@@ -1240,181 +957,6 @@ function RobotsTab() {
         )}
       </CardContent>
     </Card>
-  )
-}
-
-function SitemapTab() {
-  const supabase = createClient()
-  const [stats, setStats] = useState({ total: 0, indexed: 0 })
-  const [loading, setLoading] = useState(true)
-
-  useEffect(() => {
-    const fetchSitemap = async () => {
-      try {
-        const { count: total } = await supabase.from("posts").select("*", { count: "exact", head: true }).eq("status", "published")
-        const { count: indexed } = await supabase.from("posts").select("*", { count: "exact", head: true }).eq("status", "published").eq("google_indexed", true)
-        setStats({ total: total || 0, indexed: indexed || 0 })
-      } catch (err) { console.error("Failed to fetch sitemap stats:", err) }
-      setLoading(false)
-    }
-    fetchSitemap()
-  }, [supabase])
-
-  return (
-    <Card>
-      <CardHeader><CardTitle>Sitemap Manager</CardTitle></CardHeader>
-      <CardContent className="space-y-4">
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          {[
-            { label: "Total URLs", value: loading ? "..." : stats.total.toLocaleString() },
-            { label: "Published", value: loading ? "..." : stats.total.toLocaleString() },
-            { label: "Indexed", value: loading ? "..." : stats.indexed.toLocaleString() },
-            { label: "Pending", value: loading ? "..." : (stats.total - stats.indexed).toLocaleString() },
-          ].map((s, i) => (
-            <div key={i} className="p-3 rounded-lg bg-muted/30 text-center">
-              <p className="text-xl font-bold">{s.value}</p>
-              <p className="text-xs text-muted-foreground">{s.label}</p>
-            </div>
-          ))}
-        </div>
-        <div className="space-y-2">
-          <div className="flex flex-wrap items-center justify-between gap-2 p-3 rounded-lg bg-muted/30 text-sm">
-            <span className="font-mono text-xs truncate">{`${typeof window !== "undefined" ? window.location.origin : "https://techpivo.com"}/sitemap.xml`}</span>
-            <div className="flex items-center gap-2">
-              <span className="text-muted-foreground">{stats.total} pages</span>
-              <Badge variant="default">Active</Badge>
-            </div>
-          </div>
-        </div>
-      </CardContent>
-    </Card>
-  )
-}
-
-function SeoSettingsTab() {
-  const supabase = createClient()
-  const [settings, setSettings] = useState({ default_meta: '', default_og_image: '', gsc_verification: '', bing_verification: '' })
-  const [saving, setSaving] = useState(false)
-  const [saved, setSaved] = useState(false)
-
-  useEffect(() => {
-    supabase.from('site_settings').select('key, value').in('key', ['default_meta_description', 'default_og_image', 'gsc_verification_code', 'bing_verification_code']).then(({ data }) => {
-      if (data) {
-        const map: Record<string, string> = {}
-        data.forEach((s: any) => { map[s.key] = s.value })
-        setSettings({
-          default_meta: map.default_meta_description || '',
-          default_og_image: map.default_og_image || '',
-          gsc_verification: map.gsc_verification_code || '',
-          bing_verification: map.bing_verification_code || '',
-        })
-      }
-    })
-  }, [supabase])
-
-  const handleSave = async () => {
-    setSaving(true)
-    const entries = [
-      { key: 'default_meta_description', value: settings.default_meta },
-      { key: 'default_og_image', value: settings.default_og_image },
-      { key: 'gsc_verification_code', value: settings.gsc_verification },
-      { key: 'bing_verification_code', value: settings.bing_verification },
-    ]
-    for (const entry of entries) {
-      await supabase.from('site_settings').upsert(entry, { onConflict: 'key' })
-    }
-    setSaving(false)
-    setSaved(true)
-    setTimeout(() => setSaved(false), 2000)
-  }
-
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle>SEO Settings</CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <label className="text-sm font-medium">Default Meta Description</label>
-            <Input placeholder="Enter default meta description" className="mt-1" value={settings.default_meta} onChange={e => setSettings({ ...settings, default_meta: e.target.value })} />
-          </div>
-          <div>
-            <label className="text-sm font-medium">Default OG Image</label>
-            <Input placeholder="Enter default OG image URL" className="mt-1" value={settings.default_og_image} onChange={e => setSettings({ ...settings, default_og_image: e.target.value })} />
-          </div>
-          <div>
-            <label className="text-sm font-medium">Google Search Console Verification</label>
-            <Input placeholder="Enter verification code" className="mt-1" value={settings.gsc_verification} onChange={e => setSettings({ ...settings, gsc_verification: e.target.value })} />
-          </div>
-          <div>
-            <label className="text-sm font-medium">Bing Webmaster Verification</label>
-            <Input placeholder="Enter verification code" className="mt-1" value={settings.bing_verification} onChange={e => setSettings({ ...settings, bing_verification: e.target.value })} />
-          </div>
-        </div>
-        <Button onClick={handleSave} disabled={saving}>{saving ? 'Saving...' : saved ? 'Saved!' : 'Save Settings'}</Button>
-      </CardContent>
-    </Card>
-  )
-}
-
-function CoreWebVitalsTab() {
-  const supabase = createClient()
-  const [loading, setLoading] = useState(true)
-  const [hasData, setHasData] = useState(false)
-
-  useEffect(() => {
-    const checkData = async () => {
-      try {
-        const { count: auditCount } = await supabase.from("seo_audits").select("*", { count: "exact", head: true }).limit(1)
-        const hasAuditData = (auditCount || 0) > 0
-        const { data: rumSetting } = await supabase.from("site_settings").select("value").eq("key", "rum_web_vitals_enabled").single()
-        const rumEnabled = rumSetting?.value === true || rumSetting?.value === "true"
-        setHasData(hasAuditData || rumEnabled)
-      } catch (err) {
-        console.error("Failed to check vitals data:", err)
-      }
-      setLoading(false)
-    }
-    checkData()
-  }, [supabase])
-
-  if (loading) return <p className="text-sm text-muted-foreground">Loading...</p>
-
-  if (!hasData) {
-    return (
-      <div className="bg-muted/30 border border-border rounded-lg p-8 text-center space-y-3">
-        <BarChart3 className="h-12 w-12 text-muted-foreground mx-auto" />
-        <h3 className="font-medium text-lg">No Core Web Vitals Data Yet</h3>
-        <p className="text-sm text-muted-foreground max-w-lg mx-auto">
-          Core Web Vitals require a Real User Monitoring (RUM) integration to collect real visitor data.
-          Add the <code className="bg-muted px-1.5 rounded text-xs">web-vitals</code> library to your frontend
-          and set <code className="bg-muted px-1.5 rounded text-xs">rum_web_vitals_enabled</code> to true in Site Settings.
-        </p>
-        <p className="text-xs text-muted-foreground">
-          Once configured, LCP (target: &lt; 2.5s), INP (target: &lt; 200ms), and CLS (target: &lt; 0.1) will appear here.
-        </p>
-      </div>
-    )
-  }
-
-  return (
-    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-      {[
-        { metric: "LCP", target: "< 2.5s" },
-        { metric: "INP", target: "< 200ms" },
-        { metric: "CLS", target: "< 0.1" },
-      ].map((m, i) => (
-        <Card key={i}>
-          <CardContent className="p-4 text-center">
-            <p className="text-sm text-muted-foreground">{m.metric}</p>
-            <p className="text-3xl font-bold text-yellow-500">&mdash;</p>
-            <Badge variant="outline" className="mt-1">Collecting Data</Badge>
-            <p className="text-xs text-muted-foreground mt-1">Target: {m.target}</p>
-          </CardContent>
-        </Card>
-      ))}
-    </div>
   )
 }
 
