@@ -22,6 +22,26 @@ export default function AdminIndexingPage() {
     if (data) setQueue(data)
   }, [])
 
+  useEffect(() => {
+    let mounted = true
+    const supabase = createClient()
+    const channel = supabase
+      .channel(`indexing_rt_${Date.now()}_${Math.random().toString(36).slice(2)}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "google_indexing_queue" }, () => {
+        if (mounted) loadQueue()
+      })
+      .subscribe()
+    const poll = setInterval(() => { if (mounted) loadQueue() }, 30000)
+    const onFocus = () => { if (mounted) loadQueue() }
+    window.addEventListener("focus", onFocus)
+    return () => {
+      mounted = false
+      supabase.removeChannel(channel)
+      clearInterval(poll)
+      window.removeEventListener("focus", onFocus)
+    }
+  }, [loadQueue])
+
   const syncQueue = useCallback(async () => {
     setSyncing(true)
     setSyncMsg("")
