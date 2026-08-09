@@ -21,6 +21,17 @@ export class EditorErrorBoundary extends Component<Props, State> {
 
   componentDidCatch(error: Error) {
     console.error("Post editor crashed:", error)
+    try {
+      fetch("/api/debug/client-error", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          url: window.location.href,
+          error_message: error.message || String(error),
+          error_stack: error.stack || null,
+        }),
+      }).catch(() => {})
+    } catch {}
   }
 
   render() {
@@ -33,6 +44,11 @@ export class EditorErrorBoundary extends Component<Props, State> {
             <p className="text-sm text-gray-500 dark:text-[#9CA3AF] mb-5">
               This is usually caused by a corrupted autosaved draft. Clear it and reload to continue.
             </p>
+            {this.state.error && (
+              <pre className="text-left text-[11px] leading-relaxed bg-gray-100 dark:bg-[#1F2937] rounded-lg p-3 mb-5 overflow-auto max-h-40 whitespace-pre-wrap break-all text-gray-600 dark:text-gray-300">
+                {this.state.error.message}
+              </pre>
+            )}
             <div className="flex items-center justify-center gap-3">
               <button
                 onClick={() => {
