@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
+import { sendNewsletterCampaign } from "@/lib/newsletter"
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url)
@@ -210,6 +211,7 @@ export async function POST(request: Request) {
           .from("newsletter_sends")
           .insert({
             subject: body.subject,
+            html_content: body.html_content || null,
             sent_count: 0,
             open_count: 0,
             click_count: 0,
@@ -228,20 +230,53 @@ export async function POST(request: Request) {
           .single()
         if (fetchErr) throw fetchErr
 
-        const { count } = await supabase
+        if (!process.env.RESEND_API_KEY) {
+          return NextResponse.json(
+            { error: "RESEND_API_KEY not configured — set it in environment variables before sending." },
+            { status: 500 }
+          )
+        }
+
+        const { data: subscribers } = await supabase
           .from("subscribers")
-          .select("*", { count: "exact", head: true })
+          .select("email")
           .eq("status", "active")
+
+        const emails = (subscribers || []).map((s: any) => s.email)
+        if (!emails.length) {
+          return NextResponse.json({ error: "No active subscribers to send to" }, { status: 400 })
+        }
+
+        const bodyHtml =
+          campaign.html_content ||
+          `<p style="margin:0;">New update from Techpivo — check out the latest articles, tutorials, and tech news on our site.</p>`
+
+        const delivery = await sendNewsletterCampaign({
+          subject: campaign.subject || "Techpivo Newsletter",
+          bodyHtml,
+          subscribers: emails,
+          cta: { label: "Visit Techpivo", url: process.env.NEXT_PUBLIC_SITE_URL || "https://techpivo.com" },
+          unsubscribeUrl: (email: string) =>
+            `${process.env.NEXT_PUBLIC_SITE_URL || "https://techpivo.com"}/unsubscribe?email=${encodeURIComponent(email)}`,
+        })
+
+        if (delivery.error) throw new Error(delivery.error)
 
         const { error } = await supabase
           .from("newsletter_sends")
           .update({
             sent_at: new Date().toISOString(),
-            sent_count: count || 0,
+            sent_count: delivery.delivered,
           })
           .eq("id", body.id)
         if (error) throw error
-        return NextResponse.json({ success: true, recipients: count || 0 })
+
+        return NextResponse.json({
+          success: true,
+          recipients: delivery.delivered,
+          total: delivery.total,
+          failed: delivery.failed,
+        })
       }
 
       case "subscribe":

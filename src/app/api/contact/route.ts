@@ -1,8 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { contactFormSchema, getFieldErrors } from '@/lib/validation'
 import { sanitize, sanitizeEmail } from '@/lib/sanitize'
+import { sendBrandedEmail } from '@/lib/email'
 
 const RESEND_API_KEY = process.env.RESEND_API_KEY
+const CONTACT_TO = process.env.CONTACT_TO_EMAIL || 'hello@techpivo.com'
 
 const ALLOWED_ORIGINS = [
   'https://techpivo.com',
@@ -37,31 +39,22 @@ export async function POST(req: NextRequest) {
       message: sanitize(validationResult.data.message),
     }
 
-    const htmlBody = `<h2>New Contact Form Submission</h2>
-<p><strong>Name:</strong> ${formData.name}</p>
+    const htmlBody = `<p><strong>Name:</strong> ${formData.name}</p>
 <p><strong>Email:</strong> ${formData.email}</p>
 <p><strong>Subject:</strong> ${formData.subject || 'N/A'}</p>
 <p><strong>Message:</strong></p>
-<p>${formData.message}</p>`
+<p style="margin:0;">${formData.message}</p>`
 
-    const res = await fetch('https://api.resend.com/emails', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${RESEND_API_KEY}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        from: 'Techpivo Contact <contact@techpivo.com>',
-        to: 'hello@techpivo.com',
-        subject: `Contact Form: ${formData.name}`,
-        reply_to: formData.email,
-        html: htmlBody,
-      }),
+    const result = await sendBrandedEmail({
+      to: CONTACT_TO,
+      subject: `Contact Form: ${formData.name}`,
+      title: `New contact message from ${formData.name}`,
+      bodyHtml: htmlBody,
+      replyTo: formData.email,
     })
 
-    if (!res.ok) {
-      const err = await res.text()
-      console.error('Resend API error:', err.slice(0, 500))
+    if (!result.ok) {
+      console.error('Resend error:', result.error)
       return NextResponse.json({ error: 'Failed to send message. Please try again.' }, { status: 500 })
     }
 

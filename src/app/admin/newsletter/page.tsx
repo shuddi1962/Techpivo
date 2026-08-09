@@ -291,7 +291,7 @@ function SubscribersTab({ data, loading, onRefresh }: { data: Subscriber[]; load
 
 function CampaignsTab({ data, loading, onRefresh, onSend }: { data: Campaign[]; loading: boolean; onRefresh: () => void; onSend: (id: string) => void }) {
   const [showCreate, setShowCreate] = useState(false)
-  const [newCampaign, setNewCampaign] = useState({ name: "", subject: "" })
+  const [newCampaign, setNewCampaign] = useState({ name: "", subject: "", message: "" })
   const [editingCampaign, setEditingCampaign] = useState<Campaign | null>(null)
   const [editName, setEditName] = useState("")
   const [editSubject, setEditSubject] = useState("")
@@ -302,9 +302,14 @@ function CampaignsTab({ data, loading, onRefresh, onSend }: { data: Campaign[]; 
     await fetch("/admin/newsletter/api", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action: "create-campaign", ...newCampaign }),
+      body: JSON.stringify({
+        action: "create-campaign",
+        name: newCampaign.name,
+        subject: newCampaign.subject,
+        html_content: newCampaign.message,
+      }),
     })
-    setNewCampaign({ name: "", subject: "" })
+    setNewCampaign({ name: "", subject: "", message: "" })
     setShowCreate(false)
     onRefresh()
   }
@@ -346,6 +351,13 @@ function CampaignsTab({ data, loading, onRefresh, onSend }: { data: Campaign[]; 
             onChange={e => setNewCampaign(p => ({ ...p, subject: e.target.value }))}
             placeholder="Email subject line"
             style={{ background: S.input, border: `1px solid ${S.border}`, borderRadius: 8, padding: "10px 14px", color: S.text, fontSize: 13, outline: "none" }}
+          />
+          <textarea
+            value={newCampaign.message}
+            onChange={e => setNewCampaign(p => ({ ...p, message: e.target.value }))}
+            placeholder="Email message (plain text or HTML — wrapped in the Techpivo branded template)"
+            rows={5}
+            style={{ background: S.input, border: `1px solid ${S.border}`, borderRadius: 8, padding: "10px 14px", color: S.text, fontSize: 13, outline: "none", resize: "vertical", fontFamily: "inherit" }}
           />
           <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
             <button onClick={() => setShowCreate(false)} style={{ background: S.input, border: `1px solid ${S.border}`, borderRadius: 8, padding: "8px 16px", color: S.textMuted, fontSize: 13, cursor: "pointer" }}>Cancel</button>
@@ -749,15 +761,23 @@ export default function NewsletterCenterPage() {
   }, [activeTab, fetchData])
 
   const handleSendCampaign = async (id: string) => {
+    if (!confirm("Send this campaign to all active subscribers now?")) return
     try {
-      await fetch("/admin/newsletter/api", {
+      const res = await fetch("/admin/newsletter/api", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action: "send-campaign", id }),
       })
+      const json = await res.json()
+      if (res.ok) {
+        alert(`Campaign sent — ${json.recipients} delivered (${json.failed} failed)`)
+      } else {
+        alert(json.error || "Failed to send campaign")
+      }
       fetchData("campaigns")
     } catch (err) {
       console.error("Failed to send campaign:", err)
+      alert("Network error while sending campaign")
     }
   }
 
