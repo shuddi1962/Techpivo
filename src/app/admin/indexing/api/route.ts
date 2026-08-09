@@ -11,7 +11,10 @@ export async function POST(request: Request) {
     }
 
     const { data: settings } = await supabase.from("site_settings").select("value").eq("key", "indexnow_key").single()
-    const key = settings?.value || "techpivo-indexing-key"
+    const key = settings?.value || process.env.INDEXNOW_KEY || ""
+    if (!key) {
+      return NextResponse.json({ error: "IndexNow key not configured (set site_settings.indexnow_key or INDEXNOW_KEY env)" }, { status: 500 })
+    }
     const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || request.headers.get("origin") || "https://techpivo.com"
 
     const indexNowRes = await fetch("https://api.indexnow.org/indexnow", {
