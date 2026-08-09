@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { createClient as createServiceClient } from '@supabase/supabase-js'
 
 export const dynamic = 'force-dynamic'
 
@@ -160,15 +161,55 @@ export async function POST(req: NextRequest) {
   try {
     let body: any = {}
     try { body = await req.json() } catch {}
-    const supabase = createClient()
+
+    // Verify the session and panel role before doing anything
+    const sessionClient = createClient()
+    const { data: authData, error: authErr } = await sessionClient.auth.getUser()
+    if (authErr || !authData?.user) {
+      return NextResponse.json({ error: 'Not authenticated' }, { status: 401 })
+    }
+    const { data: profile } = await sessionClient
+      .from('profiles')
+      .select('role')
+      .eq('id', authData.user.id)
+      .single()
+    if (!profile || !['admin', 'editor'].includes(profile.role)) {
+      return NextResponse.json({ error: 'Admin access required' }, { status: 403 })
+    }
+
+    // Writes bypass RLS via service role so any panel role that passes the
+    // guard above can fix/resolve regardless of per-table policies
+    const supabase = createServiceClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
+    )
     const { action, postId, issueId, issueType, count } = body
 
     // Resolve without fixing
     if (action === 'resolve_issue') {
       if (!issueId) return NextResponse.json({ error: 'issueId required' }, { status: 400 })
-      const { error } = await supabase.from('seo_issues').update({ resolved: true, resolved_at: new Date().toISOString() }).eq('id', issueId)
+      const { data, error } = await supabase
+        .from('seo_issues')
+        .update({ resolved: true, resolved_at: new Date().toISOString() })
+        .eq('id', issueId)
+        .select('id')
       if (error) throw error
+      if (!data || data.length === 0) return NextResponse.json({ error: 'Issue not found or already resolved' }, { status: 404 })
       return NextResponse.json({ success: true })
+    }
+
+    // Resolve all open issues of a type for a post
+    if (action === 'resolve_type') {
+      if (!postId || !issueType) return NextResponse.json({ error: 'postId and issueType required' }, { status: 400 })
+      const { data, error } = await supabase
+        .from('seo_issues')
+        .update({ resolved: true, resolved_at: new Date().toISOString() })
+        .eq('post_id', postId)
+        .eq('issue_type', issueType)
+        .eq('resolved', false)
+        .select('id')
+      if (error) throw error
+      return NextResponse.json({ success: true, resolved: data?.length || 0 })
     }
 
     // Fetch post when postId provided

@@ -242,10 +242,26 @@ export default function EnterpriseSeoCenter() {
     setAuditProgress(null)
   }
 
-  const resolveIssue = async (issueId: string) => {
-    await supabase.from("seo_issues").update({ resolved: true, resolved_at: new Date().toISOString() }).eq("id", issueId)
-    loadData()
+  const resolveIssue = async (issueId?: string, postId?: string, issueType?: string) => {
+    try {
+      const res = await fetch("/api/admin/seo/fix", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(issueId
+          ? { action: "resolve_issue", issueId }
+          : { action: "resolve_type", postId, issueType })
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) setAuditMsg(`Resolve failed: ${data.error || res.status}`)
+      else setAuditMsg(issueId ? "Issue resolved" : `Resolved ${data.resolved || 0} issue(s)`)
+      await loadData()
+    } catch (e) {
+      setAuditMsg(`Resolve failed: ${String(e)}`)
+    }
   }
+
+  const findLiveIssueId = (postId: string, issueType: string) =>
+    issues.find(i => i.post_id === postId && i.issue_type === issueType)?.id
 
   const addKeyword = async () => {
     if (!newKeyword.trim()) return
@@ -543,16 +559,34 @@ export default function EnterpriseSeoCenter() {
                             <div>
                               <h4 className="text-sm font-medium mb-2">Found Issues</h4>
                               <div className="space-y-2">
-                                {audit.issues.map((iss: any, i: number) => (
-                                  <div key={i} className="flex items-start gap-2 text-sm p-2 rounded bg-red-50/50 border border-red-100">
-                                    <AlertTriangle className="h-4 w-4 text-red-500 mt-0.5 shrink-0" />
-                                    <div>
-                                      <span className="font-medium">{iss.issue_type || iss.type}</span>
-                                      <span className="text-muted-foreground"> — {iss.description}</span>
-                                      {iss.suggestion && <p className="text-xs text-blue-600 mt-0.5">Suggestion: {iss.suggestion}</p>}
+                                {audit.issues.map((iss: any, i: number) => {
+                                  const liveId = findLiveIssueId(audit.post_id, iss.issue_type || iss.type)
+                                  const fixable = ["missing_meta", "missing_keywords", "missing_featured_image", "no_content_images"].includes(iss.issue_type || iss.type)
+                                  return (
+                                    <div key={i} className="flex flex-wrap items-start justify-between gap-2 text-sm p-2 rounded bg-red-50/50 border border-red-100">
+                                      <div className="min-w-0 flex-1">
+                                        <span className="font-medium">{iss.issue_type || iss.type}</span>
+                                        <span className="text-muted-foreground"> — {iss.description}</span>
+                                        {iss.suggestion && <p className="text-xs text-blue-600 mt-0.5">Suggestion: {iss.suggestion}</p>}
+                                      </div>
+                                      <div className="flex items-center gap-2 shrink-0">
+                                        {fixable && (
+                                          <Button size="sm" variant="secondary"
+                                            onClick={() => runFix({ action: "fix_issue", postId: audit.post_id, issueType: iss.issue_type || iss.type, issueId: liveId }, `auditfix_${audit.id}_${i}`)}
+                                            disabled={fixing !== null}>
+                                            {fixing === `auditfix_${audit.id}_${i}` ? <Loader2 className="h-3 w-3 mr-1 animate-spin" /> : <Wand2 className="h-3 w-3 mr-1" />}
+                                            Fix
+                                          </Button>
+                                        )}
+                                        <Button variant="outline" size="sm"
+                                          onClick={() => resolveIssue(liveId, audit.post_id, iss.issue_type || iss.type)}>
+                                          <CheckCircle className="h-3.5 w-3.5 mr-1" />
+                                          Resolve
+                                        </Button>
+                                      </div>
                                     </div>
-                                  </div>
-                                ))}
+                                  )
+                                })}
                               </div>
                             </div>
                           )}
