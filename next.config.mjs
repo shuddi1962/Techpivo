@@ -53,11 +53,6 @@ const nextConfig = {
       { protocol: 'https', hostname: '**' },
     ],
   },
-  experimental: {
-    staleTimes: {
-      dynamic: 300,
-    },
-  },
   async headers() {
     return [
       {

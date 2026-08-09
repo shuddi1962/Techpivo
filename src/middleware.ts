@@ -20,7 +20,15 @@ export async function middleware(request: NextRequest) {
     }
   )
 
-  const { data: { user } } = await supabase.auth.getUser()
+  // Transient failures (network hiccup, cold start) must never turn into a
+  // site-wide 500 — fall through to the request instead.
+  let user: { id: string } | null = null
+  try {
+    const { data } = await supabase.auth.getUser()
+    user = data.user
+  } catch {
+    user = null
+  }
 
   const isAdminPath = request.nextUrl.pathname.startsWith("/admin")
   const isAdminLogin = request.nextUrl.pathname === "/admin/login"
@@ -33,13 +41,17 @@ export async function middleware(request: NextRequest) {
     }
   } else {
     if (isAdminPath) {
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("role")
-        .eq("id", user.id)
-        .single()
-
-      const hasAccess = profile && ["admin", "editor", "author"].includes(profile.role)
+      let hasAccess = false
+      try {
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("role")
+          .eq("id", user.id)
+          .single()
+        hasAccess = !!profile && ["admin", "editor", "author"].includes(profile.role)
+      } catch {
+        hasAccess = false
+      }
       if (isAdminLogin) {
         if (hasAccess) {
           const url = request.nextUrl.clone()
