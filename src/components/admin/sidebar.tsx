@@ -6,11 +6,11 @@ import { cn } from "@/lib/utils"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import {
-  LayoutDashboard, FileText, FolderTree, Rss, Image,
+  LayoutDashboard, FileText, FolderTree, Image,
   DollarSign, ShoppingBag, BarChart3, SearchCheck,
   Globe, Settings, Users, MessageSquare, Mail,
-  Bell, Share2, Shield, Search,
-  Brain, HeartPulse, Calendar, Swords,
+  Bell, Share2, Shield,
+  Brain, HeartPulse, Calendar,
   TrendingUp, FileBarChart, Cpu, Key, Wrench, Lock, Network, Rocket,
   Trophy, BookOpen, PanelLeftClose, PanelLeftOpen, Newspaper, PieChart,
   Plus, ExternalLink, Radar, Zap, type LucideIcon,
@@ -55,11 +55,8 @@ const navGroups: NavGroup[] = [
   {
     label: "Research & SEO",
     links: [
-      { href: "/admin/keywords", label: "Keywords", icon: Search },
-      { href: "/admin/rss-feeds", label: "RSS Feeds", icon: Rss },
       { href: "/admin/seo", label: "SEO Center", icon: SearchCheck },
       { href: "/admin/indexing", label: "Indexing", icon: Globe },
-      { href: "/admin/competitor-intelligence", label: "Competitors", icon: Swords },
     ],
   },
   {
