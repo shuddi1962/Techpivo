@@ -4,16 +4,11 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 
 export const dynamic = 'force-dynamic'
 
+const MAX_BATCH = 50
+
 const clamp = (n: number, min = 0, max = 100) => Math.max(min, Math.min(max, Math.round(n)))
 
-async function auditPost(supabase: SupabaseClient, postId: string) {
-  const { data: post, error } = await supabase
-    .from('posts')
-    .select('id, title, slug, content, seo_description, seo_keywords, featured_image, schema_type, seo_score, readability_score, quality_score, updated_at, status')
-    .eq('id', postId)
-    .single()
-  if (error || !post) return null
-
+function analyzePost(post: any) {
   const content: string = post.content || ''
   const imgCount = (content.match(/<img[^>]+>/gi) || []).length + (content.match(/!\[.*?\]\(.*?\)/g) || []).length
   const h2Count = (content.match(/<h2[\s>]/gi) || []).length
@@ -49,35 +44,41 @@ async function auditPost(supabase: SupabaseClient, postId: string) {
   if (h2Count < 2) issues.push({ issue_type: 'heading_structure', severity: 'warning', description: 'Poor heading structure', suggestion: 'Use H2 (and H3) headings to structure content' })
   if (keywordScore < 60) issues.push({ issue_type: 'keyword_coverage', severity: 'warning', description: 'Weak keyword coverage', suggestion: 'Naturally include the primary keyword in the content' })
 
-  const { data: audit } = await supabase.from('seo_audits').insert({
-    post_id: postId,
-    overall_score: overallScore,
-    seo_score: seoScore,
-    readability_score: readabilityScore,
-    eeat_score: eeatScore,
-    media_score: mediaScore,
-    internal_linking_score: internalScore,
-    external_links_score: externalScore,
-    schema_score: schemaScore,
-    keyword_coverage_score: keywordScore,
-    technical_health_score: technicalHealthScore,
-    freshness_score: freshnessScore,
+  return {
+    post,
+    scores: {
+      overall_score: overallScore,
+      seo_score: seoScore,
+      readability_score: readabilityScore,
+      eeat_score: eeatScore,
+      media_score: mediaScore,
+      internal_linking_score: internalScore,
+      external_links_score: externalScore,
+      schema_score: schemaScore,
+      keyword_coverage_score: keywordScore,
+      technical_health_score: technicalHealthScore,
+      freshness_score: freshnessScore,
+    },
     issues,
-    suggestions: issues.map(i => ({ issue: i.issue_type, suggestion: i.suggestion })),
-    checked_at: new Date().toISOString(),
-  }).select().single()
+    suggestions: issues.map((i: any) => ({ issue: i.issue_type, suggestion: i.suggestion })),
+  }
+}
 
-  for (const issue of issues) {
-    await supabase.from('seo_issues').insert({
-      post_id: postId,
-      issue_type: issue.issue_type,
-      severity: issue.severity,
-      description: issue.description,
-      suggestion: issue.suggestion,
-    })
+async function fetchPosts(supabase: SupabaseClient, postIds: string[] | null, postId?: string) {
+  let query = supabase
+    .from('posts')
+    .select('id, title, slug, content, seo_description, seo_keywords, featured_image, schema_type, seo_score, readability_score, quality_score, updated_at, status')
+    .eq('status', 'published')
+
+  if (postIds && postIds.length > 0) {
+    query = query.in('id', postIds.slice(0, MAX_BATCH))
+  } else if (postId && postId !== 'all') {
+    query = query.eq('id', postId)
   }
 
-  return audit
+  const { data, error } = await query.limit(MAX_BATCH)
+  if (error) throw error
+  return data || []
 }
 
 export async function POST(req: NextRequest) {
@@ -85,27 +86,53 @@ export async function POST(req: NextRequest) {
     let body: any = {}
     try { body = await req.json() } catch {}
     const postId = body?.postId
+    const postIds: string[] | null = Array.isArray(body?.postIds) ? body.postIds : null
     const supabase = createClient()
 
-    if (postId && postId !== 'all') {
-      const audit = await auditPost(supabase, postId)
-      if (!audit) return NextResponse.json({ error: 'Post not found' }, { status: 404 })
-      return NextResponse.json({ audit })
+    const posts = await fetchPosts(supabase, postIds, postId)
+    if (posts.length === 0) {
+      return NextResponse.json({ error: 'No posts found to audit' }, { status: 404 })
     }
 
-    // Run audit on all published posts — server-side loop (no HTTP recursion)
-    const { data: posts, error: listErr } = await supabase
-      .from('posts').select('id').eq('status', 'published').limit(300)
-    if (listErr) return NextResponse.json({ error: 'Failed to list posts', details: listErr.message }, { status: 500 })
+    const auditRows: any[] = []
+    const issueRows: any[] = []
+    const checkedAt = new Date().toISOString()
 
-    const results: string[] = []
-    for (const post of posts || []) {
-      const audit = await auditPost(supabase, post.id)
-      if (audit) results.push(post.id)
+    for (const post of posts) {
+      const result = analyzePost(post)
+      auditRows.push({ post_id: post.id, ...result.scores, issues: result.issues, suggestions: result.suggestions, checked_at: checkedAt })
+      result.issues.forEach((i: any) => {
+        issueRows.push({
+          post_id: post.id,
+          issue_type: i.issue_type,
+          severity: i.severity,
+          description: i.description,
+          suggestion: i.suggestion,
+        })
+      })
     }
 
-    return NextResponse.json({ audited: results.length, total: posts?.length || 0 })
+    // Bulk write — 2 roundtrips total regardless of batch size
+    const { data: savedAudits, error: auditErr } = await supabase
+      .from('seo_audits')
+      .upsert(auditRows, { onConflict: 'post_id' })
+      .select()
+    if (auditErr) throw auditErr
+
+    if (issueRows.length > 0) {
+      const { error: issuesErr } = await supabase
+        .from('seo_issues')
+        .upsert(issueRows, { onConflict: 'post_id,issue_type' })
+      if (issuesErr) throw issuesErr
+    }
+
+    if (postId && postId !== 'all' && !postIds) {
+      return NextResponse.json({ audit: savedAudits?.[0] || null })
+    }
+
+    return NextResponse.json({ audited: savedAudits?.length || 0, total: posts.length })
   } catch (err) {
+    console.error('SEO audit error:', err)
     return NextResponse.json({ error: 'Audit failed', details: String(err) }, { status: 500 })
   }
 }
