@@ -12,6 +12,27 @@ async function getActiveSubscribers() {
   return data || []
 }
 
+export async function sendWelcomeEmail(email: string, name?: string): Promise<{ ok: boolean; error?: string }> {
+  const displayName = (name || '').trim() || email.split('@')[0]
+  return sendBrandedEmail({
+    to: email,
+    subject: `Welcome to Techpivo, ${displayName}! 🚀`,
+    title: `You're in, ${displayName}!`,
+    bodyHtml: `<p style="margin:0 0 12px;">Thanks for subscribing to <strong>Techpivo</strong> — the home of fast, accurate tech journalism, tutorials, and tools.</p>
+<p style="margin:0 0 12px;">Here's what lands in your inbox:</p>
+<ul style="margin:0 0 12px;padding-left:20px;">
+  <li>Breaking tech news the moment it happens</li>
+  <li>Hands-on tutorials and how-to guides</li>
+  <li>Reviews, comparisons, and buying guides</li>
+  <li>Free developer, SEO, and security tools</li>
+</ul>
+<p style="margin:0;">No spam, ever. Unsubscribe anytime with one click.</p>`,
+    cta: { label: 'Explore Techpivo', url: `${SITE}` },
+    footerNote: 'You received this because you subscribed to the Techpivo newsletter.',
+    unsubscribeUrl: `${SITE}/unsubscribe?email=${encodeURIComponent(email)}`,
+  })
+}
+
 export async function sendNewsletterForPost(post: {
   id: string; title: string; slug: string;
   seo_description: string; featured_image: string;

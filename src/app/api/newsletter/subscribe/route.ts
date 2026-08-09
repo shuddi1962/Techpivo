@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/admin'
 import { newsletterSchema } from '@/lib/validation'
 import { sanitizeEmail } from '@/lib/sanitize'
+import { sendWelcomeEmail } from '@/lib/newsletter'
 
 export async function POST(req: NextRequest) {
   try {
@@ -18,11 +19,14 @@ export async function POST(req: NextRequest) {
     const email = sanitizeEmail(validationResult.data.email)
     const supabase = createClient()
     const { error } = await supabase.from('subscribers').upsert(
-      { email, name: body.name || null, categories: body.categories || [] },
+      { email, name: body.name || null, categories: body.categories || [], status: 'active' },
       { onConflict: 'email' }
     )
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+
+    sendWelcomeEmail(email, body.name).catch((err) => console.error('Welcome email error:', err))
+
     return NextResponse.json({ ok: true })
   } catch (e) {
     console.error('Subscribe API error:', e)

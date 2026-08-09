@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/admin"
+import { sendWelcomeEmail } from "@/lib/newsletter"
 
 export async function POST(req: Request) {
   try {
@@ -15,6 +16,8 @@ export async function POST(req: Request) {
     )
 
     if (error) throw error
+
+    sendWelcomeEmail(email, name).catch((err) => console.error("Welcome email error:", err))
 
     return NextResponse.json({ success: true })
   } catch (error) {

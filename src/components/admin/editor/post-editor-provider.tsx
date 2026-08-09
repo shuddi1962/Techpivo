@@ -342,6 +342,13 @@ export function PostEditorProvider({
         body: JSON.stringify({ urls: [postUrl] }),
       }).catch((e) => console.warn("IndexNow submit failed:", e))
 
+      // Fire-and-forget: notify newsletter subscribers + push subscribers about the new article
+      fetch("/api/publish/notify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ slug: payload.slug }),
+      }).catch((e) => console.warn("Publish notify failed:", e))
+
       setLastSaved(new Date())
       setDirty(false)
       localStorage.removeItem(DRAFT_KEY)
