@@ -329,6 +329,19 @@ export function PostEditorProvider({
         if (!proceed) { setIsSaving(false); return }
       }
 
+      // Fire-and-forget: enqueue for indexing + submit to IndexNow (Bing/Yandex/Seznam)
+      const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || window.location.origin
+      const postUrl = `${siteUrl}/${payload.slug}`
+      void (async () => {
+        const { error } = await supabase.from("google_indexing_queue").insert({ url: postUrl, status: "pending" })
+        if (error) console.warn("Indexing queue insert failed:", error.message)
+      })()
+      fetch("/admin/indexing/api", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ urls: [postUrl] }),
+      }).catch((e) => console.warn("IndexNow submit failed:", e))
+
       setLastSaved(new Date())
       setDirty(false)
       localStorage.removeItem(DRAFT_KEY)
