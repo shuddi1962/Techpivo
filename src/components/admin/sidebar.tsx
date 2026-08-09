@@ -62,7 +62,6 @@ const navGroups: NavGroup[] = [
   {
     label: "Distribution",
     links: [
-      { href: "/admin/social", label: "Social", icon: Share2 },
       { href: "/admin/newsletter", label: "Newsletter", icon: Mail },
       { href: "/admin/push", label: "Push Notifications", icon: Bell },
     ],

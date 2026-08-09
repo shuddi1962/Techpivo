@@ -74,7 +74,6 @@ const searchItems = [
   { href: "/admin/seo", label: "SEO Center", icon: Search, category: "SEO" },
   { href: "/admin/keywords", label: "Keywords", icon: Hash, category: "SEO" },
   { href: "/admin/analytics", label: "Analytics", icon: Search, category: "Analytics" },
-  { href: "/admin/social", label: "Social", icon: Users, category: "Distribution" },
   { href: "/admin/users", label: "Users", icon: Users, category: "Administration" },
   { href: "/admin/settings", label: "Settings", icon: Settings, category: "Administration" },
   { href: "/admin/security", label: "Security", icon: Settings, category: "Administration" },

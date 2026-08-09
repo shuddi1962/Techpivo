@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
+import { sendRawPush, vapidConfigured } from "@/lib/web-push"
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url)
@@ -199,28 +200,48 @@ export async function POST(request: Request) {
           return NextResponse.json({ error: "Notification ID or title/body required" }, { status: 400 })
         }
 
-        let query = supabase.from("push_subscriptions").select("endpoint, p256dh, auth")
-        if (audience !== "all") {
-          if (["desktop", "mobile", "tablet"].includes(audience)) {
-            query = query.eq("device_type", audience)
-          } else {
-            query = query.eq("browser", audience)
+        if (!vapidConfigured()) {
+          return NextResponse.json({
+            error: "VAPID keys are not configured — set NEXT_PUBLIC_VAPID_PUBLIC_KEY and VAPID_PRIVATE_KEY in environment variables before sending.",
+          }, { status: 500 })
+        }
+
+        let finalTitle = title
+        let finalBody = bodyText
+        if (!finalTitle || !finalBody) {
+          const { data: existing } = await supabase
+            .from("push_notifications")
+            .select("title, body, url, image")
+            .eq("id", notificationId)
+            .single()
+          if (existing) {
+            finalTitle = finalTitle || existing.title
+            finalBody = finalBody || existing.body
+            url = url || existing.url
+            image = image || existing.image
           }
         }
-        const { data: subs } = await query
-        const sentCount = (subs || []).length
+
+        const delivery = await sendRawPush({
+          title: finalTitle || "Techpivo",
+          body: finalBody || "New update from Techpivo",
+          url,
+          image,
+        })
 
         const { error } = await supabase
           .from("push_notifications")
           .update({
             status: "sent",
             sent_at: new Date().toISOString(),
-            sent_count: sentCount,
+            sent_count: delivery.delivered,
+            delivered_count: delivery.delivered,
+            failed_count: delivery.total - delivery.delivered,
           })
           .eq("id", notificationId)
         if (error) throw error
 
-        return NextResponse.json({ success: true, sentCount, notificationId })
+        return NextResponse.json({ success: true, ...delivery, sentCount: delivery.delivered, notificationId })
       }
 
       case "register-subscriber": {
@@ -261,7 +282,11 @@ export async function POST(request: Request) {
 export async function DELETE(request: Request) {
   try {
     const { searchParams } = new URL(request.url)
-    const id = searchParams.get("id")
+    let id = searchParams.get("id")
+    if (!id) {
+      const body = await request.json().catch(() => null)
+      id = body?.id || null
+    }
     if (!id) return NextResponse.json({ error: "id is required" }, { status: 400 })
 
     const supabase = await createClient()

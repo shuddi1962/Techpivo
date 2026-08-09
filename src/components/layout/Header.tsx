@@ -8,6 +8,7 @@ import { useTheme } from "next-themes"
 import { createClient } from "@/lib/supabase/client"
 import type { User } from "@supabase/supabase-js"
 import { socialIcons, defaultPlatforms, defaultSocialUrls } from "@/components/layout/social-icons"
+import { PushSubscribeButton } from "@/components/push-subscribe-button"
 
 export function Header() {
   const [searchQ, setSearchQ] = useState("")
@@ -115,6 +116,9 @@ export function Header() {
                 )}
               </button>
             )}
+
+            {/* Push notifications — always visible */}
+            <PushSubscribeButton />
 
             {/* Desktop nav links — text only */}
             <Link href="/tools" className="header-nav-link"><span>Tools</span></Link>
