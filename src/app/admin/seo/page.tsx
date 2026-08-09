@@ -11,7 +11,7 @@ import {
   AlertTriangle, CheckCircle, TrendingUp, TrendingDown,
   FileText, Link, Image, BarChart3, RefreshCw,
   Globe, Shield, Target, Copy, Trash2, Plus, Eye,
-  Loader2, ChevronDown
+  Loader2, ChevronDown, Wand2
 } from "lucide-react"
 
 interface SeoAudit {
@@ -158,7 +158,7 @@ export default function EnterpriseSeoCenter() {
 
   useEffect(() => {
     let mounted = true
-    const tables = ["seo_audits", "seo_issues", "keyword_rankings", "topic_authority", "seo_redirects"]
+    const tables = ["seo_audits", "seo_issues", "keyword_rankings", "topic_authority", "seo_redirects", "posts"]
     const channels = tables.map((t, i) =>
       supabase
         .channel(`seo_center_rt_${realtimeSeq++}_${i}_${t}`)
@@ -179,6 +179,26 @@ export default function EnterpriseSeoCenter() {
   }, [supabase, loadData])
 
   const [auditProgress, setAuditProgress] = useState<{ done: number; total: number } | null>(null)
+  const [fixing, setFixing] = useState<string | null>(null)
+
+  const runFix = async (payload: any, label?: string) => {
+    setFixing(label || "fixing")
+    try {
+      const res = await fetch("/api/admin/seo/fix", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) setAuditMsg(`Fix failed: ${data.error || res.status}`)
+      else if (payload.action === "fix_all") setAuditMsg(`Auto-fixed ${data.fixed} of ${data.total} articles`)
+      else setAuditMsg(`Fix applied`)
+      await loadData()
+    } catch (e) {
+      setAuditMsg(`Fix failed: ${String(e)}`)
+    }
+    setFixing(null)
+  }
 
   const runSeoAudit = async (target: string) => {
     if (auditing) return
@@ -423,9 +443,15 @@ export default function EnterpriseSeoCenter() {
                           <p className="text-sm text-muted-foreground truncate">{issue.description}</p>
                         </div>
                       </div>
-                      <Button variant="ghost" size="sm" onClick={() => resolveIssue(issue.id)}>
-                        <CheckCircle className="h-4 w-4" />
-                      </Button>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <Button size="sm" onClick={() => runFix({ action: "fix_issue", postId: issue.post_id, issueType: issue.issue_type, issueId: issue.id })} disabled={fixing !== null}>
+                          {fixing !== null ? <Loader2 className="h-3 w-3 mr-1 animate-spin" /> : <Wand2 className="h-3 w-3 mr-1" />}
+                          Fix
+                        </Button>
+                        <Button variant="ghost" size="sm" onClick={() => resolveIssue(issue.id)}>
+                          <CheckCircle className="h-4 w-4" />
+                        </Button>
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -471,10 +497,16 @@ export default function EnterpriseSeoCenter() {
                             </p>
                           </div>
                         </div>
-                        <Button variant="outline" size="sm" onClick={() => setExpandedAudit(expandedAudit === audit.id ? null : audit.id)}>
-                          {expandedAudit === audit.id ? <ChevronUpIcon className="h-4 w-4 mr-2" /> : <Eye className="h-4 w-4 mr-2" />}
-                          {expandedAudit === audit.id ? "Hide Details" : "View Details"}
-                        </Button>
+                        <div className="flex items-center gap-2">
+                          <Button variant="outline" size="sm" onClick={() => runSeoAudit(audit.post_id)} disabled={auditing}>
+                            {auditing && auditProgress === null ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <RefreshCw className="h-4 w-4 mr-2" />}
+                            Re-audit
+                          </Button>
+                          <Button variant="outline" size="sm" onClick={() => setExpandedAudit(expandedAudit === audit.id ? null : audit.id)}>
+                            {expandedAudit === audit.id ? <ChevronUpIcon className="h-4 w-4 mr-2" /> : <Eye className="h-4 w-4 mr-2" />}
+                            {expandedAudit === audit.id ? "Hide Details" : "View Details"}
+                          </Button>
+                        </div>
                       </div>
                       <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3">
                         {[
@@ -611,25 +643,52 @@ export default function EnterpriseSeoCenter() {
               ) : issues.length === 0 ? (
                 <p className="text-muted-foreground text-center py-4">No issues found</p>
               ) : (
-                <div className="space-y-3">
-                  {issues.map((issue) => (
-                    <div key={issue.id} className="flex flex-wrap items-center justify-between gap-2 p-3 border rounded-lg">
-                      <div className="flex items-center gap-3 min-w-0">
-                        {getSeverityBadge(issue.severity)}
+                <div className="space-y-4">
+                  {(() => {
+                    const byType: Record<string, number> = {}
+                    issues.forEach(i => { byType[i.issue_type] = (byType[i.issue_type] || 0) + 1 })
+                    const fixable = ["missing_meta", "missing_keywords", "missing_featured_image", "no_content_images"]
+                    return Object.entries(byType).filter(([t]) => fixable.includes(t)).map(([type, n]) => (
+                      <div key={type} className="flex flex-wrap items-center justify-between gap-2 p-3 rounded-lg bg-muted/30 border border-border">
                         <div className="min-w-0">
-                          <p className="font-medium">{issue.issue_type}</p>
-                          <p className="text-sm text-muted-foreground">{issue.description}</p>
-                          {issue.suggestion && (
-                            <p className="text-sm text-blue-600 mt-1">Suggestion: {issue.suggestion}</p>
+                          <p className="font-medium text-sm">{type.replace(/_/g, ' ')}</p>
+                          <p className="text-xs text-muted-foreground">{n} open issue{n > 1 ? 's' : ''} — one-click auto-fix</p>
+                        </div>
+                        <Button size="sm" onClick={() => runFix({ action: "fix_all", issueType: type }, `fixall_${type}`)} disabled={fixing !== null}>
+                          {fixing === `fixall_${type}` ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Wand2 className="h-4 w-4 mr-2" />}
+                          Fix All ({n})
+                        </Button>
+                      </div>
+                    ))
+                  })()}
+                  <div className="space-y-3">
+                    {issues.map((issue) => (
+                      <div key={issue.id} className="flex flex-wrap items-center justify-between gap-2 p-3 border rounded-lg">
+                        <div className="flex items-center gap-3 min-w-0">
+                          {getSeverityBadge(issue.severity)}
+                          <div className="min-w-0">
+                            <p className="font-medium">{issue.issue_type}</p>
+                            <p className="text-sm text-muted-foreground">{issue.description}</p>
+                            {issue.suggestion && (
+                              <p className="text-sm text-blue-600 mt-1">Suggestion: {issue.suggestion}</p>
+                            )}
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2 shrink-0">
+                          {["missing_meta", "missing_keywords", "missing_featured_image", "no_content_images"].includes(issue.issue_type) && (
+                            <Button size="sm" onClick={() => runFix({ action: "fix_issue", postId: issue.post_id, issueType: issue.issue_type, issueId: issue.id }, `fix_${issue.id}`)} disabled={fixing !== null}>
+                              {fixing === `fix_${issue.id}` ? <Loader2 className="h-3 w-3 mr-1 animate-spin" /> : <Wand2 className="h-3 w-3 mr-1" />}
+                              Fix
+                            </Button>
                           )}
+                          <Button variant="outline" size="sm" onClick={() => resolveIssue(issue.id)}>
+                            <CheckCircle className="h-4 w-4 mr-2" />
+                            Resolve
+                          </Button>
                         </div>
                       </div>
-                      <Button variant="outline" size="sm" onClick={() => resolveIssue(issue.id)}>
-                        <CheckCircle className="h-4 w-4 mr-2" />
-                        Resolve
-                      </Button>
-                    </div>
-                  ))}
+                    ))}
+                  </div>
                 </div>
               )}
             </CardContent>
@@ -832,6 +891,9 @@ function ContentDecayTab() {
 function TechnicalSeoTab() {
   const supabase = createClient()
   const [loading, setLoading] = useState(true)
+  const [fixingType, setFixingType] = useState<string | null>(null)
+  const [issueCounts, setIssueCounts] = useState<Record<string, number>>({})
+  const [fixMsg, setFixMsg] = useState("")
   const [techStats, setTechStats] = useState({
     totalPosts: 0,
     indexedPosts: 0,
@@ -841,37 +903,76 @@ function TechnicalSeoTab() {
     avgTechnicalScore: 0,
   })
 
+  const fetchData = async () => {
+    try {
+      const [postsRes, indexedRes, redirectsRes, issuesRes, auditsRes] = await Promise.all([
+        supabase.from("posts").select("*", { count: "exact", head: true }).eq("status", "published"),
+        supabase.from("posts").select("*", { count: "exact", head: true }).eq("status", "published").eq("google_indexed", true),
+        supabase.from("seo_redirects").select("*", { count: "exact", head: true }),
+        supabase.from("seo_issues").select("issue_type, resolved").eq("resolved", false).limit(300),
+        supabase.from("seo_audits").select("technical_health_score").limit(100),
+      ])
+
+      const audits = auditsRes.data || []
+      const avgTech = audits.length > 0
+        ? Math.round(audits.reduce((s, a) => s + (a.technical_health_score || 0), 0) / audits.length)
+        : 0
+
+      const counts: Record<string, number> = {}
+      ;(issuesRes.data || []).forEach((i: any) => { counts[i.issue_type] = (counts[i.issue_type] || 0) + 1 })
+
+      setIssueCounts(counts)
+      setTechStats({
+        totalPosts: postsRes.count || 0,
+        indexedPosts: indexedRes.count || 0,
+        totalRedirects: redirectsRes.count || 0,
+        pendingIssues: issuesRes.data?.length || 0,
+        auditsPerformed: audits.length,
+        avgTechnicalScore: avgTech,
+      })
+    } catch (err) { console.error("Failed to fetch technical SEO data:", err) }
+    setLoading(false)
+  }
+
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const [postsRes, indexedRes, redirectsRes, issuesRes, auditsRes] = await Promise.all([
-          supabase.from("posts").select("*", { count: "exact", head: true }).eq("status", "published"),
-          supabase.from("posts").select("*", { count: "exact", head: true }).eq("status", "published").eq("google_indexed", true),
-          supabase.from("seo_redirects").select("*", { count: "exact", head: true }),
-          supabase.from("seo_issues").select("*", { count: "exact", head: true }).eq("resolved", false),
-          supabase.from("seo_audits").select("technical_health_score").limit(100),
-        ])
-
-        const audits = auditsRes.data || []
-        const avgTech = audits.length > 0
-          ? Math.round(audits.reduce((s, a) => s + (a.technical_health_score || 0), 0) / audits.length)
-          : 0
-
-        setTechStats({
-          totalPosts: postsRes.count || 0,
-          indexedPosts: indexedRes.count || 0,
-          totalRedirects: redirectsRes.count || 0,
-          pendingIssues: issuesRes.count || 0,
-          auditsPerformed: audits.length,
-          avgTechnicalScore: avgTech,
-        })
-      } catch (err) { console.error("Failed to fetch technical SEO data:", err) }
-      setLoading(false)
-    }
     fetchData()
+    const channel = supabase
+      .channel(`seo_technical_rt_${realtimeSeq++}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "seo_issues" }, () => fetchData())
+      .subscribe()
+    const poll = setInterval(fetchData, 60000)
+    return () => {
+      supabase.removeChannel(channel)
+      clearInterval(poll)
+    }
   }, [supabase])
 
+  const runFixAll = async (issueType: string) => {
+    setFixingType(issueType)
+    setFixMsg("")
+    try {
+      const res = await fetch("/api/admin/seo/fix", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "fix_all", issueType })
+      })
+      const data = await res.json().catch(() => ({}))
+      setFixMsg(res.ok ? `Auto-fixed ${data.fixed} of ${data.total} articles` : `Failed: ${data.error || res.status}`)
+      await fetchData()
+    } catch (e) {
+      setFixMsg(`Failed: ${String(e)}`)
+    }
+    setFixingType(null)
+  }
+
   if (loading) return <p className="text-sm text-muted-foreground">Loading...</p>
+
+  const fixableTypes = [
+    { key: "missing_meta", label: "Missing meta descriptions" },
+    { key: "missing_keywords", label: "No SEO keywords" },
+    { key: "missing_featured_image", label: "Missing featured images" },
+    { key: "no_content_images", label: "No images in content" },
+  ]
 
   return (
     <div className="space-y-6">
@@ -927,6 +1028,28 @@ function TechnicalSeoTab() {
           <p className="text-sm text-muted-foreground">Audits performed</p>
         </div>
       </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>One-Click Quick Fixes</CardTitle>
+          <p className="text-sm text-muted-foreground">Auto-generate meta descriptions, keywords, and images from the Media Library. Fixes apply instantly and reflect across the SEO Center in realtime.</p>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {fixMsg && <p className="text-sm font-medium text-green-700">{fixMsg}</p>}
+          {fixableTypes.map((f) => (
+            <div key={f.key} className="flex flex-wrap items-center justify-between gap-2 p-3 rounded-lg bg-muted/30 border border-border">
+              <div>
+                <p className="font-medium text-sm">{f.label}</p>
+                <p className="text-xs text-muted-foreground">{issueCounts[f.key] || 0} open issues</p>
+              </div>
+              <Button size="sm" onClick={() => runFixAll(f.key)} disabled={fixingType !== null || !(issueCounts[f.key] > 0)}>
+                {fixingType === f.key ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Wand2 className="h-4 w-4 mr-2" />}
+                {fixingType === f.key ? "Fixing..." : `Fix All (${issueCounts[f.key] || 0})`}
+              </Button>
+            </div>
+          ))}
+        </CardContent>
+      </Card>
     </div>
   )
 }
@@ -994,6 +1117,8 @@ function RobotsTab() {
 function ImageSeoTab() {
   const supabase = createClient()
   const [loading, setLoading] = useState(true)
+  const [fixingPost, setFixingPost] = useState<string | null>(null)
+  const [fixAllMsg, setFixAllMsg] = useState("")
   const [imageStats, setImageStats] = useState({
     total: 0,
     missingFeatured: 0,
@@ -1002,40 +1127,74 @@ function ImageSeoTab() {
   })
   const [missingImagePosts, setMissingImagePosts] = useState<{ id: string; title: string }[]>([])
 
+  const fetchImages = async () => {
+    try {
+      const { data } = await supabase.from("posts").select("id, title, featured_image, content")
+        .eq("status", "published").limit(300)
+
+      const posts = data || []
+      let missingFeatured = 0
+      let noImagesInContent = 0
+      const missing: { id: string; title: string }[] = []
+
+      posts.forEach((p) => {
+        if (!p.featured_image) missingFeatured++
+        const content = p.content || ""
+        const imgTagCount = (content.match(/<img[^>]+>/gi) || []).length
+        const mdImgCount = (content.match(/!\[.*?\]\(.*?\)/g) || []).length
+        if (imgTagCount === 0 && mdImgCount === 0) {
+          noImagesInContent++
+          if (missing.length < 10) missing.push({ id: p.id, title: p.title })
+        }
+      })
+
+      setMissingImagePosts(missing)
+      setImageStats({
+        total: posts.length,
+        missingFeatured,
+        noImagesInContent,
+        withImages: posts.length - noImagesInContent,
+      })
+    } catch (err) { console.error("Failed to fetch image SEO data:", err) }
+    setLoading(false)
+  }
+
   useEffect(() => {
-    const fetchImages = async () => {
-      try {
-        const { data } = await supabase.from("posts").select("id, title, featured_image, content")
-          .eq("status", "published").limit(300)
-
-        const posts = data || []
-        let missingFeatured = 0
-        let noImagesInContent = 0
-        const missing: { id: string; title: string }[] = []
-
-        posts.forEach((p) => {
-          if (!p.featured_image) missingFeatured++
-          const content = p.content || ""
-          const imgTagCount = (content.match(/<img[^>]+>/gi) || []).length
-          const mdImgCount = (content.match(/!\[.*?\]\(.*?\)/g) || []).length
-          if (imgTagCount === 0 && mdImgCount === 0) {
-            noImagesInContent++
-            if (missing.length < 10) missing.push({ id: p.id, title: p.title })
-          }
-        })
-
-        setMissingImagePosts(missing)
-        setImageStats({
-          total: posts.length,
-          missingFeatured,
-          noImagesInContent,
-          withImages: posts.length - noImagesInContent,
-        })
-      } catch (err) { console.error("Failed to fetch image SEO data:", err) }
-      setLoading(false)
-    }
     fetchImages()
   }, [supabase])
+
+  const addImages = async (postId: string) => {
+    setFixingPost(postId)
+    try {
+      const res = await fetch("/api/admin/seo/fix", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "fix_issue", postId, issueType: "no_content_images" })
+      })
+      const data = await res.json().catch(() => ({}))
+      setFixAllMsg(res.ok ? "Images added" : `Failed: ${data.error || res.status}`)
+      await fetchImages()
+    } catch (e) {
+      setFixAllMsg(`Failed: ${String(e)}`)
+    }
+    setFixingPost(null)
+  }
+
+  const addAllImages = async () => {
+    setFixAllMsg("")
+    try {
+      const res = await fetch("/api/admin/seo/fix", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "fix_all", issueType: "no_content_images", count: 1 })
+      })
+      const data = await res.json().catch(() => ({}))
+      setFixAllMsg(res.ok ? `Auto-fixed ${data.fixed} of ${data.total} articles` : `Failed: ${data.error || res.status}`)
+      await fetchImages()
+    } catch (e) {
+      setFixAllMsg(`Failed: ${String(e)}`)
+    }
+  }
 
   if (loading) return <p className="text-sm text-muted-foreground">Loading...</p>
 
@@ -1081,16 +1240,29 @@ function ImageSeoTab() {
             <CardHeader>
               <CardTitle>Articles to Fix</CardTitle>
               <p className="text-sm text-muted-foreground">
-                Open each article and add images throughout the content via the editor.
+                Auto-add a relevant image from the Media Library (or same-category articles), or open the editor to choose manually.
               </p>
+              <div className="flex flex-wrap items-center gap-3 pt-2">
+                {fixAllMsg && <span className="text-sm font-medium text-green-700">{fixAllMsg}</span>}
+                <Button size="sm" onClick={addAllImages} disabled={imageStats.noImagesInContent === 0}>
+                  <Wand2 className="h-4 w-4 mr-2" />
+                  Auto-Fix All ({imageStats.noImagesInContent})
+                </Button>
+              </div>
             </CardHeader>
             <CardContent className="space-y-2">
               {missingImagePosts.map((p) => (
-                <div key={p.id} className="flex items-center justify-between gap-2 p-3 rounded-lg bg-muted/30">
-                  <p className="font-medium text-sm truncate">{p.title}</p>
-                  <a href={`/admin/posts/${p.id}/edit`} className="text-sm text-blue-600 hover:underline shrink-0">
-                    Edit →
-                  </a>
+                <div key={p.id} className="flex flex-wrap items-center justify-between gap-2 p-3 rounded-lg bg-muted/30">
+                  <p className="font-medium text-sm truncate flex-1 min-w-0">{p.title}</p>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <Button variant="outline" size="sm" onClick={() => addImages(p.id)} disabled={fixingPost !== null}>
+                      {fixingPost === p.id ? <Loader2 className="h-3 w-3 mr-1 animate-spin" /> : <Wand2 className="h-3 w-3 mr-1" />}
+                      Auto-Add Image
+                    </Button>
+                    <a href={`/admin/posts/${p.id}/edit`} className="text-sm text-blue-600 hover:underline">
+                      Edit →
+                    </a>
+                  </div>
                 </div>
               ))}
               {imageStats.noImagesInContent > 10 && (
