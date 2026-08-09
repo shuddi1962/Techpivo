@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server"
 import { notFound } from "next/navigation"
 import { PostEditorProvider } from "@/components/admin/editor/post-editor-provider"
 import { PostEditorLayout } from "@/components/admin/editor/post-editor-layout"
+import { EditorErrorBoundary } from "@/components/admin/editor/editor-error-boundary"
 
 type Props = { params: { id: string } }
 
@@ -39,8 +40,10 @@ export default async function EditPostPage({ params }: Props) {
   if (!post) notFound()
 
   return (
-    <PostEditorProvider initialPost={post as any}>
-      <PostEditorLayout />
-    </PostEditorProvider>
+    <EditorErrorBoundary>
+      <PostEditorProvider initialPost={post as any}>
+        <PostEditorLayout />
+      </PostEditorProvider>
+    </EditorErrorBoundary>
   )
 }

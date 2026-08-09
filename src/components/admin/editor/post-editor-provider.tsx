@@ -82,6 +82,45 @@ const initialState: EditorPostState = {
   rss_source_url: "",
 }
 
+// Guard against malformed rows/drafts (null/string arrays etc.) that would
+// crash panels doing .map() during render -> misleading full-page "500".
+function normalizePost(raw: Record<string, unknown>): Record<string, unknown> {
+  const arr = (v: unknown): string[] =>
+    Array.isArray(v) ? v.filter((x): x is string => typeof x === "string") : []
+  const str = (v: unknown): string => (typeof v === "string" ? v : "")
+  const num = (v: unknown, fallback = 0): number =>
+    typeof v === "number" ? v : typeof v === "string" && v !== "" ? Number(v) || fallback : fallback
+  const bool = (v: unknown, fallback = false): boolean =>
+    typeof v === "boolean" ? v : typeof v === "string" ? v === "true" : fallback
+  const out: Record<string, unknown> = { ...raw }
+  out.tags = arr(raw.tags)
+  out.seo_keywords = arr(raw.seo_keywords)
+  out.secondary_keywords = arr(raw.secondary_keywords)
+  out.title = str(raw.title)
+  out.slug = str(raw.slug)
+  out.content = str(raw.content)
+  out.excerpt = str(raw.excerpt)
+  out.featured_image = str(raw.featured_image)
+  out.status = str(raw.status) || "draft"
+  out.schema_type = str(raw.schema_type) || "Article"
+  out.quality_score = num(raw.quality_score)
+  out.seo_score = num(raw.seo_score)
+  out.readability_score = num(raw.readability_score)
+  out.flesch_score = num(raw.flesch_score)
+  out.reading_time = num(raw.reading_time, 1)
+  out.views = num(raw.views)
+  out.robots_noindex = bool(raw.robots_noindex)
+  out.robots_nofollow = bool(raw.robots_nofollow)
+  out.is_sticky = bool(raw.is_sticky)
+  out.enable_comments = bool(raw.enable_comments, true)
+  out.is_featured = bool(raw.is_featured)
+  out.is_breaking = bool(raw.is_breaking)
+  out.is_sponsored = bool(raw.is_sponsored)
+  out.ai_rewritten = bool(raw.ai_rewritten)
+  out.google_indexed = bool(raw.google_indexed)
+  return out
+}
+
 export function PostEditorProvider({
   children,
   initialPost,
@@ -91,7 +130,9 @@ export function PostEditorProvider({
 }) {
   const router = useRouter()
   const supabase = createClient()
-  const [post, setPost] = useState<EditorPostState>({ ...initialState, ...initialPost })
+  const [post, setPost] = useState<EditorPostState>(
+    () => ({ ...initialState, ...normalizePost((initialPost as Record<string, unknown>) || {}) }) as EditorPostState
+  )
   const [seoKeyword, setSeoKeyword] = useState(initialPost?.focus_keyword || "")
   const [isSaving, setIsSaving] = useState(false)
   const [lastSaved, setLastSaved] = useState<Date | null>(null)
@@ -115,7 +156,7 @@ export function PostEditorProvider({
         if (saved) {
           try {
             const parsed = JSON.parse(saved)
-            if (parsed) setPost(prev => ({ ...prev, ...parsed }))
+            if (parsed) setPost(prev => ({ ...prev, ...normalizePost(parsed) } as EditorPostState))
           } catch { /* ignore */ }
         }
       }

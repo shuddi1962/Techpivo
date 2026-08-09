@@ -13,7 +13,7 @@ export default function Error({
         <div className="text-6xl mb-4" style={{ fontFamily: "'Syne', sans-serif", fontWeight: 800, color: "var(--accent)" }}>500</div>
         <h1 className="text-2xl font-bold mb-2" style={{ fontFamily: "'Syne', sans-serif" }}>Something went wrong</h1>
         <p className="text-sm mb-6" style={{ color: "var(--muted)" }}>
-          A server-side error occurred. Please try refreshing the page.
+          An unexpected error occurred. Please try refreshing the page.
         </p>
         <button
           onClick={reset}
