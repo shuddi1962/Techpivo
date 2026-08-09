@@ -1,24 +1,58 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useCallback, useEffect, useState } from "react"
 import { createClient } from "@/lib/supabase/client"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Globe, Send, Loader2 } from "lucide-react"
+import { Globe, Send, Loader2, RefreshCw } from "lucide-react"
 import type { GoogleIndexingQueue } from "@/types/database"
 
 export default function AdminIndexingPage() {
   const [queue, setQueue] = useState<GoogleIndexingQueue[]>([])
   const [submitting, setSubmitting] = useState(false)
+  const [syncing, setSyncing] = useState(false)
+  const [syncMsg, setSyncMsg] = useState("")
+
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://techpivo.com"
+
+  const loadQueue = useCallback(async () => {
+    const supabase = createClient()
+    const { data } = await supabase.from("google_indexing_queue").select("*").order("created_at", { ascending: false }).limit(50)
+    if (data) setQueue(data)
+  }, [])
+
+  const syncQueue = useCallback(async () => {
+    setSyncing(true)
+    setSyncMsg("")
+    try {
+      const supabase = createClient()
+      const { data: posts, error } = await supabase
+        .from("posts")
+        .select("slug")
+        .eq("status", "published")
+        .or("google_indexed.is.null,google_indexed.eq.false")
+        .limit(300)
+      if (error) throw error
+
+      const { data: existing } = await supabase.from("google_indexing_queue").select("url")
+      const existingUrls = new Set((existing || []).map((q) => q.url))
+
+      const urls = [...new Set((posts || []).map((p) => `${siteUrl}/${p.slug}`).filter((u) => !existingUrls.has(u)))]
+      if (urls.length > 0) {
+        await supabase.from("google_indexing_queue").insert(urls.map((url) => ({ url, status: "pending" })))
+      }
+      setSyncMsg(urls.length > 0 ? `Queue synced — added ${urls.length} unindexed URL(s)` : "Queue is already up to date")
+      await loadQueue()
+    } catch (e) {
+      setSyncMsg(`Sync failed: ${String(e)}`)
+    }
+    setSyncing(false)
+  }, [siteUrl, loadQueue])
 
   useEffect(() => {
-    const supabase = createClient()
-    supabase.from("google_indexing_queue").select("*").order("created_at", { ascending: false }).limit(50)
-      .then(({ data }) => {
-        if (data) setQueue(data)
-      })
-  }, [])
+    syncQueue()
+  }, [syncQueue])
 
   const submitAll = async () => {
     setSubmitting(true)
@@ -49,10 +83,11 @@ export default function AdminIndexingPage() {
         await supabase.from("google_indexing_queue").update({ status: "failed", submitted_at: new Date().toISOString() }).eq("id", item.id)
       }
     }
-    const { data: refetch } = await supabase.from("google_indexing_queue").select("*").order("created_at", { ascending: false }).limit(50)
-    if (refetch) setQueue(refetch)
+    await loadQueue()
     setSubmitting(false)
   }
+
+  const pendingCount = queue.filter((q) => q.status === "pending").length
 
   const statusColors: Record<string, string> = {
     pending: "secondary",
@@ -65,10 +100,19 @@ export default function AdminIndexingPage() {
     <div>
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-3xl font-bold">Google Indexing</h1>
-        <Button onClick={submitAll}>
-          <Send className="h-4 w-4 mr-2" />Submit All Unindexed
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" onClick={syncQueue} disabled={syncing}>
+            {syncing ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <RefreshCw className="h-4 w-4 mr-2" />}
+            Sync Queue
+          </Button>
+          <Button onClick={submitAll} disabled={submitting || pendingCount === 0}>
+            {submitting ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Send className="h-4 w-4 mr-2" />}
+            Submit All Unindexed ({pendingCount})
+          </Button>
+        </div>
       </div>
+
+      {syncMsg && <p className="text-sm text-muted-foreground mb-4">{syncMsg}</p>}
 
       <Card>
         <CardHeader><CardTitle className="text-lg">Indexing Queue</CardTitle></CardHeader>
