@@ -16,6 +16,8 @@ export interface LibraryFile {
   created_at: string
 }
 
+let channelCounter = 0
+
 export function useMediaLibrary(limit: number = 500) {
   const supabase = createClient()
   const [items, setItems] = useState<LibraryFile[]>([])
@@ -38,8 +40,11 @@ export function useMediaLibrary(limit: number = 500) {
     mounted.current = true
     refresh()
 
+    // Unique channel per mount: supabase-js returns the same channel object
+    // for the same name, so a second .on() on an already-subscribed channel
+    // throws ("cannot add postgres_changes callbacks after subscribe()").
     const channel = supabase
-      .channel("media_files_realtime")
+      .channel(`media_files_realtime_${channelCounter++}`)
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "media_files" },
@@ -53,7 +58,7 @@ export function useMediaLibrary(limit: number = 500) {
 
     return () => {
       mounted.current = false
-      channel.unsubscribe()
+      supabase.removeChannel(channel)
       clearInterval(poll)
       window.removeEventListener("focus", onFocus)
     }
