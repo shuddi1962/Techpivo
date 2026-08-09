@@ -16,20 +16,37 @@ export function vapidConfigured(): boolean {
 
 async function deliverToAllSubscribers(
   payload: string,
-  onError?: (error: any, endpoint: string) => void
+  onError?: (error: any, endpoint: string) => void,
+  audience?: string
 ): Promise<{ total: number; delivered: number; expired: number }> {
   const supabase = createClient()
   const { data: subs } = await supabase
     .from('push_subscriptions')
-    .select('endpoint, p256dh, auth')
+    .select('endpoint, p256dh, auth, device_type, browser')
 
-  if (!subs?.length) return { total: 0, delivered: 0, expired: 0 }
+  let filtered = subs || []
+  if (audience && audience !== 'all') {
+    const target = audience.toLowerCase()
+    filtered = filtered.filter((s: any) => {
+      const device = (s.device_type || '').toLowerCase()
+      const browser = (s.browser || '').toLowerCase()
+      switch (target) {
+        case 'desktop': return device !== 'mobile'
+        case 'mobile': return device === 'mobile' || device === 'tablet'
+        case 'chrome': return browser.includes('chrome')
+        case 'firefox': return browser.includes('firefox')
+        default: return true
+      }
+    })
+  }
+
+  if (!filtered.length) return { total: 0, delivered: 0, expired: 0 }
 
   const expired: string[] = []
   let delivered = 0
 
   await Promise.allSettled(
-    subs.map(async (sub) => {
+    filtered.map(async (sub) => {
       try {
         await webpush.sendNotification(
           { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } },
@@ -54,7 +71,7 @@ async function deliverToAllSubscribers(
     }
   }
 
-  return { total: subs.length, delivered, expired: expired.length }
+  return { total: filtered.length, delivered, expired: expired.length }
 }
 
 export async function sendPushNotification(post: {
@@ -78,6 +95,7 @@ export async function sendRawPush(input: {
   body: string
   url?: string
   image?: string
+  audience?: string
 }): Promise<{ total: number; delivered: number; expired: number }> {
   ensureVapid()
   return deliverToAllSubscribers(
@@ -88,6 +106,8 @@ export async function sendRawPush(input: {
       icon: `${SITE}/icon-192.png`,
       badge: `${SITE}/badge-72.png`,
       image: input.image || undefined,
-    })
+    }),
+    undefined,
+    input.audience
   )
 }

@@ -1,6 +1,7 @@
 "use client"
 
-import { useEffect, useState, useCallback } from "react"
+import { useEffect, useState, useCallback, useRef } from "react"
+import { createClient } from "@/lib/supabase/client"
 import {
   Mail, Users, Send, FileText, List, Zap, FlaskConical, BarChart3,
   Plus, Search, Download, Upload, Eye, MousePointerClick, UserMinus,
@@ -20,21 +21,31 @@ const TABS = [
 ]
 
 const S = {
-  bg: "#0F1117",
-  card: "#1C1F2E",
-  cardHover: "#232738",
-  border: "#2A2D3E",
+  bg: "#FFFFFF",
+  card: "#FFFFFF",
+  cardHover: "#F8FAFC",
+  border: "#E2E8F0",
   primary: "#2563EB",
   primaryHover: "#1D4ED8",
-  green: "#22C55E",
-  red: "#EF4444",
-  yellow: "#EAB308",
-  purple: "#A855F7",
-  text: "#F1F5F9",
-  textMuted: "#94A3B8",
-  textDim: "#64748B",
-  input: "#141620",
+  green: "#16A34A",
+  red: "#DC2626",
+  yellow: "#CA8A04",
+  purple: "#7C3AED",
+  text: "#0F172A",
+  textMuted: "#475569",
+  textDim: "#94A3B8",
+  input: "#F8FAFC",
+  overlay: "rgba(15,23,42,0.4)",
 }
+
+const REALTIME_TABLES = [
+  "subscribers",
+  "newsletter_sends",
+  "newsletter_templates",
+  "newsletter_lists",
+  "newsletter_automations",
+  "newsletter_ab_tests",
+]
 
 interface Subscriber {
   id: string
@@ -208,12 +219,69 @@ function OverviewTab({ data, loading }: { data: OverviewData | null; loading: bo
 function SubscribersTab({ data, loading, onRefresh }: { data: Subscriber[]; loading: boolean; onRefresh: () => void }) {
   const [search, setSearch] = useState("")
   const [statusFilter, setStatusFilter] = useState("all")
+  const fileRef = useRef<HTMLInputElement>(null)
 
   const filtered = data.filter(s => {
     const matchSearch = s.email.toLowerCase().includes(search.toLowerCase()) || (s.name && s.name.toLowerCase().includes(search.toLowerCase()))
     const matchStatus = statusFilter === "all" || s.status === statusFilter
     return matchSearch && matchStatus
   })
+
+  const exportCsv = () => {
+    const header = "email,name,status,source,subscribed_at"
+    const rows = filtered.map(s => [s.email, s.name || "", s.status, s.source || "", s.subscribed_at]
+      .map(v => `"${String(v).replace(/"/g, '""')}"`).join(","))
+    const blob = new Blob([[header, ...rows].join("\n")], { type: "text/csv" })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement("a")
+    a.href = url
+    a.download = `techpivo-subscribers-${new Date().toISOString().slice(0, 10)}.csv`
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+
+  const importCsv = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    try {
+      const text = await file.text()
+      const emails = [...text.matchAll(/[\w.+-]+@[\w-]+\.[\w.]+/g)].map(m => m[0])
+      if (!emails.length) {
+        alert("No email addresses found in the file")
+        return
+      }
+      const res = await fetch("/admin/newsletter/api", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "bulk-import-subscribers", emails }),
+      })
+      const json = await res.json()
+      if (res.ok) alert(`Imported ${json.imported} subscriber${json.imported !== 1 ? "s" : ""}`)
+      else alert(json.error || "Import failed")
+      onRefresh()
+    } catch (err) {
+      console.error("CSV import failed:", err)
+      alert("Failed to read file")
+    } finally {
+      e.target.value = ""
+    }
+  }
+
+  const deleteSubscriber = async (s: Subscriber) => {
+    if (!confirm(`Delete ${s.email}? This removes them from the newsletter.`)) return
+    try {
+      const res = await fetch("/admin/newsletter/api", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "delete-subscriber", id: s.id }),
+      })
+      if (!res.ok) alert((await res.json()).error || "Failed to delete subscriber")
+      onRefresh()
+    } catch (err) {
+      console.error("Failed to delete subscriber:", err)
+      alert("Network error while deleting subscriber")
+    }
+  }
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
@@ -240,10 +308,11 @@ function SubscribersTab({ data, loading, onRefresh }: { data: Subscriber[]; load
           </select>
         </div>
         <div style={{ display: "flex", gap: 8 }}>
-          <button style={{ background: S.card, border: `1px solid ${S.border}`, borderRadius: 8, padding: "8px 14px", color: S.text, fontSize: 13, cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }}>
+          <button onClick={() => fileRef.current?.click()} style={{ background: S.card, border: `1px solid ${S.border}`, borderRadius: 8, padding: "8px 14px", color: S.text, fontSize: 13, cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }}>
             <Upload style={{ width: 14, height: 14 }} /> Import
           </button>
-          <button style={{ background: S.card, border: `1px solid ${S.border}`, borderRadius: 8, padding: "8px 14px", color: S.text, fontSize: 13, cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }}>
+          <input ref={fileRef} type="file" accept=".csv,.txt" style={{ display: "none" }} onChange={importCsv} />
+          <button onClick={exportCsv} style={{ background: S.card, border: `1px solid ${S.border}`, borderRadius: 8, padding: "8px 14px", color: S.text, fontSize: 13, cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }}>
             <Download style={{ width: 14, height: 14 }} /> Export
           </button>
           <button onClick={onRefresh} style={{ background: S.primary, border: "none", borderRadius: 8, padding: "8px 14px", color: "#fff", fontSize: 13, cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }}>
@@ -279,6 +348,9 @@ function SubscribersTab({ data, loading, onRefresh }: { data: Subscriber[]; load
                     background: s.status === "active" ? `${S.green}20` : s.status === "unsubscribed" ? `${S.red}20` : `${S.yellow}20`,
                     color: s.status === "active" ? S.green : s.status === "unsubscribed" ? S.red : S.yellow
                   }}>{s.status}</span>
+                  <button onClick={() => deleteSubscriber(s)} style={{ background: "transparent", border: `1px solid ${S.border}`, borderRadius: 6, padding: "5px 8px", color: S.red, fontSize: 12, cursor: "pointer" }}>
+                    <Trash2 style={{ width: 12, height: 12 }} />
+                  </button>
                 </div>
               </div>
             ))}
@@ -392,7 +464,7 @@ function CampaignsTab({ data, loading, onRefresh, onSend }: { data: Campaign[]; 
                 <button onClick={() => { setEditingCampaign(c); setEditName(c.name); setEditSubject(c.subject); }} style={{ background: "transparent", border: `1px solid ${S.border}`, borderRadius: 6, padding: "5px 8px", color: S.textDim, fontSize: 12, cursor: "pointer" }}>
                   <Edit3 style={{ width: 12, height: 12 }} />
                 </button>
-                <button onClick={() => { if (confirm('Delete this campaign?')) { fetch('/admin/newsletter/api', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ type: 'campaign', id: c.id }) }).then(() => window.location.reload()) } }} style={{ background: "transparent", border: `1px solid ${S.border}`, borderRadius: 6, padding: "5px 8px", color: S.red, fontSize: 12, cursor: "pointer" }}>
+                <button onClick={() => { if (confirm('Delete this campaign?')) { fetch('/admin/newsletter/api', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ type: 'campaign', id: c.id }) }).then(onRefresh).catch(() => {}) } }} style={{ background: "transparent", border: `1px solid ${S.border}`, borderRadius: 6, padding: "5px 8px", color: S.red, fontSize: 12, cursor: "pointer" }}>
                   <Trash2 style={{ width: 12, height: 12 }} />
                 </button>
               </div>
@@ -402,7 +474,7 @@ function CampaignsTab({ data, loading, onRefresh, onSend }: { data: Campaign[]; 
       </div>
 
       {editingCampaign && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.7)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000, padding: 40 }}>
+        <div style={{ position: "fixed", inset: 0, background: S.overlay, display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000, padding: 40 }}>
           <div style={{ background: S.card, border: `1px solid ${S.border}`, borderRadius: 12, width: "100%", maxWidth: 500, padding: 24 }}>
             <h3 style={{ fontSize: 18, fontWeight: 600, color: S.text, marginBottom: 16 }}>Edit Campaign</h3>
             <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
@@ -430,23 +502,85 @@ function CampaignsTab({ data, loading, onRefresh, onSend }: { data: Campaign[]; 
   )
 }
 
-function TemplatesTab({ data, loading }: { data: Template[]; loading: boolean }) {
+function TemplatesTab({ data, loading, onRefresh }: { data: Template[]; loading: boolean; onRefresh: () => void }) {
   const [preview, setPreview] = useState<Template | null>(null)
-  const handleNewTemplate = async () => {
-    const name = prompt('Template name:')
-    if (!name) return
-    await fetch('/admin/newsletter/api', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ type: 'template', name, subject: '', content: '' }) })
-    window.location.reload()
+  const [showCreate, setShowCreate] = useState(false)
+  const [form, setForm] = useState({ name: "", subject: "", content: "" })
+  const [saving, setSaving] = useState(false)
+
+  const handleCreate = async () => {
+    if (!form.name) return
+    setSaving(true)
+    try {
+      const res = await fetch("/admin/newsletter/api", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "create-template", ...form }),
+      })
+      if (!res.ok) alert((await res.json()).error || "Failed to create template")
+      setForm({ name: "", subject: "", content: "" })
+      setShowCreate(false)
+      onRefresh()
+    } catch (err) {
+      console.error("Failed to create template:", err)
+      alert("Network error while creating template")
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const deleteTemplate = async (t: Template) => {
+    if (!confirm(`Delete template "${t.name}"?`)) return
+    try {
+      const res = await fetch("/admin/newsletter/api", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ type: "template", id: t.id }),
+      })
+      if (!res.ok) alert((await res.json()).error || "Failed to delete template")
+      onRefresh()
+    } catch (err) {
+      console.error("Failed to delete template:", err)
+      alert("Network error while deleting template")
+    }
   }
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <h3 style={{ fontSize: 16, fontWeight: 600, color: S.text }}>Templates ({data.length})</h3>
-        <button onClick={handleNewTemplate} style={{ background: S.primary, border: "none", borderRadius: 8, padding: "8px 14px", color: "#fff", fontSize: 13, cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }}>
+        <button onClick={() => setShowCreate(!showCreate)} style={{ background: S.primary, border: "none", borderRadius: 8, padding: "8px 14px", color: "#fff", fontSize: 13, cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }}>
           <Plus style={{ width: 14, height: 14 }} /> New Template
         </button>
       </div>
+
+      {showCreate && (
+        <div style={{ background: S.card, border: `1px solid ${S.border}`, borderRadius: 12, padding: 20, display: "flex", flexDirection: "column", gap: 12 }}>
+          <input
+            value={form.name}
+            onChange={e => setForm(p => ({ ...p, name: e.target.value }))}
+            placeholder="Template name"
+            style={{ background: S.input, border: `1px solid ${S.border}`, borderRadius: 8, padding: "10px 14px", color: S.text, fontSize: 13, outline: "none" }}
+          />
+          <input
+            value={form.subject}
+            onChange={e => setForm(p => ({ ...p, subject: e.target.value }))}
+            placeholder="Default subject line"
+            style={{ background: S.input, border: `1px solid ${S.border}`, borderRadius: 8, padding: "10px 14px", color: S.text, fontSize: 13, outline: "none" }}
+          />
+          <textarea
+            value={form.content}
+            onChange={e => setForm(p => ({ ...p, content: e.target.value }))}
+            placeholder="Email HTML content (wrapped in the Techpivo branded template when used)"
+            rows={6}
+            style={{ background: S.input, border: `1px solid ${S.border}`, borderRadius: 8, padding: "10px 14px", color: S.text, fontSize: 13, outline: "none", resize: "vertical", fontFamily: "inherit" }}
+          />
+          <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+            <button onClick={() => setShowCreate(false)} style={{ background: S.input, border: `1px solid ${S.border}`, borderRadius: 8, padding: "8px 16px", color: S.textMuted, fontSize: 13, cursor: "pointer" }}>Cancel</button>
+            <button onClick={handleCreate} disabled={saving || !form.name} style={{ background: S.primary, border: "none", borderRadius: 8, padding: "8px 16px", color: "#fff", fontSize: 13, cursor: "pointer", opacity: saving || !form.name ? 0.5 : 1 }}>{saving ? "Creating..." : "Create"}</button>
+          </div>
+        </div>
+      )}
 
       {loading ? <LoadingSpinner /> : (
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: 16 }}>
@@ -459,15 +593,20 @@ function TemplatesTab({ data, loading }: { data: Template[]; loading: boolean })
               <div style={{ height: 140, background: `linear-gradient(135deg, ${S.primary}15, ${S.purple}15)`, display: "flex", alignItems: "center", justifyContent: "center" }}>
                 <FileText style={{ width: 40, height: 40, color: S.primary, opacity: 0.5 }} />
               </div>
-              <div style={{ padding: 16 }}>
-                <p style={{ fontSize: 14, fontWeight: 600, color: S.text }}>{t.name}</p>
-                <p style={{ fontSize: 12, color: S.textDim, marginTop: 4 }}>{t.subject}</p>
-                <p style={{ fontSize: 11, color: S.textDim, marginTop: 8 }}>Updated {new Date(t.updated_at).toLocaleDateString()}</p>
+              <div style={{ padding: 16, display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+                <div style={{ minWidth: 0 }}>
+                  <p style={{ fontSize: 14, fontWeight: 600, color: S.text }}>{t.name}</p>
+                  <p style={{ fontSize: 12, color: S.textDim, marginTop: 4 }}>{t.subject}</p>
+                  <p style={{ fontSize: 11, color: S.textDim, marginTop: 8 }}>Updated {new Date(t.updated_at).toLocaleDateString()}</p>
+                </div>
+                <button onClick={e => { e.stopPropagation(); deleteTemplate(t) }} style={{ background: "transparent", border: `1px solid ${S.border}`, borderRadius: 6, padding: "5px 8px", color: S.red, fontSize: 12, cursor: "pointer", flexShrink: 0 }}>
+                  <Trash2 style={{ width: 12, height: 12 }} />
+                </button>
               </div>
             </div>
           ))}
           {data.length === 0 && (
-            <div style={{ gridColumn: "1 / -1", textAlign: "center", padding: 60, color: S.textMuted }}>
+            <div style={{ gridColumn: "1 / -1", textAlign: "center", padding: 60, color: S.textMuted, background: S.card, borderRadius: 12, border: `1px solid ${S.border}` }}>
               No templates yet. Create your first template.
             </div>
           )}
@@ -475,18 +614,22 @@ function TemplatesTab({ data, loading }: { data: Template[]; loading: boolean })
       )}
 
       {preview && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.7)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000, padding: 40 }}
+        <div style={{ position: "fixed", inset: 0, background: S.overlay, display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000, padding: 40 }}
           onClick={() => setPreview(null)}>
-          <div style={{ background: S.card, border: `1px solid ${S.border}`, borderRadius: 12, width: "100%", maxWidth: 700, maxHeight: "80vh", overflow: "auto", padding: 24 }}
+          <div style={{ background: "#fff", border: `1px solid ${S.border}`, borderRadius: 12, width: "100%", maxWidth: 700, maxHeight: "80vh", overflow: "auto", padding: 24 }}
             onClick={e => e.stopPropagation()}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
               <h3 style={{ fontSize: 18, fontWeight: 600, color: S.text }}>{preview.name}</h3>
               <button onClick={() => setPreview(null)} style={{ background: "transparent", border: "none", color: S.textMuted, fontSize: 20, cursor: "pointer" }}>✕</button>
             </div>
             <p style={{ fontSize: 13, color: S.textDim, marginBottom: 12 }}>Subject: {preview.subject}</p>
-            <div style={{ background: S.input, borderRadius: 8, padding: 16, fontSize: 13, color: S.textMuted }}>
-              Template preview would render here. The HTML content is stored in the database.
-            </div>
+            {preview.html ? (
+              <div style={{ background: S.input, borderRadius: 8, padding: 16, fontSize: 13, color: S.text }} dangerouslySetInnerHTML={{ __html: preview.html }} />
+            ) : (
+              <div style={{ background: S.input, borderRadius: 8, padding: 16, fontSize: 13, color: S.textMuted }}>
+                No HTML content saved for this template.
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -494,22 +637,77 @@ function TemplatesTab({ data, loading }: { data: Template[]; loading: boolean })
   )
 }
 
-function ListsTab({ data, loading }: { data: SubscriberList[]; loading: boolean }) {
-  const handleNewList = async () => {
-    const name = prompt('List name:')
-    if (!name) return
-    await fetch('/admin/newsletter/api', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ type: 'list', name, description: '' }) })
-    window.location.reload()
+function ListsTab({ data, loading, onRefresh }: { data: SubscriberList[]; loading: boolean; onRefresh: () => void }) {
+  const [showCreate, setShowCreate] = useState(false)
+  const [form, setForm] = useState({ name: "", description: "" })
+  const [saving, setSaving] = useState(false)
+
+  const handleCreate = async () => {
+    if (!form.name) return
+    setSaving(true)
+    try {
+      const res = await fetch("/admin/newsletter/api", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "create-list", ...form }),
+      })
+      if (!res.ok) alert((await res.json()).error || "Failed to create list")
+      setForm({ name: "", description: "" })
+      setShowCreate(false)
+      onRefresh()
+    } catch (err) {
+      console.error("Failed to create list:", err)
+      alert("Network error while creating list")
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const deleteList = async (l: SubscriberList) => {
+    if (!confirm(`Delete list "${l.name}"?`)) return
+    try {
+      const res = await fetch("/admin/newsletter/api", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ type: "list", id: l.id }),
+      })
+      if (!res.ok) alert((await res.json()).error || "Failed to delete list")
+      onRefresh()
+    } catch (err) {
+      console.error("Failed to delete list:", err)
+      alert("Network error while deleting list")
+    }
   }
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <h3 style={{ fontSize: 16, fontWeight: 600, color: S.text }}>Lists ({data.length})</h3>
-        <button onClick={handleNewList} style={{ background: S.primary, border: "none", borderRadius: 8, padding: "8px 14px", color: "#fff", fontSize: 13, cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }}>
+        <button onClick={() => setShowCreate(!showCreate)} style={{ background: S.primary, border: "none", borderRadius: 8, padding: "8px 14px", color: "#fff", fontSize: 13, cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }}>
           <Plus style={{ width: 14, height: 14 }} /> New List
         </button>
       </div>
+
+      {showCreate && (
+        <div style={{ background: S.card, border: `1px solid ${S.border}`, borderRadius: 12, padding: 20, display: "flex", flexDirection: "column", gap: 12 }}>
+          <input
+            value={form.name}
+            onChange={e => setForm(p => ({ ...p, name: e.target.value }))}
+            placeholder="List name"
+            style={{ background: S.input, border: `1px solid ${S.border}`, borderRadius: 8, padding: "10px 14px", color: S.text, fontSize: 13, outline: "none" }}
+          />
+          <input
+            value={form.description}
+            onChange={e => setForm(p => ({ ...p, description: e.target.value }))}
+            placeholder="Description (optional)"
+            style={{ background: S.input, border: `1px solid ${S.border}`, borderRadius: 8, padding: "10px 14px", color: S.text, fontSize: 13, outline: "none" }}
+          />
+          <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+            <button onClick={() => setShowCreate(false)} style={{ background: S.input, border: `1px solid ${S.border}`, borderRadius: 8, padding: "8px 16px", color: S.textMuted, fontSize: 13, cursor: "pointer" }}>Cancel</button>
+            <button onClick={handleCreate} disabled={saving || !form.name} style={{ background: S.primary, border: "none", borderRadius: 8, padding: "8px 16px", color: "#fff", fontSize: 13, cursor: "pointer", opacity: saving || !form.name ? 0.5 : 1 }}>{saving ? "Creating..." : "Create"}</button>
+          </div>
+        </div>
+      )}
 
       {loading ? <LoadingSpinner /> : (
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))", gap: 16 }}>
@@ -520,13 +718,18 @@ function ListsTab({ data, loading }: { data: SubscriberList[]; loading: boolean 
                   <p style={{ fontSize: 15, fontWeight: 600, color: S.text }}>{l.name}</p>
                   {l.description && <p style={{ fontSize: 12, color: S.textDim, marginTop: 4 }}>{l.description}</p>}
                 </div>
-                <span style={{ fontSize: 20, fontWeight: 700, color: S.primary }}>{l.subscriber_count}</span>
+                <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                  <span style={{ fontSize: 20, fontWeight: 700, color: S.primary }}>{l.subscriber_count}</span>
+                  <button onClick={() => deleteList(l)} style={{ background: "transparent", border: `1px solid ${S.border}`, borderRadius: 6, padding: "5px 8px", color: S.red, fontSize: 12, cursor: "pointer" }}>
+                    <Trash2 style={{ width: 12, height: 12 }} />
+                  </button>
+                </div>
               </div>
               <p style={{ fontSize: 11, color: S.textDim, marginTop: 12 }}>Created {new Date(l.created_at).toLocaleDateString()}</p>
             </div>
           ))}
           {data.length === 0 && (
-            <div style={{ gridColumn: "1 / -1", textAlign: "center", padding: 60, color: S.textMuted }}>
+            <div style={{ gridColumn: "1 / -1", textAlign: "center", padding: 60, color: S.textMuted, background: S.card, borderRadius: 12, border: `1px solid ${S.border}` }}>
               No lists yet. Create your first subscriber list.
             </div>
           )}
@@ -536,22 +739,84 @@ function ListsTab({ data, loading }: { data: SubscriberList[]; loading: boolean 
   )
 }
 
-function AutomationsTab({ data, loading }: { data: Automation[]; loading: boolean }) {
-  const handleNewAutomation = async () => {
-    const name = prompt('Automation name:')
-    if (!name) return
-    await fetch('/admin/newsletter/api', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ type: 'automation', name, trigger: 'new_subscriber', actions: [] }) })
-    window.location.reload()
+function AutomationsTab({ data, loading, onRefresh }: { data: Automation[]; loading: boolean; onRefresh: () => void }) {
+  const [showCreate, setShowCreate] = useState(false)
+  const [form, setForm] = useState({ name: "", trigger: "new_subscriber" })
+  const [saving, setSaving] = useState(false)
+
+  const handleCreate = async () => {
+    if (!form.name) return
+    setSaving(true)
+    try {
+      const res = await fetch("/admin/newsletter/api", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "create-automation", ...form }),
+      })
+      if (!res.ok) alert((await res.json()).error || "Failed to create automation")
+      setForm({ name: "", trigger: "new_subscriber" })
+      setShowCreate(false)
+      onRefresh()
+    } catch (err) {
+      console.error("Failed to create automation:", err)
+      alert("Network error while creating automation")
+    } finally {
+      setSaving(false)
+    }
   }
+
+  const deleteAutomation = async (a: Automation) => {
+    if (!confirm(`Delete automation "${a.name}"?`)) return
+    try {
+      const res = await fetch("/admin/newsletter/api", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ type: "automation", id: a.id }),
+      })
+      if (!res.ok) alert((await res.json()).error || "Failed to delete automation")
+      onRefresh()
+    } catch (err) {
+      console.error("Failed to delete automation:", err)
+      alert("Network error while deleting automation")
+    }
+  }
+
+  const triggerLabel = (t: string) => t.split("_").map(w => w[0].toUpperCase() + w.slice(1)).join(" ")
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <h3 style={{ fontSize: 16, fontWeight: 600, color: S.text }}>Automations ({data.length})</h3>
-        <button onClick={handleNewAutomation} style={{ background: S.primary, border: "none", borderRadius: 8, padding: "8px 14px", color: "#fff", fontSize: 13, cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }}>
+        <button onClick={() => setShowCreate(!showCreate)} style={{ background: S.primary, border: "none", borderRadius: 8, padding: "8px 14px", color: "#fff", fontSize: 13, cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }}>
           <Plus style={{ width: 14, height: 14 }} /> New Automation
         </button>
       </div>
+
+      {showCreate && (
+        <div style={{ background: S.card, border: `1px solid ${S.border}`, borderRadius: 12, padding: 20, display: "flex", flexDirection: "column", gap: 12 }}>
+          <input
+            value={form.name}
+            onChange={e => setForm(p => ({ ...p, name: e.target.value }))}
+            placeholder="Automation name"
+            style={{ background: S.input, border: `1px solid ${S.border}`, borderRadius: 8, padding: "10px 14px", color: S.text, fontSize: 13, outline: "none" }}
+          />
+          <select
+            value={form.trigger}
+            onChange={e => setForm(p => ({ ...p, trigger: e.target.value }))}
+            style={{ background: S.input, border: `1px solid ${S.border}`, borderRadius: 8, padding: "10px 14px", color: S.text, fontSize: 13, outline: "none", cursor: "pointer" }}
+          >
+            <option value="new_subscriber">New Subscriber</option>
+            <option value="welcome_series">Welcome Series</option>
+            <option value="article_published">Article Published</option>
+            <option value="tag_added">Tag Added</option>
+            <option value="reengagement">Re-engagement</option>
+          </select>
+          <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+            <button onClick={() => setShowCreate(false)} style={{ background: S.input, border: `1px solid ${S.border}`, borderRadius: 8, padding: "8px 16px", color: S.textMuted, fontSize: 13, cursor: "pointer" }}>Cancel</button>
+            <button onClick={handleCreate} disabled={saving || !form.name} style={{ background: S.primary, border: "none", borderRadius: 8, padding: "8px 16px", color: "#fff", fontSize: 13, cursor: "pointer", opacity: saving || !form.name ? 0.5 : 1 }}>{saving ? "Creating..." : "Create"}</button>
+          </div>
+        </div>
+      )}
 
       {loading ? <LoadingSpinner /> : (
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
@@ -563,7 +828,7 @@ function AutomationsTab({ data, loading }: { data: Automation[]; loading: boolea
                 </div>
                 <div>
                   <p style={{ fontSize: 14, fontWeight: 600, color: S.text }}>{a.name}</p>
-                  <p style={{ fontSize: 12, color: S.textDim, marginTop: 2 }}>When {a.trigger} → {a.action}</p>
+                  <p style={{ fontSize: 12, color: S.textDim, marginTop: 2 }}>When {triggerLabel(a.trigger)} → {a.action}</p>
                 </div>
               </div>
               <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
@@ -573,6 +838,9 @@ function AutomationsTab({ data, loading }: { data: Automation[]; loading: boolea
                   background: a.status === "active" ? `${S.green}20` : `${S.textDim}20`,
                   color: a.status === "active" ? S.green : S.textDim
                 }}>{a.status}</span>
+                <button onClick={() => deleteAutomation(a)} style={{ background: "transparent", border: `1px solid ${S.border}`, borderRadius: 6, padding: "5px 8px", color: S.red, fontSize: 12, cursor: "pointer" }}>
+                  <Trash2 style={{ width: 12, height: 12 }} />
+                </button>
               </div>
             </div>
           ))}
@@ -587,17 +855,86 @@ function AutomationsTab({ data, loading }: { data: Automation[]; loading: boolea
   )
 }
 
-function ABTestsTab({ data, loading }: { data: ABTest[]; loading: boolean }) {
-  const handleNewTest = () => alert('Create a draft campaign first, then set up A/B test from the campaign page.')
+function ABTestsTab({ data, loading, onRefresh }: { data: ABTest[]; loading: boolean; onRefresh: () => void }) {
+  const [showCreate, setShowCreate] = useState(false)
+  const [form, setForm] = useState({ name: "", variantA: "", variantB: "" })
+  const [saving, setSaving] = useState(false)
+
+  const handleCreate = async () => {
+    if (!form.name || !form.variantA || !form.variantB) {
+      alert("Name and both subject lines are required")
+      return
+    }
+    setSaving(true)
+    try {
+      const res = await fetch("/admin/newsletter/api", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "create-abtest", ...form }),
+      })
+      if (!res.ok) alert((await res.json()).error || "Failed to create test")
+      setForm({ name: "", variantA: "", variantB: "" })
+      setShowCreate(false)
+      onRefresh()
+    } catch (err) {
+      console.error("Failed to create A/B test:", err)
+      alert("Network error while creating test")
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const deleteTest = async (t: ABTest) => {
+    if (!confirm(`Delete A/B test "${t.name}"?`)) return
+    try {
+      const res = await fetch("/admin/newsletter/api", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ type: "abtest", id: t.id }),
+      })
+      if (!res.ok) alert((await res.json()).error || "Failed to delete test")
+      onRefresh()
+    } catch (err) {
+      console.error("Failed to delete A/B test:", err)
+      alert("Network error while deleting test")
+    }
+  }
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <h3 style={{ fontSize: 16, fontWeight: 600, color: S.text }}>A/B Tests ({data.length})</h3>
-        <button onClick={handleNewTest} style={{ background: S.primary, border: "none", borderRadius: 8, padding: "8px 14px", color: "#fff", fontSize: 13, cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }}>
+        <button onClick={() => setShowCreate(!showCreate)} style={{ background: S.primary, border: "none", borderRadius: 8, padding: "8px 14px", color: "#fff", fontSize: 13, cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }}>
           <FlaskConical style={{ width: 14, height: 14 }} /> New Test
         </button>
       </div>
+
+      {showCreate && (
+        <div style={{ background: S.card, border: `1px solid ${S.border}`, borderRadius: 12, padding: 20, display: "flex", flexDirection: "column", gap: 12 }}>
+          <input
+            value={form.name}
+            onChange={e => setForm(p => ({ ...p, name: e.target.value }))}
+            placeholder="Test name"
+            style={{ background: S.input, border: `1px solid ${S.border}`, borderRadius: 8, padding: "10px 14px", color: S.text, fontSize: 13, outline: "none" }}
+          />
+          <input
+            value={form.variantA}
+            onChange={e => setForm(p => ({ ...p, variantA: e.target.value }))}
+            placeholder="Variant A subject line"
+            style={{ background: S.input, border: `1px solid ${S.border}`, borderRadius: 8, padding: "10px 14px", color: S.text, fontSize: 13, outline: "none" }}
+          />
+          <input
+            value={form.variantB}
+            onChange={e => setForm(p => ({ ...p, variantB: e.target.value }))}
+            placeholder="Variant B subject line"
+            style={{ background: S.input, border: `1px solid ${S.border}`, borderRadius: 8, padding: "10px 14px", color: S.text, fontSize: 13, outline: "none" }}
+          />
+          <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+            <button onClick={() => setShowCreate(false)} style={{ background: S.input, border: `1px solid ${S.border}`, borderRadius: 8, padding: "8px 16px", color: S.textMuted, fontSize: 13, cursor: "pointer" }}>Cancel</button>
+            <button onClick={handleCreate} disabled={saving} style={{ background: S.primary, border: "none", borderRadius: 8, padding: "8px 16px", color: "#fff", fontSize: 13, cursor: "pointer", opacity: saving ? 0.5 : 1 }}>{saving ? "Creating..." : "Create"}</button>
+          </div>
+        </div>
+      )}
 
       {loading ? <LoadingSpinner /> : (
         <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
@@ -608,11 +945,16 @@ function ABTestsTab({ data, loading }: { data: ABTest[]; loading: boolean }) {
                   <p style={{ fontSize: 15, fontWeight: 600, color: S.text }}>{t.name}</p>
                   <p style={{ fontSize: 12, color: S.textDim, marginTop: 4 }}>Created {new Date(t.created_at).toLocaleDateString()}</p>
                 </div>
-                <span style={{
-                  fontSize: 11, fontWeight: 500, padding: "3px 10px", borderRadius: 20,
-                  background: t.status === "completed" ? `${S.green}20` : t.status === "running" ? `${S.primary}20` : `${S.textDim}20`,
-                  color: t.status === "completed" ? S.green : t.status === "running" ? S.primary : S.textDim
-                }}>{t.status}</span>
+                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                  <span style={{
+                    fontSize: 11, fontWeight: 500, padding: "3px 10px", borderRadius: 20,
+                    background: t.status === "completed" ? `${S.green}20` : t.status === "running" ? `${S.primary}20` : `${S.textDim}20`,
+                    color: t.status === "completed" ? S.green : t.status === "running" ? S.primary : S.textDim
+                  }}>{t.status}</span>
+                  <button onClick={() => deleteTest(t)} style={{ background: "transparent", border: `1px solid ${S.border}`, borderRadius: 6, padding: "5px 8px", color: S.red, fontSize: 12, cursor: "pointer" }}>
+                    <Trash2 style={{ width: 12, height: 12 }} />
+                  </button>
+                </div>
               </div>
 
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
@@ -733,11 +1075,15 @@ export default function NewsletterCenterPage() {
   const [automations, setAutomations] = useState<Automation[]>([])
   const [abTests, setAbTests] = useState<ABTest[]>([])
   const [analytics, setAnalytics] = useState<AnalyticsData | null>(null)
+  const activeTabRef = useRef(activeTab)
 
-  const fetchData = useCallback(async (section: string) => {
-    setLoading(true)
+  useEffect(() => { activeTabRef.current = activeTab }, [activeTab])
+
+  const fetchData = useCallback(async (section: string, quiet = false) => {
+    if (!quiet) setLoading(true)
     try {
       const res = await fetch(`/admin/newsletter/api?section=${section}`)
+      if (!res.ok) throw new Error(`HTTP ${res.status}`)
       const json = await res.json()
       switch (section) {
         case "overview": setOverview(json); break
@@ -752,13 +1098,39 @@ export default function NewsletterCenterPage() {
     } catch (err) {
       console.error("Failed to fetch newsletter data:", err)
     } finally {
-      setLoading(false)
+      if (!quiet) setLoading(false)
     }
   }, [])
 
   useEffect(() => {
     fetchData(activeTab)
   }, [activeTab, fetchData])
+
+  useEffect(() => {
+    const supabase = createClient()
+    let channel: ReturnType<typeof supabase.channel> | null = null
+    try {
+      channel = supabase.channel(`newsletter_center_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`)
+      REALTIME_TABLES.forEach(table => {
+        channel?.on("postgres_changes", { event: "*", schema: "public", table }, () => {
+          fetchData(activeTabRef.current, true)
+        })
+      })
+      channel.subscribe()
+    } catch (err) {
+      console.error("Newsletter realtime setup failed:", err)
+    }
+
+    const poll = setInterval(() => fetchData(activeTabRef.current, true), 30000)
+    const onFocus = () => fetchData(activeTabRef.current, true)
+    window.addEventListener("focus", onFocus)
+
+    return () => {
+      clearInterval(poll)
+      window.removeEventListener("focus", onFocus)
+      if (channel) supabase.removeChannel(channel)
+    }
+  }, [fetchData])
 
   const handleSendCampaign = async (id: string) => {
     if (!confirm("Send this campaign to all active subscribers now?")) return
@@ -786,10 +1158,10 @@ export default function NewsletterCenterPage() {
       case "overview": return <OverviewTab data={overview} loading={loading} />
       case "subscribers": return <SubscribersTab data={subscribers} loading={loading} onRefresh={() => fetchData("subscribers")} />
       case "campaigns": return <CampaignsTab data={campaigns} loading={loading} onRefresh={() => fetchData("campaigns")} onSend={handleSendCampaign} />
-      case "templates": return <TemplatesTab data={templates} loading={loading} />
-      case "lists": return <ListsTab data={lists} loading={loading} />
-      case "automations": return <AutomationsTab data={automations} loading={loading} />
-      case "abtests": return <ABTestsTab data={abTests} loading={loading} />
+      case "templates": return <TemplatesTab data={templates} loading={loading} onRefresh={() => fetchData("templates")} />
+      case "lists": return <ListsTab data={lists} loading={loading} onRefresh={() => fetchData("lists")} />
+      case "automations": return <AutomationsTab data={automations} loading={loading} onRefresh={() => fetchData("automations")} />
+      case "abtests": return <ABTestsTab data={abTests} loading={loading} onRefresh={() => fetchData("abtests")} />
       case "analytics": return <AnalyticsTab data={analytics} loading={loading} />
       default: return <OverviewTab data={overview} loading={loading} />
     }

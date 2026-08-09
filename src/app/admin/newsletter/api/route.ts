@@ -44,17 +44,67 @@ export async function GET(request: Request) {
         return NextResponse.json({ campaigns })
       }
 
-      case "templates":
-        return NextResponse.json({ templates: [] })
+      case "templates": {
+        const { data, error } = await supabase
+          .from("newsletter_templates")
+          .select("*")
+          .order("updated_at", { ascending: false })
+        if (error) throw error
+        const templates = (data || []).map((t: any) => ({
+          id: t.id,
+          name: t.name,
+          subject: t.subject || "",
+          html: t.html_template || t.content || "",
+          created_at: t.created_at,
+          updated_at: t.updated_at || t.created_at,
+        }))
+        return NextResponse.json({ templates })
+      }
 
-      case "lists":
-        return NextResponse.json({ lists: [] })
+      case "lists": {
+        const { data, error } = await supabase
+          .from("newsletter_lists")
+          .select("*")
+          .order("created_at", { ascending: false })
+        if (error) throw error
+        const lists = (data || []).map((l: any) => ({
+          id: l.id,
+          name: l.name,
+          description: l.description,
+          subscriber_count: l.subscriber_count || 0,
+          created_at: l.created_at,
+        }))
+        return NextResponse.json({ lists })
+      }
 
-      case "automations":
-        return NextResponse.json({ automations: [] })
+      case "automations": {
+        const { data, error } = await supabase
+          .from("newsletter_automations")
+          .select("*")
+          .order("created_at", { ascending: false })
+        if (error) throw error
+        const automations = (data || []).map((a: any) => ({
+          id: a.id,
+          name: a.name,
+          trigger: a.trigger_type || "new_subscriber",
+          action: Array.isArray(a.workflow) && a.workflow.length
+            ? a.workflow.map((s: any) => (typeof s === "string" ? s : s.type || "send_email")).join(" → ")
+            : "send_email",
+          status: a.status || "active",
+          runs: a.total_triggered || 0,
+          created_at: a.created_at,
+        }))
+        return NextResponse.json({ automations })
+      }
 
-      case "abtests":
-        return NextResponse.json({ abTests: [] })
+      case "abtests": {
+        const { data, error } = await supabase
+          .from("newsletter_ab_tests")
+          .select("*")
+          .order("created_at", { ascending: false })
+        if (error) throw error
+        return NextResponse.json({ abTests: data || [] })
+      }
 
       case "analytics": {
         const { data: subsGrowth } = await supabase
@@ -279,6 +329,89 @@ export async function POST(request: Request) {
         })
       }
 
+      case "create-template": {
+        if (!body.name) return NextResponse.json({ error: "Name is required" }, { status: 400 })
+        const { data, error } = await supabase
+          .from("newsletter_templates")
+          .insert({
+            name: body.name,
+            subject: body.subject || "",
+            html_template: body.content || "",
+            category: body.category || "general",
+          })
+          .select()
+          .single()
+        if (error) throw error
+        return NextResponse.json({ template: data })
+      }
+
+      case "create-list": {
+        if (!body.name) return NextResponse.json({ error: "Name is required" }, { status: 400 })
+        const slug = String(body.name).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "")
+        const { data, error } = await supabase
+          .from("newsletter_lists")
+          .insert({ name: body.name, slug, description: body.description || null })
+          .select()
+          .single()
+        if (error) throw error
+        return NextResponse.json({ list: data })
+      }
+
+      case "create-automation": {
+        if (!body.name) return NextResponse.json({ error: "Name is required" }, { status: 400 })
+        const { data, error } = await supabase
+          .from("newsletter_automations")
+          .insert({
+            name: body.name,
+            trigger_type: body.trigger || "new_subscriber",
+            workflow: body.workflow || [{ type: "send_email" }],
+            status: "active",
+          })
+          .select()
+          .single()
+        if (error) throw error
+        return NextResponse.json({ automation: data })
+      }
+
+      case "create-abtest": {
+        if (!body.name) return NextResponse.json({ error: "Name is required" }, { status: 400 })
+        const { data, error } = await supabase
+          .from("newsletter_ab_tests")
+          .insert({
+            name: body.name,
+            variant_a_subject: body.variantA || "",
+            variant_b_subject: body.variantB || "",
+            status: "draft",
+          })
+          .select()
+          .single()
+        if (error) throw error
+        return NextResponse.json({ abTest: data })
+      }
+
+      case "bulk-import-subscribers": {
+        const emails = (body.emails || []).filter((e: string) => typeof e === "string" && e.includes("@"))
+        if (!emails.length) return NextResponse.json({ error: "No valid emails found in file" }, { status: 400 })
+        const rows = emails.map((email: string) => ({
+          email: email.trim().toLowerCase(),
+          status: "active",
+          subscribed_at: new Date().toISOString(),
+        }))
+        const { data, error } = await supabase
+          .from("subscribers")
+          .upsert(rows, { onConflict: "email" })
+          .select()
+        if (error) throw error
+        return NextResponse.json({ imported: data?.length || 0 })
+      }
+
+      case "delete-subscriber": {
+        if (!body.id) return NextResponse.json({ error: "id is required" }, { status: 400 })
+        const { error } = await supabase.from("subscribers").delete().eq("id", body.id)
+        if (error) throw error
+        return NextResponse.json({ success: true })
+      }
+
       case "subscribe":
       case "create-subscriber": {
         if (!body.email) return NextResponse.json({ error: "Email is required" }, { status: 400 })
@@ -330,14 +463,26 @@ export async function DELETE(request: Request) {
   try {
     const { searchParams } = new URL(request.url)
     let id = searchParams.get("id")
-    if (!id) {
+    let type = searchParams.get("type") || "campaign"
+    if (!id || !type) {
       const body = await request.json().catch(() => ({}))
-      id = body.id
+      id = id || body.id
+      type = type || body.type || "campaign"
     }
     if (!id) return NextResponse.json({ error: "id is required" }, { status: 400 })
 
+    const TABLE_MAP: Record<string, string> = {
+      campaign: "newsletter_sends",
+      template: "newsletter_templates",
+      list: "newsletter_lists",
+      automation: "newsletter_automations",
+      abtest: "newsletter_ab_tests",
+    }
+    const table = TABLE_MAP[type]
+    if (!table) return NextResponse.json({ error: `Unknown type: ${type}` }, { status: 400 })
+
     const supabase = await createClient()
-    const { error } = await supabase.from("newsletter_sends").delete().eq("id", id)
+    const { error } = await supabase.from(table as any).delete().eq("id", id)
     if (error) throw error
     return NextResponse.json({ success: true })
   } catch (error) {

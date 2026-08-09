@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState, useCallback } from "react"
+import { useEffect, useState, useCallback, useRef } from "react"
 import { createClient } from "@/lib/supabase/client"
 import {
   Bell, BellRing, Users, Send, BarChart3, Plus, RefreshCw, Trash2,
@@ -17,19 +17,23 @@ const TABS = [
 ]
 
 const S = {
-  bg: "#0F1117",
-  card: "#1C1F2E",
-  border: "#2A2D3E",
+  bg: "#FFFFFF",
+  card: "#FFFFFF",
+  cardHover: "#F8FAFC",
+  border: "#E2E8F0",
   primary: "#2563EB",
-  green: "#22C55E",
-  red: "#EF4444",
-  yellow: "#EAB308",
-  purple: "#A855F7",
-  text: "#F1F5F9",
-  textMuted: "#94A3B8",
-  textDim: "#64748B",
-  input: "#141620",
+  green: "#16A34A",
+  red: "#DC2626",
+  yellow: "#CA8A04",
+  purple: "#7C3AED",
+  text: "#0F172A",
+  textMuted: "#475569",
+  textDim: "#94A3B8",
+  input: "#F8FAFC",
+  overlay: "rgba(15,23,42,0.4)",
 }
+
+const REALTIME_TABLES = ["push_subscriptions", "push_notifications"]
 
 interface PushSubscriber {
   id: string
@@ -164,7 +168,7 @@ function OverviewTab({ data, loading }: { data: OverviewData | null; loading: bo
   )
 }
 
-function SubscribersTab({ data, loading }: { data: PushSubscriber[]; loading: boolean }) {
+function SubscribersTab({ data, loading, onRefresh }: { data: PushSubscriber[]; loading: boolean; onRefresh: () => void }) {
   const [search, setSearch] = useState("")
 
   const filtered = data.filter(s =>
@@ -179,6 +183,22 @@ function SubscribersTab({ data, loading }: { data: PushSubscriber[]; loading: bo
       case "mobile": return Smartphone
       case "tablet": return Tablet
       default: return Monitor
+    }
+  }
+
+  const deleteSubscriber = async (s: PushSubscriber) => {
+    if (!confirm("Delete this push subscription?")) return
+    try {
+      const res = await fetch("/admin/push/api", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "delete-subscriber", id: s.id }),
+      })
+      if (!res.ok) alert((await res.json()).error || "Failed to delete subscriber")
+      onRefresh()
+    } catch (err) {
+      console.error("Failed to delete push subscriber:", err)
+      alert("Network error while deleting subscriber")
     }
   }
 
@@ -219,6 +239,9 @@ function SubscribersTab({ data, loading }: { data: PushSubscriber[]; loading: bo
                   <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
                     <span style={{ fontSize: 11, color: S.textDim }}>Subscribed {new Date(s.subscribed_at).toLocaleDateString()}</span>
                     {s.last_seen_at && <span style={{ fontSize: 11, color: S.textDim }}>Last seen {new Date(s.last_seen_at).toLocaleDateString()}</span>}
+                    <button onClick={() => deleteSubscriber(s)} style={{ background: "transparent", border: `1px solid ${S.border}`, borderRadius: 6, padding: "5px 8px", color: S.red, fontSize: 12, cursor: "pointer" }}>
+                      <Trash2 style={{ width: 12, height: 12 }} />
+                    </button>
                   </div>
                 </div>
               )
@@ -272,7 +295,7 @@ function NotificationsTab({ data, loading, onRefresh, onSend }: { data: PushNoti
                     <Send style={{ width: 12, height: 12 }} /> Send
                   </button>
                 )}
-                <button onClick={() => { if (confirm('Delete this notification?')) { fetch('/admin/push/api', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ type: 'notification', id: n.id }) }).then(() => window.location.reload()) } }} style={{ background: "transparent", border: `1px solid ${S.border}`, borderRadius: 6, padding: "5px 8px", color: S.red, fontSize: 12, cursor: "pointer" }}>
+                <button onClick={() => { if (confirm('Delete this notification?')) { fetch('/admin/push/api', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ type: 'notification', id: n.id }) }).then(onRefresh).catch(() => {}) } }} style={{ background: "transparent", border: `1px solid ${S.border}`, borderRadius: 6, padding: "5px 8px", color: S.red, fontSize: 12, cursor: "pointer" }}>
                   <Trash2 style={{ width: 12, height: 12 }} />
                 </button>
               </div>
@@ -475,11 +498,15 @@ export default function PushNotificationCenterPage() {
   const [subscribers, setSubscribers] = useState<PushSubscriber[]>([])
   const [notifications, setNotifications] = useState<PushNotification[]>([])
   const [analytics, setAnalytics] = useState<AnalyticsData | null>(null)
+  const activeTabRef = useRef(activeTab)
 
-  const fetchData = useCallback(async (section: string) => {
-    setLoading(true)
+  useEffect(() => { activeTabRef.current = activeTab }, [activeTab])
+
+  const fetchData = useCallback(async (section: string, quiet = false) => {
+    if (!quiet) setLoading(true)
     try {
       const res = await fetch(`/admin/push/api?section=${section}`)
+      if (!res.ok) throw new Error(`HTTP ${res.status}`)
       const json = await res.json()
       switch (section) {
         case "overview": setOverview(json); break
@@ -490,7 +517,7 @@ export default function PushNotificationCenterPage() {
     } catch (err) {
       console.error("Failed to fetch push data:", err)
     } finally {
-      setLoading(false)
+      if (!quiet) setLoading(false)
     }
   }, [])
 
@@ -498,23 +525,58 @@ export default function PushNotificationCenterPage() {
     fetchData(activeTab)
   }, [activeTab, fetchData])
 
-  const handleSendNotification = async (id: string) => {
+  useEffect(() => {
+    const supabase = createClient()
+    let channel: ReturnType<typeof supabase.channel> | null = null
     try {
-      await fetch("/admin/push/api", {
+      channel = supabase.channel(`push_center_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`)
+      REALTIME_TABLES.forEach(table => {
+        channel?.on("postgres_changes", { event: "*", schema: "public", table }, () => {
+          fetchData(activeTabRef.current, true)
+        })
+      })
+      channel.subscribe()
+    } catch (err) {
+      console.error("Push realtime setup failed:", err)
+    }
+
+    const poll = setInterval(() => fetchData(activeTabRef.current, true), 30000)
+    const onFocus = () => fetchData(activeTabRef.current, true)
+    window.addEventListener("focus", onFocus)
+
+    return () => {
+      clearInterval(poll)
+      window.removeEventListener("focus", onFocus)
+      if (channel) supabase.removeChannel(channel)
+    }
+  }, [fetchData])
+
+  const handleSendNotification = async (id: string) => {
+    if (!confirm("Send this notification to the selected audience now?")) return
+    try {
+      const res = await fetch("/admin/push/api", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action: "send-notification", id }),
       })
+      const json = await res.json()
+      if (res.ok) {
+        alert(`Notification sent — ${json.sentCount || 0} delivered (${json.expired || 0} expired)`)
+      } else {
+        alert(json.error || "Failed to send notification")
+      }
       fetchData("notifications")
+      fetchData("overview")
     } catch (err) {
       console.error("Failed to send notification:", err)
+      alert("Network error while sending notification")
     }
   }
 
   const renderTab = () => {
     switch (activeTab) {
       case "overview": return <OverviewTab data={overview} loading={loading} />
-      case "subscribers": return <SubscribersTab data={subscribers} loading={loading} />
+      case "subscribers": return <SubscribersTab data={subscribers} loading={loading} onRefresh={() => fetchData("subscribers")} />
       case "notifications": return <NotificationsTab data={notifications} loading={loading} onRefresh={() => fetchData("notifications")} onSend={handleSendNotification} />
       case "compose": return <ComposeTab onRefresh={() => { fetchData("notifications"); fetchData("overview") }} />
       case "analytics": return <AnalyticsTab data={analytics} loading={loading} />

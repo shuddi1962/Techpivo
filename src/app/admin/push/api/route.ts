@@ -227,6 +227,7 @@ export async function POST(request: Request) {
           body: finalBody || "New update from Techpivo",
           url,
           image,
+          audience,
         })
 
         const { error } = await supabase
@@ -242,6 +243,13 @@ export async function POST(request: Request) {
         if (error) throw error
 
         return NextResponse.json({ success: true, ...delivery, sentCount: delivery.delivered, notificationId })
+      }
+
+      case "delete-subscriber": {
+        if (!body.id) return NextResponse.json({ error: "id is required" }, { status: 400 })
+        const { error } = await supabase.from("push_subscriptions").delete().eq("id", body.id)
+        if (error) throw error
+        return NextResponse.json({ success: true })
       }
 
       case "register-subscriber": {
