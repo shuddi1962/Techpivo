@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/admin'
 import { submitToGoogleIndexing } from '@/lib/google-indexing'
+import { isCronAuthorized } from '@/lib/cron-auth'
 
 async function runIndexing(req: NextRequest) {
-  const secret = process.env.CRON_SECRET
-  if (secret && req.headers.get('authorization') !== `Bearer ${secret}`) {
+  if (!(await isCronAuthorized(req))) {
     return NextResponse.json({ error: 'Unauthorised' }, { status: 401 })
   }
 

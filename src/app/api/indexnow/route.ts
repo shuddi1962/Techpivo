@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { isCronAuthorized } from '@/lib/cron-auth'
 
 const ENGINES: Array<{ name: string; url: string }> = [
   { name: 'Bing',      url: 'https://www.bing.com/indexnow' },
@@ -19,8 +20,7 @@ async function getIndexNowKey(): Promise<string> {
 }
 
 export async function POST(req: NextRequest) {
-  const auth = req.headers.get('authorization')
-  if (auth !== `Bearer ${process.env.CRON_SECRET}`) {
+  if (!(await isCronAuthorized(req, { required: true }))) {
     return NextResponse.json({ error: 'Unauthorised' }, { status: 401 })
   }
 

@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { processScheduledPosts } from '@/lib/social-publisher'
+import { isCronAuthorized } from '@/lib/cron-auth'
 
 export async function GET(req: NextRequest) {
-  const secret = process.env.CRON_SECRET
-  if (secret && req.headers.get('authorization') !== `Bearer ${secret}`) {
+  if (!(await isCronAuthorized(req))) {
     return NextResponse.json({ error: 'Unauthorised' }, { status: 401 })
   }
 

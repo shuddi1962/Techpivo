@@ -2,30 +2,20 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
 import { fetchReportData, buildMarkdown, buildCsv, nextRun, REPORT_TYPES, type ReportId } from '@/lib/reports'
 import { sendBrandedEmail } from '@/lib/email'
+import { isCronAuthorized } from '@/lib/cron-auth'
 
 export const dynamic = 'force-dynamic'
 
 export async function GET(req: NextRequest) {
   try {
+    if (!(await isCronAuthorized(req, { required: true }))) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
     const supabase = createServiceClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.SUPABASE_SERVICE_ROLE_KEY!
     )
-
-    let expected = process.env.CRON_SECRET
-    if (!expected) {
-      try {
-        const { data } = await supabase.from('site_settings').select('value').eq('key', 'cron_secret').maybeSingle()
-        if (typeof data?.value === 'string') expected = data.value
-      } catch {
-        // fall back to env only
-      }
-    }
-
-    const auth = req.headers.get('authorization')
-    if (!expected || auth !== `Bearer ${expected}`) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
 
     const { data: schedules, error } = await supabase
       .from('report_schedules')

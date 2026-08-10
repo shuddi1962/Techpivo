@@ -9,17 +9,15 @@ import { sendNewsletterForPost }    from '@/lib/newsletter'
 import { sendPushNotification }     from '@/lib/web-push'
 import { buildAffiliateBlock }      from '@/lib/affiliate-inject'
 import { submitToGoogleIndexing }   from '@/lib/google-indexing'
+import { getCronSecret, isCronAuthorized } from '@/lib/cron-auth'
 
 const DEFAULT_DAILY_CAP = 15
 const ITEMS_PER_FEED = 10
 
 const BOT_UA = 'Mozilla/5.0 (compatible; Techpivo/1.0; +https://techpivo.com/bot)'
 
-function isAuthorised(req: NextRequest): boolean {
-  const auth = req.headers.get('Authorization')
-  if (!auth || !auth.startsWith('Bearer ')) return false
-  const token = auth.slice(7)
-  return token === process.env.CRON_SECRET
+function isAuthorised(req: NextRequest): Promise<boolean> {
+  return isCronAuthorized(req, { required: true })
 }
 
 async function validateImageUrl(url: string | null | undefined): Promise<string | null> {
@@ -488,11 +486,13 @@ async function run(req: NextRequest) {
       }
 
       // 1. IndexNow — instant Bing/Yandex indexing
-      fetch(`${process.env.NEXT_PUBLIC_SITE_URL || SITE_URL}/api/indexnow`, {
-        method:  'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${process.env.CRON_SECRET}` },
-        body:    JSON.stringify({ urls: [postUrl] }),
-      }).catch(() => {})
+      getCronSecret().then(secret => {
+        fetch(`${process.env.NEXT_PUBLIC_SITE_URL || SITE_URL}/api/indexnow`, {
+          method:  'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${secret}` },
+          body:    JSON.stringify({ urls: [postUrl] }),
+        }).catch(() => {})
+      })
 
       // 2. Google Indexing API
       submitToGoogleIndexing(postUrl).catch(() => {})
