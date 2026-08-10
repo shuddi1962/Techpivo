@@ -33,6 +33,8 @@ async function getFxRates(supabase: any): Promise<Record<string, number>> {
   return { ...DEFAULT_FX_RATES }
 }
 
+const formatNGN = (n: number) => "₦" + Math.round(Number(n || 0)).toLocaleString()
+
 async function generateCreative(
   placementName: string,
   brand: string,
@@ -90,14 +92,14 @@ export async function GET(request: Request) {
       const { data } = await supabase
         .from("ad_placements")
         .select("*")
-        .order("price_per_day", { ascending: false })
+        .order("min_bid_cpm", { ascending: false })
       return NextResponse.json({ placements: data || [], fx_rates: fx })
     }
 
     if (section === "campaigns") {
       const { data: campaigns } = await supabase
         .from("ad_campaigns")
-        .select("*, placements:ad_placements(name, position, price_per_day, cpm, sizes)")
+        .select("*, placements:ad_placements(name, position, min_bid_cpm, min_bid_cpc, sizes)")
         .order("created_at", { ascending: false })
         .limit(100)
       return NextResponse.json({ campaigns: campaigns || [] })
@@ -184,13 +186,13 @@ export async function POST(request: Request) {
   const { action } = body
 
   try {
-    // ---- Place order (any authenticated user) ----
-    if (action === "order") {
+    // ---- Create campaign (any authenticated user) — Google/Meta Ads style: set your own budget + bid ----
+    if (action === "order" || action === "create") {
       const { data: { user } } = await supabase.auth.getUser()
-      if (!user) return NextResponse.json({ error: "Please sign in to place an ad order" }, { status: 401 })
+      if (!user) return NextResponse.json({ error: "Please sign in to create a campaign" }, { status: 401 })
 
-      const { placement_id, billing_model, units, advertiser_name, headline, description, cta_text, destination_url, ad_image_url, advertiser_email,
-        currency, billing_frequency, goal, cta_type, target_audience, media_type, video_url, poster_url } = body
+      const { placement_id, billing_model, daily_budget, bid_amount, duration_days, advertiser_name, headline, description, cta_text, destination_url, ad_image_url, advertiser_email,
+        currency, goal, cta_type, target_audience, media_type, video_url, poster_url } = body
 
       if (!placement_id) return NextResponse.json({ error: "Select an ad space" }, { status: 400 })
       if (!advertiser_name || !headline || !destination_url) {
@@ -199,41 +201,38 @@ export async function POST(request: Request) {
 
       const { data: placement } = await supabase
         .from("ad_placements")
-        .select("id, name, position, price_per_day, price_per_week, price_per_month, cpm, min_days, min_budget, supports_video")
+        .select("id, name, position, min_bid_cpm, min_bid_cpc, supports_video, est_impressions")
         .eq("id", placement_id)
         .eq("is_active", true)
         .maybeSingle()
       if (!placement) return NextResponse.json({ error: "Ad space not available" }, { status: 400 })
 
-      const freq = ["day", "week", "month"].includes(billing_frequency) ? billing_frequency : "day"
-      const isImpressions = billing_model === "impressions"
+      const model = billing_model === "cpc" ? "cpc" : "cpm"
+      const cur = String(currency || "NGN").toUpperCase()
+      const fx = await getFxRates(supabase)
+      const fxRate = Number(fx[cur] || 1) || 1
 
-      // Base price in NGN, depending on frequency
-      let basePrice: number
-      if (isImpressions) {
-        basePrice = Number(placement.cpm)
-      } else if (freq === "week") {
-        basePrice = Number(placement.price_per_week) || Math.round(Number(placement.price_per_day) * 7 * 0.85)
-      } else if (freq === "month") {
-        basePrice = Number(placement.price_per_month) || Math.round(Number(placement.price_per_day) * 30 * 0.75)
-      } else {
-        basePrice = Number(placement.price_per_day)
+      // Bid must respect the placement's minimum floor (converted to the chosen currency)
+      const floorNGN = model === "cpc" ? Number(placement.min_bid_cpc || 50) : Number(placement.min_bid_cpm || 500)
+      const bid = Math.max(0, Number(bid_amount || 0))
+      const bidNGN = bid * fxRate
+      if (bidNGN < floorNGN) {
+        const floorLabel = formatNGN(floorNGN)
+        return NextResponse.json({
+          error: model === "cpc"
+            ? `Minimum CPC bid for this space is ${floorLabel} (₦${floorNGN.toLocaleString()})`
+            : `Minimum CPM bid for this space is ${floorLabel} (₦${floorNGN.toLocaleString()})`,
+        }, { status: 400 })
       }
 
-      const minUnits = isImpressions
-        ? 1
-        : freq === "week"
-          ? Math.max(1, Math.ceil(Number(placement.min_days || 7) / 7))
-          : freq === "month"
-            ? 1
-            : Math.max(1, Number(placement.min_days || 1))
-      const u = Math.max(1, Math.floor(Number(units) || 1))
-      if (u < minUnits) {
-        return NextResponse.json({
-          error: isImpressions
-            ? "Minimum is 1,000 impressions"
-            : `Minimum booking is ${minUnits} ${freq}${minUnits > 1 ? "s" : ""} for this ad space`,
-        }, { status: 400 })
+      // Budget must at least cover one billing unit of the bid
+      const budget = Math.max(0, Number(daily_budget || 0))
+      const minBudget = bid
+      if (budget < minBudget) {
+        return NextResponse.json({ error: `Daily budget must be at least ${formatNGN(minBudget * fxRate)} to cover your bid` }, { status: 400 })
+      }
+      if (budget > 500000) {
+        return NextResponse.json({ error: "Daily budget looks too high — contact support for large campaigns" }, { status: 400 })
       }
 
       // Validate video creative
@@ -245,14 +244,10 @@ export async function POST(request: Request) {
         return NextResponse.json({ error: "Video URL is required for video ads" }, { status: 400 })
       }
 
-      // Multi-currency: convert NGN base price with the live fx rate
-      const cur = String(currency || "NGN").toUpperCase()
-      const fx = await getFxRates(supabase)
-      const fxRate = Number(fx[cur] || 1)
-      const unitPrice = Math.round(basePrice * fxRate * 100) / 100
-      const totalPrice = Math.round(unitPrice * u * 100) / 100
-      const minBudget = Number(placement.min_budget || 0)
-      const daySpan = isImpressions ? 7 : freq === "week" ? u * 7 : freq === "month" ? u * 30 : u
+      const days = Math.min(90, Math.max(1, Math.floor(Number(duration_days) || 7)))
+      const bidConverted = Math.round(bid * fxRate * 100) / 100
+      const budgetConverted = Math.round(budget * fxRate * 100) / 100
+      const totalPrice = Math.round(budgetConverted * days * 100) / 100
       const audience = target_audience && typeof target_audience === "object"
         ? { countries: Array.isArray(target_audience.countries) ? target_audience.countries : [], devices: Array.isArray(target_audience.devices) ? target_audience.devices : [], interests: Array.isArray(target_audience.interests) ? target_audience.interests : [] }
         : { countries: [], devices: [], interests: [] }
@@ -270,34 +265,36 @@ export async function POST(request: Request) {
           destination_url,
           placement_id: placement.id,
           positions: [placement.position],
-          billing_model: isImpressions ? "impressions" : freq === "week" ? "per_week" : freq === "month" ? "per_month" : "per_day",
-          billing_frequency: freq,
-          units: u,
-          unit_price: unitPrice,
+          billing_model: model,
+          billing_frequency: "day",
+          units: days,
+          unit_price: bidConverted,
           total_price: totalPrice,
-          budget: Math.max(totalPrice, minBudget),
+          budget: budgetConverted,
+          daily_budget: budgetConverted,
+          bid_amount: bidConverted,
           currency: cur,
           fx_rate: fxRate,
-          goal: goal || "impressions",
+          goal: goal || "clicks",
           cta_type: cta_type || "learn_more",
           target_audience: audience,
           media_type: isVideo ? "video" : "image",
           video_url: isVideo ? video_url : null,
           poster_url: poster_url || null,
           start_date: new Date().toISOString().slice(0, 10),
-          end_date: new Date(Date.now() + Math.max(1, daySpan) * 86400000).toISOString().slice(0, 10),
+          end_date: new Date(Date.now() + days * 86400000).toISOString().slice(0, 10),
           status: "pending",
           submitted_at: new Date().toISOString(),
           is_active: false,
         })
-        .select("id, status, total_price, billing_model, units, unit_price, currency")
+        .select("id, status, budget, daily_budget, bid_amount, billing_model, units, currency")
         .single()
 
       if (error) throw error
 
       return NextResponse.json({
         campaign,
-        message: "Order submitted! It will go live once our team approves it.",
+        message: "Campaign submitted! It will go live once our team approves it.",
       })
     }
 
@@ -325,7 +322,7 @@ export async function POST(request: Request) {
     const adminClient = createAdminClient()
 
     if (action === "placement") {
-      const { name, position, description, ad_type, sizes, price_per_day, price_per_week, price_per_month, cpm, min_days, min_budget, est_impressions, supports_video, is_active } = body
+      const { name, position, description, ad_type, sizes, min_bid_cpm, min_bid_cpc, est_impressions, supports_video, is_active } = body
       if (!name || !position) return NextResponse.json({ error: "Name and position are required" }, { status: 400 })
       const { data, error } = await adminClient
         .from("ad_placements")
@@ -336,13 +333,10 @@ export async function POST(request: Request) {
           description: description || "",
           ad_type: ad_type || "banner",
           sizes: Array.isArray(sizes) ? sizes : ["728x90"],
-          price_per_day: price_per_day || 0,
-          price_per_week: price_per_week || 0,
-          price_per_month: price_per_month || 0,
+          min_bid_cpm: Number(min_bid_cpm) || 500,
+          min_bid_cpc: Number(min_bid_cpc) || 50,
           supports_video: !!supports_video,
-          cpm: cpm || 0,
-          min_days: min_days || 7,
-          min_budget: min_budget || 0,
+          price_per_day: Number(body.price_per_day) || 0,
           est_impressions: est_impressions || 0,
           is_active: is_active !== false,
         })
@@ -374,20 +368,37 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: true, message: "Campaign rejected" })
     }
 
-    if (action === "pause") {
-      await adminClient
+    // Pause / resume — campaign owner can pause their own campaign, admins can pause any
+    if (action === "pause" || action === "resume") {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("role")
+        .eq("id", user.id)
+        .maybeSingle()
+      const isAdmin = profile?.role === "admin" || profile?.role === "editor"
+      const toStatus = action === "pause" ? "paused" : "live"
+      const toActive = action === "pause" ? false : true
+      const { data: target } = await supabase
         .from("ad_campaigns")
-        .update({ status: "paused", is_active: false })
+        .select("user_id")
         .eq("id", body.campaign_id)
-      return NextResponse.json({ success: true, message: "Campaign paused" })
-    }
-
-    if (action === "resume") {
-      await adminClient
+        .maybeSingle()
+      if (!target) return NextResponse.json({ error: "Campaign not found" }, { status: 404 })
+      if (!isAdmin && target.user_id !== user.id) {
+        return NextResponse.json({ error: "Forbidden" }, { status: 403 })
+      }
+      const updater = isAdmin ? createAdminClient() : supabase
+      const { error } = await updater
         .from("ad_campaigns")
-        .update({ status: "live", is_active: true })
+        .update({ status: toStatus, is_active: toActive })
         .eq("id", body.campaign_id)
-      return NextResponse.json({ success: true, message: "Campaign resumed" })
+      if (error) throw error
+      return NextResponse.json({
+        success: true,
+        message: action === "pause" ? "Campaign paused" : "Campaign resumed",
+      })
     }
 
     return NextResponse.json({ error: "Invalid action" }, { status: 400 })
@@ -414,13 +425,9 @@ export async function PUT(request: Request) {
           description: body.description || "",
           ad_type: body.ad_type,
           sizes: body.sizes,
-          price_per_day: body.price_per_day || 0,
-          price_per_week: body.price_per_week || 0,
-          price_per_month: body.price_per_month || 0,
+          min_bid_cpm: Number(body.min_bid_cpm) || 500,
+          min_bid_cpc: Number(body.min_bid_cpc) || 50,
           supports_video: !!body.supports_video,
-          cpm: body.cpm || 0,
-          min_days: body.min_days || 7,
-          min_budget: body.min_budget || 0,
           est_impressions: body.est_impressions || 0,
           is_active: body.is_active !== false,
           updated_at: new Date().toISOString(),

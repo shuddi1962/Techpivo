@@ -8,7 +8,7 @@ import { Progress } from '@/components/ui/progress';
 import { BADGES } from '@/lib/community-utils';
 import Image from 'next/image';
 import {
-  User, Shield, Bell, Link2, Activity, BookMarked, History,
+  User, Shield, Bell, Link2, Activity, BookMarked, History, Megaphone,
   Settings, LogOut, ChevronRight, Flame, Star, Trophy, Zap
 } from 'lucide-react';
 
@@ -31,6 +31,7 @@ const NAV_ITEMS = [
   { href: '/account/activity', label: 'Activity', icon: Activity, description: 'XP log & achievements' },
   { href: '/account/bookmarks', label: 'Bookmarks', icon: BookMarked, description: 'Saved articles' },
   { href: '/account/history', label: 'Reading History', icon: History, description: 'Articles you read' },
+  { href: '/account/ads', label: 'My Ads', icon: Megaphone, description: 'Run & track campaigns' },
 ];
 
 export default function AccountSidebar({ profile, levelInfo }: AccountSidebarProps) {

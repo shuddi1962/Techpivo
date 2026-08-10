@@ -19,6 +19,11 @@ export const ADS_FREQUENCIES = [
   { value: "month", label: "Per Month" },
 ] as const
 
+export const ADS_BILLING_MODELS = [
+  { value: "cpm", label: "CPM — pay per 1,000 impressions" },
+  { value: "cpc", label: "CPC — pay per click" },
+] as const
+
 export const ADS_GOALS = [
   { value: "awareness", label: "Brand Awareness", icon: "👁" },
   { value: "impressions", label: "More Impressions", icon: "📈" },
@@ -69,6 +74,31 @@ export const ADS_CTA_LABELS: Record<string, string> = Object.fromEntries(
 export const ADS_FREQUENCY_LABELS: Record<string, string> = Object.fromEntries(
   ADS_FREQUENCIES.map((f) => [f.value, f.label])
 ) as Record<string, string>
+
+export const ADS_BILLING_LABELS: Record<string, string> = {
+  cpm: "CPM",
+  cpc: "CPC",
+  per_day: "Per Day",
+  per_week: "Per Week",
+  per_month: "Per Month",
+  impressions: "Impressions",
+}
+
+// Spend = actual spend if tracked, otherwise derived from delivery × bid
+export const computeCampaignSpend = (c: {
+  spend?: number | null
+  billing_model?: string | null
+  impressions?: number | null
+  clicks?: number | null
+  bid_amount?: number | null
+}) => {
+  const tracked = Number(c.spend || 0)
+  if (tracked > 0) return tracked
+  const bid = Number(c.bid_amount || 0)
+  if (c.billing_model === "cpc") return Math.round(Number(c.clicks || 0) * bid * 100) / 100
+  if (c.billing_model === "cpm") return Math.round((Number(c.impressions || 0) / 1000) * bid * 100) / 100
+  return 0
+}
 
 export const ADS_CURRENCY_SYMBOL: Record<string, string> = Object.fromEntries(
   ADS_CURRENCIES.map((c) => [c.code, c.symbol])
