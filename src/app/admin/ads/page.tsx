@@ -4,11 +4,15 @@ import { useEffect, useState, useCallback, useRef } from "react"
 import { useRouter } from "next/navigation"
 import { createClient } from "@/lib/supabase/client"
 import {
-  Store, LayoutGrid, Megaphone, ListChecks, TrendingUp, Settings2,
+  Store, LayoutGrid, Megaphone, ListChecks, TrendingUp, Settings2, BarChart3,
   Plus, Trash2, CheckCircle, XCircle, PauseCircle, PlayCircle, RefreshCw,
   Eye, MousePointerClick, Users, Wallet, Clock, ShieldCheck,
   ArrowRight, Image as ImageIcon, AlertCircle, Crown, Search, Video,
 } from "lucide-react"
+import {
+  AreaChart, Area, ComposedChart, Bar, Line, XAxis, YAxis, CartesianGrid,
+  Tooltip, ResponsiveContainer, Legend,
+} from "recharts"
 import {
   ADS_GOAL_LABELS, ADS_CTA_LABELS, ADS_FREQUENCY_LABELS, ADS_BILLING_LABELS,
   computeCampaignSpend, formatMoney,
@@ -36,6 +40,7 @@ const S = {
 
 const TABS = [
   { id: "marketplace", label: "Marketplace", icon: Store },
+  { id: "analytics", label: "Analytics", icon: BarChart3 },
   { id: "spaces", label: "Ad Spaces", icon: LayoutGrid },
   { id: "campaigns", label: "Campaigns", icon: ListChecks },
   { id: "revenue", label: "Revenue", icon: TrendingUp },
@@ -173,6 +178,31 @@ interface RevenueEntry {
   date: string
 }
 
+interface DailyStat {
+  date: string
+  label: string
+  impressions: number
+  clicks: number
+  revenue: number
+}
+
+interface TopCampaignStat {
+  id: string
+  name: string
+  advertiser: string
+  status: string
+  impressions: number
+  clicks: number
+  ctr: number
+  spend: number
+}
+
+interface PlacementStat {
+  name: string
+  impressions: number
+  clicks: number
+}
+
 let channelCounter = 0
 
 export default function AdminAdsPage() {
@@ -183,6 +213,9 @@ export default function AdminAdsPage() {
   const [placements, setPlacements] = useState<Placement[]>([])
   const [campaigns, setCampaigns] = useState<Campaign[]>([])
   const [revenue, setRevenue] = useState<RevenueEntry[]>([])
+  const [daily, setDaily] = useState<DailyStat[]>([])
+  const [topCampaigns, setTopCampaigns] = useState<TopCampaignStat[]>([])
+  const [placementStats, setPlacementStats] = useState<PlacementStat[]>([])
   const [role, setRole] = useState<string | null>(null)
   const [notice, setNotice] = useState<{ type: "success" | "error"; text: string } | null>(null)
 
@@ -197,14 +230,18 @@ export default function AdminAdsPage() {
 
   const loadAll = useCallback(async () => {
     try {
-      const [pl, cm, rv] = await Promise.all([
+      const [pl, cm, rv, an] = await Promise.all([
         fetch("/admin/ads/api?section=placements").then((r) => r.json()),
         fetch("/admin/ads/api?section=campaigns").then((r) => r.json()),
         fetch("/admin/ads/api?section=revenue").then((r) => r.json()),
+        fetch("/admin/ads/api?section=analytics").then((r) => r.json()),
       ])
       if (pl.placements) setPlacements(pl.placements)
       if (cm.campaigns) setCampaigns(cm.campaigns)
       if (rv.revenue) setRevenue(rv.revenue)
+      if (an.daily) setDaily(an.daily)
+      if (an.top_campaigns) setTopCampaigns(an.top_campaigns)
+      if (an.placement_stats) setPlacementStats(an.placement_stats)
     } catch (e) {
       console.error("Failed to load ads data:", e)
     } finally {
@@ -244,6 +281,11 @@ export default function AdminAdsPage() {
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "ad_revenue" },
+        () => loadAll()
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "ad_campaign_daily_stats" },
         () => loadAll()
       )
       .subscribe()
@@ -383,6 +425,15 @@ export default function AdminAdsPage() {
             campaigns={campaigns}
             placements={activePlacements}
             onBuy={startCampaign}
+          />
+        )}
+
+        {activeTab === "analytics" && (
+          <AnalyticsTab
+            daily={daily}
+            topCampaigns={topCampaigns}
+            placementStats={placementStats}
+            campaigns={campaigns}
           />
         )}
 
@@ -611,6 +662,198 @@ function MarketplaceTab(props: {
                     <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
                       <span style={{ fontSize: 13, fontWeight: 700, color: S.text }}>{formatMoney(c.total_price, c.currency || "NGN")}</span>
                       <span style={{ background: st.bg, color: st.color, borderRadius: 20, padding: "3px 10px", fontSize: 11, fontWeight: 600 }}>{st.label}</span>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+/* ================== ANALYTICS ================== */
+
+function AnalyticsTab({
+  daily, topCampaigns, placementStats, campaigns,
+}: {
+  daily: DailyStat[]
+  topCampaigns: TopCampaignStat[]
+  placementStats: PlacementStat[]
+  campaigns: Campaign[]
+}) {
+  const [range, setRange] = useState<14 | 30>(14)
+  const data = daily.slice(-range)
+
+  const totalImpressions = data.reduce((s, d) => s + d.impressions, 0)
+  const totalClicks = data.reduce((s, d) => s + d.clicks, 0)
+  const totalRevenue = data.reduce((s, d) => s + d.revenue, 0)
+  const totalSpend = campaigns.reduce((s, c) => s + computeCampaignSpend(c), 0)
+  const ctr = totalImpressions > 0 ? (totalClicks / totalImpressions) * 100 : 0
+
+  const kpis = [
+    { label: "Delivered Impressions", value: fmt(totalImpressions), color: S.primary, bg: "#DBEAFE", icon: Eye },
+    { label: "Clicks", value: fmt(totalClicks), color: S.purple, bg: "#EDE9FE", icon: MousePointerClick },
+    { label: "CTR", value: `${ctr.toFixed(2)}%`, color: S.yellow, bg: "#FEF9C3", icon: TrendingUp },
+    { label: "Campaign Spend", value: NGN(totalSpend), color: S.green, bg: "#DCFCE7", icon: Wallet },
+    { label: "Ad Revenue", value: NGN(totalRevenue), color: "#0EA5E9", bg: "#E0F2FE", icon: Clock },
+  ]
+
+  const maxPlacementImps = Math.max(1, ...placementStats.map((p) => p.impressions))
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
+        <div>
+          <h2 style={{ fontSize: 19, fontWeight: 700, color: S.text, margin: 0 }}>Delivery &amp; Revenue Analytics</h2>
+          <p style={{ fontSize: 13, color: S.textMuted, margin: "3px 0 0" }}>
+            Live tracking of impressions, clicks and spend — powered by per-day delivery stats.
+          </p>
+        </div>
+        <div style={{ display: "flex", gap: 6 }}>
+          {([14, 30] as const).map((r) => (
+            <button
+              key={r}
+              onClick={() => setRange(r)}
+              style={{
+                padding: "7px 16px", borderRadius: 20, fontSize: 12.5, fontWeight: 600, cursor: "pointer",
+                background: range === r ? S.primary : "#fff", color: range === r ? "#fff" : S.textMuted,
+                border: range === r ? `1px solid ${S.primary}` : `1px solid ${S.border}`,
+              }}
+            >
+              Last {r} days
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* KPIs */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(190px, 1fr))", gap: 14 }}>
+        {kpis.map((k) => {
+          const Icon = k.icon
+          return (
+            <div key={k.label} style={cardStyle({ padding: 16, display: "flex", alignItems: "center", gap: 12 })}>
+              <div style={{ width: 40, height: 40, borderRadius: 10, background: k.bg, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <Icon size={19} color={k.color} />
+              </div>
+              <div>
+                <div style={{ fontSize: 18, fontWeight: 700, color: S.text, lineHeight: 1.2 }}>{k.value}</div>
+                <div style={{ fontSize: 12, color: S.textDim }}>{k.label}</div>
+              </div>
+            </div>
+          )
+        })}
+      </div>
+
+      {/* Delivery chart */}
+      <div style={cardStyle()}>
+        <h3 style={{ fontSize: 16, fontWeight: 700, color: S.text, margin: "0 0 14px" }}>Impressions &amp; clicks per day</h3>
+        <div style={{ width: "100%", height: 260 }}>
+          <ResponsiveContainer width="100%" height="100%">
+            <ComposedChart data={data} margin={{ top: 5, right: 5, bottom: 0, left: -12 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke={S.border} />
+              <XAxis dataKey="label" tick={{ fontSize: 11, fill: S.textDim }} interval={Math.ceil(range / 12)} tickLine={false} axisLine={{ stroke: S.border }} />
+              <YAxis yAxisId="imps" tick={{ fontSize: 11, fill: S.textDim }} tickLine={false} axisLine={false} />
+              <YAxis yAxisId="clicks" orientation="right" tick={{ fontSize: 11, fill: S.textDim }} tickLine={false} axisLine={false} />
+              <Tooltip
+                contentStyle={{ borderRadius: 10, border: `1px solid ${S.border}`, fontSize: 12.5 }}
+                formatter={(value: any, name?: any) => [fmt(Number(value)), name === "impressions" ? "Impressions" : "Clicks"]}
+              />
+              <Legend wrapperStyle={{ fontSize: 12.5 }} />
+              <Bar yAxisId="imps" dataKey="impressions" name="Impressions" fill={S.primary} radius={[3, 3, 0, 0]} maxBarSize={26} />
+              <Line yAxisId="clicks" type="monotone" dataKey="clicks" name="Clicks" stroke={S.purple} strokeWidth={2} dot={false} />
+            </ComposedChart>
+          </ResponsiveContainer>
+        </div>
+      </div>
+
+      {/* Revenue chart */}
+      <div style={cardStyle()}>
+        <h3 style={{ fontSize: 16, fontWeight: 700, color: S.text, margin: "0 0 14px" }}>Revenue per day (ad networks)</h3>
+        {data.every((d) => d.revenue === 0) ? (
+          <p style={{ color: S.textDim, fontSize: 13.5, margin: 0, padding: "40px 0", textAlign: "center" }}>
+            No network revenue recorded in this period. Campaign auction spend is shown in the Revenue tab.
+          </p>
+        ) : (
+          <div style={{ width: "100%", height: 240 }}>
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={data} margin={{ top: 5, right: 5, bottom: 0, left: -12 }}>
+                <defs>
+                  <linearGradient id="revGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor={S.green} stopOpacity={0.28} />
+                    <stop offset="100%" stopColor={S.green} stopOpacity={0.02} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" stroke={S.border} />
+                <XAxis dataKey="label" tick={{ fontSize: 11, fill: S.textDim }} interval={Math.ceil(range / 12)} tickLine={false} axisLine={{ stroke: S.border }} />
+                <YAxis tick={{ fontSize: 11, fill: S.textDim }} tickLine={false} axisLine={false} />
+                <Tooltip
+                  contentStyle={{ borderRadius: 10, border: `1px solid ${S.border}`, fontSize: 12.5 }}
+                  formatter={(value: any) => NGN(Number(value))}
+                />
+                <Area type="monotone" dataKey="revenue" name="Revenue" stroke={S.green} strokeWidth={2} fill="url(#revGrad)" />
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
+        )}
+      </div>
+
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 18 }}>
+        {/* Top campaigns */}
+        <div style={cardStyle()}>
+          <h3 style={{ fontSize: 16, fontWeight: 700, color: S.text, margin: "0 0 14px" }}>Top Campaigns by Impressions</h3>
+          {topCampaigns.length === 0 ? (
+            <p style={{ color: S.textDim, fontSize: 13.5, margin: 0 }}>No delivery yet — stats appear as campaigns serve ads.</p>
+          ) : (
+            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+              {topCampaigns.map((c) => {
+                const st = STATUS_META[c.status] || STATUS_META.draft
+                const max = Math.max(1, ...topCampaigns.map((t) => t.impressions))
+                return (
+                  <div key={c.id}>
+                    <div style={{ display: "flex", justifyContent: "space-between", gap: 10, marginBottom: 4 }}>
+                      <span style={{ fontSize: 13, fontWeight: 600, color: S.text, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{c.name}</span>
+                      <span style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                        <span style={{ fontSize: 12, fontWeight: 700, color: S.text }}>{fmt(c.impressions)}</span>
+                        <span style={{ background: st.bg, color: st.color, borderRadius: 20, padding: "1px 8px", fontSize: 10, fontWeight: 700 }}>{st.label}</span>
+                      </span>
+                    </div>
+                    <div style={{ height: 7, borderRadius: 4, background: S.input, overflow: "hidden" }}>
+                      <div style={{ height: "100%", width: `${Math.max(2, (c.impressions / max) * 100)}%`, background: S.primary, borderRadius: 4 }} />
+                    </div>
+                    <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11.5, color: S.textDim, marginTop: 3 }}>
+                      <span>{fmt(c.clicks)} clicks · {c.ctr.toFixed(2)}% CTR</span>
+                      <span style={{ fontWeight: 600, color: S.green }}>{NGN(c.spend)} spent</span>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </div>
+
+        {/* Placement performance */}
+        <div style={cardStyle()}>
+          <h3 style={{ fontSize: 16, fontWeight: 700, color: S.text, margin: "0 0 14px" }}>Placement Performance</h3>
+          {placementStats.length === 0 ? (
+            <p style={{ color: S.textDim, fontSize: 13.5, margin: 0 }}>No placement delivery recorded yet.</p>
+          ) : (
+            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+              {placementStats.map((p) => {
+                const ctrPct = p.impressions > 0 ? ((p.clicks / p.impressions) * 100).toFixed(2) : "0.00"
+                return (
+                  <div key={p.name}>
+                    <div style={{ display: "flex", justifyContent: "space-between", gap: 10, marginBottom: 4 }}>
+                      <span style={{ fontSize: 13, fontWeight: 600, color: S.text }}>{p.name}</span>
+                      <span style={{ fontSize: 12, fontWeight: 700, color: S.text }}>{fmt(p.impressions)} <span style={{ color: S.textDim, fontWeight: 500 }}>imps</span></span>
+                    </div>
+                    <div style={{ height: 7, borderRadius: 4, background: S.input, overflow: "hidden" }}>
+                      <div style={{ height: "100%", width: `${Math.max(2, (p.impressions / maxPlacementImps) * 100)}%`, background: S.purple, borderRadius: 4 }} />
+                    </div>
+                    <div style={{ fontSize: 11.5, color: S.textDim, marginTop: 3 }}>
+                      {fmt(p.clicks)} clicks · {ctrPct}% CTR
                     </div>
                   </div>
                 )
