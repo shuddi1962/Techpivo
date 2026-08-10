@@ -32,3 +32,6 @@ CREATE POLICY "Admins manage report_schedules" ON report_schedules
   FOR ALL USING (is_admin());
 
 ALTER PUBLICATION supabase_realtime ADD TABLE report_schedules;
+
+-- 3) Ad campaign daily stats realtime (Revenue tab live transactions)
+ALTER PUBLICATION supabase_realtime ADD TABLE IF NOT EXISTS ad_campaign_daily_stats;

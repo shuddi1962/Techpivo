@@ -4,10 +4,13 @@ import { useState, useEffect, useCallback } from "react"
 import { createClient } from "@/lib/supabase/client"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { BarChart3, Users, Globe, TrendingUp, Share2, Mail, Swords, Brain, Download, RefreshCw } from "lucide-react"
-import { RevenueAnalytics } from "@/components/admin/revenue-analytics"
+import { BarChart3, Users, Globe, TrendingUp, Share2, Mail, Brain, Download, Wallet, ReceiptText, Eye, MousePointerClick } from "lucide-react"
 import { AiInsights } from "@/components/admin/ai-insights"
-import { ChartLine, ChartBar, ChartArea, ChartPie, ChartRadar, ChartLeaderboard, ChartGeoMap } from "@/components/charts"
+import { ChartLine, ChartBar, ChartArea, ChartPie, ChartRadar, ChartLeaderboard } from "@/components/charts"
+import {
+  ComposedChart, Bar, Line, XAxis, YAxis, CartesianGrid, Tooltip,
+  ResponsiveContainer,
+} from "recharts"
 
 const COLORS = ["#3b82f6", "#22c55e", "#f59e0b", "#ef4444", "#8b5cf6", "#ec4899", "#14b8a6", "#f97316", "#6366f1", "#84cc16"]
 
@@ -16,10 +19,9 @@ const tabs = [
   { id: "realtime", label: "Real-Time", icon: TrendingUp },
   { id: "audience", label: "Audience", icon: Users },
   { id: "traffic", label: "Traffic Sources", icon: Globe },
-  { id: "revenue", label: "Revenue", icon: BarChart3 },
+  { id: "revenue", label: "Revenue", icon: Wallet },
   { id: "social", label: "Social", icon: Share2 },
   { id: "newsletter", label: "Newsletter", icon: Mail },
-  { id: "competitors", label: "Competitors", icon: Swords },
   { id: "ai", label: "AI Insights", icon: Brain },
   { id: "exports", label: "Exports", icon: Download },
 ]
@@ -751,18 +753,209 @@ function NewsletterTab() {
   )
 }
 
-function CompetitorsTab() {
+function RevenueTab() {
+  const supabase = createClient()
+  const [loading, setLoading] = useState(true)
+  const [totals, setTotals] = useState({ ad: 0, spend: 0, impressions: 0, clicks: 0, ctr: 0, pending: 0 })
+  const [chart, setChart] = useState<{ date: string; revenue: number; impressions: number }[]>([])
+  const [bySource, setBySource] = useState<{ source: string; revenue: number }[]>([])
+  const [campaigns, setCampaigns] = useState<any[]>([])
+
+  const load = useCallback(async () => {
+    try {
+      const since = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
+      const sinceDate = since.toISOString().slice(0, 10)
+
+      const [adRes, spendRes, statsRes, pendRes, campRes] = await Promise.all([
+        supabase.from("ad_revenue").select("revenue, date, source").gte("date", sinceDate).limit(2000),
+        supabase.from("ad_campaigns").select("spend, currency").in("status", ["live", "paused", "completed"]).limit(2000),
+        supabase.from("ad_campaign_daily_stats").select("impressions, clicks, stat_date").gte("stat_date", sinceDate).limit(20000),
+        supabase.from("ad_campaigns").select("*", { count: "exact", head: true }).eq("status", "pending"),
+        supabase.from("ad_campaigns").select("*").order("created_at", { ascending: false }).limit(15),
+      ])
+
+      const dailyMap: Record<string, { revenue: number; impressions: number }> = {}
+      for (let i = 29; i >= 0; i--) {
+        const d = new Date()
+        d.setDate(d.getDate() - i)
+        dailyMap[d.toLocaleDateString("en-US", { month: "short", day: "numeric" })] = { revenue: 0, impressions: 0 }
+      }
+      let totalAd = 0
+      const sourceMap: Record<string, number> = {}
+      ;(adRes.data || []).forEach((r: any) => {
+        const key = new Date(`${r.date}T12:00:00`).toLocaleDateString("en-US", { month: "short", day: "numeric" })
+        if (dailyMap[key]) { dailyMap[key].revenue += Number(r.revenue) || 0; totalAd += Number(r.revenue) || 0 }
+        const src = r.source || "other"
+        sourceMap[src] = (sourceMap[src] || 0) + (Number(r.revenue) || 0)
+      })
+      let totalImpressions = 0
+      let totalClicks = 0
+      ;(statsRes.data || []).forEach((s: any) => {
+        const key = new Date(`${s.stat_date}T12:00:00`).toLocaleDateString("en-US", { month: "short", day: "numeric" })
+        if (dailyMap[key]) { dailyMap[key].impressions += s.impressions || 0; dailyMap[key].revenue += (s.impressions || 0) * 0 }
+        totalImpressions += s.impressions || 0
+        totalClicks += s.clicks || 0
+      })
+      const totalSpend = (spendRes.data || []).reduce((s: number, c: any) => s + (Number(c.spend) || 0), 0)
+
+      setChart(Object.entries(dailyMap).map(([date, v]) => ({ date, ...v })))
+      setBySource(Object.entries(sourceMap).sort((a, b) => b[1] - a[1]).map(([source, revenue]) => ({ source, revenue })))
+      setCampaigns(campRes.data || [])
+      setTotals({
+        ad: totalAd,
+        spend: totalSpend,
+        impressions: totalImpressions,
+        clicks: totalClicks,
+        ctr: totalImpressions > 0 ? (totalClicks / totalImpressions) * 100 : 0,
+        pending: pendRes.count || 0,
+      })
+    } catch (err) {
+      console.error("Revenue fetch error:", err)
+    }
+    setLoading(false)
+  }, [supabase])
+
+  useEffect(() => { load() }, [load])
+
+  useEffect(() => {
+    let mounted = true
+    const id = `analytics_revenue_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`
+    const channel = supabase.channel(id)
+    const refresh = () => { if (mounted) load() }
+    ;["ad_revenue", "ad_campaigns", "ad_campaign_daily_stats"].forEach(table => {
+      channel.on("postgres_changes", { event: "*", schema: "public", table }, refresh)
+    })
+    channel.subscribe()
+    const poll = setInterval(refresh, 30000)
+    window.addEventListener("focus", refresh)
+    return () => {
+      mounted = false
+      clearInterval(poll)
+      window.removeEventListener("focus", refresh)
+      supabase.removeChannel(channel)
+    }
+  }, [supabase, load])
+
+  const STATUS_COLORS: Record<string, string> = {
+    draft: "#94A3B8", pending: "#F59E0B", approved: "#3B82F6", rejected: "#EF4444",
+    live: "#22C55E", completed: "#64748B", paused: "#8B5CF6", cancelled: "#EF4444",
+  }
+
   return (
     <div className="space-y-6">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+        <Card>
+          <CardContent className="p-4">
+            <p className="text-xs text-muted-foreground flex items-center gap-1"><Wallet className="h-3 w-3" /> Ad Revenue (30d)</p>
+            <p className="text-2xl font-bold mt-1">${totals.ad.toFixed(2)}</p>
+            <p className="text-xs mt-1 text-emerald-500">Live · ad_revenue</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">
+            <p className="text-xs text-muted-foreground flex items-center gap-1"><ReceiptText className="h-3 w-3" /> Campaign Spend (30d)</p>
+            <p className="text-2xl font-bold mt-1">₦{totals.spend.toLocaleString(undefined, { maximumFractionDigits: 0 })}</p>
+            <p className="text-xs mt-1 text-muted-foreground">Live / paused / completed</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">
+            <p className="text-xs text-muted-foreground flex items-center gap-1"><Eye className="h-3 w-3" /> Impressions (30d)</p>
+            <p className="text-2xl font-bold mt-1">{totals.impressions.toLocaleString()}</p>
+            <p className="text-xs mt-1 text-muted-foreground">Delivered ad views</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">
+            <p className="text-xs text-muted-foreground flex items-center gap-1"><MousePointerClick className="h-3 w-3" /> Clicks (30d)</p>
+            <p className="text-2xl font-bold mt-1">{totals.clicks.toLocaleString()}</p>
+            <p className="text-xs mt-1 text-muted-foreground">From ad placements</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">
+            <p className="text-xs text-muted-foreground flex items-center gap-1"><BarChart3 className="h-3 w-3" /> CTR</p>
+            <p className="text-2xl font-bold mt-1">{totals.ctr.toFixed(2)}%</p>
+            <p className="text-xs mt-1 text-muted-foreground">Clicks ÷ impressions</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">
+            <p className="text-xs text-muted-foreground flex items-center gap-1"><TrendingUp className="h-3 w-3" /> Pending Orders</p>
+            <p className="text-2xl font-bold mt-1 text-amber-500">{totals.pending}</p>
+            <p className="text-xs mt-1 text-muted-foreground">Awaiting approval</p>
+          </CardContent>
+        </Card>
+      </div>
+
       <Card>
-        <CardHeader><CardTitle>Competitor Intelligence</CardTitle></CardHeader>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            Revenue &amp; Delivery (30 Days)
+            <span className="text-[10px] font-normal bg-emerald-100 text-emerald-700 rounded-full px-2 py-0.5 flex items-center gap-1">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" /> REALTIME
+            </span>
+          </CardTitle>
+        </CardHeader>
         <CardContent>
-          <p className="text-sm text-muted-foreground">
-            Competitor tracking data is available in the{" "}
-            <a href="/admin/competitor-intelligence" className="text-primary hover:underline">Competitor Intelligence</a> section.
-          </p>
+          <ResponsiveContainer width="100%" height={280}>
+            <ComposedChart data={chart}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" />
+              <XAxis dataKey="date" tick={{ fill: "#64748B", fontSize: 10 }} axisLine={false} tickLine={false} interval={3} />
+              <YAxis yAxisId="rev" tick={{ fill: "#64748B", fontSize: 10 }} axisLine={false} tickLine={false} />
+              <YAxis yAxisId="imp" orientation="right" tick={{ fill: "#94A3B8", fontSize: 10 }} axisLine={false} tickLine={false} />
+              <Tooltip contentStyle={{ borderRadius: 10, border: "1px solid #E2E8F0", fontSize: 12.5 }} />
+              <Bar yAxisId="rev" dataKey="revenue" name="Ad Revenue ($)" fill="#F59E0B" radius={[3, 3, 0, 0]} />
+              <Line yAxisId="imp" type="monotone" dataKey="impressions" name="Impressions" stroke="#3B82F6" strokeWidth={2} dot={false} />
+            </ComposedChart>
+          </ResponsiveContainer>
         </CardContent>
       </Card>
+
+      <div className="grid md:grid-cols-2 gap-6">
+        <Card>
+          <CardHeader><CardTitle>Revenue by Source</CardTitle></CardHeader>
+          <CardContent>
+            {bySource.length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-8">No ad revenue recorded yet</p>
+            ) : (
+              <div className="space-y-2">
+                {bySource.map((s) => (
+                  <div key={s.source} className="flex items-center justify-between p-2.5 rounded-lg bg-muted/30 text-sm">
+                    <span className="font-medium capitalize">{s.source}</span>
+                    <span className="font-bold">${s.revenue.toFixed(2)}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader><CardTitle>Recent Transactions</CardTitle></CardHeader>
+          <CardContent className="space-y-2">
+            {campaigns.length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-8">No campaign orders yet</p>
+            ) : (
+              campaigns.map((c: any) => (
+                <div key={c.id} className="flex items-center justify-between p-2.5 rounded-lg bg-muted/30 text-sm">
+                  <div className="min-w-0">
+                    <p className="font-medium truncate">{c.headline || "Untitled campaign"}</p>
+                    <p className="text-xs text-muted-foreground truncate">
+                      {c.advertiser_email || "—"} · {new Date(c.created_at).toLocaleDateString()}
+                    </p>
+                  </div>
+                  <div className="text-right shrink-0 ml-3">
+                    <p className="font-bold">₦{Number(c.total_price || c.budget || 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}</p>
+                    <Badge className="text-[10px]" style={{ background: STATUS_COLORS[c.status] || "#94A3B8", color: "#fff" }}>
+                      {c.status}
+                    </Badge>
+                  </div>
+                </div>
+              ))
+            )}
+          </CardContent>
+        </Card>
+      </div>
     </div>
   )
 }
@@ -883,10 +1076,9 @@ export default function AnalyticsPage() {
       case "realtime": return <RealTimeTab />
       case "audience": return <AudienceTab />
       case "traffic": return <TrafficSourcesTab />
-      case "revenue": return <RevenueAnalytics />
+      case "revenue": return <RevenueTab />
       case "social": return <SocialTab />
       case "newsletter": return <NewsletterTab />
-      case "competitors": return <CompetitorsTab />
       case "ai": return <AiInsights />
       case "exports": return <ExportsTab />
       default: return <OverviewTab />
