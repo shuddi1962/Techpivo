@@ -3,7 +3,7 @@ import { createClient } from "@/lib/supabase/admin"
 
 export async function POST(req: Request) {
   try {
-    const { postId, pageUrl, referrer, country } = await req.json()
+    const { postId, pageUrl, referrer, country, sessionId, device, browser, os } = await req.json()
     if (!postId && !pageUrl) {
       return NextResponse.json({ error: "postId or pageUrl required" }, { status: 400 })
     }
@@ -20,6 +20,10 @@ export async function POST(req: Request) {
       page_url: pageUrl || null,
       referrer: referrer || null,
       country: country || null,
+      session_id: sessionId || null,
+      device: device || null,
+      browser: browser || null,
+      os: os || null,
       user_agent: req.headers.get("user-agent") || null,
       ip_hash: req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || null,
     })

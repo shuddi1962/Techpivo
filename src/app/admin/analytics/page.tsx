@@ -32,27 +32,19 @@ function OverviewTab() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [users, sessions, pageViews, postsCount] = await Promise.all([
+        const since30d = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()
+        const [users, pageViews, postsCount] = await Promise.all([
           supabase.from("profiles").select("*", { count: "exact", head: true }),
-          supabase.from("analytics_events").select("*", { count: "exact", head: true }).eq("event_type", "page_view")
-            .gte("created_at", new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()),
           supabase.from("analytics_events").select("*", { count: "exact", head: true }).eq("event_type", "page_view"),
           supabase.from("posts").select("*", { count: "exact", head: true }).eq("status", "published"),
         ])
 
         const { data: dailyData } = await supabase
           .from("analytics_events")
-          .select("created_at")
+          .select("created_at, post_id, session_id, page_url")
           .eq("event_type", "page_view")
-          .gte("created_at", new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString())
-          .limit(5000)
-
-        const { data: topPages } = await supabase
-          .from("analytics_events")
-          .select("page_url")
-          .eq("event_type", "page_view")
-          .not("page_url", "is", null)
-          .limit(5000)
+          .gte("created_at", since30d)
+          .limit(20000)
 
         const { data: catPosts } = await supabase
           .from("posts")
@@ -60,9 +52,19 @@ function OverviewTab() {
           .eq("status", "published")
           .limit(100)
 
+        const events = dailyData || []
+        const sessions = new Set<string>()
+        let nullSessions = 0
+        events.forEach((e: any) => {
+          if (e.session_id) sessions.add(e.session_id)
+          else nullSessions++
+        })
+        const sessions30d = sessions.size + nullSessions
+        const postViews30d = events.filter((e: any) => e.post_id).length
+
         const pageMap: Record<string, number> = {}
-        ;(topPages || []).forEach((p: any) => {
-          const url = p.page_url || "/"
+        events.forEach((e: any) => {
+          const url = e.page_url || "/"
           pageMap[url] = (pageMap[url] || 0) + 1
         })
         const sortedPages = Object.entries(pageMap).sort((a, b) => b[1] - a[1]).slice(0, 5)
@@ -78,14 +80,16 @@ function OverviewTab() {
           d.setDate(d.getDate() - (29 - i))
           const dayStr = d.toDateString()
           const label = d.toLocaleDateString("en-US", { month: "short", day: "numeric" })
-          const count = dailyData ? dailyData.filter((e: any) => new Date(e.created_at).toDateString() === dayStr).length : 0
-          return { date: label, views: count }
+          const dayEvents = events.filter((e: any) => new Date(e.created_at).toDateString() === dayStr)
+          return { date: label, views: dayEvents.length, posts: dayEvents.filter((e: any) => e.post_id).length }
         })
 
         setData({
           users: users.count || 0,
-          sessions: sessions.count || 0,
+          sessions: sessions30d,
           pageViews: pageViews.count || 0,
+          views30d: events.length,
+          postViews30d,
           postsCount: postsCount.count || 0,
           dailyChart,
           topPages: sortedPages,
@@ -121,16 +125,23 @@ function OverviewTab() {
         </Card>
         <Card>
           <CardContent className="p-4">
-            <p className="text-xs text-muted-foreground flex items-center gap-1"><BarChart3 className="h-3 w-3" /> Sessions (30d)</p>
+            <p className="text-xs text-muted-foreground flex items-center gap-1"><Users className="h-3 w-3" /> Sessions (30d)</p>
             <p className="text-2xl font-bold mt-1">{data.sessions.toLocaleString()}</p>
-            <p className="text-xs mt-1 text-muted-foreground">Last 30 days</p>
+            <p className="text-xs mt-1 text-muted-foreground">Distinct visitors, last 30 days</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="p-4">
-            <p className="text-xs text-muted-foreground flex items-center gap-1"><Globe className="h-3 w-3" /> Page Views</p>
-            <p className="text-2xl font-bold mt-1">{data.pageViews.toLocaleString()}</p>
-            <p className="text-xs mt-1 text-emerald-500 flex items-center gap-0.5"><TrendingUp className="h-3 w-3" /> All time</p>
+            <p className="text-xs text-muted-foreground flex items-center gap-1"><Globe className="h-3 w-3" /> Site Views (30d)</p>
+            <p className="text-2xl font-bold mt-1">{data.views30d.toLocaleString()}</p>
+            <p className="text-xs mt-1 text-muted-foreground">All pages incl. articles</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">
+            <p className="text-xs text-muted-foreground flex items-center gap-1"><BarChart3 className="h-3 w-3" /> Post Views (30d)</p>
+            <p className="text-2xl font-bold mt-1">{data.postViews30d.toLocaleString()}</p>
+            <p className="text-xs mt-1 text-muted-foreground">Article pages only</p>
           </CardContent>
         </Card>
         <Card>
@@ -143,15 +154,8 @@ function OverviewTab() {
         <Card>
           <CardContent className="p-4">
             <p className="text-xs text-muted-foreground flex items-center gap-1"><TrendingUp className="h-3 w-3" /> Avg Daily Views</p>
-            <p className="text-2xl font-bold mt-1">{Math.round(data.pageViews / 30).toLocaleString()}</p>
+            <p className="text-2xl font-bold mt-1">{Math.round(data.views30d / 30).toLocaleString()}</p>
             <p className="text-xs mt-1 text-muted-foreground">Per day (30d avg)</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4">
-            <p className="text-xs text-muted-foreground flex items-center gap-1"><TrendingUp className="h-3 w-3" /> Views Per Post</p>
-            <p className="text-2xl font-bold mt-1">{data.postsCount > 0 ? Math.round(data.pageViews / data.postsCount).toLocaleString() : "—"}</p>
-            <p className="text-xs mt-1 text-muted-foreground">Avg per article</p>
           </CardContent>
         </Card>
       </div>
@@ -162,7 +166,10 @@ function OverviewTab() {
           <ChartLine
             data={data.dailyChart}
             xKey="date"
-            lines={[{ key: "views", color: COLORS[0], name: "Page Views" }]}
+            lines={[
+              { key: "views", color: COLORS[0], name: "All Pages" },
+              { key: "posts", color: COLORS[1], name: "Article Pages" },
+            ]}
             height={250}
             showDots={false}
           />
@@ -171,7 +178,7 @@ function OverviewTab() {
 
       <div className="grid md:grid-cols-2 gap-6">
         <Card>
-          <CardHeader><CardTitle>Top Pages</CardTitle></CardHeader>
+          <CardHeader><CardTitle>Top Pages (30d)</CardTitle></CardHeader>
           <CardContent>
             {topPagesChart.length === 0 ? (
               <p className="text-sm text-muted-foreground text-center py-8">No page data yet</p>
@@ -210,7 +217,7 @@ function OverviewTab() {
 
 function RealTimeTab() {
   const supabase = createClient()
-  const [stats, setStats] = useState({ activeNow: 0, today: 0, thisHour: 0, newToday: 0 })
+  const [stats, setStats] = useState({ activeNow: 0, today: 0, thisHour: 0, sessionsToday: 0 })
   const [pages, setPages] = useState<{ page: string; visitors: number }[]>([])
   const [countries, setCountries] = useState<{ name: string; count: number }[]>([])
   const [loading, setLoading] = useState(true)
@@ -221,12 +228,20 @@ function RealTimeTab() {
       const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString()
       const hourAgo = new Date(now.getTime() - 60 * 60 * 1000).toISOString()
 
-      const [todayRes, hourRes, pageRes, countryRes] = await Promise.all([
+      const [todayRes, hourRes, pageRes, countryRes, todayEvents] = await Promise.all([
         supabase.from("analytics_events").select("*", { count: "exact", head: true }).eq("event_type", "page_view").gte("created_at", todayStart),
-        supabase.from("analytics_events").select("*", { count: "exact", head: true }).eq("event_type", "page_view").gte("created_at", hourAgo),
+        supabase.from("analytics_events").select("session_id").eq("event_type", "page_view").gte("created_at", hourAgo).limit(500),
         supabase.from("analytics_events").select("page_url").eq("event_type", "page_view").gte("created_at", hourAgo).limit(500),
         supabase.from("analytics_events").select("country").eq("event_type", "page_view").gte("created_at", todayStart).limit(500),
+        supabase.from("analytics_events").select("session_id").eq("event_type", "page_view").gte("created_at", todayStart).limit(2000),
       ])
+
+      const countSessions = (rows: any[]) => {
+        const set = new Set<string>()
+        let nulls = 0
+        rows.forEach((r: any) => { if (r.session_id) set.add(r.session_id); else nulls++ })
+        return set.size + nulls
+      }
 
       const pageMap: Record<string, number> = {}
       ;(pageRes.data || []).forEach((p: any) => {
@@ -240,10 +255,10 @@ function RealTimeTab() {
       })
 
       setStats({
-        activeNow: hourRes.count || 0,
+        activeNow: countSessions(hourRes.data || []),
         today: todayRes.count || 0,
-        thisHour: hourRes.count || 0,
-        newToday: todayRes.count || 0,
+        thisHour: (hourRes.data || []).length,
+        sessionsToday: countSessions(todayEvents.data || []),
       })
       setPages(Object.entries(pageMap).sort((a, b) => b[1] - a[1]).slice(0, 5).map(([page, visitors]) => ({ page, visitors })))
       setCountries(Object.entries(countryMap).sort((a, b) => b[1] - a[1]).slice(0, 8).map(([name, count]) => ({ name, count })))
@@ -275,25 +290,25 @@ function RealTimeTab() {
               </span>
               <p className="text-3xl font-bold">{stats.activeNow}</p>
             </div>
-            <p className="text-xs text-muted-foreground mt-1">Active (Last Hour)</p>
+            <p className="text-xs text-muted-foreground mt-1">Active Visitors (Last Hour)</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="p-4 text-center">
             <p className="text-3xl font-bold text-primary">{stats.today.toLocaleString()}</p>
-            <p className="text-xs text-muted-foreground mt-1">Today</p>
+            <p className="text-xs text-muted-foreground mt-1">Views Today</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="p-4 text-center">
             <p className="text-3xl font-bold">{stats.thisHour.toLocaleString()}</p>
-            <p className="text-xs text-muted-foreground mt-1">This Hour</p>
+            <p className="text-xs text-muted-foreground mt-1">Views This Hour</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="p-4 text-center">
-            <p className="text-3xl font-bold text-emerald-500">{stats.newToday.toLocaleString()}</p>
-            <p className="text-xs text-muted-foreground mt-1">Views Today</p>
+            <p className="text-3xl font-bold text-emerald-500">{stats.sessionsToday.toLocaleString()}</p>
+            <p className="text-xs text-muted-foreground mt-1">Sessions Today</p>
           </CardContent>
         </Card>
       </div>
@@ -347,7 +362,7 @@ function AudienceTab() {
           .from("analytics_events")
           .select("country, device, browser, os")
           .eq("event_type", "page_view")
-          .limit(2000)
+          .limit(5000)
 
         const deviceMap: Record<string, number> = {}
         const browserMap: Record<string, number> = {}
@@ -625,22 +640,39 @@ function NewsletterTab() {
   useEffect(() => {
     const fetchNewsletter = async () => {
       try {
-        const [subsRes, campaignsRes, subGrowthRes] = await Promise.all([
+        const since30d = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()
+        const [subsRes, sendsRes, sendsCount, subGrowthRes] = await Promise.all([
           supabase.from("subscribers").select("*", { count: "exact", head: true }).eq("status", "active"),
-          supabase.from("newsletter_campaigns").select("*").order("created_at", { ascending: false }).limit(5),
-          supabase.from("subscribers").select("created_at").eq("status", "active").limit(2000),
+          supabase.from("newsletter_sends").select("subject, open_count, sent_at").order("sent_at", { ascending: false }).limit(5),
+          supabase.from("newsletter_sends").select("*", { count: "exact", head: true }),
+          supabase.from("subscribers").select("subscribed_at").eq("status", "active").gte("subscribed_at", since30d).limit(2000),
         ])
 
         const growthMap: Record<string, number> = {}
+        const growthChart = Array.from({ length: 30 }).map((_, i) => {
+          const d = new Date()
+          d.setDate(d.getDate() - (29 - i))
+          const key = d.toLocaleDateString("en-US", { month: "short", day: "numeric" })
+          return { date: key, subscribers: 0 }
+        })
+        const dayIndex: Record<string, number> = {}
+        growthChart.forEach((g, i) => { dayIndex[g.date] = i })
+
         ;(subGrowthRes.data || []).forEach((s: any) => {
-          const d = new Date(s.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric" })
+          const d = new Date(s.subscribed_at).toLocaleDateString("en-US", { month: "short", day: "numeric" })
           growthMap[d] = (growthMap[d] || 0) + 1
         })
-        const growthChart = Object.entries(growthMap).slice(-30).map(([date, subs]) => ({ date, subscribers: subs }))
+        Object.entries(growthMap).forEach(([date, count]) => {
+          if (dayIndex[date] !== undefined) growthChart[dayIndex[date]].subscribers = count
+        })
 
+        const sends = sendsRes.data || []
         setData({
           subscribers: subsRes.count || 0,
-          campaigns: campaignsRes.data || [],
+          campaigns: sends,
+          campaignsSent: sendsCount.count || 0,
+          growthDays: Object.keys(growthMap).length,
+          totalOpens: sends.reduce((s: number, c: any) => s + (c.open_count || 0), 0),
           growthChart,
         })
       } catch (err) { console.error("Newsletter fetch error:", err) }
@@ -662,19 +694,19 @@ function NewsletterTab() {
         </Card>
         <Card>
           <CardContent className="p-4 text-center">
-            <p className="text-3xl font-bold">{data?.campaigns?.length || 0}</p>
+            <p className="text-3xl font-bold">{data?.campaignsSent || 0}</p>
             <p className="text-xs text-muted-foreground mt-1">Campaigns Sent</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="p-4 text-center">
-            <p className="text-3xl font-bold text-emerald-500">{data?.growthChart?.length || 0}</p>
-            <p className="text-xs text-muted-foreground mt-1">Days with Growth</p>
+            <p className="text-3xl font-bold text-emerald-500">{data?.growthDays || 0}</p>
+            <p className="text-xs text-muted-foreground mt-1">Days with Growth (30d)</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="p-4 text-center">
-            <p className="text-3xl font-bold">{data?.campaigns?.reduce((s: number, c: any) => s + (c.opens || 0), 0) || 0}</p>
+            <p className="text-3xl font-bold">{data?.totalOpens?.toLocaleString() || 0}</p>
             <p className="text-xs text-muted-foreground mt-1">Total Opens</p>
           </CardContent>
         </Card>
@@ -682,7 +714,7 @@ function NewsletterTab() {
 
       {data?.growthChart?.length > 0 && (
         <Card>
-          <CardHeader><CardTitle>Subscriber Growth</CardTitle></CardHeader>
+          <CardHeader><CardTitle>Subscriber Growth (Last 30 Days)</CardTitle></CardHeader>
           <CardContent>
             <ChartArea
               data={data.growthChart}
@@ -696,16 +728,16 @@ function NewsletterTab() {
 
       {data?.campaigns?.length > 0 && (
         <Card>
-          <CardHeader><CardTitle>Recent Campaigns</CardTitle></CardHeader>
+          <CardHeader><CardTitle>Recent Sends</CardTitle></CardHeader>
           <CardContent className="space-y-2">
             {data.campaigns.map((c: any, i: number) => (
               <div key={i} className="flex items-center justify-between p-3 rounded-lg bg-muted/30 text-sm">
                 <div>
-                  <p className="font-medium">{c.subject || c.name}</p>
-                  <p className="text-xs text-muted-foreground">{new Date(c.created_at).toLocaleDateString()}</p>
+                  <p className="font-medium">{c.subject}</p>
+                  <p className="text-xs text-muted-foreground">{new Date(c.sent_at).toLocaleDateString()}</p>
                 </div>
                 <div className="text-right text-xs text-muted-foreground">
-                  {c.opens ? `${c.opens} opens` : "No data"}
+                  {c.open_count ? `${c.open_count} opens` : "No opens yet"}
                 </div>
               </div>
             ))}
@@ -713,7 +745,7 @@ function NewsletterTab() {
         </Card>
       )}
       {(!data?.campaigns || data.campaigns.length === 0) && (
-        <p className="text-sm text-muted-foreground text-center py-8">No newsletter campaigns yet. Create your first campaign in the Newsletter section.</p>
+        <p className="text-sm text-muted-foreground text-center py-8">No newsletter sends yet. Publish a post with the newsletter option enabled to see data here.</p>
       )}
     </div>
   )
@@ -739,47 +771,73 @@ function ExportsTab() {
   const [generating, setGenerating] = useState<string | null>(null)
   const supabase = createClient()
 
+  const downloadBlob = (content: string, type: string, name: string) => {
+    const blob = new Blob([content], { type })
+    const url = window.URL.createObjectURL(blob)
+    const a = document.createElement("a")
+    a.href = url
+    a.download = name
+    a.click()
+    window.URL.revokeObjectURL(url)
+  }
+
   const handleExport = async (name: string, type: string) => {
     setGenerating(name)
     try {
       if (type === "csv") {
         const { data: events } = await supabase
           .from("analytics_events")
-          .select("page_url, referrer, country, device, browser, os, created_at")
+          .select("page_url, post_id, referrer, country, device, browser, os, session_id, created_at")
           .eq("event_type", "page_view")
+          .order("created_at", { ascending: false })
           .limit(5000)
 
-        const headers = ["page_url", "referrer", "country", "device", "browser", "os", "created_at"]
+        const headers = ["page_url", "post_id", "referrer", "country", "device", "browser", "os", "session_id", "created_at"]
         const csvRows = [headers.join(",")]
         ;(events || []).forEach((e: any) => {
           csvRows.push(headers.map(h => JSON.stringify(e[h] ?? "")).join(","))
         })
-        const blob = new Blob([csvRows.join("\n")], { type: "text/csv" })
-        const url = window.URL.createObjectURL(blob)
-        const a = document.createElement("a")
-        a.href = url
-        a.download = `${name.toLowerCase().replace(/\s+/g, "_")}.csv`
-        a.click()
-        window.URL.revokeObjectURL(url)
+        downloadBlob(csvRows.join("\n"), "text/csv", `${name.toLowerCase().replace(/\s+/g, "_")}.csv`)
+      } else if (type === "daily") {
+        const since30d = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()
+        const { data: events } = await supabase
+          .from("analytics_events")
+          .select("created_at, post_id")
+          .eq("event_type", "page_view")
+          .gte("created_at", since30d)
+          .limit(20000)
+
+        const rows: Record<string, { views: number; posts: number }> = {}
+        for (let i = 29; i >= 0; i--) {
+          const d = new Date()
+          d.setDate(d.getDate() - i)
+          rows[d.toISOString().slice(0, 10)] = { views: 0, posts: 0 }
+        }
+        ;(events || []).forEach((e: any) => {
+          const day = new Date(e.created_at).toISOString().slice(0, 10)
+          if (rows[day]) { rows[day].views++; if (e.post_id) rows[day].posts++ }
+        })
+        const csv = ["date,all_pages,article_pages"].concat(
+          Object.entries(rows).map(([date, v]) => `${date},${v.views},${v.posts}`)
+        ).join("\n")
+        downloadBlob(csv, "text/csv", `daily_views_30d.csv`)
       } else {
         const { data: events } = await supabase
           .from("analytics_events")
-          .select("page_url, referrer, created_at")
+          .select("page_url, referrer, country, created_at")
           .eq("event_type", "page_view")
+          .order("created_at", { ascending: false })
           .limit(5000)
 
         const rows = [
           ["Report", name],
           ["Generated", new Date().toISOString()],
           ["Total Events", String(events?.length || 0)],
+          ["", ""],
+          ["page_url", "referrer", "country", "created_at"],
+          ...(events || []).map((e: any) => [e.page_url || "", e.referrer || "", e.country || "", e.created_at]),
         ]
-        const blob = new Blob([rows.map(r => r.join("\t")).join("\n")], { type: "text/tab-separated-values" })
-        const url = window.URL.createObjectURL(blob)
-        const a = document.createElement("a")
-        a.href = url
-        a.download = `${name.toLowerCase().replace(/\s+/g, "_")}.txt`
-        a.click()
-        window.URL.revokeObjectURL(url)
+        downloadBlob(rows.map(r => r.map(x => `"${String(x).replace(/"/g, '""')}"`).join(",")).join("\n"), "text/csv", `${name.toLowerCase().replace(/\s+/g, "_")}.csv`)
       }
     } catch (err) {
       console.error("Export failed:", err)
@@ -795,6 +853,7 @@ function ExportsTab() {
           {[
             { name: "Traffic Report", type: "txt" },
             { name: "Content Performance", type: "csv" },
+            { name: "Daily Views (30d)", type: "daily" },
             { name: "SEO Overview", type: "txt" },
           ].map((r, i) => (
             <div key={i} className="flex items-center justify-between p-3 rounded-lg bg-muted/30">

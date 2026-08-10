@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from "react"
 import { usePathname } from "next/navigation"
+import { trackView } from "@/lib/view-tracking"
 
 export function PageViewTracker() {
   const pathname = usePathname()
@@ -20,30 +21,7 @@ export function PageViewTracker() {
       sessionStorage.setItem("tracked_paths", JSON.stringify(trackedPaths.slice(-50)))
     } catch {}
 
-    const data: Record<string, string> = { pageUrl: path }
-    data.referrer = document.referrer || ""
-
-    try {
-      const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone
-      if (!timeZone || timeZone === "UTC") return
-      const parts = timeZone.split("/")
-      const region = parts[0] || ""
-      if (!region || region === "Etc") return
-      const countryMap: Record<string, string> = {
-        "America": "US", "Europe": "GB", "Asia": "IN", "Africa": "ZA",
-        "Australia": "AU", "Pacific": "NZ", "Atlantic": "US",
-      }
-      const detected = parts.length === 2
-        ? (parts[1]?.length === 2 ? parts[1] : countryMap[region] || region)
-        : countryMap[region] || null
-      if (detected) data.country = detected
-    } catch {}
-
-    fetch("/api/increment-views", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(data),
-    }).catch((err) => console.error("PageViewTracker error:", err))
+    trackView({ pageUrl: path, referrer: document.referrer || "" })
   }, [pathname])
 
   return null

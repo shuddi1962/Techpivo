@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
 import { createClient as createAdminClient } from "@/lib/supabase/admin"
-import { DEFAULT_FX_RATES } from "@/lib/ads"
+import { DEFAULT_FX_RATES, computeCampaignSpend } from "@/lib/ads"
 
 async function requireRole(allowed: string[] = ["admin", "editor"]) {
   const supabase = createClient()
@@ -112,6 +112,69 @@ export async function GET(request: Request) {
         .order("date", { ascending: false })
         .limit(100)
       return NextResponse.json({ revenue: data || [] })
+    }
+
+    if (section === "analytics") {
+      const days = 30
+      const fromIso = new Date(Date.now() - (days - 1) * 86400000).toISOString().slice(0, 10)
+
+      const [{ data: dailyStats }, { data: revenueRows }] = await Promise.all([
+        supabase
+          .from("ad_campaign_daily_stats")
+          .select("stat_date, impressions, clicks")
+          .gte("stat_date", fromIso),
+        supabase
+          .from("ad_revenue")
+          .select("date, impressions, clicks, revenue")
+          .gte("date", fromIso),
+      ])
+
+      const dailyMap: Record<string, { date: string; label: string; impressions: number; clicks: number; revenue: number }> = {}
+      for (let i = days - 1; i >= 0; i--) {
+        const d = new Date(Date.now() - i * 86400000)
+        const key = d.toISOString().slice(0, 10)
+        dailyMap[key] = { date: key, label: d.toLocaleDateString("en-US", { month: "short", day: "numeric" }), impressions: 0, clicks: 0, revenue: 0 }
+      }
+      ;(dailyStats || []).forEach((r: any) => {
+        const key = String(r.stat_date).slice(0, 10)
+        if (dailyMap[key]) {
+          dailyMap[key].impressions += r.impressions || 0
+          dailyMap[key].clicks += r.clicks || 0
+        }
+      })
+      ;(revenueRows || []).forEach((r: any) => {
+        const key = String(r.date).slice(0, 10)
+        if (dailyMap[key]) dailyMap[key].revenue += Number(r.revenue || 0)
+      })
+
+      const { data: campaigns } = await supabase
+        .from("ad_campaigns")
+        .select("id, advertiser_name, headline, status, impressions, clicks, billing_model, bid_amount, spend, placement_id, placements:ad_placements(name)")
+        .order("impressions", { ascending: false })
+        .limit(8)
+
+      const topCampaigns = (campaigns || []).map((c: any) => ({
+        id: c.id,
+        name: c.headline || c.advertiser_name,
+        advertiser: c.advertiser_name,
+        status: c.status,
+        impressions: c.impressions || 0,
+        clicks: c.clicks || 0,
+        ctr: (c.impressions || 0) > 0 ? ((c.clicks || 0) / (c.impressions || 0)) * 100 : 0,
+        spend: computeCampaignSpend(c),
+      }))
+
+      const placementMap: Record<string, { name: string; impressions: number; clicks: number }> = {}
+      ;(campaigns || []).forEach((c: any) => {
+        const key = c.placement_id || "unassigned"
+        const pname = c.placements?.name || "Unassigned"
+        if (!placementMap[key]) placementMap[key] = { name: pname, impressions: 0, clicks: 0 }
+        placementMap[key].impressions += c.impressions || 0
+        placementMap[key].clicks += c.clicks || 0
+      })
+      const placementStats = Object.values(placementMap).sort((a, b) => b.impressions - a.impressions)
+
+      return NextResponse.json({ daily: Object.values(dailyMap), top_campaigns: topCampaigns, placement_stats: placementStats })
     }
 
     // overview / marketplace stats
