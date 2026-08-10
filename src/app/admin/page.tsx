@@ -11,13 +11,24 @@ import { ExecutiveKpiCards } from "@/components/admin/executive-kpi-cards"
 import {
   RefreshCw, TrendingUp, TrendingDown,
   BarChart3, Activity, Globe, MousePointerClick, Smartphone,
-  FileText, Clock, ArrowUpRight, Eye, Users,
+  FileText, Clock, ArrowUpRight, Eye, Users, Wallet,
 } from "lucide-react"
 import {
-  ChartLine, ChartBar, ChartArea, ChartPie, ChartComposed, ChartLeaderboard, ChartRealTimeMap
+  ChartLine, ChartBar, ChartPie, ChartComposed, ChartLeaderboard, ChartRealTimeMap
 } from "@/components/charts"
 
 const COLORS = ["#3b82f6", "#22c55e", "#f59e0b", "#ef4444", "#8b5cf6", "#ec4899", "#14b8a6", "#f97316"]
+
+const ORDER_STATUS_COLORS: Record<string, { bg: string; fg: string }> = {
+  draft: { bg: "#F1F5F9", fg: "#475569" },
+  pending: { bg: "#FEF3C7", fg: "#92400E" },
+  approved: { bg: "#DBEAFE", fg: "#1E40AF" },
+  rejected: { bg: "#FEE2E2", fg: "#991B1B" },
+  live: { bg: "#DCFCE7", fg: "#166534" },
+  completed: { bg: "#E2E8F0", fg: "#334155" },
+  paused: { bg: "#EDE9FE", fg: "#5B21B6" },
+  cancelled: { bg: "#FEE2E2", fg: "#991B1B" },
+}
 
 interface CountryMeta { name: string; flag: string; lat: number; lng: number }
 
@@ -224,7 +235,7 @@ function resolveCountry(raw: string | null): CountryMeta | null {
 
 export default function AdminDashboard() {
   const supabaseRef = useRef(createClient())
-  const [viewsOverTime, setViewsOverTime] = useState<{ date: string; views: number }[]>([])
+  const [viewsOverTime, setViewsOverTime] = useState<{ date: string; views: number; sessions: number }[]>([])
   const [topPosts, setTopPosts] = useState<any[]>([])
   const [statusDist, setStatusDist] = useState<{ name: string; value: number }[]>([])
   const [regions, setRegions] = useState<{ name: string; value: number }[]>([])
@@ -233,6 +244,11 @@ export default function AdminDashboard() {
   const [geoData, setGeoData] = useState<{ country: string; lat: number; lng: number; value: number; label?: string }[]>([])
   const [liveVisitors, setLiveVisitors] = useState(0)
   const [viewsToday, setViewsToday] = useState(0)
+  const [sessionsToday, setSessionsToday] = useState(0)
+  const [sessions7d, setSessions7d] = useState(0)
+  const [revenue30d, setRevenue30d] = useState(0)
+  const [pendingOrders, setPendingOrders] = useState(0)
+  const [recentOrders, setRecentOrders] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
 
   const fetchData = useCallback(async () => {
@@ -246,9 +262,10 @@ export default function AdminDashboard() {
         topPostsRes, dailyViewsRes, statusCounts,
         regionRes, pageRes, referrerRes,
         viewsTodayRes, liveRes,
+        sessionsRes, adRevenueRes, pendingRes, recentOrdersRes,
       ] = await Promise.all([
         supabase.from("posts").select("id, title, slug, views").eq("status", "published").order("views", { ascending: false }).limit(5),
-        supabase.from("analytics_events").select("created_at").eq("event_type", "page_view").gte("created_at", new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()),
+        supabase.from("analytics_events").select("created_at, session_id").eq("event_type", "page_view").gte("created_at", new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()),
         Promise.all([
           supabase.from("posts").select("*", { count: "exact", head: true }).eq("status", "published"),
           supabase.from("posts").select("*", { count: "exact", head: true }).eq("status", "draft"),
@@ -260,21 +277,28 @@ export default function AdminDashboard() {
         supabase.from("analytics_events").select("referrer").eq("event_type", "page_view").not("referrer", "is", null).limit(500),
         supabase.from("analytics_events").select("*", { count: "exact", head: true }).eq("event_type", "page_view").gte("created_at", todayStart),
         supabase.from("analytics_events").select("*", { count: "exact", head: true }).eq("event_type", "page_view").gte("created_at", fiveMinAgo),
+        supabase.from("analytics_events").select("session_id, created_at").eq("event_type", "page_view").not("session_id", "is", null).gte("created_at", new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()),
+        supabase.from("ad_revenue").select("revenue").gte("date", new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10)),
+        supabase.from("ad_campaigns").select("*", { count: "exact", head: true }).eq("status", "pending"),
+        supabase.from("ad_campaigns").select("id, headline, advertiser_email, total_price, status, created_at").order("created_at", { ascending: false }).limit(5),
       ])
 
       if (topPostsRes.data) setTopPosts(topPostsRes.data)
 
-      const dailyMap: Record<string, number> = {}
+      const dailyMap: Record<string, { views: number; sessions: Set<string> }> = {}
       for (let i = 6; i >= 0; i--) {
         const d = new Date(now)
         d.setDate(d.getDate() - i)
-        dailyMap[d.toLocaleDateString("en-US", { month: "short", day: "numeric" })] = 0
+        dailyMap[d.toLocaleDateString("en-US", { month: "short", day: "numeric" })] = { views: 0, sessions: new Set() }
       }
       ;(dailyViewsRes.data || []).forEach((e: any) => {
         const key = new Date(e.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric" })
-        if (dailyMap[key] !== undefined) dailyMap[key]++
+        if (dailyMap[key]) {
+          dailyMap[key].views++
+          if (e.session_id) dailyMap[key].sessions.add(e.session_id)
+        }
       })
-      setViewsOverTime(Object.entries(dailyMap).map(([date, views]) => ({ date, views })))
+      setViewsOverTime(Object.entries(dailyMap).map(([date, v]) => ({ date, views: v.views, sessions: v.sessions.size })))
 
       const [pubC, draftC, schC, archC] = statusCounts
       setStatusDist([
@@ -309,6 +333,12 @@ export default function AdminDashboard() {
 
       setLiveVisitors(liveRes.count || 0)
       setViewsToday(viewsTodayRes.count || 0)
+      const sessionEvents = (sessionsRes.data || []).filter((e: any) => e.session_id)
+      setSessions7d(new Set(sessionEvents.map((e: any) => e.session_id)).size)
+      setSessionsToday(new Set(sessionEvents.filter((e: any) => e.created_at >= todayStart).map((e: any) => e.session_id)).size)
+      setRevenue30d((adRevenueRes.data || []).reduce((s: number, r: any) => s + (Number(r.revenue) || 0), 0))
+      setPendingOrders(pendingRes.count || 0)
+      setRecentOrders(recentOrdersRes.data || [])
 
       const pageMap: Record<string, number> = {}
       ;(pageRes.data || []).forEach((r: any) => {
@@ -338,6 +368,9 @@ export default function AdminDashboard() {
       .channel("dashboard-realtime")
       .on("postgres_changes", { event: "UPDATE", schema: "public", table: "posts" }, () => { fetchData() })
       .on("postgres_changes", { event: "INSERT", schema: "public", table: "analytics_events" }, () => { fetchData() })
+      .on("postgres_changes", { event: "*", schema: "public", table: "ad_revenue" }, () => { fetchData() })
+      .on("postgres_changes", { event: "*", schema: "public", table: "ad_campaigns" }, () => { fetchData() })
+      .on("postgres_changes", { event: "*", schema: "public", table: "ad_campaign_daily_stats" }, () => { fetchData() })
       .subscribe()
     const interval = setInterval(fetchData, 30000)
     return () => {
@@ -376,6 +409,10 @@ export default function AdminDashboard() {
               <div className="text-right">
                 <span className="text-xl font-bold text-amber-500 tabular-nums">{viewsToday.toLocaleString()}</span>
                 <span className="text-xs text-muted-foreground ml-1.5">today</span>
+              </div>
+              <div className="text-right">
+                <span className="text-xl font-bold text-blue-500 tabular-nums">{sessionsToday.toLocaleString()}</span>
+                <span className="text-xs text-muted-foreground ml-1.5">sessions</span>
               </div>
             </div>
           )}
@@ -425,6 +462,71 @@ export default function AdminDashboard() {
 
       <ExecutiveKpiCards />
 
+      <div className="bg-card border rounded-xl p-5">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-2.5">
+            <Wallet className="h-5 w-5 text-amber-500" />
+            <h2 className="text-base font-semibold">Revenue & Sessions</h2>
+          </div>
+          {!loading && (
+            <span className="text-xs font-medium text-muted-foreground bg-muted/50 px-2.5 py-1 rounded-md border">
+              updates live
+            </span>
+          )}
+        </div>
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+          <div className="rounded-xl bg-muted/40 p-4">
+            <p className="text-xs text-muted-foreground flex items-center gap-1"><Wallet className="h-3 w-3" /> Ad Revenue (30d)</p>
+            <p className="text-2xl font-bold mt-1 tabular-nums">{loading ? "…" : `$${revenue30d.toFixed(2)}`}</p>
+          </div>
+          <div className="rounded-xl bg-muted/40 p-4">
+            <p className="text-xs text-muted-foreground flex items-center gap-1"><Clock className="h-3 w-3" /> Pending Orders</p>
+            <p className="text-2xl font-bold mt-1 tabular-nums text-amber-500">{loading ? "…" : pendingOrders}</p>
+          </div>
+          <div className="rounded-xl bg-muted/40 p-4">
+            <p className="text-xs text-muted-foreground flex items-center gap-1"><Activity className="h-3 w-3" /> Sessions Today</p>
+            <p className="text-2xl font-bold mt-1 tabular-nums text-emerald-500">{loading ? "…" : sessionsToday.toLocaleString()}</p>
+          </div>
+          <div className="rounded-xl bg-muted/40 p-4">
+            <p className="text-xs text-muted-foreground flex items-center gap-1"><Users className="h-3 w-3" /> Sessions (7d)</p>
+            <p className="text-2xl font-bold mt-1 tabular-nums text-blue-500">{loading ? "…" : sessions7d.toLocaleString()}</p>
+          </div>
+          <div className="rounded-xl bg-muted/40 p-4">
+            <p className="text-xs text-muted-foreground flex items-center gap-1"><BarChart3 className="h-3 w-3" /> Views Today</p>
+            <p className="text-2xl font-bold mt-1 tabular-nums">{loading ? "…" : viewsToday.toLocaleString()}</p>
+          </div>
+        </div>
+        {!loading && recentOrders.length > 0 && (
+          <div className="mt-4">
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Recent Campaign Orders</p>
+            <div className="grid md:grid-cols-2 gap-2">
+              {recentOrders.map((c: any) => (
+                <div key={c.id} className="flex items-center justify-between rounded-lg bg-muted/30 px-3 py-2 text-sm">
+                  <div className="min-w-0">
+                    <p className="font-medium truncate">{c.headline || "Untitled campaign"}</p>
+                    <p className="text-xs text-muted-foreground truncate">
+                      {c.advertiser_email || "—"} · {new Date(c.created_at).toLocaleDateString()}
+                    </p>
+                  </div>
+                  <div className="text-right shrink-0 ml-3">
+                    <p className="font-bold tabular-nums">₦{Number(c.total_price || 0).toLocaleString()}</p>
+                    <span
+                      className="text-[10px] font-medium rounded-full px-2 py-0.5"
+                      style={{
+                        backgroundColor: ORDER_STATUS_COLORS[c.status]?.bg || "hsl(var(--muted))",
+                        color: ORDER_STATUS_COLORS[c.status]?.fg || "hsl(var(--muted-foreground))",
+                      }}
+                    >
+                      {c.status}
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <AiExecutiveSummary />
         <AiOpportunityCenter />
@@ -455,10 +557,11 @@ export default function AdminDashboard() {
           ) : !hasViewsData ? (
             <div className="h-64 flex items-center justify-center text-sm text-muted-foreground">No data yet</div>
           ) : (
-            <ChartArea
+            <ChartComposed
               data={viewsOverTime}
               xKey="date"
-              areas={[{ key: "views", color: "#f59e0b", name: "Views" }]}
+              bars={[{ key: "views", color: "#f59e0b", name: "Views" }]}
+              lines={[{ key: "sessions", color: "#3b82f6", name: "Sessions" }]}
               height={260}
             />
           )}

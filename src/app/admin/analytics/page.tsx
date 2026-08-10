@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { BarChart3, Users, Globe, TrendingUp, Share2, Mail, Brain, Download, Wallet, ReceiptText, Eye, MousePointerClick } from "lucide-react"
 import { AiInsights } from "@/components/admin/ai-insights"
-import { ChartLine, ChartBar, ChartArea, ChartPie, ChartRadar, ChartLeaderboard } from "@/components/charts"
+import { ChartLine, ChartBar, ChartArea, ChartPie, ChartLeaderboard } from "@/components/charts"
 import {
   ComposedChart, Bar, Line, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer,
@@ -31,79 +31,95 @@ function OverviewTab() {
   const [data, setData] = useState<any>(null)
   const [loading, setLoading] = useState(true)
 
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const since30d = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()
-        const [users, pageViews, postsCount] = await Promise.all([
-          supabase.from("profiles").select("*", { count: "exact", head: true }),
-          supabase.from("analytics_events").select("*", { count: "exact", head: true }).eq("event_type", "page_view"),
-          supabase.from("posts").select("*", { count: "exact", head: true }).eq("status", "published"),
-        ])
+  const load = useCallback(async () => {
+    try {
+      const since30d = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()
+      const [users, pageViews, postsCount] = await Promise.all([
+        supabase.from("profiles").select("*", { count: "exact", head: true }),
+        supabase.from("analytics_events").select("*", { count: "exact", head: true }).eq("event_type", "page_view"),
+        supabase.from("posts").select("*", { count: "exact", head: true }).eq("status", "published"),
+      ])
 
-        const { data: dailyData } = await supabase
-          .from("analytics_events")
-          .select("created_at, post_id, session_id, page_url")
-          .eq("event_type", "page_view")
-          .gte("created_at", since30d)
-          .limit(20000)
+      const { data: dailyData } = await supabase
+        .from("analytics_events")
+        .select("created_at, post_id, session_id, page_url")
+        .eq("event_type", "page_view")
+        .gte("created_at", since30d)
+        .limit(20000)
 
-        const { data: catPosts } = await supabase
-          .from("posts")
-          .select("category_id, categories!left(name)")
-          .eq("status", "published")
-          .limit(100)
+      const { data: catPosts } = await supabase
+        .from("posts")
+        .select("category_id, categories!left(name)")
+        .eq("status", "published")
+        .limit(100)
 
-        const events = dailyData || []
-        const sessions = new Set<string>()
-        let nullSessions = 0
-        events.forEach((e: any) => {
-          if (e.session_id) sessions.add(e.session_id)
-          else nullSessions++
-        })
-        const sessions30d = sessions.size + nullSessions
-        const postViews30d = events.filter((e: any) => e.post_id).length
+      const events = dailyData || []
+      const sessions = new Set<string>()
+      let nullSessions = 0
+      events.forEach((e: any) => {
+        if (e.session_id) sessions.add(e.session_id)
+        else nullSessions++
+      })
+      const sessions30d = sessions.size + nullSessions
+      const postViews30d = events.filter((e: any) => e.post_id).length
 
-        const pageMap: Record<string, number> = {}
-        events.forEach((e: any) => {
-          const url = e.page_url || "/"
-          pageMap[url] = (pageMap[url] || 0) + 1
-        })
-        const sortedPages = Object.entries(pageMap).sort((a, b) => b[1] - a[1]).slice(0, 5)
+      const pageMap: Record<string, number> = {}
+      events.forEach((e: any) => {
+        const url = e.page_url || "/"
+        pageMap[url] = (pageMap[url] || 0) + 1
+      })
+      const sortedPages = Object.entries(pageMap).sort((a, b) => b[1] - a[1]).slice(0, 5)
 
-        const catMap: Record<string, number> = {}
-        ;(catPosts || []).forEach((p: any) => {
-          const name = p.categories?.name || "Uncategorized"
-          catMap[name] = (catMap[name] || 0) + 1
-        })
+      const catMap: Record<string, number> = {}
+      ;(catPosts || []).forEach((p: any) => {
+        const name = p.categories?.name || "Uncategorized"
+        catMap[name] = (catMap[name] || 0) + 1
+      })
 
-        const dailyChart = Array.from({ length: 30 }).map((_, i) => {
-          const d = new Date()
-          d.setDate(d.getDate() - (29 - i))
-          const dayStr = d.toDateString()
-          const label = d.toLocaleDateString("en-US", { month: "short", day: "numeric" })
-          const dayEvents = events.filter((e: any) => new Date(e.created_at).toDateString() === dayStr)
-          return { date: label, views: dayEvents.length, posts: dayEvents.filter((e: any) => e.post_id).length }
-        })
+      const dailyChart = Array.from({ length: 30 }).map((_, i) => {
+        const d = new Date()
+        d.setDate(d.getDate() - (29 - i))
+        const dayStr = d.toDateString()
+        const label = d.toLocaleDateString("en-US", { month: "short", day: "numeric" })
+        const dayEvents = events.filter((e: any) => new Date(e.created_at).toDateString() === dayStr)
+        return { date: label, views: dayEvents.length, posts: dayEvents.filter((e: any) => e.post_id).length }
+      })
 
-        setData({
-          users: users.count || 0,
-          sessions: sessions30d,
-          pageViews: pageViews.count || 0,
-          views30d: events.length,
-          postViews30d,
-          postsCount: postsCount.count || 0,
-          dailyChart,
-          topPages: sortedPages,
-          categories: Object.entries(catMap).map(([name, count]) => ({ name, count })),
-        })
-      } catch (err) {
-        console.error("Failed to fetch analytics:", err)
-      }
-      setLoading(false)
+      setData({
+        users: users.count || 0,
+        sessions: sessions30d,
+        pageViews: pageViews.count || 0,
+        views30d: events.length,
+        postViews30d,
+        postsCount: postsCount.count || 0,
+        dailyChart,
+        topPages: sortedPages,
+        categories: Object.entries(catMap).map(([name, count]) => ({ name, count })),
+      })
+    } catch (err) {
+      console.error("Failed to fetch analytics:", err)
     }
-    fetchData()
+    setLoading(false)
   }, [supabase])
+
+  useEffect(() => { load() }, [load])
+
+  useEffect(() => {
+    let mounted = true
+    const id = `analytics_overview_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`
+    const channel = supabase.channel(id)
+    const refresh = () => { if (mounted) load() }
+    channel.on("postgres_changes", { event: "INSERT", schema: "public", table: "analytics_events" }, refresh)
+    channel.subscribe()
+    const poll = setInterval(refresh, 30000)
+    window.addEventListener("focus", refresh)
+    return () => {
+      mounted = false
+      clearInterval(poll)
+      window.removeEventListener("focus", refresh)
+      supabase.removeChannel(channel)
+    }
+  }, [supabase, load])
 
   if (loading) return <div className="flex items-center justify-center h-64 text-muted-foreground">Loading analytics...</div>
   if (!data) return <div className="flex items-center justify-center h-64 text-muted-foreground">No data available yet</div>
@@ -357,115 +373,141 @@ function AudienceTab() {
   const [data, setData] = useState<any>(null)
   const [loading, setLoading] = useState(true)
 
-  useEffect(() => {
-    const fetchAudience = async () => {
-      try {
-        const { data: events } = await supabase
-          .from("analytics_events")
-          .select("country, device, browser, os")
-          .eq("event_type", "page_view")
-          .limit(5000)
-
-        const deviceMap: Record<string, number> = {}
-        const browserMap: Record<string, number> = {}
-        const osMap: Record<string, number> = {}
-        const countryMap: Record<string, number> = {}
-
-        ;(events || []).forEach((e: any) => {
-          if (e.device) deviceMap[e.device] = (deviceMap[e.device] || 0) + 1
-          if (e.browser) browserMap[e.browser] = (browserMap[e.browser] || 0) + 1
-          if (e.os) osMap[e.os] = (osMap[e.os] || 0) + 1
-          if (e.country) countryMap[e.country] = (countryMap[e.country] || 0) + 1
-        })
-
-        setData({
-          devices: Object.entries(deviceMap).sort((a, b) => b[1] - a[1]).map(([k, v]) => ({ name: k, value: v })),
-          browsers: Object.entries(browserMap).sort((a, b) => b[1] - a[1]).map(([k, v]) => ({ name: k, value: v })),
-          os: Object.entries(osMap).sort((a, b) => b[1] - a[1]).map(([k, v]) => ({ name: k, value: v })),
-          countries: Object.entries(countryMap).sort((a, b) => b[1] - a[1]).slice(0, 5).map(([k, v]) => ({ name: k, value: v })),
-        })
-      } catch (err) { console.error("Audience fetch error:", err) }
-      setLoading(false)
-    }
-    fetchAudience()
+  const load = useCallback(async () => {
+    try {
+      const [eventsRes, postsRes] = await Promise.all([
+        supabase.from("analytics_events").select("country, device, browser, os, post_id").eq("event_type", "page_view").limit(5000),
+        supabase.from("posts").select("id, title, slug").eq("status", "published").limit(300),
+      ])
+      const events = eventsRes.data || []
+      const deviceMap: Record<string, number> = {}
+      const browserMap: Record<string, number> = {}
+      const osMap: Record<string, number> = {}
+      const countryMap: Record<string, number> = {}
+      const postMap: Record<string, number> = {}
+      events.forEach((e: any) => {
+        if (e.device) deviceMap[e.device] = (deviceMap[e.device] || 0) + 1
+        if (e.browser) browserMap[e.browser] = (browserMap[e.browser] || 0) + 1
+        if (e.os) osMap[e.os] = (osMap[e.os] || 0) + 1
+        if (e.country) countryMap[e.country] = (countryMap[e.country] || 0) + 1
+        if (e.post_id) postMap[e.post_id] = (postMap[e.post_id] || 0) + 1
+      })
+      const toList = (m: Record<string, number>) => Object.entries(m).sort((a, b) => b[1] - a[1]).map(([name, value]) => ({ name, value }))
+      const posts = new Map((postsRes.data || []).map((p: any) => [p.id, p]))
+      setData({
+        total: events.length,
+        devices: toList(deviceMap),
+        browsers: toList(browserMap),
+        os: toList(osMap),
+        countries: toList(countryMap).slice(0, 8),
+        pages: toList(postMap).slice(0, 8).map(({ name, value }) => ({
+          name,
+          title: posts.get(name)?.title || "Unknown post",
+          slug: posts.get(name)?.slug || "",
+          value,
+        })),
+      })
+    } catch (err) { console.error("Audience fetch error:", err) }
+    setLoading(false)
   }, [supabase])
+
+  useEffect(() => { load() }, [load])
+
+  useEffect(() => {
+    let mounted = true
+    const id = `analytics_audience_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`
+    const channel = supabase.channel(id)
+    const refresh = () => { if (mounted) load() }
+    channel.on("postgres_changes", { event: "INSERT", schema: "public", table: "analytics_events" }, refresh)
+    channel.subscribe()
+    const poll = setInterval(refresh, 60000)
+    window.addEventListener("focus", refresh)
+    return () => {
+      mounted = false
+      clearInterval(poll)
+      window.removeEventListener("focus", refresh)
+      supabase.removeChannel(channel)
+    }
+  }, [supabase, load])
 
   if (loading) return <div className="h-64 flex items-center justify-center text-muted-foreground">Loading audience data...</div>
   if (!data) return <div className="h-64 flex items-center justify-center text-muted-foreground">No audience data yet. Data appears as visitors browse the site.</div>
 
-  const radarData = [
-    { metric: "Desktop", value: (data.devices.find((d: any) => d.name.toLowerCase().includes("desktop") || d.name.toLowerCase().includes("windows"))?.value || 0) > 0 ? 100 : 50 },
-    { metric: "Mobile", value: (data.devices.find((d: any) => d.name.toLowerCase().includes("mobile") || d.name.toLowerCase().includes("android") || d.name.toLowerCase().includes("ios"))?.value || 0) > 0 ? 100 : 50 },
-    { metric: "Tablet", value: (data.devices.find((d: any) => d.name.toLowerCase().includes("tablet"))?.value || 0) > 0 ? 80 : 20 },
-    { metric: "Chrome", value: (data.browsers.find((d: any) => d.name.toLowerCase().includes("chrome"))?.value || 0) > 0 ? 100 : 50 },
-    { metric: "Safari", value: (data.browsers.find((d: any) => d.name.toLowerCase().includes("safari"))?.value || 0) > 0 ? 80 : 30 },
-    { metric: "Firefox", value: (data.browsers.find((d: any) => d.name.toLowerCase().includes("firefox"))?.value || 0) > 0 ? 60 : 20 },
-  ]
+  const pct = (v: number) => (data.total > 0 ? ((v / data.total) * 100).toFixed(1) : "0")
+
+  const renderBreakdown = (items: { name: string; value: number }[], color: string) => (
+    <div className="space-y-2">
+      {items.length === 0 ? (
+        <p className="text-sm text-muted-foreground text-center py-8">No data yet</p>
+      ) : (
+        items.map((it) => (
+          <div key={it.name} className="p-2.5 rounded-lg bg-muted/30">
+            <div className="flex items-center justify-between text-sm">
+              <span className="font-medium">{it.name}</span>
+              <span className="text-xs text-muted-foreground">
+                {it.value.toLocaleString()} · <span className="font-bold text-foreground">{pct(it.value)}%</span>
+              </span>
+            </div>
+            <div className="mt-1.5 h-1.5 rounded-full bg-muted overflow-hidden">
+              <div className="h-full rounded-full" style={{ width: `${pct(it.value)}%`, backgroundColor: color }} />
+            </div>
+          </div>
+        ))
+      )}
+    </div>
+  )
 
   return (
     <div className="space-y-6">
       <div className="grid md:grid-cols-3 gap-6">
         <Card>
           <CardHeader><CardTitle>Devices</CardTitle></CardHeader>
-          <CardContent>
-            {data.devices.length === 0 ? (
-              <p className="text-sm text-muted-foreground text-center py-8">No device data</p>
-            ) : (
-              <ChartPie data={data.devices} nameKey="name" valueKey="value" donut height={260} showLabel />
-            )}
-          </CardContent>
+          <CardContent>{renderBreakdown(data.devices, COLORS[0])}</CardContent>
         </Card>
         <Card>
           <CardHeader><CardTitle>Browsers</CardTitle></CardHeader>
-          <CardContent>
-            {data.browsers.length === 0 ? (
-              <p className="text-sm text-muted-foreground text-center py-8">No browser data</p>
-            ) : (
-              <ChartPie data={data.browsers} nameKey="name" valueKey="value" donut height={260} showLabel />
-            )}
-          </CardContent>
+          <CardContent>{renderBreakdown(data.browsers, COLORS[1])}</CardContent>
         </Card>
         <Card>
           <CardHeader><CardTitle>Operating Systems</CardTitle></CardHeader>
-          <CardContent>
-            {data.os.length === 0 ? (
-              <p className="text-sm text-muted-foreground text-center py-8">No OS data</p>
-            ) : (
-              <ChartPie data={data.os} nameKey="name" valueKey="value" donut height={260} showLabel />
-            )}
-          </CardContent>
+          <CardContent>{renderBreakdown(data.os, COLORS[2])}</CardContent>
         </Card>
       </div>
       <div className="grid md:grid-cols-2 gap-6">
         <Card>
-          <CardHeader><CardTitle>Audience Comparison</CardTitle></CardHeader>
-          <CardContent>
-            <ChartRadar
-              data={radarData}
-              angleKey="metric"
-              metrics={[{ key: "value", color: "#8b5cf6", name: "Engagement" }]}
-              height={300}
-            />
-          </CardContent>
+          <CardHeader><CardTitle>Top Countries</CardTitle></CardHeader>
+          <CardContent>{renderBreakdown(data.countries, COLORS[4])}</CardContent>
         </Card>
         <Card>
-          <CardHeader><CardTitle>Top Countries</CardTitle></CardHeader>
+          <CardHeader><CardTitle>Top Pages</CardTitle></CardHeader>
           <CardContent>
-            {data.countries.length === 0 ? (
-              <p className="text-sm text-muted-foreground text-center py-8">No country data</p>
+            {data.pages.length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-8">No page views recorded yet</p>
             ) : (
-              <ChartBar
-                data={data.countries}
-                xKey="name"
-                bars={[{ key: "value", color: COLORS[2], name: "Visitors" }]}
-                height={260}
-                layout="vertical"
-                showValues
-              />
+              <div className="space-y-2">
+                {data.pages.map((p: any, i: number) => (
+                  <div key={i} className="p-2.5 rounded-lg bg-muted/30">
+                    <div className="flex items-center justify-between text-sm gap-3">
+                      <span className="font-medium truncate min-w-0" title={p.title}>{p.title}</span>
+                      <span className="text-xs text-muted-foreground shrink-0">
+                        {p.value.toLocaleString()} · <span className="font-bold text-foreground">{pct(p.value)}%</span>
+                      </span>
+                    </div>
+                    {p.slug && <p className="text-[11px] text-muted-foreground truncate mt-0.5">/{p.slug}</p>}
+                    <div className="mt-1.5 h-1.5 rounded-full bg-muted overflow-hidden">
+                      <div className="h-full rounded-full" style={{ width: `${pct(p.value)}%`, backgroundColor: COLORS[5] }} />
+                    </div>
+                  </div>
+                ))}
+              </div>
             )}
           </CardContent>
         </Card>
       </div>
+      <p className="text-xs text-muted-foreground">
+        Sample size: <strong>{data.total.toLocaleString()}</strong> tracked page views since device/browser/OS tracking started (2026-08-10).
+        Percentages settle down as more visitors arrive.
+      </p>
     </div>
   )
 }
@@ -475,38 +517,54 @@ function TrafficSourcesTab() {
   const [data, setData] = useState<any>(null)
   const [loading, setLoading] = useState(true)
 
-  useEffect(() => {
-    const fetchTraffic = async () => {
-      try {
-        const { data: events } = await supabase
-          .from("analytics_events")
-          .select("referrer")
-          .eq("event_type", "page_view")
-          .limit(3000)
+  const load = useCallback(async () => {
+    try {
+      const { data: events } = await supabase
+        .from("analytics_events")
+        .select("referrer")
+        .eq("event_type", "page_view")
+        .limit(3000)
 
-        const refMap: Record<string, number> = {}
-        ;(events || []).forEach((e: any) => {
-          let ref = e.referrer || "Direct"
-          if (!ref) ref = "Direct"
-          try { ref = new URL(ref).hostname.replace("www.", "") } catch { ref = "Direct" }
-          refMap[ref] = (refMap[ref] || 0) + 1
-        })
+      const refMap: Record<string, number> = {}
+      ;(events || []).forEach((e: any) => {
+        let ref = e.referrer || "Direct"
+        if (!ref) ref = "Direct"
+        try { ref = new URL(ref).hostname.replace("www.", "") } catch { ref = "Direct" }
+        refMap[ref] = (refMap[ref] || 0) + 1
+      })
 
-        const sorted = Object.entries(refMap).sort((a, b) => b[1] - a[1])
-        const total = sorted.reduce((s, [, v]) => s + v, 0) || 1
+      const sorted = Object.entries(refMap).sort((a, b) => b[1] - a[1])
+      const total = sorted.reduce((s, [, v]) => s + v, 0) || 1
 
-        const socialRefs = ["facebook", "twitter", "x.com", "linkedin", "reddit", "t.co", "instagram"]
-        const social = sorted.filter(([k]) => socialRefs.some(s => k.includes(s)))
+      const socialRefs = ["facebook", "twitter", "x.com", "linkedin", "reddit", "t.co", "instagram"]
+      const social = sorted.filter(([k]) => socialRefs.some(s => k.includes(s)))
 
-        setData({
-          sources: sorted.slice(0, 8).map(([k, v]) => ({ source: k === "Direct" ? "Direct" : k, sessions: v, pct: Math.round((v / total) * 100) })),
-          social: social.map(([k, v]) => ({ platform: k, sessions: v })),
-        })
-      } catch (err) { console.error("Traffic fetch error:", err) }
-      setLoading(false)
-    }
-    fetchTraffic()
+      setData({
+        sources: sorted.slice(0, 8).map(([k, v]) => ({ source: k === "Direct" ? "Direct" : k, sessions: v, pct: Math.round((v / total) * 100) })),
+        social: social.map(([k, v]) => ({ platform: k, sessions: v })),
+      })
+    } catch (err) { console.error("Traffic fetch error:", err) }
+    setLoading(false)
   }, [supabase])
+
+  useEffect(() => { load() }, [load])
+
+  useEffect(() => {
+    let mounted = true
+    const id = `analytics_traffic_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`
+    const channel = supabase.channel(id)
+    const refresh = () => { if (mounted) load() }
+    channel.on("postgres_changes", { event: "INSERT", schema: "public", table: "analytics_events" }, refresh)
+    channel.subscribe()
+    const poll = setInterval(refresh, 30000)
+    window.addEventListener("focus", refresh)
+    return () => {
+      mounted = false
+      clearInterval(poll)
+      window.removeEventListener("focus", refresh)
+      supabase.removeChannel(channel)
+    }
+  }, [supabase, load])
 
   if (loading) return <div className="h-64 flex items-center justify-center text-muted-foreground">Loading traffic data...</div>
   if (!data || data.sources.length === 0) return <div className="h-64 flex items-center justify-center text-muted-foreground">No traffic data yet. Data appears as visitors come from external sites.</div>
@@ -557,39 +615,56 @@ function SocialTab() {
   const [data, setData] = useState<any>(null)
   const [loading, setLoading] = useState(true)
 
-  useEffect(() => {
-    const fetchSocial = async () => {
-      try {
-        const { data: accounts } = await supabase.from("social_accounts").select("*")
-        const { data: events } = await supabase
-          .from("analytics_events")
-          .select("referrer, created_at")
-          .eq("event_type", "page_view")
-          .limit(3000)
+  const load = useCallback(async () => {
+    try {
+      const { data: accounts } = await supabase.from("social_accounts").select("*")
+      const { data: events } = await supabase
+        .from("analytics_events")
+        .select("referrer, created_at")
+        .eq("event_type", "page_view")
+        .limit(3000)
 
-        const platformRefs = ["facebook", "twitter", "x.com", "linkedin", "t.co", "instagram", "reddit"]
-        const socialEvents: Record<string, number> = {}
-        ;(events || []).forEach((e: any) => {
-          const ref = e.referrer || ""
-          for (const p of platformRefs) {
-            if (ref.includes(p)) {
-              socialEvents[p] = (socialEvents[p] || 0) + 1
-              break
-            }
+      const platformRefs = ["facebook", "twitter", "x.com", "linkedin", "t.co", "instagram", "reddit"]
+      const socialEvents: Record<string, number> = {}
+      ;(events || []).forEach((e: any) => {
+        const ref = e.referrer || ""
+        for (const p of platformRefs) {
+          if (ref.includes(p)) {
+            socialEvents[p] = (socialEvents[p] || 0) + 1
+            break
           }
-        })
+        }
+      })
 
-        const socialChart = Object.entries(socialEvents).map(([k, v]) => ({
-          platform: k === "t.co" ? "X (t.co)" : k,
-          referrals: v,
-        }))
+      const socialChart = Object.entries(socialEvents).map(([k, v]) => ({
+        platform: k === "t.co" ? "X (t.co)" : k,
+        referrals: v,
+      }))
 
-        setData({ accounts: accounts || [], socialChart })
-      } catch (err) { console.error("Social fetch error:", err) }
-      setLoading(false)
-    }
-    fetchSocial()
+      setData({ accounts: accounts || [], socialChart })
+    } catch (err) { console.error("Social fetch error:", err) }
+    setLoading(false)
   }, [supabase])
+
+  useEffect(() => { load() }, [load])
+
+  useEffect(() => {
+    let mounted = true
+    const id = `analytics_social_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`
+    const channel = supabase.channel(id)
+    const refresh = () => { if (mounted) load() }
+    channel.on("postgres_changes", { event: "*", schema: "public", table: "social_accounts" }, refresh)
+    channel.on("postgres_changes", { event: "INSERT", schema: "public", table: "analytics_events" }, refresh)
+    channel.subscribe()
+    const poll = setInterval(refresh, 30000)
+    window.addEventListener("focus", refresh)
+    return () => {
+      mounted = false
+      clearInterval(poll)
+      window.removeEventListener("focus", refresh)
+      supabase.removeChannel(channel)
+    }
+  }, [supabase, load])
 
   if (loading) return <div className="h-64 flex items-center justify-center text-muted-foreground">Loading social data...</div>
 
@@ -639,49 +714,66 @@ function NewsletterTab() {
   const [data, setData] = useState<any>(null)
   const [loading, setLoading] = useState(true)
 
-  useEffect(() => {
-    const fetchNewsletter = async () => {
-      try {
-        const since30d = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()
-        const [subsRes, sendsRes, sendsCount, subGrowthRes] = await Promise.all([
-          supabase.from("subscribers").select("*", { count: "exact", head: true }).eq("status", "active"),
-          supabase.from("newsletter_sends").select("subject, open_count, sent_at").order("sent_at", { ascending: false }).limit(5),
-          supabase.from("newsletter_sends").select("*", { count: "exact", head: true }),
-          supabase.from("subscribers").select("subscribed_at").eq("status", "active").gte("subscribed_at", since30d).limit(2000),
-        ])
+  const load = useCallback(async () => {
+    try {
+      const since30d = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()
+      const [subsRes, sendsRes, sendsCount, subGrowthRes] = await Promise.all([
+        supabase.from("subscribers").select("*", { count: "exact", head: true }).eq("status", "active"),
+        supabase.from("newsletter_sends").select("subject, open_count, sent_at").order("sent_at", { ascending: false }).limit(5),
+        supabase.from("newsletter_sends").select("*", { count: "exact", head: true }),
+        supabase.from("subscribers").select("subscribed_at").eq("status", "active").gte("subscribed_at", since30d).limit(2000),
+      ])
 
-        const growthMap: Record<string, number> = {}
-        const growthChart = Array.from({ length: 30 }).map((_, i) => {
-          const d = new Date()
-          d.setDate(d.getDate() - (29 - i))
-          const key = d.toLocaleDateString("en-US", { month: "short", day: "numeric" })
-          return { date: key, subscribers: 0 }
-        })
-        const dayIndex: Record<string, number> = {}
-        growthChart.forEach((g, i) => { dayIndex[g.date] = i })
+      const growthMap: Record<string, number> = {}
+      const growthChart = Array.from({ length: 30 }).map((_, i) => {
+        const d = new Date()
+        d.setDate(d.getDate() - (29 - i))
+        const key = d.toLocaleDateString("en-US", { month: "short", day: "numeric" })
+        return { date: key, subscribers: 0 }
+      })
+      const dayIndex: Record<string, number> = {}
+      growthChart.forEach((g, i) => { dayIndex[g.date] = i })
 
-        ;(subGrowthRes.data || []).forEach((s: any) => {
-          const d = new Date(s.subscribed_at).toLocaleDateString("en-US", { month: "short", day: "numeric" })
-          growthMap[d] = (growthMap[d] || 0) + 1
-        })
-        Object.entries(growthMap).forEach(([date, count]) => {
-          if (dayIndex[date] !== undefined) growthChart[dayIndex[date]].subscribers = count
-        })
+      ;(subGrowthRes.data || []).forEach((s: any) => {
+        const d = new Date(s.subscribed_at).toLocaleDateString("en-US", { month: "short", day: "numeric" })
+        growthMap[d] = (growthMap[d] || 0) + 1
+      })
+      Object.entries(growthMap).forEach(([date, count]) => {
+        if (dayIndex[date] !== undefined) growthChart[dayIndex[date]].subscribers = count
+      })
 
-        const sends = sendsRes.data || []
-        setData({
-          subscribers: subsRes.count || 0,
-          campaigns: sends,
-          campaignsSent: sendsCount.count || 0,
-          growthDays: Object.keys(growthMap).length,
-          totalOpens: sends.reduce((s: number, c: any) => s + (c.open_count || 0), 0),
-          growthChart,
-        })
-      } catch (err) { console.error("Newsletter fetch error:", err) }
-      setLoading(false)
-    }
-    fetchNewsletter()
+      const sends = sendsRes.data || []
+      setData({
+        subscribers: subsRes.count || 0,
+        campaigns: sends,
+        campaignsSent: sendsCount.count || 0,
+        growthDays: Object.keys(growthMap).length,
+        totalOpens: sends.reduce((s: number, c: any) => s + (c.open_count || 0), 0),
+        growthChart,
+      })
+    } catch (err) { console.error("Newsletter fetch error:", err) }
+    setLoading(false)
   }, [supabase])
+
+  useEffect(() => { load() }, [load])
+
+  useEffect(() => {
+    let mounted = true
+    const id = `analytics_newsletter_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`
+    const channel = supabase.channel(id)
+    const refresh = () => { if (mounted) load() }
+    channel.on("postgres_changes", { event: "*", schema: "public", table: "subscribers" }, refresh)
+    channel.on("postgres_changes", { event: "*", schema: "public", table: "newsletter_sends" }, refresh)
+    channel.subscribe()
+    const poll = setInterval(refresh, 30000)
+    window.addEventListener("focus", refresh)
+    return () => {
+      mounted = false
+      clearInterval(poll)
+      window.removeEventListener("focus", refresh)
+      supabase.removeChannel(channel)
+    }
+  }, [supabase, load])
 
   if (loading) return <div className="h-64 flex items-center justify-center text-muted-foreground">Loading newsletter data...</div>
 
@@ -1092,6 +1184,9 @@ export default function AnalyticsPage() {
           <h1 className="text-2xl font-bold">Analytics Center</h1>
           <p className="text-sm text-muted-foreground mt-1">Traffic, audience, revenue, and performance intelligence</p>
         </div>
+        <span className="hidden sm:inline-flex items-center gap-1.5 text-[10px] font-medium bg-emerald-100 text-emerald-700 rounded-full px-2.5 py-1">
+          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" /> LIVE · refreshes every 30s
+        </span>
       </div>
       <div className="flex flex-wrap gap-1 border-b pb-px">
         {tabs.map(tab => {

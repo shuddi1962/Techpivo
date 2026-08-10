@@ -63,6 +63,25 @@ export default function ReportsPage() {
     }
     fetchStats()
     loadSchedules()
+
+    let mounted = true
+    const id = `reports_live_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`
+    const channel = supabase.channel(id)
+    const refresh = () => {
+      if (!mounted) return
+      fetchStats()
+      loadSchedules()
+    }
+    channel.on("postgres_changes", { event: "*", schema: "public", table: "report_schedules" }, () => { if (mounted) loadSchedules() })
+    channel.subscribe()
+    const poll = setInterval(refresh, 30000)
+    window.addEventListener("focus", refresh)
+    return () => {
+      mounted = false
+      clearInterval(poll)
+      window.removeEventListener("focus", refresh)
+      supabase.removeChannel(channel)
+    }
   }, [supabase, loadSchedules])
 
   const downloadBlob = (content: string, type: string, name: string) => {
@@ -188,12 +207,17 @@ export default function ReportsPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold flex items-center gap-2">
-          <FileBarChart className="h-6 w-6 text-blue-500" />
-          Report Center
-        </h1>
-        <p className="text-sm text-muted-foreground mt-1">Generate and schedule reports for stakeholders</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold flex items-center gap-2">
+            <FileBarChart className="h-6 w-6 text-blue-500" />
+            Report Center
+          </h1>
+          <p className="text-sm text-muted-foreground mt-1">Generate and schedule reports for stakeholders</p>
+        </div>
+        <span className="hidden sm:inline-flex items-center gap-1.5 text-[10px] font-medium bg-emerald-100 text-emerald-700 rounded-full px-2.5 py-1">
+          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" /> LIVE · refreshes every 30s
+        </span>
       </div>
 
       {error && (
