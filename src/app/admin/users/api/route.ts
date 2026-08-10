@@ -1,13 +1,18 @@
 import { NextResponse } from "next/server"
-import { createClient } from "@/lib/supabase/server"
-import { createClient as createAdminClient } from "@/lib/supabase/admin"
+import { createClient } from "@/lib/supabase/admin"
+import { requireAdminRole, createServiceClient } from "@/lib/admin-auth"
+
+export const dynamic = "force-dynamic"
 
 export async function GET() {
+  const auth = await requireAdminRole()
+  if (!auth.ok) return auth.response
+
   try {
-    const supabase = await createClient()
-    const { data, error } = await supabase
+    const service = createServiceClient()
+    const { data, error } = await service
       .from("audit_logs")
-      .select("action, user_email, created_at")
+      .select("action, user_id, entity_type, details, created_at")
       .order("created_at", { ascending: false })
       .limit(20)
     if (error) throw error
@@ -19,10 +24,13 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
+  const auth = await requireAdminRole()
+  if (!auth.ok) return auth.response
+
   try {
     const body = await request.json()
-    const supabase = await createClient()
-    const adminSupabase = createAdminClient()
+    const adminSupabase = createClient()
+    const service = createServiceClient()
 
     switch (body.action) {
       case "invite": {
@@ -30,7 +38,7 @@ export async function POST(request: Request) {
           return NextResponse.json({ error: "Email is required" }, { status: 400 })
         }
 
-        const { data: existingProfile } = await supabase
+        const { data: existingProfile } = await service
           .from("user_profiles")
           .select("id")
           .eq("username", body.email.split("@")[0])
@@ -47,20 +55,29 @@ export async function POST(request: Request) {
         if (createError) throw createError
 
         if (newUser?.user?.id) {
-          const { error: profileError } = await supabase.from("user_profiles").upsert({
+          const cleanUsername = body.email.split("@")[0]
+          const cleanRole = body.role || "reporter"
+          await service.from("user_profiles").upsert({
             id: newUser.user.id,
-            username: body.email.split("@")[0],
-            full_name: body.email.split("@")[0],
-            role: body.role || "reporter",
+            username: cleanUsername,
+            full_name: cleanUsername,
+            role: cleanRole,
           })
-          if (profileError) console.error("Profile creation error:", profileError)
+          await service.from("profiles").upsert({
+            id: newUser.user.id,
+            username: cleanUsername,
+            full_name: cleanUsername,
+            role: cleanRole,
+            bio: "",
+          })
         }
 
-        await supabase.from("audit_logs").insert({
+        await service.from("audit_logs").insert({
+          user_id: auth.user.id,
           action: "user_invited",
-          user_email: body.email,
-          details: { role: body.role || "reporter" },
-          created_at: new Date().toISOString(),
+          entity_type: "user",
+          details: { email: body.email, role: body.role || "reporter" },
+          ip_address: request.headers.get("x-forwarded-for")?.split(",")[0] || null,
         })
 
         return NextResponse.json({ success: true, message: `Invitation sent to ${body.email}` })
@@ -70,11 +87,22 @@ export async function POST(request: Request) {
         if (!body.user_id || !body.role) {
           return NextResponse.json({ error: "user_id and role are required" }, { status: 400 })
         }
-        const { error } = await supabase
-          .from("user_profiles")
+        const { error: profilesError } = await service
+          .from("profiles")
           .update({ role: body.role })
           .eq("id", body.user_id)
-        if (error) throw error
+        if (profilesError) throw profilesError
+        await service.from("user_profiles").update({ role: body.role }).eq("id", body.user_id)
+
+        await service.from("audit_logs").insert({
+          user_id: auth.user.id,
+          action: "update_role",
+          entity_type: "user",
+          entity_id: body.user_id,
+          details: { role: body.role },
+          ip_address: request.headers.get("x-forwarded-for")?.split(",")[0] || null,
+        })
+
         return NextResponse.json({ success: true })
       }
 

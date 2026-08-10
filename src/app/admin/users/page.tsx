@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { createClient } from "@/lib/supabase/client"
 import type { UserRole } from "@/types/database"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -25,7 +25,7 @@ function AllUsersTab({ users, onUserUpdate }: { users: Profile[]; onUserUpdate?:
   const [editName, setEditName] = useState("")
   const [editRole, setEditRole] = useState("")
   const [saving, setSaving] = useState(false)
-  const supabase = createClient()
+  const [editError, setEditError] = useState("")
 
   const filtered = users.filter(u => {
     const matchSearch = !search || u.full_name?.toLowerCase().includes(search.toLowerCase()) || u.username?.toLowerCase().includes(search.toLowerCase())
@@ -43,21 +43,27 @@ function AllUsersTab({ users, onUserUpdate }: { users: Profile[]; onUserUpdate?:
   const saveEdit = async () => {
     if (!editingUser) return
     setSaving(true)
+    setEditError("")
     try {
-      const { error } = await supabase
-        .from("user_profiles")
-        .update({ full_name: editName, role: editRole })
-        .eq("id", editingUser.id)
-      if (error) {
-        console.error("Failed to update user:", error)
+      const res = await fetch(`/api/admin/users/${editingUser.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ full_name: editName, role: editRole }),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        setEditError(data.error || "Failed to update user")
+        return
       }
+      if (onUserUpdate && editingUser) {
+        onUserUpdate(editingUser.id, { full_name: editName, role: editRole as UserRole })
+      }
+      setEditingUser(null)
     } catch (err) {
       console.error("Failed to update user:", err)
-    }
-    setSaving(false)
-    setEditingUser(null)
-    if (onUserUpdate && editingUser) {
-      onUserUpdate(editingUser.id, { full_name: editName, role: editRole as UserRole })
+      setEditError("Network error — please try again")
+    } finally {
+      setSaving(false)
     }
   }
 
@@ -117,6 +123,7 @@ function AllUsersTab({ users, onUserUpdate }: { users: Profile[]; onUserUpdate?:
                   ))}
                 </select>
               </div>
+              {editError && <p className="text-sm text-red-600">{editError}</p>}
             </div>
             <div className="flex justify-end gap-2 mt-6">
               <Button variant="outline" onClick={() => setEditingUser(null)}>Cancel</Button>
@@ -171,6 +178,18 @@ function RolesTab() {
       setLoading(false)
     }
     fetchData()
+    const channel = supabase
+      .channel(`users_roles_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "custom_roles" }, () => fetchData())
+      .subscribe()
+    const interval = setInterval(fetchData, 30000)
+    const onFocus = () => fetchData()
+    window.addEventListener("focus", onFocus)
+    return () => {
+      supabase.removeChannel(channel)
+      clearInterval(interval)
+      window.removeEventListener("focus", onFocus)
+    }
   }, [supabase])
 
   const handleCreateRole = async () => {
@@ -297,23 +316,27 @@ function RolesTab() {
 function ActivityTab() {
   const [activities, setActivities] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
+  const [emailMap, setEmailMap] = useState<Record<string, string>>({})
 
-  useEffect(() => {
-    (async () => {
-      try {
-        const supabase = createClient()
-        const { data } = await supabase.from("audit_logs").select("action, user_email, created_at").order("created_at", { ascending: false }).limit(20)
-        if (data) {
-          setActivities(data.map((log: any) => ({
-            action: log.action,
-            user: log.user_email,
-            time: formatRelativeTime(log.created_at),
-            icon: log.action?.toLowerCase().includes("create") ? UserPlus : log.action?.toLowerCase().includes("role") ? Shield : log.action?.toLowerCase().includes("login") ? Eye : Activity,
-          })))
-        }
-      } catch { /* ignore */ }
-      setLoading(false)
-    })()
+  const load = useCallback(async () => {
+    try {
+      const supabase = createClient()
+      const [auditRes, emailRes] = await Promise.all([
+        supabase.from("audit_logs").select("action, user_id, entity_type, details, created_at").order("created_at", { ascending: false }).limit(20),
+        fetch("/api/admin/users"),
+      ])
+      const map: Record<string, string> = emailRes.ok ? ((await emailRes.json()).users as Record<string, string>) || {} : {}
+      setEmailMap(map)
+      if (auditRes.data) {
+        setActivities((auditRes.data as any[]).map((log) => ({
+          action: log.action,
+          user: map[log.user_id] || log.user_id?.slice(0, 8) || "System",
+          time: formatRelativeTime(log.created_at),
+          icon: log.action?.toLowerCase().includes("create") ? UserPlus : log.action?.toLowerCase().includes("role") ? Shield : log.action?.toLowerCase().includes("login") ? Eye : Activity,
+        })))
+      }
+    } catch { /* ignore */ }
+    setLoading(false)
   }, [])
 
   const formatRelativeTime = (dateStr: string) => {
@@ -325,6 +348,14 @@ function ActivityTab() {
     const days = Math.floor(hours / 24)
     return `${days} day${days !== 1 ? 's' : ''} ago`
   }
+
+  useEffect(() => {
+    load()
+    const interval = setInterval(load, 30000)
+    const onFocus = () => load()
+    window.addEventListener("focus", onFocus)
+    return () => { clearInterval(interval); window.removeEventListener("focus", onFocus) }
+  }, [load])
 
   return (
     <div className="space-y-4">
@@ -421,13 +452,33 @@ function InviteTab() {
 export default function AdminUsersPage() {
   const [users, setUsers] = useState<Profile[]>([])
   const [activeTab, setActiveTab] = useState("all")
+  const [lastSync, setLastSync] = useState<Date | null>(null)
+  const supabase = createClient()
+
+  const loadUsers = useCallback(async (quiet = false) => {
+    const { data } = await supabase.from("user_profiles").select("*").order("created_at", { ascending: false }).limit(500)
+    if (data) {
+      setUsers(data)
+      setLastSync(new Date())
+    }
+  }, [supabase])
 
   useEffect(() => {
-    const supabase = createClient()
-    supabase.from("user_profiles").select("*").order("created_at", { ascending: false }).limit(500).then(({ data }) => {
-      if (data) setUsers(data)
-    })
-  }, [])
+    loadUsers()
+    const channel = supabase
+      .channel(`admin_users_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "user_profiles" }, () => loadUsers(true))
+      .on("postgres_changes", { event: "*", schema: "public", table: "profiles" }, () => loadUsers(true))
+      .subscribe()
+    const interval = setInterval(() => loadUsers(true), 30000)
+    const onFocus = () => loadUsers(true)
+    window.addEventListener("focus", onFocus)
+    return () => {
+      supabase.removeChannel(channel)
+      clearInterval(interval)
+      window.removeEventListener("focus", onFocus)
+    }
+  }, [supabase, loadUsers])
 
   const handleUserUpdate = (id: string, updates: Partial<Profile>) => {
     setUsers((prev) => prev.map((u) => (u.id === id ? { ...u, ...updates } : u)))
@@ -448,8 +499,13 @@ export default function AdminUsersPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold">User Management</h1>
-          <p className="text-sm text-muted-foreground mt-1">{users.length} registered users</p>
+          <p className="text-sm text-muted-foreground mt-1">
+            {users.length} registered users · {lastSync ? `synced ${lastSync.toLocaleTimeString()}` : "…"}
+          </p>
         </div>
+        <span className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 rounded-full">
+          <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" /> LIVE
+        </span>
       </div>
       <div className="flex flex-wrap gap-1 border-b pb-px">
         {tabs.map(tab => {

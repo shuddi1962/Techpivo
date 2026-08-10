@@ -23,54 +23,64 @@ const tabs = [
 ]
 
 function SessionsTab() {
-  const supabase = createClient()
   const [sessions, setSessions] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [authError, setAuthError] = useState(false)
 
-  useEffect(() => {
-    const fetchSessions = async () => {
-      try {
-        const { data: users, error } = await supabase.auth.admin.listUsers()
-        if (error) {
-          console.error("Failed to fetch auth users:", error)
-          setAuthError(true)
-          setSessions([])
-        } else {
-          const now = new Date().getTime()
-          const activeSessions = (users?.users || []).map(u => ({
-            user: u.email || u.id,
-            device: "Browser",
-            lastSignIn: u.last_sign_in_at || u.created_at,
-            status: u.last_sign_in_at && (now - new Date(u.last_sign_in_at).getTime()) < 3600000 ? "active" : "idle",
-          }))
-          setSessions(activeSessions)
-        }
-      } catch (err) {
-        console.error("Failed to fetch sessions:", err)
+  const fetchSessions = useCallback(async () => {
+    try {
+      const res = await fetch("/api/admin/auth-users")
+      if (!res.ok) {
         setAuthError(true)
         setSessions([])
+        return
       }
-      setLoading(false)
+      const data = await res.json()
+      const now = new Date().getTime()
+      setSessions((data.sessions || []).map((u: any) => ({
+        user: u.email,
+        device: "Browser",
+        role: u.role,
+        lastSignIn: u.lastSignIn,
+        status: u.lastSignIn && (now - new Date(u.lastSignIn).getTime()) < 3600000 ? "active" : "idle",
+      })))
+      setAuthError(false)
+    } catch (err) {
+      console.error("Failed to fetch sessions:", err)
+      setAuthError(true)
+      setSessions([])
     }
+    setLoading(false)
+  }, [])
+
+  useEffect(() => {
     fetchSessions()
-  }, [supabase])
+    const interval = setInterval(fetchSessions, 30000)
+    const onFocus = () => fetchSessions()
+    window.addEventListener("focus", onFocus)
+    return () => { clearInterval(interval); window.removeEventListener("focus", onFocus) }
+  }, [fetchSessions])
 
   return (
     <div className="space-y-4">
-      <h3 className="font-semibold">User Sessions ({sessions.length})</h3>
+      <div className="flex items-center justify-between">
+        <h3 className="font-semibold">User Sessions ({sessions.length})</h3>
+        <span className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 rounded-full">
+          <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" /> LIVE
+        </span>
+      </div>
       {loading ? (
         <p className="text-sm text-muted-foreground text-center py-8">Loading...</p>
       ) : authError ? (
         <Card>
           <CardContent className="p-6 text-center">
-            <p className="text-sm text-muted-foreground">Connect to Supabase Auth to view active sessions. The auth admin API requires the service_role key.</p>
+            <p className="text-sm text-muted-foreground">Unable to fetch auth sessions. Make sure you&apos;re signed in as an admin.</p>
           </CardContent>
         </Card>
       ) : sessions.length === 0 ? (
         <Card>
           <CardContent className="p-6 text-center">
-            <p className="text-sm text-muted-foreground">No active sessions found.</p>
+            <p className="text-sm text-muted-foreground">No users found.</p>
           </CardContent>
         </Card>
       ) : sessions.map((s, i) => (
@@ -80,12 +90,12 @@ function SessionsTab() {
               <div className={`w-2 h-2 rounded-full ${s.status === 'active' ? 'bg-green-500' : 'bg-yellow-500'}`} />
               <div>
                 <p className="font-medium">{s.user}</p>
-                <p className="text-xs text-muted-foreground">{s.device}</p>
+                <p className="text-xs text-muted-foreground">{s.device} · {s.role}</p>
               </div>
             </div>
             <div className="text-right">
               <Badge variant={s.status === 'active' ? 'default' : 'secondary'}>{s.status}</Badge>
-              <p className="text-xs text-muted-foreground mt-1">{s.lastSignIn ? new Date(s.lastSignIn).toLocaleDateString() : "Unknown"}</p>
+              <p className="text-xs text-muted-foreground mt-1">{s.lastSignIn ? new Date(s.lastSignIn).toLocaleString() : "Never signed in"}</p>
             </div>
           </CardContent>
         </Card>
@@ -95,57 +105,179 @@ function SessionsTab() {
 }
 
 function DevicesTab() {
+  const supabase = createClient()
+  const [data, setData] = useState<{ device: any[]; browser: any[]; os: any[]; country: any[] }>({ device: [], browser: [], os: [], country: [] })
+  const [loading, setLoading] = useState(true)
+  const [lastSync, setLastSync] = useState<Date | null>(null)
+
+  const load = useCallback(async () => {
+    try {
+      const [deviceRes, browserRes, osRes, countryRes] = await Promise.all([
+        supabase.from("analytics_events").select("device", { count: "exact", head: false }).not("device", "is", null),
+        supabase.from("analytics_events").select("browser", { count: "exact", head: false }).not("browser", "is", null),
+        supabase.from("analytics_events").select("os", { count: "exact", head: false }).not("os", "is", null),
+        supabase.from("analytics_events").select("country", { count: "exact", head: false }).not("country", "is", null),
+      ])
+      const countBy = (rows: any[], key: string) => {
+        const map: Record<string, number> = {}
+        ;(rows || []).forEach((r: any) => {
+          const v = r[key] || "Unknown"
+          map[v] = (map[v] || 0) + 1
+        })
+        return Object.entries(map).map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value)
+      }
+      setData({
+        device: countBy(deviceRes.data || [], "device"),
+        browser: countBy(browserRes.data || [], "browser"),
+        os: countBy(osRes.data || [], "os"),
+        country: countBy(countryRes.data || [], "country"),
+      })
+      setLastSync(new Date())
+    } catch (err) { console.error("Failed to fetch devices:", err) }
+    setLoading(false)
+  }, [supabase])
+
+  useEffect(() => {
+    load()
+    const channel = supabase
+      .channel(`security_devices_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`)
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "analytics_events" }, () => load())
+      .subscribe()
+    const interval = setInterval(load, 60000)
+    const onFocus = () => load()
+    window.addEventListener("focus", onFocus)
+    return () => {
+      supabase.removeChannel(channel)
+      clearInterval(interval)
+      window.removeEventListener("focus", onFocus)
+    }
+  }, [supabase, load])
+
+  const sections: { key: keyof typeof data; title: string }[] = [
+    { key: "device", title: "By Device" },
+    { key: "browser", title: "By Browser" },
+    { key: "os", title: "By Operating System" },
+    { key: "country", title: "By Country" },
+  ]
+
   return (
     <div className="space-y-4">
-      <Card>
-        <CardHeader><CardTitle>Known Devices</CardTitle></CardHeader>
-        <CardContent>
-          <p className="text-sm text-muted-foreground">Device tracking is available with session monitoring. Active sessions are shown in the Sessions tab.</p>
-        </CardContent>
-      </Card>
+      <div className="flex items-center justify-between">
+        <h3 className="font-semibold">Known Devices</h3>
+        <span className="text-xs text-muted-foreground">{lastSync ? `synced ${lastSync.toLocaleTimeString()}` : "…"} · since tracking started 2026-08-10</span>
+      </div>
+      {loading ? (
+        <p className="text-sm text-muted-foreground text-center py-8">Loading...</p>
+      ) : (
+        <div className="grid md:grid-cols-2 gap-4">
+          {sections.map(({ key, title }) => (
+            <Card key={key}>
+              <CardHeader><CardTitle className="text-sm">{title}</CardTitle></CardHeader>
+              <CardContent className="space-y-2">
+                {data[key].length === 0 ? (
+                  <p className="text-xs text-muted-foreground py-4 text-center">No data yet</p>
+                ) : (
+                  data[key].slice(0, 8).map((row) => {
+                    const max = data[key][0]?.value || 1
+                    return (
+                      <div key={row.name} className="flex items-center gap-2">
+                        <span className="w-32 text-xs truncate">{row.name}</span>
+                        <div className="flex-1 h-2 rounded-full bg-muted overflow-hidden">
+                          <div className="h-full bg-primary/60 rounded-full" style={{ width: `${(row.value / max) * 100}%` }} />
+                        </div>
+                        <span className="text-xs text-muted-foreground w-12 text-right">{row.value}</span>
+                      </div>
+                    )
+                  })
+                )}
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
     </div>
   )
 }
 
 function ThreatsTab() {
   const supabase = createClient()
-  const [data, setData] = useState({ events: 0, failedLogins: null as number | null })
+  const [data, setData] = useState({ events: 0, todayEvents: 0, failedLogins: 0, apiKeys: 0, activeKeys: 0, pendingComments: 0, sessions24h: 0 })
   const [loading, setLoading] = useState(true)
+  const [lastSync, setLastSync] = useState<Date | null>(null)
+
+  const load = useCallback(async () => {
+    try {
+      const dayAgo = new Date(Date.now() - 86400000).toISOString()
+      const todayStart = new Date(); todayStart.setHours(0, 0, 0, 0)
+      const [eventsRes, todayRes, loginsRes, keysRes, commentsRes, sessionsRes] = await Promise.all([
+        supabase.from("audit_logs").select("id", { count: "exact", head: true }),
+        supabase.from("audit_logs").select("id", { count: "exact", head: true }).gte("created_at", todayStart.toISOString()),
+        supabase.from("audit_logs").select("id", { count: "exact", head: true }).ilike("action", "%login%"),
+        supabase.from("api_keys").select("is_active"),
+        supabase.from("comments").select("id", { count: "exact", head: true }).eq("status", "pending"),
+        supabase.from("user_sessions").select("id", { count: "exact", head: true }).gte("created_at", dayAgo),
+      ])
+      const activeKeys = (keysRes.data || []).filter((k: any) => k.is_active).length
+      setData({
+        events: eventsRes.count || 0,
+        todayEvents: todayRes.count || 0,
+        failedLogins: loginsRes.count || 0,
+        apiKeys: keysRes.data?.length || 0,
+        activeKeys,
+        pendingComments: commentsRes.count || 0,
+        sessions24h: sessionsRes.count || 0,
+      })
+      setLastSync(new Date())
+    } catch (err) { console.error("Failed to fetch threats:", err) }
+    setLoading(false)
+  }, [supabase])
 
   useEffect(() => {
-    const fetchThreats = async () => {
-      try {
-        const { count: events } = await supabase.from("analytics_events").select("*", { count: "exact", head: true })
-          .eq("event_type", "page_view")
-
-        setData({ events: events || 0, failedLogins: null })
-      } catch (err) { console.error("Failed to fetch analytics events:", err) }
-      setLoading(false)
+    load()
+    const channel = supabase
+      .channel(`security_threats_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "audit_logs" }, () => load())
+      .on("postgres_changes", { event: "*", schema: "public", table: "api_keys" }, () => load())
+      .on("postgres_changes", { event: "*", schema: "public", table: "comments" }, () => load())
+      .subscribe()
+    const interval = setInterval(load, 30000)
+    const onFocus = () => load()
+    window.addEventListener("focus", onFocus)
+    return () => {
+      supabase.removeChannel(channel)
+      clearInterval(interval)
+      window.removeEventListener("focus", onFocus)
     }
-    fetchThreats()
-  }, [supabase])
+  }, [supabase, load])
+
+  const stats = [
+    { label: "Audit Events (all time)", value: loading ? "..." : data.events.toLocaleString() },
+    { label: "Audit Events Today", value: loading ? "..." : data.todayEvents.toLocaleString() },
+    { label: "Login-Related Events", value: loading ? "..." : data.failedLogins.toLocaleString() },
+    { label: "Active / Total API Keys", value: loading ? "..." : `${data.activeKeys}/${data.apiKeys}` },
+    { label: "Comments Awaiting Moderation", value: loading ? "..." : data.pendingComments.toLocaleString() },
+    { label: "Sessions (24h)", value: loading ? "..." : data.sessions24h.toLocaleString() },
+  ]
 
   return (
     <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <h3 className="font-semibold">Threat & Activity Monitoring</h3>
+        <span className="text-xs text-muted-foreground">{lastSync ? `synced ${lastSync.toLocaleTimeString()}` : "…"}</span>
+      </div>
       <Card>
         <CardContent className="p-6">
-          <p className="text-sm text-muted-foreground mb-4">
-            Security monitoring requires additional configuration. Failed login tracking and rate limit detection
-            are available through Supabase Auth hooks and database webhooks.
-          </p>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            {[
-              { label: "Total Page Views", value: loading ? "..." : data.events.toLocaleString() },
-              { label: "Failed Logins", value: "—" },
-              { label: "Rate Limits Triggered", value: "—" },
-              { label: "Security Status", value: "Basic" },
-            ].map((s, i) => (
-              <div key={i} className="p-3 rounded-lg bg-muted/30 text-center">
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+            {stats.map((s) => (
+              <div key={s.label} className="p-3 rounded-lg bg-muted/30 text-center">
                 <p className="text-2xl font-bold">{s.value}</p>
-                <p className="text-xs text-muted-foreground">{s.label}</p>
+                <p className="text-xs text-muted-foreground mt-1">{s.label}</p>
               </div>
             ))}
           </div>
+          <p className="text-xs text-muted-foreground mt-4">
+            Failed-login and rate-limit detection requires Supabase Auth hooks; all other metrics are computed live from audit logs, API keys, comments, and sessions.
+          </p>
         </CardContent>
       </Card>
     </div>
@@ -157,21 +289,26 @@ function RolesTab() {
   const [roles, setRoles] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
 
-  useEffect(() => {
-    const fetchRoles = async () => {
-      try {
-        const { data: profiles } = await supabase.from("profiles").select("role")
-        const roleMap: Record<string, number> = {}
-        ;(profiles || []).forEach((p: any) => {
-          const r = p.role || "user"
-          roleMap[r] = (roleMap[r] || 0) + 1
-        })
-        setRoles(Object.entries(roleMap).map(([name, count]) => ({ name, users: count })))
-      } catch (err) { console.error("Failed to fetch roles:", err) }
-      setLoading(false)
-    }
-    fetchRoles()
+  const fetchRoles = useCallback(async () => {
+    try {
+      const { data: profiles } = await supabase.from("profiles").select("role")
+      const roleMap: Record<string, number> = {}
+      ;(profiles || []).forEach((p: any) => {
+        const r = p.role || "user"
+        roleMap[r] = (roleMap[r] || 0) + 1
+      })
+      setRoles(Object.entries(roleMap).map(([name, count]) => ({ name, users: count })))
+    } catch (err) { console.error("Failed to fetch roles:", err) }
+    setLoading(false)
   }, [supabase])
+
+  useEffect(() => {
+    fetchRoles()
+    const interval = setInterval(fetchRoles, 30000)
+    const onFocus = () => fetchRoles()
+    window.addEventListener("focus", onFocus)
+    return () => { clearInterval(interval); window.removeEventListener("focus", onFocus) }
+  }, [fetchRoles])
 
   const defaultRoles = [
     { name: "admin", users: 0 }, { name: "editor", users: 0 },
@@ -206,19 +343,24 @@ function RolesTab() {
   )
 }
 
+const securitySettingDefs = [
+  { key: "security_2fa", label: "Two-Factor Authentication", desc: "Require 2FA for all admin users" },
+  { key: "security_rate_limiting", label: "Rate Limiting", desc: "Limit API requests to 100/minute" },
+  { key: "security_session_timeout", label: "Session Timeout", desc: "Auto-logout after 30 minutes idle" },
+  { key: "security_login_notifications", label: "Login Notifications", desc: "Email admin on new login" },
+]
+
 function SettingsTab() {
   const supabase = createClient()
-  const [settings, setSettings] = useState([
-    { key: "security_2fa", label: "Two-Factor Authentication", desc: "Require 2FA for all admin users", enabled: false },
-    { key: "security_rate_limiting", desc: "Limit API requests to 100/minute", enabled: true },
-    { key: "security_session_timeout", desc: "Auto-logout after 30 minutes idle", enabled: true },
-    { key: "security_login_notifications", desc: "Email admin on new login", enabled: false },
-  ] as { key: string; label: string; desc: string; enabled: boolean }[])
+  const [settings, setSettings] = useState(
+    securitySettingDefs.map(s => ({ ...s, enabled: false }))
+  )
   const [saving, setSaving] = useState(false)
+  const [error, setError] = useState("")
 
   useEffect(() => {
     const loadSettings = async () => {
-      const keys = settings.map(s => s.key)
+      const keys = securitySettingDefs.map(s => s.key)
       const { data } = await supabase.from("site_settings").select("key, value").in("key", keys)
       if (data) {
         setSettings(prev => prev.map(s => {
@@ -228,14 +370,19 @@ function SettingsTab() {
       }
     }
     loadSettings()
-  }, [supabase, settings])
+  }, [supabase])
 
   const toggleSetting = async (index: number, checked: boolean) => {
     const updated = [...settings]
     updated[index].enabled = checked
     setSettings(updated)
     setSaving(true)
-    await supabase.from("site_settings").upsert({ key: updated[index].key, value: checked }, { onConflict: "key" })
+    setError("")
+    const { error } = await supabase.from("site_settings").upsert({ key: updated[index].key, value: checked }, { onConflict: "key" })
+    if (error) {
+      console.error("Failed to save setting:", error)
+      setError(error.message)
+    }
     setSaving(false)
   }
 
@@ -249,10 +396,13 @@ function SettingsTab() {
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
+          {error && (
+            <p className="text-sm text-red-600 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg px-3 py-2">{error}</p>
+          )}
           {settings.map((s, i) => (
             <div key={s.key} className="flex items-center justify-between p-3 rounded-lg bg-muted/30">
               <div>
-                <p className="font-medium">{s.label || s.key.replace(/^security_/, "").replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase())}</p>
+                <p className="font-medium">{s.label}</p>
                 <p className="text-xs text-muted-foreground">{s.desc}</p>
               </div>
               <Switch
@@ -286,9 +436,14 @@ export default function SecurityPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold">Security Center</h1>
-        <p className="text-sm text-muted-foreground mt-1">Monitor security, sessions, threats, and access control</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold">Security Center</h1>
+          <p className="text-sm text-muted-foreground mt-1">Monitor security, sessions, threats, and access control</p>
+        </div>
+        <span className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 rounded-full">
+          <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" /> LIVE
+        </span>
       </div>
       <div className="flex flex-wrap gap-1 border-b pb-px">
         {tabs.map(tab => {
@@ -305,4 +460,3 @@ export default function SecurityPage() {
     </div>
   )
 }
-

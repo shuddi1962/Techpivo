@@ -19,16 +19,17 @@ export function SecurityDashboard() {
   const [metrics, setMetrics] = useState<SecurityMetric[]>([])
   const [recentEvents, setRecentEvents] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
+  const [lastSync, setLastSync] = useState<Date | null>(null)
 
-  const fetchSecurityData = useCallback(async () => {
-    setLoading(true)
+  const fetchSecurityData = useCallback(async (quiet = false) => {
+    if (!quiet) setLoading(true)
     const now = new Date()
     const dayAgo = new Date(now)
     dayAgo.setDate(dayAgo.getDate() - 1)
 
     const [sessionsRes, keysRes, usersRes, auditRes, logsRes] = await Promise.all([
       supabase.from("user_sessions").select("id").gte("created_at", dayAgo.toISOString()),
-      supabase.from("api_keys").select("id, disabled"),
+      supabase.from("api_keys").select("id, is_active"),
       supabase.from("user_profiles").select("id"),
       supabase.from("audit_logs").select("id, action").gte("created_at", dayAgo.toISOString()),
       supabase.from("audit_logs").select("id, user_id, action, created_at, details").order("created_at", { ascending: false }).limit(20),
@@ -36,7 +37,7 @@ export function SecurityDashboard() {
 
     const activeSessions = sessionsRes.data?.length || 0
     const totalKeys = keysRes.data?.length || 0
-    const activeKeys = keysRes.data?.filter(k => !k.disabled).length || 0
+    const activeKeys = keysRes.data?.filter(k => k.is_active).length || 0
     const totalUsers = usersRes.data?.length || 0
     const dailyActions = auditRes.data?.length || 0
 
@@ -68,10 +69,27 @@ export function SecurityDashboard() {
     ])
 
     setRecentEvents(logsRes.data || [])
+    setLastSync(new Date())
     setLoading(false)
   }, [supabase])
 
-  useEffect(() => { fetchSecurityData() }, [fetchSecurityData])
+  useEffect(() => {
+    fetchSecurityData()
+    const channel = supabase
+      .channel(`security_dash_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "audit_logs" }, () => fetchSecurityData(true))
+      .on("postgres_changes", { event: "*", schema: "public", table: "api_keys" }, () => fetchSecurityData(true))
+      .on("postgres_changes", { event: "*", schema: "public", table: "user_sessions" }, () => fetchSecurityData(true))
+      .subscribe()
+    const interval = setInterval(() => fetchSecurityData(true), 30000)
+    const onFocus = () => fetchSecurityData(true)
+    window.addEventListener("focus", onFocus)
+    return () => {
+      supabase.removeChannel(channel)
+      clearInterval(interval)
+      window.removeEventListener("focus", onFocus)
+    }
+  }, [supabase, fetchSecurityData])
 
   const statusIcon = (status: string) => {
     switch (status) {
@@ -105,8 +123,9 @@ export function SecurityDashboard() {
           <div className="flex items-center gap-2.5">
             <Shield className="h-5 w-5 text-[#F59E0B]" />
             <h2 className="text-base font-bold text-gray-900 dark:text-white">Recent Security Events</h2>
+            <span className="text-[10px] text-gray-400">{lastSync ? `synced ${lastSync.toLocaleTimeString()}` : ""}</span>
           </div>
-          <button onClick={fetchSecurityData} className="p-1.5 hover:bg-gray-100 dark:hover:bg-[#1F2937] rounded-lg">
+          <button onClick={() => fetchSecurityData()} className="p-1.5 hover:bg-gray-100 dark:hover:bg-[#1F2937] rounded-lg">
             <RefreshCw className={`h-4 w-4 text-gray-400 ${loading ? "animate-spin" : ""}`} />
           </button>
         </div>

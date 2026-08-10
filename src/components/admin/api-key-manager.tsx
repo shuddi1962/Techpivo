@@ -12,7 +12,7 @@ interface ApiKey {
   name: string
   key_prefix: string
   permissions: string[]
-  disabled: boolean
+  is_active: boolean
   last_used_at: string
   expires_at: string
   created_at: string
@@ -25,19 +25,35 @@ export function ApiKeyManager() {
   const [showCreate, setShowCreate] = useState(false)
   const [newKey, setNewKey] = useState({ name: "", permissions: ["read"], expire_days: 90 })
   const [revealedKey, setRevealedKey] = useState<string | null>(null)
+  const [lastSync, setLastSync] = useState<Date | null>(null)
 
-  const fetchKeys = useCallback(async () => {
-    setLoading(true)
+  const fetchKeys = useCallback(async (quiet = false) => {
+    if (!quiet) setLoading(true)
     const { data } = await supabase
       .from("api_keys")
-      .select("id, name, key_prefix, permissions, disabled, last_used_at, expires_at, created_at")
+      .select("id, name, key_prefix, permissions, is_active, last_used_at, expires_at, created_at")
       .order("created_at", { ascending: false })
 
-    setKeys(data || [])
+    setKeys((data || []) as ApiKey[])
+    setLastSync(new Date())
     setLoading(false)
   }, [supabase])
 
-  useEffect(() => { fetchKeys() }, [fetchKeys])
+  useEffect(() => {
+    fetchKeys()
+    const channel = supabase
+      .channel(`api_keys_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "api_keys" }, () => fetchKeys(true))
+      .subscribe()
+    const interval = setInterval(() => fetchKeys(true), 30000)
+    const onFocus = () => fetchKeys(true)
+    window.addEventListener("focus", onFocus)
+    return () => {
+      supabase.removeChannel(channel)
+      clearInterval(interval)
+      window.removeEventListener("focus", onFocus)
+    }
+  }, [supabase, fetchKeys])
 
   const createKey = async () => {
     const prefix = "tp_" + Math.random().toString(36).slice(2, 10)
@@ -50,6 +66,7 @@ export function ApiKeyManager() {
       key_prefix: prefix,
       key_hash: fullKey,
       permissions: newKey.permissions,
+      is_active: true,
       expires_at: expiresAt.toISOString(),
     })
 
@@ -64,8 +81,8 @@ export function ApiKeyManager() {
     fetchKeys()
   }
 
-  const toggleKey = async (id: string, disabled: boolean) => {
-    await supabase.from("api_keys").update({ disabled: !disabled }).eq("id", id)
+  const toggleKey = async (id: string, isActive: boolean) => {
+    await supabase.from("api_keys").update({ is_active: !isActive }).eq("id", id)
     fetchKeys()
   }
 
@@ -79,6 +96,7 @@ export function ApiKeyManager() {
         <div className="flex items-center gap-2.5">
           <Key className="h-5 w-5 text-[#F59E0B]" />
           <h2 className="text-base font-bold text-gray-900 dark:text-white">API Keys</h2>
+          <span className="text-[10px] text-gray-400">{lastSync ? `synced ${lastSync.toLocaleTimeString()}` : ""}</span>
         </div>
         <button
           onClick={() => setShowCreate(!showCreate)}
@@ -170,11 +188,11 @@ export function ApiKeyManager() {
           {keys.map(key => (
             <div key={key.id} className="flex items-center justify-between p-3 border border-gray-200 dark:border-[#374151] rounded-lg hover:bg-gray-50 dark:hover:bg-[#1F2937]">
               <div className="flex items-center gap-3">
-                <Key className={`h-4 w-4 ${key.disabled ? "text-gray-300 dark:text-gray-600" : "text-[#F59E0B]"}`} />
+                <Key className={`h-4 w-4 ${!key.is_active ? "text-gray-300 dark:text-gray-600" : "text-[#F59E0B]"}`} />
                 <div>
                   <div className="text-sm font-semibold text-gray-900 dark:text-white flex items-center gap-2">
                     {key.name}
-                    {key.disabled ? (
+                    {!key.is_active ? (
                       <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400">Disabled</span>
                     ) : (
                       <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">Active</span>
@@ -188,9 +206,9 @@ export function ApiKeyManager() {
                 </div>
               </div>
               <div className="flex items-center gap-1">
-                <button onClick={() => toggleKey(key.id, key.disabled)}
-                  className={`p-1.5 rounded-lg ${key.disabled ? "hover:bg-green-50 dark:hover:bg-green-900/20" : "hover:bg-yellow-50 dark:hover:bg-yellow-900/20"}`}>
-                  {key.disabled ? <CheckCircle className="h-4 w-4 text-green-400" /> : <XCircle className="h-4 w-4 text-yellow-400" />}
+                <button onClick={() => toggleKey(key.id, key.is_active)}
+                  className={`p-1.5 rounded-lg ${!key.is_active ? "hover:bg-green-50 dark:hover:bg-green-900/20" : "hover:bg-yellow-50 dark:hover:bg-yellow-900/20"}`}>
+                  {!key.is_active ? <CheckCircle className="h-4 w-4 text-green-400" /> : <XCircle className="h-4 w-4 text-yellow-400" />}
                 </button>
                 <button onClick={() => deleteKey(key.id)} className="p-1.5 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg">
                   <Trash2 className="h-4 w-4 text-red-400" />

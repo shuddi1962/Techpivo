@@ -16,38 +16,85 @@ export default function AdminRolesPage() {
   const [profiles, setProfiles] = useState<Profile[]>([])
   const [loading, setLoading] = useState(true)
   const [updating, setUpdating] = useState<string | null>(null)
+  const [error, setError] = useState("")
+  const [lastSync, setLastSync] = useState<Date | null>(null)
   const supabase = createClient()
 
-  const load = useCallback(async () => {
-    setLoading(true)
+  const load = useCallback(async (quiet = false) => {
+    if (!quiet) setLoading(true)
     const [profilesRes, emailRes] = await Promise.all([
-      supabase.from("user_profiles").select("*").order("created_at", { ascending: false }).limit(500),
+      supabase.from("profiles").select("*").order("created_at", { ascending: false }).limit(500),
       fetch("/api/admin/users"),
     ])
     const emailMap: Record<string, string> = (await emailRes.json()).users || {}
     if (profilesRes.data) {
       setProfiles(profilesRes.data.map((p: any) => ({ ...p, email: emailMap[p.id] || "" })))
+      setLastSync(new Date())
     }
     setLoading(false)
   }, [supabase])
 
-  useEffect(() => { load() }, [load])
+  useEffect(() => {
+    load()
+    const channel = supabase
+      .channel(`admin_roles_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "profiles" }, () => load(true))
+      .on("postgres_changes", { event: "*", schema: "public", table: "user_profiles" }, () => load(true))
+      .subscribe()
+    const interval = setInterval(() => load(true), 30000)
+    const onFocus = () => load(true)
+    window.addEventListener("focus", onFocus)
+    return () => {
+      supabase.removeChannel(channel)
+      clearInterval(interval)
+      window.removeEventListener("focus", onFocus)
+    }
+  }, [supabase, load])
 
   const changeRole = async (userId: string, newRole: string) => {
     setUpdating(userId)
-    await supabase.from("user_profiles").update({ role: newRole }).eq("id", userId)
-    setProfiles(prev => prev.map(p => p.id === userId ? { ...p, role: newRole } : p))
-    setUpdating(null)
+    setError("")
+    try {
+      const res = await fetch(`/api/admin/users/${userId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ role: newRole }),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        setError(data.error || "Failed to update role")
+        return
+      }
+      setProfiles(prev => prev.map(p => p.id === userId ? { ...p, role: newRole } : p))
+    } catch {
+      setError("Network error — please try again")
+    } finally {
+      setUpdating(null)
+    }
   }
 
-  const roles = ["admin", "editor", "author", "contributor"]
+  const roles = ["admin", "editor", "author", "contributor", "reporter", "seo_specialist", "social_media_manager"]
 
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
-        <h1 className="text-3xl font-bold">Roles & Permissions</h1>
-        <button onClick={load} className="text-sm border rounded-lg px-4 py-2 hover:bg-muted transition-colors">Refresh</button>
+        <div>
+          <h1 className="text-3xl font-bold">Roles & Permissions</h1>
+          <p className="text-sm text-muted-foreground mt-1">
+            {profiles.length} users · {lastSync ? `synced ${lastSync.toLocaleTimeString()}` : "…"}
+          </p>
+        </div>
+        <div className="flex items-center gap-3">
+          <button onClick={() => load()} className="text-sm border rounded-lg px-4 py-2 hover:bg-muted transition-colors">Refresh</button>
+          <span className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 rounded-full">
+            <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" /> LIVE
+          </span>
+        </div>
       </div>
+
+      {error && (
+        <div className="mb-4 text-sm text-red-600 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg px-3 py-2">{error}</div>
+      )}
 
       <div className="bg-card border rounded-xl overflow-hidden">
         <div className="overflow-x-auto">
@@ -105,6 +152,9 @@ export default function AdminRolesPage() {
           <div><span className="font-medium text-blue-600 dark:text-blue-400">Editor</span> — Can create, edit, publish, and manage posts and categories. Cannot manage users or site settings.</div>
           <div><span className="font-medium text-green-600 dark:text-green-400">Author</span> — Can create and edit their own posts. Cannot publish without review.</div>
           <div><span className="font-medium text-gray-600 dark:text-gray-400">Contributor</span> — Can submit posts for review. Limited write access.</div>
+          <div><span className="font-medium text-purple-600 dark:text-purple-400">Reporter</span> — Creates drafts and assigns stories.</div>
+          <div><span className="font-medium text-teal-600 dark:text-teal-400">SEO Specialist</span> — Manages optimization, audits, and keyword tracking.</div>
+          <div><span className="font-medium text-orange-600 dark:text-orange-400">Social Media Manager</span> — Publishes campaigns and manages social accounts.</div>
         </div>
       </div>
     </div>

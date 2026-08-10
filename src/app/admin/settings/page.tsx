@@ -11,6 +11,8 @@ import { Label } from "@/components/ui/label"
 export default function AdminSettingsPage() {
   const [settings, setSettings] = useState<Record<string, any>>({})
   const [dirty, setDirty] = useState<Set<string>>(new Set())
+  const [error, setError] = useState("")
+  const [lastSync, setLastSync] = useState<Date | null>(null)
   const timers = useRef<Record<string, NodeJS.Timeout>>({})
   const supabase = createClient()
 
@@ -20,12 +22,20 @@ export default function AdminSettingsPage() {
         const map: Record<string, any> = {}
         data.forEach((s) => { map[s.key] = s.value })
         setSettings(map)
+        setLastSync(new Date())
       }
     })
   }, [supabase])
 
   const saveSetting = useCallback(async (key: string, value: any) => {
-    await supabase.from("site_settings").upsert({ key, value })
+    setError("")
+    const { error } = await supabase.from("site_settings").upsert({ key, value })
+    if (error) {
+      console.error("Failed to save setting:", key, error)
+      setError(`${key.replace(/_/g, " ")}: ${error.message}`)
+      return
+    }
+    setLastSync(new Date())
   }, [supabase])
 
   const updateLocalSetting = (key: string, value: any) => {
@@ -55,7 +65,16 @@ export default function AdminSettingsPage() {
 
   return (
     <div>
-      <h1 className="text-3xl font-bold mb-6">Site Settings</h1>
+      <div className="flex items-center justify-between mb-6">
+        <div>
+          <h1 className="text-3xl font-bold">Site Settings</h1>
+          <p className="text-sm text-muted-foreground mt-1">{lastSync ? `Saved to DB · last sync ${lastSync.toLocaleTimeString()}` : ""}</p>
+        </div>
+      </div>
+
+      {error && (
+        <div className="mb-4 text-sm text-red-600 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg px-3 py-2 max-w-2xl">{error}</div>
+      )}
 
       <div className="space-y-6 max-w-2xl">
         <Card>

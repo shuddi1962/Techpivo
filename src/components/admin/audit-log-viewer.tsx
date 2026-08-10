@@ -11,8 +11,8 @@ interface AuditLog {
   id: string
   user_id: string
   action: string
-  resource_type: string
-  resource_id: string
+  entity_type: string
+  entity_id: string
   details: any
   ip_address: string
   created_at: string
@@ -28,8 +28,8 @@ export function AuditLogViewer() {
   const [searchTerm, setSearchTerm] = useState("")
   const limit = 25
 
-  const fetchLogs = useCallback(async () => {
-    setLoading(true)
+  const fetchLogs = useCallback(async (quiet = false) => {
+    if (!quiet) setLoading(true)
     const offset = (page - 1) * limit
 
     let query = supabase
@@ -46,11 +46,25 @@ export function AuditLogViewer() {
     setLoading(false)
   }, [page, actionFilter, supabase])
 
-  useEffect(() => { fetchLogs() }, [fetchLogs])
+  useEffect(() => {
+    fetchLogs()
+    const channel = supabase
+      .channel(`audit_logs_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`)
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "audit_logs" }, () => fetchLogs(true))
+      .subscribe()
+    const interval = setInterval(() => fetchLogs(true), 30000)
+    const onFocus = () => fetchLogs(true)
+    window.addEventListener("focus", onFocus)
+    return () => {
+      supabase.removeChannel(channel)
+      clearInterval(interval)
+      window.removeEventListener("focus", onFocus)
+    }
+  }, [supabase, fetchLogs])
 
   const exportLogs = () => {
     const csv = ["ID,User,Action,Resource,Time,IP"].concat(
-      logs.map(l => `${l.id},${l.user_id},${l.action},${l.resource_type || ""},${l.created_at},${l.ip_address || ""}`)
+      logs.map(l => `${l.id},${l.user_id},${l.action},${l.entity_type || ""},${l.created_at},${l.ip_address || ""}`)
     ).join("\n")
     const blob = new Blob([csv], { type: "text/csv" })
     const url = URL.createObjectURL(blob)
@@ -81,7 +95,7 @@ export function AuditLogViewer() {
           <button onClick={exportLogs} className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-[#1F2937] rounded-lg border border-gray-200 dark:border-[#374151]">
             <Download className="h-3.5 w-3.5" /> Export CSV
           </button>
-          <button onClick={fetchLogs} className="p-1.5 hover:bg-gray-100 dark:hover:bg-[#1F2937] rounded-lg">
+          <button onClick={() => fetchLogs()} className="p-1.5 hover:bg-gray-100 dark:hover:bg-[#1F2937] rounded-lg">
             <RefreshCw className={`h-4 w-4 text-gray-400 ${loading ? "animate-spin" : ""}`} />
           </button>
         </div>
@@ -140,7 +154,7 @@ export function AuditLogViewer() {
                       </span>
                     </td>
                     <td className="py-2.5 text-xs text-gray-600 dark:text-gray-300">{log.user_id?.slice(0, 8) || "—"}</td>
-                    <td className="py-2.5 text-xs text-gray-500 dark:text-gray-400">{log.resource_type || "—"}</td>
+                    <td className="py-2.5 text-xs text-gray-500 dark:text-gray-400">{log.entity_type || "—"}</td>
                     <td className="py-2.5 text-xs text-gray-400 dark:text-gray-500">{new Date(log.created_at).toLocaleString()}</td>
                     <td className="py-2.5 text-xs text-gray-400 dark:text-gray-500">{log.ip_address || "—"}</td>
                   </tr>

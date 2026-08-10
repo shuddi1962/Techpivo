@@ -1,13 +1,12 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { createClient } from "@/lib/supabase/client"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
-import { Check, X, MessageSquare, Search, Trash2, Eye } from "lucide-react"
-import type { Comment } from "@/types/database"
+import { Check, X, MessageSquare, Search, Trash2, Eye, RefreshCw, AlertCircle } from "lucide-react"
 
 const tabs = [
   { id: "all", label: "All", icon: MessageSquare },
@@ -17,18 +16,45 @@ const tabs = [
 ]
 
 export default function AdminCommentsPage() {
-  const [comments, setComments] = useState<Comment[]>([])
+  const [comments, setComments] = useState<any[]>([])
   const [activeTab, setActiveTab] = useState("all")
   const [search, setSearch] = useState("")
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState("")
+  const [lastSync, setLastSync] = useState<Date | null>(null)
+  const supabase = createClient()
+
+  const load = useCallback(async (quiet = false) => {
+    if (!quiet) setLoading(true)
+    let q = supabase.from("comments").select("*, posts:post_id(title)").order("created_at", { ascending: false }).limit(200)
+    if (activeTab !== "all") q = q.eq("status", activeTab)
+    const { data, error } = await q
+    if (error) {
+      console.error("Failed to load comments:", error)
+      if (!quiet) setError(error.message)
+    } else {
+      setComments((data as any[]) || [])
+      setError("")
+      setLastSync(new Date())
+    }
+    if (!quiet) setLoading(false)
+  }, [supabase, activeTab])
 
   useEffect(() => {
-    const supabase = createClient()
-    let q = supabase.from("comments").select("*, posts:post_id(title)").order("created_at", { ascending: false })
-    if (activeTab !== "all") q = q.eq("status", activeTab)
-    q.limit(100).then(({ data }) => {
-      if (data) setComments(data as any)
-    })
-  }, [activeTab])
+    load()
+    const channel = supabase
+      .channel(`admin_comments_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "comments" }, () => load(true))
+      .subscribe()
+    const interval = setInterval(() => load(true), 30000)
+    const onFocus = () => load(true)
+    window.addEventListener("focus", onFocus)
+    return () => {
+      supabase.removeChannel(channel)
+      clearInterval(interval)
+      window.removeEventListener("focus", onFocus)
+    }
+  }, [supabase, load])
 
   const filtered = comments.filter(c => {
     if (search) {
@@ -46,14 +72,24 @@ export default function AdminCommentsPage() {
   }
 
   const updateStatus = async (id: string, status: string) => {
-    const supabase = createClient()
-    await supabase.from("comments").update({ status: status as any }).eq("id", id)
-    setComments(comments.map((c) => c.id === id ? { ...c, status: status as any } : c))
+    setError("")
+    const { error } = await supabase.from("comments").update({ status }).eq("id", id)
+    if (error) {
+      console.error("Failed to update comment:", error)
+      setError(error.message)
+      return
+    }
+    setComments(comments.map((c) => c.id === id ? { ...c, status } : c))
   }
 
   const deleteComment = async (id: string) => {
-    const supabase = createClient()
-    await supabase.from("comments").delete().eq("id", id)
+    setError("")
+    const { error } = await supabase.from("comments").delete().eq("id", id)
+    if (error) {
+      console.error("Failed to delete comment:", error)
+      setError(error.message)
+      return
+    }
     setComments(comments.filter(c => c.id !== id))
   }
 
@@ -62,9 +98,19 @@ export default function AdminCommentsPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold">Comments</h1>
-          <p className="text-sm text-muted-foreground mt-1">{comments.length} total comments</p>
+          <p className="text-sm text-muted-foreground mt-1">
+            {comments.length} loaded · {lastSync ? `synced ${lastSync.toLocaleTimeString()}` : "…"}
+          </p>
         </div>
+        <span className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 rounded-full">
+          <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" /> LIVE
+        </span>
       </div>
+      {error && (
+        <div className="flex items-center gap-2 text-sm text-red-600 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg px-3 py-2">
+          <AlertCircle className="h-4 w-4 shrink-0" /> {error}
+        </div>
+      )}
       <div className="flex flex-wrap gap-1 border-b pb-px">
         {tabs.map(tab => {
           const Icon = tab.icon
@@ -82,7 +128,11 @@ export default function AdminCommentsPage() {
         <Input placeholder="Search comments..." value={search} onChange={e => setSearch(e.target.value)} className="pl-9" />
       </div>
       <div className="space-y-2">
-        {filtered.map((comment: any) => (
+        {loading && comments.length === 0 ? (
+          <div className="flex items-center justify-center gap-2 py-10 text-sm text-muted-foreground">
+            <RefreshCw className="h-4 w-4 animate-spin" /> Loading comments...
+          </div>
+        ) : filtered.map((comment) => (
           <Card key={comment.id}>
             <CardContent className="p-4">
               <div className="flex items-start justify-between gap-4">
@@ -93,7 +143,7 @@ export default function AdminCommentsPage() {
                     <Badge variant={comment.status === "approved" ? "default" : comment.status === "pending" ? "secondary" : "destructive"}>
                       {comment.status}
                     </Badge>
-                    <span className="text-xs text-muted-foreground">{new Date(comment.created_at).toLocaleDateString()}</span>
+                    <span className="text-xs text-muted-foreground">{new Date(comment.created_at).toLocaleString()}</span>
                   </div>
                   <p className="text-sm text-muted-foreground">{comment.content}</p>
                   {comment.posts && <p className="text-xs text-muted-foreground mt-1">On: {comment.posts.title}</p>}
@@ -122,7 +172,7 @@ export default function AdminCommentsPage() {
             </CardContent>
           </Card>
         ))}
-        {filtered.length === 0 && <p className="text-center text-muted-foreground py-8">No comments found</p>}
+        {!loading && filtered.length === 0 && <p className="text-center text-muted-foreground py-8">No comments found</p>}
       </div>
     </div>
   )

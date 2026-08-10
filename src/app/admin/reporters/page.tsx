@@ -23,20 +23,38 @@ export default function AdminReportersPage() {
   const [newRole, setNewRole] = useState("author")
   const [creating, setCreating] = useState(false)
   const [error, setError] = useState("")
+  const [lastSync, setLastSync] = useState<Date | null>(null)
   const supabase = createClient()
 
-  const load = useCallback(async () => {
-    setLoading(true)
+  const load = useCallback(async (quiet = false) => {
+    if (!quiet) setLoading(true)
     const { data } = await supabase
-      .from("user_profiles")
+      .from("profiles")
       .select("*")
-      .in("role", ["author", "contributor", "editor"])
+      .in("role", ["author", "contributor", "editor", "reporter"])
       .order("created_at", { ascending: false })
-    if (data) setReporters(data)
+    if (data) {
+      setReporters(data)
+      setLastSync(new Date())
+    }
     setLoading(false)
   }, [supabase])
 
-  useEffect(() => { load() }, [load])
+  useEffect(() => {
+    load()
+    const channel = supabase
+      .channel(`admin_reporters_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "profiles" }, () => load(true))
+      .subscribe()
+    const interval = setInterval(() => load(true), 30000)
+    const onFocus = () => load(true)
+    window.addEventListener("focus", onFocus)
+    return () => {
+      supabase.removeChannel(channel)
+      clearInterval(interval)
+      window.removeEventListener("focus", onFocus)
+    }
+  }, [supabase, load])
 
   const createReporter = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -72,7 +90,12 @@ export default function AdminReportersPage() {
 
   const deleteReporter = async (id: string) => {
     if (!confirm("Delete this reporter? This action cannot be undone.")) return
-    await fetch(`/api/admin/users/${id}`, { method: "DELETE" })
+    const res = await fetch(`/api/admin/users/${id}`, { method: "DELETE" })
+    const data = await res.json()
+    if (!res.ok) {
+      setError(data.error || "Failed to delete reporter")
+      return
+    }
     setReporters(prev => prev.filter(r => r.id !== id))
   }
 
@@ -81,17 +104,25 @@ export default function AdminReportersPage() {
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-3xl font-bold">Reporters</h1>
-          <p className="text-sm text-muted-foreground mt-1">Manage authors, contributors, and editors</p>
+          <p className="text-sm text-muted-foreground mt-1">
+            Manage authors, contributors, and editors · {reporters.length} active · {lastSync ? `synced ${lastSync.toLocaleTimeString()}` : "…"}
+          </p>
         </div>
-        <button onClick={() => setShowCreate(true)} className="bg-accent text-white px-4 py-2 rounded-lg text-sm font-medium hover:opacity-90 transition-opacity">
-          + Create Reporter
-        </button>
+        <div className="flex items-center gap-3">
+          <button onClick={() => setShowCreate(true)} className="bg-accent text-white px-4 py-2 rounded-lg text-sm font-medium hover:opacity-90 transition-opacity">
+            + Create Reporter
+          </button>
+          <span className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 rounded-full">
+            <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" /> LIVE
+          </span>
+        </div>
       </div>
+
+      {error && <div className="mb-4 text-sm text-red-500 bg-red-50 dark:bg-red-900/20 rounded-lg p-3">{error}</div>}
 
       {showCreate && (
         <div className="bg-card border rounded-xl p-6 mb-6">
           <h2 className="font-semibold text-lg mb-4">Create New Reporter</h2>
-          {error && <div className="text-sm text-red-500 bg-red-50 dark:bg-red-900/20 rounded-lg p-3 mb-4">{error}</div>}
           <form onSubmit={createReporter} className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <input type="text" placeholder="Full name" value={newName} onChange={(e) => setNewName(e.target.value)} required className="border rounded-lg px-4 py-2.5 text-sm outline-none focus:border-accent bg-background" />
             <input type="text" placeholder="Username" value={newUsername} onChange={(e) => setNewUsername(e.target.value)} className="border rounded-lg px-4 py-2.5 text-sm outline-none focus:border-accent bg-background" />
@@ -102,6 +133,7 @@ export default function AdminReportersPage() {
                 <option value="author">Author</option>
                 <option value="contributor">Contributor</option>
                 <option value="editor">Editor</option>
+                <option value="reporter">Reporter</option>
               </select>
             </div>
             <div className="flex gap-3 items-end">
@@ -139,6 +171,7 @@ export default function AdminReportersPage() {
                     <span className={`inline-block px-2.5 py-0.5 rounded-full text-xs font-medium ${
                       r.role === "editor" ? "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400" :
                       r.role === "author" ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400" :
+                      r.role === "reporter" ? "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400" :
                       "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400"
                     }`}>{r.role}</span>
                   </td>
