@@ -88,10 +88,7 @@ function ConnectedAccountsTab() {
           ) : accounts.length === 0 ? (
             <div className="text-center py-6">
               <p className="text-sm text-muted-foreground">No social accounts connected yet.</p>
-              <p className="text-xs text-muted-foreground mt-1">Connect your social media accounts in the Integrations section to enable auto-publishing.</p>
-              <Button variant="outline" size="sm" className="mt-4" asChild>
-                <Link href="/admin/integrations">Go to Integrations</Link>
-              </Button>
+              <p className="text-xs text-muted-foreground mt-1">Connect your social media accounts to enable auto-publishing.</p>
             </div>
           ) : (
             accounts.map((a, i) => (
@@ -105,9 +102,9 @@ function ConnectedAccountsTab() {
                 </div>
                 <div className="flex items-center gap-3">
                   <span className="text-sm text-muted-foreground">{a.follower_count ? `${a.follower_count.toLocaleString()} followers` : "—"}</span>
-                  <Button variant={a.connected ? "outline" : "default"} size="sm" asChild>
-                    <Link href="/admin/integrations">{a.connected ? "Manage" : "Connect"}</Link>
-                  </Button>
+                  <span className={`text-xs font-medium px-2 py-1 rounded-full ${a.connected ? 'bg-green-500/10 text-green-600' : 'bg-muted text-muted-foreground'}`}>
+                    {a.connected ? "Connected" : "Not connected"}
+                  </span>
                 </div>
               </div>
             ))
@@ -246,15 +243,10 @@ function TrendingTab() {
 function AutomationTab() {
   return (
     <div className="space-y-4">
-      <div className="flex justify-between items-center">
-        <h3 className="font-semibold">Automation Rules</h3>
-        <Button size="sm" asChild><Link href="/admin/automation"><Plus className="h-3 w-3 mr-1" /> Manage Automations</Link></Button>
-      </div>
+      <h3 className="font-semibold">Automation Rules</h3>
       <Card>
         <CardContent className="p-6 text-center">
-          <p className="text-sm text-muted-foreground">Configure automation rules in the{" "}
-            <Link href="/admin/automation" className="text-primary hover:underline">Workflow Automation</Link> section.
-          </p>
+          <p className="text-sm text-muted-foreground">Automation rules are managed from the publishing pipeline and content queue. New rules can be configured per article at publish time.</p>
         </CardContent>
       </Card>
     </div>

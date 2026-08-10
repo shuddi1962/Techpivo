@@ -7,7 +7,6 @@ const linkGroups = [
     title: "Platforms & Integrations",
     links: [
       { name: "Social Media Accounts", href: "/admin/social", desc: "Connect Twitter, Facebook, LinkedIn, and more" },
-      { name: "Integrations Hub", href: "/admin/integrations", desc: "Manage all third-party services and APIs" },
       { name: "Auto-Publishing Settings", href: "/admin/social", desc: "Configure automated cross-posting" },
     ],
   },
@@ -24,7 +23,6 @@ const linkGroups = [
     title: "Monetization",
     links: [
       { name: "Ads", href: "/admin/ads", desc: "Manage ad placements and campaigns" },
-      { name: "Affiliate Programs", href: "/admin/affiliate", desc: "Set up affiliate marketing" },
       { name: "Newsletter", href: "/admin/newsletter", desc: "Email marketing and subscriber management" },
     ],
   },

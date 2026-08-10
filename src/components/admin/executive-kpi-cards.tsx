@@ -24,7 +24,7 @@ export function ExecutiveKpiCards() {
   const [cards, setCards] = useState<KpiCard[]>([
     { label: "Published Posts", value: 0, change: "—", trend: "neutral", icon: FileText, color: "#F59E0B", href: "/admin/posts" },
     { label: "Total Views", value: 0, change: "—", trend: "neutral", icon: Eye, color: "#10B981", href: "/admin/analytics", format: "views" },
-    { label: "Revenue", value: 0, change: "—", trend: "neutral", icon: DollarSign, color: "#8B5CF6", href: "/admin/revenue-intelligence", format: "currency" },
+    { label: "Revenue", value: 0, change: "—", trend: "neutral", icon: DollarSign, color: "#8B5CF6", href: "/admin/ads", format: "currency" },
     { label: "Active RSS Feeds", value: 0, change: "—", trend: "neutral", icon: Rss, color: "#F59E0B", href: "/admin/rss-feeds" },
     { label: "Subscribers", value: 0, change: "—", trend: "neutral", icon: Users, color: "#EC4899", href: "/admin/newsletter" },
   ])
