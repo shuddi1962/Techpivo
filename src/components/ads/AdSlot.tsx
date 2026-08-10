@@ -25,7 +25,6 @@ interface CampaignAd {
   destination_url: string | null
   ad_code: string | null
 }
-
 export function AdSlot({ positionKey, className, preview }: AdSlotProps) {
   const [slotAd, setSlotAd] = useState<SlotAd | null>(null)
   const [campaignAds, setCampaignAds] = useState<CampaignAd[]>([])
@@ -34,6 +33,7 @@ export function AdSlot({ positionKey, className, preview }: AdSlotProps) {
   const [currentCampaignIndex, setCurrentCampaignIndex] = useState(0)
   const recordedRef = useRef(false)
   const intervalRef = useRef<NodeJS.Timeout | null>(null)
+  const lastTrackedCampaignRef = useRef<string | null>(null)
 
   useEffect(() => {
     const supabase = createClient()
@@ -52,7 +52,8 @@ export function AdSlot({ positionKey, className, preview }: AdSlotProps) {
           .from("ad_campaigns")
           .select("id, advertiser_name, ad_image_url, destination_url, ad_code")
           .contains("positions", [positionKey])
-          .eq("is_active", true),
+          .eq("is_active", true)
+          .in("status", ["approved", "live"]),
         supabase
           .from("site_settings")
           .select("key, value")
@@ -96,6 +97,20 @@ export function AdSlot({ positionKey, className, preview }: AdSlotProps) {
     supabase.rpc("increment_ad_impressions", { ad_id: slotAd.id }).then()
   }, [slotAd])
 
+  useEffect(() => {
+    const campaign = campaignAds[currentCampaignIndex]
+    if (!campaign) return
+    if (lastTrackedCampaignRef.current === campaign.id) return
+    lastTrackedCampaignRef.current = campaign.id
+    const supabase = createClient()
+    supabase.rpc("increment_campaign_impressions", { campaign_id: campaign.id }).then()
+  }, [campaignAds, currentCampaignIndex])
+
+  const trackCampaignClick = (campaignId: string) => {
+    const supabase = createClient()
+    supabase.rpc("increment_campaign_clicks", { campaign_id: campaignId }).then()
+  }
+
   const marketingConsent = hasConsentFor("marketing")
   const showAutoAds = settings.enable_auto_ads && settings.adsense_publisher_id && marketingConsent
 
@@ -122,7 +137,7 @@ export function AdSlot({ positionKey, className, preview }: AdSlotProps) {
             </span>
           )}
           {campaign.destination_url ? (
-            <a href={preview ? "#" : campaign.destination_url} target="_blank" rel="noopener">
+            <a href={preview ? "#" : campaign.destination_url} target="_blank" rel="noopener" onClick={() => trackCampaignClick(campaign.id)}>
               <Image src={campaign.ad_image_url} alt={campaign.advertiser_name} width={800} height={450} className="max-w-full h-auto" />
             </a>
           ) : (

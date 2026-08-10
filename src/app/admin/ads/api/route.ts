@@ -1,5 +1,22 @@
 import { NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
+import { createClient as createAdminClient } from "@/lib/supabase/admin"
+
+const NGN = (n: number | string) =>
+  "₦" + Number(n || 0).toLocaleString(undefined, { maximumFractionDigits: 0 })
+
+async function requireRole(allowed: string[] = ["admin", "editor"]) {
+  const supabase = createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: "Unauthorized" as const, status: 401 }
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("role")
+    .eq("id", user.id)
+    .single()
+  if (!profile || !allowed.includes(profile.role)) return { error: "Forbidden" as const, status: 403 }
+  return { supabase, user, profile }
+}
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url)
@@ -7,111 +24,94 @@ export async function GET(request: Request) {
   const supabase = createClient()
 
   try {
-    switch (section) {
-      case "placements": {
-        const { data: placements } = await supabase
-          .from("ad_placements")
-          .select("*")
-          .order("created_at", { ascending: false })
-        return NextResponse.json({ placements: placements || [] })
-      }
-
-      case "campaigns": {
-        const { data: campaigns } = await supabase
-          .from("ad_campaigns")
-          .select("*")
-          .order("created_at", { ascending: false })
-        return NextResponse.json({ campaigns: campaigns || [] })
-      }
-
-      case "schedule": {
-        const { data: schedules } = await supabase
-          .from("ad_schedules")
-          .select("*")
-          .order("created_at", { ascending: false })
-        return NextResponse.json({ schedules: schedules || [] })
-      }
-
-      case "revenue": {
-        const { data: revenue } = await supabase
-          .from("ad_revenue")
-          .select("*")
-          .order("date", { ascending: false })
-          .limit(100)
-        return NextResponse.json({ revenue: revenue || [] })
-      }
-
-      case "reports": {
-        const { data: revenue } = await supabase
-          .from("ad_revenue")
-          .select("date, source, impressions, clicks, revenue")
-          .order("date", { ascending: false })
-          .limit(365)
-
-        const dailyMap: Record<string, { impressions: number; clicks: number; revenue: number; source: string }> = {}
-        for (const r of revenue || []) {
-          const day = r.date
-          const key = `${day}-${r.source}`
-          if (!dailyMap[key]) dailyMap[key] = { impressions: 0, clicks: 0, revenue: 0, source: r.source }
-          dailyMap[key].impressions += r.impressions || 0
-          dailyMap[key].clicks += r.clicks || 0
-          dailyMap[key].revenue += r.revenue || 0
-        }
-
-        const reports = Object.entries(dailyMap)
-          .map(([key, d]) => ({ date: key.split("-").slice(0, 3).join("-"), ...d }))
-          .sort((a, b) => b.date.localeCompare(a.date))
-          .slice(0, 60)
-
-        return NextResponse.json({ reports })
-      }
-
-      default: {
-        const { count: totalPlacements } = await supabase
-          .from("ad_placements")
-          .select("*", { count: "exact", head: true })
-          .eq("is_active", true)
-
-        const { count: totalCampaigns } = await supabase
-          .from("ad_campaigns")
-          .select("*", { count: "exact", head: true })
-          .eq("is_active", true)
-
-        const { data: allRevenue } = await supabase
-          .from("ad_revenue")
-          .select("impressions, clicks, revenue, source")
-
-        const totalImpressions = allRevenue?.reduce((sum, r) => sum + (r.impressions || 0), 0) || 0
-        const totalClicks = allRevenue?.reduce((sum, r) => sum + (r.clicks || 0), 0) || 0
-        const totalRevenue = allRevenue?.reduce((sum, r) => sum + (r.revenue || 0), 0) || 0
-
-        const sourceMap: Record<string, { revenue: number; impressions: number }> = {}
-        for (const r of allRevenue || []) {
-          const src = r.source || "unknown"
-          if (!sourceMap[src]) sourceMap[src] = { revenue: 0, impressions: 0 }
-          sourceMap[src].revenue += r.revenue || 0
-          sourceMap[src].impressions += r.impressions || 0
-        }
-        const topSources = Object.entries(sourceMap)
-          .map(([source, d]) => ({ source, ...d }))
-          .sort((a, b) => b.revenue - a.revenue)
-          .slice(0, 5)
-
-        return NextResponse.json({
-          overview: {
-            total_impressions: totalImpressions,
-            total_clicks: totalClicks,
-            total_revenue: totalRevenue,
-            fill_rate: totalPlacements && totalPlacements > 0 ? Math.min(100, (totalCampaigns || 0) / totalPlacements * 100) : 0,
-            active_placements: totalPlacements || 0,
-            active_campaigns: totalCampaigns || 0,
-            avg_ctr: totalImpressions > 0 ? (totalClicks / totalImpressions) * 100 : 0,
-            top_sources: topSources,
-          },
-        })
-      }
+    if (section === "placements") {
+      const { data } = await supabase
+        .from("ad_placements")
+        .select("*")
+        .order("price_per_day", { ascending: false })
+      return NextResponse.json({ placements: data || [] })
     }
+
+    if (section === "campaigns") {
+      const { data: campaigns } = await supabase
+        .from("ad_campaigns")
+        .select("*, placements:ad_placements(name, position, price_per_day, cpm, sizes)")
+        .order("created_at", { ascending: false })
+        .limit(100)
+      return NextResponse.json({ campaigns: campaigns || [] })
+    }
+
+    if (section === "revenue") {
+      const { data } = await supabase
+        .from("ad_revenue")
+        .select("*")
+        .order("date", { ascending: false })
+        .limit(100)
+      return NextResponse.json({ revenue: data || [] })
+    }
+
+    // overview / marketplace stats
+    const [placementsRes, campaignsRes, revenueRes] = await Promise.all([
+      supabase.from("ad_placements").select("id, is_active, price_per_day, cpm, est_impressions, advertisers"),
+      supabase.from("ad_campaigns").select("id, status, is_active, impressions, clicks, total_price, spend"),
+      supabase.from("ad_revenue").select("impressions, clicks, revenue, source"),
+    ])
+
+    const placements = placementsRes.data || []
+    const campaigns = campaignsRes.data || []
+    const revenueRows = revenueRes.data || []
+
+    const liveCampaigns = campaigns.filter((c) => c.status === "live" || c.status === "approved")
+    const pendingCount = campaigns.filter((c) => c.status === "pending").length
+
+    const totalImpressions = revenueRows.reduce((s, r) => s + (r.impressions || 0), 0)
+    const totalClicks = revenueRows.reduce((s, r) => s + (r.clicks || 0), 0)
+    const totalRevenue = revenueRows.reduce((s, r) => s + Number(r.revenue || 0), 0)
+    const adRevenue = revenueRows
+      .filter((r) => r.source !== "direct")
+      .reduce((s, r) => s + Number(r.revenue || 0), 0)
+    const directRevenue = revenueRows
+      .filter((r) => r.source === "direct")
+      .reduce((s, r) => s + Number(r.revenue || 0), 0)
+
+    const campaignImpressions = campaigns.reduce((s, c) => s + (c.impressions || 0), 0)
+    const campaignClicks = campaigns.reduce((s, c) => s + (c.clicks || 0), 0)
+    const totalImpressionsAll = totalImpressions + campaignImpressions
+    const totalClicksAll = totalClicks + campaignClicks
+
+    const sourceMap: Record<string, { revenue: number; impressions: number }> = {}
+    for (const r of revenueRows) {
+      const src = r.source || "other"
+      if (!sourceMap[src]) sourceMap[src] = { revenue: 0, impressions: 0 }
+      sourceMap[src].revenue += Number(r.revenue || 0)
+      sourceMap[src].impressions += r.impressions || 0
+    }
+    const topSources = Object.entries(sourceMap)
+      .map(([source, d]) => ({ source, ...d }))
+      .sort((a, b) => b.revenue - a.revenue)
+      .slice(0, 5)
+
+    const livePlacements = placements.filter((p) => p.is_active)
+
+    return NextResponse.json({
+      overview: {
+        total_revenue: totalRevenue,
+        ad_revenue: adRevenue,
+        direct_revenue: directRevenue,
+        total_impressions: totalImpressionsAll,
+        total_clicks: totalClicksAll,
+        avg_ctr: totalImpressionsAll > 0 ? (totalClicksAll / totalImpressionsAll) * 100 : 0,
+        live_campaigns: liveCampaigns.length,
+        pending_campaigns: pendingCount,
+        total_campaigns: campaigns.length,
+        active_placements: livePlacements.length,
+        available_placements: placements.length,
+        est_monthly_reach: livePlacements.reduce((s, p) => s + (p.est_impressions || 0), 0),
+        top_sources: topSources,
+      },
+    })
   } catch (error) {
+    console.error("Ads API GET error:", error)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
   }
 }
@@ -119,18 +119,102 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   const supabase = createClient()
   const body = await request.json()
-  const { type } = body
+  const { action } = body
 
   try {
-    if (type === "placement") {
-      const { data, error } = await supabase
+    // ---- Place order (any authenticated user) ----
+    if (action === "order") {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return NextResponse.json({ error: "Please sign in to place an ad order" }, { status: 401 })
+
+      const { placement_id, billing_model, units, advertiser_name, headline, description, cta_text, destination_url, ad_image_url, advertiser_email } = body
+
+      if (!placement_id) return NextResponse.json({ error: "Select an ad space" }, { status: 400 })
+      if (!advertiser_name || !headline || !destination_url) {
+        return NextResponse.json({ error: "Brand name, headline and destination URL are required" }, { status: 400 })
+      }
+
+      const { data: placement } = await supabase
+        .from("ad_placements")
+        .select("id, name, position, price_per_day, cpm, min_days, min_budget")
+        .eq("id", placement_id)
+        .eq("is_active", true)
+        .maybeSingle()
+      if (!placement) return NextResponse.json({ error: "Ad space not available" }, { status: 400 })
+
+      const isPerDay = billing_model !== "impressions"
+      const unitPrice = isPerDay ? Number(placement.price_per_day) : Number(placement.cpm)
+      const minUnits = isPerDay ? Number(placement.min_days || 1) : 1
+      const u = Math.max(1, Math.floor(Number(units) || 1))
+      if (u < minUnits) {
+        return NextResponse.json({
+          error: isPerDay
+            ? `Minimum booking is ${placement.min_days} days for this ad space`
+            : "Minimum is 1,000 impressions",
+        }, { status: 400 })
+      }
+
+      const totalPrice = Math.round(unitPrice * u)
+      const minBudget = Number(placement.min_budget || 0)
+
+      const { data: campaign, error } = await supabase
+        .from("ad_campaigns")
+        .insert({
+          user_id: user.id,
+          advertiser_email: advertiser_email || user.email || null,
+          advertiser_name,
+          headline: headline || advertiser_name,
+          description: description || "",
+          cta_text: cta_text || "Learn More",
+          ad_image_url: ad_image_url || null,
+          destination_url,
+          placement_id: placement.id,
+          positions: [placement.position],
+          billing_model: isPerDay ? "per_day" : "impressions",
+          units: u,
+          unit_price: unitPrice,
+          total_price: totalPrice,
+          budget: Math.max(totalPrice, minBudget),
+          start_date: new Date().toISOString().slice(0, 10),
+          end_date: new Date(Date.now() + u * 86400000).toISOString().slice(0, 10),
+          status: "pending",
+          submitted_at: new Date().toISOString(),
+          is_active: false,
+        })
+        .select("id, status, total_price, billing_model, units, unit_price")
+        .single()
+
+      if (error) throw error
+
+      return NextResponse.json({
+        campaign,
+        message: "Order submitted! It will go live once our team approves it.",
+      })
+    }
+
+    // ---- Admin/editor actions ----
+    const auth = await requireRole()
+    if ("error" in auth) return NextResponse.json({ error: auth.error }, { status: auth.status })
+    const adminClient = createAdminClient()
+
+    if (action === "placement") {
+      const { name, position, description, ad_type, sizes, price_per_day, cpm, min_days, min_budget, est_impressions, is_active } = body
+      if (!name || !position) return NextResponse.json({ error: "Name and position are required" }, { status: 400 })
+      const { data, error } = await adminClient
         .from("ad_placements")
         .insert({
-          name: body.name,
-          position: body.position,
-          description: body.description || "",
-          ad_type: body.ad_type || "banner",
-          sizes: body.sizes || ["300x250"],
+          name,
+          position,
+          location: body.location || "site",
+          description: description || "",
+          ad_type: ad_type || "banner",
+          sizes: Array.isArray(sizes) ? sizes : ["728x90"],
+          price_per_day: price_per_day || 0,
+          cpm: cpm || 0,
+          min_days: min_days || 7,
+          min_budget: min_budget || 0,
+          est_impressions: est_impressions || 0,
+          is_active: is_active !== false,
         })
         .select()
         .single()
@@ -138,137 +222,82 @@ export async function POST(request: Request) {
       return NextResponse.json({ placement: data })
     }
 
-    if (type === "campaign") {
-      const { data, error } = await supabase
+    if (action === "approve") {
+      const { data: campaign } = await adminClient
         .from("ad_campaigns")
-        .insert({
-          advertiser_name: body.advertiser_name,
-          ad_image_url: body.ad_image_url || null,
-          destination_url: body.destination_url || null,
-          ad_code: body.ad_code || null,
-          positions: body.positions || [],
-          start_date: body.start_date || null,
-          end_date: body.end_date || null,
-          daily_impression_cap: body.daily_impression_cap || null,
-          is_active: body.is_active !== false,
-        })
-        .select()
+        .update({ status: "live", is_active: true, approved_at: new Date().toISOString(), review_note: null })
+        .eq("id", body.campaign_id)
+        .select("id, placement_id")
         .single()
-      if (error) throw error
-      return NextResponse.json({ campaign: data })
+      if (campaign?.placement_id) {
+        const { error: rpcErr } = await adminClient.rpc("increment_ad_placement_advertisers", { p_placement_id: campaign.placement_id })
+        if (rpcErr) console.error("Failed to bump placement advertisers:", rpcErr)
+      }
+      return NextResponse.json({ success: true, message: "Campaign approved and live" })
     }
 
-    if (type === "schedule") {
-      const { data, error } = await supabase
-        .from("ad_schedules")
-        .insert({
-          name: body.name,
-          ad_id: body.ad_id || null,
-          campaign_id: body.campaign_id || null,
-          start_date: body.start_date,
-          end_date: body.end_date || null,
-          frequency: body.frequency || "always",
-          priority: body.priority || 0,
-        })
-        .select()
-        .single()
-      if (error) throw error
-      return NextResponse.json({ schedule: data })
+    if (action === "reject") {
+      await adminClient
+        .from("ad_campaigns")
+        .update({ status: "rejected", is_active: false, rejected_at: new Date().toISOString(), review_note: body.note || "Creative did not meet our ad guidelines" })
+        .eq("id", body.campaign_id)
+      return NextResponse.json({ success: true, message: "Campaign rejected" })
     }
 
-    if (type === "revenue") {
-      const { data, error } = await supabase
-        .from("ad_revenue")
-        .insert({
-          ad_id: body.ad_id || null,
-          campaign_id: body.campaign_id || null,
-          source: body.source || "direct",
-          impressions: body.impressions || 0,
-          clicks: body.clicks || 0,
-          revenue: body.revenue || 0,
-          cpm: body.cpm || 0,
-          cpc: body.cpc || 0,
-          date: body.date || new Date().toISOString().slice(0, 10),
-        })
-        .select()
-        .single()
-      if (error) throw error
-      return NextResponse.json({ entry: data })
+    if (action === "pause") {
+      await adminClient
+        .from("ad_campaigns")
+        .update({ status: "paused", is_active: false })
+        .eq("id", body.campaign_id)
+      return NextResponse.json({ success: true, message: "Campaign paused" })
     }
 
-    return NextResponse.json({ error: "Invalid type" }, { status: 400 })
+    if (action === "resume") {
+      await adminClient
+        .from("ad_campaigns")
+        .update({ status: "live", is_active: true })
+        .eq("id", body.campaign_id)
+      return NextResponse.json({ success: true, message: "Campaign resumed" })
+    }
+
+    return NextResponse.json({ error: "Invalid action" }, { status: 400 })
   } catch (error: any) {
-    return NextResponse.json({ error: error.message || "Failed to create" }, { status: 500 })
+    console.error("Ads API POST error:", error)
+    return NextResponse.json({ error: error.message || "Failed to process request" }, { status: 500 })
   }
 }
 
 export async function PUT(request: Request) {
-  const supabase = createClient()
+  const auth = await requireRole()
+  if ("error" in auth) return NextResponse.json({ error: auth.error }, { status: auth.status })
+  const adminClient = createAdminClient()
   const body = await request.json()
-  const { type, id, ...updates } = body
 
   try {
-    if (type === "placement") {
-      const { data, error } = await supabase
+    if (body.type === "placement") {
+      const { data, error } = await adminClient
         .from("ad_placements")
         .update({
-          name: updates.name,
-          position: updates.position,
-          description: updates.description,
-          ad_type: updates.ad_type,
-          sizes: updates.sizes,
-          is_active: updates.is_active,
+          name: body.name,
+          position: body.position,
+          location: body.location || "site",
+          description: body.description || "",
+          ad_type: body.ad_type,
+          sizes: body.sizes,
+          price_per_day: body.price_per_day || 0,
+          cpm: body.cpm || 0,
+          min_days: body.min_days || 7,
+          min_budget: body.min_budget || 0,
+          est_impressions: body.est_impressions || 0,
+          is_active: body.is_active !== false,
           updated_at: new Date().toISOString(),
         })
-        .eq("id", id)
+        .eq("id", body.id)
         .select()
         .single()
       if (error) throw error
       return NextResponse.json({ placement: data })
     }
-
-    if (type === "campaign") {
-      const { data, error } = await supabase
-        .from("ad_campaigns")
-        .update({
-          advertiser_name: updates.advertiser_name,
-          ad_image_url: updates.ad_image_url,
-          destination_url: updates.destination_url,
-          ad_code: updates.ad_code,
-          positions: updates.positions,
-          start_date: updates.start_date,
-          end_date: updates.end_date,
-          daily_impression_cap: updates.daily_impression_cap,
-          is_active: updates.is_active,
-        })
-        .eq("id", id)
-        .select()
-        .single()
-      if (error) throw error
-      return NextResponse.json({ campaign: data })
-    }
-
-    if (type === "schedule") {
-      const { data, error } = await supabase
-        .from("ad_schedules")
-        .update({
-          name: updates.name,
-          ad_id: updates.ad_id || null,
-          campaign_id: updates.campaign_id || null,
-          start_date: updates.start_date,
-          end_date: updates.end_date,
-          frequency: updates.frequency,
-          priority: updates.priority,
-          is_active: updates.is_active,
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", id)
-        .select()
-        .single()
-      if (error) throw error
-      return NextResponse.json({ schedule: data })
-    }
-
     return NextResponse.json({ error: "Invalid type" }, { status: 400 })
   } catch (error: any) {
     return NextResponse.json({ error: error.message || "Failed to update" }, { status: 500 })
@@ -278,23 +307,29 @@ export async function PUT(request: Request) {
 export async function DELETE(request: Request) {
   const supabase = createClient()
   const body = await request.json()
-  const { type, id } = body
 
   try {
-    if (type === "placement") {
-      const { error } = await supabase.from("ad_placements").delete().eq("id", id)
+    if (body.type === "campaign") {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("role")
+        .eq("id", user.id)
+        .single()
+      const isAdmin = profile?.role === "admin" || profile?.role === "editor"
+      let query = supabase.from("ad_campaigns").delete()
+      if (!isAdmin) query = query.eq("user_id", user.id)
+      const { error } = await query.eq("id", body.id)
       if (error) throw error
       return NextResponse.json({ success: true })
     }
 
-    if (type === "campaign") {
-      const { error } = await supabase.from("ad_campaigns").delete().eq("id", id)
-      if (error) throw error
-      return NextResponse.json({ success: true })
-    }
-
-    if (type === "schedule") {
-      const { error } = await supabase.from("ad_schedules").delete().eq("id", id)
+    if (body.type === "placement") {
+      const auth = await requireRole()
+      if ("error" in auth) return NextResponse.json({ error: auth.error }, { status: auth.status })
+      const adminClient = createAdminClient()
+      const { error } = await adminClient.from("ad_placements").delete().eq("id", body.id)
       if (error) throw error
       return NextResponse.json({ success: true })
     }
