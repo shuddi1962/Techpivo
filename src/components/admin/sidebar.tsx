@@ -7,11 +7,11 @@ import { ScrollArea } from "@/components/ui/scroll-area"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import {
   LayoutDashboard, FileText, FolderTree, Image,
-  DollarSign, ShoppingBag, BarChart3, SearchCheck,
-  Globe, Settings, Users, MessageSquare, Mail,
-  Bell, Share2, Shield,
+  DollarSign, BarChart3, SearchCheck,
+  Globe, Users, MessageSquare, Mail,
+  Bell, Shield,
   Brain, HeartPulse, Calendar,
-  TrendingUp, FileBarChart, Cpu, Key, Wrench, Lock, Network, Rocket,
+  FileBarChart, Cpu, Key, Wrench, Lock,
   Trophy, BookOpen, PanelLeftClose, PanelLeftOpen, Newspaper, PieChart,
   Plus, ExternalLink, Radar, Zap, type LucideIcon,
 } from "lucide-react"
@@ -70,8 +70,6 @@ const navGroups: NavGroup[] = [
     label: "Monetization",
     links: [
       { href: "/admin/ads", label: "Ads", icon: DollarSign },
-      { href: "/admin/affiliate", label: "Affiliate", icon: ShoppingBag },
-      { href: "/admin/revenue-intelligence", label: "Revenue", icon: TrendingUp },
     ],
   },
   {
@@ -89,7 +87,6 @@ const navGroups: NavGroup[] = [
       { href: "/admin/roles", label: "Roles", icon: Shield },
       { href: "/admin/reporters", label: "Reporters", icon: Newspaper },
       { href: "/admin/security", label: "Security", icon: Lock },
-      { href: "/admin/integrations", label: "Integrations", icon: Globe },
       { href: "/admin/settings", label: "Settings", icon: Key },
     ],
   },
@@ -97,11 +94,6 @@ const navGroups: NavGroup[] = [
     label: "Tools & Utilities",
     links: [
       { href: "/admin/tools", label: "Tools Center", icon: Wrench },
-      { href: "/admin/knowledge-graph", label: "Knowledge Graph", icon: Network },
-      { href: "/admin/launch-center", label: "Launch Center", icon: Rocket },
-      { href: "/admin/automation", label: "Automation", icon: Settings },
-      { href: "/admin/plugins", label: "Plugins", icon: Plus },
-      { href: "/admin/api-platform", label: "API Platform", icon: Key },
     ],
   },
   {
