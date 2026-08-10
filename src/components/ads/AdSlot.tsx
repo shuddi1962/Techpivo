@@ -24,6 +24,9 @@ interface CampaignAd {
   ad_image_url: string | null
   destination_url: string | null
   ad_code: string | null
+  media_type?: string | null
+  video_url?: string | null
+  poster_url?: string | null
 }
 export function AdSlot({ positionKey, className, preview }: AdSlotProps) {
   const [slotAd, setSlotAd] = useState<SlotAd | null>(null)
@@ -50,7 +53,7 @@ export function AdSlot({ positionKey, className, preview }: AdSlotProps) {
           .maybeSingle(),
         supabase
           .from("ad_campaigns")
-          .select("id, advertiser_name, ad_image_url, destination_url, ad_code")
+          .select("id, advertiser_name, ad_image_url, destination_url, ad_code, media_type, video_url, poster_url")
           .contains("positions", [positionKey])
           .eq("is_active", true)
           .in("status", ["approved", "live"]),
@@ -127,6 +130,30 @@ export function AdSlot({ positionKey, className, preview }: AdSlotProps) {
   // Render campaign ad (shown alongside slot ad, or alone)
   const renderCampaign = () => {
     if (!campaign) return null
+
+    if (campaign.media_type === "video" && campaign.video_url) {
+      return (
+        <div className="ad-campaign">
+          {preview && (
+            <span className="text-[9px] uppercase tracking-wider text-primary block mb-0.5">
+              Campaign: {campaign.advertiser_name}
+            </span>
+          )}
+          <video
+            src={campaign.video_url}
+            poster={campaign.poster_url || undefined}
+            controls
+            muted
+            loop
+            playsInline
+            preload="metadata"
+            className="max-w-full h-auto rounded-md"
+            onClick={() => trackCampaignClick(campaign.id)}
+            onPlay={() => trackCampaignClick(campaign.id)}
+          />
+        </div>
+      )
+    }
 
     if (campaign.ad_image_url) {
       return (

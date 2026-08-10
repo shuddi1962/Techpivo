@@ -1,9 +1,7 @@
 import { NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
 import { createClient as createAdminClient } from "@/lib/supabase/admin"
-
-const NGN = (n: number | string) =>
-  "₦" + Number(n || 0).toLocaleString(undefined, { maximumFractionDigits: 0 })
+import { DEFAULT_FX_RATES } from "@/lib/ads"
 
 async function requireRole(allowed: string[] = ["admin", "editor"]) {
   const supabase = createClient()
@@ -18,6 +16,69 @@ async function requireRole(allowed: string[] = ["admin", "editor"]) {
   return { supabase, user, profile }
 }
 
+// FX map: NGN per 1 unit of each currency (live from site_settings, fallback defaults)
+async function getFxRates(supabase: any): Promise<Record<string, number>> {
+  try {
+    const { data } = await supabase
+      .from("site_settings")
+      .select("value")
+      .eq("key", "fx_rates")
+      .maybeSingle()
+    if (data?.value && typeof data.value === "object") {
+      return { ...DEFAULT_FX_RATES, ...data.value }
+    }
+  } catch (e) {
+    console.error("Failed to load fx_rates:", e)
+  }
+  return { ...DEFAULT_FX_RATES }
+}
+
+async function generateCreative(
+  placementName: string,
+  brand: string,
+  goal: string,
+  audienceHint: string
+) {
+  const apiKey = process.env.GEMINI_API_KEY
+  if (!apiKey) return null
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`
+  const prompt = [
+    "You are an expert digital ad copywriter for a technology news website called Techpivo.",
+    "Create ONE high-performing display ad creative. Respond with STRICT JSON only, no markdown:",
+    '{"headline":"...max 40 chars...","description":"...one punchy sentence, max 90 chars...","cta_type":"learn_more|buy_now|get_started|sign_up|subscribe|download|book_now|contact_us|try_free|shop_now|watch_video|read_more|apply_now|call_now"}',
+    `Ad placement: ${placementName}`,
+    `Advertiser: ${brand || "the advertiser"}`,
+    `Campaign goal: ${goal || "more clicks"}`,
+    `Audience: ${audienceHint || "tech enthusiasts"}`,
+    "Rules: natural, benefit-led, no hype, no emojis in headline, CTA must match the goal.",
+  ].join("\n")
+
+  const res = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      contents: [{ parts: [{ text: prompt }] }],
+      generationConfig: { temperature: 0.8, maxOutputTokens: 200 },
+    }),
+  })
+  if (!res.ok) return null
+  const json = await res.json()
+  const text: string | undefined = json?.candidates?.[0]?.content?.parts?.[0]?.text
+  if (!text) return null
+  try {
+    const match = text.match(/\{[\s\S]*\}/)
+    const parsed = JSON.parse(match ? match[0] : text)
+    const validCtas = ["learn_more", "buy_now", "get_started", "sign_up", "subscribe", "download", "book_now", "contact_us", "try_free", "shop_now", "watch_video", "read_more", "apply_now", "call_now"]
+    return {
+      headline: String(parsed.headline || "").slice(0, 60),
+      description: String(parsed.description || "").slice(0, 160),
+      cta_type: validCtas.includes(parsed.cta_type) ? parsed.cta_type : "learn_more",
+    }
+  } catch (e) {
+    return null
+  }
+}
+
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url)
   const section = searchParams.get("section") || "overview"
@@ -25,11 +86,12 @@ export async function GET(request: Request) {
 
   try {
     if (section === "placements") {
+      const fx = await getFxRates(supabase)
       const { data } = await supabase
         .from("ad_placements")
         .select("*")
         .order("price_per_day", { ascending: false })
-      return NextResponse.json({ placements: data || [] })
+      return NextResponse.json({ placements: data || [], fx_rates: fx })
     }
 
     if (section === "campaigns") {
@@ -127,7 +189,8 @@ export async function POST(request: Request) {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) return NextResponse.json({ error: "Please sign in to place an ad order" }, { status: 401 })
 
-      const { placement_id, billing_model, units, advertiser_name, headline, description, cta_text, destination_url, ad_image_url, advertiser_email } = body
+      const { placement_id, billing_model, units, advertiser_name, headline, description, cta_text, destination_url, ad_image_url, advertiser_email,
+        currency, billing_frequency, goal, cta_type, target_audience, media_type, video_url, poster_url } = body
 
       if (!placement_id) return NextResponse.json({ error: "Select an ad space" }, { status: 400 })
       if (!advertiser_name || !headline || !destination_url) {
@@ -136,26 +199,63 @@ export async function POST(request: Request) {
 
       const { data: placement } = await supabase
         .from("ad_placements")
-        .select("id, name, position, price_per_day, cpm, min_days, min_budget")
+        .select("id, name, position, price_per_day, price_per_week, price_per_month, cpm, min_days, min_budget, supports_video")
         .eq("id", placement_id)
         .eq("is_active", true)
         .maybeSingle()
       if (!placement) return NextResponse.json({ error: "Ad space not available" }, { status: 400 })
 
-      const isPerDay = billing_model !== "impressions"
-      const unitPrice = isPerDay ? Number(placement.price_per_day) : Number(placement.cpm)
-      const minUnits = isPerDay ? Number(placement.min_days || 1) : 1
+      const freq = ["day", "week", "month"].includes(billing_frequency) ? billing_frequency : "day"
+      const isImpressions = billing_model === "impressions"
+
+      // Base price in NGN, depending on frequency
+      let basePrice: number
+      if (isImpressions) {
+        basePrice = Number(placement.cpm)
+      } else if (freq === "week") {
+        basePrice = Number(placement.price_per_week) || Math.round(Number(placement.price_per_day) * 7 * 0.85)
+      } else if (freq === "month") {
+        basePrice = Number(placement.price_per_month) || Math.round(Number(placement.price_per_day) * 30 * 0.75)
+      } else {
+        basePrice = Number(placement.price_per_day)
+      }
+
+      const minUnits = isImpressions
+        ? 1
+        : freq === "week"
+          ? Math.max(1, Math.ceil(Number(placement.min_days || 7) / 7))
+          : freq === "month"
+            ? 1
+            : Math.max(1, Number(placement.min_days || 1))
       const u = Math.max(1, Math.floor(Number(units) || 1))
       if (u < minUnits) {
         return NextResponse.json({
-          error: isPerDay
-            ? `Minimum booking is ${placement.min_days} days for this ad space`
-            : "Minimum is 1,000 impressions",
+          error: isImpressions
+            ? "Minimum is 1,000 impressions"
+            : `Minimum booking is ${minUnits} ${freq}${minUnits > 1 ? "s" : ""} for this ad space`,
         }, { status: 400 })
       }
 
-      const totalPrice = Math.round(unitPrice * u)
+      // Validate video creative
+      const isVideo = media_type === "video"
+      if (isVideo && !placement.supports_video) {
+        return NextResponse.json({ error: "This ad space does not support video ads" }, { status: 400 })
+      }
+      if (isVideo && !video_url) {
+        return NextResponse.json({ error: "Video URL is required for video ads" }, { status: 400 })
+      }
+
+      // Multi-currency: convert NGN base price with the live fx rate
+      const cur = String(currency || "NGN").toUpperCase()
+      const fx = await getFxRates(supabase)
+      const fxRate = Number(fx[cur] || 1)
+      const unitPrice = Math.round(basePrice * fxRate * 100) / 100
+      const totalPrice = Math.round(unitPrice * u * 100) / 100
       const minBudget = Number(placement.min_budget || 0)
+      const daySpan = isImpressions ? 7 : freq === "week" ? u * 7 : freq === "month" ? u * 30 : u
+      const audience = target_audience && typeof target_audience === "object"
+        ? { countries: Array.isArray(target_audience.countries) ? target_audience.countries : [], devices: Array.isArray(target_audience.devices) ? target_audience.devices : [], interests: Array.isArray(target_audience.interests) ? target_audience.interests : [] }
+        : { countries: [], devices: [], interests: [] }
 
       const { data: campaign, error } = await supabase
         .from("ad_campaigns")
@@ -170,18 +270,27 @@ export async function POST(request: Request) {
           destination_url,
           placement_id: placement.id,
           positions: [placement.position],
-          billing_model: isPerDay ? "per_day" : "impressions",
+          billing_model: isImpressions ? "impressions" : freq === "week" ? "per_week" : freq === "month" ? "per_month" : "per_day",
+          billing_frequency: freq,
           units: u,
           unit_price: unitPrice,
           total_price: totalPrice,
           budget: Math.max(totalPrice, minBudget),
+          currency: cur,
+          fx_rate: fxRate,
+          goal: goal || "impressions",
+          cta_type: cta_type || "learn_more",
+          target_audience: audience,
+          media_type: isVideo ? "video" : "image",
+          video_url: isVideo ? video_url : null,
+          poster_url: poster_url || null,
           start_date: new Date().toISOString().slice(0, 10),
-          end_date: new Date(Date.now() + u * 86400000).toISOString().slice(0, 10),
+          end_date: new Date(Date.now() + Math.max(1, daySpan) * 86400000).toISOString().slice(0, 10),
           status: "pending",
           submitted_at: new Date().toISOString(),
           is_active: false,
         })
-        .select("id, status, total_price, billing_model, units, unit_price")
+        .select("id, status, total_price, billing_model, units, unit_price, currency")
         .single()
 
       if (error) throw error
@@ -192,13 +301,31 @@ export async function POST(request: Request) {
       })
     }
 
+    // ---- AI creative generator (any authenticated user) ----
+    if (action === "generate-creative") {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return NextResponse.json({ error: "Please sign in to use the AI creative generator" }, { status: 401 })
+
+      const { placement_id, brand, goal, audience_hint } = body
+      let placementName = "Website banner"
+      if (placement_id) {
+        const { data: p } = await supabase.from("ad_placements").select("name").eq("id", placement_id).maybeSingle()
+        if (p) placementName = p.name
+      }
+      const creative = await generateCreative(placementName, brand, goal, audience_hint)
+      if (!creative) {
+        return NextResponse.json({ error: "AI creative generation failed — try again in a moment" }, { status: 502 })
+      }
+      return NextResponse.json({ creative })
+    }
+
     // ---- Admin/editor actions ----
     const auth = await requireRole()
     if ("error" in auth) return NextResponse.json({ error: auth.error }, { status: auth.status })
     const adminClient = createAdminClient()
 
     if (action === "placement") {
-      const { name, position, description, ad_type, sizes, price_per_day, cpm, min_days, min_budget, est_impressions, is_active } = body
+      const { name, position, description, ad_type, sizes, price_per_day, price_per_week, price_per_month, cpm, min_days, min_budget, est_impressions, supports_video, is_active } = body
       if (!name || !position) return NextResponse.json({ error: "Name and position are required" }, { status: 400 })
       const { data, error } = await adminClient
         .from("ad_placements")
@@ -210,6 +337,9 @@ export async function POST(request: Request) {
           ad_type: ad_type || "banner",
           sizes: Array.isArray(sizes) ? sizes : ["728x90"],
           price_per_day: price_per_day || 0,
+          price_per_week: price_per_week || 0,
+          price_per_month: price_per_month || 0,
+          supports_video: !!supports_video,
           cpm: cpm || 0,
           min_days: min_days || 7,
           min_budget: min_budget || 0,
@@ -285,6 +415,9 @@ export async function PUT(request: Request) {
           ad_type: body.ad_type,
           sizes: body.sizes,
           price_per_day: body.price_per_day || 0,
+          price_per_week: body.price_per_week || 0,
+          price_per_month: body.price_per_month || 0,
+          supports_video: !!body.supports_video,
           cpm: body.cpm || 0,
           min_days: body.min_days || 7,
           min_budget: body.min_budget || 0,

@@ -6,8 +6,15 @@ import {
   Store, LayoutGrid, Megaphone, ListChecks, TrendingUp, Settings2,
   Plus, Trash2, CheckCircle, XCircle, PauseCircle, PlayCircle, RefreshCw,
   Upload, Eye, MousePointerClick, Users, Wallet, Clock, ShieldCheck,
-  ArrowRight, Calendar, Image as ImageIcon, AlertCircle, Crown, Search,
+  ArrowRight, Calendar, Image as ImageIcon, AlertCircle, Crown, Search, Video,
+  Sparkles, Globe, Monitor, Tag,
 } from "lucide-react"
+import {
+  ADS_CURRENCIES, ADS_FREQUENCIES, ADS_GOALS, ADS_CTA_TYPES,
+  ADS_AUDIENCE_COUNTRIES, ADS_AUDIENCE_DEVICES, ADS_AUDIENCE_INTERESTS,
+  ADS_GOAL_LABELS, ADS_CTA_LABELS, ADS_FREQUENCY_LABELS, ADS_CURRENCY_SYMBOL,
+  formatMoney,
+} from "@/lib/ads"
 
 const S = {
   bg: "#FFFFFF",
@@ -107,6 +114,9 @@ interface Placement {
   sizes: string[]
   is_active: boolean
   price_per_day: number
+  price_per_week: number
+  price_per_month: number
+  supports_video: boolean
   cpm: number
   min_days: number
   min_budget: number
@@ -131,6 +141,7 @@ interface Campaign {
   positions: string[]
   placement_id: string | null
   billing_model: string
+  billing_frequency: string
   units: number
   unit_price: number
   total_price: number
@@ -146,6 +157,14 @@ interface Campaign {
   submitted_at: string | null
   approved_at: string | null
   created_at: string
+  goal: string | null
+  cta_type: string | null
+  target_audience: { countries?: string[]; devices?: string[]; interests?: string[] } | null
+  currency: string | null
+  fx_rate: number | null
+  media_type: string | null
+  video_url: string | null
+  poster_url: string | null
   placements?: Placement | null
 }
 
@@ -175,6 +194,7 @@ export default function AdminAdsPage() {
 
   const [preselectedPlacement, setPreselectedPlacement] = useState<Placement | null>(null)
   const [campaignFilter, setCampaignFilter] = useState("all")
+  const [fxRates, setFxRates] = useState<Record<string, number>>({})
 
   const isAdmin = role === "admin" || role === "editor"
 
@@ -191,6 +211,7 @@ export default function AdminAdsPage() {
         fetch("/admin/ads/api?section=revenue").then((r) => r.json()),
       ])
       if (pl.placements) setPlacements(pl.placements)
+      if (pl.fx_rates) setFxRates(pl.fx_rates)
       if (cm.campaigns) setCampaigns(cm.campaigns)
       if (rv.revenue) setRevenue(rv.revenue)
     } catch (e) {
@@ -374,19 +395,20 @@ export default function AdminAdsPage() {
           />
         )}
 
-        {activeTab === "spaces" && (
-          <SpacesTab placements={activePlacements} onBuy={openAdvertise} />
-        )}
+            {activeTab === "spaces" && (
+              <SpacesTab placements={activePlacements} onBuy={openAdvertise} />
+            )}
 
-        {activeTab === "advertise" && (
-          <AdvertiseTab
-            placements={activePlacements}
-            preselected={preselectedPlacement}
-            userEmail={userEmail}
-            onSubmitted={(msg) => { showNotice("success", msg); setActiveTab("campaigns"); loadAll() }}
-            onError={showNotice}
-          />
-        )}
+            {activeTab === "advertise" && (
+              <AdvertiseTab
+                placements={activePlacements}
+                preselected={preselectedPlacement}
+                userEmail={userEmail}
+                fxRates={fxRates}
+                onSubmitted={(msg) => { showNotice("success", msg); setActiveTab("campaigns"); loadAll() }}
+                onError={showNotice}
+              />
+            )}
 
         {activeTab === "campaigns" && (
           <CampaignsTab
@@ -603,11 +625,11 @@ function MarketplaceTab(props: {
                         {c.headline || c.advertiser_name}
                       </p>
                       <p style={{ fontSize: 12, color: S.textDim, margin: "2px 0 0" }}>
-                        {c.advertiser_name} · {c.billing_model === "per_day" ? `${c.units} days` : `${fmt(c.units * 1000)} impressions`}
+                        {c.advertiser_name} · {ADS_FREQUENCY_LABELS[c.billing_frequency || "day"]} · {c.units} unit{c.units > 1 ? "s" : ""}
                       </p>
                     </div>
                     <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                      <span style={{ fontSize: 13, fontWeight: 700, color: S.text }}>{NGN(c.total_price)}</span>
+                      <span style={{ fontSize: 13, fontWeight: 700, color: S.text }}>{formatMoney(c.total_price, c.currency || "NGN")}</span>
                       <span style={{ background: st.bg, color: st.color, borderRadius: 20, padding: "3px 10px", fontSize: 11, fontWeight: 600 }}>{st.label}</span>
                     </div>
                   </div>
@@ -663,6 +685,11 @@ function SpacesTab({ placements, onBuy }: { placements: Placement[]; onBuy: (p: 
                   <span key={i} style={{ background: "#DBEAFE", color: S.primary, borderRadius: 6, padding: "2px 8px", fontSize: 11, fontWeight: 600 }}>{s}</span>
                 ))}
                 <span style={{ background: "#EDE9FE", color: S.purple, borderRadius: 6, padding: "2px 8px", fontSize: 11, fontWeight: 600 }}>{p.ad_type}</span>
+                {p.supports_video && (
+                  <span style={{ background: "#DCFCE7", color: S.green, borderRadius: 6, padding: "2px 8px", fontSize: 11, fontWeight: 700, display: "flex", alignItems: "center", gap: 3 }}>
+                    <Video size={11} /> Video
+                  </span>
+                )}
               </div>
 
               {p.description && <p style={{ fontSize: 12.5, color: S.textMuted, margin: "0 0 12px", lineHeight: 1.55 }}>{p.description}</p>}
@@ -673,12 +700,12 @@ function SpacesTab({ placements, onBuy }: { placements: Placement[]; onBuy: (p: 
                   <div style={{ fontSize: 11, color: S.textDim }}>per day</div>
                 </div>
                 <div>
-                  <div style={{ fontSize: 14, fontWeight: 700, color: S.text }}>{NGN(p.cpm)}</div>
-                  <div style={{ fontSize: 11, color: S.textDim }}>per 1k imp.</div>
+                  <div style={{ fontSize: 14, fontWeight: 700, color: S.text }}>{NGN(p.price_per_week || Math.round(p.price_per_day * 7 * 0.85))}</div>
+                  <div style={{ fontSize: 11, color: S.textDim }}>per week</div>
                 </div>
                 <div>
-                  <div style={{ fontSize: 14, fontWeight: 700, color: S.text }}>{fmt(p.est_impressions)}</div>
-                  <div style={{ fontSize: 11, color: S.textDim }}>reach / mo</div>
+                  <div style={{ fontSize: 14, fontWeight: 700, color: S.text }}>{NGN(p.price_per_month || Math.round(p.price_per_day * 30 * 0.75))}</div>
+                  <div style={{ fontSize: 11, color: S.textDim }}>per month</div>
                 </div>
               </div>
 
@@ -711,16 +738,20 @@ function SpacesTab({ placements, onBuy }: { placements: Placement[]; onBuy: (p: 
 /* ================== ADVERTISE (ORDER FLOW) ================== */
 
 function AdvertiseTab({
-  placements, preselected, userEmail, onSubmitted, onError,
+  placements, preselected, userEmail, fxRates, onSubmitted, onError,
 }: {
   placements: Placement[]
   preselected: Placement | null
   userEmail: string | null
+  fxRates: Record<string, number>
   onSubmitted: (msg: string) => void
   onError: (type: "success" | "error", text: string) => void
 }) {
   const [placementId, setPlacementId] = useState<string | null>(preselected?.id || null)
-  const [billingModel, setBillingModel] = useState<"per_day" | "impressions">("per_day")
+  const [currency, setCurrency] = useState<string>("NGN")
+  const [frequency, setFrequency] = useState<string>("day")
+  const [goal, setGoal] = useState<string>("clicks")
+  const [ctaType, setCtaType] = useState<string>("learn_more")
   const [units, setUnits] = useState(7)
   const [brand, setBrand] = useState("")
   const [headline, setHeadline] = useState("")
@@ -729,8 +760,15 @@ function AdvertiseTab({
   const [destinationUrl, setDestinationUrl] = useState("")
   const [imageUrl, setImageUrl] = useState("")
   const [email, setEmail] = useState(userEmail || "")
+  const [mediaType, setMediaType] = useState<"image" | "video">("image")
+  const [videoUrl, setVideoUrl] = useState("")
+  const [posterUrl, setPosterUrl] = useState("")
+  const [countries, setCountries] = useState<string[]>([])
+  const [devices, setDevices] = useState<string[]>([])
+  const [interests, setInterests] = useState<string[]>([])
   const [submitting, setSubmitting] = useState(false)
   const [uploading, setUploading] = useState(false)
+  const [generating, setGenerating] = useState(false)
   const fileRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
@@ -738,15 +776,30 @@ function AdvertiseTab({
   }, [preselected])
 
   const placement = placements.find((p) => p.id === placementId) || null
+  const fx = Number(fxRates[currency] || 1) || 1
 
-  const minUnits = placement ? (billingModel === "per_day" ? placement.min_days : 1) : 1
-  const unitPrice = placement ? (billingModel === "per_day" ? Number(placement.price_per_day) : Number(placement.cpm)) : 0
-  const total = unitPrice * Math.max(1, Math.floor(units))
-  const estReach = placement
-    ? billingModel === "per_day"
-      ? Math.round((placement.est_impressions / 30) * Math.max(1, Math.floor(units)))
-      : Math.max(1, Math.floor(units)) * 1000
+  const basePrice = placement
+    ? frequency === "week"
+      ? Number(placement.price_per_week) || Math.round(Number(placement.price_per_day) * 7 * 0.85)
+      : frequency === "month"
+        ? Number(placement.price_per_month) || Math.round(Number(placement.price_per_day) * 30 * 0.75)
+        : Number(placement.price_per_day)
     : 0
+  const minUnits = placement
+    ? frequency === "week"
+      ? Math.max(1, Math.ceil(Number(placement.min_days) / 7))
+      : frequency === "month"
+        ? 1
+        : Math.max(1, Number(placement.min_days))
+    : 1
+  const total = Math.round(basePrice * fx * Math.max(1, Math.floor(units)) * 100) / 100
+  const estReach = placement
+    ? Math.round((placement.est_impressions / 30) * Math.max(1, Math.floor(units)) * (frequency === "week" ? 7 : frequency === "month" ? 30 : 1))
+    : 0
+
+  const toggleChip = (list: string[], setList: (v: string[]) => void, value: string) => {
+    setList(list.includes(value) ? list.filter((c) => c !== value) : [...list, value])
+  }
 
   const handleUpload = async (file: File) => {
     setUploading(true)
@@ -764,14 +817,50 @@ function AdvertiseTab({
     }
   }
 
+  const generateCreative = async () => {
+    if (!brand.trim()) { onError("error", "Enter your brand name first so the AI can write for it"); return }
+    setGenerating(true)
+    try {
+      const res = await fetch("/admin/ads/api", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "generate-creative",
+          placement_id: placement?.id || null,
+          brand: brand.trim(),
+          goal,
+          audience_hint: [countries.join(", "), devices.join(", "), interests.join(", ")].filter(Boolean).join(" · ") || "tech enthusiasts",
+        }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || "Generation failed")
+      setHeadline(data.creative.headline)
+      setDescription(data.creative.description)
+      setCtaType(data.creative.cta_type)
+      setCta(ADS_CTA_LABELS[data.creative.cta_type] || "Learn More")
+      onError("success", "AI creative generated — review and tweak below")
+    } catch (e: any) {
+      onError("error", e.message || "AI generation failed")
+    } finally {
+      setGenerating(false)
+    }
+  }
+
   const handleSubmit = async () => {
     if (!placement) { onError("error", "Select an ad space"); return }
     if (!brand.trim() || !headline.trim() || !destinationUrl.trim()) {
       onError("error", "Brand name, headline and destination URL are required")
       return
     }
-    if (billingModel === "per_day" && Math.floor(units) < minUnits) {
-      onError("error", `Minimum booking is ${minUnits} days for this ad space`)
+    if (mediaType === "video") {
+      if (!placement.supports_video) { onError("error", "This ad space does not support video ads"); return }
+      if (!videoUrl.trim()) { onError("error", "Video URL is required for video ads"); return }
+    } else if (!imageUrl.trim()) {
+      onError("error", "Upload or paste a banner image for your ad")
+      return
+    }
+    if (Math.floor(units) < minUnits) {
+      onError("error", `Minimum booking is ${minUnits} ${frequency}${minUnits > 1 ? "s" : ""} for this ad space`)
       return
     }
     setSubmitting(true)
@@ -782,20 +871,29 @@ function AdvertiseTab({
         body: JSON.stringify({
           action: "order",
           placement_id: placement.id,
-          billing_model: billingModel,
+          billing_model: "per_" + frequency,
           units: Math.floor(units),
           advertiser_name: brand.trim(),
           advertiser_email: email.trim() || null,
           headline: headline.trim(),
           cta_text: cta.trim() || "Learn More",
+          cta_type: ctaType,
           description: description.trim(),
           destination_url: destinationUrl.trim(),
-          ad_image_url: imageUrl.trim() || null,
+          ad_image_url: mediaType === "image" ? imageUrl.trim() || null : null,
+          currency,
+          billing_frequency: frequency,
+          goal,
+          target_audience: { countries, devices, interests },
+          media_type: mediaType,
+          video_url: mediaType === "video" ? videoUrl.trim() || null : null,
+          poster_url: mediaType === "video" ? posterUrl.trim() || null : null,
         }),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || "Failed to place order")
-      setBrand(""); setHeadline(""); setDescription(""); setDestinationUrl(""); setImageUrl("")
+      setBrand(""); setHeadline(""); setDescription(""); setDestinationUrl(""); setImageUrl(""); setVideoUrl(""); setPosterUrl("")
+      setCountries([]); setDevices([]); setInterests([])
       onSubmitted(data.message || "Order submitted!")
     } catch (e: any) {
       onError("error", e.message || "Failed to place order")
@@ -803,6 +901,8 @@ function AdvertiseTab({
       setSubmitting(false)
     }
   }
+
+  const selectStyle: React.CSSProperties = { ...inputStyle, cursor: "pointer" }
 
   return (
     <div style={{ display: "grid", gridTemplateColumns: "1fr 360px", gap: 20, alignItems: "start" }}>
@@ -826,11 +926,14 @@ function AdvertiseTab({
                     borderRadius: 12, padding: 12,
                   }}
                 >
-                  <div style={{ display: "flex", justifyContent: "space-between", gap: 8 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", gap: 8, alignItems: "center" }}>
                     <span style={{ fontSize: 13.5, fontWeight: 600, color: S.text }}>{p.name}</span>
-                    <span style={{ fontSize: 12.5, fontWeight: 700, color: S.primary, whiteSpace: "nowrap" }}>{NGN(p.price_per_day)}/d</span>
+                    {p.supports_video && (
+                      <span style={{ background: "#EDE9FE", color: S.purple, borderRadius: 6, padding: "1px 6px", fontSize: 10, fontWeight: 700, whiteSpace: "nowrap" }}>VIDEO</span>
+                    )}
                   </div>
-                  <div style={{ fontSize: 11.5, color: S.textDim, marginTop: 4 }}>
+                  <div style={{ fontSize: 12.5, fontWeight: 700, color: S.primary, marginTop: 3 }}>{formatMoney(p.price_per_day, "NGN")}/d</div>
+                  <div style={{ fontSize: 11.5, color: S.textDim, marginTop: 2 }}>
                     {(Array.isArray(p.sizes) ? p.sizes : []).slice(0, 2).join(" · ")} · {fmt(p.est_impressions)}/mo
                   </div>
                 </button>
@@ -839,32 +942,50 @@ function AdvertiseTab({
           </div>
         </div>
 
-        {/* Step 2 — schedule */}
+        {/* Step 2 — campaign details (frequency, goal, currency, audience) */}
         <div style={cardStyle()}>
           <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14 }}>
             <span style={{ width: 24, height: 24, borderRadius: "50%", background: S.primary, color: "#fff", fontSize: 13, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center" }}>2</span>
-            <h3 style={{ fontSize: 16, fontWeight: 700, color: S.text, margin: 0 }}>Set your schedule &amp; budget</h3>
+            <h3 style={{ fontSize: 16, fontWeight: 700, color: S.text, margin: 0 }}>Campaign details</h3>
           </div>
-          <div style={{ display: "flex", gap: 10, marginBottom: 16 }}>
-            {(["per_day", "impressions"] as const).map((m) => (
-              <button
-                key={m}
-                onClick={() => { setBillingModel(m); setUnits(m === "per_day" ? minUnits : 10) }}
-                style={{
-                  flex: 1, padding: "11px 14px", borderRadius: 10, cursor: "pointer", fontSize: 13.5, fontWeight: 600,
-                  background: billingModel === m ? S.primary : "#fff",
-                  color: billingModel === m ? "#fff" : S.textMuted,
-                  border: billingModel === m ? `1px solid ${S.primary}` : `1px solid ${S.border}`,
-                }}
-              >
-                {m === "per_day" ? "Per Day (₦)" : "Per 1,000 Impressions (₦)"}
-              </button>
-            ))}
+
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+            <div>
+              <label style={labelStyle}>Billing frequency</label>
+              <select value={frequency} onChange={(e) => { setFrequency(e.target.value); setUnits(e.target.value === "week" ? 2 : e.target.value === "month" ? 1 : 7) }} style={selectStyle}>
+                {ADS_FREQUENCIES.map((f) => (
+                  <option key={f.value} value={f.value}>{f.label}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label style={labelStyle}>Currency</label>
+              <select value={currency} onChange={(e) => setCurrency(e.target.value)} style={selectStyle}>
+                {ADS_CURRENCIES.map((c) => (
+                  <option key={c.code} value={c.code}>{c.label}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label style={labelStyle}>Campaign goal</label>
+              <select value={goal} onChange={(e) => setGoal(e.target.value)} style={selectStyle}>
+                {ADS_GOALS.map((g) => (
+                  <option key={g.value} value={g.value}>{g.icon} {g.label}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label style={labelStyle}>Call to action</label>
+              <select value={ctaType} onChange={(e) => { setCtaType(e.target.value); setCta(ADS_CTA_LABELS[e.target.value] || e.target.value) }} style={selectStyle}>
+                {ADS_CTA_TYPES.map((c) => (
+                  <option key={c.value} value={c.value}>{c.label}</option>
+                ))}
+              </select>
+            </div>
           </div>
-          <div>
-            <label style={{ fontSize: 12.5, fontWeight: 600, color: S.textMuted, display: "block", marginBottom: 6 }}>
-              {billingModel === "per_day" ? `Number of days (min ${minUnits})` : "Thousands of impressions (min 1)"}
-            </label>
+
+          <div style={{ marginTop: 14 }}>
+            <label style={labelStyle}>Duration ({frequency === "day" ? "days" : frequency === "week" ? "weeks" : "months"} — min {minUnits})</label>
             <input
               type="number"
               min={minUnits}
@@ -873,9 +994,49 @@ function AdvertiseTab({
               style={inputStyle}
             />
             <p style={{ fontSize: 12, color: S.textDim, margin: "8px 0 0" }}>
-              {billingModel === "per_day"
-                ? `Estimated reach: ~${fmt(estReach)} visitors over ${Math.max(1, Math.floor(units))} day${Math.max(1, Math.floor(units)) > 1 ? "s" : ""}`
-                : `Estimated reach: ~${fmt(estReach)} impressions`}
+              Estimated reach: ~{fmt(estReach)} visitors · {formatMoney(basePrice, "NGN")}/{frequency.slice(0, 3)} base
+            </p>
+          </div>
+
+          {/* Target audience */}
+          <div style={{ marginTop: 16, borderTop: `1px solid ${S.border}`, paddingTop: 16 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
+              <Globe size={15} color={S.primary} />
+              <span style={{ fontSize: 13.5, fontWeight: 600, color: S.text }}>Target audience</span>
+              <span style={{ fontSize: 11.5, color: S.textDim }}>(optional)</span>
+            </div>
+            {[
+              { label: "Countries", icon: Globe, list: countries, set: setCountries, options: ADS_AUDIENCE_COUNTRIES },
+              { label: "Devices", icon: Monitor, list: devices, set: setDevices, options: [...ADS_AUDIENCE_DEVICES] as string[] },
+              { label: "Interests", icon: Tag, list: interests, set: setInterests, options: [...ADS_AUDIENCE_INTERESTS] as string[] },
+            ].map((group) => (
+              <div key={group.label} style={{ marginBottom: 10 }}>
+                <div style={{ fontSize: 12, fontWeight: 600, color: S.textMuted, marginBottom: 6 }}>
+                  {group.label} — <span style={{ color: S.textDim, fontWeight: 500 }}>{group.list.length ? group.list.join(", ") : "All"}</span>
+                </div>
+                <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                  {group.options.map((opt) => {
+                    const active = group.list.includes(opt)
+                    return (
+                      <button
+                        key={opt}
+                        onClick={() => toggleChip(group.list, group.set, opt)}
+                        style={{
+                          padding: "5px 11px", borderRadius: 20, fontSize: 12, cursor: "pointer",
+                          background: active ? S.primary : "#fff",
+                          color: active ? "#fff" : S.textMuted,
+                          border: active ? `1px solid ${S.primary}` : `1px solid ${S.border}`,
+                        }}
+                      >
+                        {opt}
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+            ))}
+            <p style={{ fontSize: 11.5, color: S.textDim, margin: 0 }}>
+              Audience selection is a request — our team targets it best-effort when your campaign goes live.
             </p>
           </div>
         </div>
@@ -885,7 +1046,21 @@ function AdvertiseTab({
           <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14 }}>
             <span style={{ width: 24, height: 24, borderRadius: "50%", background: S.primary, color: "#fff", fontSize: 13, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center" }}>3</span>
             <h3 style={{ fontSize: 16, fontWeight: 700, color: S.text, margin: 0 }}>Your ad creative</h3>
+            {placement?.supports_video && (
+              <button
+                onClick={generateCreative}
+                disabled={generating}
+                style={{
+                  marginLeft: "auto", ...btnSecondary, color: S.purple, borderColor: "#DDD6FE", display: "flex", alignItems: "center", gap: 6,
+                  opacity: generating ? 0.6 : 1,
+                }}
+              >
+                <Sparkles size={14} />
+                {generating ? "Writing..." : "AI Generate"}
+              </button>
+            )}
           </div>
+
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
             <div>
               <label style={labelStyle}>Brand / Company name *</label>
@@ -910,35 +1085,89 @@ function AdvertiseTab({
             <label style={labelStyle}>Short description (optional)</label>
             <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={2} placeholder="One line about what you offer..." style={{ ...inputStyle, resize: "vertical" }} />
           </div>
-          <div style={{ marginTop: 14 }}>
-            <label style={labelStyle}>Banner image</label>
-            <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
-              <input value={imageUrl} onChange={(e) => setImageUrl(e.target.value)} placeholder="Paste image URL or upload" style={{ ...inputStyle, flex: 1, minWidth: 200 }} />
-              <button onClick={() => fileRef.current?.click()} style={btnSecondary} disabled={uploading}>
-                <Upload size={14} style={{ marginRight: 6, verticalAlign: "-2px" }} />
-                {uploading ? "Uploading..." : "Upload"}
-              </button>
-              <input
-                ref={fileRef}
-                type="file"
-                accept="image/*"
-                style={{ display: "none" }}
-                onChange={(e) => {
-                  const f = e.target.files?.[0]
-                  if (f) handleUpload(f)
+
+          {/* Media type toggle */}
+          <div style={{ marginTop: 16 }}>
+            <label style={labelStyle}>Creative type</label>
+            <div style={{ display: "flex", gap: 10 }}>
+              <button
+                onClick={() => setMediaType("image")}
+                style={{
+                  flex: 1, padding: "11px 14px", borderRadius: 10, cursor: "pointer", fontSize: 13.5, fontWeight: 600,
+                  background: mediaType === "image" ? S.primary : "#fff",
+                  color: mediaType === "image" ? "#fff" : S.textMuted,
+                  border: mediaType === "image" ? `1px solid ${S.primary}` : `1px solid ${S.border}`,
+                  display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
                 }}
-              />
+              >
+                <ImageIcon size={15} /> Image banner
+              </button>
+              <button
+                onClick={() => setMediaType("video")}
+                disabled={!placement?.supports_video}
+                style={{
+                  flex: 1, padding: "11px 14px", borderRadius: 10, cursor: placement?.supports_video ? "pointer" : "not-allowed", fontSize: 13.5, fontWeight: 600,
+                  background: mediaType === "video" ? S.primary : "#fff",
+                  color: mediaType === "video" ? "#fff" : placement?.supports_video ? S.textMuted : S.textDim,
+                  border: mediaType === "video" ? `1px solid ${S.primary}` : `1px solid ${S.border}`,
+                  display: "flex", alignItems: "center", justifyContent: "center", gap: 6, opacity: placement?.supports_video ? 1 : 0.55,
+                }}
+              >
+                <Video size={15} /> Video ad
+              </button>
             </div>
-            {imageUrl && (
-              <div style={{ marginTop: 10, border: `1px solid ${S.border}`, borderRadius: 10, overflow: "hidden", maxWidth: 420, background: S.input }}>
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={imageUrl} alt="Ad preview" style={{ width: "100%", height: "auto", display: "block" }} />
-              </div>
-            )}
-            <p style={{ fontSize: 12, color: S.textDim, margin: "8px 0 0" }}>
-              Recommended: 728x90 (leaderboard), 300x250 (rectangle) or 336x280 (in-content). PNG/JPG, max 2MB.
-            </p>
           </div>
+
+          {mediaType === "video" ? (
+            <div style={{ marginTop: 14 }}>
+              <label style={labelStyle}>Video URL (MP4 / WebM) *</label>
+              <input value={videoUrl} onChange={(e) => setVideoUrl(e.target.value)} placeholder="https://cdn.example.com/ad.mp4" style={inputStyle} />
+              <div style={{ marginTop: 10 }}>
+                <label style={labelStyle}>Poster image URL (thumbnail, optional)</label>
+                <input value={posterUrl} onChange={(e) => setPosterUrl(e.target.value)} placeholder="https://cdn.example.com/poster.jpg" style={inputStyle} />
+              </div>
+              {videoUrl && (
+                <div style={{ marginTop: 10, border: `1px solid ${S.border}`, borderRadius: 10, overflow: "hidden", maxWidth: 420, background: S.input }}>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <video src={videoUrl} poster={posterUrl || undefined} controls muted playsInline preload="metadata" style={{ width: "100%", display: "block" }} />
+                </div>
+              )}
+              <p style={{ fontSize: 12, color: S.textDim, margin: "8px 0 0" }}>
+                Video ads play with controls on desktop and mobile. Recommended max 30s, MP4/WebM, ~5MB.
+              </p>
+            </div>
+          ) : (
+            <div style={{ marginTop: 14 }}>
+              <label style={labelStyle}>Banner image *</label>
+              <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+                <input value={imageUrl} onChange={(e) => setImageUrl(e.target.value)} placeholder="Paste image URL or upload" style={{ ...inputStyle, flex: 1, minWidth: 200 }} />
+                <button onClick={() => fileRef.current?.click()} style={btnSecondary} disabled={uploading}>
+                  <Upload size={14} style={{ marginRight: 6, verticalAlign: "-2px" }} />
+                  {uploading ? "Uploading..." : "Upload"}
+                </button>
+                <input
+                  ref={fileRef}
+                  type="file"
+                  accept="image/*"
+                  style={{ display: "none" }}
+                  onChange={(e) => {
+                    const f = e.target.files?.[0]
+                    if (f) handleUpload(f)
+                  }}
+                />
+              </div>
+              {imageUrl && (
+                <div style={{ marginTop: 10, border: `1px solid ${S.border}`, borderRadius: 10, overflow: "hidden", maxWidth: 420, background: S.input }}>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={imageUrl} alt="Ad preview" style={{ width: "100%", height: "auto", display: "block" }} />
+                </div>
+              )}
+              <p style={{ fontSize: 12, color: S.textDim, margin: "8px 0 0" }}>
+                Recommended: 728x90 (leaderboard), 300x250 (rectangle) or 336x280 (in-content). PNG/JPG, max 2MB.
+              </p>
+            </div>
+          )}
+
           <div style={{ marginTop: 14 }}>
             <label style={labelStyle}>Contact email (optional)</label>
             <input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@company.com" style={inputStyle} />
@@ -955,21 +1184,26 @@ function AdvertiseTab({
           <>
             <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 14 }}>
               <SummaryRow label="Ad space" value={placement.name} />
-              <SummaryRow label="Model" value={billingModel === "per_day" ? "Per day" : "Per 1,000 impressions"} />
-              <SummaryRow label="Units" value={billingModel === "per_day" ? `${Math.max(1, Math.floor(units))} days` : `${fmt(Math.max(1, Math.floor(units)) * 1000)} impressions`} />
-              <SummaryRow label="Unit price" value={NGN(unitPrice)} />
+              <SummaryRow label="Frequency" value={ADS_FREQUENCY_LABELS[frequency] || frequency} />
+              <SummaryRow label="Goal" value={ADS_GOAL_LABELS[goal] || goal} />
+              <SummaryRow label="CTA" value={ADS_CTA_LABELS[ctaType] || cta} />
+              <SummaryRow label="Units" value={`${Math.max(1, Math.floor(units))} ${frequency === "day" ? "days" : frequency === "week" ? "weeks" : "months"}`} />
+              <SummaryRow label="Unit price" value={`${formatMoney(basePrice * fx, currency)} / ${frequency.slice(0, 3)}`} />
+              {(countries.length > 0 || devices.length > 0 || interests.length > 0) && (
+                <SummaryRow label="Audience" value={[countries.join(", "), devices.join(", "), interests.join(", ")].filter(Boolean).slice(0, 2).join(" · ")} />
+              )}
             </div>
             <div style={{ borderTop: `1px solid ${S.border}`, paddingTop: 12 }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
                 <span style={{ fontSize: 14, fontWeight: 600, color: S.text }}>Total</span>
-                <span style={{ fontSize: 24, fontWeight: 800, color: S.primary }}>{NGN(total)}</span>
+                <span style={{ fontSize: 24, fontWeight: 800, color: S.primary }}>{formatMoney(total, currency)}</span>
               </div>
               <p style={{ fontSize: 12, color: S.textDim, margin: "6px 0 14px" }}>
                 ~{fmt(estReach)} estimated impressions
               </p>
             </div>
             <button onClick={handleSubmit} disabled={submitting} style={{ ...btnPrimary, width: "100%", padding: "13px 20px", fontSize: 15, opacity: submitting ? 0.6 : 1 }}>
-              {submitting ? "Submitting..." : "Place Order"}
+              {submitting ? "Submitting..." : `Place Order in ${currency}`}
             </button>
             <p style={{ fontSize: 11.5, color: S.textDim, margin: "10px 0 0", textAlign: "center", lineHeight: 1.5 }}>
               <ShieldCheck size={12} style={{ verticalAlign: "-2px", marginRight: 4 }} />
@@ -1064,8 +1298,30 @@ function CampaignsTab({
                 </p>
               )}
 
+              <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 10 }}>
+                <span style={{ background: "#EDE9FE", color: S.purple, borderRadius: 6, padding: "2px 8px", fontSize: 11, fontWeight: 600 }}>
+                  {ADS_GOAL_LABELS[c.goal || "impressions"] || c.goal}
+                </span>
+                <span style={{ background: "#DBEAFE", color: S.primary, borderRadius: 6, padding: "2px 8px", fontSize: 11, fontWeight: 600 }}>
+                  {ADS_CTA_LABELS[c.cta_type || "learn_more"] || c.cta_type}
+                </span>
+                <span style={{ background: "#F1F5F9", color: S.textMuted, borderRadius: 6, padding: "2px 8px", fontSize: 11, fontWeight: 600 }}>
+                  {c.media_type === "video" ? "Video" : "Image"}
+                </span>
+                <span style={{ background: "#F1F5F9", color: S.textMuted, borderRadius: 6, padding: "2px 8px", fontSize: 11, fontWeight: 600 }}>
+                  {ADS_FREQUENCY_LABELS[c.billing_frequency || "day"]}
+                </span>
+              </div>
+
               {c.description && (
                 <p style={{ fontSize: 12.5, color: S.textMuted, margin: "0 0 10px", lineHeight: 1.5 }}>{c.description}</p>
+              )}
+
+              {c.target_audience && (c.target_audience.countries?.length || c.target_audience.devices?.length || c.target_audience.interests?.length) && (
+                <p style={{ fontSize: 11.5, color: S.textDim, margin: "0 0 10px", lineHeight: 1.5 }}>
+                  <Users size={11} style={{ verticalAlign: "-1px", marginRight: 4 }} />
+                  {[c.target_audience.countries?.join(", "), c.target_audience.devices?.join(", "), c.target_audience.interests?.join(", ")].filter(Boolean).join(" · ")}
+                </p>
               )}
 
               <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8, background: S.input, borderRadius: 10, padding: "10px 12px", marginBottom: 10 }}>
@@ -1084,8 +1340,8 @@ function CampaignsTab({
               </div>
 
               <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: S.textMuted, marginBottom: 4 }}>
-                <span>{c.billing_model === "per_day" ? `${c.units} day${c.units > 1 ? "s" : ""}` : `${fmt(c.units * 1000)} impressions`}</span>
-                <span style={{ fontWeight: 600, color: S.text }}>{NGN(c.total_price)}</span>
+                <span>{ADS_FREQUENCY_LABELS[c.billing_frequency || "day"]} · {c.units} unit{c.units > 1 ? "s" : ""}</span>
+                <span style={{ fontWeight: 600, color: S.text }}>{formatMoney(c.total_price, c.currency || "NGN")}</span>
               </div>
               {c.start_date && (
                 <div style={{ fontSize: 12, color: S.textDim, marginBottom: 10 }}>
@@ -1223,12 +1479,13 @@ function ManageTab({
   const [editing, setEditing] = useState<Placement | null>(null)
   const [form, setForm] = useState({
     name: "", position: "", location: "site", description: "", ad_type: "banner",
-    sizes: "728x90", price_per_day: "0", cpm: "0", min_days: "7", min_budget: "0", est_impressions: "0",
+    sizes: "728x90", price_per_day: "0", price_per_week: "0", price_per_month: "0", supports_video: false,
+    cpm: "0", min_days: "7", min_budget: "0", est_impressions: "0",
   })
 
   const startCreate = () => {
     setEditing(null)
-    setForm({ name: "", position: "", location: "site", description: "", ad_type: "banner", sizes: "728x90", price_per_day: "0", cpm: "0", min_days: "7", min_budget: "0", est_impressions: "0" })
+    setForm({ name: "", position: "", location: "site", description: "", ad_type: "banner", sizes: "728x90", price_per_day: "0", price_per_week: "0", price_per_month: "0", supports_video: false, cpm: "0", min_days: "7", min_budget: "0", est_impressions: "0" })
     setShowForm(true)
   }
 
@@ -1237,6 +1494,7 @@ function ManageTab({
     setForm({
       name: p.name, position: p.position, location: p.location, description: p.description || "",
       ad_type: p.ad_type, sizes: (p.sizes || []).join(", "), price_per_day: String(p.price_per_day),
+      price_per_week: String(p.price_per_week), price_per_month: String(p.price_per_month), supports_video: !!p.supports_video,
       cpm: String(p.cpm), min_days: String(p.min_days), min_budget: String(p.min_budget), est_impressions: String(p.est_impressions),
     })
     setShowForm(true)
@@ -1247,6 +1505,9 @@ function ManageTab({
       ...form,
       sizes: form.sizes.split(",").map((s) => s.trim()).filter(Boolean),
       price_per_day: parseFloat(form.price_per_day) || 0,
+      price_per_week: parseFloat(form.price_per_week) || 0,
+      price_per_month: parseFloat(form.price_per_month) || 0,
+      supports_video: form.supports_video,
       cpm: parseFloat(form.cpm) || 0,
       min_days: parseInt(form.min_days) || 7,
       min_budget: parseFloat(form.min_budget) || 0,
@@ -1275,7 +1536,8 @@ function ManageTab({
       body: JSON.stringify({
         type: "placement", id: p.id, name: p.name, position: p.position, location: p.location,
         description: p.description || "", ad_type: p.ad_type, sizes: p.sizes || [],
-        price_per_day: p.price_per_day, cpm: p.cpm, min_days: p.min_days, min_budget: p.min_budget,
+        price_per_day: p.price_per_day, price_per_week: p.price_per_week, price_per_month: p.price_per_month,
+        supports_video: p.supports_video, cpm: p.cpm, min_days: p.min_days, min_budget: p.min_budget,
         est_impressions: p.est_impressions, is_active: !p.is_active,
       }),
     })
@@ -1320,7 +1582,7 @@ function ManageTab({
           <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 860 }}>
             <thead>
               <tr style={{ borderBottom: `1px solid ${S.border}`, background: S.input }}>
-                {["Ad Space", "Position", "Sizes", "Price/Day", "CPM", "Reach/Mo", "Status", "Actions"].map((h) => (
+                {["Ad Space", "Position", "Sizes", "Day", "Week", "Month", "Status", "Actions"].map((h) => (
                   <th key={h} style={{ padding: "12px 16px", textAlign: "left", color: S.textMuted, fontSize: 11.5, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.04em" }}>{h}</th>
                 ))}
               </tr>
@@ -1337,8 +1599,8 @@ function ManageTab({
                   </td>
                   <td style={{ padding: "12px 16px", fontSize: 12, color: S.textMuted }}>{(p.sizes || []).join(", ")}</td>
                   <td style={{ padding: "12px 16px", fontSize: 13, fontWeight: 700, color: S.text }}>{NGN(p.price_per_day)}</td>
-                  <td style={{ padding: "12px 16px", fontSize: 13, color: S.textMuted }}>{NGN(p.cpm)}</td>
-                  <td style={{ padding: "12px 16px", fontSize: 13, color: S.textMuted }}>{fmt(p.est_impressions)}</td>
+                  <td style={{ padding: "12px 16px", fontSize: 13, color: S.textMuted }}>{NGN(p.price_per_week)}</td>
+                  <td style={{ padding: "12px 16px", fontSize: 13, color: S.textMuted }}>{NGN(p.price_per_month)}</td>
                   <td style={{ padding: "12px 16px" }}>
                     <span style={{
                       background: p.is_active ? "#DCFCE7" : "#F1F5F9",
@@ -1395,6 +1657,8 @@ function ManageTab({
                 <label style={labelStyle}>Ad type</label>
                 <select value={form.ad_type} onChange={(e) => setForm(f => ({ ...f, ad_type: e.target.value }))} style={inputStyle}>
                   <option value="banner">Banner</option>
+                  <option value="display">Display</option>
+                  <option value="video">Video</option>
                   <option value="native">Native</option>
                   <option value="infeed">In-Feed</option>
                   <option value="sticky">Sticky</option>
@@ -1407,6 +1671,14 @@ function ManageTab({
               <div>
                 <label style={labelStyle}>Price per day (₦)</label>
                 <input type="number" value={form.price_per_day} onChange={(e) => setForm(f => ({ ...f, price_per_day: e.target.value }))} style={inputStyle} />
+              </div>
+              <div>
+                <label style={labelStyle}>Price per week (₦)</label>
+                <input type="number" value={form.price_per_week} onChange={(e) => setForm(f => ({ ...f, price_per_week: e.target.value }))} placeholder="auto: day × 7 × 0.85" style={inputStyle} />
+              </div>
+              <div>
+                <label style={labelStyle}>Price per month (₦)</label>
+                <input type="number" value={form.price_per_month} onChange={(e) => setForm(f => ({ ...f, price_per_month: e.target.value }))} placeholder="auto: day × 30 × 0.75" style={inputStyle} />
               </div>
               <div>
                 <label style={labelStyle}>CPM (₦ / 1k impressions)</label>
@@ -1423,6 +1695,18 @@ function ManageTab({
               <div>
                 <label style={labelStyle}>Est. monthly impressions</label>
                 <input type="number" value={form.est_impressions} onChange={(e) => setForm(f => ({ ...f, est_impressions: e.target.value }))} style={inputStyle} />
+              </div>
+              <div style={{ display: "flex", alignItems: "center", gap: 10, paddingTop: 22 }}>
+                <input
+                  id="supports-video"
+                  type="checkbox"
+                  checked={form.supports_video}
+                  onChange={(e) => setForm(f => ({ ...f, supports_video: e.target.checked }))}
+                  style={{ width: 17, height: 17, cursor: "pointer" }}
+                />
+                <label htmlFor="supports-video" style={{ ...labelStyle, margin: 0, cursor: "pointer" }}>
+                  Supports video ads
+                </label>
               </div>
             </div>
             <div style={{ marginTop: 14 }}>
