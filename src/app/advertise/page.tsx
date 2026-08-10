@@ -3,11 +3,12 @@
 import { useEffect, useState, useCallback, useRef } from "react"
 import Image from "next/image"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 import { createClient } from "@/lib/supabase/client"
 import {
-  ADS_CURRENCIES, ADS_FREQUENCIES, ADS_GOALS, ADS_CTA_TYPES,
+  ADS_CURRENCIES, ADS_GOALS, ADS_CTA_TYPES,
   ADS_AUDIENCE_COUNTRIES, ADS_AUDIENCE_DEVICES, ADS_AUDIENCE_INTERESTS,
-  ADS_CTA_LABELS, ADS_FREQUENCY_LABELS, formatMoney, DEFAULT_FX_RATES,
+  ADS_CTA_LABELS, formatMoney, DEFAULT_FX_RATES,
 } from "@/lib/ads"
 
 const S = {
@@ -31,12 +32,9 @@ interface Placement {
   ad_type: string
   sizes: string[]
   is_active: boolean
-  price_per_day: number
-  price_per_week: number
-  price_per_month: number
+  min_bid_cpm: number
+  min_bid_cpc: number
   supports_video: boolean
-  cpm: number
-  min_days: number
   est_impressions: number
   advertisers: number
 }
@@ -59,18 +57,21 @@ const labelStyle: React.CSSProperties = {
 }
 
 export default function AdvertisePage() {
+  const router = useRouter()
   const [placements, setPlacements] = useState<Placement[]>([])
   const [fxRates, setFxRates] = useState<Record<string, number>>(DEFAULT_FX_RATES)
   const [loading, setLoading] = useState(true)
   const [currency, setCurrency] = useState("NGN")
   const [signedIn, setSignedIn] = useState<boolean | null>(null)
 
-  // order form
+  // campaign settings
   const [placementId, setPlacementId] = useState<string | null>(null)
-  const [frequency, setFrequency] = useState("day")
+  const [billingModel, setBillingModel] = useState<"cpm" | "cpc">("cpm")
+  const [bidAmount, setBidAmount] = useState("")
+  const [dailyBudget, setDailyBudget] = useState("")
+  const [durationDays, setDurationDays] = useState(7)
   const [goal, setGoal] = useState("clicks")
   const [ctaType, setCtaType] = useState("learn_more")
-  const [units, setUnits] = useState(7)
   const [brand, setBrand] = useState("")
   const [headline, setHeadline] = useState("")
   const [cta, setCta] = useState("Learn More")
@@ -95,7 +96,7 @@ export default function AdvertisePage() {
     try {
       const supabase = supabaseRef.current
       const [pl, fx] = await Promise.all([
-        supabase.from("ad_placements").select("*").eq("is_active", true).order("price_per_day", { ascending: false }),
+        supabase.from("ad_placements").select("*").eq("is_active", true).order("min_bid_cpm", { ascending: false }),
         supabase.from("site_settings").select("value").eq("key", "fx_rates").maybeSingle(),
       ])
       if (pl.data) setPlacements(pl.data)
@@ -128,24 +129,17 @@ export default function AdvertisePage() {
   const placement = placements.find((p) => p.id === placementId) || null
   const fx = Number(fxRates[currency] || 1) || 1
 
-  const basePrice = placement
-    ? frequency === "week"
-      ? Number(placement.price_per_week) || Math.round(Number(placement.price_per_day) * 7 * 0.85)
-      : frequency === "month"
-        ? Number(placement.price_per_month) || Math.round(Number(placement.price_per_day) * 30 * 0.75)
-        : Number(placement.price_per_day)
-    : 0
-  const minUnits = placement
-    ? frequency === "week"
-      ? Math.max(1, Math.ceil(Number(placement.min_days) / 7))
-      : frequency === "month"
-        ? 1
-        : Math.max(1, Number(placement.min_days))
-    : 1
-  const total = Math.round(basePrice * fx * Math.max(1, Math.floor(units)) * 100) / 100
-  const estReach = placement
-    ? Math.round((placement.est_impressions / 30) * Math.max(1, Math.floor(units)) * (frequency === "week" ? 7 : frequency === "month" ? 30 : 1))
-    : 0
+  // Auction math — bid must clear the placement's NGN floor (converted to chosen currency)
+  const floorNGN = billingModel === "cpc" ? (placement?.min_bid_cpc ?? 50) : (placement?.min_bid_cpm ?? 500)
+  const floorInCurrency = Math.round((floorNGN / fx) * 100) / 100
+  const bid = parseFloat(bidAmount) || 0
+  const budget = parseFloat(dailyBudget) || 0
+  const bidNGN = bid * fx
+  const bidOk = bid > 0 && bidNGN >= floorNGN
+  const budgetOk = budget >= bid
+  const days = Math.max(1, Math.min(90, Math.floor(durationDays) || 1))
+  const total = Math.round(budget * days * 100) / 100
+  const estReach = placement ? Math.round((placement.est_impressions / 30) * days) : 0
 
   const toggleChip = (list: string[], setList: (v: string[]) => void, value: string) => {
     setList(list.includes(value) ? list.filter((c) => c !== value) : [...list, value])
@@ -207,6 +201,8 @@ export default function AdvertisePage() {
       return
     }
     if (!placement) { showMsg("error", "Select an ad space"); return }
+    if (!bidOk) { showMsg("error", `Your ${billingModel.toUpperCase()} bid must be at least ${formatMoney(floorInCurrency, currency)} for this space`); return }
+    if (!budgetOk) { showMsg("error", "Daily budget must be at least your bid amount"); return }
     if (!brand.trim() || !headline.trim() || !destinationUrl.trim()) {
       showMsg("error", "Brand name, headline and destination URL are required")
       return
@@ -218,31 +214,28 @@ export default function AdvertisePage() {
       showMsg("error", "Upload or paste a banner image for your ad")
       return
     }
-    if (Math.floor(units) < minUnits) {
-      showMsg("error", `Minimum booking is ${minUnits} ${frequency}${minUnits > 1 ? "s" : ""} for this ad space`)
-      return
-    }
     setSubmitting(true)
     try {
       const res = await fetch("/admin/ads/api", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          action: "order",
+          action: "create",
           placement_id: placement.id,
-          billing_model: "per_" + frequency,
-          units: Math.floor(units),
+          billing_model: billingModel,
+          bid_amount: bid,
+          daily_budget: budget,
+          duration_days: days,
+          currency,
+          goal,
+          cta_type: ctaType,
           advertiser_name: brand.trim(),
           advertiser_email: email.trim() || null,
           headline: headline.trim(),
           cta_text: cta.trim() || "Learn More",
-          cta_type: ctaType,
           description: description.trim(),
           destination_url: destinationUrl.trim(),
           ad_image_url: mediaType === "image" ? imageUrl.trim() || null : null,
-          currency,
-          billing_frequency: frequency,
-          goal,
           target_audience: { countries, devices, interests },
           media_type: mediaType,
           video_url: mediaType === "video" ? videoUrl.trim() || null : null,
@@ -250,13 +243,17 @@ export default function AdvertisePage() {
         }),
       })
       const data = await res.json()
-      if (!res.ok) throw new Error(data.error || "Failed to place order")
+      if (!res.ok) throw new Error(data.error || "Failed to create campaign")
+      if (data.campaign?.id) {
+        router.push(`/account/ads/${data.campaign.id}`)
+        return
+      }
       setBrand(""); setHeadline(""); setDescription(""); setDestinationUrl(""); setImageUrl(""); setVideoUrl(""); setPosterUrl("")
       setCountries([]); setDevices([]); setInterests([])
-      showMsg("success", data.message || "Order submitted! Our team will approve it within 24 hours.")
+      showMsg("success", data.message || "Campaign submitted! Our team will approve it within 24 hours.")
       document.getElementById("placements")?.scrollIntoView({ behavior: "smooth" })
     } catch (e: any) {
-      showMsg("error", e.message || "Failed to place order")
+      showMsg("error", e.message || "Failed to create campaign")
     } finally {
       setSubmitting(false)
     }
@@ -264,9 +261,7 @@ export default function AdvertisePage() {
 
   const pickPlacement = (p: Placement) => {
     setPlacementId(p.id)
-    if (p.supports_video && mediaType === "video") {
-      // ok, video stays
-    } else if (!p.supports_video && mediaType === "video") {
+    if (!p.supports_video && mediaType === "video") {
       setMediaType("image")
     }
     document.getElementById("order")?.scrollIntoView({ behavior: "smooth" })
@@ -281,12 +276,12 @@ export default function AdvertisePage() {
         <div className="relative z-10 px-6 md:px-12 lg:px-16 py-16 text-white max-w-4xl">
           <div className="inline-flex items-center gap-2 bg-white/15 backdrop-blur border border-white/25 rounded-full px-4 py-1.5 text-sm mb-5">
             <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-            Self-serve ad marketplace — buy ad space in minutes
+            Self-serve ad marketplace — your budget, your bid
           </div>
           <h1 className="text-4xl md:text-5xl font-bold mb-4">Advertise With Us</h1>
           <p className="text-lg text-white/85 max-w-2xl">
             Put your brand in front of developers, IT pros and gadget buyers. Pick an ad space,
-            choose your goal, budget and audience — transparent pricing, no middleman, approved within 24 hours.
+            set your own daily budget and bid — no fixed fees, approved within 24 hours.
           </p>
           <div className="flex flex-wrap gap-3 mt-7">
             <a
@@ -325,7 +320,7 @@ export default function AdvertisePage() {
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap", marginBottom: 16 }}>
           <div>
             <h2 id="placements" className="text-2xl font-bold" style={{ scrollMarginTop: 100 }}>Available Ad Spaces</h2>
-            <p className="text-sm text-muted-foreground">Fixed transparent pricing. All prices update live in your currency.</p>
+            <p className="text-sm text-muted-foreground">Minimum bids per space, updated live in your currency. You decide what you pay.</p>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
             <label style={{ fontSize: 13, fontWeight: 600, color: S.textMuted }}>Currency</label>
@@ -345,8 +340,8 @@ export default function AdvertisePage() {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 mb-14">
             {placements.map((p) => {
-              const week = Number(p.price_per_week) || Math.round(Number(p.price_per_day) * 7 * 0.85)
-              const month = Number(p.price_per_month) || Math.round(Number(p.price_per_day) * 30 * 0.75)
+              const floor = billingModel === "cpc" ? p.min_bid_cpc : p.min_bid_cpm
+              const floorCur = Math.round((floor / fx) * 100) / 100
               const selected = p.id === placementId
               return (
                 <div
@@ -377,24 +372,19 @@ export default function AdvertisePage() {
                     <p style={{ fontSize: 12.5, color: S.textMuted, margin: "0 0 12px", lineHeight: 1.55 }}>{p.description}</p>
                   )}
 
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8, background: S.input, borderRadius: 10, padding: "10px 12px", marginBottom: 12 }}>
+                  <div style={{ display: "flex", gap: 8, background: S.input, borderRadius: 10, padding: "10px 12px", marginBottom: 12, alignItems: "center", justifyContent: "space-between" }}>
                     <div>
-                      <div style={{ fontSize: 14, fontWeight: 700, color: S.text }}>{formatMoney(p.price_per_day * fx, currency)}</div>
-                      <div style={{ fontSize: 11, color: S.textDim }}>/ day</div>
+                      <div style={{ fontSize: 14, fontWeight: 700, color: S.text }}>From {formatMoney(floorCur, currency)}</div>
+                      <div style={{ fontSize: 11, color: S.textDim }}>min {billingModel.toUpperCase()} bid</div>
                     </div>
-                    <div>
-                      <div style={{ fontSize: 14, fontWeight: 700, color: S.text }}>{formatMoney(week * fx, currency)}</div>
-                      <div style={{ fontSize: 11, color: S.textDim }}>/ week</div>
-                    </div>
-                    <div>
-                      <div style={{ fontSize: 14, fontWeight: 700, color: S.text }}>{formatMoney(month * fx, currency)}</div>
-                      <div style={{ fontSize: 11, color: S.textDim }}>/ month</div>
-                    </div>
+                    <span style={{ fontSize: 12, fontWeight: 600, color: S.textMuted, whiteSpace: "nowrap" }}>
+                      ~{Number(p.est_impressions).toLocaleString()} reach/mo
+                    </span>
                   </div>
 
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
                     <span style={{ fontSize: 12, color: S.textDim }}>
-                      ~{Number(p.est_impressions).toLocaleString()} reach/mo · {p.advertisers || 0} advertisers
+                      {p.advertisers || 0} advertisers running
                     </span>
                     <span style={{ fontSize: 13, fontWeight: 700, color: S.primary }}>
                       {selected ? "✓ Selected" : "Select →"}
@@ -414,7 +404,7 @@ export default function AdvertisePage() {
         {/* Order form */}
         <div id="order" style={{ scrollMarginTop: 100, marginBottom: 16 }}>
           <h2 className="text-2xl font-bold mb-1">Build Your Campaign</h2>
-          <p className="text-sm text-muted-foreground mb-6">Pick a space above or choose one here — your total updates instantly.</p>
+          <p className="text-sm text-muted-foreground mb-6">Pick a space above or choose one here — set your bid, budget and duration.</p>
         </div>
 
         {message && (
@@ -437,7 +427,7 @@ export default function AdvertisePage() {
                 <div style={{ background: S.input, borderRadius: 10, padding: "12px 14px", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10 }}>
                   <div>
                     <div style={{ fontSize: 14, fontWeight: 600, color: S.text }}>{placement.name}</div>
-                    <div style={{ fontSize: 12, color: S.textDim }}>{formatMoney(basePrice * fx, currency)}/{frequency.slice(0, 3)} · ~{Number(placement.est_impressions).toLocaleString()} reach/mo</div>
+                    <div style={{ fontSize: 12, color: S.textDim }}>min {formatMoney(Math.round((floorNGN / fx) * 100) / 100, currency)} {billingModel.toUpperCase()} · ~{Number(placement.est_impressions).toLocaleString()} reach/mo</div>
                   </div>
                   <button onClick={() => setPlacementId(null)} style={{ background: "none", border: `1px solid ${S.border}`, borderRadius: 8, padding: "6px 12px", fontSize: 12.5, color: S.textMuted, cursor: "pointer" }}>
                     Change
@@ -448,23 +438,82 @@ export default function AdvertisePage() {
               )}
             </div>
 
-            {/* Options */}
+            {/* Budget & bidding */}
             <div style={{ background: S.bg, border: `1px solid ${S.border}`, borderRadius: 14, padding: 20 }}>
-              <h3 style={{ fontSize: 15, fontWeight: 700, color: S.text, margin: "0 0 12px" }}>2 · Goal, frequency &amp; audience</h3>
+              <h3 style={{ fontSize: 15, fontWeight: 700, color: S.text, margin: "0 0 12px" }}>2 · Budget, bid &amp; audience</h3>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+                <div>
+                  <label style={labelStyle}>How do you want to pay?</label>
+                  <div style={{ display: "flex", gap: 8 }}>
+                    {(["cpm", "cpc"] as const).map((m) => (
+                      <button
+                        key={m}
+                        onClick={() => setBillingModel(m)}
+                        style={{
+                          flex: 1, padding: "10px 12px", borderRadius: 10, cursor: "pointer", fontSize: 13, fontWeight: 600,
+                          background: billingModel === m ? S.primary : "#fff",
+                          color: billingModel === m ? "#fff" : S.textMuted,
+                          border: billingModel === m ? `1px solid ${S.primary}` : `1px solid ${S.border}`,
+                        }}
+                      >
+                        {m.toUpperCase()}
+                        <span style={{ display: "block", fontSize: 10.5, fontWeight: 500, opacity: 0.85 }}>
+                          {m === "cpm" ? "per 1,000 impressions" : "per click"}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <label style={labelStyle}>Currency</label>
+                  <select value={currency} onChange={(e) => setCurrency(e.target.value)} style={{ ...inputStyle, cursor: "pointer" }}>
+                    {ADS_CURRENCIES.map((c) => (
+                      <option key={c.code} value={c.code}>{c.label}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label style={labelStyle}>Bid amount ({billingModel.toUpperCase()})</label>
+                  <input
+                    type="number"
+                    min={0}
+                    value={bidAmount}
+                    onChange={(e) => setBidAmount(e.target.value)}
+                    placeholder={placement ? `Min ${formatMoney(floorInCurrency, currency)}` : "Select an ad space first"}
+                    disabled={!placement}
+                    style={inputStyle}
+                  />
+                  {placement && (
+                    <p style={{ fontSize: 11.5, margin: "6px 0 0", color: bidOk ? "#16A34A" : "#D97706" }}>
+                      Minimum bid for this space: {formatMoney(floorInCurrency, currency)} ({floorNGN.toLocaleString()}₦)
+                    </p>
+                  )}
+                </div>
+                <div>
+                  <label style={labelStyle}>Daily budget ({currency})</label>
+                  <input
+                    type="number"
+                    min={0}
+                    value={dailyBudget}
+                    onChange={(e) => setDailyBudget(e.target.value)}
+                    placeholder="e.g. 5000"
+                    style={inputStyle}
+                  />
+                  {bid > 0 && (
+                    <p style={{ fontSize: 11.5, margin: "6px 0 0", color: budgetOk ? "#16A34A" : "#D97706" }}>
+                      {budgetOk ? "Covers your bid" : `Must be at least your bid (${formatMoney(bid, currency)})`}
+                    </p>
+                  )}
+                </div>
+                <div>
+                  <label style={labelStyle}>Duration (days)</label>
+                  <input type="number" min={1} max={90} value={durationDays} onChange={(e) => setDurationDays(parseInt(e.target.value) || 7)} style={inputStyle} />
+                </div>
                 <div>
                   <label style={labelStyle}>Campaign goal</label>
                   <select value={goal} onChange={(e) => setGoal(e.target.value)} style={{ ...inputStyle, cursor: "pointer" }}>
                     {ADS_GOALS.map((g) => (
                       <option key={g.value} value={g.value}>{g.icon} {g.label}</option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label style={labelStyle}>Billing frequency</label>
-                  <select value={frequency} onChange={(e) => { setFrequency(e.target.value); setUnits(e.target.value === "week" ? 2 : e.target.value === "month" ? 1 : 7) }} style={{ ...inputStyle, cursor: "pointer" }}>
-                    {ADS_FREQUENCIES.map((f) => (
-                      <option key={f.value} value={f.value}>{f.label}</option>
                     ))}
                   </select>
                 </div>
@@ -475,10 +524,6 @@ export default function AdvertisePage() {
                       <option key={c.value} value={c.value}>{c.label}</option>
                     ))}
                   </select>
-                </div>
-                <div>
-                  <label style={labelStyle}>Duration ({frequency === "day" ? "days" : frequency === "week" ? "weeks" : "months"} — min {minUnits})</label>
-                  <input type="number" min={minUnits} value={units} onChange={(e) => setUnits(parseInt(e.target.value) || minUnits)} style={inputStyle} />
                 </div>
               </div>
 
@@ -628,28 +673,29 @@ export default function AdvertisePage() {
 
           {/* Summary */}
           <div style={{ background: S.bg, border: `1px solid ${S.border}`, borderRadius: 14, padding: 20, position: "sticky", top: 100 }}>
-            <h3 style={{ fontSize: 16, fontWeight: 700, color: S.text, margin: "0 0 14px" }}>Order Summary</h3>
+            <h3 style={{ fontSize: 16, fontWeight: 700, color: S.text, margin: "0 0 14px" }}>Campaign Summary</h3>
             {!placement ? (
-              <p style={{ color: S.textDim, fontSize: 13.5, margin: 0 }}>Select an ad space to see pricing.</p>
+              <p style={{ color: S.textDim, fontSize: 13.5, margin: 0 }}>Select an ad space to see your campaign plan.</p>
             ) : (
               <>
                 <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 14 }}>
                   <SummaryRow label="Ad space" value={placement.name} />
-                  <SummaryRow label="Frequency" value={ADS_FREQUENCY_LABELS[frequency] || frequency} />
+                  <SummaryRow label="Billing" value={`${billingModel.toUpperCase()} ${billingModel === "cpm" ? "(1,000 imps)" : "(per click)"}`} />
+                  <SummaryRow label="Bid" value={formatMoney(bid, currency)} />
+                  <SummaryRow label="Daily budget" value={formatMoney(budget, currency)} />
+                  <SummaryRow label="Duration" value={`${days} day${days > 1 ? "s" : ""}`} />
                   <SummaryRow label="Goal" value={ADS_GOALS.find((g) => g.value === goal)?.label || goal} />
                   <SummaryRow label="CTA" value={ADS_CTA_LABELS[ctaType] || cta} />
-                  <SummaryRow label="Units" value={`${Math.max(1, Math.floor(units))} ${frequency === "day" ? "days" : frequency === "week" ? "weeks" : "months"}`} />
-                  <SummaryRow label="Unit price" value={`${formatMoney(basePrice * fx, currency)} / ${frequency.slice(0, 3)}`} />
                   {(countries.length > 0 || devices.length > 0 || interests.length > 0) && (
                     <SummaryRow label="Audience" value={[countries.join(", "), devices.join(", "), interests.join(", ")].filter(Boolean).slice(0, 2).join(" · ")} />
                   )}
                 </div>
                 <div style={{ borderTop: `1px solid ${S.border}`, paddingTop: 12 }}>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
-                    <span style={{ fontSize: 14, fontWeight: 600, color: S.text }}>Total</span>
+                    <span style={{ fontSize: 14, fontWeight: 600, color: S.text }}>Total budget</span>
                     <span style={{ fontSize: 24, fontWeight: 800, color: S.primary }}>{formatMoney(total, currency)}</span>
                   </div>
-                  <p style={{ fontSize: 12, color: S.textDim, margin: "6px 0 14px" }}>~{Number(estReach).toLocaleString()} estimated impressions</p>
+                  <p style={{ fontSize: 12, color: S.textDim, margin: "6px 0 14px" }}>~{Number(estReach).toLocaleString()} estimated impressions · you only pay for what delivers, up to your daily cap</p>
                 </div>
                 <button
                   onClick={handleSubmit}
@@ -659,16 +705,16 @@ export default function AdvertisePage() {
                     background: S.primary, color: "#fff", border: "none", opacity: submitting ? 0.6 : 1,
                   }}
                 >
-                  {submitting ? "Submitting..." : signedIn ? `Place Order in ${currency}` : "Sign in to place order"}
+                  {submitting ? "Submitting..." : signedIn ? `Submit Campaign in ${currency}` : "Sign in to launch campaign"}
                 </button>
                 {!signedIn && (
                   <p style={{ fontSize: 12, color: S.textDim, margin: "10px 0 0", textAlign: "center" }}>
                     <Link href="/login?next=/advertise" style={{ color: S.primary, fontWeight: 600 }}>Sign in</Link> or{" "}
-                    <Link href="/signup" style={{ color: S.primary, fontWeight: 600 }}>create a free account</Link> to order.
+                    <Link href="/signup" style={{ color: S.primary, fontWeight: 600 }}>create a free account</Link> to launch.
                   </p>
                 )}
                 <p style={{ fontSize: 11.5, color: S.textDim, margin: "10px 0 0", textAlign: "center", lineHeight: 1.5 }}>
-                  Our team reviews every order within 24 hours before it goes live. No payment is taken at this stage.
+                  Our team reviews every campaign within 24 hours before it goes live. No payment is taken at this stage.
                 </p>
               </>
             )}
@@ -680,10 +726,10 @@ export default function AdvertisePage() {
           <h2 className="text-2xl font-bold mb-6">How It Works</h2>
           <div className="grid grid-cols-1 md:grid-cols-4 gap-5">
             {[
-              { step: "1", title: "Pick an ad space", desc: "Browse transparently priced placements — leaderboards, sidebars, in-content and video units." },
-              { step: "2", title: "Set goal, budget & audience", desc: "Choose your currency, frequency, campaign goal, call to action and target audience." },
+              { step: "1", title: "Pick an ad space", desc: "Browse placements — leaderboards, sidebars, in-content and video units. Each shows its minimum bid." },
+              { step: "2", title: "Set budget & bid", desc: "Choose currency, your bid (CPM or CPC), daily budget, duration, campaign goal and target audience." },
               { step: "3", title: "Submit creative", desc: "Upload your banner or video — or let our AI write the ad copy for you in one click." },
-              { step: "4", title: "Approved & live", desc: "Our team reviews within 24 hours. Once approved, your ad starts serving with live stats." },
+              { step: "4", title: "Approved & live", desc: "Our team reviews within 24 hours. Once approved, your ad starts serving with live stats in your account." },
             ].map((s) => (
               <div key={s.step} className="bg-card border rounded-xl p-6">
                 <div className="w-8 h-8 rounded-full flex items-center justify-center text-white font-bold mb-3" style={{ background: S.primary }}>{s.step}</div>
@@ -699,11 +745,12 @@ export default function AdvertisePage() {
           <h2 className="text-2xl font-bold mb-6">Frequently Asked Questions</h2>
           <div className="space-y-5">
             {[
-              { q: "When do I pay?", a: "No payment is collected when you place an order. Our team reviews your campaign and confirms it before we arrange payment — usually within 24 hours." },
-              { q: "Which currencies do you support?", a: "We support NGN, USD, EUR, GBP, GHS, KES, ZAR, CAD, AUD and INR. Prices are converted live at published rates when you order." },
+              { q: "How does bidding work?", a: "Each ad space has a minimum bid (CPM — per 1,000 impressions — or CPC — per click). You set a bid at or above that floor, plus a daily budget that covers it. Higher bids win more delivery; you only pay for what actually serves, up to your daily cap." },
+              { q: "When do I pay?", a: "No payment is collected when you submit. Our team reviews your campaign and confirms it before we arrange payment — usually within 24 hours." },
+              { q: "Which currencies do you support?", a: "We support NGN, USD, EUR, GBP, GHS, KES, ZAR, CAD, AUD and INR. Minimum bids are converted live at published rates when you set up your campaign." },
               { q: "Can I run video ads?", a: "Yes. Ad spaces marked VIDEO support video creatives (MP4/WebM, max 30s recommended). Upload the video URL and an optional poster image." },
               { q: "What targeting options are available?", a: "You can request targeting by country, device and interest (category). We apply it best-effort when your campaign goes live." },
-              { q: "Can I see my campaign performance?", a: "Every campaign tracks impressions, clicks and CTR in real time — viewable in your account once your campaign is live." },
+              { q: "Can I see my campaign performance?", a: "Every campaign tracks impressions, clicks, CTR and spend in real time — with a 14-day performance chart in your account, plus Pause/Resume whenever you like." },
               { q: "What if my creative is rejected?", a: "We'll send you the reason and you can fix and resubmit. Common issues: low-res images, misleading claims or off-topic content." },
             ].map((f) => (
               <div key={f.q}>

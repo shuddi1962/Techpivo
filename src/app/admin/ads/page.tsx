@@ -110,15 +110,9 @@ interface Placement {
   height: number | null
   sizes: string[]
   is_active: boolean
-  price_per_day: number
-  price_per_week: number
-  price_per_month: number
   min_bid_cpm: number
   min_bid_cpc: number
   supports_video: boolean
-  cpm: number
-  min_days: number
-  min_budget: number
   est_impressions: number
   advertisers: number
   impressions: number
@@ -140,7 +134,6 @@ interface Campaign {
   positions: string[]
   placement_id: string | null
   billing_model: string
-  billing_frequency: string
   units: number
   unit_price: number
   total_price: number
