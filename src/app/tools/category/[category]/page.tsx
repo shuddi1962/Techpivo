@@ -97,7 +97,7 @@ export default async function ToolCategoryPage({ params }: { params: { category:
 
       <div style={{ maxWidth: 1200, margin: "0 auto", padding: "40px 20px" }}>
         <div style={{ fontSize: 13, color: "var(--muted)", marginBottom: 16 }}>
-          <Link href="/tools" style={{ color: "var(--accent)", textDecoration: "none" }}>Tools</Link>
+          <Link href="/tools" style={{ color: "hsl(var(--accent))", textDecoration: "none" }}>Tools</Link>
           <span style={{ margin: "0 6px" }}>→</span>
           <span>{detail.label}</span>
         </div>

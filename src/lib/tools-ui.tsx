@@ -5,7 +5,7 @@ import { Check, Copy, Download, Upload, AlertCircle, CheckCircle2 } from "lucide
 
 export const s = {
   btn: {
-    padding: "9px 20px", borderRadius: 8, background: "var(--accent)", color: "#ffffff",
+    padding: "9px 20px", borderRadius: 8, background: "hsl(var(--accent))", color: "#ffffff",
     border: "none", fontWeight: 700, fontSize: 14, cursor: "pointer",
     display: "inline-flex", alignItems: "center", gap: 6, boxShadow: "0 1px 2px rgba(0,0,0,.12)",
   } as React.CSSProperties,

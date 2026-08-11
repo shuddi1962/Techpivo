@@ -1144,7 +1144,7 @@ export function SlugTool() {
       </div>
       <div style={{ ...s.card }}>
         <label style={s.lab}>Full URL preview</label>
-        <div style={{ fontFamily: "monospace", fontSize: 14, color: "var(--accent)", wordBreak: "break-all" }}>
+        <div style={{ fontFamily: "monospace", fontSize: 14, color: "hsl(var(--accent))", wordBreak: "break-all" }}>
           https://techpivo.com/{slug || "{slug}"}
         </div>
       </div>

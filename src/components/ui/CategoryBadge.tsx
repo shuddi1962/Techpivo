@@ -6,7 +6,7 @@ export function CategoryBadge({ name, color, size = "md" }: { name?: string; col
       className="font-semibold uppercase tracking-wider inline-block"
       style={{
         fontSize: sizes[size],
-        color: color || "var(--accent)",
+        color: color || "hsl(var(--accent))",
       }}
     >
       {name}

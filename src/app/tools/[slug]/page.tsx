@@ -83,9 +83,9 @@ export default async function ToolPage({ params }: { params: { slug: string } })
         <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) 300px", gap: 28, alignItems: "start" }}>
           <main>
             <div style={{ fontSize: 13, color: "var(--muted)", marginBottom: 8 }}>
-              <Link href="/tools" style={{ color: "var(--accent)", textDecoration: "none" }}>Tools</Link>
+              <Link href="/tools" style={{ color: "hsl(var(--accent))", textDecoration: "none" }}>Tools</Link>
               <span style={{ margin: "0 6px" }}>→</span>
-              <Link href={CATEGORY_ROUTE[meta.category]} style={{ color: "var(--accent)", textDecoration: "none" }}>
+              <Link href={CATEGORY_ROUTE[meta.category]} style={{ color: "hsl(var(--accent))", textDecoration: "none" }}>
                 {TOOL_CATEGORY_LABEL[meta.category]}
               </Link>
               <span style={{ margin: "0 6px" }}>→</span>

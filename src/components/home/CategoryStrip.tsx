@@ -31,7 +31,7 @@ export function CategoryStrip({ categoryName, categorySlug, categoryColor, posts
                     padding: "2px 10px", borderRadius: 12, textDecoration: "none",
                     border: "1px solid var(--border)", transition: "color .2s, border-color .2s",
                   }}
-                  onMouseEnter={e => { e.currentTarget.style.color = "var(--accent)"; e.currentTarget.style.borderColor = "var(--accent)" }}
+                  onMouseEnter={e => { e.currentTarget.style.color = "hsl(var(--accent))"; e.currentTarget.style.borderColor = "hsl(var(--accent))" }}
                   onMouseLeave={e => { e.currentTarget.style.color = "var(--muted2)"; e.currentTarget.style.borderColor = "var(--border)" }}
                 >
                   {sub.name}
@@ -43,7 +43,7 @@ export function CategoryStrip({ categoryName, categorySlug, categoryColor, posts
         </div>
       </div>
 
-      <div className="cat-strip-grid" style={{ "--cat-color": categoryColor || "var(--accent)" } as React.CSSProperties}>
+      <div className="cat-strip-grid" style={{ "--cat-color": categoryColor || "hsl(var(--accent))" } as React.CSSProperties}>
         {posts.slice(0, 4).map((post) => (
           <Link key={post.id} href={`/${post.slug}`} className="cat-strip-card">
             <div className="cat-strip-img-wrap">

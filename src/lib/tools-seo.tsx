@@ -538,7 +538,7 @@ export function KeywordDensityTool() {
                 <div key={w} style={{ display: "flex", alignItems: "center", gap: 8 }}>
                   <span style={{ fontSize: 12, fontFamily: "monospace", width: 130, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{w}</span>
                   <div style={{ flexGrow: 1, height: 8, borderRadius: 4, background: "var(--border)", overflow: "hidden" }}>
-                    <div style={{ height: "100%", width: `${Math.min(100, (c / Math.max(1, result.total) * 100) * 5)}%`, background: "var(--accent)", borderRadius: 4 }} />
+                    <div style={{ height: "100%", width: `${Math.min(100, (c / Math.max(1, result.total) * 100) * 5)}%`, background: "hsl(var(--accent))", borderRadius: 4 }} />
                   </div>
                   <span style={{ fontSize: 12, color: "var(--muted)", width: 40, textAlign: "right" }}>
                     {result.total ? ((c / result.total) * 100).toFixed(1) : "0"}%

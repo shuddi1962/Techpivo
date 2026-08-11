@@ -32,7 +32,7 @@ export default function PublicToolsPage() {
 
   return (
     <>
-      <style>{`.tp-tool-card:hover { border-color: var(--accent) !important; transform: translateY(-2px); box-shadow: 0 6px 18px rgba(0,0,0,.08); }`}</style>
+      <style>{`.tp-tool-card:hover { border-color: hsl(var(--accent)) !important; transform: translateY(-2px); box-shadow: 0 6px 18px rgba(0,0,0,.08); }`}</style>
       <JsonLd data={breadcrumbSchema([
         { name: "Home", url: SITE_URL },
         { name: "Free Tech Tools" },
@@ -50,21 +50,24 @@ export default function PublicToolsPage() {
           </p>
         </div>
 
-        <nav style={{ display: "flex", gap: 8, flexWrap: "wrap", justifyContent: "center", marginBottom: 36 }}>
-          {grouped.map(g => (
-            <a
-              key={g.cat}
-              href={`#${g.cat}`}
-              style={{
-                padding: "8px 16px", borderRadius: 999, border: "1px solid var(--border)",
-                fontSize: 13, fontWeight: 600, color: "var(--text)", textDecoration: "none",
-                background: "var(--card)",
-              }}
-            >
-              {TOOL_CATEGORY_LABEL[g.cat]} ({g.tools.length})
-            </a>
-          ))}
-        </nav>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", justifyContent: "center", marginBottom: 36 }}>
+          {grouped.map(g => {
+            const d = getCategoryDetail(g.cat)
+            return (
+              <Link
+                key={g.cat}
+                href={CATEGORY_ROUTE[g.cat]}
+                style={{
+                  padding: "8px 16px", borderRadius: 999, border: "1px solid var(--border)",
+                  fontSize: 13, fontWeight: 600, color: "hsl(var(--accent))", textDecoration: "none",
+                  background: "var(--card)",
+                }}
+              >
+                {d.label} ({g.tools.length}) →
+              </Link>
+            )
+          })}
+        </div>
 
         <section style={{ marginBottom: 44 }}>
           <h2 style={{ fontFamily: "'Syne', sans-serif", fontSize: 20, fontWeight: 700, margin: "0 0 14" }}>Browse by category</h2>
@@ -115,7 +118,7 @@ export default function PublicToolsPage() {
                 </h2>
                 <Link
                   href={CATEGORY_ROUTE[g.cat]}
-                  style={{ marginLeft: "auto", fontSize: 13, fontWeight: 700, color: "var(--accent)", textDecoration: "none" }}
+                  style={{ marginLeft: "auto", fontSize: 13, fontWeight: 700, color: "hsl(var(--accent))", textDecoration: "none" }}
                 >
                   View all {TOOL_CATEGORY_LABEL[g.cat].toLowerCase()} tools →
                 </Link>

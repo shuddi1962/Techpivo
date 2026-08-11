@@ -675,7 +675,7 @@ export function DnsTool() {
             <div style={{ fontFamily: "monospace", fontSize: 13 }}>
               {answers.map((a, i) => (
                 <div key={i} style={{ padding: "8px 2px", borderBottom: i < answers.length - 1 ? "1px solid var(--border)" : "none", wordBreak: "break-all" }}>
-                  <span style={{ color: "var(--accent)", fontWeight: 700 }}>{a.type}</span>
+                  <span style={{ color: "hsl(var(--accent))", fontWeight: 700 }}>{a.type}</span>
                   <span style={{ color: "var(--muted)" }}>  {a.ttl}s  </span>
                   <span style={{ color: "var(--text)" }}>{a.data}</span>
                 </div>

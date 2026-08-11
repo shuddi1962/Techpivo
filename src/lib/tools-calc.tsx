@@ -277,7 +277,7 @@ export function CurrencyConverterTool() {
         </div>
       </div>
 
-      {note && <div style={{ fontSize: 12, color: "var(--accent)", marginTop: 8 }}>{note}</div>}
+      {note && <div style={{ fontSize: 12, color: "hsl(var(--accent))", marginTop: 8 }}>{note}</div>}
 
       <ToolCard title="Result" style={{ marginTop: 14 }}>
         <div style={{ fontSize: 30, fontWeight: 800, color: "var(--text)", wordBreak: "break-word" }}>

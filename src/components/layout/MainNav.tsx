@@ -33,7 +33,7 @@ export function MainNav({ categories }: { categories: any[] }) {
                 key={cat.id}
                 href={`/category/${cat.slug}`}
                 className="nav-link"
-                style={{ "--hover-color": cat.color || "var(--accent)" } as React.CSSProperties}
+                style={{ "--hover-color": cat.color || "hsl(var(--accent))" } as React.CSSProperties}
               >
                 {cat.name}
               </Link>

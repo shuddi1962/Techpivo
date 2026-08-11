@@ -13,7 +13,7 @@ export function CategoriesWidget({ categories }: { categories: any[] }) {
           {[...categories, ...categories, ...categories].slice(0, 30).map((cat, i) => (
             <li key={`${cat.id}-${i}`} className="cat-row">
               <Link href={`/category/${cat.slug}`} className="cat-row-left">
-                <span className="cat-dot" style={{ background: cat.color || "var(--accent)" }} />
+                <span className="cat-dot" style={{ background: cat.color || "hsl(var(--accent))" }} />
                 <span className="cat-row-name">{cat.name}</span>
               </Link>
             </li>
