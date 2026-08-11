@@ -6,6 +6,7 @@ import { breadcrumbSchema, softwareApplicationSchema, itemListSchema } from "@/l
 import { SITE_URL } from "@/lib/constants"
 import { TOOL_SLUGS, TOOL_META, TOOL_CATEGORY_LABEL } from "@/lib/tools-metadata"
 import { ToolView } from "@/lib/tools"
+import { ToolStatusGate } from "@/components/tools/tool-status"
 
 export const dynamicParams = false
 
@@ -89,7 +90,9 @@ export default async function ToolPage({ params }: { params: { slug: string } })
             <p style={{ fontSize: 15, color: "var(--muted)", margin: "8px 0 24px", lineHeight: 1.6 }}>{meta.longDescription || meta.description}</p>
 
             <div style={{ border: "1px solid var(--border)", borderRadius: 14, background: "var(--card)", padding: 24 }}>
-              <ToolView slug={meta.slug} />
+              <ToolStatusGate slug={meta.slug}>
+                <ToolView slug={meta.slug} />
+              </ToolStatusGate>
             </div>
 
             <FaqSection slug={meta.slug} />

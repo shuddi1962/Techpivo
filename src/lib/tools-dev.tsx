@@ -126,11 +126,13 @@ export function parseCsv(text: string, delim: string): string[][] {
 }
 
 export function toCsv(rows: (string | number | null | undefined)[][], delim: string): string {
+  const formulaRisk = (v: string) => /^[=+@]/.test(v) || /^-(?=[A-Za-z=@])/.test(v) || /^[\t\r]/.test(v);
   return rows
     .map((r) =>
       r
         .map((cell) => {
-          const v = cell === null || cell === undefined ? "" : String(cell);
+          const raw = cell === null || cell === undefined ? "" : String(cell);
+          const v = formulaRisk(raw) ? "'" + raw : raw;
           return /["\n\r,;|\t]/.test(v) ? `"${v.replace(/"/g, '""')}"` : v;
         })
         .join(delim)
@@ -335,6 +337,7 @@ export function RegexTesterTool() {
           value={text}
           onChange={(e) => setText(e.target.value)}
           placeholder="Paste text to test against…"
+          maxLength={20000}
           style={{ ...s.ta(160), fontFamily: "inherit" }}
         />
         <div

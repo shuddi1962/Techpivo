@@ -68,12 +68,22 @@ export default function ToolsAdminPage() {
   const toggleActive = async (tool: DbTool) => {
     setBusySlug(tool.slug)
     setError("")
-    const { error: updateError } = await supabase
-      .from("tools")
-      .update({ is_active: !tool.is_active })
-      .eq("slug", tool.slug)
-    if (updateError) setError(`Failed to update "${tool.name}": ${updateError.message}`)
-    else fetchTools()
+    try {
+      const res = await fetch("/api/admin/tools", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ slug: tool.slug, is_active: !tool.is_active }),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        setError(`Failed to update "${tool.name}": ${data?.error || res.statusText}`)
+      } else {
+        setDbTools((prev) => prev.map((t) => (t.slug === tool.slug ? { ...t, is_active: !!data.tool?.is_active } : t)))
+        fetchTools()
+      }
+    } catch (e: any) {
+      setError(`Failed to update "${tool.name}": ${e?.message || "Network error"}`)
+    }
     setBusySlug("")
   }
 

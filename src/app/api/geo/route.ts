@@ -68,7 +68,10 @@ async function fromIpwhois(ip: string): Promise<GeoInfo | null> {
 export async function GET(req: Request) {
   const ip = clientIp(req)
   if (!ip) {
-    return NextResponse.json({ error: "Could not determine your IP address" }, { status: 400 })
+    return NextResponse.json(
+      { ip: null, country: null, countryCode: null, region: null, regionName: null, city: null, lat: null, lon: null, timezone: null, currency: null, isp: null, source: "unknown" },
+      { headers: { "Cache-Control": "public, max-age=600" } },
+    )
   }
 
   const hit = cache.get(ip)

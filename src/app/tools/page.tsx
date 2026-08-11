@@ -1,9 +1,9 @@
-import Link from "next/link"
 import { NewsletterStrip } from "@/components/home/NewsletterStrip"
 import { JsonLd } from "@/components/ui/jsonld"
 import { breadcrumbSchema, collectionPageSchema, itemListSchema } from "@/lib/jsonld"
 import { SITE_URL } from "@/lib/constants"
 import { TOOL_SLUGS, TOOL_META, TOOL_CATEGORY_LABEL, ToolCategory } from "@/lib/tools-metadata"
+import { ActiveToolGroup } from "@/components/tools/tool-status"
 
 const CATEGORY_ORDER: ToolCategory[] = ["developer", "security", "network", "seo", "image", "pdf", "calculator", "ai"]
 
@@ -82,25 +82,7 @@ export default function PublicToolsPage() {
               <p style={{ fontSize: 13, color: "var(--muted)", margin: "4px 0 0" }}>{CATEGORY_DESC[g.cat]}</p>
             </div>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: 20 }}>
-              {g.tools.map(slug => {
-                const t = TOOL_META[slug]
-                return (
-                  <Link
-                    key={slug}
-                    href={`/tools/${slug}`}
-                    className="tp-tool-card"
-                    style={{
-                      display: "block", padding: 20, borderRadius: 12,
-                      border: "1px solid var(--border)", background: "var(--card)",
-                      textDecoration: "none", transition: "all 0.2s",
-                    }}
-                  >
-                    <div style={{ fontSize: 15, fontWeight: 700, color: "var(--text)", marginBottom: 6 }}>{t.name}</div>
-                    <p style={{ fontSize: 13, color: "var(--muted)", margin: 0, lineHeight: 1.5 }}>{t.description}</p>
-                    <div style={{ marginTop: 12, fontSize: 13, fontWeight: 600, color: "var(--accent)" }}>Use Tool →</div>
-                  </Link>
-                )
-              })}
+              <ActiveToolGroup tools={g.tools.map(slug => ({ slug, name: TOOL_META[slug].name, description: TOOL_META[slug].description }))} />
             </div>
           </section>
         ))}

@@ -3,7 +3,6 @@
 import React, { useMemo, useState } from "react";
 import { Copy, Download, Loader2, Upload } from "lucide-react";
 import { s, CopyButton, Field, ToolCard, ErrorBox, OkBox } from "./tools-ui";
-import pdfWorkerUrl from "pdfjs-dist/legacy/build/pdf.worker.min.mjs?url";
 
 function loadImage(file: File): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
@@ -792,7 +791,7 @@ export function ExcelToPdfTool() {
     setError("");
     setResult(null);
     try {
-      const { PDFDocument, StandardFonts } = await import("pdf-lib");
+      const { PDFDocument, StandardFonts, rgb } = await import("pdf-lib");
       const doc = await PDFDocument.create();
       const font = await doc.embedFont(StandardFonts.Helvetica);
       const fontB = await doc.embedFont(StandardFonts.HelveticaBold);
@@ -805,7 +804,7 @@ export function ExcelToPdfTool() {
 const block = (page: any, rows: string[][], startRowIdx: number) => {
         let y = pageH - top;
         if (startRowIdx === 0) {
-          page.drawText("Exported from TechPivo — " + (file?.name || "spreadsheet"), { x: 30, y: y + 22, size: 8, font, color: { r: 0.45, g: 0.45, b: 0.45 } });
+          page.drawText("Exported from TechPivo — " + (file?.name || "spreadsheet"), { x: 30, y: y + 22, size: 8, font, color: rgb(0.45, 0.45, 0.45) });
         }
         rows.forEach((row, i) => {
           const isHeader = startRowIdx + i === 0;
@@ -814,7 +813,7 @@ const block = (page: any, rows: string[][], startRowIdx: number) => {
             const w = widths[c] * 72;
             const text = cell.length > 45 ? cell.slice(0, 44) + "…" : cell;
             page.drawText(text, { x: x + 4, y: y - 9, size: 8, font: isHeader ? fontB : font, maxWidth: w - 8 });
-            page.drawRectangle({ x, y: y - 13, width: w, height: cellH, borderColor: { r: 0.8, g: 0.8, b: 0.8 }, borderWidth: isHeader ? 1 : 0.5 });
+            page.drawRectangle({ x, y: y - 13, width: w, height: cellH, borderColor: rgb(0.8, 0.8, 0.8), borderWidth: isHeader ? 1 : 0.5 });
             x += w;
           });
           y -= cellH;
@@ -905,7 +904,7 @@ let pdfWorkerReady = false;
 async function getPdfjs() {
   const pdfjs = await import("pdfjs-dist/legacy/build/pdf.mjs");
   if (!pdfWorkerReady) {
-    pdfjs.GlobalWorkerOptions.workerSrc = pdfWorkerUrl;
+    pdfjs.GlobalWorkerOptions.workerSrc = "/pdf.worker.min.mjs";
     pdfWorkerReady = true;
   }
   return pdfjs;
@@ -914,21 +913,37 @@ async function getPdfjs() {
 async function pdfTextToRows(file: File): Promise<{ rows: string[][]; pages: number }> {
   const pdfjs = await getPdfjs();
   const doc = await pdfjs.getDocument(await file.arrayBuffer()).promise;
-  const out: string[][] = [];
-  const maxPages = Math.min(doc.numPages, 200);
-  for (let p = 1; p <= maxPages; p++) {
-    const page = await doc.getPage(p);
-    const tc = await page.getTextContent();
-    const items = tc.items.filter((it: any) => typeof it.str === "string" && it.str.trim() !== "");
-    const marks = items.map((it: any) => {
-      const t = it.transform || [1, 0, 0, 1, 0, 0];
-      return { str: it.str, x: t[4], y: t[5], w: typeof it.width === "number" ? it.width : it.str.length * 4 };
-    });
-    marks.sort((a: any, b: any) => b.y - a.y);
-    let currentRow: any[] = [];
-    let currentY: number | null = null;
-    for (const m of marks) {
-      if (currentY !== null && Math.abs(m.y - currentY) > 4.5) {
+  try {
+    const out: string[][] = [];
+    const maxPages = Math.min(doc.numPages, 200);
+    for (let p = 1; p <= maxPages; p++) {
+      const page = await doc.getPage(p);
+      const tc = await page.getTextContent();
+      const items = tc.items.filter((it: any) => typeof it.str === "string" && it.str.trim() !== "");
+      const marks = items.map((it: any) => {
+        const t = it.transform || [1, 0, 0, 1, 0, 0];
+        return { str: it.str, x: t[4], y: t[5], w: typeof it.width === "number" ? it.width : it.str.length * 4 };
+      });
+      marks.sort((a: any, b: any) => b.y - a.y);
+      let currentRow: any[] = [];
+      let currentY: number | null = null;
+      for (const m of marks) {
+        if (currentY !== null && Math.abs(m.y - currentY) > 4.5) {
+          currentRow.sort((a, b) => a.x - b.x);
+          let cells: string[] = [];
+          let lastEnd = -100;
+          for (const c of currentRow) {
+            if (lastEnd > -50 && c.x - lastEnd > 18) cells.push("");
+            cells.push(c.str);
+            lastEnd = c.x + c.w;
+          }
+          out.push(cells);
+          currentRow = [];
+        }
+        currentRow.push(m);
+        currentY = m.y;
+      }
+      if (currentRow.length) {
         currentRow.sort((a, b) => a.x - b.x);
         let cells: string[] = [];
         let lastEnd = -100;
@@ -938,24 +953,12 @@ async function pdfTextToRows(file: File): Promise<{ rows: string[][]; pages: num
           lastEnd = c.x + c.w;
         }
         out.push(cells);
-        currentRow = [];
       }
-      currentRow.push(m);
-      currentY = m.y;
     }
-    if (currentRow.length) {
-      currentRow.sort((a, b) => a.x - b.x);
-      let cells: string[] = [];
-      let lastEnd = -100;
-      for (const c of currentRow) {
-        if (lastEnd > -50 && c.x - lastEnd > 18) cells.push("");
-        cells.push(c.str);
-        lastEnd = c.x + c.w;
-      }
-      out.push(cells);
-    }
+    return { rows: out, pages: doc.numPages };
+  } finally {
+    await doc.destroy().catch(() => {});
   }
-  return { rows: out, pages: doc.numPages };
 }
 
 export function PdfToExcelTool() {
@@ -976,7 +979,8 @@ export function PdfToExcelTool() {
       const { rows: r } = await pdfTextToRows(f);
       setRows(r);
       if (!r.length) setError("No extractable text found — this PDF is likely a scan. Try the Image Upscaler? For scanned PDFs, use OCR-capable software.");
-    } catch (e: any) {
+} catch (e: any) {
+      console.error("pdf-to-excel:", e);
       setError("Could not read the PDF. If it is password-protected or a scanned image, text extraction is not possible locally.");
     } finally {
       setBusy(false);
