@@ -14,28 +14,51 @@ export default function AdminSettingsPage() {
   const [error, setError] = useState("")
   const [lastSync, setLastSync] = useState<Date | null>(null)
   const timers = useRef<Record<string, NodeJS.Timeout>>({})
+  const dirtyRef = useRef<Set<string>>(new Set())
   const supabase = createClient()
 
-  useEffect(() => {
-    supabase.from("site_settings").select("*").then(({ data }) => {
-      if (data) {
+  const fetchSettings = useCallback(async () => {
+    const { data } = await supabase.from("site_settings").select("*")
+    if (data) {
+      setSettings((prev) => {
         const map: Record<string, any> = {}
-        data.forEach((s) => { map[s.key] = s.value })
-        setSettings(map)
-        setLastSync(new Date())
-      }
-    })
+        data.forEach((s) => {
+          map[s.key] = dirtyRef.current.has(s.key) ? prev[s.key] : s.value
+        })
+        return map
+      })
+      setLastSync(new Date())
+    }
   }, [supabase])
 
+  useEffect(() => {
+    fetchSettings()
+    const channel = supabase
+      .channel(`settings_page_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "site_settings" }, () => fetchSettings())
+      .subscribe()
+    const onFocus = () => fetchSettings()
+    window.addEventListener("focus", onFocus)
+    return () => {
+      supabase.removeChannel(channel)
+      window.removeEventListener("focus", onFocus)
+    }
+  }, [supabase, fetchSettings])
+
   const saveSetting = useCallback(async (key: string, value: any) => {
+    if (key === "site_url" && typeof value === "string" && value && !/^https?:\/\//.test(value)) {
+      setError("site url must start with http:// or https://")
+      return false
+    }
     setError("")
     const { error } = await supabase.from("site_settings").upsert({ key, value })
     if (error) {
       console.error("Failed to save setting:", key, error)
       setError(`${key.replace(/_/g, " ")}: ${error.message}`)
-      return
+      return false
     }
     setLastSync(new Date())
+    return true
   }, [supabase])
 
   const updateLocalSetting = (key: string, value: any) => {
@@ -44,18 +67,23 @@ export default function AdminSettingsPage() {
 
   const handleInputChange = (key: string, value: any) => {
     updateLocalSetting(key, value)
-    setDirty((prev) => new Set(prev).add(key))
+    dirtyRef.current = new Set(dirtyRef.current).add(key)
+    setDirty(dirtyRef.current)
     if (timers.current[key]) clearTimeout(timers.current[key])
     timers.current[key] = setTimeout(() => {
       saveSetting(key, value)
-      setDirty((prev) => { const next = new Set(prev); next.delete(key); return next })
+      dirtyRef.current = new Set(dirtyRef.current)
+      dirtyRef.current.delete(key)
+      setDirty(dirtyRef.current)
     }, 800)
   }
 
   const handleBlur = (key: string, value: any) => {
     if (timers.current[key]) clearTimeout(timers.current[key])
     saveSetting(key, value)
-    setDirty((prev) => { const next = new Set(prev); next.delete(key); return next })
+    dirtyRef.current = new Set(dirtyRef.current)
+    dirtyRef.current.delete(key)
+    setDirty(dirtyRef.current)
   }
 
   const handleToggle = (key: string, value: boolean) => {
@@ -111,25 +139,10 @@ export default function AdminSettingsPage() {
         </Card>
 
         <Card>
-          <CardHeader><CardTitle className="text-lg">Integrations</CardTitle></CardHeader>
-          <CardContent className="space-y-4">
-            {[
-              { key: "openrouter_api_key", label: "OpenRouter API Key" },
-              { key: "openrouter_model", label: "OpenRouter Model" },
-              { key: "resend_api_key", label: "Resend API Key (Email)" },
-              { key: "vapid_public_key", label: "VAPID Public Key" },
-            ].map(({ key, label }) => (
-              <div key={key}>
-                <Label className="text-sm mb-1 block">{label}</Label>
-                <Input
-                  type="password"
-                  value={settings[key] || ""}
-                  onChange={(e) => handleInputChange(key, e.target.value)}
-                  onBlur={() => handleBlur(key, settings[key])}
-                  className="font-mono"
-                />
-              </div>
-            ))}
+          <CardContent className="p-6">
+            <p className="text-sm text-muted-foreground">
+              API keys and secrets (OpenRouter, Resend, VAPID) are managed as environment variables on the hosting platform and are never stored in the database.
+            </p>
           </CardContent>
         </Card>
       </div>
