@@ -123,6 +123,29 @@ export function OkBox({ children }: { children: React.ReactNode }) {
   );
 }
 
+export function FilePicker({ label, accept, onPick, disabled }: { label: string; accept?: string; onPick: (file: File | undefined) => void; disabled?: boolean }) {
+  const ref = React.useRef<HTMLInputElement>(null);
+  return (
+    <div>
+      <input
+        ref={ref}
+        type="file"
+        accept={accept}
+        style={{ display: "none" }}
+        onChange={(e) => { onPick(e.target.files?.[0]); e.currentTarget.value = ""; }}
+      />
+      <button
+        type="button"
+        disabled={disabled}
+        onClick={() => ref.current?.click()}
+        style={{ ...s.btn, display: "inline-flex", alignItems: "center", gap: 6 }}
+      >
+        <Upload size={14} /> {label}
+      </button>
+    </div>
+  );
+}
+
 export function downloadBlob(blob: Blob, filename: string) {
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");

@@ -1,5 +1,7 @@
 "use client"
 
+import { GEO_CACHE_KEY } from "@/lib/geo"
+
 export function getSessionId(): string {
   try {
     let id = sessionStorage.getItem("tp_session_id")
@@ -58,7 +60,17 @@ export function detectCountry(): string | null {
 export function trackView(body: Record<string, string>) {
   const ua = navigator.userAgent
   const { device, browser, os } = parseUserAgent(ua)
-  const country = detectCountry()
+  let country = detectCountry()
+
+  try {
+    const cached = localStorage.getItem(GEO_CACHE_KEY)
+    if (cached) {
+      const parsed = JSON.parse(cached) as { t: number; data: { countryCode?: string } }
+      if (parsed?.data?.countryCode && Date.now() - parsed.t < 24 * 60 * 60 * 1000) {
+        country = parsed.data.countryCode
+      }
+    }
+  } catch { /* storage unavailable */ }
 
   const payload: Record<string, string | null> = {
     ...body,

@@ -8,6 +8,7 @@ import { AiOpportunityCenter } from "@/components/admin/ai-opportunity-center"
 import { LivePublishingQueue } from "@/components/admin/live-publishing-queue"
 import { NotificationCenter } from "@/components/admin/notification-center"
 import { ExecutiveKpiCards } from "@/components/admin/executive-kpi-cards"
+import { FxApprox } from "@/components/fx-approx"
 import {
   RefreshCw, TrendingUp, TrendingDown,
   BarChart3, Activity, Globe, MousePointerClick, Smartphone,
@@ -478,6 +479,7 @@ export default function AdminDashboard() {
           <div className="rounded-xl bg-muted/40 p-4">
             <p className="text-xs text-muted-foreground flex items-center gap-1"><Wallet className="h-3 w-3" /> Ad Revenue (30d)</p>
             <p className="text-2xl font-bold mt-1 tabular-nums">{loading ? "…" : `$${revenue30d.toFixed(2)}`}</p>
+            {!loading && revenue30d > 0 && <FxApprox amount={revenue30d} from="USD" className="block text-xs text-muted-foreground mt-0.5" />}
           </div>
           <div className="rounded-xl bg-muted/40 p-4">
             <p className="text-xs text-muted-foreground flex items-center gap-1"><Clock className="h-3 w-3" /> Pending Orders</p>
@@ -510,6 +512,7 @@ export default function AdminDashboard() {
                   </div>
                   <div className="text-right shrink-0 ml-3">
                     <p className="font-bold tabular-nums">₦{Number(c.total_price || 0).toLocaleString()}</p>
+                    <FxApprox amount={Number(c.total_price || 0)} from="NGN" className="block text-[10px] text-muted-foreground" />
                     <span
                       className="text-[10px] font-medium rounded-full px-2 py-0.5"
                       style={{

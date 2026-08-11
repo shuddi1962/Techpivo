@@ -3,6 +3,7 @@
 import React, { useMemo, useState } from "react";
 import { Copy, Download, Loader2, Upload } from "lucide-react";
 import { s, CopyButton, Field, ToolCard, ErrorBox, OkBox } from "./tools-ui";
+import pdfWorkerUrl from "pdfjs-dist/legacy/build/pdf.worker.min.mjs?url";
 
 function loadImage(file: File): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
@@ -716,6 +717,433 @@ export function CompressPdfTool() {
           Note: text-only PDFs shrink little (text streams are already compact); scanned PDFs can drop 40-70%. Processing is local — nothing is uploaded.
         </div>
       </div>
+    </>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* Excel <-> PDF + Image Upscaler (new, all local, no APIs)           */
+/* ------------------------------------------------------------------ */
+
+function sanitizeCell(v: any): string {
+  if (v === null || v === undefined) return "";
+  return String(v);
+}
+
+async function workbookToRows(file: File, sheetName?: string): Promise<{ rows: string[][]; sheets: string[] }> {
+  const XLSX = await import("xlsx");
+  const wb = XLSX.read(await file.arrayBuffer(), { type: "array" });
+  const sheets = wb.SheetNames;
+  const ws = wb.Sheets[(sheetName && wb.Sheets[sheetName]) ? sheetName : sheets[0]];
+  const raw: any[][] = XLSX.utils.sheet_to_json(ws, { header: 1, defval: "" });
+  return { rows: raw.map((r) => (Array.isArray(r) ? r : []).map(sanitizeCell)), sheets };
+}
+
+function fitPdfColWidths(rows: string[][], font: any): number[] {
+  const MAX_W = 5; // inches
+  const cols = Math.min(12, Math.max(...rows.map((r) => r.length), 0));
+  const widths: number[] = [];
+  for (let c = 0; c < cols; c++) {
+    let longest = 0;
+    for (let i = 0; i < Math.min(rows.length, 400); i++) {
+      const cell = rows[i][c] || "";
+      const w = cell.length * (cell.length > 20 ? 0.055 : 0.065);
+      if (w > longest) longest = w;
+    }
+    widths.push(Math.min(2.6, Math.max(0.55, longest)));
+  }
+  return widths;
+}
+
+export function ExcelToPdfTool() {
+  const [file, setFile] = useState<File | null>(null);
+  const [sheet, setSheet] = useState("");
+  const [sheets, setSheets] = useState<string[]>([]);
+  const [rows, setRows] = useState<string[][]>([]);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const [result, setResult] = useState<{ blob: Blob; url: string } | null>(null);
+
+  const pick = async (f: File | undefined) => {
+    if (!f) return;
+    setFile(f);
+    setError("");
+    setResult(null);
+    setRows([]);
+    setBusy(true);
+    try {
+      const { rows: r, sheets: s } = await workbookToRows(f);
+      setRows(r);
+      setSheets(s);
+      setSheet(s[0] || "");
+      if (s.length > 1) {
+        setSheet(s[1] && confirm("This file has multiple sheets. Convert the second sheet (" + s[1] + ") instead?") ? s[1] : s[0]);
+      }
+    } catch (e: any) {
+      setError("Could not read the spreadsheet. Support .xlsx, .xls, .csv and .tsv files.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const generate = async () => {
+    if (!rows.length) return;
+    setBusy(true);
+    setError("");
+    setResult(null);
+    try {
+      const { PDFDocument, StandardFonts } = await import("pdf-lib");
+      const doc = await PDFDocument.create();
+      const font = await doc.embedFont(StandardFonts.Helvetica);
+      const fontB = await doc.embedFont(StandardFonts.HelveticaBold);
+      const pageW = rows[0].length > 6 ? 792 : 612;
+      const pageH = 612;
+      const widths = fitPdfColWidths(rows, font);
+      const cellH = 14;
+      const top = 30;
+      const perPage = Math.floor((pageH - top - 40) / cellH);
+const block = (page: any, rows: string[][], startRowIdx: number) => {
+        let y = pageH - top;
+        if (startRowIdx === 0) {
+          page.drawText("Exported from TechPivo — " + (file?.name || "spreadsheet"), { x: 30, y: y + 22, size: 8, font, color: { r: 0.45, g: 0.45, b: 0.45 } });
+        }
+        rows.forEach((row, i) => {
+          const isHeader = startRowIdx + i === 0;
+          let x = 30;
+          row.forEach((cell, c) => {
+            const w = widths[c] * 72;
+            const text = cell.length > 45 ? cell.slice(0, 44) + "…" : cell;
+            page.drawText(text, { x: x + 4, y: y - 9, size: 8, font: isHeader ? fontB : font, maxWidth: w - 8 });
+            page.drawRectangle({ x, y: y - 13, width: w, height: cellH, borderColor: { r: 0.8, g: 0.8, b: 0.8 }, borderWidth: isHeader ? 1 : 0.5 });
+            x += w;
+          });
+          y -= cellH;
+          if (y < 40) { y = pageH - top; }
+        });
+      };
+      for (let s = 0; s < rows.length; s += perPage) {
+        const page = doc.addPage([pageW, pageH]);
+        block(page, rows.slice(s, s + perPage), s);
+      }
+      const bytes = await doc.save();
+      const blob = new Blob([bytes.buffer as ArrayBuffer], { type: "application/pdf" });
+      setResult({ blob, url: URL.createObjectURL(blob) });
+    } catch (e: any) {
+      setError(e?.message || "PDF generation failed");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <>
+      <ToolCard title="Options">
+        <div style={s.row}>
+          <FilePicker label="Choose spreadsheet (.xlsx/.xls/.csv/.tsv)" accept=".xlsx,.xls,.csv,.tsv" onPick={pick} />
+          {file && <span style={{ fontSize: 13, color: "var(--muted)" }}>{file.name} · {formatBytes(file.size)}</span>}
+        </div>
+{sheets.length > 1 && (
+          <div style={{ marginTop: 10 }}>
+            <Field label="Sheet">
+              <select value={sheet} onChange={async (e) => {
+                const sh = e.target.value;
+                setSheet(sh);
+                if (!file) return;
+                setBusy(true);
+                try {
+                  const { rows: r } = await workbookToRows(file, sh);
+                  setRows(r);
+                } catch { setError("Could not read that sheet."); }
+                setBusy(false);
+              }} style={{ ...s.sel, width: "100%" }}>
+                {sheets.map((sh) => <option key={sh} value={sh}>{sh}</option>)}
+              </select>
+            </Field>
+          </div>
+        )}
+        {rows.length > 0 && (
+          <button onClick={generate} style={{ ...s.btn, marginTop: 12 }}><Download size={14} /> Convert to PDF ({rows.length.toLocaleString()} rows)</button>
+        )}
+      </ToolCard>
+      {busy && <OkBox><Loader2 size={13} style={{ animation: "spin 1s linear infinite" }} /> Working…</OkBox>}
+      {error && <ErrorBox>{error}</ErrorBox>}
+      {rows.length > 0 && (
+        <ToolCard title="Preview (first 100 rows)">
+          <div style={{ maxHeight: 320, overflow: "auto" }}>
+            <table style={{ borderCollapse: "collapse", fontSize: 12, width: "100%" }}>
+              <tbody>
+                {rows.slice(0, 100).map((r, i) => (
+                  <tr key={i}>
+                    {r.slice(0, 12).map((cell, c) => (
+                      <td key={c} style={{ border: "1px solid var(--border)", padding: "4px 6px", whiteSpace: "nowrap", maxWidth: 220, overflow: "hidden", textOverflow: "ellipsis" }}>{cell}</td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </ToolCard>
+      )}
+      {result && (
+        <div style={{ ...s.card, marginTop: 10 }}>
+          <a href={result.url} download={(file?.name || "sheet").replace(/\.[^.]+$/, "") + ".pdf"} style={{ textDecoration: "none" }}>
+            <button style={s.btn}><Download size={14} /> Download PDF</button>
+          </a>
+        </div>
+      )}
+      <div style={{ ...s.card, marginTop: 10 }}>
+        <div style={{ fontSize: 13, color: "var(--muted)" }}>
+          Everything runs locally — your spreadsheet is never uploaded. Large sheets are paginated automatically.
+        </div>
+      </div>
+    </>
+  );
+}
+
+let pdfWorkerReady = false;
+
+async function getPdfjs() {
+  const pdfjs = await import("pdfjs-dist/legacy/build/pdf.mjs");
+  if (!pdfWorkerReady) {
+    pdfjs.GlobalWorkerOptions.workerSrc = pdfWorkerUrl;
+    pdfWorkerReady = true;
+  }
+  return pdfjs;
+}
+
+async function pdfTextToRows(file: File): Promise<{ rows: string[][]; pages: number }> {
+  const pdfjs = await getPdfjs();
+  const doc = await pdfjs.getDocument(await file.arrayBuffer()).promise;
+  const out: string[][] = [];
+  const maxPages = Math.min(doc.numPages, 200);
+  for (let p = 1; p <= maxPages; p++) {
+    const page = await doc.getPage(p);
+    const tc = await page.getTextContent();
+    const items = tc.items.filter((it: any) => typeof it.str === "string" && it.str.trim() !== "");
+    const marks = items.map((it: any) => {
+      const t = it.transform || [1, 0, 0, 1, 0, 0];
+      return { str: it.str, x: t[4], y: t[5], w: typeof it.width === "number" ? it.width : it.str.length * 4 };
+    });
+    marks.sort((a: any, b: any) => b.y - a.y);
+    let currentRow: any[] = [];
+    let currentY: number | null = null;
+    for (const m of marks) {
+      if (currentY !== null && Math.abs(m.y - currentY) > 4.5) {
+        currentRow.sort((a, b) => a.x - b.x);
+        let cells: string[] = [];
+        let lastEnd = -100;
+        for (const c of currentRow) {
+          if (lastEnd > -50 && c.x - lastEnd > 18) cells.push("");
+          cells.push(c.str);
+          lastEnd = c.x + c.w;
+        }
+        out.push(cells);
+        currentRow = [];
+      }
+      currentRow.push(m);
+      currentY = m.y;
+    }
+    if (currentRow.length) {
+      currentRow.sort((a, b) => a.x - b.x);
+      let cells: string[] = [];
+      let lastEnd = -100;
+      for (const c of currentRow) {
+        if (lastEnd > -50 && c.x - lastEnd > 18) cells.push("");
+        cells.push(c.str);
+        lastEnd = c.x + c.w;
+      }
+      out.push(cells);
+    }
+  }
+  return { rows: out, pages: doc.numPages };
+}
+
+export function PdfToExcelTool() {
+  const [file, setFile] = useState<File | null>(null);
+  const [rows, setRows] = useState<string[][]>([]);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const [result, setResult] = useState<{ blob: Blob; url: string } | null>(null);
+
+  const pick = async (f: File | undefined) => {
+    if (!f) return;
+    setFile(f);
+    setError("");
+    setResult(null);
+    setRows([]);
+    setBusy(true);
+    try {
+      const { rows: r } = await pdfTextToRows(f);
+      setRows(r);
+      if (!r.length) setError("No extractable text found — this PDF is likely a scan. Try the Image Upscaler? For scanned PDFs, use OCR-capable software.");
+    } catch (e: any) {
+      setError("Could not read the PDF. If it is password-protected or a scanned image, text extraction is not possible locally.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const exportExcel = async () => {
+    if (!rows.length) return;
+    setBusy(true);
+    setError("");
+    try {
+      const XLSX = await import("xlsx");
+      const ws = XLSX.utils.aoa_to_sheet(rows);
+      ws["!cols"] = rows[0]?.map((_, i) => ({ wch: Math.min(40, Math.max(8, ...rows.slice(0, 200).map((r) => (r[i] || "").length + 2))) })) || [];
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "PDF export");
+      const bytes = XLSX.write(wb, { type: "array", bookType: "xlsx" });
+      const blob = new Blob([bytes], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+      setResult({ blob, url: URL.createObjectURL(blob) });
+    } catch (e: any) {
+      setError(e?.message || "Excel export failed");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <>
+      <ToolCard title="Options">
+        <div style={s.row}>
+          <FilePicker label="Choose PDF" accept="application/pdf" onPick={pick} />
+          {file && <span style={{ fontSize: 13, color: "var(--muted)" }}>{file.name} · {formatBytes(file.size)}</span>}
+        </div>
+        {rows.length > 0 && (
+          <button onClick={exportExcel} style={{ ...s.btn, marginTop: 12 }}><Download size={14} /> Export to Excel (.xlsx)</button>
+        )}
+      </ToolCard>
+      {busy && <OkBox><Loader2 size={13} style={{ animation: "spin 1s linear infinite" }} /> Extracting text…</OkBox>}
+      {error && <ErrorBox>{error}</ErrorBox>}
+      {rows.length > 0 && (
+        <ToolCard title={`Extracted rows (${rows.length.toLocaleString()}) — preview first 100`}>
+          <div style={{ maxHeight: 320, overflow: "auto" }}>
+            <table style={{ borderCollapse: "collapse", fontSize: 12, width: "100%" }}>
+              <tbody>
+                {rows.slice(0, 100).map((r, i) => (
+                  <tr key={i}>
+                    {r.slice(0, 12).map((cell, c) => (
+                      <td key={c} style={{ border: "1px solid var(--border)", padding: "4px 6px", whiteSpace: "nowrap", maxWidth: 220, overflow: "hidden", textOverflow: "ellipsis" }}>{cell}</td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </ToolCard>
+      )}
+      {result && (
+        <div style={{ ...s.card, marginTop: 10 }}>
+          <a href={result.url} download={(file?.name || "pdf").replace(/\.pdf$/i, "") + ".xlsx"} style={{ textDecoration: "none" }}>
+            <button style={s.btn}><Download size={14} /> Download Excel file</button>
+          </a>
+        </div>
+      )}
+      <div style={{ ...s.card, marginTop: 10 }}>
+        <div style={{ fontSize: 13, color: "var(--muted)" }}>
+          Text is extracted locally from the PDF and grouped into rows and columns. Scanned (image-only) PDFs contain no text and cannot be converted without OCR.
+        </div>
+      </div>
+    </>
+  );
+}
+
+export function ImageUpscalerTool() {
+  const [file, setFile] = useState<File | null>(null);
+  const [factor, setFactor] = useState(4);
+  const [type, setType] = useState("image/png");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const [result, setResult] = useState<{ url: string; width: number; height: number; blob: Blob } | null>(null);
+
+  const upscale = async (f: File | undefined) => {
+    if (!f) return;
+    setFile(f);
+    setBusy(true);
+    setError("");
+    setResult(null);
+    try {
+      const img = await loadImage(f);
+      const w = img.naturalWidth;
+      const h = img.naturalHeight;
+      const tw = w * factor;
+      const th = h * factor;
+      if (tw > 8192 || th > 8192 || tw * th > 80_000_000) {
+        throw new Error("Result would be too large for in-browser processing (max 8192px or 80MP). Use a smaller factor.");
+      }
+      let srcCanvas = document.createElement("canvas");
+      srcCanvas.width = w;
+      srcCanvas.height = h;
+      const srcCtx = srcCanvas.getContext("2d");
+      if (!srcCtx) throw new Error("Canvas not supported");
+      srcCtx.imageSmoothingEnabled = true;
+      srcCtx.imageSmoothingQuality = "high";
+      srcCtx.drawImage(img, 0, 0, w, h);
+      let curW = w;
+      let curH = h;
+      while (curW < tw || curH < th) {
+        const nextW = Math.min(tw, curW * 2);
+        const nextH = Math.min(th, curH * 2);
+        const canvas = document.createElement("canvas");
+        canvas.width = nextW;
+        canvas.height = nextH;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) throw new Error("Canvas not supported");
+        ctx.imageSmoothingEnabled = true;
+        ctx.imageSmoothingQuality = "high";
+        ctx.drawImage(srcCanvas, 0, 0, nextW, nextH);
+        srcCanvas = canvas;
+        curW = nextW;
+        curH = nextH;
+      }
+      const blob = await canvasToBlob(srcCanvas, type, 0.92);
+      setResult({ url: URL.createObjectURL(blob), width: curW, height: curH, blob });
+    } catch (e: any) {
+      setError(e?.message || "Upscaling failed");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <>
+      <ToolCard title="Options">
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+          <Field label={`Upscale factor: ${factor}x`}>
+            <input type="range" min={2} max={8} step={1} value={factor} onChange={(e) => setFactor(Number(e.target.value))} style={{ width: "100%" }} />
+          </Field>
+          <Field label="Output format">
+            <select value={type} onChange={(e) => setType(e.target.value)} style={{ ...s.sel, width: "100%" }}>
+              <option value="image/png">PNG (lossless)</option>
+              <option value="image/jpeg">JPG (smaller)</option>
+              <option value="image/webp">WebP</option>
+            </select>
+          </Field>
+        </div>
+        <div style={s.row}>
+          <FilePicker label="Choose image (PNG/JPG/WebP)" accept="image/*" onPick={upscale} />
+          {file && <span style={{ fontSize: 13, color: "var(--muted)" }}>{file.name} · {formatBytes(file.size)}</span>}
+        </div>
+      </ToolCard>
+      {busy && <OkBox><Loader2 size={13} style={{ animation: "spin 1s linear infinite" }} /> Upscaling…</OkBox>}
+      {error && <ErrorBox>{error}</ErrorBox>}
+      {result && file && (
+        <>
+          <OkBox>{file.name} — {factor}x upscale: {result.width} × {result.height}px · {formatBytes(result.blob.size)}</OkBox>
+          <div style={{ ...s.card, display: "flex", gap: 14, flexWrap: "wrap", alignItems: "flex-start" }}>
+            <img src={result.url} alt="Upscaled result preview" style={{ maxWidth: 320, maxHeight: 220, border: "1px solid var(--border)", borderRadius: 8 }} />
+            <div>
+              <a href={result.url} download={`upscaled-${file.name}`} style={{ textDecoration: "none" }}>
+                <button style={s.btn}><Download size={14} /> Download upscaled image</button>
+              </a>
+              <p style={{ fontSize: 12, color: "var(--muted)", marginTop: 8, maxWidth: 320 }}>
+                Upscaling enlarges pixels — it sharpens, it cannot add detail that isn&apos;t in the original. Best results on clean logos, illustrations and screenshots.
+              </p>
+            </div>
+          </div>
+        </>
+      )}
     </>
   );
 }

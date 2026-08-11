@@ -462,6 +462,21 @@ export const TOOL_META: Record<string, ToolMeta> = {
     faq: [{ q: "Why WebP?", a: "WebP is supported by all modern browsers and typically 25-35% smaller than JPG at the same quality — a fast Core Web Vitals win." }],
     related: ["image-compressor", "image-resizer"],
   },
+  "image-upscaler": {
+    slug: "image-upscaler",
+    name: "Image Upscaler",
+    description: "Upscale images 2-8x in your browser with no upload.",
+    longDescription:
+      "Enlarge images 2x, 3x, 4x or 8x using high-quality multi-step canvas resampling. Best for logos, screenshots and illustrations — export as PNG, JPG or WebP, entirely on your device.",
+    category: "image",
+    keywords: ["image upscaler", "upscale image", "enlarge image", "image enhancer", "2x upscale", "4k upscale"],
+    faq: [
+      { q: "Does upscaling improve quality?", a: "It enlarges pixels with smooth interpolation — edges look cleaner, but genuine detail that doesn't exist in the source cannot be created." },
+      { q: "Is there a size limit?", a: "Results are capped at 8192px or 80 megapixels to keep your browser responsive." },
+      { q: "Is AI needed for better results?", a: "AI super-resolution can add detail that basic upscaling cannot, but it requires a server. This tool is instant, private and free." },
+    ],
+    related: ["image-compressor", "image-resizer", "webp-converter"],
+  },
   "color-picker": {
     slug: "color-picker",
     name: "Color Picker & Palette",
@@ -582,6 +597,51 @@ export const TOOL_META: Record<string, ToolMeta> = {
     keywords: ["bmi calculator", "body mass index", "bmi", "healthy weight"],
     faq: [{ q: "Is BMI accurate for athletes?", a: "BMI does not distinguish muscle from fat, so very muscular people may show as overweight. Use it as a rough guide only." }],
     related: ["percentage-calculator", "unit-converter"],
+  },
+  "excel-to-pdf": {
+    slug: "excel-to-pdf",
+    name: "Excel to PDF",
+    description: "Convert .xlsx, .xls, .csv and .tsv spreadsheets to a clean PDF.",
+    longDescription:
+      "Upload a spreadsheet and instantly get a formatted PDF with column-aware widths, header emphasis and automatic pagination. Supports multiple sheets (pick one) and runs 100% in your browser — your data never leaves your device.",
+    category: "pdf",
+    keywords: ["excel to pdf", "xlsx to pdf", "csv to pdf", "spreadsheet to pdf", "convert excel to pdf"],
+    faq: [
+      { q: "Is my spreadsheet uploaded?", a: "No. The conversion runs entirely in your browser using local file processing — nothing is sent to any server." },
+      { q: "Which formats are supported?", a: ".xlsx, .xls, .csv and .tsv. Files with multiple sheets let you pick which sheet to convert." },
+      { q: "Will large sheets be cut off?", a: "No — the PDF generator paginates automatically and widens landscape pages for sheets with many columns." },
+    ],
+    related: ["pdf-to-excel", "merge-pdf", "split-pdf"],
+  },
+  "pdf-to-excel": {
+    slug: "pdf-to-excel",
+    name: "PDF to Excel",
+    description: "Extract text from a PDF into table rows and export as .xlsx.",
+    longDescription:
+      "Extract text content from up to 200 pages of a PDF, group it into rows and columns by position, preview the result, and download a real .xlsx workbook — all locally.",
+    category: "pdf",
+    keywords: ["pdf to excel", "pdf to xlsx", "extract pdf text", "pdf table to excel", "convert pdf to spreadsheet"],
+    faq: [
+      { q: "Why does my scanned PDF show no text?", a: "Scanned documents are images. This tool extracts embedded text only; scanned PDFs need OCR software." },
+      { q: "Will column layout be perfect?", a: "Text is grouped by position, which works well for tables and reports but may need minor cleanup in Excel for complex layouts." },
+      { q: "What limits exist?", a: "The first 200 pages are processed and everything runs locally — no uploads." },
+    ],
+    related: ["excel-to-pdf", "split-pdf", "compress-pdf"],
+  },
+  "currency-converter": {
+    slug: "currency-converter",
+    name: "Currency Converter",
+    description: "Live exchange rates for 160+ world currencies, auto-detecting your country.",
+    longDescription:
+      "Convert between 160+ world currencies with live daily rates — no key, no limits, no uploads. Your country is detected automatically and rates are cached so the converter works even offline.",
+    category: "calculator",
+    keywords: ["currency converter", "exchange rate", "usd to ngn", "live currency calculator", "money converter", "currency exchange"],
+    faq: [
+      { q: "Where do the rates come from?", a: "Live market rates updated daily from open exchange-rate data providers. No API key is needed and nothing is uploaded." },
+      { q: "Can I convert to my local currency automatically?", a: "Yes — the tool detects your country from your IP and pre-selects your currency. You can switch manually anytime." },
+      { q: "Why might my rate differ from my bank?", a: "Banks add margins and fees on top of mid-market rates. Use this for estimates and confirm final amounts with your provider." },
+    ],
+    related: ["loan-calculator", "unit-converter", "percentage-calculator"],
   },
   "ai-headline-generator": {
     slug: "ai-headline-generator",

@@ -1,8 +1,9 @@
 "use client"
 
-import { useEffect, useState, useCallback, useRef } from "react"
+import { useEffect, useState, useCallback, useRef, type ReactNode } from "react"
 import { useRouter } from "next/navigation"
 import { createClient } from "@/lib/supabase/client"
+import { FxApprox } from "@/components/fx-approx"
 import {
   Store, LayoutGrid, Megaphone, ListChecks, TrendingUp, Settings2, BarChart3,
   Plus, Trash2, CheckCircle, XCircle, PauseCircle, PlayCircle, RefreshCw,
@@ -693,12 +694,12 @@ function AnalyticsTab({
   const totalSpend = campaigns.reduce((s, c) => s + computeCampaignSpend(c), 0)
   const ctr = totalImpressions > 0 ? (totalClicks / totalImpressions) * 100 : 0
 
-  const kpis = [
+  const kpis: { label: string; value: string; color: string; bg: string; icon: any; fx?: ReactNode }[] = [
     { label: "Delivered Impressions", value: fmt(totalImpressions), color: S.primary, bg: "#DBEAFE", icon: Eye },
     { label: "Clicks", value: fmt(totalClicks), color: S.purple, bg: "#EDE9FE", icon: MousePointerClick },
     { label: "CTR", value: `${ctr.toFixed(2)}%`, color: S.yellow, bg: "#FEF9C3", icon: TrendingUp },
-    { label: "Campaign Spend", value: NGN(totalSpend), color: S.green, bg: "#DCFCE7", icon: Wallet },
-    { label: "Ad Revenue", value: NGN(totalRevenue), color: "#0EA5E9", bg: "#E0F2FE", icon: Clock },
+    { label: "Campaign Spend", value: NGN(totalSpend), color: S.green, bg: "#DCFCE7", icon: Wallet, fx: <FxApprox amount={totalSpend} from="NGN" /> },
+    { label: "Ad Revenue", value: NGN(totalRevenue), color: "#0EA5E9", bg: "#E0F2FE", icon: Clock, fx: <FxApprox amount={totalRevenue} from="NGN" /> },
   ]
 
   const maxPlacementImps = Math.max(1, ...placementStats.map((p) => p.impressions))
@@ -741,6 +742,7 @@ function AnalyticsTab({
               <div>
                 <div style={{ fontSize: 18, fontWeight: 700, color: S.text, lineHeight: 1.2 }}>{k.value}</div>
                 <div style={{ fontSize: 12, color: S.textDim }}>{k.label}</div>
+                {k.fx && <div style={{ fontSize: 11, color: S.textDim, marginTop: 1 }}>{k.fx}</div>}
               </div>
             </div>
           )
@@ -1196,7 +1198,10 @@ function RevenueTab({
                     <td style={{ padding: "12px 16px", color: S.text, fontSize: 13 }}>{fmt(c.impressions)}</td>
                     <td style={{ padding: "12px 16px", color: S.text, fontSize: 13 }}>{fmt(c.clicks)}</td>
                     <td style={{ padding: "12px 16px", color: S.green, fontSize: 13, fontWeight: 700 }}>{formatMoney(spend, c.currency || "NGN")}</td>
-                    <td style={{ padding: "12px 16px", color: S.textMuted, fontSize: 13 }}>{formatMoney(c.total_price, c.currency || "NGN")}</td>
+                    <td style={{ padding: "12px 16px", color: S.textMuted, fontSize: 13 }}>
+                      {formatMoney(c.total_price, c.currency || "NGN")}
+                      <FxApprox amount={Number(c.total_price || 0)} from={c.currency || "NGN"} className={`block ${S.textDim}`} />
+                    </td>
                   </tr>
                 )
               })}

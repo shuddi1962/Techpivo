@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
+import { FxApprox } from '@/components/fx-approx';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -246,6 +247,7 @@ export default function CampaignDetailPage() {
               </div>
               <div className="text-xl font-bold">{k.value}</div>
               <div className="text-xs text-muted-foreground">{k.label}</div>
+              {k.label === 'Spend' && Number(spend) > 0 && <FxApprox amount={Number(spend)} from={campaign.currency || 'NGN'} className="block text-[10px] text-muted-foreground" />}
             </CardContent>
           </Card>
         ))}
@@ -285,6 +287,7 @@ export default function CampaignDetailPage() {
               <div className="flex justify-between gap-2"><span className="text-slate-500">Bid</span><span className="font-medium">{formatMoney(campaign.bid_amount || 0, campaign.currency || 'NGN')}</span></div>
               <div className="flex justify-between gap-2"><span className="text-slate-500">Daily budget</span><span className="font-medium">{formatMoney(campaign.daily_budget || 0, campaign.currency || 'NGN')}</span></div>
               <div className="flex justify-between gap-2"><span className="text-slate-500">Total budget</span><span className="font-medium">{formatMoney(campaign.total_price, campaign.currency || 'NGN')}</span></div>
+              <FxApprox amount={Number(campaign.total_price || 0)} from={campaign.currency || 'NGN'} className="block text-right text-[10px] text-muted-foreground -mt-1.5" />
               <div className="flex justify-between gap-2"><span className="text-slate-500">Goal</span><span className="font-medium">{ADS_GOAL_LABELS[campaign.goal || 'clicks'] || campaign.goal}</span></div>
               <div className="flex justify-between gap-2"><span className="text-slate-500">CTA</span><span className="font-medium">{ADS_CTA_LABELS[campaign.cta_type || 'learn_more'] || campaign.cta_text}</span></div>
               <div className="flex justify-between gap-2"><span className="text-slate-500">Dates</span><span className="font-medium">{campaign.start_date ? String(campaign.start_date).slice(0, 10) : '—'}{campaign.end_date ? ` → ${String(campaign.end_date).slice(0, 10)}` : ''}</span></div>

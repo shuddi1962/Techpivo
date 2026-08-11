@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { BarChart3, Users, Globe, TrendingUp, Share2, Mail, Brain, Download, Wallet, ReceiptText, Eye, MousePointerClick } from "lucide-react"
 import { AiInsights } from "@/components/admin/ai-insights"
+import { FxApprox } from "@/components/fx-approx"
 import { ChartLine, ChartBar, ChartArea, ChartPie, ChartLeaderboard } from "@/components/charts"
 import {
   ComposedChart, Bar, Line, XAxis, YAxis, CartesianGrid, Tooltip,
@@ -947,6 +948,7 @@ function RevenueTab() {
           <CardContent className="p-4">
             <p className="text-xs text-muted-foreground flex items-center gap-1"><ReceiptText className="h-3 w-3" /> Campaign Spend (30d)</p>
             <p className="text-2xl font-bold mt-1">₦{totals.spend.toLocaleString(undefined, { maximumFractionDigits: 0 })}</p>
+            {totals.spend > 0 && <FxApprox amount={totals.spend} from="NGN" className="block text-xs text-muted-foreground mt-0.5" />}
             <p className="text-xs mt-1 text-muted-foreground">Live / paused / completed</p>
           </CardContent>
         </Card>
@@ -1038,6 +1040,7 @@ function RevenueTab() {
                   </div>
                   <div className="text-right shrink-0 ml-3">
                     <p className="font-bold">₦{Number(c.total_price || c.budget || 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}</p>
+                    <FxApprox amount={Number(c.total_price || c.budget || 0)} from={c.currency || "NGN"} className="block text-[10px] text-muted-foreground" />
                     <Badge className="text-[10px]" style={{ background: STATUS_COLORS[c.status] || "#94A3B8", color: "#fff" }}>
                       {c.status}
                     </Badge>

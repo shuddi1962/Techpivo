@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useMemo, useState } from "react";
-import { AlertCircle, CheckCircle2, Copy, Loader2, RefreshCw, Search } from "lucide-react";
+import { AlertCircle, CheckCircle2, Copy, Loader2, MapPin, RefreshCw, Search } from "lucide-react";
 import { s, CopyButton, Field, ToolCard, ErrorBox, OkBox } from "./tools-ui";
 import { entropyOf, passwordVerdict } from "./tools-dev";
 
@@ -490,6 +490,9 @@ function ipv4Info(parts: { a: number; b: number; c: number; d: number }) {
 
 export function IpLookupTool() {
   const [input, setInput] = useState("");
+  const [geoBusy, setGeoBusy] = useState(false);
+  const [geo, setGeo] = useState<{ ip: string; country: string; regionName: string; city: string; timezone: string; currency: string; isp: string } | null>(null);
+  const [geoError, setGeoError] = useState("");
   const result = useMemo(() => {
     const value = input.trim();
     if (!value) return null;
@@ -511,10 +514,48 @@ export function IpLookupTool() {
     const info = ipv4Info(v4);
     return { v6: false as const, ...info, address: value };
   }, [input]);
+
+  const detectMine = async () => {
+    setGeoBusy(true);
+    setGeoError("");
+    setGeo(null);
+    try {
+      const res = await fetch("/api/geo", { cache: "no-store" });
+      const data = await res.json();
+      if (!res.ok || !data?.countryCode) throw new Error(data.error || "Could not detect location");
+      setGeo({ ip: data.ip, country: data.country, regionName: data.regionName || data.region, city: data.city, timezone: data.timezone, currency: data.currency, isp: data.isp });
+    } catch (e: any) {
+      setGeoError(e?.message || "Location detection failed — try again in a moment");
+    } finally {
+      setGeoBusy(false);
+    }
+  };
+
   return (
     <>
+      <div style={{ ...s.card, marginBottom: 12 }}>
+        <div style={{ fontSize: 13, color: "var(--muted)", marginBottom: 8 }}>
+          Detect your own public IP, country, region and city in one click — powered by free geolocation.
+        </div>
+        <button onClick={detectMine} style={{ ...s.btn2, display: "flex", gap: 6, alignItems: "center" }}>
+          <MapPin size={14} /> {geoBusy ? "Detecting…" : "Detect my location"}
+        </button>
+        {geo && (
+          <OkBox>
+            {geo.city && `${geo.city}, `}{geo.regionName && `${geo.regionName}, `}{geo.country}{geo.currency ? ` · currency ${geo.currency}` : ""}
+          </OkBox>
+        )}
+        {geo && (
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginTop: 6 }}>
+            <div style={{ ...s.card, padding: "8px 10px" }}><div style={{ fontSize: 12, color: "var(--muted)" }}>IP</div><div style={{ fontFamily: "monospace", fontSize: 13, color: "var(--text)" }}>{geo.ip}</div></div>
+            <div style={{ ...s.card, padding: "8px 10px" }}><div style={{ fontSize: 12, color: "var(--muted)" }}>Timezone</div><div style={{ fontSize: 13, color: "var(--text)" }}>{geo.timezone}</div></div>
+            <div style={{ ...s.card, padding: "8px 10px" }}><div style={{ fontSize: 12, color: "var(--muted)" }}>ISP</div><div style={{ fontSize: 13, color: "var(--text)" }}>{geo.isp}</div></div>
+          </div>
+        )}
+        {geoError && <ErrorBox>{geoError}</ErrorBox>}
+      </div>
       <div style={{ marginBottom: 12 }}>
-        <Field label="IP address (IPv4 or IPv6)">
+        <Field label="Or analyze any IP address (IPv4 or IPv6)">
           <input value={input} onChange={(e) => setInput(e.target.value)} placeholder="192.168.1.1 or 2606:4700:4700::1111" style={{ ...s.inp, fontSize: 15, fontFamily: "monospace" }} />
         </Field>
       </div>

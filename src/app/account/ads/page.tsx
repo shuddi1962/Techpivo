@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
+import { FxApprox } from '@/components/fx-approx';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -276,12 +277,14 @@ export default function MyAdsPage() {
                     <div className="bg-muted/50 rounded-lg p-2.5">
                       <div className="text-base font-bold text-green-600">{formatMoney(spend, c.currency || 'NGN')}</div>
                       <div className="text-[11px] text-muted-foreground">Spend</div>
+                      {Number(spend) > 0 && <FxApprox amount={Number(spend)} from={c.currency || 'NGN'} className="block text-[10px] text-muted-foreground" />}
                     </div>
                   </div>
 
                   <div className="mt-2 flex items-center justify-between text-[11px] text-muted-foreground flex-wrap gap-2">
                     <span>
                       Bid {formatMoney(c.bid_amount || 0, c.currency || 'NGN')} · Daily {formatMoney(c.daily_budget || 0, c.currency || 'NGN')} · Total {formatMoney(c.total_price, c.currency || 'NGN')}
+                      <FxApprox amount={Number(c.total_price || 0)} from={c.currency || 'NGN'} className="block text-[10px]" />
                     </span>
                     <span>
                       {c.start_date ? String(c.start_date).slice(0, 10) : ''}{c.end_date ? ` → ${String(c.end_date).slice(0, 10)}` : ''}

@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
+import { FxApprox } from '@/components/fx-approx';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { AlertCircle, ArrowLeft, ArrowRight, Check, Globe, Monitor, Sparkles, Tag, Upload, Video, Wallet } from 'lucide-react';
@@ -527,6 +528,7 @@ export default function NewCampaignPage() {
                 <span className="text-sm font-semibold">Total budget</span>
                 <span className="text-2xl font-extrabold text-blue-600">{formatMoney(total, currency)}</span>
               </div>
+              {Number(total) > 0 && <FxApprox amount={Number(total)} from={currency} className="block text-right text-[11px] text-slate-400" />}
               <p className="text-[11px] text-slate-400 mt-1.5">We only charge for what actually delivers (up to your daily cap).</p>
             </div>
             <button

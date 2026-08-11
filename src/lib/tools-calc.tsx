@@ -1,8 +1,11 @@
 "use client";
 
-import React, { useMemo, useState } from "react";
-import { Copy, Sparkles, RefreshCw } from "lucide-react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { Copy, Sparkles, RefreshCw, ArrowRightLeft } from "lucide-react";
 import { s, CopyButton, Field, ToolCard, ErrorBox, OkBox } from "./tools-ui";
+import { CurrencySelect, useToolFx } from "./tools-fx";
+import { convertFx } from "./use-fx";
+import { fxFormat, FX_CURRENCY_LABELS, FX_POPULAR } from "./fx-shared";
 
 const numFmt = new Intl.NumberFormat("en-US", { maximumFractionDigits: 2 });
 
@@ -107,6 +110,7 @@ function pmt(principal: number, annualRate: number, years: number): number {
 }
 
 export function LoanCalculatorTool() {
+  const fx = useToolFx();
   const [principal, setPrincipal] = useState("500000");
   const [rate, setRate] = useState("12");
   const [years, setYears] = useState("2");
@@ -133,11 +137,25 @@ export function LoanCalculatorTool() {
   const monthly = valid ? pmt(P, R, Y) : 0;
   const total = valid ? monthly * Y * 12 : 0;
   const totalInterest = valid ? total - P : 0;
+  const ngnRate = fx.rates.rates[fx.currency] || 0;
+  const ngnValue = valid && ngnRate > 0 && fx.currency !== "NGN" ? P * ngnRate : null;
 
   return (
     <>
+      {fx.detected && fx.detected !== fx.currency && (
+        <OkBox>We detected you&apos;re in {fx.detected} — switch currencies anytime.</OkBox>
+      )}
+      <div style={{ display: "flex", gap: 12, alignItems: "flex-end", marginBottom: 12 }}>
+        <div style={{ flexGrow: 1, maxWidth: 220 }}>
+          <label style={s.lab}>Currency</label>
+          <CurrencySelect value={fx.currency} onChange={fx.setCurrency} />
+        </div>
+        <div style={{ fontSize: 12, color: "var(--muted)", paddingBottom: 8 }}>
+          {fx.loading ? "Loading live exchange rates…" : fx.rates.source === "live" ? "Live exchange rates" : "Offline — using stored rates"}
+        </div>
+      </div>
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 14 }}>
-        <Field label="Loan amount (₦)">
+        <Field label={`Loan amount (${fx.currency})`}>
           <input inputMode="decimal" value={principal} onChange={(e) => setPrincipal(e.target.value)} style={s.inp} />
         </Field>
         <Field label="Annual interest rate (%)">
@@ -151,18 +169,23 @@ export function LoanCalculatorTool() {
       {valid && (
         <>
           <ToolCard title="Summary">
+            {ngnValue !== null && (
+              <div style={{ fontSize: 12, color: "var(--muted)", marginBottom: 8 }}>
+                ≈ {fxFormat(ngnValue, "NGN", { maxFrac: 0 })} naira at today&apos;s live rate
+              </div>
+            )}
             <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12, textAlign: "center" }}>
               <div>
                 <div style={{ fontSize: 12, color: "var(--muted)" }}>Monthly payment</div>
-                <div style={{ fontSize: 20, fontWeight: 700, color: "var(--text)", marginTop: 4 }}>₦{numFmt.format(monthly)}</div>
+                <div style={{ fontSize: 20, fontWeight: 700, color: "var(--text)", marginTop: 4 }}>{fxFormat(monthly, fx.currency)}</div>
               </div>
               <div>
                 <div style={{ fontSize: 12, color: "var(--muted)" }}>Total paid</div>
-                <div style={{ fontSize: 20, fontWeight: 700, color: "var(--text)", marginTop: 4 }}>₦{numFmt.format(total)}</div>
+                <div style={{ fontSize: 20, fontWeight: 700, color: "var(--text)", marginTop: 4 }}>{fxFormat(total, fx.currency)}</div>
               </div>
               <div>
                 <div style={{ fontSize: 12, color: "var(--muted)" }}>Total interest</div>
-                <div style={{ fontSize: 20, fontWeight: 700, color: "var(--text)", marginTop: 4 }}>₦{numFmt.format(totalInterest)}</div>
+                <div style={{ fontSize: 20, fontWeight: 700, color: "var(--text)", marginTop: 4 }}>{fxFormat(totalInterest, fx.currency)}</div>
               </div>
               <div>
                 <div style={{ fontSize: 12, color: "var(--muted)" }}>Payments</div>
@@ -190,10 +213,10 @@ export function LoanCalculatorTool() {
                     {rows.map((r) => (
                       <tr key={r.i} style={{ color: "var(--text)" }}>
                         <td style={{ padding: "5px 8px", borderBottom: "1px solid var(--border)", color: "var(--muted)" }}>{r.i}</td>
-                        <td style={{ padding: "5px 8px", borderBottom: "1px solid var(--border)" }}>₦{numFmt.format(r.payment)}</td>
-                        <td style={{ padding: "5px 8px", borderBottom: "1px solid var(--border)" }}>₦{numFmt.format(r.interest)}</td>
-                        <td style={{ padding: "5px 8px", borderBottom: "1px solid var(--border)" }}>₦{numFmt.format(r.principal)}</td>
-                        <td style={{ padding: "5px 8px", borderBottom: "1px solid var(--border)" }}>₦{numFmt.format(r.balance)}</td>
+                        <td style={{ padding: "5px 8px", borderBottom: "1px solid var(--border)" }}>{fxFormat(r.payment, fx.currency)}</td>
+                        <td style={{ padding: "5px 8px", borderBottom: "1px solid var(--border)" }}>{fxFormat(r.interest, fx.currency)}</td>
+                        <td style={{ padding: "5px 8px", borderBottom: "1px solid var(--border)" }}>{fxFormat(r.principal, fx.currency)}</td>
+                        <td style={{ padding: "5px 8px", borderBottom: "1px solid var(--border)" }}>{fxFormat(r.balance, fx.currency)}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -203,6 +226,95 @@ export function LoanCalculatorTool() {
           </ToolCard>
         </>
       )}
+    </>
+  );
+}
+
+export function CurrencyConverterTool() {
+  const fx = useToolFx();
+  const [amount, setAmount] = useState("1000");
+  const [from, setFrom] = useState("USD");
+  const [to, setTo] = useState("NGN");
+  const [note, setNote] = useState("");
+
+  const num = Number(amount);
+  const valid = isFinite(num) && num >= 0;
+  const rate = (from === to ? 1 : convertFx(fx.rates.rates, 1, from, to)) || 1;
+  const result = valid ? num * rate : 0;
+  const updated = fx.rates.updatedAt ? new Date(fx.rates.updatedAt).toLocaleString(undefined, { dateStyle: "short", timeStyle: "short" }) : "";
+
+  const swap = () => { setFrom(to); setTo(from); setNote(""); };
+
+  const quickPairs: [string, string][] = [
+    ["USD", "NGN"], ["USD", "EUR"], ["GBP", "NGN"], ["USD", "GHS"], ["EUR", "NGN"], ["USD", "INR"],
+  ];
+
+  useEffect(() => {
+    if (fx.detected && fx.detected !== from && fx.detected !== to) {
+      setNote(`We detected your country — try ${fx.detected}?`);
+    } else {
+      setNote("");
+    }
+  }, [fx.detected, from, to]);
+
+  return (
+    <>
+      <div style={{ display: "flex", gap: 10, alignItems: "flex-end", flexWrap: "wrap" }}>
+        <div style={{ flexGrow: 1, minWidth: 160 }}>
+          <label style={s.lab}>Amount</label>
+          <input inputMode="decimal" value={amount} onChange={(e) => setAmount(e.target.value)} style={s.inp} />
+        </div>
+        <div style={{ minWidth: 170 }}>
+          <label style={s.lab}>From</label>
+          <CurrencySelect value={from} onChange={setFrom} />
+        </div>
+        <button onClick={swap} style={{ ...s.btn2, alignSelf: "flex-end", display: "flex", gap: 6, alignItems: "center" }}>
+          <ArrowRightLeft size={14} /> Swap
+        </button>
+        <div style={{ minWidth: 170 }}>
+          <label style={s.lab}>To</label>
+          <CurrencySelect value={to} onChange={setTo} />
+        </div>
+      </div>
+
+      {note && <div style={{ fontSize: 12, color: "var(--accent)", marginTop: 8 }}>{note}</div>}
+
+      <ToolCard title="Result" style={{ marginTop: 14 }}>
+        <div style={{ fontSize: 30, fontWeight: 800, color: "var(--text)", wordBreak: "break-word" }}>
+          {valid ? fxFormat(result, to) : "—"}
+        </div>
+        <div style={{ fontSize: 13, color: "var(--muted)", marginTop: 6 }}>
+          1 {from} = {fxFormat(rate, to, { maxFrac: rate < 1 ? 4 : 2 })} · {fx.loading ? "loading live rates…" : fx.rates.source === "live" ? `live · updated ${updated}` : "offline — using stored rates"}
+        </div>
+        {valid && from !== to && (
+          <div style={{ marginTop: 4, fontSize: 13, color: "var(--muted)" }}>
+            {fxFormat(num, from)} = {fxFormat(result, to)}
+          </div>
+        )}
+      </ToolCard>
+
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 12 }}>
+        {quickPairs.map(([a, b]) => (
+          <button key={a + b} onClick={() => { setFrom(a); setTo(b); }} style={{ ...s.btn2, fontSize: 12, padding: "5px 10px" }}>
+            {a} → {b}: {fxFormat(convertFx(fx.rates.rates, 1, a, b), b, { maxFrac: 2 })}
+          </button>
+        ))}
+      </div>
+
+      <div style={{ marginTop: 12 }}>
+        <label style={s.lab}>Common rates ({FX_POPULAR.length} currencies, live)</label>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(150px, 1fr))", gap: 8, marginTop: 6 }}>
+          {FX_POPULAR.map((code) => (
+            <div key={code} style={{ ...s.card, padding: "8px 10px" }}>
+              <div style={{ fontSize: 12, color: "var(--muted)" }}>{code} — {FX_CURRENCY_LABELS[code]}</div>
+              <div style={{ fontSize: 15, fontWeight: 700, color: "var(--text)" }}>{fxFormat(convertFx(fx.rates.rates, 1, from, code), code, { maxFrac: code === "NGN" ? 0 : 2 })}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+      <p style={{ fontSize: 12, color: "var(--muted)", marginTop: 12 }}>
+        Rates are updated daily from official market data and cached locally. Conversions are indicative — always confirm with your bank before a transaction.
+      </p>
     </>
   );
 }

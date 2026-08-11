@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
 import { createClient as createAdminClient } from "@/lib/supabase/admin"
 import { DEFAULT_FX_RATES, computeCampaignSpend } from "@/lib/ads"
+import { getFxRatesPerNgn } from "@/lib/fx"
 
 async function requireRole(allowed: string[] = ["admin", "editor"]) {
   const supabase = createClient()
@@ -16,8 +17,13 @@ async function requireRole(allowed: string[] = ["admin", "editor"]) {
   return { supabase, user, profile }
 }
 
-// FX map: NGN per 1 unit of each currency (live from site_settings, fallback defaults)
+// FX map: NGN per 1 unit of each currency — LIVE rates first (cached 6h), then site_settings overrides, then defaults
 async function getFxRates(supabase: any): Promise<Record<string, number>> {
+  let live: Record<string, number> = {}
+  try {
+    const { rates } = await getFxRatesPerNgn()
+    live = rates
+  } catch { /* live provider unreachable — fall through */ }
   try {
     const { data } = await supabase
       .from("site_settings")
@@ -25,12 +31,13 @@ async function getFxRates(supabase: any): Promise<Record<string, number>> {
       .eq("key", "fx_rates")
       .maybeSingle()
     if (data?.value && typeof data.value === "object") {
-      return { ...DEFAULT_FX_RATES, ...data.value }
+      // site_settings acts as manual override on top of live rates
+      return { ...DEFAULT_FX_RATES, ...live, ...data.value }
     }
   } catch (e) {
     console.error("Failed to load fx_rates:", e)
   }
-  return { ...DEFAULT_FX_RATES }
+  return { ...DEFAULT_FX_RATES, ...live }
 }
 
 const formatNGN = (n: number) => "₦" + Math.round(Number(n || 0)).toLocaleString()

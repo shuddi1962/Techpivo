@@ -3,11 +3,11 @@
 import React, { useEffect } from "react";
 import {
   Activity, Banknote, Binary, Bot, BookOpen, Braces, Calculator, CalendarDays, Cake,
-  CaseSensitive, Clock, Code2, CreditCard, Dices, FileArchive, FileImage, FileStack,
+  CaseSensitive, Clock, Code2, Coins, CreditCard, Dices, FileArchive, FileImage, FileSpreadsheet, FileStack,
   FileText, Fingerprint, GitFork, Globe, Hash, HelpCircle, Image, ImageMinus, ImagePlus,
   KeyRound, KeySquare, Languages, Link, Link2, Mail, Map, Monitor, Network, PenTool,
   Percent, Pipette, Regex, Ruler, Scissors, Search, Shield, ShieldCheck, Shuffle,
-  Sparkles, Table, Tags, Timer, TrendingUp, Type, Wand2,
+  Sparkles, Table, Table2, Tags, Timer, TrendingUp, Type, Wand2, ZoomIn,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { ErrorBox } from "./tools-ui";
@@ -16,8 +16,8 @@ import { ToolCategory } from "./tools-metadata";
 import { JsonFormatterTool, CsvJsonTool, RegexTesterTool, Base64Tool, UrlEncodeTool, HashTool, UuidTool, JwtTool, TimestampTool, CronTool, LoremTool, MarkdownTool, CaseTool, SlugTool } from "./tools-dev";
 import { PasswordGenTool, PasswordStrengthTool, RandomStringTool, RandomNumberTool, EmailValidatorTool, CreditCardTool, IpLookupTool, DnsTool } from "./tools-sec";
 import { MetaTagTool, SchemaTool, RobotsTool, SitemapTool, KeywordDensityTool, ReadabilityTool, SerpPreviewTool, WordCounterTool } from "./tools-seo";
-import { ImageCompressorTool, ImageResizerTool, WebpConverterTool, ColorTool, MergePdfTool, SplitPdfTool, CompressPdfTool } from "./tools-media";
-import { PercentageCalculatorTool, LoanCalculatorTool, UnitConverterTool, AgeCalculatorTool, DateCalculatorTool, BaseConverterTool, BmiCalculatorTool, AiHeadlineGeneratorTool, AiMetaDescriptionTool, AiFaqGeneratorTool, AiPromptGeneratorTool, AiTextHumanizerTool } from "./tools-calc";
+import { ImageCompressorTool, ImageResizerTool, WebpConverterTool, ColorTool, MergePdfTool, SplitPdfTool, CompressPdfTool, ExcelToPdfTool, PdfToExcelTool, ImageUpscalerTool } from "./tools-media";
+import { PercentageCalculatorTool, LoanCalculatorTool, UnitConverterTool, AgeCalculatorTool, DateCalculatorTool, BaseConverterTool, BmiCalculatorTool, CurrencyConverterTool, AiHeadlineGeneratorTool, AiMetaDescriptionTool, AiFaqGeneratorTool, AiPromptGeneratorTool, AiTextHumanizerTool } from "./tools-calc";
 
 export interface ToolDef {
   slug: string;
@@ -73,12 +73,15 @@ export const TOOL_LIST: ToolDef[] = [
   { slug: "image-compressor", category: "image", name: "Image Compressor", description: "Compress images in your browser — nothing is uploaded", icon: ImageMinus, component: Comp(() => <ImageCompressorTool />) },
   { slug: "image-resizer", category: "image", name: "Image Resizer", description: "Resize images by percentage or exact dimensions", icon: ImagePlus, component: Comp(() => <ImageResizerTool />) },
   { slug: "webp-converter", category: "image", name: "WebP Converter", description: "Convert PNG/JPG to WebP with quality control", icon: FileImage, component: Comp(() => <WebpConverterTool />) },
+  { slug: "image-upscaler", category: "image", name: "Image Upscaler", description: "Upscale images 2-8x in your browser — no upload", icon: ZoomIn, component: Comp(() => <ImageUpscalerTool />) },
   { slug: "color-picker", category: "image", name: "Color Picker", description: "Pick colors and get HEX, RGB, HSL, and shades", icon: Pipette, component: Comp(() => <ColorTool />) },
 
   /* PDF */
   { slug: "merge-pdf", category: "pdf", name: "Merge PDF", description: "Combine multiple PDFs into one, in your order", icon: FileStack, component: Comp(() => <MergePdfTool />) },
   { slug: "split-pdf", category: "pdf", name: "Split PDF", description: "Extract page ranges from a PDF into a new file", icon: Scissors, component: Comp(() => <SplitPdfTool />) },
   { slug: "compress-pdf", category: "pdf", name: "Compress PDF", description: "Reduce PDF file size locally with pdf-lib", icon: FileArchive, component: Comp(() => <CompressPdfTool />) },
+  { slug: "excel-to-pdf", category: "pdf", name: "Excel to PDF", description: "Convert .xlsx/.csv spreadsheets to a formatted PDF", icon: FileSpreadsheet, component: Comp(() => <ExcelToPdfTool />) },
+  { slug: "pdf-to-excel", category: "pdf", name: "PDF to Excel", description: "Extract PDF text into rows and export as .xlsx", icon: Table2, component: Comp(() => <PdfToExcelTool />) },
 
   /* Calculators */
   { slug: "percentage-calculator", category: "calculator", name: "Percentage Calculator", description: "Percentage of, percent change, and ratio calculations", icon: Percent, component: Comp(() => <PercentageCalculatorTool />) },
@@ -88,6 +91,7 @@ export const TOOL_LIST: ToolDef[] = [
   { slug: "date-calculator", category: "calculator", name: "Date Calculator", description: "Add or subtract time, or count days between dates", icon: CalendarDays, component: Comp(() => <DateCalculatorTool />) },
   { slug: "base-converter", category: "calculator", name: "Base Converter", description: "Convert numbers between bases 2-36", icon: Calculator, component: Comp(() => <BaseConverterTool />) },
   { slug: "bmi-calculator", category: "calculator", name: "BMI Calculator", description: "Body Mass Index with category and healthy range", icon: Activity, component: Comp(() => <BmiCalculatorTool />) },
+  { slug: "currency-converter", category: "calculator", name: "Currency Converter", description: "Live exchange rates for 160+ world currencies", icon: Coins, component: Comp(() => <CurrencyConverterTool />) },
 
   /* AI */
   { slug: "ai-headline-generator", category: "ai", name: "AI Headline Generator", description: "Instant headline ideas built from proven formulas", icon: Sparkles, component: Comp(() => <AiHeadlineGeneratorTool />) },
