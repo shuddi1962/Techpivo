@@ -30,7 +30,7 @@ export function SecurityDashboard() {
     const [sessionsRes, keysRes, usersRes, auditRes, logsRes] = await Promise.all([
       supabase.from("user_sessions").select("id").gte("created_at", dayAgo.toISOString()),
       supabase.from("api_keys").select("id, is_active"),
-      supabase.from("user_profiles").select("id"),
+      supabase.from("profiles").select("id"),
       supabase.from("audit_logs").select("id, action").gte("created_at", dayAgo.toISOString()),
       supabase.from("audit_logs").select("id, user_id, action, created_at, details").order("created_at", { ascending: false }).limit(20),
     ])

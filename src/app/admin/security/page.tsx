@@ -26,6 +26,8 @@ function SessionsTab() {
   const [sessions, setSessions] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [authError, setAuthError] = useState(false)
+  const [lastSync, setLastSync] = useState<Date | null>(null)
+  const supabase = createClient()
 
   const fetchSessions = useCallback(async () => {
     try {
@@ -45,6 +47,7 @@ function SessionsTab() {
         status: u.lastSignIn && (now - new Date(u.lastSignIn).getTime()) < 3600000 ? "active" : "idle",
       })))
       setAuthError(false)
+      setLastSync(new Date())
     } catch (err) {
       console.error("Failed to fetch sessions:", err)
       setAuthError(true)
@@ -55,19 +58,30 @@ function SessionsTab() {
 
   useEffect(() => {
     fetchSessions()
+    const channel = supabase
+      .channel(`security_sessions_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`)
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "user_sessions" }, () => fetchSessions())
+      .subscribe()
     const interval = setInterval(fetchSessions, 30000)
     const onFocus = () => fetchSessions()
     window.addEventListener("focus", onFocus)
-    return () => { clearInterval(interval); window.removeEventListener("focus", onFocus) }
-  }, [fetchSessions])
+    return () => {
+      supabase.removeChannel(channel)
+      clearInterval(interval)
+      window.removeEventListener("focus", onFocus)
+    }
+  }, [fetchSessions, supabase])
 
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h3 className="font-semibold">User Sessions ({sessions.length})</h3>
-        <span className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 rounded-full">
-          <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" /> LIVE
-        </span>
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-muted-foreground">{lastSync ? `synced ${lastSync.toLocaleTimeString()}` : "…"}</span>
+          <span className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 rounded-full">
+            <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" /> LIVE
+          </span>
+        </div>
       </div>
       {loading ? (
         <p className="text-sm text-muted-foreground text-center py-8">Loading...</p>
@@ -288,49 +302,69 @@ function RolesTab() {
   const supabase = createClient()
   const [roles, setRoles] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
+  const [lastSync, setLastSync] = useState<Date | null>(null)
 
-  const fetchRoles = useCallback(async () => {
+  const fetchRoles = useCallback(async (quiet = false) => {
+    if (!quiet) setLoading(true)
     try {
-      const { data: profiles } = await supabase.from("profiles").select("role")
+      const [profilesRes, customRes] = await Promise.all([
+        supabase.from("profiles").select("role"),
+        supabase.from("custom_roles").select("name"),
+      ])
       const roleMap: Record<string, number> = {}
-      ;(profiles || []).forEach((p: any) => {
+      ;(profilesRes.data || []).forEach((p: any) => {
         const r = p.role || "user"
         roleMap[r] = (roleMap[r] || 0) + 1
       })
-      setRoles(Object.entries(roleMap).map(([name, count]) => ({ name, users: count })))
+      const builtin = Object.entries(roleMap).map(([name, count]) => ({ name, users: count, custom: false }))
+      const custom = (customRes.data || []).map((c: any) => ({ name: c.name, users: roleMap[c.name] || 0, custom: true }))
+      setRoles([...builtin, ...custom])
+      setLastSync(new Date())
     } catch (err) { console.error("Failed to fetch roles:", err) }
     setLoading(false)
   }, [supabase])
 
   useEffect(() => {
     fetchRoles()
-    const interval = setInterval(fetchRoles, 30000)
-    const onFocus = () => fetchRoles()
+    const channel = supabase
+      .channel(`security_roles_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "profiles" }, () => fetchRoles(true))
+      .on("postgres_changes", { event: "*", schema: "public", table: "custom_roles" }, () => fetchRoles(true))
+      .subscribe()
+    const interval = setInterval(() => fetchRoles(true), 30000)
+    const onFocus = () => fetchRoles(true)
     window.addEventListener("focus", onFocus)
-    return () => { clearInterval(interval); window.removeEventListener("focus", onFocus) }
-  }, [fetchRoles])
-
-  const defaultRoles = [
-    { name: "admin", users: 0 }, { name: "editor", users: 0 },
-    { name: "author", users: 0 }, { name: "contributor", users: 0 },
-  ]
-
-  const displayRoles = roles.length > 0 ? roles : defaultRoles
+    return () => {
+      supabase.removeChannel(channel)
+      clearInterval(interval)
+      window.removeEventListener("focus", onFocus)
+    }
+  }, [supabase, fetchRoles])
 
   return (
     <div className="space-y-4">
-      <h3 className="font-semibold">System Roles</h3>
+      <div className="flex items-center justify-between">
+        <h3 className="font-semibold">System Roles</h3>
+        <span className="text-xs text-muted-foreground">{lastSync ? `synced ${lastSync.toLocaleTimeString()}` : "…"}</span>
+      </div>
       {loading ? (
         <p className="text-sm text-muted-foreground text-center py-8">Loading...</p>
+      ) : roles.length === 0 ? (
+        <Card>
+          <CardContent className="p-6 text-center">
+            <p className="text-sm text-muted-foreground">No users found yet. Role counts appear once users sign up.</p>
+          </CardContent>
+        </Card>
       ) : (
-        displayRoles.map((r, i) => (
-          <Card key={i}>
+        roles.map((r, i) => (
+          <Card key={`${r.name}-${i}`}>
             <CardContent className="p-4 flex items-center justify-between">
               <div>
                 <p className="font-medium capitalize">{r.name}</p>
+                {r.custom && <p className="text-xs text-muted-foreground">Custom role</p>}
               </div>
               <div className="flex items-center gap-2">
-                <Badge variant="outline">{r.users} users</Badge>
+                <Badge variant={r.custom ? "secondary" : "outline"}>{r.users} users</Badge>
                 <Button variant="ghost" size="sm" asChild>
                   <a href="/admin/users">View</a>
                 </Button>
@@ -357,20 +391,35 @@ function SettingsTab() {
   )
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState("")
+  const [lastSync, setLastSync] = useState<Date | null>(null)
+
+  const loadSettings = useCallback(async () => {
+    const keys = securitySettingDefs.map(s => s.key)
+    const { data } = await supabase.from("site_settings").select("key, value").in("key", keys)
+    if (data) {
+      setSettings(prev => prev.map(s => {
+        const found = data.find(d => d.key === s.key)
+        return found ? { ...s, enabled: found.value === true || found.value === "true" } : s
+      }))
+      setLastSync(new Date())
+    }
+  }, [supabase])
 
   useEffect(() => {
-    const loadSettings = async () => {
-      const keys = securitySettingDefs.map(s => s.key)
-      const { data } = await supabase.from("site_settings").select("key, value").in("key", keys)
-      if (data) {
-        setSettings(prev => prev.map(s => {
-          const found = data.find(d => d.key === s.key)
-          return found ? { ...s, enabled: found.value === true || found.value === "true" } : s
-        }))
-      }
-    }
     loadSettings()
-  }, [supabase])
+    const channel = supabase
+      .channel(`security_settings_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "site_settings" }, () => loadSettings())
+      .subscribe()
+    const interval = setInterval(loadSettings, 30000)
+    const onFocus = () => loadSettings()
+    window.addEventListener("focus", onFocus)
+    return () => {
+      supabase.removeChannel(channel)
+      clearInterval(interval)
+      window.removeEventListener("focus", onFocus)
+    }
+  }, [supabase, loadSettings])
 
   const toggleSetting = async (index: number, checked: boolean) => {
     const updated = [...settings]
@@ -392,7 +441,10 @@ function SettingsTab() {
         <CardHeader>
           <div className="flex items-center justify-between">
             <CardTitle>Security Settings</CardTitle>
-            {saving && <p className="text-xs text-muted-foreground animate-pulse">Saving...</p>}
+            <div className="flex items-center gap-2">
+              {saving && <p className="text-xs text-muted-foreground animate-pulse">Saving...</p>}
+              <span className="text-xs text-muted-foreground">{lastSync ? `synced ${lastSync.toLocaleTimeString()}` : "…"}</span>
+            </div>
           </div>
         </CardHeader>
         <CardContent className="space-y-4">

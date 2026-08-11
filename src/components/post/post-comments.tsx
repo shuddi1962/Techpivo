@@ -43,6 +43,7 @@ export function PostComments({ postId }: PostCommentsProps) {
   const [replyTo, setReplyTo] = useState<string | null>(null)
   const [replyToName, setReplyToName] = useState<string>("")
   const [submitting, setSubmitting] = useState(false)
+  const [submitError, setSubmitError] = useState("")
   const [guestName, setGuestName] = useState("")
   const supabase = createClient()
 
@@ -91,6 +92,14 @@ export function PostComments({ postId }: PostCommentsProps) {
 
   useEffect(() => { fetchComments() }, [fetchComments])
 
+  useEffect(() => {
+    const channel = supabase
+      .channel(`post_comments_${postId}_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`)
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "article_discussions", filter: `post_id=eq.${postId}` }, () => fetchComments())
+      .subscribe()
+    return () => { supabase.removeChannel(channel) }
+  }, [postId, supabase, fetchComments])
+
   const fetchReplies = async (parentId: string): Promise<DiscussionComment[]> => {
     const { data } = await supabase
       .from("article_discussions")
@@ -107,6 +116,7 @@ export function PostComments({ postId }: PostCommentsProps) {
     if (!user && !guestName.trim()) return
 
     setSubmitting(true)
+    setSubmitError("")
     const { data, error } = await supabase
       .from("article_discussions")
       .insert({
@@ -118,7 +128,13 @@ export function PostComments({ postId }: PostCommentsProps) {
       .select("*, author:user_profiles(username, full_name, avatar_url, level)")
       .single()
 
-    if (!error && data) {
+    if (error) {
+      console.error("Failed to post comment:", error)
+      setSubmitError("Could not post your comment. Please try again or sign in.")
+      setSubmitting(false)
+      return
+    }
+    if (data) {
       if (replyTo) {
         setComments(prev => prev.map(c =>
           c.id === replyTo ? { ...c, reply_count: c.reply_count + 1 } : c
@@ -215,6 +231,9 @@ export function PostComments({ postId }: PostCommentsProps) {
               rows={3}
               required
             />
+            {submitError && (
+              <p className="text-sm text-red-600 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-md px-3 py-2">{submitError}</p>
+            )}
             <div className="flex items-center justify-between">
               <p className="text-xs text-muted-foreground">
                 {user ? "Posting as authenticated user" : "Posting as guest"}
