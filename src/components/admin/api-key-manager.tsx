@@ -26,6 +26,7 @@ export function ApiKeyManager() {
   const [newKey, setNewKey] = useState({ name: "", permissions: ["read"], expire_days: 90 })
   const [revealedKey, setRevealedKey] = useState<string | null>(null)
   const [lastSync, setLastSync] = useState<Date | null>(null)
+  const [error, setError] = useState("")
 
   const fetchKeys = useCallback(async (quiet = false) => {
     if (!quiet) setLoading(true)
@@ -56,19 +57,35 @@ export function ApiKeyManager() {
   }, [supabase, fetchKeys])
 
   const createKey = async () => {
+    setError("")
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) {
+      setError("You must be signed in to create an API key")
+      return
+    }
     const prefix = "tp_" + Math.random().toString(36).slice(2, 10)
     const fullKey = prefix + Math.random().toString(36).slice(2, 34)
     const expiresAt = new Date()
     expiresAt.setDate(expiresAt.getDate() + newKey.expire_days)
 
-    await supabase.from("api_keys").insert({
+    const hashBuffer = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(fullKey))
+    const keyHash = Array.from(new Uint8Array(hashBuffer)).map(b => b.toString(16).padStart(2, "0")).join("")
+
+    const { error: insertError } = await supabase.from("api_keys").insert({
+      user_id: user.id,
       name: newKey.name,
       key_prefix: prefix,
-      key_hash: fullKey,
+      key_hash: keyHash,
       permissions: newKey.permissions,
       is_active: true,
       expires_at: expiresAt.toISOString(),
     })
+
+    if (insertError) {
+      console.error("Failed to create API key:", insertError)
+      setError(insertError.message)
+      return
+    }
 
     setRevealedKey(fullKey)
     setNewKey({ name: "", permissions: ["read"], expire_days: 90 })
@@ -77,12 +94,24 @@ export function ApiKeyManager() {
   }
 
   const deleteKey = async (id: string) => {
-    await supabase.from("api_keys").delete().eq("id", id)
+    setError("")
+    const { error: deleteError } = await supabase.from("api_keys").delete().eq("id", id)
+    if (deleteError) {
+      console.error("Failed to delete API key:", deleteError)
+      setError(deleteError.message)
+      return
+    }
     fetchKeys()
   }
 
   const toggleKey = async (id: string, isActive: boolean) => {
-    await supabase.from("api_keys").update({ is_active: !isActive }).eq("id", id)
+    setError("")
+    const { error: updateError } = await supabase.from("api_keys").update({ is_active: !isActive }).eq("id", id)
+    if (updateError) {
+      console.error("Failed to update API key:", updateError)
+      setError(updateError.message)
+      return
+    }
     fetchKeys()
   }
 
@@ -122,7 +151,13 @@ export function ApiKeyManager() {
               </button>
             </div>
           </div>
-          <p className="text-[10px] text-green-600 dark:text-green-500 mt-2">Copy this key now. It won&apos;t be shown again.</p>
+          <p className="text-[10px] text-green-600 dark:text-green-500 mt-2">Copy this key now. Only the hash is stored — it won&apos;t be shown again.</p>
+        </div>
+      )}
+
+      {error && (
+        <div className="mb-4 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
+          <p className="text-xs text-red-700 dark:text-red-400">{error}</p>
         </div>
       )}
 
