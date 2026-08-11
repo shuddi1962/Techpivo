@@ -1,92 +1,114 @@
-"use client"
-
 import Link from "next/link"
 import { NewsletterStrip } from "@/components/home/NewsletterStrip"
-import { Braces, Key, Globe, Type } from "lucide-react"
 import { JsonLd } from "@/components/ui/jsonld"
-import { breadcrumbSchema } from "@/lib/jsonld"
+import { breadcrumbSchema, collectionPageSchema, itemListSchema } from "@/lib/jsonld"
 import { SITE_URL } from "@/lib/constants"
+import { TOOL_SLUGS, TOOL_META, TOOL_CATEGORY_LABEL, ToolCategory } from "@/lib/tools-metadata"
 
-interface Tool {
-  name: string
-  slug: string
-  description: string
-  icon: any
-  category: string
-  color: string
+const CATEGORY_ORDER: ToolCategory[] = ["developer", "security", "network", "seo", "image", "pdf", "calculator", "ai"]
+
+const CATEGORY_DESC: Record<ToolCategory, string> = {
+  developer: "Formatting, conversion, and coding utilities used every day.",
+  security: "Passwords, validation, and network inspection tools.",
+  network: "DNS lookups through Cloudflare's public resolver.",
+  seo: "Meta tags, schema, and content optimization utilities.",
+  image: "Compress, resize, and convert images privately in your browser.",
+  pdf: "Merge, split, and compress PDFs locally — nothing is uploaded.",
+  calculator: "Quick calculators for loans, percentages, units, and more.",
+  ai: "Instant AI-style writing generators and helpers. No API needed.",
 }
 
-const tools: Tool[] = [
-  { name: "JSON Formatter", slug: "json-formatter", description: "Format, validate, and beautify JSON data instantly", icon: Braces, category: "Developer", color: "bg-blue-500/10 text-blue-500" },
-  { name: "Password Generator", slug: "password-generator", description: "Generate secure random passwords with customizable options", icon: Key, category: "Security", color: "bg-amber-500/10 text-amber-500" },
-  { name: "Slug Generator", slug: "slug-generator", description: "Generate SEO-friendly URL slugs from any text", icon: Globe, category: "SEO", color: "bg-green-500/10 text-green-500" },
-  { name: "Word Counter", slug: "word-counter", description: "Count words, characters, sentences, and paragraphs", icon: Type, category: "SEO", color: "bg-orange-500/10 text-orange-500" },
-]
-
-const toolSchemas = tools.map(t => ({
-  "@context": "https://schema.org" as const,
-  "@type": "SoftwareApplication" as const,
-  name: t.name,
-  description: t.description,
-  url: `${SITE_URL}/tools/${t.slug}`,
-  applicationCategory: "UtilitiesApplication",
-  operatingSystem: "Web",
-  offers: { "@type": "Offer", price: "0", priceCurrency: "USD" },
-}))
+const toolSchemas = TOOL_SLUGS.map(slug => {
+  const t = TOOL_META[slug]
+  return {
+    "@context": "https://schema.org" as const,
+    "@type": "SoftwareApplication" as const,
+    name: t.name,
+    description: t.description,
+    url: `${SITE_URL}/tools/${slug}`,
+    applicationCategory: "UtilitiesApplication",
+    operatingSystem: "Web",
+    offers: { "@type": "Offer", price: "0", priceCurrency: "USD" },
+  }
+})
 
 export default function PublicToolsPage() {
+  const grouped = CATEGORY_ORDER
+    .map(cat => ({ cat, tools: TOOL_SLUGS.filter(slug => TOOL_META[slug].category === cat) }))
+    .filter(g => g.tools.length > 0)
+
+  const itemList = TOOL_SLUGS.map((slug, i) => ({ url: `${SITE_URL}/tools/${slug}`, name: TOOL_META[slug].name, position: i + 1 }))
 
   return (
     <>
+      <style>{`.tp-tool-card:hover { border-color: var(--accent) !important; transform: translateY(-2px); box-shadow: 0 6px 18px rgba(0,0,0,.08); }`}</style>
       <JsonLd data={breadcrumbSchema([
         { name: "Home", url: SITE_URL },
         { name: "Free Tech Tools" },
       ])} />
+      <JsonLd data={collectionPageSchema("Free Tech Tools", "50+ free online tools that run directly in your browser.", `${SITE_URL}/tools`)} />
+      <JsonLd data={itemListSchema(itemList)} />
       {toolSchemas.map((s, i) => <JsonLd key={i} data={s as any} />)}
+
       <div style={{ maxWidth: 1200, margin: "0 auto", padding: "40px 20px" }}>
-        <div style={{ textAlign: "center", marginBottom: 48 }}>
-          <h1 style={{ fontFamily: "'Syne', sans-serif", fontSize: 36, fontWeight: 800, marginBottom: 12 }}>Free Tech Tools</h1>
-          <p style={{ fontSize: 16, color: "var(--muted)", maxWidth: 600, margin: "0 auto" }}>
-            Developer utilities, SEO tools, security checkers, and more. Fast, free, and private — everything runs in your browser.
+        <div style={{ textAlign: "center", marginBottom: 40 }}>
+          <h1 style={{ fontFamily: "'Syne', sans-serif", fontSize: 36, fontWeight: 800, marginBottom: 12 }}>Free Tech Tools &amp; Utilities</h1>
+          <p style={{ fontSize: 16, color: "var(--muted)", maxWidth: 640, margin: "0 auto" }}>
+            {TOOL_SLUGS.length} tools for developers, SEO professionals, and everyday users.
+            Fast, free, and private — everything runs in your browser.
           </p>
         </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: 20, marginBottom: 48 }}>
-        {tools.map((tool) => {
-          const Icon = tool.icon
-          return (
-            <Link
-              key={tool.slug}
-              href={`/tools/${tool.slug}`}
+        <nav style={{ display: "flex", gap: 8, flexWrap: "wrap", justifyContent: "center", marginBottom: 44 }}>
+          {grouped.map(g => (
+            <a
+              key={g.cat}
+              href={`#${g.cat}`}
               style={{
-                display: "block",
-                padding: 24,
-                borderRadius: 12,
-                border: "1px solid var(--border)",
+                padding: "8px 16px", borderRadius: 999, border: "1px solid var(--border)",
+                fontSize: 13, fontWeight: 600, color: "var(--text)", textDecoration: "none",
                 background: "var(--card)",
-                textDecoration: "none",
-                transition: "all 0.2s",
               }}
-              onMouseEnter={e => { (e.currentTarget as HTMLElement).style.borderColor = "var(--accent)"; (e.currentTarget as HTMLElement).style.transform = "translateY(-2px)" }}
-              onMouseLeave={e => { (e.currentTarget as HTMLElement).style.borderColor = "var(--border)"; (e.currentTarget as HTMLElement).style.transform = "translateY(0)" }}
             >
-              <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 12 }}>
-                <div className={tool.color} style={{ width: 40, height: 40, borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                  <Icon size={20} />
-                </div>
-                <div>
-                  <h3 style={{ fontSize: 16, fontWeight: 700, margin: 0, color: "var(--text)" }}>{tool.name}</h3>
-                  <span style={{ fontSize: 12, color: "var(--muted)" }}>{tool.category}</span>
-                </div>
-              </div>
-              <p style={{ fontSize: 14, color: "var(--muted)", margin: 0, lineHeight: 1.5 }}>{tool.description}</p>
-              <div style={{ marginTop: 16, fontSize: 13, fontWeight: 600, color: "var(--accent)" }}>Use Tool →</div>
-            </Link>
-          )
-        })}
+              {TOOL_CATEGORY_LABEL[g.cat]} ({g.tools.length})
+            </a>
+          ))}
+        </nav>
+
+        {grouped.map(g => (
+          <section key={g.cat} id={g.cat} style={{ marginBottom: 40 }}>
+            <div style={{ marginBottom: 16 }}>
+              <h2 style={{ fontFamily: "'Syne', sans-serif", fontSize: 22, fontWeight: 700, margin: 0 }}>{TOOL_CATEGORY_LABEL[g.cat]}</h2>
+              <p style={{ fontSize: 13, color: "var(--muted)", margin: "4px 0 0" }}>{CATEGORY_DESC[g.cat]}</p>
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: 20 }}>
+              {g.tools.map(slug => {
+                const t = TOOL_META[slug]
+                return (
+                  <Link
+                    key={slug}
+                    href={`/tools/${slug}`}
+                    className="tp-tool-card"
+                    style={{
+                      display: "block", padding: 20, borderRadius: 12,
+                      border: "1px solid var(--border)", background: "var(--card)",
+                      textDecoration: "none", transition: "all 0.2s",
+                    }}
+                  >
+                    <div style={{ fontSize: 15, fontWeight: 700, color: "var(--text)", marginBottom: 6 }}>{t.name}</div>
+                    <p style={{ fontSize: 13, color: "var(--muted)", margin: 0, lineHeight: 1.5 }}>{t.description}</p>
+                    <div style={{ marginTop: 12, fontSize: 13, fontWeight: 600, color: "var(--accent)" }}>Use Tool →</div>
+                  </Link>
+                )
+              })}
+            </div>
+          </section>
+        ))}
+
+        <section style={{ marginTop: 48 }}>
+          <NewsletterStrip />
+        </section>
       </div>
-      <NewsletterStrip />
-    </div>
     </>
   )
 }
