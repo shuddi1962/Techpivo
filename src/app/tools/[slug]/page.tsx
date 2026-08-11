@@ -5,6 +5,7 @@ import { JsonLd } from "@/components/ui/jsonld"
 import { breadcrumbSchema, softwareApplicationSchema, itemListSchema } from "@/lib/jsonld"
 import { SITE_URL } from "@/lib/constants"
 import { TOOL_SLUGS, TOOL_META, TOOL_CATEGORY_LABEL } from "@/lib/tools-metadata"
+import { CATEGORY_ROUTE } from "@/lib/tools-categories"
 import { ToolView } from "@/lib/tools"
 import { ToolStatusGate } from "@/components/tools/tool-status"
 
@@ -84,7 +85,11 @@ export default async function ToolPage({ params }: { params: { slug: string } })
             <div style={{ fontSize: 13, color: "var(--muted)", marginBottom: 8 }}>
               <Link href="/tools" style={{ color: "var(--accent)", textDecoration: "none" }}>Tools</Link>
               <span style={{ margin: "0 6px" }}>→</span>
-              <span>{TOOL_CATEGORY_LABEL[meta.category]}</span>
+              <Link href={CATEGORY_ROUTE[meta.category]} style={{ color: "var(--accent)", textDecoration: "none" }}>
+                {TOOL_CATEGORY_LABEL[meta.category]}
+              </Link>
+              <span style={{ margin: "0 6px" }}>→</span>
+              <span>{meta.name}</span>
             </div>
             <h1 style={{ fontFamily: "'Syne', sans-serif", fontSize: 30, fontWeight: 800, margin: 0 }}>{meta.name}</h1>
             <p style={{ fontSize: 15, color: "var(--muted)", margin: "8px 0 24px", lineHeight: 1.6 }}>{meta.longDescription || meta.description}</p>

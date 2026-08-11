@@ -5,13 +5,13 @@ import { Check, Copy, Download, Upload, AlertCircle, CheckCircle2 } from "lucide
 
 export const s = {
   btn: {
-    padding: "8px 18px", borderRadius: 8, background: "var(--accent)", color: "#ffffff",
-    border: "none", fontWeight: 600, fontSize: 14, cursor: "pointer",
-    display: "inline-flex", alignItems: "center", gap: 6,
+    padding: "9px 20px", borderRadius: 8, background: "var(--accent)", color: "#ffffff",
+    border: "none", fontWeight: 700, fontSize: 14, cursor: "pointer",
+    display: "inline-flex", alignItems: "center", gap: 6, boxShadow: "0 1px 2px rgba(0,0,0,.12)",
   } as React.CSSProperties,
   btn2: {
-    padding: "8px 18px", borderRadius: 8, background: "var(--card)", color: "var(--text)",
-    border: "1px solid var(--border)", fontWeight: 600, fontSize: 14, cursor: "pointer",
+    padding: "9px 18px", borderRadius: 8, background: "var(--card)", color: "var(--text)",
+    border: "1.5px solid var(--border)", fontWeight: 600, fontSize: 14, cursor: "pointer",
     display: "inline-flex", alignItems: "center", gap: 6,
   } as React.CSSProperties,
   btn2Off: {
@@ -20,21 +20,22 @@ export const s = {
     opacity: 0.5, display: "inline-flex", alignItems: "center", gap: 6,
   } as React.CSSProperties,
   inp: {
-    width: "100%", padding: "8px 12px", borderRadius: 8, border: "1px solid var(--border)",
+    width: "100%", padding: "9px 12px", borderRadius: 8, border: "1.5px solid var(--border)",
     background: "var(--card)", color: "var(--text)", fontSize: 14, outline: "none",
     boxSizing: "border-box",
   } as React.CSSProperties,
   sel: {
-    padding: "8px 10px", borderRadius: 8, border: "1px solid var(--border)",
+    padding: "9px 10px", borderRadius: 8, border: "1.5px solid var(--border)",
     background: "var(--card)", color: "var(--text)", fontSize: 14, outline: "none",
   } as React.CSSProperties,
   lab: {
-    display: "block", fontSize: 12, fontWeight: 600, marginBottom: 5, color: "var(--muted)",
+    display: "block", fontSize: 12, fontWeight: 700, marginBottom: 5, color: "var(--muted)",
+    textTransform: "uppercase", letterSpacing: 0.4,
   } as React.CSSProperties,
   ta: (h = 300) =>
     ({
       width: "100%", height: h, padding: 12, borderRadius: 10,
-      border: "1px solid var(--border)", background: "var(--card)", color: "var(--text)",
+      border: "1.5px solid var(--border)", background: "var(--card)", color: "var(--text)",
       fontFamily: "monospace", fontSize: 13, resize: "vertical", outline: "none",
       boxSizing: "border-box",
     }) as React.CSSProperties,
@@ -47,7 +48,8 @@ export const s = {
     fontSize: 13, border: "1px solid #A7F3D0",
   } as React.CSSProperties,
   card: {
-    background: "var(--card)", border: "1px solid var(--border)", borderRadius: 12, padding: 16,
+    background: "var(--card)", border: "1.5px solid var(--border)", borderRadius: 12, padding: 16,
+    boxShadow: "0 1px 3px rgba(0,0,0,.06)",
   } as React.CSSProperties,
   row: { display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" } as React.CSSProperties,
   tag: {
@@ -55,6 +57,28 @@ export const s = {
     textTransform: "uppercase", letterSpacing: 0.4,
   } as React.CSSProperties,
 };
+
+async function copyToClipboard(text: string): Promise<boolean> {
+  try {
+    if (navigator.clipboard && window.isSecureContext) {
+      await navigator.clipboard.writeText(text);
+      return true;
+    }
+  } catch { /* fall through to legacy path */ }
+  try {
+    const ta = document.createElement("textarea");
+    ta.value = text;
+    ta.style.position = "fixed";
+    ta.style.opacity = "0";
+    document.body.appendChild(ta);
+    ta.select();
+    const ok = document.execCommand("copy");
+    ta.remove();
+    return ok;
+  } catch {
+    return false;
+  }
+}
 
 export function CopyButton({
   text, label = "Copy", size = "sm",
@@ -64,19 +88,50 @@ export function CopyButton({
   return (
     <button
       onClick={async () => {
-        try {
-          await navigator.clipboard.writeText(text);
+        const ok = await copyToClipboard(text);
+        if (ok) {
           setCopied(true);
           setTimeout(() => setCopied(false), 1500);
-        } catch {
-          /* clipboard unavailable */
         }
       }}
       disabled={!text}
-      style={text ? style : s.btn2Off}
+      title={text ? "Copy to clipboard" : "Nothing to copy yet"}
+      style={copied
+        ? { ...style, minWidth: 78, background: "#ECFDF5", border: "1.5px solid #34D399", color: "#047857", justifyContent: "center" }
+        : { ...style, minWidth: 78, justifyContent: "center" }}
     >
       {copied ? <Check size={size === "sm" ? 12 : 14} /> : <Copy size={size === "sm" ? 12 : 14} />}
-      {copied ? "Copied" : label}
+      {copied ? "Copied!" : label}
+    </button>
+  );
+}
+
+export function DownloadButton({
+  onClick, label = "Download", fileName, disabled, style,
+}: { onClick: () => void; label?: string; fileName?: string; disabled?: boolean; style?: React.CSSProperties }) {
+  const [done, setDone] = useState(false);
+  if (disabled) {
+    return (
+      <button type="button" style={{ ...s.btn2Off, ...style }} title={fileName ? `Will download ${fileName} once there is output` : undefined}>
+        <Download size={14} /> {done ? "Saved!" : label}
+      </button>
+    );
+  }
+  return (
+    <button
+      type="button"
+      onClick={() => {
+        onClick();
+        setDone(true);
+        setTimeout(() => setDone(false), 1600);
+      }}
+      title={fileName ? `Download ${fileName}` : "Download file"}
+      style={done
+        ? { ...s.btn, background: "#047857", ...style }
+        : { ...s.btn, minWidth: 86, justifyContent: "center", ...style }}
+    >
+      {done ? <Check size={14} /> : <Download size={14} />}
+      {done ? "Saved!" : label}
     </button>
   );
 }

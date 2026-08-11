@@ -1,5 +1,7 @@
 import { createClient } from "@/lib/supabase/server"
 import { SITE_URL } from "@/lib/constants"
+import { TOOL_SLUGS } from "@/lib/tools-metadata"
+import { CATEGORY_SLUGS, CATEGORY_ROUTE } from "@/lib/tools-categories"
 import type { MetadataRoute } from "next"
 
 export const revalidate = 3600
@@ -42,10 +44,16 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { path: "/write-for-us", priority: 0.5, freq: "monthly" },
     { path: "/newsletter", priority: 0.4, freq: "weekly" },
     { path: "/tools", priority: 0.7, freq: "monthly" },
-    { path: "/tools/json-formatter", priority: 0.6, freq: "monthly" },
-    { path: "/tools/password-generator", priority: 0.6, freq: "monthly" },
-    { path: "/tools/slug-generator", priority: 0.6, freq: "monthly" },
-    { path: "/tools/word-counter", priority: 0.6, freq: "monthly" },
+    ...CATEGORY_SLUGS.map((cat) => ({
+      path: CATEGORY_ROUTE[cat],
+      priority: 0.6,
+      freq: "monthly" as const,
+    })),
+    ...TOOL_SLUGS.map((slug) => ({
+      path: `/tools/${slug}`,
+      priority: 0.5,
+      freq: "monthly" as const,
+    })),
     { path: "/community", priority: 0.8, freq: "daily" },
     { path: "/community/forum", priority: 0.7, freq: "daily" },
     { path: "/community/quiz", priority: 0.7, freq: "weekly" },

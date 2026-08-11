@@ -3,9 +3,10 @@
 import { useState, useEffect, useCallback, useRef } from "react"
 import Link from "next/link"
 import { createClient } from "@/lib/supabase/client"
-import { Search, Wrench, Power, PowerOff, ExternalLink, Activity, Cpu, Layers } from "lucide-react"
+import { Search, Wrench, Power, PowerOff, ExternalLink, Activity, Cpu, Layers, Pencil, Trash2, Plus } from "lucide-react"
 import { TOOL_LIST, getToolDef } from "@/lib/tools"
 import { TOOL_CATEGORY_LABEL, ToolCategory } from "@/lib/tools-metadata"
+import ToolEditModal, { EditableTool } from "@/components/admin/tool-edit-modal"
 
 interface DbTool {
   id: string
@@ -19,6 +20,7 @@ interface DbTool {
   usage_count: number
   meta_title: string | null
   meta_description: string | null
+  api_endpoint: string | null
   created_at: string
   updated_at: string
 }
@@ -29,6 +31,21 @@ function dbToRegistryCat(dbCat: string): ToolCategory {
   return known.includes(dbCat as ToolCategory) ? (dbCat as ToolCategory) : "developer"
 }
 
+interface MergedTool {
+  slug: string
+  name: string
+  description: string
+  category: ToolCategory
+  icon: string
+  is_active: boolean
+  is_ai_tool: boolean
+  usage_count: number
+  meta_title: string
+  meta_description: string
+  api_endpoint: string
+  inDb: boolean
+}
+
 export default function ToolsAdminPage() {
   const supabase = createClient()
   const [dbTools, setDbTools] = useState<DbTool[]>([])
@@ -37,6 +54,8 @@ export default function ToolsAdminPage() {
   const [category, setCategory] = useState("All")
   const [busySlug, setBusySlug] = useState("")
   const [error, setError] = useState("")
+  const [editing, setEditing] = useState<MergedTool | null>(null)
+  const [deleting, setDeleting] = useState<MergedTool | null>(null)
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null)
 
   const fetchTools = useCallback(async () => {
@@ -65,42 +84,69 @@ export default function ToolsAdminPage() {
     }
   }, [supabase, fetchTools])
 
-  const toggleActive = async (tool: DbTool) => {
-    setBusySlug(tool.slug)
-    setError("")
+  const postAction = async (body: Record<string, unknown>): Promise<{ ok: boolean; error?: string }> => {
     try {
       const res = await fetch("/api/admin/tools", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ slug: tool.slug, is_active: !tool.is_active }),
+        body: JSON.stringify(body),
       })
       const data = await res.json()
-      if (!res.ok) {
-        setError(`Failed to update "${tool.name}": ${data?.error || res.statusText}`)
-      } else {
-        setDbTools((prev) => prev.map((t) => (t.slug === tool.slug ? { ...t, is_active: !!data.tool?.is_active } : t)))
-        fetchTools()
-      }
+      if (!res.ok) return { ok: false, error: data?.error || res.statusText }
+      return { ok: true }
     } catch (e: any) {
-      setError(`Failed to update "${tool.name}": ${e?.message || "Network error"}`)
+      return { ok: false, error: e?.message || "Network error" }
     }
+  }
+
+  const toggleActive = async (tool: MergedTool) => {
+    if (!tool.inDb) return
+    setBusySlug(tool.slug)
+    setError("")
+    const res = await postAction({ slug: tool.slug, is_active: !tool.is_active })
+    if (!res.ok) setError(`Failed to update "${tool.name}": ${res.error}`)
+    else fetchTools()
     setBusySlug("")
+  }
+
+  const seedTool = async (tool: MergedTool) => {
+    setBusySlug(tool.slug)
+    setError("")
+    const res = await postAction({ action: "seed", slug: tool.slug })
+    if (!res.ok) setError(`Failed to seed "${tool.name}": ${res.error}`)
+    else fetchTools()
+    setBusySlug("")
+  }
+
+  const confirmDelete = async () => {
+    if (!deleting) return
+    setBusySlug(deleting.slug)
+    setError("")
+    const res = await postAction({ action: "delete", slug: deleting.slug })
+    if (!res.ok) setError(`Failed to delete "${deleting.name}": ${res.error}`)
+    setDeleting(null)
+    setBusySlug("")
+    fetchTools()
   }
 
   const knownSlugs = new Set(TOOL_LIST.map((t) => t.slug))
   const dbOnly = dbTools.filter((t) => !knownSlugs.has(t.slug))
   const registryOnly = TOOL_LIST.filter((t) => !dbTools.some((d) => d.slug === t.slug))
 
-  const merged = TOOL_LIST.map((t) => {
+  const merged: MergedTool[] = TOOL_LIST.map((t) => {
     const db = dbTools.find((d) => d.slug === t.slug)
     return {
       slug: t.slug,
-      name: t.name,
-      description: t.description,
-      category: t.category,
-      is_active: db ? db.is_active : true,
-      is_ai_tool: db ? db.is_ai_tool : false,
+      name: db?.name || t.name,
+      description: db?.description || t.description,
+      category: db ? dbToRegistryCat(db.category) : t.category,
+      icon: db?.icon || "",
+      is_active: db ? db.is_active : false,
+      is_ai_tool: db ? db.is_ai_tool : t.category === "ai",
       usage_count: db ? db.usage_count : 0,
+      meta_title: db?.meta_title || "",
+      meta_description: db?.meta_description || "",
+      api_endpoint: db?.api_endpoint || "",
       inDb: !!db,
     }
   })
@@ -126,7 +172,7 @@ export default function ToolsAdminPage() {
         <div>
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Tools &amp; Utilities</h1>
           <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-            {TOOL_LIST.length} tools in the registry · {dbTools.length} in database · LIVE
+            {TOOL_LIST.length} tools in the registry · {dbTools.length} in database · edit, activate, deactivate, delete in realtime · LIVE
           </p>
         </div>
         <span className="inline-flex items-center gap-1.5 px-3 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">
@@ -252,22 +298,49 @@ export default function ToolsAdminPage() {
                   </Link>
                   {tool.inDb && tool.is_active && (
                     <button
-                      onClick={() => toggleActive({ ...tool, id: "", name: tool.name, description: tool.description, category: tool.category, icon: null, usage_count: tool.usage_count, is_active: tool.is_active, is_ai_tool: tool.is_ai_tool, meta_title: null, meta_description: null, created_at: "", updated_at: "" } as DbTool)}
+                      onClick={() => toggleActive(tool)}
                       disabled={busySlug === tool.slug}
                       className="p-1.5 rounded-lg border border-red-200 dark:border-red-900 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors disabled:opacity-50"
-                      title="Deactivate tool"
+                      title="Deactivate tool (hidden on public pages)"
                     >
                       <PowerOff className="h-3.5 w-3.5" />
                     </button>
                   )}
                   {tool.inDb && !tool.is_active && (
                     <button
-                      onClick={() => toggleActive({ ...tool, id: "", name: tool.name, description: tool.description, category: tool.category, icon: null, usage_count: tool.usage_count, is_active: tool.is_active, is_ai_tool: tool.is_ai_tool, meta_title: null, meta_description: null, created_at: "", updated_at: "" } as DbTool)}
+                      onClick={() => toggleActive(tool)}
                       disabled={busySlug === tool.slug}
                       className="p-1.5 rounded-lg border border-green-200 dark:border-green-900 text-green-500 hover:bg-green-50 dark:hover:bg-green-900/20 transition-colors disabled:opacity-50"
-                      title="Activate tool"
+                      title="Activate tool (visible on public pages)"
                     >
                       <Power className="h-3.5 w-3.5" />
+                    </button>
+                  )}
+                  <button
+                    onClick={() => setEditing(tool)}
+                    disabled={busySlug === tool.slug}
+                    className="p-1.5 rounded-lg border border-gray-200 dark:border-[#374151] text-gray-500 hover:text-[#F59E0B] transition-colors disabled:opacity-50"
+                    title="Edit name, description, category, SEO fields"
+                  >
+                    <Pencil className="h-3.5 w-3.5" />
+                  </button>
+                  {tool.inDb ? (
+                    <button
+                      onClick={() => setDeleting(tool)}
+                      disabled={busySlug === tool.slug}
+                      className="p-1.5 rounded-lg border border-red-200 dark:border-red-900 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors disabled:opacity-50"
+                      title="Delete tool (removes database row — tool becomes unavailable)"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                  ) : (
+                    <button
+                      onClick={() => seedTool(tool)}
+                      disabled={busySlug === tool.slug}
+                      className="p-1.5 rounded-lg border border-blue-200 dark:border-blue-900 text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors disabled:opacity-50"
+                      title="Seed this tool into the database (makes it live + trackable)"
+                    >
+                      <Plus className="h-3.5 w-3.5" />
                     </button>
                   )}
                 </div>
@@ -296,13 +369,60 @@ export default function ToolsAdminPage() {
           )}
           {registryOnly.length > 0 && (
             <p className={dbOnly.length > 0 ? "mt-1" : ""}>
-              In registry but not seeded in database:{" "}
+              In registry but not seeded in database (click + to seed live):{" "}
               {registryOnly.map((t) => (
                 <span key={t.slug} className="font-mono">{t.slug}</span>
               )).reduce<any>((acc, el, i) => (i === 0 ? [el] : [...acc, ", ", el]), [])}
             </p>
           )}
-          <p className="mt-1">Run migration 050 to seed new tools and deactivate removed ones. Tool toggles require the admin role (RLS).</p>
+        </div>
+      )}
+
+      {editing && (
+        <ToolEditModal
+          tool={{
+            slug: editing.slug,
+            name: editing.name,
+            description: editing.description,
+            category: editing.category,
+            icon: editing.icon,
+            is_ai_tool: editing.is_ai_tool,
+            meta_title: editing.meta_title,
+            meta_description: editing.meta_description,
+            api_endpoint: editing.api_endpoint,
+          }}
+          onClose={() => setEditing(null)}
+          onSaved={() => {
+            setEditing(null)
+            fetchTools()
+          }}
+        />
+      )}
+
+      {deleting && (
+        <div className="fixed inset-0 z-50 flex items-start justify-center p-4 pt-24" style={{ background: "rgba(15,23,42,.55)" }}>
+          <div className="w-full max-w-sm bg-white dark:bg-[#111827] border border-gray-200 dark:border-[#374151] rounded-2xl shadow-2xl p-5">
+            <h3 className="text-base font-bold text-gray-900 dark:text-white">Delete &quot;{deleting.name}&quot;?</h3>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mt-2 leading-relaxed">
+              This removes the tool from the database — it will become unavailable on the live site and stop tracking
+              usage. The registry page still exists until you seed it again.
+            </p>
+            <div className="flex justify-end gap-2 mt-5">
+              <button
+                onClick={() => setDeleting(null)}
+                className="px-4 py-2 text-xs font-semibold rounded-lg border border-gray-200 dark:border-[#374151] text-gray-500 hover:bg-gray-100 dark:hover:bg-[#1F2937]"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmDelete}
+                disabled={busySlug === deleting.slug}
+                className="px-4 py-2 text-xs font-semibold rounded-lg bg-red-500 text-white hover:bg-red-600 disabled:opacity-50"
+              >
+                Delete permanently
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

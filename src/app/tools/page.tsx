@@ -1,22 +1,13 @@
+import Link from "next/link"
 import { NewsletterStrip } from "@/components/home/NewsletterStrip"
 import { JsonLd } from "@/components/ui/jsonld"
 import { breadcrumbSchema, collectionPageSchema, itemListSchema } from "@/lib/jsonld"
 import { SITE_URL } from "@/lib/constants"
 import { TOOL_SLUGS, TOOL_META, TOOL_CATEGORY_LABEL, ToolCategory } from "@/lib/tools-metadata"
+import { TOOL_CATEGORY_DETAILS, CATEGORY_SLUGS, getCategoryDetail, CATEGORY_ROUTE } from "@/lib/tools-categories"
 import { ActiveToolGroup } from "@/components/tools/tool-status"
 
 const CATEGORY_ORDER: ToolCategory[] = ["developer", "security", "network", "seo", "image", "pdf", "calculator", "ai"]
-
-const CATEGORY_DESC: Record<ToolCategory, string> = {
-  developer: "Formatting, conversion, and coding utilities used every day.",
-  security: "Passwords, validation, and network inspection tools.",
-  network: "DNS lookups through Cloudflare's public resolver.",
-  seo: "Meta tags, schema, and content optimization utilities.",
-  image: "Compress, resize, and convert images privately in your browser.",
-  pdf: "Merge, split, and compress PDFs locally — nothing is uploaded.",
-  calculator: "Quick calculators for loans, percentages, units, and more.",
-  ai: "Instant AI-style writing generators and helpers. No API needed.",
-}
 
 const toolSchemas = TOOL_SLUGS.map(slug => {
   const t = TOOL_META[slug]
@@ -51,7 +42,7 @@ export default function PublicToolsPage() {
       {toolSchemas.map((s, i) => <JsonLd key={i} data={s as any} />)}
 
       <div style={{ maxWidth: 1200, margin: "0 auto", padding: "40px 20px" }}>
-        <div style={{ textAlign: "center", marginBottom: 40 }}>
+        <div style={{ textAlign: "center", marginBottom: 16 }}>
           <h1 style={{ fontFamily: "'Syne', sans-serif", fontSize: 36, fontWeight: 800, marginBottom: 12 }}>Free Tech Tools &amp; Utilities</h1>
           <p style={{ fontSize: 16, color: "var(--muted)", maxWidth: 640, margin: "0 auto" }}>
             {TOOL_SLUGS.length} tools for developers, SEO professionals, and everyday users.
@@ -59,7 +50,7 @@ export default function PublicToolsPage() {
           </p>
         </div>
 
-        <nav style={{ display: "flex", gap: 8, flexWrap: "wrap", justifyContent: "center", marginBottom: 44 }}>
+        <nav style={{ display: "flex", gap: 8, flexWrap: "wrap", justifyContent: "center", marginBottom: 36 }}>
           {grouped.map(g => (
             <a
               key={g.cat}
@@ -75,17 +66,67 @@ export default function PublicToolsPage() {
           ))}
         </nav>
 
-        {grouped.map(g => (
-          <section key={g.cat} id={g.cat} style={{ marginBottom: 40 }}>
-            <div style={{ marginBottom: 16 }}>
-              <h2 style={{ fontFamily: "'Syne', sans-serif", fontSize: 22, fontWeight: 700, margin: 0 }}>{TOOL_CATEGORY_LABEL[g.cat]}</h2>
-              <p style={{ fontSize: 13, color: "var(--muted)", margin: "4px 0 0" }}>{CATEGORY_DESC[g.cat]}</p>
-            </div>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: 20 }}>
-              <ActiveToolGroup tools={g.tools.map(slug => ({ slug, name: TOOL_META[slug].name, description: TOOL_META[slug].description }))} />
-            </div>
-          </section>
-        ))}
+        <section style={{ marginBottom: 44 }}>
+          <h2 style={{ fontFamily: "'Syne', sans-serif", fontSize: 20, fontWeight: 700, margin: "0 0 14" }}>Browse by category</h2>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: 16 }}>
+            {CATEGORY_ORDER.map(cat => {
+              const d = getCategoryDetail(cat)
+              const Icon = d.icon
+              const count = TOOL_SLUGS.filter(slug => TOOL_META[slug].category === cat).length
+              return (
+                <Link
+                  key={cat}
+                  href={CATEGORY_ROUTE[cat]}
+                  style={{
+                    display: "flex", alignItems: "center", gap: 14, padding: 18,
+                    borderRadius: 14, border: "1.5px solid var(--border)", background: "var(--card)",
+                    textDecoration: "none", transition: "all 0.2s",
+                  }}
+                  className="tp-cat-card"
+                >
+                  <div style={{
+                    width: 46, height: 46, borderRadius: 12, background: d.soft, color: d.accent,
+                    display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
+                  }}>
+                    <Icon size={22} />
+                  </div>
+                  <div style={{ minWidth: 0 }}>
+                    <div style={{ fontSize: 15, fontWeight: 700, color: "var(--text)" }}>{d.label}</div>
+                    <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 2 }}>
+                      {count} tools · {d.tagline}
+                    </div>
+                  </div>
+                  <span style={{ marginLeft: "auto", fontSize: 18, color: d.accent, flexShrink: 0 }}>→</span>
+                </Link>
+              )
+            })}
+          </div>
+        </section>
+
+        {grouped.map(g => {
+          const d = getCategoryDetail(g.cat)
+          const Icon = d.icon
+          return (
+            <section key={g.cat} id={g.cat} style={{ marginBottom: 40 }}>
+              <div style={{ marginBottom: 16, display: "flex", alignItems: "baseline", gap: 12, flexWrap: "wrap" }}>
+                <h2 style={{ fontFamily: "'Syne', sans-serif", fontSize: 22, fontWeight: 700, margin: 0, display: "flex", alignItems: "center", gap: 8 }}>
+                  <Icon size={20} style={{ color: d.accent, verticalAlign: -3 }} /> {TOOL_CATEGORY_LABEL[g.cat]}
+                  <span style={{ fontSize: 13, fontWeight: 600, color: "var(--muted)" }}>({g.tools.length})</span>
+                </h2>
+                <Link
+                  href={CATEGORY_ROUTE[g.cat]}
+                  style={{ marginLeft: "auto", fontSize: 13, fontWeight: 700, color: "var(--accent)", textDecoration: "none" }}
+                >
+                  View all {TOOL_CATEGORY_LABEL[g.cat].toLowerCase()} tools →
+                </Link>
+              </div>
+              <p style={{ fontSize: 13, color: "var(--muted)", margin: "4px 0 0" }}>{d.description}</p>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: 20, marginTop: 14 }}>
+                <ActiveToolGroup tools={g.tools.map(slug => ({ slug, name: TOOL_META[slug].name, description: TOOL_META[slug].description }))} />
+              </div>
+            </section>
+          )
+        })}
 
         <section style={{ marginTop: 48 }}>
           <NewsletterStrip />

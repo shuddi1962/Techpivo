@@ -3,6 +3,8 @@
 import Link from "next/link";
 import React, { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { getToolDef } from "@/lib/tools";
+import { getCategoryDetail } from "@/lib/tools-categories";
 
 let activeSlugsPromise: Promise<Set<string>> | null = null;
 
@@ -74,22 +76,53 @@ export function ActiveToolGroup({ tools }: { tools: { slug: string; name: string
   if (shown.length === 0) return null;
   return (
     <>
-      {shown.map((t) => (
-        <Link
-          key={t.slug}
-          href={`/tools/${t.slug}`}
-          className="tp-tool-card"
-          style={{
-            display: "block", padding: 20, borderRadius: 12,
-            border: "1px solid var(--border)", background: "var(--card)",
-            textDecoration: "none", transition: "all 0.2s",
-          }}
-        >
-          <div style={{ fontSize: 15, fontWeight: 700, color: "var(--text)", marginBottom: 6 }}>{t.name}</div>
-          <p style={{ fontSize: 13, color: "var(--muted)", margin: 0, lineHeight: 1.5 }}>{t.description}</p>
-          <div style={{ marginTop: 12, fontSize: 13, fontWeight: 600, color: "var(--accent)" }}>Use Tool →</div>
-        </Link>
-      ))}
+      {shown.map((t) => {
+        const def = getToolDef(t.slug);
+        const Icon = def?.icon;
+        const accent = def ? getCategoryDetail(def.category).accent : "#F59E0B";
+        const soft = def ? getCategoryDetail(def.category).soft : "#FFFBEB";
+        return (
+          <Link
+            key={t.slug}
+            href={`/tools/${t.slug}`}
+            className="tp-tool-card"
+            style={{
+              display: "flex", flexDirection: "column", gap: 12, padding: 20, borderRadius: 14,
+              border: "1.5px solid var(--border)", background: "var(--card)",
+              textDecoration: "none", transition: "all 0.2s",
+            }}
+          >
+            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              {Icon && (
+                <span
+                  style={{
+                    width: 38, height: 38, borderRadius: 10, display: "inline-flex",
+                    alignItems: "center", justifyContent: "center", flexShrink: 0,
+                    background: soft, color: accent,
+                  }}
+                >
+                  <Icon size={19} />
+                </span>
+              )}
+              <span style={{ fontSize: 15, fontWeight: 700, color: "var(--text)", lineHeight: 1.25 }}>{t.name}</span>
+            </div>
+            <p style={{ fontSize: 13, color: "var(--muted)", margin: 0, lineHeight: 1.55, flexGrow: 1 }}>{t.description}</p>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 4 }}>
+              <span style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.4, color: accent }}>
+                Free tool
+              </span>
+              <span
+                style={{
+                  display: "inline-flex", alignItems: "center", gap: 5, fontSize: 13, fontWeight: 700,
+                  padding: "6px 14px", borderRadius: 999, background: accent, color: "#ffffff",
+                }}
+              >
+                Use Tool →
+              </span>
+            </div>
+          </Link>
+        )
+      })}
     </>
   );
 }

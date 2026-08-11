@@ -4,7 +4,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import {
   AlertCircle, CheckCircle2, Copy, Download, RefreshCw, Upload,
 } from "lucide-react";
-import { s, CopyButton, Field, ToolCard, ErrorBox, OkBox, downloadText } from "./tools-ui";
+import { s, CopyButton, DownloadButton, Field, ToolCard, ErrorBox, OkBox, downloadText } from "./tools-ui";
 
 export function JsonFormatterTool() {
   const [input, setInput] = useState("");
@@ -56,9 +56,7 @@ export function JsonFormatterTool() {
             </button>
             <CopyButton text={output} label="Copy formatted" size="md" />
             {parsed.ok && parsed.value !== null && typeof parsed.value === "object" && (
-              <button style={s.btn2} onClick={() => downloadText("formatted.json", output, "application/json")}>
-                <Download size={14} /> Download
-              </button>
+              <DownloadButton onClick={() => downloadText("formatted.json", output, "application/json")} label="Download JSON" fileName="formatted.json" />
             )}
           </div>
         </div>
@@ -471,11 +469,13 @@ export function Base64Tool({ mode }: { mode: "encode" | "decode" }) {
             <input id="b64-file" type="file" style={{ display: "none" }} onChange={(e) => onFile(e.target.files?.[0])} />
           </div>
           {fileResult && (
-            <div style={{ ...s.ok, marginTop: 8 }}>
+            <div style={{ ...s.ok, marginTop: 8, display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
               File encoded ·{" "}
-              <button style={{ ...s.btn2, padding: "4px 10px", fontSize: 12 }} onClick={() => downloadText(fileResult.name, fileResult.data, "text/plain")}>
-                <Download size={12} /> Save
-              </button>
+              <DownloadButton
+                onClick={() => downloadText(fileResult.name, fileResult.data, "text/plain")}
+                label="Save file"
+                fileName={fileResult.name}
+              />
             </div>
           )}
         </div>
@@ -938,9 +938,7 @@ export function LoremTool() {
         <textarea readOnly value={output} style={{ ...s.ta(260), fontFamily: "inherit" }} />
         <div style={{ marginTop: 8 }}>
           <CopyButton text={output} size="md" />
-          <button style={{ ...s.btn2, marginLeft: 8, padding: "8px 18px" }} onClick={() => downloadText("lorem-ipsum.txt", output)}>
-            <Download size={14} /> Download .txt
-          </button>
+          <DownloadButton onClick={() => downloadText("lorem-ipsum.txt", output)} label="Download .txt" fileName="lorem-ipsum.txt" style={{ marginLeft: 8 }} />
         </div>
       </ToolCard>
     </>

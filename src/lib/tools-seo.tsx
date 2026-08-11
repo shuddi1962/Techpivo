@@ -1,8 +1,8 @@
 "use client";
 
 import React, { useMemo, useState } from "react";
-import { Copy, Download, Plus, Trash2 } from "lucide-react";
-import { s, CopyButton, Field, ToolCard, ErrorBox, OkBox, downloadText } from "./tools-ui";
+import { Copy, Plus, Trash2 } from "lucide-react";
+import { s, CopyButton, DownloadButton, Field, ToolCard, ErrorBox, OkBox, downloadText } from "./tools-ui";
 
 export function MetaTagTool() {
   const [title, setTitle] = useState("");
@@ -270,12 +270,12 @@ export function SchemaTool() {
             <textarea readOnly value={output} style={{ ...s.ta(360), whiteSpace: "pre" }} spellCheck={false} />
             <div style={{ marginTop: 8 }}>
               <CopyButton text={output} label="Copy JSON-LD" size="md" />
-              <button
-                style={{ ...s.btn2, marginLeft: 8 }}
+              <DownloadButton
                 onClick={() => downloadText("schema.jsonld", output, "application/ld+json")}
-              >
-                <Download size={14} /> Download
-              </button>
+                label="Download JSON-LD"
+                fileName="schema.jsonld"
+                style={{ marginLeft: 8 }}
+              />
             </div>
           </ToolCard>
         </div>
@@ -372,9 +372,7 @@ export function RobotsTool() {
         <textarea readOnly value={output} style={{ ...s.ta(200), whiteSpace: "pre" }} />
         <div style={{ marginTop: 8 }}>
           <CopyButton text={output} label="Copy robots.txt" size="md" />
-          <button style={{ ...s.btn2, marginLeft: 8 }} onClick={() => downloadText("robots.txt", output)}>
-            <Download size={14} /> Download
-          </button>
+          <DownloadButton onClick={() => downloadText("robots.txt", output)} label="Download robots.txt" fileName="robots.txt" style={{ marginLeft: 8 }} />
         </div>
       </ToolCard>
     </>
@@ -458,9 +456,7 @@ export function SitemapTool() {
       </div>
       <div style={{ marginTop: 8 }}>
         <CopyButton text={output} label="Copy XML" size="md" />
-        <button style={{ ...s.btn2, marginLeft: 8 }} onClick={() => downloadText("sitemap.xml", output, "application/xml")}>
-          <Download size={14} /> Download sitemap.xml
-        </button>
+        <DownloadButton onClick={() => downloadText("sitemap.xml", output, "application/xml")} label="Download sitemap.xml" fileName="sitemap.xml" style={{ marginLeft: 8 }} />
       </div>
     </>
   );

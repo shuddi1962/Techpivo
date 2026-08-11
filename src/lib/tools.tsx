@@ -56,8 +56,8 @@ export const TOOL_LIST: ToolDef[] = [
   { slug: "random-number", category: "security", name: "Random Number", description: "Generate random numbers in any range, one or many", icon: Dices, component: Comp(() => <RandomNumberTool />) },
   { slug: "email-validator", category: "security", name: "Email Validator", description: "Validate email format and flag disposable domains", icon: Mail, component: Comp(() => <EmailValidatorTool />) },
   { slug: "credit-card-validator", category: "security", name: "Credit Card Validator", description: "Validate card numbers with the Luhn algorithm (format only)", icon: CreditCard, component: Comp(() => <CreditCardTool />) },
-  { slug: "ip-lookup", category: "security", name: "IP Lookup", description: "Inspect IPv4 and IPv6 addresses — class, range, and details", icon: Globe, component: Comp(() => <IpLookupTool />) },
-  { slug: "dns-checker", category: "security", name: "DNS Checker", description: "Look up A, AAAA, MX, TXT, and more records (Cloudflare DNS)", icon: Network, component: Comp(() => <DnsTool />) },
+  { slug: "ip-lookup", category: "network", name: "IP Lookup", description: "Inspect IPv4 and IPv6 addresses — class, range, and details", icon: Globe, component: Comp(() => <IpLookupTool />) },
+  { slug: "dns-checker", category: "network", name: "DNS Checker", description: "Look up A, AAAA, MX, TXT, and more records (Cloudflare DNS)", icon: Network, component: Comp(() => <DnsTool />) },
 
   /* SEO */
   { slug: "meta-tag-generator", category: "seo", name: "Meta Tag Generator", description: "Generate title, description, and Open Graph meta tags", icon: Tags, component: Comp(() => <MetaTagTool />) },
