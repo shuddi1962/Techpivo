@@ -9,8 +9,8 @@ function str(v: unknown, max: number): string | undefined {
   return t.length > max ? undefined : t;
 }
 
-export async function GET() {
-  const auth = await requireAdminRole();
+export async function GET(req: NextRequest) {
+  const auth = await requireAdminRole(["admin", "editor"], req);
   if (!auth.ok) return auth.response;
 
   const service = createServiceClient();
@@ -20,7 +20,7 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
-  const auth = await requireAdminRole();
+  const auth = await requireAdminRole(["admin", "editor"], req);
   if (!auth.ok) return auth.response;
 
   let body: any;

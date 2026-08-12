@@ -6,6 +6,8 @@ import { useTheme } from "next-themes"
 import { useState, useEffect } from "react"
 import { defaultSocialUrls } from "@/components/layout/social-icons"
 import SiteBlock from "@/components/layout/site-block"
+import { usePublishedPages } from "@/lib/use-site-pages"
+import { STATIC_PAGE_SLUGS } from "@/lib/pages"
 
 const footerPlatforms = [
   {
@@ -60,7 +62,13 @@ const quickLinksRight = [
 export function Footer({ categories, recentPosts, socialUrls = {} }: { categories: any[]; recentPosts: any[]; socialUrls?: Record<string, string> }) {
   const { resolvedTheme } = useTheme()
   const [mounted, setMounted] = useState(false)
+  const { isPublic } = usePublishedPages()
   useEffect(() => { setMounted(true) }, [])
+  const pageVisible = (href: string) => {
+    const slug = href.replace(/^\//, "")
+    if (!/^[a-z0-9-]+$/.test(slug) || !STATIC_PAGE_SLUGS.has(slug)) return true
+    return isPublic(slug)
+  }
   const logoSrc = !mounted ? '/logo.svg' : (resolvedTheme === 'dark' ? '/logo.svg' : '/logo-light.svg')
   return (
     <footer className="site-footer">
@@ -119,7 +127,7 @@ export function Footer({ categories, recentPosts, socialUrls = {} }: { categorie
           <div className="footer-quicklinks-grid">
             <div>
               <h3 className="footer-col-title">Quick Links</h3>
-              {quickLinksLeft.map((l) => (
+              {quickLinksLeft.filter((l) => pageVisible(l.href)).map((l) => (
                 <Link key={l.label} href={l.href} className="footer-col-link">
                   <span>{l.label}</span>
                 </Link>
@@ -127,7 +135,7 @@ export function Footer({ categories, recentPosts, socialUrls = {} }: { categorie
             </div>
             <div>
               <h3 className="footer-col-title">Community</h3>
-              {quickLinksRight.map((l) => (
+              {quickLinksRight.filter((l) => pageVisible(l.href)).map((l) => (
                 <Link key={l.label} href={l.href} className="footer-col-link">
                   <span>{l.label}</span>
                 </Link>

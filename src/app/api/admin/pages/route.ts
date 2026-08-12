@@ -11,8 +11,8 @@ function str(v: unknown, max: number): string | undefined {
   return t.length > max ? undefined : t;
 }
 
-export async function GET() {
-  const auth = await requireAdminRole();
+export async function GET(req: NextRequest) {
+  const auth = await requireAdminRole(["admin", "editor"], req);
   if (!auth.ok) return auth.response;
 
   const service = createServiceClient();
@@ -22,7 +22,7 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
-  const auth = await requireAdminRole();
+  const auth = await requireAdminRole(["admin", "editor"], req);
   if (!auth.ok) return auth.response;
 
   let body: any;
@@ -86,9 +86,9 @@ export async function POST(req: NextRequest) {
     .upsert(
       {
         slug,
-        title: title || def.hero.title,
-        subtitle: subtitle != null && subtitle !== "" ? subtitle : def.hero.subtitle,
-        content_md: content_md || def.contentMd,
+        title: title !== undefined && title !== "" ? title : def.hero.title,
+        subtitle: subtitle !== undefined && subtitle !== "" ? subtitle : def.hero.subtitle,
+        content_md: content_md !== undefined ? content_md : def.contentMd,
         hero_image: hero_image !== undefined ? (hero_image === "" ? null : hero_image) : def.hero.heroImage || null,
         meta_title: meta_title || def.metaTitle,
         meta_description: meta_description || def.metaDescription,

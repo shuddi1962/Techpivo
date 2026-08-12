@@ -611,6 +611,12 @@ Join 8,000+ subscribers who stay informed with Techpivo. No spam, ever. Unsubscr
 
 export const PAGE_SLUGS = SITE_PAGES.map((p) => p.slug);
 
+export const HUB_PATHS: Set<string> = new Set(["/tools", "/community", "/community/events"]);
+
+export const STATIC_PAGE_SLUGS: Set<string> = new Set(
+  SITE_PAGES.filter((p) => !HUB_PATHS.has(p.path)).map((p) => p.slug)
+);
+
 export function getSitePage(slug: string): SitePageDef | undefined {
   return SITE_PAGES.find((p) => p.slug === slug);
 }

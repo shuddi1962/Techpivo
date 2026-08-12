@@ -89,9 +89,14 @@ export default function PageEditor() {
     if (saveTimer.current) clearTimeout(saveTimer.current)
     setSaveState("saving")
     try {
+      const { data: sess } = await supabase.auth.getSession()
+      const token = sess?.session?.access_token
       const res = await fetch("/api/admin/pages", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
         body: JSON.stringify({
           action: "upsert",
           slug,
@@ -141,9 +146,14 @@ export default function PageEditor() {
 
   const resetToDefault = async () => {
     if (!window.confirm("Reset this page to its built-in default content? Any custom edits will be lost.")) return
+    const { data: sess } = await supabase.auth.getSession()
+    const token = sess?.session?.access_token
     const res = await fetch("/api/admin/pages", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
       body: JSON.stringify({ action: "reset", slug }),
     })
     const data = await res.json()

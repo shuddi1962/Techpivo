@@ -5,7 +5,7 @@ import Link from "next/link"
 import { createClient } from "@/lib/supabase/client"
 import { renderMarkdown } from "@/lib/markdown"
 import { SITE_BLOCKS, type SiteBlockDef } from "@/lib/site-blocks"
-import { ArrowLeft, Check, Loader2, RotateCcw, Save, Eye } from "lucide-react"
+import { ArrowLeft, Check, Eraser, Loader2, RotateCcw, Save, Eye } from "lucide-react"
 
 interface DbBlock {
   block_key: string
@@ -59,9 +59,14 @@ export default function SiteBlocksAdminPage() {
 
   const postAction = async (body: Record<string, unknown>): Promise<{ ok: boolean; data?: any; error?: string }> => {
     try {
+      const { data: sess } = await supabase.auth.getSession()
+      const token = sess?.session?.access_token
       const res = await fetch("/api/admin/site-blocks", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
         body: JSON.stringify(body),
       })
       const data = await res.json()
@@ -100,6 +105,24 @@ export default function SiteBlocksAdminPage() {
     setSaveStates((s) => ({ ...s, [blockKey]: "" }))
     if (timers.current[blockKey]) clearTimeout(timers.current[blockKey])
     timers.current[blockKey] = setTimeout(() => saveBlock(blockKey, db[blockKey]?.is_active ?? true), 800)
+  }
+
+  const flushSave = (blockKey: string) => {
+    if (timers.current[blockKey]) {
+      clearTimeout(timers.current[blockKey])
+      delete timers.current[blockKey]
+    }
+    if (edits[blockKey]?.dirty) saveBlock(blockKey, db[blockKey]?.is_active ?? true)
+  }
+
+  const clearBlock = async (blockKey: string) => {
+    if (!window.confirm(`Clear "${blockKey}" content? The block will be hidden on the site until you add new content.`)) return
+    if (timers.current[blockKey]) {
+      clearTimeout(timers.current[blockKey])
+      delete timers.current[blockKey]
+    }
+    setEdits((e) => ({ ...e, [blockKey]: { content: "", dirty: false } }))
+    await saveBlock(blockKey, db[blockKey]?.is_active ?? true)
   }
 
   const toggleActive = async (block: SiteBlockDef) => {
@@ -192,12 +215,20 @@ export default function SiteBlocksAdminPage() {
                         <RotateCcw className="w-3.5 h-3.5" />
                       </button>
                     )}
+                    <button
+                      onClick={() => clearBlock(block.blockKey)}
+                      className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-red-600"
+                      title="Clear content (hides the block on the site)"
+                    >
+                      <Eraser className="w-3.5 h-3.5" /> Clear
+                    </button>
                   </div>
                 </div>
 
                 <textarea
                   value={content}
                   onChange={(e) => handleChange(block.blockKey, e.target.value)}
+                  onBlur={() => flushSave(block.blockKey)}
                   rows={block.mode === "banner" ? 2 : 6}
                   placeholder="Leave empty to hide this block…"
                   className="w-full bg-background border rounded-lg px-4 py-3 text-sm font-mono leading-relaxed focus:border-accent focus:ring-1 focus:ring-accent outline-none resize-y"

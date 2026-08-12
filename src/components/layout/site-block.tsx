@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { renderMarkdown } from "@/lib/markdown";
 import { getSiteBlock, type SiteBlockDef } from "@/lib/site-blocks";
+import { Megaphone, X } from "lucide-react";
 
 interface BlockRow {
   block_key: string;
@@ -18,6 +19,7 @@ export default function SiteBlock({ blockKey }: { blockKey: string }) {
   const supabase = createClient();
   const [row, setRow] = useState<BlockRow | null>(null);
   const [ready, setReady] = useState(false);
+  const [bannerDismissed, setBannerDismissed] = useState(false);
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
 
   useEffect(() => {
@@ -42,14 +44,47 @@ export default function SiteBlock({ blockKey }: { blockKey: string }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [blockKey]);
 
+  useEffect(() => {
+    if (!def || def.mode !== "banner" || !row) {
+      setBannerDismissed(false);
+      return;
+    }
+    try {
+      const sig = `${row.updated_at}|${row.content_md}`;
+      setBannerDismissed(localStorage.getItem(`tp_banner_dismiss_${blockKey}`) === sig);
+    } catch {
+      setBannerDismissed(false);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [blockKey, def, row]);
+
   if (!def || !ready || !row || !row.is_active || !row.content_md || row.content_md.trim() === "") return null;
 
   const html = renderMarkdown(row.content_md);
 
   if (def.mode === "banner") {
+    if (bannerDismissed) return null;
     return (
-      <div className="w-full bg-accent text-white text-center py-2 px-4 text-sm font-medium">
-        <span dangerouslySetInnerHTML={{ __html: html }} className="site-block-banner" />
+      <div className="w-full bg-gradient-to-r from-accent via-accent to-accent/70 text-white">
+        <div className="mx-auto max-w-7xl px-4 py-3 flex items-center gap-3">
+          <Megaphone className="w-4 h-4 shrink-0 hidden sm:block opacity-90" />
+          <div
+            className="site-block-banner flex-1 text-center text-sm md:text-[15px] font-medium leading-relaxed"
+            dangerouslySetInnerHTML={{ __html: html }}
+          />
+          <button
+            onClick={() => {
+              try {
+                localStorage.setItem(`tp_banner_dismiss_${blockKey}`, `${row.updated_at}|${row.content_md}`);
+              } catch {}
+              setBannerDismissed(true);
+            }}
+            aria-label="Dismiss announcement"
+            className="shrink-0 inline-flex items-center justify-center w-6 h-6 rounded-full bg-white/15 hover:bg-white/30 transition-colors"
+          >
+            <X className="w-3.5 h-3.5" />
+          </button>
+        </div>
       </div>
     );
   }

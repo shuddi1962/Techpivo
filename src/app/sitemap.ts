@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server"
 import { SITE_URL } from "@/lib/constants"
 import { TOOL_SLUGS } from "@/lib/tools-metadata"
 import { CATEGORY_SLUGS, CATEGORY_ROUTE } from "@/lib/tools-categories"
+import { STATIC_PAGE_SLUGS } from "@/lib/pages"
 import type { MetadataRoute } from "next"
 
 export const revalidate = 3600
@@ -12,14 +13,16 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   let posts: any[] = [], categories: any[] = [], subcategories: any[] = []
   let profiles: any[] = [], series: any[] = [], kwArticles: any[] = []
+  let pagePublishState = new Map<string, boolean>()
   try {
-    const [postsRes, catsRes, subsRes, profilesRes, seriesRes, kwArticlesRes] = await Promise.all([
+    const [postsRes, catsRes, subsRes, profilesRes, seriesRes, kwArticlesRes, pagesRes] = await Promise.all([
       supabase.from("posts").select("slug, updated_at, published_at, robots_noindex, author_id, category_id").eq("status", "published").order("published_at", { ascending: false }).limit(500),
       supabase.from("categories").select("id, slug"),
       supabase.from("subcategories").select("slug, category_id"),
       supabase.from("profiles").select("username, id"),
       supabase.from("series").select("slug"),
       supabase.from("keyword_articles").select("slug, updated_at").eq("status", "published").order("published_at", { ascending: false }).limit(500),
+      supabase.from("site_pages").select("slug, is_published"),
     ])
     posts = postsRes.data || []
     categories = catsRes.data || []
@@ -27,6 +30,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     profiles = profilesRes.data || []
     series = seriesRes.data || []
     kwArticles = kwArticlesRes.data || []
+    pagePublishState = new Map((pagesRes.data || []).map((p: any) => [p.slug, !!p.is_published]))
   } catch (e) {
     console.error("Sitemap data fetch failed, serving static pages only", e)
   }
@@ -63,12 +67,19 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { path: "/community/learning-paths", priority: 0.6, freq: "monthly" },
   ]
 
-  const entries: MetadataRoute.Sitemap = staticPages.map(p => ({
-    url: `${SITE_URL}${p.path}`,
-    lastModified: now,
-    changeFrequency: p.freq,
-    priority: p.priority,
-  }))
+  const entries: MetadataRoute.Sitemap = staticPages
+    .filter((p) => {
+      const slug = p.path.replace(/^\//, "")
+      if (!STATIC_PAGE_SLUGS.has(slug)) return true
+      const published = pagePublishState.get(slug)
+      return published === undefined ? true : published
+    })
+    .map(p => ({
+      url: `${SITE_URL}${p.path}`,
+      lastModified: now,
+      changeFrequency: p.freq,
+      priority: p.priority,
+    }))
 
   const noindexSlugs = new Set(posts.filter(p => (p as any).robots_noindex).map(p => p.slug))
   for (const post of posts) {

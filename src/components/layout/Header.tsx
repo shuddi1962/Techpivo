@@ -10,6 +10,8 @@ import type { User } from "@supabase/supabase-js"
 import { socialIcons, defaultPlatforms, defaultSocialUrls } from "@/components/layout/social-icons"
 import { PushSubscribeButton } from "@/components/push-subscribe-button"
 import SiteBlock from "@/components/layout/site-block"
+import { usePublishedPages } from "@/lib/use-site-pages"
+import { STATIC_PAGE_SLUGS } from "@/lib/pages"
 
 export function Header() {
   const [searchQ, setSearchQ] = useState("")
@@ -24,6 +26,11 @@ export function Header() {
   const router = useRouter()
   const { theme, setTheme } = useTheme()
   const supabase = createClient()
+  const { isPublic } = usePublishedPages()
+  const pageVisible = (slug: string) => {
+    if (!STATIC_PAGE_SLUGS.has(slug)) return true
+    return isPublic(slug)
+  }
 
   const loadProfile = async (userId: string) => {
     const { data } = await supabase.from("profiles").select("full_name").eq("id", userId).single()
@@ -137,7 +144,7 @@ export function Header() {
               </div>
             </div>
             <Link href="/marketplace" className="header-nav-link"><span>Shop</span></Link>
-            <Link href="/advertise" className="header-nav-link"><span>Advertise</span></Link>
+            {pageVisible("advertise") && <Link href="/advertise" className="header-nav-link"><span>Advertise</span></Link>}
 
             {/* Account / Sign In — always visible */}
             {user ? (
@@ -193,18 +200,22 @@ export function Header() {
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect width="18" height="18" x="3" y="4" rx="2" ry="2"/><line x1="16" x2="16" y1="2" y2="6"/><line x1="8" x2="8" y1="2" y2="6"/><line x1="3" x2="21" y1="10" y2="10"/></svg>
                 Events
               </Link>
-            <Link href="/marketplace" className="mobile-drawer-link" onClick={() => setDrawerOpen(false)}>
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"/><path d="M3 6h18"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
+              <Link href="/marketplace" className="mobile-drawer-link" onClick={() => setDrawerOpen(false)}>
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"/><path d="M3 6h18"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
               Shop
             </Link>
-            <Link href="/advertise" className="mobile-drawer-link" onClick={() => setDrawerOpen(false)}>
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-              Advertise
-            </Link>
-              <Link href="/newsletter" className="mobile-drawer-link" onClick={() => setDrawerOpen(false)}>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
-                Newsletter
+            {pageVisible("advertise") && (
+              <Link href="/advertise" className="mobile-drawer-link" onClick={() => setDrawerOpen(false)}>
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                Advertise
               </Link>
+            )}
+              {pageVisible("newsletter") && (
+                <Link href="/newsletter" className="mobile-drawer-link" onClick={() => setDrawerOpen(false)}>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+                  Newsletter
+                </Link>
+              )}
               <div className="mobile-drawer-divider" />
               <div className="mobile-drawer-section">Community</div>
               <Link href="/community/forum" className="mobile-drawer-link" onClick={() => setDrawerOpen(false)}>
@@ -247,10 +258,10 @@ export function Header() {
               )}
               <div className="mobile-drawer-divider" />
               <div className="mobile-drawer-section">Info</div>
-              <Link href="/about" className="mobile-drawer-link" onClick={() => setDrawerOpen(false)}>About</Link>
-              <Link href="/contact" className="mobile-drawer-link" onClick={() => setDrawerOpen(false)}>Contact</Link>
-              <Link href="/advertise" className="mobile-drawer-link" onClick={() => setDrawerOpen(false)}>Advertise</Link>
-              <Link href="/write-for-us" className="mobile-drawer-link" onClick={() => setDrawerOpen(false)}>Write For Us</Link>
+              {pageVisible("about") && <Link href="/about" className="mobile-drawer-link" onClick={() => setDrawerOpen(false)}>About</Link>}
+              {pageVisible("contact") && <Link href="/contact" className="mobile-drawer-link" onClick={() => setDrawerOpen(false)}>Contact</Link>}
+              {pageVisible("advertise") && <Link href="/advertise" className="mobile-drawer-link" onClick={() => setDrawerOpen(false)}>Advertise</Link>}
+              {pageVisible("write-for-us") && <Link href="/write-for-us" className="mobile-drawer-link" onClick={() => setDrawerOpen(false)}>Write For Us</Link>}
               {user ? (
                 <button className="mobile-drawer-link" onClick={async () => { await supabase.auth.signOut(); setDrawerOpen(false); router.refresh() }}>
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>

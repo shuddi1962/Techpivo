@@ -50,9 +50,14 @@ export default function PagesAdminPage() {
 
   const postAction = async (body: Record<string, unknown>): Promise<{ ok: boolean; error?: string }> => {
     try {
+      const { data: sess } = await supabase.auth.getSession()
+      const token = sess?.session?.access_token
       const res = await fetch("/api/admin/pages", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
         body: JSON.stringify(body),
       })
       const data = await res.json()

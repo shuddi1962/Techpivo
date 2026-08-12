@@ -37,6 +37,7 @@ export default async function PageShell({
   if (!def) notFound();
 
   const row = await fetchPageData(slug);
+  if (row && !row.is_published) notFound();
   const customized = !!row && !!row.is_published;
 
   const title = customized && row!.title ? row!.title : def.hero.title;
