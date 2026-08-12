@@ -74,7 +74,8 @@ export default function SiteBlocksAdminPage() {
 
   const saveBlock = async (blockKey: string, active: boolean) => {
     const content = edits[blockKey]?.content ?? db[blockKey]?.content_md ?? ""
-    const title = db[blockKey]?.title ?? undefined
+    const def = SITE_BLOCKS.find((b) => b.blockKey === blockKey)
+    const title = db[blockKey]?.title ?? def?.label ?? undefined
     setSaveStates((s) => ({ ...s, [blockKey]: "saving" }))
     const res = await postAction({
       action: "upsert",

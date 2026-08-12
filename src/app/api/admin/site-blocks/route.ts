@@ -70,8 +70,8 @@ export async function POST(req: NextRequest) {
   const content_md = body.content_md !== undefined && body.content_md !== null ? String(body.content_md).slice(0, 50_000) : undefined;
   const is_active = typeof body.is_active === "boolean" ? body.is_active : true;
 
-  if (title === undefined || content_md === undefined) {
-    return NextResponse.json({ error: "title and content_md are required" }, { status: 400 });
+  if (content_md === undefined) {
+    return NextResponse.json({ error: "content_md is required" }, { status: 400 });
   }
 
   const { data, error } = await service
