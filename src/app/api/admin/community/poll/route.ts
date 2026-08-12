@@ -1,19 +1,26 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
+import { requireAdminRole, createServiceClient } from '@/lib/admin-auth';
 
 export async function POST(request: NextRequest) {
-  const body = await request.json();
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  const auth = await requireAdminRole(['admin', 'editor'], request);
+  if (!auth.ok) return auth.response;
+
+  let body: any;
+  try {
+    body = await request.json();
+  } catch {
+    return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
+  }
+
+  const service = createServiceClient();
 
   // Create poll
-  const { data: poll, error: pollError } = await supabase
+  const { data: poll, error: pollError } = await service
     .from('polls')
     .insert({
       title: body.title,
-      description: body.description,
-      created_by: user.id,
+      description: body.description || null,
+      is_active: true,
     })
     .select()
     .single();
@@ -22,11 +29,13 @@ export async function POST(request: NextRequest) {
 
   // Create options
   if (body.options?.length) {
-    const options = body.options.map((text: string) => ({
+    const options = body.options.map((text: string, i: number) => ({
       poll_id: poll.id,
       text,
+      sort_order: i,
     }));
-    await supabase.from('poll_options').insert(options);
+    const { error: oError } = await service.from('poll_options').insert(options);
+    if (oError) return NextResponse.json({ error: oError.message }, { status: 400 });
   }
 
   return NextResponse.json({ poll });

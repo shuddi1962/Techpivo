@@ -7,7 +7,7 @@ export async function POST(request: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  const { action, target_id, description } = body;
+  const { action, target_id } = body;
 
   const xpValues: Record<string, number> = {
     read_article: 5,
@@ -34,7 +34,7 @@ export async function POST(request: NextRequest) {
       .from('user_xp_log')
       .select('id')
       .eq('user_id', user.id)
-      .eq('action', action)
+      .eq('reason', action)
       .gte('created_at', `${today}T00:00:00Z`)
       .lt('created_at', `${today}T23:59:59Z`)
       .limit(1);
@@ -47,9 +47,8 @@ export async function POST(request: NextRequest) {
   // Award XP
   const { error } = await supabase.from('user_xp_log').insert({
     user_id: user.id,
-    action,
-    xp_amount: xp,
-    description: description || null,
+    amount: xp,
+    reason: action,
     reference_id: target_id || null,
   });
 

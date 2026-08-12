@@ -16,11 +16,8 @@ export async function GET(
 
   if (!post) return NextResponse.json({ error: 'Not found' }, { status: 404 });
 
-  // Increment view count
-  await supabase
-    .from('forum_posts')
-    .update({ view_count: (post.view_count || 0) + 1 })
-    .eq('id', id);
+  // Increment view count via SECURITY DEFINER RPC (RLS-safe)
+  await supabase.rpc('increment_views', { target_id: id, target_type: 'forum' });
 
   const { data: replies } = await supabase
     .from('forum_replies')

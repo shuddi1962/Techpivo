@@ -27,6 +27,7 @@ export default function AdminQuizBuilderPage() {
   const [difficulty, setDifficulty] = useState('medium');
   const [questions, setQuestions] = useState<Question[]>([]);
   const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
 
   useEffect(() => {
     fetch('/api/community/quiz').then(r => r.json()).then(d => setQuizzes(d.quizzes || []));
@@ -64,6 +65,7 @@ export default function AdminQuizBuilderPage() {
   const saveQuiz = async () => {
     if (!title || questions.length === 0) return;
     setSaving(true);
+    setError('');
     try {
       const res = await fetch('/api/admin/community/quiz', {
         method: 'POST',
@@ -81,9 +83,12 @@ export default function AdminQuizBuilderPage() {
         setCreating(false);
         setTitle(''); setDescription(''); setCategory(''); setQuestions([]);
         fetch('/api/community/quiz').then(r => r.json()).then(d => setQuizzes(d.quizzes || []));
+      } else {
+        const d = await res.json().catch(() => ({}));
+        setError(d.error || 'Failed to save quiz');
       }
     } catch (e) {
-      console.error('Failed to save quiz');
+      setError('Network error — could not save quiz');
     }
     setSaving(false);
   };
@@ -174,6 +179,9 @@ export default function AdminQuizBuilderPage() {
                 <Save className="h-4 w-4 mr-2" /> {saving ? 'Saving...' : 'Save Quiz'}
               </Button>
             </div>
+            {error && (
+              <div className="p-3 rounded-lg bg-destructive/10 text-destructive text-sm">{error}</div>
+            )}
           </CardContent>
         </Card>
       )}

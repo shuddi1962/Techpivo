@@ -9,9 +9,9 @@ import { Activity, Star, Trophy, Flame, BookOpen, MessageSquare, Award, Target, 
 
 interface XpLogEntry {
   id: string;
-  action: string;
-  xp_amount: number;
-  description: string;
+  reason: string;
+  amount: number;
+  reference_id: string | null;
   created_at: string;
 }
 
@@ -81,21 +81,21 @@ export default function ActivityPage() {
     const d = new Date(l.created_at);
     const today = new Date();
     return d.toDateString() === today.toDateString();
-  }).reduce((sum, l) => sum + l.xp_amount, 0);
+  }).reduce((sum, l) => sum + l.amount, 0);
 
   const weekXp = xpLog.filter(l => {
     const d = new Date(l.created_at);
     const week = new Date();
     week.setDate(week.getDate() - 7);
     return d >= week;
-  }).reduce((sum, l) => sum + l.xp_amount, 0);
+  }).reduce((sum, l) => sum + l.amount, 0);
 
   const monthXp = xpLog.filter(l => {
     const d = new Date(l.created_at);
     const month = new Date();
     month.setMonth(month.getMonth() - 1);
     return d >= month;
-  }).reduce((sum, l) => sum + l.xp_amount, 0);
+  }).reduce((sum, l) => sum + l.amount, 0);
 
   return (
     <div className="space-y-6">
@@ -194,14 +194,11 @@ export default function ActivityPage() {
             <div className="space-y-2">
               {xpLog.slice(0, 20).map((entry) => (
                 <div key={entry.id} className="flex items-center gap-3 p-3 rounded-lg hover:bg-muted/30">
-                  {getActionIcon(entry.action)}
+                  {getActionIcon(entry.reason)}
                   <div className="flex-1 min-w-0">
-                    <div className="font-medium text-sm">{getActionLabel(entry.action)}</div>
-                    {entry.description && (
-                      <div className="text-xs text-muted-foreground truncate">{entry.description}</div>
-                    )}
+                    <div className="font-medium text-sm">{getActionLabel(entry.reason)}</div>
                   </div>
-                  <Badge variant="default" className="shrink-0">+{entry.xp_amount} XP</Badge>
+                  <Badge variant="default" className="shrink-0">+{entry.amount} XP</Badge>
                   <div className="text-xs text-muted-foreground shrink-0">
                     {new Date(entry.created_at).toLocaleDateString()}
                   </div>

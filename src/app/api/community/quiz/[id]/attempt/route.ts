@@ -28,16 +28,11 @@ export async function POST(
 
   if (error) return NextResponse.json({ error: error.message }, { status: 400 });
 
-  // Update quiz stats
+  // Update quiz stats (SECURITY DEFINER RPC — RLS would block direct updates)
   try {
-    await supabase.rpc('increment_quiz_stats', { qid: id });
-  } catch {
-    const { data: quiz } = await supabase.from('quizzes').select('attempt_count, avg_score').eq('id', id).single();
-    if (quiz) {
-      const newCount = (quiz.attempt_count || 0) + 1;
-      const newAvg = ((quiz.avg_score || 0) * (quiz.attempt_count || 0) + (body.score || 0)) / newCount;
-      await supabase.from('quizzes').update({ attempt_count: newCount, avg_score: newAvg }).eq('id', id);
-    }
+    await supabase.rpc('increment_quiz_stats', { qid: id, new_score: body.score || 0 });
+  } catch (e) {
+    console.error('increment_quiz_stats failed:', e);
   }
 
   // Award XP for quiz completion
@@ -48,7 +43,9 @@ export async function POST(
       action_name: 'complete_quiz',
       desc: `Completed quiz: ${id}`,
     });
-  } catch { /* XP function may not exist yet */ }
+  } catch (e) {
+    console.error('award_xp failed:', e);
+  }
 
   return NextResponse.json({ attempt: data });
 }

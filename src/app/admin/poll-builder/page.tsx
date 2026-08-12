@@ -15,6 +15,7 @@ export default function AdminPollBuilderPage() {
   const [description, setDescription] = useState('');
   const [options, setOptions] = useState(['', '']);
   const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
 
   useEffect(() => {
     fetch('/api/community/polls').then(r => r.json()).then(d => setPolls(d.polls || []));
@@ -26,6 +27,7 @@ export default function AdminPollBuilderPage() {
   const savePoll = async () => {
     if (!title || options.filter(Boolean).length < 2) return;
     setSaving(true);
+    setError('');
     try {
       const res = await fetch('/api/admin/community/poll', {
         method: 'POST',
@@ -36,9 +38,12 @@ export default function AdminPollBuilderPage() {
         setCreating(false);
         setTitle(''); setDescription(''); setOptions(['', '']);
         fetch('/api/community/polls').then(r => r.json()).then(d => setPolls(d.polls || []));
+      } else {
+        const d = await res.json().catch(() => ({}));
+        setError(d.error || 'Failed to save poll');
       }
     } catch (e) {
-      console.error('Failed to save poll');
+      setError('Network error — could not save poll');
     }
     setSaving(false);
   };
@@ -86,6 +91,9 @@ export default function AdminPollBuilderPage() {
                 <Save className="h-4 w-4 mr-2" /> {saving ? 'Saving...' : 'Save Poll'}
               </Button>
             </div>
+            {error && (
+              <div className="p-3 rounded-lg bg-destructive/10 text-destructive text-sm">{error}</div>
+            )}
           </CardContent>
         </Card>
       )}

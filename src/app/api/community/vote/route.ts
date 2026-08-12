@@ -33,16 +33,12 @@ export async function POST(request: NextRequest) {
     });
   }
 
-  // Update counts
+  // Update counts via SECURITY DEFINER RPCs (RLS-safe: users vote on others' posts)
   if (post_id) {
-    const { data: votes } = await supabase.from('forum_votes').select('vote_type').eq('post_id', post_id);
-    const count = (votes || []).reduce((sum: number, v: any) => sum + v.vote_type, 0);
-    await supabase.from('forum_posts').update({ vote_count: count }).eq('id', post_id);
+    await supabase.rpc('update_post_vote_count', { target_post_id: post_id });
   }
   if (reply_id) {
-    const { data: votes } = await supabase.from('forum_votes').select('vote_type').eq('reply_id', reply_id);
-    const count = (votes || []).reduce((sum: number, v: any) => sum + v.vote_type, 0);
-    await supabase.from('forum_replies').update({ vote_count: count }).eq('id', reply_id);
+    await supabase.rpc('update_reply_vote_count', { target_reply_id: reply_id });
   }
 
   return NextResponse.json({ success: true });
