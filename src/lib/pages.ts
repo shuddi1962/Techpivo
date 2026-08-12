@@ -8,11 +8,14 @@ export interface SitePageDef {
     subtitle: string;
     emoji?: string;
     updatedLine?: string;
+    heroImage?: string;
   };
   contentMd: string;
   metaTitle: string;
   metaDescription: string;
 }
+
+export const HUB_SLUGS: string[] = ["tools", "community", "community-events"];
 
 export const SITE_PAGES: SitePageDef[] = [
   {
@@ -23,6 +26,7 @@ export const SITE_PAGES: SitePageDef[] = [
     hero: {
       title: "About Techpivo",
       subtitle: "Your trusted destination for technology news, expert reviews, and in-depth analysis since 2024.",
+      heroImage: "https://images.pexels.com/photos/546819/pexels-photo-546819.jpeg",
     },
     contentMd: `## Our Mission
 
@@ -68,6 +72,7 @@ Have a tip, question, or feedback? We would love to hear from you.
     hero: {
       title: "Contact Us",
       subtitle: "We value your feedback and inquiries. Here is how you can reach the right team.",
+      heroImage: "https://images.pexels.com/photos/8204327/pexels-photo-8204327.jpeg",
     },
     contentMd: `## Reach the Right Team
 
@@ -109,9 +114,9 @@ You can also write to us at: **Techpivo Media, 123 Innovation Drive, San Francis
     path: "/privacy-policy",
     icon: "🔒",
     hero: {
-      title: "Privacy Policy",
+title: "Privacy Policy",
       subtitle: "How Techpivo collects, uses, and protects your personal information.",
-      updatedLine: "Last updated: May 27, 2026",
+      heroImage: "https://images.pexels.com/photos/60504/security-protection-anti-virus-software-60504.jpeg",
     },
     contentMd: `## 1. Introduction
 
@@ -194,9 +199,9 @@ If you have any questions about this Privacy Policy, please reach out.
     path: "/terms-of-use",
     icon: "📜",
     hero: {
-      title: "Terms of Use",
+title: "Terms of Use",
       subtitle: "The rules and guidelines governing your use of Techpivo.",
-      updatedLine: "Last updated: May 27, 2026",
+      heroImage: "https://images.pexels.com/photos/1181263/pexels-photo-1181263.jpeg",
     },
     contentMd: `## 1. Acceptance of Terms
 
@@ -261,9 +266,9 @@ For questions about these Terms of Use, please contact us.
     path: "/cookies-policy",
     icon: "🍪",
     hero: {
-      title: "Cookies Policy",
+title: "Cookies Policy",
       subtitle: "How Techpivo uses cookies and similar tracking technologies to improve your experience.",
-      updatedLine: "Last updated: May 27, 2026",
+      heroImage: "https://images.pexels.com/photos/376464/pexels-photo-376464.jpeg",
     },
     contentMd: `## What Are Cookies?
 
@@ -306,9 +311,9 @@ If you have any questions about our use of cookies, please contact us.
     path: "/disclaimer",
     icon: "⚖️",
     hero: {
-      title: "Disclaimer",
+title: "Disclaimer",
       subtitle: "Transparency matters. Everything you need to know about our affiliate relationships, advertising practices, and more.",
-      updatedLine: "Last updated: May 27, 2026",
+      heroImage: "https://images.pexels.com/photos/6863515/pexels-photo-6863515.jpeg",
     },
     contentMd: `## Affiliate Disclosure
 
@@ -362,6 +367,7 @@ Please reach out to us with any questions or concerns.
     hero: {
       title: "Write For Us",
       subtitle: "Share your expertise with thousands of tech enthusiasts. We welcome contributions from writers, developers, and industry professionals.",
+      heroImage: "https://images.pexels.com/photos/1181671/pexels-photo-1181671.jpeg",
     },
     contentMd: `## Submission Guidelines
 
@@ -561,6 +567,45 @@ Join 8,000+ subscribers who stay informed with Techpivo. No spam, ever. Unsubscr
 > "I've been subscribed for 6 months and the quality has been consistently excellent." — Maria S., Product Manager`,
     metaTitle: "Newsletter – Techpivo",
     metaDescription: "Subscribe to Techpivo's newsletter — the latest tech news, expert analysis, tutorials and exclusive content delivered to your inbox every week.",
+  },
+  {
+    slug: "tools",
+    label: "Tools Center",
+    path: "/tools",
+    icon: "🧰",
+    hero: {
+      title: "Free Tech Tools & Utilities",
+      subtitle: "The intro text above the tools hub. Edit it in Admin → Pages → Tools Center.",
+    },
+    contentMd: "",
+    metaTitle: "Free Tech Tools & Utilities — Developer, SEO & Image Tools | Techpivo",
+    metaDescription: "50+ free online tools for developers, SEO professionals, designers and everyday users. JSON, regex, converters, calculators and more — all in your browser.",
+  },
+  {
+    slug: "community",
+    label: "Community Hub",
+    path: "/community",
+    icon: "🌍",
+    hero: {
+      title: "TechPivo Community",
+      subtitle: "The intro text above the community hub. Edit it in Admin → Pages → Community Hub.",
+    },
+    contentMd: "",
+    metaTitle: "TechPivo Community — Forums, Quizzes, Polls & Events",
+    metaDescription: "Join the TechPivo community. Discuss tech, take quizzes, earn rewards, and connect with fellow technology enthusiasts.",
+  },
+  {
+    slug: "community-events",
+    label: "Community Events",
+    path: "/community/events",
+    icon: "📅",
+    hero: {
+      title: "Tech Events & Meetups",
+      subtitle: "The intro text above the events page. Edit it in Admin → Pages → Community Events.",
+    },
+    contentMd: "",
+    metaTitle: "Tech Events & Meetups — Conferences, Workshops, Hackathons | Techpivo",
+    metaDescription: "Upcoming technology events, conferences, workshops, webinars and hackathons for the Techpivo community.",
   },
 ];
 

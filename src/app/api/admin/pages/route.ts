@@ -72,6 +72,7 @@ export async function POST(req: NextRequest) {
   const title = str(body.title, 200);
   const subtitle = str(body.subtitle, 500);
   const content_md = body.content_md !== undefined && body.content_md !== null ? String(body.content_md).slice(0, 200_000) : undefined;
+  const hero_image = str(body.hero_image, 2000);
   const meta_title = str(body.meta_title, 160);
   const meta_description = str(body.meta_description, 320);
   const is_published = typeof body.is_published === "boolean" ? body.is_published : true;
@@ -88,6 +89,7 @@ export async function POST(req: NextRequest) {
         title: title || def.hero.title,
         subtitle: subtitle != null && subtitle !== "" ? subtitle : def.hero.subtitle,
         content_md: content_md || def.contentMd,
+        hero_image: hero_image !== undefined ? (hero_image === "" ? null : hero_image) : def.hero.heroImage || null,
         meta_title: meta_title || def.metaTitle,
         meta_description: meta_description || def.metaDescription,
         is_published,

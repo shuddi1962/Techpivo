@@ -85,9 +85,17 @@ export default function PagesAdminPage() {
             Edit the static pages of the site. Changes go live instantly on the public pages.
           </p>
         </div>
-        <span className="text-xs font-medium px-2.5 py-1 rounded-full bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-400">
-          LIVE · {customized.length}/{SITE_PAGES.length} customized
-        </span>
+        <div className="flex items-center gap-3">
+          <Link
+            href="/admin/pages/blocks"
+            className="inline-flex items-center gap-1.5 text-sm font-medium bg-card border rounded-lg px-4 py-2 hover:bg-muted/50"
+          >
+            <PanelsTopLeft className="w-4 h-4" /> Site Blocks (homepage · header · footer)
+          </Link>
+          <span className="text-xs font-medium px-2.5 py-1 rounded-full bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-400">
+            LIVE · {customized.length}/{SITE_PAGES.length} customized
+          </span>
+        </div>
       </div>
 
       {error && <div className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-4 py-3">{error}</div>}

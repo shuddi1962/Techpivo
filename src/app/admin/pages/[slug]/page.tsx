@@ -6,13 +6,14 @@ import { useParams } from "next/navigation"
 import { createClient } from "@/lib/supabase/client"
 import { getSitePage } from "@/lib/pages"
 import { renderMarkdown } from "@/lib/markdown"
-import { ArrowLeft, Check, ExternalLink, Eye, Loader2, RotateCcw, Save } from "lucide-react"
+import { ArrowLeft, Check, ExternalLink, Eye, Loader2, RotateCcw, Save, ImagePlus, Trash2 } from "lucide-react"
 
 interface DbPage {
   slug: string
   title: string | null
   subtitle: string | null
   content_md: string | null
+  hero_image: string | null
   meta_title: string | null
   meta_description: string | null
   is_published: boolean
@@ -28,12 +29,14 @@ export default function PageEditor() {
   const [db, setDb] = useState<DbPage | null>(null)
   const [title, setTitle] = useState("")
   const [subtitle, setSubtitle] = useState("")
+  const [heroImage, setHeroImage] = useState("")
   const [metaTitle, setMetaTitle] = useState("")
   const [metaDescription, setMetaDescription] = useState("")
   const [content, setContent] = useState("")
   const [published, setPublished] = useState(true)
   const [loaded, setLoaded] = useState(false)
   const [saveState, setSaveState] = useState<"" | "saving" | "saved" | "error">("")
+  const [uploading, setUploading] = useState(false)
   const [error, setError] = useState("")
   const [dirtyRef, setDirtyRef] = useState(false)
   const dirtyFlag = useRef(false)
@@ -45,6 +48,7 @@ export default function PageEditor() {
     setDb(row)
     setTitle(row?.title ?? def.hero.title)
     setSubtitle(row?.subtitle != null && row.subtitle !== "" ? row.subtitle : def.hero.subtitle)
+    setHeroImage(row?.hero_image ?? def.hero.heroImage ?? "")
     setMetaTitle(row?.meta_title ?? def.metaTitle)
     setMetaDescription(row?.meta_description ?? def.metaDescription)
     setContent(row?.content_md ?? def.contentMd)
@@ -93,6 +97,7 @@ export default function PageEditor() {
           slug,
           title,
           subtitle,
+          hero_image: heroImage,
           content_md: content,
           meta_title: metaTitle,
           meta_description: metaDescription,
@@ -113,6 +118,24 @@ export default function PageEditor() {
     } catch (e: any) {
       setSaveState("error")
       setError(e?.message || "Network error")
+    }
+  }
+
+  const uploadHeroImage = async (file: File) => {
+    setUploading(true)
+    setError("")
+    try {
+      const fd = new FormData()
+      fd.append("file", file)
+      const res = await fetch("/api/upload", { method: "POST", body: fd })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data?.error || "Upload failed")
+      setHeroImage(data.url)
+      markDirty()
+    } catch (e: any) {
+      setError(e?.message || "Upload failed")
+    } finally {
+      setUploading(false)
     }
   }
 
@@ -231,6 +254,47 @@ export default function PageEditor() {
               onChange={(e) => { setSubtitle(e.target.value); markDirty() }}
               className="w-full bg-card border rounded-lg px-4 py-2.5 text-sm focus:border-accent focus:ring-1 focus:ring-accent outline-none"
             />
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-1">Hero image</label>
+            <div className="flex gap-2 items-start">
+              <input
+                value={heroImage}
+                onChange={(e) => { setHeroImage(e.target.value); markDirty() }}
+                placeholder="Image URL"
+                className="flex-1 bg-card border rounded-lg px-4 py-2.5 text-sm focus:border-accent focus:ring-1 focus:ring-accent outline-none"
+              />
+              <label className="inline-flex items-center gap-1.5 bg-background border rounded-lg px-3 py-2.5 text-sm cursor-pointer hover:bg-muted/50 shrink-0">
+                <ImagePlus className="w-4 h-4" />
+                {uploading ? "Uploading…" : "Upload"}
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  disabled={uploading}
+                  onChange={(e) => {
+                    const f = e.target.files?.[0]
+                    if (f) uploadHeroImage(f)
+                    e.target.value = ""
+                  }}
+                />
+              </label>
+              {heroImage && (
+                <button
+                  onClick={() => { setHeroImage(""); markDirty() }}
+                  className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-red-600 shrink-0 pt-2.5 px-1"
+                  title="Remove hero image"
+                >
+                  <Trash2 className="w-4 h-4" /> Clear
+                </button>
+              )}
+            </div>
+            {heroImage && (
+              <div className="mt-2">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={heroImage} alt="Hero preview" className="h-24 rounded-lg border object-cover" />
+              </div>
+            )}
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>

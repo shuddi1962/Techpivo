@@ -5,6 +5,7 @@ import Image from "next/image"
 import { useTheme } from "next-themes"
 import { useState, useEffect } from "react"
 import { defaultSocialUrls } from "@/components/layout/social-icons"
+import SiteBlock from "@/components/layout/site-block"
 
 const footerPlatforms = [
   {
@@ -73,6 +74,7 @@ export function Footer({ categories, recentPosts, socialUrls = {} }: { categorie
           <p className="footer-about">
             Techpivo is your daily source for the latest in technology, AI, cybersecurity, gadgets, and digital innovation.
           </p>
+          <SiteBlock blockKey="footer-about" />
           <div className="footer-socials">
             {footerPlatforms.map((p) => {
               const href = socialUrls[p.id] || defaultSocialUrls[p.id]
@@ -132,6 +134,7 @@ export function Footer({ categories, recentPosts, socialUrls = {} }: { categorie
               ))}
             </div>
           </div>
+          <SiteBlock blockKey="footer-links" />
         </div>
       </div>
 

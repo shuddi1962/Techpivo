@@ -7,6 +7,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Globe, Send, Loader2, RefreshCw } from "lucide-react"
 import type { GoogleIndexingQueue } from "@/types/database"
+import { TOOL_SLUGS } from "@/lib/tools-metadata"
+import { SITE_PAGES } from "@/lib/pages"
 
 export default function AdminIndexingPage() {
   const [queue, setQueue] = useState<GoogleIndexingQueue[]>([])
@@ -58,7 +60,20 @@ export default function AdminIndexingPage() {
       const { data: existing } = await supabase.from("google_indexing_queue").select("url")
       const existingUrls = new Set((existing || []).map((q) => q.url))
 
-      const urls = [...new Set((posts || []).map((p) => `${siteUrl}/${p.slug}`).filter((u) => !existingUrls.has(u)))]
+      const staticUrls = [
+        ...SITE_PAGES.map((p) => `${siteUrl}${p.path}`),
+        ...TOOL_SLUGS.map((slug) => `${siteUrl}/tools/${slug}`),
+        `${siteUrl}/tools`,
+        `${siteUrl}/community`,
+        `${siteUrl}/community/events`,
+        `${siteUrl}/community/forum`,
+        `${siteUrl}/community/quiz`,
+      ]
+
+      const urls = [...new Set([
+        ...(posts || []).map((p) => `${siteUrl}/${p.slug}`),
+        ...staticUrls,
+      ].filter((u) => !existingUrls.has(u)))]
       if (urls.length > 0) {
         await supabase.from("google_indexing_queue").insert(urls.map((url) => ({ url, status: "pending" })))
       }

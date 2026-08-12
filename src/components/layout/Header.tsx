@@ -9,6 +9,7 @@ import { createClient } from "@/lib/supabase/client"
 import type { User } from "@supabase/supabase-js"
 import { socialIcons, defaultPlatforms, defaultSocialUrls } from "@/components/layout/social-icons"
 import { PushSubscribeButton } from "@/components/push-subscribe-button"
+import SiteBlock from "@/components/layout/site-block"
 
 export function Header() {
   const [searchQ, setSearchQ] = useState("")
@@ -77,6 +78,7 @@ export function Header() {
 
   return (
     <>
+      <SiteBlock blockKey="header-banner" />
       <header className={`site-header${scrolled ? " scrolled" : ""}`}>
         <div className="header-inner">
           {/* MOBILE: hamburger on left */}

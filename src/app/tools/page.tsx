@@ -6,6 +6,7 @@ import { SITE_URL } from "@/lib/constants"
 import { TOOL_SLUGS, TOOL_META, TOOL_CATEGORY_LABEL, ToolCategory } from "@/lib/tools-metadata"
 import { TOOL_CATEGORY_DETAILS, CATEGORY_SLUGS, getCategoryDetail, CATEGORY_ROUTE } from "@/lib/tools-categories"
 import { ActiveToolGroup } from "@/components/tools/tool-status"
+import PageIntro from "@/components/pages/page-intro"
 
 const CATEGORY_ORDER: ToolCategory[] = ["developer", "security", "network", "seo", "image", "pdf", "calculator", "ai"]
 
@@ -42,6 +43,7 @@ export default function PublicToolsPage() {
       {toolSchemas.map((s, i) => <JsonLd key={i} data={s as any} />)}
 
       <div style={{ maxWidth: 1200, margin: "0 auto", padding: "40px 20px" }}>
+        <PageIntro slug="tools" />
         <div style={{ textAlign: "center", marginBottom: 16 }}>
           <h1 style={{ fontFamily: "'Syne', sans-serif", fontSize: 36, fontWeight: 800, marginBottom: 12 }}>Free Tech Tools &amp; Utilities</h1>
           <p style={{ fontSize: 16, color: "var(--muted)", maxWidth: 640, margin: "0 auto" }}>

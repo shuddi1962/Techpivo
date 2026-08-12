@@ -18,6 +18,11 @@ export function renderMarkdown(md: string): string {
   };
   const inline = (t: string) => {
     let value = escapeHtml(t);
+    value = value.replace(
+      /!\[([^\]]*)\]\((\/[^\s)]+|https?:\/\/[^\s)]+)\)/g,
+      (m, alt: string, src: string) =>
+        `<figure class="page-image"><img src="${src}" alt="${alt}" loading="lazy" /></figure>`
+    );
     value = value.replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>");
     value = value.replace(/`([^`]+)`/g, "<code>$1</code>");
     value = value.replace(

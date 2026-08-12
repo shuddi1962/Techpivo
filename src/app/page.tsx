@@ -11,6 +11,7 @@ import { CategoryStrip } from "@/components/home/CategoryStrip"
 import { NewsletterStrip } from "@/components/home/NewsletterStrip"
 import { Sidebar } from "@/components/layout/Sidebar"
 import { Footer } from "@/components/layout/Footer"
+import SiteBlock from "@/components/layout/site-block"
 import { SITE_NAME } from "@/lib/constants"
 
 export const revalidate = 60
@@ -270,6 +271,8 @@ export default async function HomePage() {
               featured={featuredPost}
               secondary={heroSecondary}
             />
+
+            <SiteBlock blockKey="home-intro" />
 
             <CategoryTabSection categories={cats} posts={latestPosts || []} />
 

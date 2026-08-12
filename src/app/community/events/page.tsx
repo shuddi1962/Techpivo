@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { Calendar, MapPin, Users, Clock, ArrowLeft, Sparkles, ExternalLink } from 'lucide-react';
 import { JsonLd } from '@/components/ui/jsonld';
 import { breadcrumbSchema, eventListSchema, eventSchema } from '@/lib/jsonld';
+import PageIntro from '@/components/pages/page-intro';
 
 
 interface Event {
@@ -85,6 +86,7 @@ export default function EventsPage() {
         })))} />
       )}
       <div className="min-h-screen bg-gradient-to-b from-background via-background to-muted/30">
+      <PageIntro slug="community-events" />
       {/* Hero */}
       <div className="relative overflow-hidden bg-gradient-to-br from-amber-600/10 via-orange-500/5 to-rose-600/10 dark:from-amber-500/5 dark:via-orange-500/5 dark:to-rose-500/5 border-b border-border/40">
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-amber-400/10 via-transparent to-transparent" />
