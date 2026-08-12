@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdminRole, createServiceClient } from "@/lib/admin-auth";
-import { getSiteBlock } from "@/lib/site-blocks";
+import { getSiteBlock, sanitizeBlockStyle } from "@/lib/site-blocks";
 
 function str(v: unknown, max: number): string | undefined {
   if (v === undefined || v === null) return undefined;
@@ -68,6 +68,7 @@ export async function POST(req: NextRequest) {
 
   const title = str(body.title, 200);
   const content_md = body.content_md !== undefined && body.content_md !== null ? String(body.content_md).slice(0, 50_000) : undefined;
+  const style = sanitizeBlockStyle(body.style);
   const is_active = typeof body.is_active === "boolean" ? body.is_active : true;
 
   if (content_md === undefined) {
@@ -81,6 +82,7 @@ export async function POST(req: NextRequest) {
         block_key: blockKey,
         title: title || def.label,
         content_md,
+        style,
         is_active,
         updated_by: auth.user.id,
         updated_at: new Date().toISOString(),

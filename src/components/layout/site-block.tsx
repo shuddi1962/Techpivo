@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { renderMarkdown } from "@/lib/markdown";
-import { getSiteBlock, type SiteBlockDef } from "@/lib/site-blocks";
+import { getSiteBlock, normalizeBlockStyle, type SiteBlockDef, type SiteBlockStyle } from "@/lib/site-blocks";
 import { Megaphone, X } from "lucide-react";
 
 interface BlockRow {
@@ -11,6 +11,7 @@ interface BlockRow {
   title: string | null;
   content_md: string | null;
   is_active: boolean | null;
+  style: SiteBlockStyle | null;
   updated_at: string | null;
 }
 
@@ -60,16 +61,79 @@ export default function SiteBlock({ blockKey }: { blockKey: string }) {
 
   if (!def || !ready || !row || !row.is_active || !row.content_md || row.content_md.trim() === "") return null;
 
+  const style: SiteBlockStyle = normalizeBlockStyle(row.style);
   const html = renderMarkdown(row.content_md);
 
   if (def.mode === "banner") {
     if (bannerDismissed) return null;
+
+    if (style.variant === "ticker") {
+      return (
+        <div className="site-block-banner-ticker">
+          {style.label && (
+            <span className={`site-block-banner-badge ${style.blink ? "site-block-blink" : ""}`}>{style.label}</span>
+          )}
+          <div className="site-block-banner-track">
+            <div className={`site-block-banner-scroll speed-${style.speed || "normal"}`}>
+              <span className="site-block-banner-item" dangerouslySetInnerHTML={{ __html: html }} />
+              <span className="site-block-banner-sep">◆</span>
+              <span className="site-block-banner-item" dangerouslySetInnerHTML={{ __html: html }} />
+            </div>
+          </div>
+          <button
+            onClick={() => {
+              try {
+                localStorage.setItem(`tp_banner_dismiss_${blockKey}`, `${row.updated_at}|${row.content_md}`);
+              } catch {}
+              setBannerDismissed(true);
+            }}
+            aria-label="Dismiss announcement"
+            className="site-block-banner-dismiss"
+          >
+            <X className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      );
+    }
+
+    if (style.variant === "blinkbg") {
+      return (
+        <div
+          className={`site-block-banner-blinkbg ${style.blink ? "site-block-bg-blink" : ""}`}
+          style={{ backgroundColor: style.bg || undefined, color: style.text || "#fff" }}
+        >
+          <div className={`mx-auto max-w-7xl px-4 py-3 flex items-center gap-3 ${style.align === "center" ? "justify-center" : ""}`}>
+            <Megaphone className="w-4 h-4 shrink-0 hidden sm:block opacity-90" />
+            <div
+              className="site-block-banner-static flex-1 text-center text-sm md:text-[15px] font-medium leading-relaxed"
+              dangerouslySetInnerHTML={{ __html: html }}
+            />
+            <button
+              onClick={() => {
+                try {
+                  localStorage.setItem(`tp_banner_dismiss_${blockKey}`, `${row.updated_at}|${row.content_md}`);
+                } catch {}
+                setBannerDismissed(true);
+              }}
+              aria-label="Dismiss announcement"
+              className="shrink-0 inline-flex items-center justify-center w-6 h-6 rounded-full bg-white/20 hover:bg-white/35 transition-colors"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        </div>
+      );
+    }
+
     return (
-      <div className="w-full bg-gradient-to-r from-accent via-accent to-accent/70 text-white">
-        <div className="mx-auto max-w-7xl px-4 py-3 flex items-center gap-3">
+      <div
+        className="site-block-banner-solid"
+        style={{ backgroundColor: style.bg || undefined, color: style.text || "#fff" }}
+      >
+        <div className={`mx-auto max-w-7xl px-4 py-3 flex items-center gap-3 ${style.align === "center" ? "justify-center" : ""}`}>
           <Megaphone className="w-4 h-4 shrink-0 hidden sm:block opacity-90" />
           <div
-            className="site-block-banner flex-1 text-center text-sm md:text-[15px] font-medium leading-relaxed"
+            className="site-block-banner-static flex-1 text-center text-sm md:text-[15px] font-medium leading-relaxed"
             dangerouslySetInnerHTML={{ __html: html }}
           />
           <button
@@ -80,7 +144,7 @@ export default function SiteBlock({ blockKey }: { blockKey: string }) {
               setBannerDismissed(true);
             }}
             aria-label="Dismiss announcement"
-            className="shrink-0 inline-flex items-center justify-center w-6 h-6 rounded-full bg-white/15 hover:bg-white/30 transition-colors"
+            className="shrink-0 inline-flex items-center justify-center w-6 h-6 rounded-full bg-white/20 hover:bg-white/35 transition-colors"
           >
             <X className="w-3.5 h-3.5" />
           </button>
@@ -104,10 +168,15 @@ export default function SiteBlock({ blockKey }: { blockKey: string }) {
   if (def.mode === "intro") {
     return (
       <section className="mx-auto max-w-7xl px-4 py-8">
-        <div className="border border-accent/20 bg-accent/5 rounded-2xl p-8 md:p-10">
+        <div
+          className="rounded-2xl p-8 md:p-10 border border-accent/20 bg-accent/5"
+          style={{ backgroundColor: style.bg || undefined, color: style.text || undefined }}
+        >
           {row.title && <h2 className="text-2xl md:text-3xl font-bold mb-3">{row.title}</h2>}
           <div
-            className="site-block-intro text-muted-foreground leading-relaxed prose prose-slate dark:prose-invert max-w-none prose-a:text-accent prose-strong:text-foreground prose-headings:text-foreground overflow-hidden"
+            className={`site-block-intro text-muted-foreground leading-relaxed prose prose-slate dark:prose-invert max-w-none prose-a:text-accent prose-strong:text-foreground prose-headings:text-foreground overflow-hidden ${
+              style.align === "center" ? "text-center" : style.align === "right" ? "text-right" : ""
+            }`}
             dangerouslySetInnerHTML={{ __html: html }}
           />
         </div>
@@ -118,7 +187,11 @@ export default function SiteBlock({ blockKey }: { blockKey: string }) {
   // text mode
   return (
     <p className="footer-about-block">
-      <span className="site-block-text" dangerouslySetInnerHTML={{ __html: html.replace(/<p>/g, "").replace(/<\/p>/g, "") }} />
+      <span
+        className="site-block-text"
+        style={{ color: style.text || undefined }}
+        dangerouslySetInnerHTML={{ __html: html.replace(/<p>/g, "").replace(/<\/p>/g, "") }}
+      />
     </p>
   );
 }

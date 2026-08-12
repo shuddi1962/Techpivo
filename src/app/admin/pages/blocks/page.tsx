@@ -4,14 +4,15 @@ import { useState, useEffect, useCallback, useRef } from "react"
 import Link from "next/link"
 import { createClient } from "@/lib/supabase/client"
 import { renderMarkdown } from "@/lib/markdown"
-import { SITE_BLOCKS, type SiteBlockDef } from "@/lib/site-blocks"
-import { ArrowLeft, Check, Eraser, Loader2, RotateCcw, Save, Eye } from "lucide-react"
+import { SITE_BLOCKS, normalizeBlockStyle, type SiteBlockDef, type SiteBlockStyle } from "@/lib/site-blocks"
+import { ArrowLeft, Check, Eraser, Loader2, RotateCcw, Save, Eye, Palette } from "lucide-react"
 
 interface DbBlock {
   block_key: string
   title: string | null
   content_md: string | null
   is_active: boolean
+  style: SiteBlockStyle | null
   updated_at: string | null
 }
 
@@ -28,8 +29,10 @@ export default function SiteBlocksAdminPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
   const [edits, setEdits] = useState<Record<string, { content: string; dirty: boolean }>>({})
+  const [styles, setStyles] = useState<Record<string, SiteBlockStyle>>({})
   const [saveStates, setSaveStates] = useState<Record<string, "" | "saving" | "saved" | "error">>({})
   const timers = useRef<Record<string, ReturnType<typeof setTimeout>>>({})
+  const stylesRef = useRef<Record<string, SiteBlockStyle>>({})
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null)
 
   const fetchBlocks = useCallback(async () => {
@@ -37,6 +40,10 @@ export default function SiteBlocksAdminPage() {
     const map: Record<string, DbBlock> = {}
     if (data) for (const row of data as DbBlock[]) map[row.block_key] = row
     setDb(map)
+    const normalized: Record<string, SiteBlockStyle> = {}
+    for (const b of SITE_BLOCKS) normalized[b.blockKey] = normalizeBlockStyle(map[b.blockKey]?.style)
+    stylesRef.current = normalized
+    setStyles(normalized)
     setLoading(false)
   }, [supabase])
 
@@ -77,8 +84,9 @@ export default function SiteBlocksAdminPage() {
     }
   }
 
-  const saveBlock = async (blockKey: string, active: boolean) => {
-    const content = edits[blockKey]?.content ?? db[blockKey]?.content_md ?? ""
+  const saveBlock = async (blockKey: string, active: boolean, contentOverride?: string, styleOverride?: SiteBlockStyle) => {
+    const content = contentOverride !== undefined ? contentOverride : (edits[blockKey]?.content ?? db[blockKey]?.content_md ?? "")
+    const style = styleOverride ?? styles[blockKey]
     const def = SITE_BLOCKS.find((b) => b.blockKey === blockKey)
     const title = db[blockKey]?.title ?? def?.label ?? undefined
     setSaveStates((s) => ({ ...s, [blockKey]: "saving" }))
@@ -87,6 +95,7 @@ export default function SiteBlocksAdminPage() {
       block_key: blockKey,
       title,
       content_md: content,
+      style,
       is_active: active,
     })
     if (!res.ok) {
@@ -100,11 +109,19 @@ export default function SiteBlocksAdminPage() {
     setTimeout(() => setSaveStates((s) => ({ ...s, [blockKey]: "" })), 2500)
   }
 
+  const updateStyle = (blockKey: string, patch: Partial<SiteBlockStyle>) => {
+    const next = { ...(stylesRef.current[blockKey] || {}), ...patch }
+    stylesRef.current = { ...stylesRef.current, [blockKey]: next }
+    setStyles(stylesRef.current)
+    if (timers.current[blockKey]) clearTimeout(timers.current[blockKey])
+    timers.current[blockKey] = setTimeout(() => saveBlock(blockKey, db[blockKey]?.is_active ?? true, undefined, next), 400)
+  }
+
   const handleChange = (blockKey: string, value: string) => {
     setEdits((e) => ({ ...e, [blockKey]: { content: value, dirty: true } }))
     setSaveStates((s) => ({ ...s, [blockKey]: "" }))
     if (timers.current[blockKey]) clearTimeout(timers.current[blockKey])
-    timers.current[blockKey] = setTimeout(() => saveBlock(blockKey, db[blockKey]?.is_active ?? true), 800)
+    timers.current[blockKey] = setTimeout(() => saveBlock(blockKey, db[blockKey]?.is_active ?? true, value), 800)
   }
 
   const flushSave = (blockKey: string) => {
@@ -112,7 +129,7 @@ export default function SiteBlocksAdminPage() {
       clearTimeout(timers.current[blockKey])
       delete timers.current[blockKey]
     }
-    if (edits[blockKey]?.dirty) saveBlock(blockKey, db[blockKey]?.is_active ?? true)
+    if (edits[blockKey]?.dirty) saveBlock(blockKey, db[blockKey]?.is_active ?? true, edits[blockKey].content)
   }
 
   const clearBlock = async (blockKey: string) => {
@@ -122,7 +139,7 @@ export default function SiteBlocksAdminPage() {
       delete timers.current[blockKey]
     }
     setEdits((e) => ({ ...e, [blockKey]: { content: "", dirty: false } }))
-    await saveBlock(blockKey, db[blockKey]?.is_active ?? true)
+    await saveBlock(blockKey, db[blockKey]?.is_active ?? true, "")
   }
 
   const toggleActive = async (block: SiteBlockDef) => {
@@ -234,6 +251,115 @@ export default function SiteBlocksAdminPage() {
                   className="w-full bg-background border rounded-lg px-4 py-3 text-sm font-mono leading-relaxed focus:border-accent focus:ring-1 focus:ring-accent outline-none resize-y"
                 />
                 {edits[block.blockKey]?.dirty && <span className="text-xs text-amber-600">· unsaved changes</span>}
+
+                {block.mode === "banner" && (
+                  <div className="border rounded-lg bg-muted/30 p-3 space-y-3">
+                    <div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+                      <Palette className="w-3.5 h-3.5" /> Banner style
+                    </div>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs">
+                      <label className="flex flex-col gap-1">
+                        <span className="text-muted-foreground">Variant</span>
+                        <select
+                          value={styles[block.blockKey]?.variant}
+                          onChange={(e) => updateStyle(block.blockKey, { variant: e.target.value as any })}
+                          className="bg-background border rounded-md px-2 py-1.5"
+                        >
+                          <option value="ticker">Moving ticker</option>
+                          <option value="blinkbg">Blinking background</option>
+                          <option value="solid">Colored strip</option>
+                        </select>
+                      </label>
+                      {(styles[block.blockKey]?.variant === "ticker" || styles[block.blockKey]?.variant === "blinkbg") && (
+                        <label className="flex flex-col gap-1">
+                          <span className="text-muted-foreground">Label</span>
+                          <input
+                            type="text"
+                            value={styles[block.blockKey]?.label ?? ""}
+                            placeholder="NEW"
+                            maxLength={24}
+                            onChange={(e) => updateStyle(block.blockKey, { label: e.target.value || null })}
+                            className="bg-background border rounded-md px-2 py-1.5"
+                          />
+                        </label>
+                      )}
+                      {styles[block.blockKey]?.variant === "ticker" && (
+                        <label className="flex flex-col gap-1">
+                          <span className="text-muted-foreground">Speed</span>
+                          <select
+                            value={styles[block.blockKey]?.speed}
+                            onChange={(e) => updateStyle(block.blockKey, { speed: e.target.value as any })}
+                            className="bg-background border rounded-md px-2 py-1.5"
+                          >
+                            <option value="slow">Slow</option>
+                            <option value="normal">Normal</option>
+                            <option value="fast">Fast</option>
+                          </select>
+                        </label>
+                      )}
+                      {(styles[block.blockKey]?.variant === "blinkbg" || styles[block.blockKey]?.variant === "solid") && (
+                        <label className="flex flex-col gap-1">
+                          <span className="text-muted-foreground">Background color</span>
+                          <input
+                            type="color"
+                            value={styles[block.blockKey]?.bg ?? "#f59e0b"}
+                            onChange={(e) => updateStyle(block.blockKey, { bg: e.target.value })}
+                            className="h-8 w-full cursor-pointer bg-background border rounded-md p-0.5"
+                          />
+                        </label>
+                      )}
+                      <label className="flex items-center gap-1.5 text-muted-foreground pt-4">
+                        <input
+                          type="checkbox"
+                          checked={styles[block.blockKey]?.blink ?? false}
+                          onChange={(e) => updateStyle(block.blockKey, { blink: e.target.checked })}
+                          className="accent-green-600"
+                        />
+                        Blinking
+                      </label>
+                    </div>
+                  </div>
+                )}
+
+                {block.mode === "intro" && (
+                  <div className="border rounded-lg bg-muted/30 p-3 space-y-3">
+                    <div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+                      <Palette className="w-3.5 h-3.5" /> Intro style
+                    </div>
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-2 text-xs">
+                      <label className="flex flex-col gap-1">
+                        <span className="text-muted-foreground">Text alignment</span>
+                        <select
+                          value={styles[block.blockKey]?.align}
+                          onChange={(e) => updateStyle(block.blockKey, { align: e.target.value as any })}
+                          className="bg-background border rounded-md px-2 py-1.5"
+                        >
+                          <option value="left">Left</option>
+                          <option value="center">Center</option>
+                          <option value="right">Right</option>
+                        </select>
+                      </label>
+                      <label className="flex flex-col gap-1">
+                        <span className="text-muted-foreground">Background color</span>
+                        <input
+                          type="color"
+                          value={styles[block.blockKey]?.bg ?? "#fef3c7"}
+                          onChange={(e) => updateStyle(block.blockKey, { bg: e.target.value })}
+                          className="h-8 w-full cursor-pointer bg-background border rounded-md p-0.5"
+                        />
+                      </label>
+                      <label className="flex flex-col gap-1">
+                        <span className="text-muted-foreground">Text color</span>
+                        <input
+                          type="color"
+                          value={styles[block.blockKey]?.text ?? "#1e293b"}
+                          onChange={(e) => updateStyle(block.blockKey, { text: e.target.value })}
+                          className="h-8 w-full cursor-pointer bg-background border rounded-md p-0.5"
+                        />
+                      </label>
+                    </div>
+                  </div>
+                )}
 
                 {content.trim() !== "" && (
                   <div>
