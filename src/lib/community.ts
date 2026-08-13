@@ -57,6 +57,7 @@ export interface ForumCategory {
   description: string | null;
   icon: string | null;
   color: string | null;
+  image_url: string | null;
   post_count: number;
 }
 
@@ -83,6 +84,7 @@ export interface Quiz {
   attempt_count: number;
   avg_score: number;
   is_published: boolean;
+  image_url: string | null;
   created_at: string;
 }
 
@@ -118,6 +120,7 @@ export interface Poll {
   total_votes: number;
   is_active: boolean;
   expires_at: string | null;
+  image_url: string | null;
   created_at: string;
   options?: PollOption[];
 }
@@ -155,6 +158,24 @@ export interface LeaderboardEntry {
   rank: string;
 }
 
+export interface CommunityEvent {
+  id: string;
+  title: string;
+  description: string | null;
+  event_type: string;
+  location: string | null;
+  url: string | null;
+  start_date: string;
+  end_date: string | null;
+  is_virtual: boolean;
+  max_participants: number | null;
+  current_participants: number;
+  is_published: boolean;
+  image_url: string | null;
+  created_by: string | null;
+  created_at: string;
+}
+
 export interface LearningPath {
   id: string;
   title: string;
@@ -171,6 +192,18 @@ export interface LearningPath {
   xp_reward: number;
   is_published: boolean;
   sort_order: number;
+  image_url: string | null;
+  created_at: string;
+}
+
+export interface LearningPathLesson {
+  id: string;
+  path_id: string;
+  title: string;
+  description: string | null;
+  article_slug: string | null;
+  sort_order: number;
+  duration_minutes: number | null;
   created_at: string;
 }
 
@@ -219,7 +252,7 @@ export async function getForumPosts(categoryId?: string, limit: number = 20) {
   const supabase = await createClient();
   let query = supabase
     .from('forum_posts')
-    .select('*, author:user_profiles(username, full_name, avatar_url, level), category:forum_categories(name, slug, icon)')
+    .select('*, author:user_profiles(username, full_name, avatar_url, level), category:forum_categories(name, slug, icon, image_url)')
     .order('is_pinned', { ascending: false })
     .order('last_reply_at', { ascending: false, nullsFirst: false })
     .order('created_at', { ascending: false })
@@ -291,4 +324,37 @@ export async function getUnreadNotificationCount(userId: string) {
     .eq('user_id', userId)
     .eq('is_read', false);
   return count || 0;
+}
+
+export async function getUpcomingEvents(limit: number = 12) {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from('community_events')
+    .select('*')
+    .eq('is_published', true)
+    .gte('start_date', new Date().toISOString())
+    .order('start_date', { ascending: true })
+    .limit(limit);
+  return (data || []) as CommunityEvent[];
+}
+
+export async function getLearningPathBySlug(slug: string) {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from('learning_paths')
+    .select('*')
+    .eq('slug', slug)
+    .eq('is_published', true)
+    .single();
+  return data as LearningPath | null;
+}
+
+export async function getLearningPathLessons(pathId: string) {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from('learning_path_lessons')
+    .select('*')
+    .eq('path_id', pathId)
+    .order('sort_order', { ascending: true });
+  return (data || []) as LearningPathLesson[];
 }

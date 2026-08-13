@@ -41,14 +41,20 @@ export default async function ForumCategoryPage({ params }: { params: Promise<{ 
         </Link>
 
         <div className="flex items-center justify-between mb-8">
-          <div>
-            <h1 className="text-3xl font-bold flex items-center gap-2">
+          <div className="flex items-center gap-4">
+            {currentCat?.image_url ? (
+              <img src={currentCat.image_url} alt={currentCat.name} className="w-16 h-16 rounded-2xl object-cover shadow-lg shadow-blue-500/10" />
+            ) : (
               <span className="text-4xl">{currentCat?.icon || '💬'}</span>
-              {currentCat?.name || category}
-            </h1>
-            {currentCat?.description && (
-              <p className="text-muted-foreground mt-1">{currentCat.description}</p>
             )}
+            <div>
+              <h1 className="text-3xl font-bold">
+                {currentCat?.name || category}
+              </h1>
+              {currentCat?.description && (
+                <p className="text-muted-foreground mt-1">{currentCat.description}</p>
+              )}
+            </div>
           </div>
           <Link href="/community/forum/new">
             <Button><Plus className="mr-2 h-4 w-4" /> New Discussion</Button>
@@ -73,8 +79,12 @@ export default async function ForumCategoryPage({ params }: { params: Promise<{ 
                       cat.slug === category ? 'bg-primary/10 text-primary font-medium' : 'hover:bg-muted'
                     }`}
                   >
-                    <span>{cat.icon}</span>
-                    <span className="flex-1">{cat.name}</span>
+                    {cat.image_url ? (
+                      <img src={cat.image_url} alt={cat.name} loading="lazy" className="w-6 h-6 rounded-md object-cover flex-shrink-0" />
+                    ) : (
+                      <span>{cat.icon}</span>
+                    )}
+                    <span className="flex-1 truncate">{cat.name}</span>
                     <span className="text-xs text-muted-foreground">{cat.post_count}</span>
                   </Link>
                 ))}

@@ -12,14 +12,40 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
   }
 
+  const action = body.action || 'create';
   const service = createServiceClient();
+
+  if (action === 'toggle') {
+    if (!body.id) return NextResponse.json({ error: 'id is required' }, { status: 400 });
+    const { data: row } = await service.from('polls').select('is_active').eq('id', body.id).single();
+    const next = !row?.is_active;
+    const { data, error } = await service
+      .from('polls')
+      .update({ is_active: next })
+      .eq('id', body.id)
+      .select()
+      .single();
+    if (error) return NextResponse.json({ error: error.message }, { status: 400 });
+    return NextResponse.json({ poll: data });
+  }
+
+  if (action === 'delete') {
+    if (!body.id) return NextResponse.json({ error: 'id is required' }, { status: 400 });
+    const { error } = await service.from('polls').delete().eq('id', body.id);
+    if (error) return NextResponse.json({ error: error.message }, { status: 400 });
+    return NextResponse.json({ success: true });
+  }
+
+  const title = String(body.title || '').trim();
+  if (!title) return NextResponse.json({ error: 'title is required' }, { status: 400 });
 
   // Create poll
   const { data: poll, error: pollError } = await service
     .from('polls')
     .insert({
-      title: body.title,
-      description: body.description || null,
+      title,
+      description: body.description ? String(body.description).slice(0, 1000) : null,
+      image_url: body.image_url ? String(body.image_url).slice(0, 1000) : null,
       is_active: true,
     })
     .select()

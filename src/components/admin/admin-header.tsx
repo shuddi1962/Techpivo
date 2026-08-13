@@ -62,6 +62,7 @@ const breadcrumbMap: Record<string, string> = {
   "api-platform": "API Platform",
   "quiz-builder": "Quiz Builder",
   "poll-builder": "Poll Builder",
+  "community-events": "Event Manager",
 }
 
 const searchItems = [

@@ -1,12 +1,13 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
-import { Brain, Plus, Trash2, Save, Eye } from 'lucide-react';
+import { createClient } from '@/lib/supabase/client';
+import { Brain, Plus, Trash2, Save, Eye, Loader2 } from 'lucide-react';
 
 interface Question {
   id: string;
@@ -19,19 +20,63 @@ interface Question {
 }
 
 export default function AdminQuizBuilderPage() {
+  const supabase = createClient();
   const [quizzes, setQuizzes] = useState<any[]>([]);
   const [creating, setCreating] = useState(false);
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [category, setCategory] = useState('');
   const [difficulty, setDifficulty] = useState('medium');
+  const [imageUrl, setImageUrl] = useState('');
   const [questions, setQuestions] = useState<Question[]>([]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const [busyId, setBusyId] = useState<string | null>(null);
+  const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
+
+  const loadQuizzes = useCallback(async () => {
+    const { data } = await supabase
+      .from('quizzes')
+      .select('*')
+      .order('created_at', { ascending: false });
+    setQuizzes(data || []);
+  }, [supabase]);
 
   useEffect(() => {
-    fetch('/api/community/quiz').then(r => r.json()).then(d => setQuizzes(d.quizzes || []));
-  }, []);
+    loadQuizzes();
+    const channel = supabase
+      .channel(`admin_quizzes_${Date.now()}_${Math.random().toString(36).slice(2)}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "quizzes" }, () => loadQuizzes())
+      .subscribe();
+    channelRef.current = channel;
+    const poll = setInterval(loadQuizzes, 30000);
+    const onFocus = () => loadQuizzes();
+    window.addEventListener("focus", onFocus);
+    return () => {
+      clearInterval(poll);
+      window.removeEventListener("focus", onFocus);
+      supabase.removeChannel(channelRef.current!);
+    };
+  }, [supabase, loadQuizzes]);
+
+  const postAction = async (body: Record<string, unknown>): Promise<{ ok: boolean; data?: any; error?: string }> => {
+    try {
+      const { data: sess } = await supabase.auth.getSession();
+      const token = sess?.session?.access_token;
+      const res = await fetch('/api/admin/community/quiz', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify(body),
+      });
+      const d = await res.json();
+      return { ok: res.ok, data: d, error: d?.error };
+    } catch {
+      return { ok: false, error: 'Network error' };
+    }
+  };
 
   const addQuestion = () => {
     setQuestions([...questions, {
@@ -66,43 +111,53 @@ export default function AdminQuizBuilderPage() {
     if (!title || questions.length === 0) return;
     setSaving(true);
     setError('');
-    try {
-      const res = await fetch('/api/admin/community/quiz', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          title, description, category, difficulty,
-          questions: questions.map((q, i) => ({
-            ...q,
-            sort_order: i,
-            options: q.question_type === 'true_false' ? ['True', 'False'] : q.options.filter(Boolean),
-          })),
-        }),
-      });
-      if (res.ok) {
-        setCreating(false);
-        setTitle(''); setDescription(''); setCategory(''); setQuestions([]);
-        fetch('/api/community/quiz').then(r => r.json()).then(d => setQuizzes(d.quizzes || []));
-      } else {
-        const d = await res.json().catch(() => ({}));
-        setError(d.error || 'Failed to save quiz');
-      }
-    } catch (e) {
-      setError('Network error — could not save quiz');
+    const r = await postAction({
+      title, description, category, difficulty, image_url: imageUrl,
+      questions: questions.map((q, i) => ({
+        ...q,
+        sort_order: i,
+        options: q.question_type === 'true_false' ? ['True', 'False'] : q.options.filter(Boolean),
+      })),
+    });
+    if (!r.ok) {
+      setError(r.error || 'Failed to save quiz');
+    } else {
+      setCreating(false);
+      setTitle(''); setDescription(''); setCategory(''); setImageUrl(''); setQuestions([]);
     }
     setSaving(false);
   };
 
+  const toggleQuiz = async (quiz: any) => {
+    setBusyId(quiz.id);
+    const r = await postAction({ action: 'toggle', id: quiz.id });
+    if (!r.ok) setError(r.error || 'Failed to toggle quiz');
+    setBusyId(null);
+  };
+
+  const deleteQuiz = async (quiz: any) => {
+    if (!confirm(`Delete quiz "${quiz.title}"? This cannot be undone.`)) return;
+    setBusyId(quiz.id);
+    const r = await postAction({ action: 'delete', id: quiz.id });
+    if (!r.ok) setError(r.error || 'Failed to delete quiz');
+    setBusyId(null);
+  };
+
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold">Quiz Builder</h1>
           <p className="text-muted-foreground">Create and manage quizzes for the community</p>
         </div>
-        <Button onClick={() => setCreating(!creating)}>
-          <Plus className="h-4 w-4 mr-2" /> {creating ? 'Cancel' : 'New Quiz'}
-        </Button>
+        <div className="flex items-center gap-3">
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs font-medium">
+            <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" /> LIVE
+          </span>
+          <Button onClick={() => setCreating(!creating)}>
+            <Plus className="h-4 w-4 mr-2" /> {creating ? 'Cancel' : 'New Quiz'}
+          </Button>
+        </div>
       </div>
 
       {creating && (
@@ -124,6 +179,15 @@ export default function AdminQuizBuilderPage() {
             <div>
               <label className="text-sm font-medium mb-1.5 block">Description</label>
               <Textarea value={description} onChange={e => setDescription(e.target.value)} rows={2} placeholder="Brief description" />
+            </div>
+            <div>
+              <label className="text-sm font-medium mb-1.5 block">Image URL (optional)</label>
+              <Input value={imageUrl} onChange={e => setImageUrl(e.target.value)} placeholder="https://images.pexels.com/…" />
+              {imageUrl && (
+                <div className="mt-2 rounded-xl overflow-hidden border w-40 h-24">
+                  <img src={imageUrl} alt="Preview" className="w-full h-full object-cover" />
+                </div>
+              )}
             </div>
             <div className="flex gap-2">
               {['easy', 'medium', 'hard'].map(d => (
@@ -176,7 +240,7 @@ export default function AdminQuizBuilderPage() {
             </div>
             <div className="flex justify-end">
               <Button onClick={saveQuiz} disabled={saving || !title || questions.length === 0}>
-                <Save className="h-4 w-4 mr-2" /> {saving ? 'Saving...' : 'Save Quiz'}
+                {saving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />} {saving ? 'Saving...' : 'Save Quiz'}
               </Button>
             </div>
             {error && (
@@ -194,12 +258,25 @@ export default function AdminQuizBuilderPage() {
           ) : (
             <div className="space-y-2">
               {quizzes.map((quiz: any) => (
-                <div key={quiz.id} className="flex items-center justify-between p-3 rounded-lg bg-muted/30">
-                  <div>
-                    <div className="font-medium">{quiz.title}</div>
-                    <div className="text-sm text-muted-foreground">{quiz.question_count} questions · {quiz.difficulty}</div>
+                <div key={quiz.id} className="flex items-center justify-between gap-3 p-3 rounded-lg bg-muted/30">
+                  <div className="flex items-center gap-3 min-w-0">
+                    {quiz.image_url && (
+                      <img src={quiz.image_url} alt="" className="w-12 h-12 rounded-lg object-cover flex-shrink-0" />
+                    )}
+                    <div className="min-w-0">
+                      <div className="font-medium truncate">{quiz.title}</div>
+                      <div className="text-sm text-muted-foreground">{quiz.question_count} questions · {quiz.difficulty}</div>
+                    </div>
                   </div>
-                  <Badge variant={quiz.is_published ? 'default' : 'outline'}>{quiz.is_published ? 'Published' : 'Draft'}</Badge>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <Badge variant={quiz.is_published ? 'default' : 'outline'}>{quiz.is_published ? 'Published' : 'Draft'}</Badge>
+                    <Button variant="outline" size="sm" onClick={() => toggleQuiz(quiz)} disabled={busyId === quiz.id}>
+                      {busyId === quiz.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <Eye className="h-3 w-3" />}
+                    </Button>
+                    <Button variant="ghost" size="sm" className="text-destructive" onClick={() => deleteQuiz(quiz)} disabled={busyId === quiz.id}>
+                      <Trash2 className="h-3 w-3" />
+                    </Button>
+                  </div>
                 </div>
               ))}
             </div>

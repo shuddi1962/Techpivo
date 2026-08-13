@@ -13,7 +13,7 @@ import {
   Brain, HeartPulse, Calendar,
   FileBarChart, Cpu, Key, Wrench, Lock,
   Trophy, BookOpen, PanelLeftClose, PanelLeftOpen, Newspaper, PieChart,
-  Plus, ExternalLink, Radar, Zap, PanelsTopLeft, type LucideIcon,
+  Plus, ExternalLink, Radar, Zap, PanelsTopLeft, CalendarPlus, type LucideIcon,
 } from "lucide-react"
 import { Sheet, SheetContent } from "@/components/ui/sheet"
 import { useSidebar } from "./sidebar-context"
@@ -109,6 +109,7 @@ const navGroups: NavGroup[] = [
       { href: "/community/leaderboard", label: "Leaderboard", icon: Trophy },
       { href: "/community/learning-paths", label: "Learning Paths", icon: BookOpen },
       { href: "/community/events", label: "Events", icon: Calendar },
+      { href: "/admin/community-events", label: "Event Manager", icon: CalendarPlus },
     ],
   },
 ]

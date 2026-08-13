@@ -29,8 +29,8 @@ export default async function LearningPathsPage() {
       <JsonLd data={paths.length >= 3 ? courseListSchema(paths.map(p => ({
         name: p.title,
         description: p.description,
-        url: `${SITE_URL}/community/learning-paths`,
-        image: undefined,
+        url: `${SITE_URL}/community/learning-paths/${p.slug}`,
+        image: p.image_url || undefined,
       }))) : null} />
       <div className="min-h-screen bg-gradient-to-b from-background via-background to-muted/30">
       {/* Hero */}
@@ -69,16 +69,33 @@ export default async function LearningPathsPage() {
             {paths.map((path) => {
               const style = difficultyStyles[path.difficulty] || difficultyStyles.Beginner;
               return (
-                <div key={path.id} className="group relative rounded-2xl border border-border/60 bg-card/80 backdrop-blur-sm hover:shadow-xl hover:shadow-violet-500/5 hover:border-violet-300/30 dark:hover:border-violet-700/30 transition-all duration-300 overflow-hidden">
+                <div key={path.id} className="group relative rounded-2xl border border-border/60 bg-card/80 backdrop-blur-sm hover:shadow-xl hover:shadow-violet-500/5 hover:border-violet-300/30 dark:hover:border-violet-700/30 transition-all duration-300 overflow-hidden flex flex-col">
                   {/* Top accent bar */}
                   <div className={`h-1.5 w-full bg-gradient-to-r ${path.color_from} ${path.color_to}`} />
-                  <div className="p-5 md:p-6 flex flex-col h-full">
+                  {path.image_url && (
+                    <div className="relative h-36 overflow-hidden">
+                      <img
+                        src={path.image_url}
+                        alt={path.title}
+                        loading="lazy"
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-t from-card via-card/20 to-transparent" />
+                    </div>
+                  )}
+                  <div className="p-5 md:p-6 flex flex-col flex-1">
                     {/* Icon + Difficulty */}
                     <div className="flex items-start justify-between mb-4">
                       <div className="flex items-center gap-3">
-                        <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${path.color_from} ${path.color_to} flex items-center justify-center text-2xl shadow-lg`}>
-                          {path.icon}
-                        </div>
+                        {path.image_url ? (
+                          <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${path.color_from} ${path.color_to} flex items-center justify-center text-2xl shadow-lg flex-shrink-0`}>
+                            {path.icon}
+                          </div>
+                        ) : (
+                          <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${path.color_from} ${path.color_to} flex items-center justify-center text-2xl shadow-lg`}>
+                            {path.icon}
+                          </div>
+                        )}
                         <div>
                           <h3 className="font-semibold text-base group-hover:text-violet-600 dark:group-hover:text-violet-400 transition-colors">
                             {path.title}
@@ -114,7 +131,7 @@ export default async function LearningPathsPage() {
                         <Zap className="h-3 w-3" /> {path.xp_reward} XP
                       </span>
                       <Link
-                        href="/community"
+                        href={`/community/learning-paths/${path.slug}`}
                         className="inline-flex items-center gap-1 text-sm font-medium text-violet-600 dark:text-violet-400 hover:text-violet-700 dark:hover:text-violet-300 transition-colors"
                       >
                         Browse <ChevronRight className="h-4 w-4" />

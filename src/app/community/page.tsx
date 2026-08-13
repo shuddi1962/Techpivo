@@ -4,8 +4,9 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { JsonLd } from '@/components/ui/jsonld';
 import { breadcrumbSchema, collectionPageSchema } from '@/lib/jsonld';
-import { getLeaderboard, getQuizzes, getActivePolls, getForumCategories, LEVELS, BADGES, getLevelForXP } from '@/lib/community';
-import { MessageSquare, Trophy, Brain, BarChart3, BookOpen, Users, Flame, Star, ArrowRight, Zap, Target, Award, Calendar } from 'lucide-react';
+import { createClient } from '@/lib/supabase/server';
+import { getLeaderboard, getQuizzes, getActivePolls, getForumCategories, getUpcomingEvents, LEVELS, BADGES, getLevelForXP } from '@/lib/community';
+import { MessageSquare, Trophy, Brain, BarChart3, BookOpen, Users, Flame, Star, ArrowRight, Zap, Target, Award, Calendar, MapPin, Clock, Star as StarIcon, Rocket, Cpu, Gem, Medal, Sparkles, Crown, HeartPulse, ShieldCheck, Wrench, GraduationCap, UserCheck, Smartphone } from 'lucide-react';
 import { SITE_URL } from '@/lib/constants';
 import PageIntro from '@/components/pages/page-intro';
 
@@ -14,13 +15,19 @@ export const metadata = {
   description: 'Join the TechPivo community. Discuss tech, take quizzes, earn rewards, and connect with fellow technology enthusiasts.',
 };
 
+const levelIcons = [StarIcon, Zap, Flame, Cpu, Rocket, Award, Crown, Medal, Gem, Sparkles, Brain, HeartPulse, ShieldCheck, Wrench, GraduationCap, Users];
+const badgeIcons = [Flame, Cpu, Brain, ShieldCheck, Smartphone, GraduationCap, Trophy, MessageSquare, HeartPulse, Rocket, StarIcon, Zap];
+
 export default async function CommunityPage() {
-  const [leaderboard, quizzes, polls, categories] = await Promise.all([
+  const supabase = await createClient();
+  const [leaderboard, quizzes, polls, categories, events] = await Promise.all([
     getLeaderboard(5),
     getQuizzes(6),
     getActivePolls(),
     getForumCategories(),
+    getUpcomingEvents(3),
   ]);
+  const { data: { user } } = await supabase.auth.getUser();
 
   return (
     <>
@@ -114,15 +121,20 @@ export default async function CommunityPage() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-2">
-                  {LEVELS.map((l) => (
-                    <div key={l.level} className="flex items-center justify-between text-sm p-1.5 rounded hover:bg-muted/50">
-                      <div className="flex items-center gap-2">
-                        <span>{l.icon}</span>
-                        <span>{l.title}</span>
+                  {LEVELS.map((l) => {
+                    const Icon = levelIcons[(l.level - 1) % levelIcons.length];
+                    return (
+                      <div key={l.level} className="flex items-center justify-between text-sm p-1.5 rounded hover:bg-muted/50">
+                        <div className="flex items-center gap-2">
+                          <span className={`inline-flex items-center justify-center w-7 h-7 rounded-lg bg-gradient-to-br ${l.level >= 50 ? 'from-amber-500 to-orange-500' : l.level >= 20 ? 'from-violet-500 to-purple-500' : l.level >= 10 ? 'from-blue-500 to-cyan-500' : 'from-emerald-500 to-teal-500'} text-white`}>
+                            <Icon className="h-3.5 w-3.5" />
+                          </span>
+                          <span>{l.title}</span>
+                        </div>
+                        <span className="text-muted-foreground">Lv.{l.level}</span>
                       </div>
-                      <span className="text-muted-foreground">Lv.{l.level}</span>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </CardContent>
             </Card>
@@ -136,12 +148,15 @@ export default async function CommunityPage() {
               </CardHeader>
               <CardContent>
                 <div className="flex flex-wrap gap-2">
-                  {BADGES.slice(0, 10).map((b) => (
-                    <div key={b.id} className="flex items-center gap-1 text-xs bg-muted px-2 py-1 rounded-full" title={b.description}>
-                      <span>{b.icon}</span>
-                      <span>{b.name}</span>
-                    </div>
-                  ))}
+                  {BADGES.slice(0, 10).map((b, i) => {
+                    const Icon = badgeIcons[i % badgeIcons.length];
+                    return (
+                      <div key={b.id} className="flex items-center gap-1.5 text-xs bg-muted px-2 py-1 rounded-full" title={b.description}>
+                        <Icon className="h-3.5 w-3.5 text-amber-500" />
+                        <span>{b.name}</span>
+                      </div>
+                    );
+                  })}
                 </div>
               </CardContent>
             </Card>
@@ -161,9 +176,13 @@ export default async function CommunityPage() {
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
             {categories.slice(0, 8).map((cat) => (
               <Link key={cat.id} href={`/community/forum/${cat.slug}`}>
-                <Card className="hover:shadow-md transition-shadow cursor-pointer h-full">
+                <Card className="hover:shadow-md transition-shadow cursor-pointer h-full overflow-hidden">
                   <CardContent className="p-4 text-center">
-                    <div className="text-3xl mb-2">{cat.icon}</div>
+                    {cat.image_url ? (
+                      <img src={cat.image_url} alt={cat.name} loading="lazy" className="w-14 h-14 rounded-xl object-cover mx-auto mb-2" />
+                    ) : (
+                      <div className="text-3xl mb-2">{cat.icon}</div>
+                    )}
                     <div className="font-medium">{cat.name}</div>
                     <div className="text-sm text-muted-foreground">{cat.post_count} posts</div>
                   </CardContent>
@@ -186,7 +205,12 @@ export default async function CommunityPage() {
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
             {quizzes.slice(0, 6).map((quiz) => (
               <Link key={quiz.id} href={`/community/quiz/${quiz.id}`}>
-                <Card className="hover:shadow-md transition-shadow cursor-pointer h-full">
+                <Card className="hover:shadow-md transition-shadow cursor-pointer h-full overflow-hidden">
+                  {quiz.image_url && (
+                    <div className="h-32 overflow-hidden">
+                      <img src={quiz.image_url} alt={quiz.title} loading="lazy" className="w-full h-full object-cover hover:scale-105 transition-transform duration-500" />
+                    </div>
+                  )}
                   <CardContent className="p-5">
                     <div className="flex items-center justify-between mb-2">
                       <UIBadge variant={quiz.difficulty === 'easy' ? 'default' : quiz.difficulty === 'hard' ? 'destructive' : 'secondary'}>
@@ -259,50 +283,85 @@ export default async function CommunityPage() {
               Upcoming Events
             </h2>
             <Link href="/community/events">
-              <Button variant="outline" size="sm">View Events <ArrowRight className="ml-1 h-4 w-4" /></Button>
+              <Button variant="outline" size="sm">View All Events <ArrowRight className="ml-1 h-4 w-4" /></Button>
             </Link>
           </div>
-          <div className="grid md:grid-cols-2 gap-3">
-            <Link href="/community/events">
-              <Card className="hover:shadow-md transition-shadow cursor-pointer">
-                <CardContent className="p-4 flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-lg bg-blue-500/10 flex items-center justify-center">
-                    <Calendar className="h-5 w-5 text-blue-500" />
-                  </div>
-                  <div>
-                    <div className="font-medium">Tech Events & Meetups</div>
-                    <div className="text-sm text-muted-foreground">Workshops, conferences, and community gatherings</div>
-                  </div>
-                </CardContent>
-              </Card>
-            </Link>
-            <Link href="/community/events?type=workshop">
-              <Card className="hover:shadow-md transition-shadow cursor-pointer">
-                <CardContent className="p-4 flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-lg bg-purple-500/10 flex items-center justify-center">
-                    <BookOpen className="h-5 w-5 text-purple-500" />
-                  </div>
-                  <div>
-                    <div className="font-medium">Workshops</div>
-                    <div className="text-sm text-muted-foreground">Hands-on coding sessions and tutorials</div>
-                  </div>
-                </CardContent>
-              </Card>
-            </Link>
-          </div>
+          {events.length > 0 ? (
+            <div className="grid md:grid-cols-3 gap-3">
+              {events.map(e => (
+                <Link key={e.id} href="/community/events" className="group">
+                  <Card className="hover:shadow-md transition-shadow cursor-pointer h-full overflow-hidden">
+                    {e.image_url && (
+                      <div className="h-28 overflow-hidden">
+                        <img src={e.image_url} alt={e.title} loading="lazy" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                      </div>
+                    )}
+                    <CardContent className="p-4">
+                      <div className="font-medium group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors line-clamp-1">{e.title}</div>
+                      <div className="text-sm text-muted-foreground mt-1 flex items-center gap-1">
+                        <Clock className="h-3 w-3" /> {new Date(e.start_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                      </div>
+                      {e.location && (
+                        <div className="text-sm text-muted-foreground mt-0.5 flex items-center gap-1">
+                          <MapPin className="h-3 w-3" /> {e.location}
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                </Link>
+              ))}
+            </div>
+          ) : (
+            <div className="grid md:grid-cols-2 gap-3">
+              <Link href="/community/events">
+                <Card className="hover:shadow-md transition-shadow cursor-pointer">
+                  <CardContent className="p-4 flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-lg bg-blue-500/10 flex items-center justify-center">
+                      <Calendar className="h-5 w-5 text-blue-500" />
+                    </div>
+                    <div>
+                      <div className="font-medium">Tech Events & Meetups</div>
+                      <div className="text-sm text-muted-foreground">Workshops, conferences, and community gatherings</div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </Link>
+              <Link href="/community/events?type=workshop">
+                <Card className="hover:shadow-md transition-shadow cursor-pointer">
+                  <CardContent className="p-4 flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-lg bg-purple-500/10 flex items-center justify-center">
+                      <BookOpen className="h-5 w-5 text-purple-500" />
+                    </div>
+                    <div>
+                      <div className="font-medium">Workshops</div>
+                      <div className="text-sm text-muted-foreground">Hands-on coding sessions and tutorials</div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </Link>
+            </div>
+          )}
         </div>
 
         <Card className="bg-gradient-to-r from-primary/5 to-primary/10 border-primary/20">
           <CardContent className="p-8 text-center">
             <Zap className="h-12 w-12 mx-auto mb-4 text-primary" />
-            <h2 className="text-2xl font-bold mb-2">Ready to Join?</h2>
+            <h2 className="text-2xl font-bold mb-2">{user ? 'Welcome Back!' : 'Ready to Join?'}</h2>
             <p className="text-muted-foreground mb-6 max-w-lg mx-auto">
-              Create your profile, start earning XP, climb the leaderboard, and connect with thousands of tech enthusiasts.
+              {user
+                ? 'Continue earning XP, take quizzes, join events, and climb the leaderboard.'
+                : 'Create your profile, start earning XP, climb the leaderboard, and connect with thousands of tech enthusiasts.'}
             </p>
             <div className="flex gap-3 justify-center">
-              <Link href="/register">
-                <Button size="lg">Create Account</Button>
-              </Link>
+              {user ? (
+                <Link href="/account">
+                  <Button size="lg"><UserCheck className="mr-2 h-4 w-4" /> Go to My Profile</Button>
+                </Link>
+              ) : (
+                <Link href="/register">
+                  <Button size="lg">Create Account</Button>
+                </Link>
+              )}
               <Link href="/community/forum">
                 <Button variant="outline" size="lg">Browse Forum</Button>
               </Link>

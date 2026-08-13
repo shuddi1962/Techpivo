@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import { ArrowLeft, Clock, CheckCircle2, XCircle, Trophy, RotateCcw } from 'lucide-react';
+import { ArrowLeft, Clock, CheckCircle2, XCircle, Trophy, RotateCcw, PartyPopper, ThumbsUp, Sparkles, BookOpen, Zap } from 'lucide-react';
 
 interface Question {
   id: string;
@@ -27,6 +27,7 @@ interface Quiz {
   difficulty: string;
   time_limit: number | null;
   question_count: number;
+  image_url: string | null;
 }
 
 interface QuizState {
@@ -37,6 +38,8 @@ interface QuizState {
   score: number;
   correctAnswers: number;
   timeElapsed: number;
+  attemptSaved: boolean;
+  saveError: boolean;
 }
 
 export default function QuizRunnerPage({ params }: { params: Promise<{ id: string }> }) {
@@ -50,6 +53,8 @@ export default function QuizRunnerPage({ params }: { params: Promise<{ id: strin
     score: 0,
     correctAnswers: 0,
     timeElapsed: 0,
+    attemptSaved: false,
+    saveError: false,
   });
 
   useEffect(() => {
@@ -72,7 +77,7 @@ export default function QuizRunnerPage({ params }: { params: Promise<{ id: strin
   }, [state.status]);
 
   const startQuiz = () => {
-    setState(prev => ({ ...prev, status: 'answering', currentIndex: 0, answers: {}, score: 0, correctAnswers: 0, timeElapsed: 0 }));
+    setState(prev => ({ ...prev, status: 'answering', currentIndex: 0, answers: {}, score: 0, correctAnswers: 0, timeElapsed: 0, attemptSaved: false, saveError: false }));
   };
 
   const selectAnswer = (questionId: string, answer: string) => {
@@ -105,7 +110,12 @@ export default function QuizRunnerPage({ params }: { params: Promise<{ id: strin
             time_taken: state.timeElapsed,
             answers: state.answers,
           }),
-        }).catch(() => {});
+        })
+          .then(r => {
+            if (r.ok) setState(prev => ({ ...prev, attemptSaved: true }));
+            else setState(prev => ({ ...prev, saveError: true }));
+          })
+          .catch(() => setState(prev => ({ ...prev, saveError: true })));
       });
     }
   };
@@ -147,6 +157,9 @@ export default function QuizRunnerPage({ params }: { params: Promise<{ id: strin
           </Link>
           <Card>
             <CardContent className="p-8 text-center">
+              {quiz.image_url && (
+                <img src={quiz.image_url} alt={quiz.title} className="w-full h-44 object-cover rounded-xl mb-6" />
+              )}
               <h1 className="text-3xl font-bold mb-4">{quiz.title}</h1>
               {quiz.description && <p className="text-muted-foreground mb-6">{quiz.description}</p>}
               <div className="flex flex-wrap gap-3 justify-center mb-8">
@@ -241,9 +254,18 @@ export default function QuizRunnerPage({ params }: { params: Promise<{ id: strin
                   <div className="text-sm text-muted-foreground">Time</div>
                 </div>
               </div>
-              <div className="text-lg mb-6">
-                {pct >= 90 ? '🎉 Outstanding!' : pct >= 70 ? '👏 Great job!' : pct >= 50 ? '👍 Good effort!' : '📚 Keep learning!'}
+              <div className="text-lg mb-6 flex items-center justify-center gap-2">
+                {pct >= 90 ? <><PartyPopper className="h-5 w-5 text-yellow-500" /> Outstanding!</> : pct >= 70 ? <><ThumbsUp className="h-5 w-5 text-emerald-500" /> Great job!</> : pct >= 50 ? <><Sparkles className="h-5 w-5 text-blue-500" /> Good effort!</> : <><BookOpen className="h-5 w-5 text-violet-500" /> Keep learning!</>}
               </div>
+              {state.attemptSaved ? (
+                <div className="mb-6 inline-flex items-center gap-2 px-4 py-2 rounded-full bg-emerald-500/10 border border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-400 text-sm font-medium">
+                  <CheckCircle2 className="h-4 w-4" /> Result saved to your profile · <Zap className="h-3.5 w-3.5" /> +20 XP
+                </div>
+              ) : state.saveError ? (
+                <div className="mb-6 inline-flex items-center gap-2 px-4 py-2 rounded-full bg-amber-500/10 border border-amber-200 dark:border-amber-800 text-amber-700 dark:text-amber-400 text-sm font-medium">
+                  <XCircle className="h-4 w-4" /> Sign in to save your result &amp; earn XP
+                </div>
+              ) : null}
               <div className="flex gap-3 justify-center">
                 <Button onClick={startQuiz}><RotateCcw className="mr-2 h-4 w-4" /> Try Again</Button>
                 <Link href="/community/quiz"><Button variant="outline">All Quizzes</Button></Link>

@@ -1,14 +1,25 @@
+'use client';
+
+import { useState, useEffect, useCallback, useRef } from 'react';
 import Link from 'next/link';
 import { Brain, Clock, Users, BarChart, Sparkles, ArrowRight, Zap } from 'lucide-react';
+import { createClient } from '@/lib/supabase/client';
 import { JsonLd } from '@/components/ui/jsonld';
 import { breadcrumbSchema } from '@/lib/jsonld';
-import { getQuizzes } from '@/lib/community';
-import { SITE_URL } from '@/lib/constants';
 
-export const metadata = {
-  title: 'Quizzes — TechPivo Community',
-  description: 'Test your technology knowledge with interactive quizzes.',
-};
+interface Quiz {
+  id: string;
+  title: string;
+  description: string | null;
+  category: string | null;
+  difficulty: string;
+  time_limit: number | null;
+  question_count: number;
+  attempt_count: number;
+  avg_score: number;
+  is_published: boolean;
+  image_url: string | null;
+}
 
 const difficultyConfig: Record<string, { label: string; gradient: string; badge: string }> = {
   easy: { label: 'Easy', gradient: 'from-emerald-500 to-teal-500', badge: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800' },
@@ -16,15 +27,49 @@ const difficultyConfig: Record<string, { label: string; gradient: string; badge:
   hard: { label: 'Hard', gradient: 'from-red-500 to-rose-500', badge: 'bg-red-500/10 text-red-600 dark:text-red-400 border-red-200 dark:border-red-800' },
 };
 
-export default async function QuizPage() {
-  const quizzes = await getQuizzes(30);
-  const categories = [...new Set(quizzes.map(q => q.category).filter(Boolean))];
+export default function QuizPage() {
+  const supabase = createClient();
+  const [quizzes, setQuizzes] = useState<Quiz[]>([]);
+  const [filter, setFilter] = useState('all');
+  const [loading, setLoading] = useState(true);
+  const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
+
+  const loadQuizzes = useCallback(async () => {
+    const { data } = await supabase
+      .from('quizzes')
+      .select('*')
+      .eq('is_published', true)
+      .order('created_at', { ascending: false })
+      .limit(30);
+    setQuizzes((data || []) as Quiz[]);
+    setLoading(false);
+  }, [supabase]);
+
+  useEffect(() => {
+    loadQuizzes();
+    const channel = supabase
+      .channel(`quiz_list_${Date.now()}_${Math.random().toString(36).slice(2)}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "quizzes" }, () => loadQuizzes())
+      .subscribe();
+    channelRef.current = channel;
+    const poll = setInterval(loadQuizzes, 30000);
+    const onFocus = () => loadQuizzes();
+    window.addEventListener("focus", onFocus);
+    return () => {
+      clearInterval(poll);
+      window.removeEventListener("focus", onFocus);
+      supabase.removeChannel(channelRef.current!);
+    };
+  }, [supabase, loadQuizzes]);
+
+  const categories = [...new Set(quizzes.map(q => q.category).filter(Boolean))] as string[];
+  const filtered = filter === 'all' ? quizzes : quizzes.filter(q => q.category === filter);
 
   return (
     <>
       <JsonLd data={breadcrumbSchema([
-        { name: "Home", url: SITE_URL },
-        { name: "Community", url: `${SITE_URL}/community` },
+        { name: "Home", url: "https://techpivo.com" },
+        { name: "Community", url: "https://techpivo.com/community" },
         { name: "Quizzes" },
       ])} />
       <div className="min-h-screen bg-gradient-to-b from-background via-background to-muted/30">
@@ -48,20 +93,47 @@ export default async function QuizPage() {
 
       <div className="max-w-7xl mx-auto px-4 py-8 md:py-12">
         {/* Category pills */}
-        {categories.length > 0 && (
-          <div className="flex flex-wrap gap-2 mb-8">
-            <span className="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-medium bg-foreground text-background">
-              All ({quizzes.length})
-            </span>
-            {categories.map(cat => (
-              <span key={cat} className="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-medium bg-muted/60 text-muted-foreground border border-border/50">
-                {cat}
-              </span>
+        <div className="flex flex-wrap gap-2 mb-8">
+          <button
+            onClick={() => setFilter('all')}
+            className={`inline-flex items-center px-3 py-1.5 rounded-full text-xs font-medium transition-all duration-200 ${
+              filter === 'all'
+                ? 'bg-foreground text-background shadow-lg shadow-foreground/10 scale-105'
+                : 'bg-muted/60 text-muted-foreground border border-border/50 hover:bg-muted hover:text-foreground'
+            }`}
+          >
+            All ({quizzes.length})
+          </button>
+          {categories.map(cat => (
+            <button
+              key={cat}
+              onClick={() => setFilter(cat)}
+              className={`inline-flex items-center px-3 py-1.5 rounded-full text-xs font-medium transition-all duration-200 ${
+                filter === cat
+                  ? 'bg-foreground text-background shadow-lg shadow-foreground/10 scale-105'
+                  : 'bg-muted/60 text-muted-foreground border border-border/50 hover:bg-muted hover:text-foreground'
+              }`}
+            >
+              {cat}
+            </button>
+          ))}
+        </div>
+
+        {loading ? (
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-5">
+            {[1, 2, 3, 4, 5, 6].map(i => (
+              <div key={i} className="rounded-2xl bg-muted/40 animate-pulse overflow-hidden">
+                <div className="h-40 bg-muted/60" />
+                <div className="p-5 space-y-3">
+                  <div className="h-4 bg-muted rounded w-1/3" />
+                  <div className="h-5 bg-muted rounded w-3/4" />
+                  <div className="h-3 bg-muted rounded w-full" />
+                  <div className="h-3 bg-muted rounded w-2/3" />
+                </div>
+              </div>
             ))}
           </div>
-        )}
-
-        {quizzes.length === 0 ? (
+        ) : filtered.length === 0 ? (
           <div className="text-center py-20">
             <div className="inline-flex items-center justify-center w-20 h-20 rounded-2xl bg-muted/50 mb-6">
               <Brain className="h-10 w-10 text-muted-foreground/60" />
@@ -71,16 +143,27 @@ export default async function QuizPage() {
           </div>
         ) : (
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-5">
-            {quizzes.map((quiz) => {
+            {filtered.map((quiz) => {
               const cfg = difficultyConfig[quiz.difficulty] || difficultyConfig.medium;
               return (
                 <Link key={quiz.id} href={`/community/quiz/${quiz.id}`} className="group block">
                   <div className="relative rounded-2xl border border-border/60 bg-card/80 backdrop-blur-sm hover:shadow-xl hover:shadow-purple-500/5 hover:border-purple-300/30 dark:hover:border-purple-700/30 transition-all duration-300 overflow-hidden h-full">
-                    <div className={`h-1.5 w-full bg-gradient-to-r ${cfg.gradient}`} />
+                    {quiz.image_url && (
+                      <div className="relative h-40 overflow-hidden">
+                        <img
+                          src={quiz.image_url}
+                          alt={quiz.title}
+                          loading="lazy"
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                        />
+                        <div className="absolute inset-0 bg-gradient-to-t from-card via-card/20 to-transparent" />
+                      </div>
+                    )}
+                    {!quiz.image_url && <div className={`h-1.5 w-full bg-gradient-to-r ${cfg.gradient}`} />}
                     <div className="p-5 md:p-6">
                       <div className="flex items-center justify-between mb-3">
                         <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium border ${cfg.badge}`}>
-                          {quiz.difficulty}
+                          {cfg.label}
                         </span>
                         {quiz.category && (
                           <span className="text-xs text-muted-foreground bg-muted/50 px-2 py-1 rounded-full">

@@ -1,8 +1,9 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import Link from 'next/link';
 import { ArrowLeft, BarChart3, CheckCircle2, Sparkles } from 'lucide-react';
+import { createClient } from '@/lib/supabase/client';
 import { JsonLd } from '@/components/ui/jsonld';
 import { breadcrumbSchema } from '@/lib/jsonld';
 
@@ -18,24 +19,46 @@ interface Poll {
   description: string | null;
   total_votes: number;
   is_active: boolean;
+  image_url: string | null;
   options: PollOption[];
 }
 
 export default function PollsPage() {
+  const supabase = createClient();
   const [polls, setPolls] = useState<Poll[]>([]);
   const [votedPolls, setVotedPolls] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [voteError, setVoteError] = useState<string | null>(null);
+  const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
+
+  const loadPolls = useCallback(async () => {
+    try {
+      const res = await fetch('/api/community/polls');
+      const data = await res.json();
+      setPolls(data.polls || []);
+      setLoading(false);
+    } catch {
+      setLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
-    fetch('/api/community/polls')
-      .then(r => r.json())
-      .then(data => {
-        setPolls(data.polls || []);
-        setLoading(false);
-      })
-      .catch(() => setLoading(false));
-  }, []);
+    loadPolls();
+    const channel = supabase
+      .channel(`polls_live_${Date.now()}_${Math.random().toString(36).slice(2)}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "polls" }, () => loadPolls())
+      .on("postgres_changes", { event: "*", schema: "public", table: "poll_votes" }, () => loadPolls())
+      .subscribe();
+    channelRef.current = channel;
+    const poll = setInterval(loadPolls, 30000);
+    const onFocus = () => loadPolls();
+    window.addEventListener("focus", onFocus);
+    return () => {
+      clearInterval(poll);
+      window.removeEventListener("focus", onFocus);
+      supabase.removeChannel(channelRef.current!);
+    };
+  }, [supabase, loadPolls]);
 
   const vote = async (pollId: string, optionId: string) => {
     if (votedPolls[pollId]) return;
@@ -55,7 +78,7 @@ export default function PollsPage() {
       const res = await fetch('/api/community/polls', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ pollId, optionId }),
+        body: JSON.stringify({ poll_id: pollId, option_id: optionId }),
       });
       if (!res.ok) {
         setVotedPolls(prev => { const n = { ...prev }; delete n[pollId]; return n; });
@@ -150,7 +173,14 @@ export default function PollsPage() {
             {polls.map((poll) => {
               const hasVoted = !!votedPolls[poll.id];
               return (
-                <div key={poll.id} className="rounded-2xl border border-border/60 bg-card/80 backdrop-blur-sm p-6 md:p-7">
+                <div key={poll.id} className="rounded-2xl border border-border/60 bg-card/80 backdrop-blur-sm overflow-hidden">
+                  {poll.image_url && (
+                    <div className="relative h-44 overflow-hidden">
+                      <img src={poll.image_url} alt={poll.title} loading="lazy" className="w-full h-full object-cover" />
+                      <div className="absolute inset-0 bg-gradient-to-t from-card via-card/20 to-transparent" />
+                    </div>
+                  )}
+                  <div className="p-6 md:p-7">
                   <h2 className="text-xl font-semibold font-[family-name:var(--font-syne)] mb-1">{poll.title}</h2>
                   {poll.description && (
                     <p className="text-sm text-muted-foreground mb-5 leading-relaxed">{poll.description}</p>
@@ -195,6 +225,7 @@ export default function PollsPage() {
                     {!hasVoted && (
                       <span className="text-xs text-muted-foreground/60">Tap an option to vote</span>
                     )}
+                  </div>
                   </div>
                 </div>
               );

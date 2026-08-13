@@ -1,12 +1,11 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
-import { Calendar, MapPin, Users, Clock, ArrowLeft, Sparkles, ExternalLink } from 'lucide-react';
+import { Calendar, MapPin, Users, Clock, ArrowLeft, Sparkles, ExternalLink, Check, CalendarCheck, Presentation, Handshake, Terminal, Video, Wrench, Rocket, CalendarDays } from 'lucide-react';
 import { JsonLd } from '@/components/ui/jsonld';
 import { breadcrumbSchema, eventListSchema, eventSchema } from '@/lib/jsonld';
 import PageIntro from '@/components/pages/page-intro';
-
 
 interface Event {
   id: string;
@@ -20,18 +19,28 @@ interface Event {
   is_virtual: boolean;
   max_participants: number | null;
   current_participants: number;
-  created_at: string;
+  image_url: string | null;
 }
 
-const typeConfig: Record<string, { label: string; gradient: string; badge: string }> = {
-  conference: { label: 'Conference', gradient: 'from-violet-500 to-purple-600', badge: 'bg-violet-500/15 text-violet-600 dark:text-violet-400 border-violet-200 dark:border-violet-800' },
-  meetup: { label: 'Meetup', gradient: 'from-blue-500 to-cyan-500', badge: 'bg-blue-500/15 text-blue-600 dark:text-blue-400 border-blue-200 dark:border-blue-800' },
-  hackathon: { label: 'Hackathon', gradient: 'from-orange-500 to-red-500', badge: 'bg-orange-500/15 text-orange-600 dark:text-orange-400 border-orange-200 dark:border-orange-800' },
-  webinar: { label: 'Webinar', gradient: 'from-emerald-500 to-teal-500', badge: 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800' },
-  workshop: { label: 'Workshop', gradient: 'from-amber-500 to-yellow-500', badge: 'bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-200 dark:border-amber-800' },
-  launch: { label: 'Launch', gradient: 'from-pink-500 to-rose-500', badge: 'bg-pink-500/15 text-pink-600 dark:text-pink-400 border-pink-200 dark:border-pink-800' },
-  other: { label: 'Event', gradient: 'from-slate-500 to-gray-500', badge: 'bg-gray-500/15 text-gray-600 dark:text-gray-400 border-gray-200 dark:border-gray-800' },
+const typeConfig: Record<string, { label: string; gradient: string; badge: string; icon: any }> = {
+  conference: { label: 'Conference', gradient: 'from-violet-500 to-purple-600', badge: 'bg-violet-500/15 text-violet-600 dark:text-violet-400 border-violet-200 dark:border-violet-800', icon: Presentation },
+  meetup: { label: 'Meetup', gradient: 'from-blue-500 to-cyan-500', badge: 'bg-blue-500/15 text-blue-600 dark:text-blue-400 border-blue-200 dark:border-blue-800', icon: Handshake },
+  hackathon: { label: 'Hackathon', gradient: 'from-orange-500 to-red-500', badge: 'bg-orange-500/15 text-orange-600 dark:text-orange-400 border-orange-200 dark:border-orange-800', icon: Terminal },
+  webinar: { label: 'Webinar', gradient: 'from-emerald-500 to-teal-500', badge: 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800', icon: Video },
+  workshop: { label: 'Workshop', gradient: 'from-amber-500 to-yellow-500', badge: 'bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-200 dark:border-amber-800', icon: Wrench },
+  launch: { label: 'Launch', gradient: 'from-pink-500 to-rose-500', badge: 'bg-pink-500/15 text-pink-600 dark:text-pink-400 border-pink-200 dark:border-pink-800', icon: Rocket },
+  other: { label: 'Event', gradient: 'from-slate-500 to-gray-500', badge: 'bg-gray-500/15 text-gray-600 dark:text-gray-400 border-gray-200 dark:border-gray-800', icon: CalendarDays },
 };
+
+const filterTabs = [
+  { key: 'all', label: 'All Events', icon: CalendarDays },
+  { key: 'conference', label: 'Conferences', icon: Presentation },
+  { key: 'meetup', label: 'Meetups', icon: Handshake },
+  { key: 'hackathon', label: 'Hackathons', icon: Terminal },
+  { key: 'webinar', label: 'Webinars', icon: Video },
+  { key: 'workshop', label: 'Workshops', icon: Wrench },
+  { key: 'launch', label: 'Launches', icon: Rocket },
+];
 
 function getTimeUntil(date: Date): string {
   const diff = date.getTime() - Date.now();
@@ -53,18 +62,64 @@ function formatTime(date: Date): string {
 
 export default function EventsPage() {
   const [events, setEvents] = useState<Event[]>([]);
+  const [myRsvps, setMyRsvps] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('all');
+  const [rsvpBusy, setRsvpBusy] = useState<string | null>(null);
+  const [message, setMessage] = useState<string | null>(null);
+
+  const loadEvents = useCallback(async () => {
+    try {
+      const res = await fetch('/api/community/events');
+      const d = await res.json();
+      setEvents(d.events || []);
+      setMyRsvps(d.my_rsvps || []);
+    } catch {
+      // keep existing data
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
-    fetch('/api/community/events')
-      .then(r => r.json())
-      .then(d => {
-        setEvents(d.events || []);
-        setLoading(false);
-      })
-      .catch(() => setLoading(false));
-  }, []);
+    loadEvents();
+    const poll = setInterval(loadEvents, 30000);
+    const onFocus = () => loadEvents();
+    window.addEventListener('focus', onFocus);
+    return () => {
+      clearInterval(poll);
+      window.removeEventListener('focus', onFocus);
+    };
+  }, [loadEvents]);
+
+  const toggleRsvp = async (eventId: string) => {
+    setRsvpBusy(eventId);
+    setMessage(null);
+    const isGoing = myRsvps.includes(eventId);
+    try {
+      const res = await fetch('/api/community/events', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ event_id: eventId, action: isGoing ? 'cancel' : 'rsvp' }),
+      });
+      const d = await res.json();
+      if (!res.ok) {
+        setMessage(d.error || 'Something went wrong — please sign in and try again.');
+        return;
+      }
+      setMyRsvps(prev => isGoing ? prev.filter(id => id !== eventId) : [...prev, eventId]);
+      setEvents(prev => prev.map(e =>
+        e.id === eventId
+          ? { ...e, current_participants: Math.max(0, e.current_participants + (isGoing ? -1 : 1)) }
+          : e
+      ));
+      setMessage(isGoing ? 'RSVP cancelled.' : 'You are going! See you there.');
+    } catch {
+      setMessage('Network error — please try again.');
+    } finally {
+      setRsvpBusy(null);
+    }
+  };
 
   const filtered = filter === 'all' ? events : events.filter(e => e.event_type === filter);
   const now = new Date();
@@ -111,30 +166,31 @@ export default function EventsPage() {
       {/* Content */}
       <div className="max-w-7xl mx-auto px-4 py-8 md:py-12">
         {/* Filter tabs */}
-        <div className="flex flex-wrap gap-2 mb-10">
-          {[
-            { key: 'all', label: 'All Events', icon: '✨' },
-            { key: 'conference', label: 'Conferences', icon: '🎤' },
-            { key: 'meetup', label: 'Meetups', icon: '🤝' },
-            { key: 'hackathon', label: 'Hackathons', icon: '💻' },
-            { key: 'webinar', label: 'Webinars', icon: '📹' },
-            { key: 'workshop', label: 'Workshops', icon: '🛠' },
-            { key: 'launch', label: 'Launches', icon: '🚀' },
-          ].map(t => (
-            <button
-              key={t.key}
-              onClick={() => setFilter(t.key)}
-              className={`inline-flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 ${
-                filter === t.key
-                  ? 'bg-foreground text-background shadow-lg shadow-foreground/10 scale-105'
-                  : 'bg-muted/60 text-muted-foreground hover:bg-muted hover:text-foreground border border-border/50'
-              }`}
-            >
-              <span className="text-base">{t.icon}</span>
-              {t.label}
-            </button>
-          ))}
+        <div className="flex flex-wrap gap-2 mb-6">
+          {filterTabs.map(t => {
+            const Icon = t.icon;
+            return (
+              <button
+                key={t.key}
+                onClick={() => setFilter(t.key)}
+                className={`inline-flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 ${
+                  filter === t.key
+                    ? 'bg-foreground text-background shadow-lg shadow-foreground/10 scale-105'
+                    : 'bg-muted/60 text-muted-foreground hover:bg-muted hover:text-foreground border border-border/50'
+                }`}
+              >
+                <Icon className="h-4 w-4" />
+                {t.label}
+              </button>
+            );
+          })}
         </div>
+
+        {message && (
+          <div className="mb-6 p-4 rounded-xl bg-emerald-500/10 border border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-400 text-sm">
+            {message}
+          </div>
+        )}
 
         {loading ? (
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-5">
@@ -163,21 +219,38 @@ export default function EventsPage() {
                 <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-5">
                   {upcoming.map(event => {
                     const cfg = typeConfig[event.event_type] || typeConfig.other;
+                    const Icon = cfg.icon;
                     const startDate = new Date(event.start_date);
+                    const isGoing = myRsvps.includes(event.id);
                     return (
                       <div key={event.id} className="group relative rounded-2xl border border-border/60 bg-card/80 backdrop-blur-sm hover:shadow-xl hover:shadow-amber-500/5 hover:border-amber-500/30 transition-all duration-300 overflow-hidden">
-                        {/* Top accent bar */}
-                        <div className={`h-1.5 w-full bg-gradient-to-r ${cfg.gradient}`} />
+                        {event.image_url && (
+                          <div className="relative h-40 overflow-hidden">
+                            <img
+                              src={event.image_url}
+                              alt={event.title}
+                              loading="lazy"
+                              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                            />
+                            <div className="absolute inset-0 bg-gradient-to-t from-card via-card/30 to-transparent" />
+                            <span className="absolute top-3 right-3 text-xs font-semibold bg-amber-500/90 text-white px-2.5 py-1 rounded-full backdrop-blur-sm whitespace-nowrap">
+                              in {getTimeUntil(startDate)}
+                            </span>
+                          </div>
+                        )}
+                        <div className={`${event.image_url ? '' : 'h-1.5 w-full bg-gradient-to-r'} ${event.image_url ? '' : cfg.gradient}`} />
                         <div className="p-5 md:p-6">
                           {/* Header */}
                           <div className="flex items-start justify-between mb-4">
                             <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border ${cfg.badge}`}>
-                              <span className="text-sm">{['🎤','🤝','💻','📹','🛠','🚀','📅'][['conference','meetup','hackathon','webinar','workshop','launch','other'].indexOf(event.event_type)] || '📅'}</span>
+                              <Icon className="h-3.5 w-3.5" />
                               {cfg.label}
                             </span>
-                            <span className="text-xs font-semibold bg-amber-500/10 text-amber-600 dark:text-amber-400 px-2.5 py-1 rounded-full whitespace-nowrap">
-                              in {getTimeUntil(startDate)}
-                            </span>
+                            {!event.image_url && (
+                              <span className="text-xs font-semibold bg-amber-500/10 text-amber-600 dark:text-amber-400 px-2.5 py-1 rounded-full whitespace-nowrap">
+                                in {getTimeUntil(startDate)}
+                              </span>
+                            )}
                           </div>
 
                           {/* Title & Description */}
@@ -206,7 +279,7 @@ export default function EventsPage() {
                             )}
                             <div className="flex items-center gap-2.5">
                               <Users className="h-4 w-4 text-amber-500/70 flex-shrink-0" />
-                              <span>{event.current_participants}{event.max_participants ? ` / ${event.max_participants}` : ''} attending</span>
+                              <span>{event.current_participants}{event.max_participants ? ` / ${event.max_participants}` : ''} going</span>
                               {event.is_virtual && (
                                 <span className="ml-auto text-xs bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 px-2 py-0.5 rounded-full">Virtual</span>
                               )}
@@ -214,16 +287,30 @@ export default function EventsPage() {
                           </div>
 
                           {/* CTA */}
-                          {event.url && (
-                            <a
-                              href={event.url}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="mt-5 w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium bg-gradient-to-r from-amber-500 to-orange-500 text-white hover:from-amber-600 hover:to-orange-600 transition-all duration-200 shadow-lg shadow-amber-500/20"
+                          <div className="mt-5 flex gap-2">
+                            <button
+                              onClick={() => toggleRsvp(event.id)}
+                              disabled={rsvpBusy === event.id}
+                              className={`flex-1 inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 disabled:opacity-60 ${
+                                isGoing
+                                  ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-300/50 hover:bg-emerald-500/25'
+                                  : 'bg-gradient-to-r from-amber-500 to-orange-500 text-white hover:from-amber-600 hover:to-orange-600 shadow-lg shadow-amber-500/20'
+                              }`}
                             >
-                              <ExternalLink className="h-4 w-4" /> Visit Event
-                            </a>
-                          )}
+                              {isGoing ? <Check className="h-4 w-4" /> : <CalendarCheck className="h-4 w-4" />}
+                              {rsvpBusy === event.id ? 'Working...' : isGoing ? 'Going — Cancel' : 'RSVP'}
+                            </button>
+                            {event.url && (
+                              <a
+                                href={event.url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center justify-center gap-2 px-3.5 py-2.5 rounded-xl text-sm font-medium border border-border/60 hover:bg-muted/50 transition-all duration-200"
+                              >
+                                <ExternalLink className="h-4 w-4" />
+                              </a>
+                            )}
+                          </div>
                         </div>
                       </div>
                     );

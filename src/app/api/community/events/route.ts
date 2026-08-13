@@ -17,7 +17,19 @@ export async function GET(request: NextRequest) {
   }
 
   const { data } = await query;
-  return NextResponse.json({ events: data || [] });
+  const events = data || [];
+
+  let myRsvps: string[] = [];
+  const { data: { user } } = await supabase.auth.getUser();
+  if (user) {
+    const { data: rsvps } = await supabase
+      .from('event_rsvps')
+      .select('event_id, status')
+      .eq('user_id', user.id);
+    myRsvps = (rsvps || []).filter(r => r.status === 'going').map(r => r.event_id);
+  }
+
+  return NextResponse.json({ events, my_rsvps: myRsvps });
 }
 
 export async function POST(request: NextRequest) {
@@ -26,23 +38,30 @@ export async function POST(request: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  const { data, error } = await supabase
-    .from('community_events')
-    .insert({
-      title: body.title,
-      description: body.description,
-      event_type: body.event_type || 'other',
-      location: body.location,
-      url: body.url,
-      start_date: body.start_date,
-      end_date: body.end_date,
-      is_virtual: body.is_virtual || false,
-      max_participants: body.max_participants,
-      created_by: user.id,
-    })
-    .select()
-    .single();
+  const { event_id, action } = body;
+  if (!event_id) return NextResponse.json({ error: 'event_id is required' }, { status: 400 });
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 400 });
-  return NextResponse.json({ event: data });
+  if (action === 'cancel') {
+    const { error: delError } = await supabase
+      .from('event_rsvps')
+      .delete()
+      .eq('event_id', event_id)
+      .eq('user_id', user.id);
+    if (delError) return NextResponse.json({ error: delError.message }, { status: 400 });
+
+    await supabase.rpc('increment_event_rsvps', { event_id, delta: -1 });
+    return NextResponse.json({ success: true, rsvp: false });
+  }
+
+  // action === 'rsvp' (default)
+  const { error: upsertError } = await supabase
+    .from('event_rsvps')
+    .upsert(
+      { event_id, user_id: user.id, status: 'going' },
+      { onConflict: 'event_id,user_id' }
+    );
+  if (upsertError) return NextResponse.json({ error: upsertError.message }, { status: 400 });
+
+  await supabase.rpc('increment_event_rsvps', { event_id, delta: 1 });
+  return NextResponse.json({ success: true, rsvp: true });
 }

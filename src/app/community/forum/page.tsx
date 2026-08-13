@@ -68,10 +68,19 @@ export default async function ForumPage() {
                   <Link
                     key={cat.id}
                     href={`/community/forum/${cat.slug}`}
-                    className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-muted/50 text-sm transition-colors group"
+                    className="flex items-center gap-2.5 px-3 py-2 rounded-lg hover:bg-muted/50 text-sm transition-colors group"
                   >
-                    <span className="text-base">{cat.icon}</span>
-                    <span className="flex-1 text-muted-foreground group-hover:text-foreground transition-colors">{cat.name}</span>
+                    {cat.image_url ? (
+                      <img
+                        src={cat.image_url}
+                        alt={cat.name}
+                        loading="lazy"
+                        className="w-7 h-7 rounded-lg object-cover flex-shrink-0"
+                      />
+                    ) : (
+                      <span className="text-base">{cat.icon}</span>
+                    )}
+                    <span className="flex-1 text-muted-foreground group-hover:text-foreground transition-colors truncate">{cat.name}</span>
                     <span className="text-xs text-muted-foreground bg-muted/50 px-1.5 py-0.5 rounded-full">{cat.post_count}</span>
                   </Link>
                 ))}
@@ -120,8 +129,13 @@ export default async function ForumPage() {
                           <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground">
                             <span>{post.author?.full_name || post.author?.username || 'Anonymous'}</span>
                             <span className="text-xs text-muted-foreground/40">·</span>
-                            <span className="flex items-center gap-1">
-                              {post.category?.icon} {post.category?.name}
+                            <span className="flex items-center gap-1.5">
+                              {post.category?.image_url ? (
+                                <img src={post.category.image_url} alt={post.category.name} loading="lazy" className="w-4 h-4 rounded object-cover" />
+                              ) : (
+                                post.category?.icon
+                              )}
+                              {post.category?.name}
                             </span>
                             <span className="text-xs text-muted-foreground/40">·</span>
                             <span className="flex items-center gap-1">
