@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { checkRateLimit, clientIp, RATE_LIMITS } from '@/lib/rate-limiter';
 
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
@@ -87,6 +88,11 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
+  const rl = checkRateLimit(`community-hub:${clientIp(request)}`, RATE_LIMITS.communityHub);
+  if (!rl.allowed) {
+    return NextResponse.json({ error: 'Too many requests. Try again later.' }, { status: 429 });
+  }
+
   const body = await request.json();
   const { action } = body;
   const supabase = await createClient();

@@ -59,6 +59,7 @@ export const RATE_LIMITS = {
   upload: { limit: 30, windowMs: 60 * 60 * 1000 },
   eventRsvp: { limit: 30, windowMs: 60 * 60 * 1000 },
   bookmark: { limit: 60, windowMs: 60 * 60 * 1000 },
+  communityHub: { limit: 120, windowMs: 60 * 60 * 1000 },
 } as const
 
 /** Extract client IP from request headers (x-forwarded-for from proxies). */

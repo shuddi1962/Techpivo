@@ -14,9 +14,13 @@ interface Question {
   question: string;
   question_type: string;
   options: string[];
-  correct_answer: string;
-  explanation: string | null;
   points: number;
+}
+
+interface QuestionResult {
+  question_id: string;
+  correct: boolean;
+  explanation: string | null;
 }
 
 interface Quiz {
@@ -40,6 +44,8 @@ interface QuizState {
   timeElapsed: number;
   attemptSaved: boolean;
   saveError: boolean;
+  xpAwarded: boolean;
+  results: QuestionResult[];
 }
 
 export default function QuizRunnerPage({ params }: { params: Promise<{ id: string }> }) {
@@ -55,6 +61,8 @@ export default function QuizRunnerPage({ params }: { params: Promise<{ id: strin
     timeElapsed: 0,
     attemptSaved: false,
     saveError: false,
+    xpAwarded: false,
+    results: [],
   });
 
   useEffect(() => {
@@ -77,7 +85,7 @@ export default function QuizRunnerPage({ params }: { params: Promise<{ id: strin
   }, [state.status]);
 
   const startQuiz = () => {
-    setState(prev => ({ ...prev, status: 'answering', currentIndex: 0, answers: {}, score: 0, correctAnswers: 0, timeElapsed: 0, attemptSaved: false, saveError: false }));
+    setState(prev => ({ ...prev, status: 'answering', currentIndex: 0, answers: {}, score: 0, correctAnswers: 0, timeElapsed: 0, attemptSaved: false, saveError: false, xpAwarded: false, results: [] }));
   };
 
   const selectAnswer = (questionId: string, answer: string) => {
@@ -88,32 +96,31 @@ export default function QuizRunnerPage({ params }: { params: Promise<{ id: strin
     if (state.currentIndex < state.questions.length - 1) {
       setState(prev => ({ ...prev, currentIndex: prev.currentIndex + 1 }));
     } else {
-      let score = 0;
-      let correct = 0;
-      state.questions.forEach(q => {
-        if (state.answers[q.id] === q.correct_answer) {
-          score += q.points;
-          correct++;
-        }
-      });
-      setState(prev => ({ ...prev, status: 'finished', score, correctAnswers: correct }));
-
-      // Save attempt to database
+      // Server-side grading — correct answers never reach the browser.
+      setState(prev => ({ ...prev, status: 'finished' }));
       params.then(({ id }) => {
         fetch(`/api/community/quiz/${id}/attempt`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            score,
-            total_questions: state.questions.length,
-            correct_answers: correct,
             time_taken: state.timeElapsed,
             answers: state.answers,
           }),
         })
-          .then(r => {
-            if (r.ok) setState(prev => ({ ...prev, attemptSaved: true }));
-            else setState(prev => ({ ...prev, saveError: true }));
+          .then(r => r.json().then(data => ({ ok: r.ok, data })))
+          .then(({ ok, data }) => {
+            if (ok) {
+              setState(prev => ({
+                ...prev,
+                attemptSaved: true,
+                score: data.score ?? prev.score,
+                correctAnswers: data.correct_answers ?? prev.correctAnswers,
+                xpAwarded: !!data.xp_awarded,
+                results: data.results ?? [],
+              }));
+            } else {
+              setState(prev => ({ ...prev, saveError: true }));
+            }
           })
           .catch(() => setState(prev => ({ ...prev, saveError: true })));
       });
@@ -257,9 +264,13 @@ export default function QuizRunnerPage({ params }: { params: Promise<{ id: strin
               <div className="text-lg mb-6 flex items-center justify-center gap-2">
                 {pct >= 90 ? <><PartyPopper className="h-5 w-5 text-yellow-500" /> Outstanding!</> : pct >= 70 ? <><ThumbsUp className="h-5 w-5 text-emerald-500" /> Great job!</> : pct >= 50 ? <><Sparkles className="h-5 w-5 text-blue-500" /> Good effort!</> : <><BookOpen className="h-5 w-5 text-violet-500" /> Keep learning!</>}
               </div>
-              {state.attemptSaved ? (
+              {state.attemptSaved && state.xpAwarded ? (
                 <div className="mb-6 inline-flex items-center gap-2 px-4 py-2 rounded-full bg-emerald-500/10 border border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-400 text-sm font-medium">
                   <CheckCircle2 className="h-4 w-4" /> Result saved to your profile · <Zap className="h-3.5 w-3.5" /> +20 XP
+                </div>
+              ) : state.attemptSaved ? (
+                <div className="mb-6 inline-flex items-center gap-2 px-4 py-2 rounded-full bg-emerald-500/10 border border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-400 text-sm font-medium">
+                  <CheckCircle2 className="h-4 w-4" /> Result saved to your profile
                 </div>
               ) : state.saveError ? (
                 <div className="mb-6 inline-flex items-center gap-2 px-4 py-2 rounded-full bg-amber-500/10 border border-amber-200 dark:border-amber-800 text-amber-700 dark:text-amber-400 text-sm font-medium">
@@ -270,6 +281,34 @@ export default function QuizRunnerPage({ params }: { params: Promise<{ id: strin
                 <Button onClick={startQuiz}><RotateCcw className="mr-2 h-4 w-4" /> Try Again</Button>
                 <Link href="/community/quiz"><Button variant="outline">All Quizzes</Button></Link>
               </div>
+              {state.results.length > 0 && (
+                <div className="mt-10 text-left border-t pt-6">
+                  <h2 className="text-lg font-semibold mb-4">Question Review</h2>
+                  <div className="space-y-4">
+                    {state.results.map((r, i) => {
+                      const q = state.questions[i];
+                      return (
+                        <div key={r.question_id} className={`p-4 rounded-lg border ${r.correct ? 'border-emerald-300 dark:border-emerald-800 bg-emerald-500/5' : 'border-red-300 dark:border-red-800 bg-red-500/5'}`}>
+                          <div className="flex items-start gap-2">
+                            {r.correct ? <CheckCircle2 className="h-4 w-4 mt-0.5 text-emerald-500 shrink-0" /> : <XCircle className="h-4 w-4 mt-0.5 text-red-500 shrink-0" />}
+                            <div>
+                              <p className="font-medium">{i + 1}. {q?.question}</p>
+                              {!r.correct && q && (
+                                <p className="text-sm text-muted-foreground mt-1">
+                                  Your answer: <span className="text-foreground">{state.answers[q.id] ?? '—'}</span>
+                                </p>
+                              )}
+                              {r.explanation && (
+                                <p className="text-sm text-muted-foreground mt-2">{r.explanation}</p>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>

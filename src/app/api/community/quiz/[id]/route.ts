@@ -1,8 +1,10 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 
+/** Quiz payload for the runner. `correct_answer`/`explanation` are NEVER sent
+ *  to the client — grading happens server-side on attempt submission. */
 export async function GET(
-  request: NextRequest,
+  _request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
@@ -12,13 +14,14 @@ export async function GET(
     .from('quizzes')
     .select('*')
     .eq('id', id)
+    .eq('is_published', true)
     .single();
 
   if (!quiz) return NextResponse.json({ error: 'Quiz not found' }, { status: 404 });
 
   const { data: questions } = await supabase
     .from('quiz_questions')
-    .select('*')
+    .select('id, quiz_id, question, question_type, options, points, sort_order')
     .eq('quiz_id', id)
     .order('sort_order');
 

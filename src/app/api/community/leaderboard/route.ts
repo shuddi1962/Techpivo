@@ -8,6 +8,7 @@ export async function GET() {
     .from('user_profiles')
     .select('id, username, full_name, avatar_url, level, xp')
     .not('username', 'is', null)
+    .eq('is_public', true)
     .order('xp', { ascending: false })
     .limit(50);
 

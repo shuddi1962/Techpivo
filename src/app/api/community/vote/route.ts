@@ -15,6 +15,24 @@ export async function POST(request: NextRequest) {
 
   const { post_id, reply_id, vote_type } = body;
 
+  if (vote_type !== 'up' && vote_type !== 'down') {
+    return NextResponse.json({ error: 'vote_type must be up or down' }, { status: 400 });
+  }
+  if ((post_id && reply_id) || (!post_id && !reply_id)) {
+    return NextResponse.json({ error: 'Exactly one of post_id or reply_id is required' }, { status: 400 });
+  }
+
+  // Validate target exists before voting
+  const targetTable = post_id ? 'forum_posts' : 'forum_replies';
+  const { data: target } = await supabase
+    .from(targetTable)
+    .select('id')
+    .eq('id', post_id || reply_id)
+    .maybeSingle();
+  if (!target) {
+    return NextResponse.json({ error: 'Target not found' }, { status: 404 });
+  }
+
   // Check existing vote
   const query = supabase.from('forum_votes').select('id, vote_type').eq('user_id', user.id);
   if (post_id) query.eq('post_id', post_id);
@@ -24,19 +42,22 @@ export async function POST(request: NextRequest) {
   if (existing) {
     if (existing.vote_type === vote_type) {
       // Remove vote
-      await supabase.from('forum_votes').delete().eq('id', existing.id);
+      const { error } = await supabase.from('forum_votes').delete().eq('id', existing.id);
+      if (error) return NextResponse.json({ error: error.message }, { status: 400 });
     } else {
       // Change vote
-      await supabase.from('forum_votes').update({ vote_type }).eq('id', existing.id);
+      const { error } = await supabase.from('forum_votes').update({ vote_type }).eq('id', existing.id);
+      if (error) return NextResponse.json({ error: error.message }, { status: 400 });
     }
   } else {
     // New vote
-    await supabase.from('forum_votes').insert({
+    const { error } = await supabase.from('forum_votes').insert({
       user_id: user.id,
       post_id: post_id || null,
       reply_id: reply_id || null,
       vote_type,
     });
+    if (error) return NextResponse.json({ error: error.message }, { status: 400 });
   }
 
   // Update counts via SECURITY DEFINER RPCs (RLS-safe: users vote on others' posts)
