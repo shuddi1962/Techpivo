@@ -60,6 +60,13 @@ export const RATE_LIMITS = {
   eventRsvp: { limit: 30, windowMs: 60 * 60 * 1000 },
   bookmark: { limit: 60, windowMs: 60 * 60 * 1000 },
   communityHub: { limit: 120, windowMs: 60 * 60 * 1000 },
+  notificationPrefs: { limit: 60, windowMs: 60 * 60 * 1000 },
+  history: { limit: 120, windowMs: 60 * 60 * 1000 },
+  profileUpdate: { limit: 30, windowMs: 60 * 60 * 1000 },
+  connectedAccounts: { limit: 30, windowMs: 60 * 60 * 1000 },
+  amaQuestion: { limit: 20, windowMs: 60 * 60 * 1000 },
+  reportCreate: { limit: 10, windowMs: 60 * 60 * 1000 },
+  acceptAnswer: { limit: 30, windowMs: 60 * 60 * 1000 },
 } as const
 
 /** Extract client IP from request headers (x-forwarded-for from proxies). */

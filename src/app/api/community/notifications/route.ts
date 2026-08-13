@@ -29,19 +29,20 @@ export async function GET() {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ notifications: [], preferences: null });
 
-  const [notifRes, prefsRes] = await Promise.all([
+  const [notifRes, profileRes] = await Promise.all([
     supabase.from('user_notifications').select('*').eq('user_id', user.id).order('created_at', { ascending: false }).limit(50),
-    supabase.from('user_notification_settings').select('*').eq('user_id', user.id).maybeSingle(),
+    supabase.from('user_profiles').select('notification_preferences').eq('id', user.id).maybeSingle(),
   ]);
 
+  const stored = (profileRes.data?.notification_preferences ?? {}) as Record<string, boolean>;
   return NextResponse.json({
     notifications: notifRes.data || [],
-    preferences: prefsRes.data ? { ...DEFAULT_PREFS, ...prefsRes.data } : DEFAULT_PREFS,
+    preferences: { ...DEFAULT_PREFS, ...stored },
   });
 }
 
 export async function PUT(request: NextRequest) {
-  const rl = checkRateLimit(`notif-prefs:${clientIp(request)}`, { limit: 60, windowMs: 60 * 60 * 1000 });
+  const rl = checkRateLimit(`notif-prefs:${clientIp(request)}`, RATE_LIMITS.notificationPrefs);
   if (!rl.allowed) {
     return NextResponse.json({ error: 'Too many requests. Try again later.' }, { status: 429 });
   }
@@ -59,10 +60,19 @@ export async function PUT(request: NextRequest) {
     return NextResponse.json({ error: 'No valid preference keys provided' }, { status: 400 });
   }
 
+  const { data: profile } = await supabase
+    .from('user_profiles')
+    .select('notification_preferences')
+    .eq('id', user.id)
+    .maybeSingle();
+
+  const merged = { ...DEFAULT_PREFS, ...((profile?.notification_preferences ?? {}) as Record<string, boolean>), ...prefs };
+
   const { error } = await supabase
-    .from('user_notification_settings')
-    .upsert({ user_id: user.id, ...prefs, updated_at: new Date().toISOString() }, { onConflict: 'user_id' });
+    .from('user_profiles')
+    .update({ notification_preferences: merged, updated_at: new Date().toISOString() })
+    .eq('id', user.id);
 
   if (error) return NextResponse.json({ error: error.message }, { status: 400 });
-  return NextResponse.json({ preferences: { ...DEFAULT_PREFS, ...prefs } });
+  return NextResponse.json({ preferences: merged });
 }
