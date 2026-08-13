@@ -1,10 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { checkRateLimit, clientIp, RATE_LIMITS } from '@/lib/rate-limiter';
 
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const rl = checkRateLimit(`quiz-attempt:${clientIp(request)}`, RATE_LIMITS.quizAttempt);
+  if (!rl.allowed) {
+    return NextResponse.json({ error: 'Too many quiz attempts. Try again later.' }, { status: 429 });
+  }
+
   const { id } = await params;
   const body = await request.json();
   const supabase = await createClient();

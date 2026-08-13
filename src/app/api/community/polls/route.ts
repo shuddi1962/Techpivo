@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { checkRateLimit, clientIp, RATE_LIMITS } from '@/lib/rate-limiter';
 
 export async function GET() {
   const supabase = await createClient();
@@ -12,6 +13,11 @@ export async function GET() {
 }
 
 export async function POST(request: NextRequest) {
+  const rl = checkRateLimit(`poll-vote:${clientIp(request)}`, RATE_LIMITS.pollVote);
+  if (!rl.allowed) {
+    return NextResponse.json({ error: 'Too many poll votes. Try again later.' }, { status: 429 });
+  }
+
   const body = await request.json();
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();

@@ -13,7 +13,7 @@ function str(v: unknown, max: number): string | undefined {
 }
 
 export async function POST(req: NextRequest) {
-  const auth = await requireAdminRole();
+  const auth = await requireAdminRole(["admin", "editor"], req);
   if (!auth.ok) return auth.response;
 
   let body: any;
@@ -132,8 +132,8 @@ export async function POST(req: NextRequest) {
   return NextResponse.json({ ok: true, tool: data, seeded: true });
 }
 
-export async function GET() {
-  const auth = await requireAdminRole();
+export async function GET(request: NextRequest) {
+  const auth = await requireAdminRole(["admin", "editor"], request);
   if (!auth.ok) return auth.response;
   return NextResponse.json({ error: "Use POST for tool management actions" }, { status: 400 });
 }

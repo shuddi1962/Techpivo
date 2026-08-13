@@ -1,11 +1,11 @@
-import { NextResponse } from "next/server"
+import { NextRequest, NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/admin"
 import { requireAdminRole, createServiceClient } from "@/lib/admin-auth"
 
 export const dynamic = "force-dynamic"
 
-export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
-  const auth = await requireAdminRole()
+export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const auth = await requireAdminRole(["admin", "editor"], request)
   if (!auth.ok) return auth.response
 
   const { id } = await params
@@ -39,8 +39,8 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
   return NextResponse.json({ success: true })
 }
 
-export async function DELETE(_request: Request, { params }: { params: Promise<{ id: string }> }) {
-  const auth = await requireAdminRole()
+export async function DELETE(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const auth = await requireAdminRole(["admin", "editor"], request)
   if (!auth.ok) return auth.response
 
   const { id } = await params
@@ -57,7 +57,7 @@ export async function DELETE(_request: Request, { params }: { params: Promise<{ 
     action: "delete_user",
     entity_type: "user",
     entity_id: id,
-    ip_address: _request.headers.get("x-forwarded-for")?.split(",")[0] || null,
+    ip_address: request.headers.get("x-forwarded-for")?.split(",")[0] || null,
   })
 
   return NextResponse.json({ success: true })

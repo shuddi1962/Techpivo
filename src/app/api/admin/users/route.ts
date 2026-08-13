@@ -1,11 +1,11 @@
-import { NextResponse } from "next/server"
+import { NextRequest, NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/admin"
 import { requireAdminRole, createServiceClient } from "@/lib/admin-auth"
 
 export const dynamic = "force-dynamic"
 
-export async function GET() {
-  const auth = await requireAdminRole()
+export async function GET(request: NextRequest) {
+  const auth = await requireAdminRole(["admin", "editor"], request)
   if (!auth.ok) return auth.response
   const supabase = createClient()
   const { data: authUsers, error } = await supabase.auth.admin.listUsers()
@@ -17,8 +17,8 @@ export async function GET() {
   return NextResponse.json({ users: emailMap })
 }
 
-export async function POST(request: Request) {
-  const auth = await requireAdminRole()
+export async function POST(request: NextRequest) {
+  const auth = await requireAdminRole(["admin", "editor"], request)
   if (!auth.ok) return auth.response
 
   const { email, password, fullName, role, username } = await request.json()

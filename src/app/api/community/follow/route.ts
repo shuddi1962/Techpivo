@@ -1,7 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { checkRateLimit, clientIp, RATE_LIMITS } from '@/lib/rate-limiter';
 
 export async function POST(request: NextRequest) {
+  const rl = checkRateLimit(`follow:${clientIp(request)}`, RATE_LIMITS.follow);
+  if (!rl.allowed) {
+    return NextResponse.json({ error: 'Too many follow actions. Try again later.' }, { status: 429 });
+  }
+
   const body = await request.json();
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();

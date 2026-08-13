@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { getForumCategories } from '@/lib/community';
+import { checkRateLimit, clientIp, RATE_LIMITS } from '@/lib/rate-limiter';
 
 export async function GET() {
   const categories = await getForumCategories();
@@ -8,6 +9,11 @@ export async function GET() {
 }
 
 export async function POST(request: NextRequest) {
+  const rl = checkRateLimit(`forum-post:${clientIp(request)}`, RATE_LIMITS.postCreate);
+  if (!rl.allowed) {
+    return NextResponse.json({ error: 'Too many posts. Try again later.' }, { status: 429 });
+  }
+
   const body = await request.json();
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
