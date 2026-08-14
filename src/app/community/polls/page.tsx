@@ -31,12 +31,14 @@ export default function PollsPage() {
   const [loading, setLoading] = useState(true);
   const [voteError, setVoteError] = useState<string | null>(null);
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
+  const [liveAt, setLiveAt] = useState<Date | null>(null);
 
   const loadPolls = useCallback(async () => {
     try {
       const res = await fetch('/api/community/polls');
       const data = await res.json();
       setPolls(data.polls || []);
+      setLiveAt(new Date());
       setLoading(false);
     } catch {
       setLoading(false);
@@ -51,7 +53,7 @@ export default function PollsPage() {
       .on("postgres_changes", { event: "*", schema: "public", table: "poll_votes" }, () => loadPolls())
       .subscribe();
     channelRef.current = channel;
-    const poll = setInterval(loadPolls, 30000);
+    const poll = setInterval(loadPolls, 15000);
     const onFocus = () => loadPolls();
     window.addEventListener("focus", onFocus);
     return () => {
@@ -131,6 +133,12 @@ export default function PollsPage() {
       />
 
       <div className="max-w-3xl mx-auto px-4 py-8 md:py-12">
+        <div className="flex items-center gap-2 mb-6">
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 border border-emerald-200 px-2.5 py-1 text-xs font-semibold text-emerald-700">
+            <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" /> LIVE
+          </span>
+          {liveAt && <span className="text-xs text-muted-foreground">Votes update in real time · last refresh {liveAt.toLocaleTimeString()}</span>}
+        </div>
         {voteError && (
           <div className="mb-6 p-4 rounded-xl bg-red-500/10 border border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 text-sm">
             {voteError}

@@ -11,6 +11,7 @@ import { Badge } from '@/components/ui/badge';
 import {
   Megaphone, Plus, Eye, MousePointerClick, Wallet, Pause, Play, AlertCircle, TrendingUp
 } from 'lucide-react';
+import { useFx } from '@/lib/use-fx';
 import { formatMoney, ADS_BILLING_LABELS, ADS_GOAL_LABELS, computeCampaignSpend } from '@/lib/ads';
 
 interface Campaign {
@@ -131,7 +132,8 @@ export default function MyAdsPage() {
 
   const live = campaigns.filter((c) => c.status === 'live' || c.status === 'approved');
   const pending = campaigns.filter((c) => c.status === 'pending');
-  const totalSpend = campaigns.reduce((s, c) => s + computeCampaignSpend(c), 0);
+  const fx = useFx();
+  const totalSpend = campaigns.reduce((s, c) => s + fx.convert(computeCampaignSpend(c), c.currency || 'NGN'), 0);
   const totalImpressions = campaigns.reduce((s, c) => s + (c.impressions || 0), 0);
   const totalClicks = campaigns.reduce((s, c) => s + (c.clicks || 0), 0);
 
@@ -182,7 +184,7 @@ export default function MyAdsPage() {
         {[
           { label: 'Active Campaigns', value: String(live.length), icon: TrendingUp, cls: 'text-blue-600 bg-blue-50' },
           { label: 'Pending Review', value: String(pending.length), icon: Megaphone, cls: 'text-amber-600 bg-amber-50' },
-          { label: 'Total Spend', value: formatMoney(totalSpend, 'NGN'), icon: Wallet, cls: 'text-green-600 bg-green-50' },
+          { label: 'Total Spend', value: fx.format(totalSpend, fx.displayCurrency), icon: Wallet, cls: 'text-green-600 bg-green-50' },
           { label: 'Clicks', value: totalClicks.toLocaleString(), icon: MousePointerClick, cls: 'text-purple-600 bg-purple-50' },
         ].map((k) => (
           <Card key={k.label}>

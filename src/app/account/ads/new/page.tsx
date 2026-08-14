@@ -12,6 +12,9 @@ import {
   ADS_AUDIENCE_COUNTRIES, ADS_AUDIENCE_DEVICES, ADS_AUDIENCE_INTERESTS,
   DEFAULT_FX_RATES, formatMoney,
 } from '@/lib/ads';
+import { getGeoOnce } from '@/lib/tools-geo';
+import { COUNTRY_TO_CURRENCY } from '@/lib/geo';
+import { FX_PREF_KEY } from '@/lib/use-fx';
 
 interface Placement {
   id: string;
@@ -73,6 +76,11 @@ export default function NewCampaignPage() {
   }, []);
 
   useEffect(() => {
+    getGeoOnce().then((geo) => {
+      try { if (localStorage.getItem(FX_PREF_KEY)) return; } catch { /* ignore */ }
+      const cc = geo?.countryCode ? COUNTRY_TO_CURRENCY[geo.countryCode] || geo.currency || null : null;
+      if (cc) setCurrency(cc);
+    });
     const supabase = createClient();
     supabase.auth.getUser().then(({ data }) => {
       if (data.user) {

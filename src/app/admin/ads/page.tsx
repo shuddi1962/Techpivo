@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback, useRef, type ReactNode } from "react"
 import { useRouter } from "next/navigation"
 import { createClient } from "@/lib/supabase/client"
 import { FxApprox } from "@/components/fx-approx"
+import { useFx } from "@/lib/use-fx"
 import {
   Store, LayoutGrid, Megaphone, ListChecks, TrendingUp, Settings2, BarChart3,
   Plus, Trash2, CheckCircle, XCircle, PauseCircle, PlayCircle, RefreshCw,
@@ -871,6 +872,7 @@ function AnalyticsTab({
 /* ================== AD SPACES ================== */
 
 function SpacesTab({ placements, onBuy }: { placements: Placement[]; onBuy: (p?: Placement) => void }) {
+  const fx = useFx()
   const [query, setQuery] = useState("")
   const filtered = placements.filter((p) => {
     const q = query.toLowerCase()
@@ -923,11 +925,11 @@ function SpacesTab({ placements, onBuy }: { placements: Placement[]; onBuy: (p?:
 
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8, background: S.input, borderRadius: 10, padding: "10px 12px", marginBottom: 12 }}>
                 <div>
-                  <div style={{ fontSize: 14, fontWeight: 700, color: S.text }}>{NGN(p.min_bid_cpm)}</div>
+                  <div style={{ fontSize: 14, fontWeight: 700, color: S.text }}>{fx.format(p.min_bid_cpm, "NGN")}</div>
                   <div style={{ fontSize: 11, color: S.textDim }}>min CPM bid</div>
                 </div>
                 <div>
-                  <div style={{ fontSize: 14, fontWeight: 700, color: S.text }}>{NGN(p.min_bid_cpc)}</div>
+                  <div style={{ fontSize: 14, fontWeight: 700, color: S.text }}>{fx.format(p.min_bid_cpc, "NGN")}</div>
                   <div style={{ fontSize: 11, color: S.textDim }}>min CPC bid</div>
                 </div>
                 <div>
@@ -1261,6 +1263,7 @@ function ManageTab({
   onChanged: () => void
   onError: (type: "success" | "error", text: string) => void
 }) {
+  const fx = useFx()
   const [showForm, setShowForm] = useState(false)
   const [editing, setEditing] = useState<Placement | null>(null)
   const [form, setForm] = useState({
@@ -1380,8 +1383,8 @@ function ManageTab({
                     <code style={{ fontSize: 11.5, background: S.input, padding: "3px 7px", borderRadius: 6, color: S.textMuted }}>{p.position}</code>
                   </td>
                   <td style={{ padding: "12px 16px", fontSize: 12, color: S.textMuted }}>{(p.sizes || []).join(", ")}</td>
-                  <td style={{ padding: "12px 16px", fontSize: 13, fontWeight: 700, color: S.text }}>{NGN(p.min_bid_cpm)}</td>
-                  <td style={{ padding: "12px 16px", fontSize: 13, fontWeight: 700, color: S.text }}>{NGN(p.min_bid_cpc)}</td>
+                  <td style={{ padding: "12px 16px", fontSize: 13, fontWeight: 700, color: S.text }}>{fx.format(p.min_bid_cpm, "NGN")}</td>
+                  <td style={{ padding: "12px 16px", fontSize: 13, fontWeight: 700, color: S.text }}>{fx.format(p.min_bid_cpc, "NGN")}</td>
                   <td style={{ padding: "12px 16px" }}>
                     <span style={{
                       background: p.is_active ? "#DCFCE7" : "#F1F5F9",

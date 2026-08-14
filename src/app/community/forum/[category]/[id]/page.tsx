@@ -33,7 +33,7 @@ interface Reply {
   author: { username: string; full_name: string; avatar_url: string | null; level: number };
 }
 
-export default function ForumPostPage({ params }: { params: Promise<{ category: string; id: string }> }) {
+export default function ForumPostPage({ params }: { params: { category: string; id: string } }) {
   const router = useRouter();
   const [post, setPost] = useState<ForumPost | null>(null);
   const [replies, setReplies] = useState<Reply[]>([]);
@@ -44,29 +44,28 @@ export default function ForumPostPage({ params }: { params: Promise<{ category: 
   const [saveBusy, setSaveBusy] = useState(false);
 
   useEffect(() => {
-    params.then(({ id }) => {
-      fetch(`/api/community/discussions/${id}`)
-        .then(r => r.json())
-        .then(d => {
-          if (d.redirect) { router.replace(d.redirect); return; }
-          if (d.post?.content_type === 'question') {
-            router.replace(`/answers/${d.post.slug ?? d.post.id}`);
-            return;
-          }
-          setPost(d.post);
-          setReplies(d.replies || []);
-          setLoading(false);
-        })
-        .catch(() => setLoading(false));
-      fetch('/api/community/bookmarks')
-        .then(r => r.json())
-        .then(d => {
-          if (Array.isArray(d.bookmarks)) {
-            setSaved(d.bookmarks.some((b: { item_type: string; item_id: string }) => b.item_type === 'forum_post' && b.item_id === id));
-          }
-        })
-        .catch(() => {});
-    });
+    const id = params.id;
+    fetch(`/api/community/discussions/${id}`)
+      .then(r => r.json())
+      .then(d => {
+        if (d.redirect) { router.replace(d.redirect); return; }
+        if (d.post?.content_type === 'question') {
+          router.replace(`/answers/${d.post.slug ?? d.post.id}`);
+          return;
+        }
+        setPost(d.post);
+        setReplies(d.replies || []);
+        setLoading(false);
+      })
+      .catch(() => setLoading(false));
+    fetch('/api/community/bookmarks')
+      .then(r => r.json())
+      .then(d => {
+        if (Array.isArray(d.bookmarks)) {
+          setSaved(d.bookmarks.some((b: { item_type: string; item_id: string }) => b.item_type === 'forum_post' && b.item_id === id));
+        }
+      })
+      .catch(() => {});
   }, [params, router]);
 
   const toggleSave = async () => {
@@ -111,9 +110,9 @@ export default function ForumPostPage({ params }: { params: Promise<{ category: 
     setSubmitting(false);
   };
 
-  const handleVote = async (type: 'post' | 'reply', id: string, voteType: 1 | -1) => {
+  const handleVote = async (type: 'post' | 'reply', id: string, voteType: 'up' | 'down') => {
     try {
-      await fetch('/api/community/vote', {
+      const res = await fetch('/api/community/vote', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -122,9 +121,13 @@ export default function ForumPostPage({ params }: { params: Promise<{ category: 
           vote_type: voteType,
         }),
       });
+      if (!res.ok) return;
       // Refresh votes
+      const delta = voteType === 'up' ? 1 : -1;
       if (type === 'post' && post) {
-        setPost({ ...post, vote_count: post.vote_count + voteType });
+        setPost({ ...post, vote_count: post.vote_count + delta });
+      } else if (type === 'reply') {
+        setReplies(prev => prev.map(r => (r.id === id ? { ...r, vote_count: r.vote_count + delta } : r)));
       }
     } catch (e) {
       console.error('Failed to vote');
@@ -194,9 +197,9 @@ export default function ForumPostPage({ params }: { params: Promise<{ category: 
                 )}
                 <div className="flex items-center gap-4 text-sm text-muted-foreground pt-4 border-t">
                   <div className="flex items-center gap-1">
-                    <button onClick={() => handleVote('post', post.id, 1)} className="p-1 rounded hover:bg-primary/10 hover:text-primary"><ThumbsUp className="h-4 w-4" /></button>
+                    <button onClick={() => handleVote('post', post.id, 'up')} className="p-1 rounded hover:bg-primary/10 hover:text-primary"><ThumbsUp className="h-4 w-4" /></button>
                     <span className="font-medium text-foreground">{post.vote_count}</span>
-                    <button onClick={() => handleVote('post', post.id, -1)} className="p-1 rounded hover:bg-destructive/10 hover:text-destructive"><ThumbsDown className="h-4 w-4" /></button>
+                    <button onClick={() => handleVote('post', post.id, 'down')} className="p-1 rounded hover:bg-destructive/10 hover:text-destructive"><ThumbsDown className="h-4 w-4" /></button>
                   </div>
                   <span className="flex items-center gap-1"><MessageSquare className="h-4 w-4" /> {post.reply_count}</span>
                   <span className="flex items-center gap-1"><Eye className="h-4 w-4" /> {post.view_count}</span>
@@ -246,9 +249,9 @@ export default function ForumPostPage({ params }: { params: Promise<{ category: 
                     <div className="text-sm">{reply.content}</div>
                     <div className="flex items-center gap-3 mt-2 text-sm text-muted-foreground">
                       <div className="flex items-center gap-1">
-                        <button onClick={() => handleVote('reply', reply.id, 1)} className="p-0.5 rounded hover:bg-primary/10 hover:text-primary"><ThumbsUp className="h-3 w-3" /></button>
+                        <button onClick={() => handleVote('reply', reply.id, 'up')} className="p-0.5 rounded hover:bg-primary/10 hover:text-primary"><ThumbsUp className="h-3 w-3" /></button>
                         <span className="font-medium text-foreground">{reply.vote_count}</span>
-                        <button onClick={() => handleVote('reply', reply.id, -1)} className="p-0.5 rounded hover:bg-destructive/10 hover:text-destructive"><ThumbsDown className="h-3 w-3" /></button>
+                        <button onClick={() => handleVote('reply', reply.id, 'down')} className="p-0.5 rounded hover:bg-destructive/10 hover:text-destructive"><ThumbsDown className="h-3 w-3" /></button>
                       </div>
                     </div>
                   </div>

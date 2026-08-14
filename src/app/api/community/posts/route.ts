@@ -268,7 +268,7 @@ export async function POST(request: NextRequest) {
       difficulty,
       bounty_points: bounty,
       excerpt: content.length > 240 ? content.slice(0, 240) + '…' : content || null,
-      meta: Object.keys(meta).length ? meta : null,
+      meta: Object.keys(meta).length ? meta : {},
     })
     .select()
     .single();

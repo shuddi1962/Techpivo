@@ -49,7 +49,7 @@ interface QuizState {
   results: QuestionResult[];
 }
 
-export default function QuizRunnerPage({ params }: { params: Promise<{ id: string }> }) {
+export default function QuizRunnerPage({ params }: { params: { id: string } }) {
   const router = useRouter();
   const [quiz, setQuiz] = useState<Quiz | null>(null);
   const [state, setState] = useState<QuizState>({
@@ -67,13 +67,12 @@ export default function QuizRunnerPage({ params }: { params: Promise<{ id: strin
   });
 
   useEffect(() => {
-    params.then(({ id }) => {
-      fetch(`/api/community/quiz/${id}`).then(r => r.json()).then(data => {
-        setQuiz(data.quiz);
-        setState(prev => ({ ...prev, questions: data.questions, status: 'ready' }));
-      }).catch(() => {
-        setState(prev => ({ ...prev, status: 'ready' }));
-      });
+    const id = params.id;
+    fetch(`/api/community/quiz/${id}`).then(r => r.json()).then(data => {
+      setQuiz(data.quiz);
+      setState(prev => ({ ...prev, questions: data.questions, status: 'ready' }));
+    }).catch(() => {
+      setState(prev => ({ ...prev, status: 'ready' }));
     });
   }, [params]);
 
@@ -99,32 +98,31 @@ export default function QuizRunnerPage({ params }: { params: Promise<{ id: strin
     } else {
       // Server-side grading — correct answers never reach the browser.
       setState(prev => ({ ...prev, status: 'finished' }));
-      params.then(({ id }) => {
-        fetch(`/api/community/quiz/${id}/attempt`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            time_taken: state.timeElapsed,
-            answers: state.answers,
-          }),
+      const id = params.id;
+      fetch(`/api/community/quiz/${id}/attempt`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          time_taken: state.timeElapsed,
+          answers: state.answers,
+        }),
+      })
+        .then(r => r.json().then(data => ({ ok: r.ok, data })))
+        .then(({ ok, data }) => {
+          if (ok) {
+            setState(prev => ({
+              ...prev,
+              attemptSaved: true,
+              score: data.score ?? prev.score,
+              correctAnswers: data.correct_answers ?? prev.correctAnswers,
+              xpAwarded: !!data.xp_awarded,
+              results: data.results ?? [],
+            }));
+          } else {
+            setState(prev => ({ ...prev, saveError: true }));
+          }
         })
-          .then(r => r.json().then(data => ({ ok: r.ok, data })))
-          .then(({ ok, data }) => {
-            if (ok) {
-              setState(prev => ({
-                ...prev,
-                attemptSaved: true,
-                score: data.score ?? prev.score,
-                correctAnswers: data.correct_answers ?? prev.correctAnswers,
-                xpAwarded: !!data.xp_awarded,
-                results: data.results ?? [],
-              }));
-            } else {
-              setState(prev => ({ ...prev, saveError: true }));
-            }
-          })
-          .catch(() => setState(prev => ({ ...prev, saveError: true })));
-      });
+        .catch(() => setState(prev => ({ ...prev, saveError: true })));
     }
   };
 

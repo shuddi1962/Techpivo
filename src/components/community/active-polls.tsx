@@ -29,6 +29,7 @@ export function ActivePolls() {
   const [votedPolls, setVotedPolls] = useState<Record<string, string>>({});
   const [error, setError] = useState<string | null>(null);
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
+  const [liveAt, setLiveAt] = useState<Date | null>(null);
 
   const loadPolls = useCallback(async (quiet = false) => {
     try {
@@ -36,6 +37,7 @@ export function ActivePolls() {
       if (!res.ok) return;
       const data = await res.json();
       setPolls(data.polls || []);
+      setLiveAt(new Date());
     } catch {
       if (!quiet) setError('Could not load polls. Please try again.');
     }
@@ -49,7 +51,7 @@ export function ActivePolls() {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'poll_votes' }, () => loadPolls(true))
       .subscribe();
     channelRef.current = channel;
-    const poll = setInterval(() => loadPolls(true), 30000);
+    const poll = setInterval(() => loadPolls(true), 15000);
     const onFocus = () => loadPolls(true);
     window.addEventListener('focus', onFocus);
     return () => {
@@ -96,10 +98,16 @@ export function ActivePolls() {
         <h2 className="text-2xl font-bold flex items-center gap-2">
           <BarChart3 className="h-6 w-6 text-green-500" />
           Active Polls
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-green-50 border border-green-200 px-2 py-0.5 text-[11px] font-semibold text-green-700">
+            <span className="h-1.5 w-1.5 rounded-full bg-green-500 animate-pulse" /> LIVE
+          </span>
         </h2>
-        <Link href="/community/polls">
-          <Button variant="outline" size="sm">All Polls <ArrowRight className="ml-1 h-4 w-4" /></Button>
-        </Link>
+        <div className="flex items-center gap-3">
+          {liveAt && <span className="text-[11px] text-textSecondary">Updated {liveAt.toLocaleTimeString()}</span>}
+          <Link href="/community/polls">
+            <Button variant="outline" size="sm">All Polls <ArrowRight className="ml-1 h-4 w-4" /></Button>
+          </Link>
+        </div>
       </div>
       {error && (
         <div className="mb-4 p-3 rounded-xl bg-red-500/10 border border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 text-sm">
@@ -110,7 +118,14 @@ export function ActivePolls() {
         {polls.slice(0, 4).map((poll) => {
           const hasVoted = !!votedPolls[poll.id];
           return (
-            <Card key={poll.id}>
+            <Card key={poll.id} className="overflow-hidden">
+              {poll.image_url && (
+                <div className="relative h-36 overflow-hidden">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={poll.image_url} alt={poll.title} loading="lazy" className="w-full h-full object-cover" />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-transparent" />
+                </div>
+              )}
               <CardContent className="p-5">
                 <h3 className="font-semibold mb-3">{poll.title}</h3>
                 <div className="space-y-2">

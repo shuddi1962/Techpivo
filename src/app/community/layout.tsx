@@ -1,5 +1,4 @@
 import type { Metadata } from "next"
-import { CommunityHeader } from '@/components/community/community-header'
 import { CommandCenter } from '@/components/community/command-center'
 
 export const metadata: Metadata = {
@@ -10,7 +9,6 @@ export const metadata: Metadata = {
 export default function CommunityLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-screen bg-surface-2">
-      <CommunityHeader />
       <CommandCenter />
       <main className="w-full">{children}</main>
     </div>
