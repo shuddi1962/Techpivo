@@ -116,6 +116,63 @@ export function collectionPageSchema(name: string, description: string, url: str
   }
 }
 
+/** Q&A page for a question post with its accepted answer highlighted. */
+export function qaPageSchema(post: {
+  title: string;
+  description?: string;
+  url: string;
+  datePublished: string;
+  dateModified?: string;
+  authorName?: string | null;
+  answerCount: number;
+  acceptedAnswer?: { text: string; authorName?: string | null; datePublished?: string } | null;
+}) {
+  const mainEntity: Record<string, unknown> = {
+    "@type": "Question",
+    name: post.title,
+    text: post.description,
+    url: post.url,
+    datePublished: post.datePublished,
+    dateModified: post.dateModified,
+    author: post.authorName ? { "@type": "Person", name: post.authorName } : { "@type": "Organization", name: SITE_NAME },
+    answerCount: post.answerCount,
+  }
+  if (post.acceptedAnswer) {
+    mainEntity.acceptedAnswer = {
+      "@type": "Answer",
+      text: post.acceptedAnswer.text.slice(0, 250),
+      author: post.acceptedAnswer.authorName ? { "@type": "Person", name: post.acceptedAnswer.authorName } : undefined,
+      datePublished: post.acceptedAnswer.datePublished,
+    }
+  }
+  return {
+    "@context": "https://schema.org",
+    "@type": "QAPage",
+    mainEntity,
+  }
+}
+
+/** DiscussionForumPosting schema for non-question forum posts. */
+export function discussionForumPostingSchema(post: {
+  title: string;
+  text?: string;
+  url: string;
+  datePublished: string;
+  dateModified?: string;
+  authorName?: string | null;
+}) {
+  return {
+    "@context": "https://schema.org",
+    "@type": "DiscussionForumPosting",
+    headline: post.title,
+    text: post.text?.slice(0, 300),
+    url: post.url,
+    datePublished: post.datePublished,
+    dateModified: post.dateModified,
+    author: post.authorName ? { "@type": "Person", name: post.authorName } : { "@type": "Organization", name: SITE_NAME },
+  }
+}
+
 export function profilePageSchema(author: any) {
   return {
     "@context": "https://schema.org",

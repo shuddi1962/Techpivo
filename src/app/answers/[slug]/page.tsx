@@ -1,439 +1,138 @@
-'use client';
+import type { Metadata } from 'next';
+import { Suspense } from 'react';
+import { notFound } from 'next/navigation';
+import { createClient } from '@/lib/supabase/server';
+import { findPostBySlugOrId, type AuthorShape } from '@/lib/community-server';
+import { qaPageSchema, discussionForumPostingSchema, breadcrumbSchema } from '@/lib/jsonld';
+import { SITE_NAME, SITE_URL } from '@/lib/constants';
+import { JsonLd } from '@/components/ui/jsonld';
+import AnswerPage from './answer-page';
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useParams, useRouter, useSearchParams } from 'next/navigation';
-import Link from 'next/link';
-import { CommunityMarkdown } from '@/components/community/community-markdown';
-import { VoteControl } from '@/components/community/vote-control';
-import { TopicChip } from '@/components/community/topic-chip';
-import { AnswerSkeleton } from '@/components/community/skeletons';
-import { CONTENT_TYPE_META, QUESTION_STATUS_META, questionHealthFor, type CommunityPost, type CommunityReply } from '@/lib/community-types';
-import { timeAgo, formatNumber, getLevelForXP } from '@/lib/community-utils';
-import { cn } from '@/lib/utils';
-import {
-  CheckCircle2, CircleCheck, Copy, Eye, Gift, Link2, Loader2, MessageSquare,
-  PenLine, Share2, Sparkles, TriangleAlert, Send,
-} from 'lucide-react';
+export const dynamic = 'force-dynamic';
 
-type Sort = 'best' | 'newest' | 'oldest';
-
-interface ApiResponse {
-  post: CommunityPost;
-  replies: CommunityReply[];
-  related: { id: string; title: string; slug: string | null; reply_count: number; vote_count: number; question_status: string; created_at: string }[];
-  my_votes: { target_id: string; vote: string }[];
-  current_user: { id: string } | null;
+interface PageProps {
+  params: Promise<{ slug: string }>;
 }
 
-const STATUS_TONE: Record<string, string> = {
-  muted: 'text-textSecondary',
-  info: 'text-info',
-  warning: 'text-warning',
-  success: 'text-success',
-  danger: 'text-danger',
-  verified: 'text-verified',
-};
+const POST_SELECT = 'id, slug, title, content, content_type, created_at, updated_at, author_id, accepted_reply_id, reply_count';
 
-export default function AnswerPage() {
-  const params = useParams<{ slug: string }>();
-  const searchParams = useSearchParams();
-  const router = useRouter();
+interface AnswerPost {
+  id: string;
+  slug: string | null;
+  title: string;
+  content: string;
+  content_type: string;
+  created_at: string;
+  updated_at: string | null;
+  author_id: string | null;
+  accepted_reply_id: string | null;
+  reply_count: number | null;
+}
 
-  const [data, setData] = useState<ApiResponse | null>(null);
-  const [sort, setSort] = useState<Sort>('best');
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const [answerContent, setAnswerContent] = useState('');
-  const [submitting, setSubmitting] = useState(false);
-  const [copied, setCopied] = useState(false);
-  const [focusReplyId, setFocusReplyId] = useState<string | null>(null);
+const stripMd = (s: string) => s.replace(/[#>*`\[\]()!-]/g, ' ').replace(/\s+/g, ' ').trim();
 
-  const slug = params.slug;
-  const answerBoxRef = useRef<HTMLDivElement>(null);
-
-  const load = useCallback(async () => {
-    setLoading(true);
-    try {
-      const res = await fetch(`/api/community/answers/${encodeURIComponent(slug)}?sort=${sort}`);
-      if (res.status === 301) {
-        const d = await res.json();
-        if (d.redirect) { router.replace(d.redirect); return; }
-      }
-      if (!res.ok) {
-        setError((await res.json().catch(() => ({}))).error || 'Question not found.');
-        setLoading(false);
-        return;
-      }
-      const d: ApiResponse = await res.json();
-      setData(d);
-      setError('');
-    } catch {
-      setError('Failed to load question.');
-    }
-    setLoading(false);
-  }, [slug, sort, router]);
-
-  useEffect(() => { void load(); }, [load]);
-
-  // Scroll to a focused reply (e.g. ?focus=<id> from notifications)
-  useEffect(() => {
-    const f = searchParams.get('focus');
-    if (f && data) {
-      setFocusReplyId(f);
-      setTimeout(() => {
-        document.getElementById(`reply-${f}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      }, 250);
-    }
-  }, [searchParams, data]);
-
-  const post = data?.post ?? null;
-  const status = useMemo(() => (post ? questionHealthFor(post) : 'new'), [post]);
-  const statusMeta = post ? QUESTION_STATUS_META[status] : null;
-  const meta = post ? CONTENT_TYPE_META[post.content_type] : null;
-  const Icon = meta?.icon;
-  const isAuthor = data?.current_user?.id && post ? data.current_user.id === post.author_id : false;
-  const answers = data?.replies ?? [];
-  const answeredIds = useMemo(() => new Set(data?.my_votes.map(v => v.target_id) ?? []), [data]);
-  const accepted = answers.find(r => r.is_accepted);
-
-  const submitAnswer = async () => {
-    if (!answerContent.trim() || submitting) return;
-    setSubmitting(true);
-    setError('');
-    try {
-      const res = await fetch(`/api/community/answers/${encodeURIComponent(slug)}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ content: answerContent.trim() }),
-      });
-      const d = await res.json();
-      if (!res.ok) {
-        if (res.status === 401) setError('Sign in to answer this question.');
-        else setError(d.error || 'Failed to post answer.');
-        return;
-      }
-      setAnswerContent('');
-      await load();
-      setTimeout(() => {
-        document.getElementById(`reply-${d.reply?.id}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      }, 150);
-    } catch {
-      setError('Network error — try again.');
-    }
-    setSubmitting(false);
+export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
+  const { slug } = await params;
+  const supabase = await createClient();
+  const { data: post } = await findPostBySlugOrId<AnswerPost>(supabase, slug, POST_SELECT);
+  if (!post) return { title: 'Not Found' };
+  const canonical = `${SITE_URL}/answers/${post.slug ?? post.id}`;
+  const description = stripMd(post.content).slice(0, 155) || post.title;
+  return {
+    title: `${post.title} — TechPivo Community`,
+    description,
+    alternates: { canonical },
+    openGraph: {
+      title: post.title,
+      description,
+      url: canonical,
+      type: post.content_type === 'question' ? 'article' : 'website',
+    },
+    twitter: {
+      card: 'summary',
+      title: post.title,
+      description,
+    },
   };
+}
 
-  const acceptAnswer = async (replyId: string) => {
-    if (!confirm('Accept this answer? The author earns reputation and the question is marked solved.')) return;
-    setError('');
-    try {
-      const res = await fetch(`/api/community/answers/${encodeURIComponent(slug)}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ reply_id: replyId }),
-      });
-      if (!res.ok) {
-        const d = await res.json().catch(() => ({}));
-        if (res.status === 401) setError('Sign in to accept an answer.');
-        else setError(d.error || 'Failed to accept answer.');
-        return;
+export default async function AnswerPageWrapper({ params }: PageProps) {
+  const { slug } = await params;
+  const supabase = await createClient();
+  const { data: post } = await findPostBySlugOrId<AnswerPost>(supabase, slug, POST_SELECT);
+  if (!post) notFound();
+
+  const url = `${SITE_URL}/answers/${post.slug ?? post.id}`;
+  let author: AuthorShape | null = null;
+  if (post.author_id) {
+    const { data: p } = await supabase
+      .from('user_profiles')
+      .select('id, username, full_name, avatar_url')
+      .eq('id', post.author_id)
+      .maybeSingle();
+    author = p as AuthorShape | null;
+  }
+  const authorName = author?.full_name || author?.username || null;
+
+  let acceptedText: string | null = null;
+  let acceptedAuthor: string | null = null;
+  if (post.accepted_reply_id) {
+    const { data: accepted } = await supabase
+      .from('forum_replies')
+      .select('content, author_id, created_at')
+      .eq('id', post.accepted_reply_id)
+      .maybeSingle();
+    if (accepted) {
+      acceptedText = stripMd(accepted.content).slice(0, 500) || null;
+      if (accepted.author_id) {
+        const { data: ap } = await supabase
+          .from('user_profiles')
+          .select('username, full_name')
+          .eq('id', accepted.author_id)
+          .maybeSingle();
+        acceptedAuthor = (ap as { username?: string | null; full_name?: string | null } | null)?.full_name ?? null;
+        if (!acceptedAuthor) acceptedAuthor = (ap as { username?: string | null } | null)?.username ?? null;
       }
-      await load();
-    } catch {
-      setError('Network error — try again.');
     }
-  };
-
-  const share = async () => {
-    const url = window.location.href;
-    try {
-      if (navigator.share) { await navigator.share({ title: post?.title, url }); return; }
-      await navigator.clipboard.writeText(url);
-    } catch {
-      // fall through
-    }
-    setCopied(true);
-    setTimeout(() => setCopied(false), 1500);
-  };
-
-  if (loading) return <AnswerSkeleton />;
-
-  if (!post || error) {
-    return (
-      <div className="max-w-3xl mx-auto py-16 text-center">
-        <TriangleAlert className="mx-auto h-8 w-8 text-warning mb-3" aria-hidden />
-        <h1 className="text-lg font-semibold text-textPrimary">Question not found</h1>
-        <p className="text-sm text-textSecondary mt-1 mb-5">{error || 'It may have been removed or unpublished.'}</p>
-        <Link href="/community/questions" className="text-sm font-medium text-brand hover:underline">Browse questions</Link>
-      </div>
-    );
   }
 
+  const schemas = [
+    post.content_type === 'question'
+      ? qaPageSchema({
+          title: post.title,
+          description: stripMd(post.content).slice(0, 300) || undefined,
+          url,
+          datePublished: post.created_at,
+          dateModified: post.updated_at ?? undefined,
+          authorName,
+          answerCount: post.reply_count ?? 0,
+          acceptedAnswer: acceptedText
+            ? { text: acceptedText, authorName: acceptedAuthor, datePublished: undefined }
+            : null,
+        })
+      : discussionForumPostingSchema({
+          title: post.title,
+          text: stripMd(post.content),
+          url,
+          datePublished: post.created_at,
+          dateModified: post.updated_at ?? undefined,
+          authorName,
+        }),
+    breadcrumbSchema([
+      { name: 'Community', url: `${SITE_URL}/community` },
+      { name: 'Answers', url: `${SITE_URL}/community/questions` },
+      { name: post.title },
+    ]),
+  ];
+
   return (
-    <div className="max-w-4xl mx-auto">
-      {/* JSON-LD QAPage */}
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{
-          __html: JSON.stringify({
-            '@context': 'https://schema.org',
-            '@type': 'QAPage',
-            mainEntity: {
-              '@type': 'Question',
-              name: post.title,
-              text: post.content,
-              dateCreated: post.created_at,
-              author: { '@type': 'Person', name: post.author?.username || 'Anonymous' },
-              acceptedAnswer: accepted ? {
-                '@type': 'Answer',
-                text: accepted.content.slice(0, 300),
-                dateCreated: accepted.created_at,
-                upvoteCount: accepted.vote_count,
-                author: { '@type': 'Person', name: accepted.author?.username || 'Anonymous' },
-              } : undefined,
-              suggestedAnswer: answers.filter(r => !r.is_accepted).slice(0, 3).map(r => ({
-                '@type': 'Answer',
-                text: r.content.slice(0, 300),
-                dateCreated: r.created_at,
-                upvoteCount: r.vote_count,
-                author: { '@type': 'Person', name: r.author?.username || 'Anonymous' },
-              })),
-            },
-          }),
-        }}
-      />
-
-      {/* Question */}
-      <article className="rounded-2xl border border-borderSoft bg-surface p-5 sm:p-6">
-        <div className="flex gap-4">
-          <div className="hidden sm:block shrink-0">
-            <VoteControl postId={post.id} initialCount={post.vote_count} initialVote={answeredIds.has(post.id) ? (data!.my_votes.find(v => v.target_id === post.id)?.vote as 'up' | 'down') || null : null} />
-          </div>
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 flex-wrap mb-2">
-              {Icon && <Icon className="h-4 w-4 text-brand" aria-hidden />}
-              <span className="text-[11px] font-semibold uppercase tracking-wide text-textSecondary">{meta?.label}</span>
-              {statusMeta && (
-                <span className={cn('inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium', statusMeta.tone === 'success' ? 'bg-success/10 text-success' : statusMeta.tone === 'danger' ? 'bg-danger/10 text-danger' : statusMeta.tone === 'warning' ? 'bg-warning/10 text-warning' : statusMeta.tone === 'info' ? 'bg-info/10 text-info' : statusMeta.tone === 'verified' ? 'bg-verified/10 text-verified' : 'bg-surface-2 text-textSecondary')}>
-                  {statusMeta.label}
-                </span>
-              )}
-              {post.bounty_points > 0 && (
-                <span className="inline-flex items-center gap-1 rounded-full bg-warning/10 px-2 py-0.5 text-[11px] font-medium text-warning">
-                  <Gift className="h-3 w-3" aria-hidden /> +{post.bounty_points} bounty
-                </span>
-              )}
-              <span className="ml-auto text-xs text-textSecondary flex items-center gap-3">
-                <span className="flex items-center gap-1"><Eye className="h-3.5 w-3.5" aria-hidden /> {formatNumber(post.view_count)}</span>
-                <span className="flex items-center gap-1"><MessageSquare className="h-3.5 w-3.5" aria-hidden /> {formatNumber(answers.length)}</span>
-              </span>
-            </div>
-
-            <h1 className="text-xl sm:text-2xl font-bold text-textPrimary font-[family-name:var(--font-syne)] leading-snug">{post.title}</h1>
-
-            <div className="flex items-center gap-2 mt-3 text-sm text-textSecondary">
-              <Link href={`/u/${post.author?.username ?? post.author_id}`} className="flex items-center gap-2 min-w-0">
-                {post.author?.avatar_url ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={post.author.avatar_url} alt="" className="h-6 w-6 rounded-full object-cover" />
-                ) : (
-                  <span className="flex h-6 w-6 items-center justify-center rounded-full bg-brand/10 text-xs font-bold text-brand">
-                    {(post.author?.full_name || post.author?.username || '?')[0]}
-                  </span>
-                )}
-                <span className="truncate font-medium text-textPrimary hover:text-brand">{post.author?.full_name || post.author?.username || 'Member'}</span>
-              </Link>
-              <span className="text-xs">Lv.{post.author?.level ?? 1}</span>
-              <span aria-hidden>·</span>
-              <span className="text-xs">{timeAgo(post.created_at)}</span>
-            </div>
-
-            {post.content && (
-              <div className="mt-4 text-[15px] leading-relaxed text-textPrimary">
-                <CommunityMarkdown content={post.content} />
-              </div>
-            )}
-
-            {(post.tags?.length > 0 || post.category) && (
-              <div className="flex flex-wrap items-center gap-2 mt-4">
-                {post.category && (
-                  <Link href={`/community/forum/${post.category.slug}`} className="text-xs text-textSecondary hover:text-brand">
-                    in {post.category.name}
-                  </Link>
-                )}
-                {post.tags?.map(t => <TopicChip key={t} topic={{ slug: t, name: t } as never} />)}
-              </div>
-            )}
-
-            <div className="flex items-center gap-3 mt-5 pt-4 border-t border-borderSoft sm:hidden">
-              <VoteControl postId={post.id} initialCount={post.vote_count} size="sm" />
-              <button type="button" onClick={share} className="inline-flex items-center gap-1.5 text-xs text-textSecondary hover:text-brand">
-                {copied ? <Copy className="h-3.5 w-3.5" aria-hidden /> : <Share2 className="h-3.5 w-3.5" aria-hidden />}
-                {copied ? 'Copied!' : 'Share'}
-              </button>
-            </div>
-          </div>
-        </div>
-      </article>
-
-      {/* Health / resurrection panel */}
-      {status === 'unanswered' || status === 'new' || status === 'needs_context' ? (
-        <div className="mt-4 rounded-xl border border-warning/30 bg-warning/5 p-4 flex flex-col sm:flex-row sm:items-center gap-3">
-          <Sparkles className="h-5 w-5 text-warning shrink-0" aria-hidden />
-          <div className="flex-1 text-sm text-textPrimary">
-            <strong>No answers yet.</strong> {isAuthor ? 'Your question is still open — share it to get help.' : 'Be the first to help this member.'}
-          </div>
-          {!isAuthor && (
-            <button
-              type="button"
-              onClick={() => answerBoxRef.current?.scrollIntoView({ behavior: 'smooth' })}
-              className="inline-flex items-center gap-1.5 rounded-lg bg-warning px-3.5 py-2 text-xs font-semibold text-white hover:opacity-90"
-            >
-              <PenLine className="h-3.5 w-3.5" aria-hidden /> Answer this question
-            </button>
-          )}
-        </div>
-      ) : status === 'stale' && (
-        <div className="mt-4 rounded-xl border border-info/30 bg-info/5 p-4 text-sm text-textPrimary">
-          <strong className="text-info">This question may need a fresh answer.</strong> Tech changes fast — if you have updated info, add it below.
-        </div>
-      )}
-
-      {/* Answers */}
-      <section className="mt-8" aria-label="Answers">
-        <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
-          <h2 className="text-base font-bold text-textPrimary font-[family-name:var(--font-syne)]">
-            {answers.length} {answers.length === 1 ? 'Answer' : 'Answers'}
-          </h2>
-          <div className="flex gap-1 rounded-lg border border-borderSoft bg-surface p-0.5">
-            {(['best', 'newest', 'oldest'] as Sort[]).map(s => (
-              <button
-                key={s}
-                type="button"
-                onClick={() => setSort(s)}
-                className={cn(
-                  'rounded-md px-3 py-1 text-xs font-medium capitalize transition-colors',
-                  sort === s ? 'bg-brand text-white' : 'text-textSecondary hover:text-textPrimary'
-                )}
-              >
-                {s}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {answers.length === 0 && (
-          <div className="rounded-xl border border-borderSoft bg-surface p-8 text-center">
-            <MessageSquare className="mx-auto h-6 w-6 text-textSecondary mb-2" aria-hidden />
-            <p className="text-sm text-textSecondary">Nothing here yet. Share what you know!</p>
-          </div>
-        )}
-
-        <div className="space-y-4">
-          {answers.map(r => (
-            <article
-              key={r.id}
-              id={`reply-${r.id}`}
-              className={cn(
-                'rounded-xl border bg-surface p-4 sm:p-5 scroll-mt-24',
-                r.is_accepted
-                  ? 'border-success/60 ring-1 ring-success/30'
-                  : 'border-borderSoft'
-              )}
-            >
-              <div className="flex gap-3">
-                <div className="hidden sm:block shrink-0">
-                  <VoteControl replyId={r.id} initialCount={r.vote_count} initialVote={answeredIds.has(r.id) ? (data!.my_votes.find(v => v.target_id === r.id)?.vote as 'up' | 'down') || null : null} />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 flex-wrap mb-2">
-                    <Link href={`/u/${r.author?.username ?? r.author_id}`} className="flex items-center gap-2 min-w-0">
-                      {r.author?.avatar_url ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img src={r.author.avatar_url} alt="" className="h-5 w-5 rounded-full object-cover" />
-                      ) : (
-                        <span className="flex h-5 w-5 items-center justify-center rounded-full bg-brand/10 text-[10px] font-bold text-brand">
-                          {(r.author?.full_name || r.author?.username || '?')[0]}
-                        </span>
-                      )}
-                      <span className="truncate text-sm font-medium text-textPrimary hover:text-brand">{r.author?.full_name || r.author?.username || 'Member'}</span>
-                    </Link>
-                    <span className="text-xs text-textSecondary">Lv.{r.author?.level ?? 1}</span>
-                    <span className="text-xs text-textSecondary">{timeAgo(r.created_at)}</span>
-                    {r.is_accepted && (
-                      <span className="inline-flex items-center gap-1 rounded-full bg-success/10 px-2 py-0.5 text-[11px] font-semibold text-success">
-                        <CircleCheck className="h-3 w-3" aria-hidden /> Accepted answer
-                      </span>
-                    )}
-                  </div>
-                  <div className="text-sm leading-relaxed text-textPrimary">
-                    <CommunityMarkdown content={r.content} />
-                  </div>
-                  <div className="flex items-center gap-3 mt-3 sm:hidden">
-                    <VoteControl replyId={r.id} initialCount={r.vote_count} size="sm" />
-                  </div>
-                  {isAuthor && !post.is_solved && (
-                    <div className="mt-3 flex justify-end">
-                      <button
-                        type="button"
-                        onClick={() => acceptAnswer(r.id)}
-                        className="inline-flex items-center gap-1.5 rounded-lg border border-success/40 bg-success/5 px-3 py-1.5 text-xs font-semibold text-success hover:bg-success/10"
-                      >
-                        <CheckCircle2 className="h-3.5 w-3.5" aria-hidden /> Accept answer
-                      </button>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </article>
-          ))}
-        </div>
-      </section>
-
-      {/* Answer form */}
-      <div ref={answerBoxRef} className="mt-8 rounded-xl border border-borderSoft bg-surface p-5">
-        <h2 className="text-base font-bold text-textPrimary font-[family-name:var(--font-syne)] mb-3">Your answer</h2>
-        <textarea
-          value={answerContent}
-          onChange={e => setAnswerContent(e.target.value)}
-          placeholder="Write a clear, helpful answer. Support claims with links or code where useful."
-          rows={5}
-          maxLength={20000}
-          className="w-full rounded-lg border border-borderSoft bg-surface-2 px-3 py-2.5 text-sm text-textPrimary placeholder:text-textSecondary/60 focus:outline-none focus:ring-2 focus:ring-brand/40 resize-y"
-        />
-        <div className="flex items-center justify-between mt-3 gap-3">
-          <p className="text-xs text-textSecondary">{answerContent.length}/20000</p>
-          <button
-            type="button"
-            onClick={submitAnswer}
-            disabled={submitting || answerContent.trim().length < 15}
-            className="inline-flex items-center gap-2 rounded-lg bg-brand px-5 py-2.5 text-sm font-semibold text-white hover:opacity-90 disabled:opacity-50 transition-opacity"
-          >
-            {submitting ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : <Send className="h-4 w-4" aria-hidden />}
-            {submitting ? 'Posting…' : 'Post answer'}
-          </button>
-        </div>
-      </div>
-
-      {/* Related */}
-      {data && data.related.length > 0 && (
-        <section className="mt-10" aria-label="Related questions">
-          <h2 className="text-base font-bold text-textPrimary font-[family-name:var(--font-syne)] mb-3">Related questions</h2>
-          <div className="space-y-2">
-            {data.related.map(r => (
-              <Link
-                key={r.id}
-                href={`/answers/${r.slug ?? r.id}`}
-                className="flex items-center gap-3 rounded-lg border border-borderSoft bg-surface px-4 py-3 hover:bg-surface-elevated transition-colors"
-              >
-                <MessageSquare className="h-4 w-4 shrink-0 text-textSecondary" aria-hidden />
-                <span className="flex-1 min-w-0 truncate text-sm text-textPrimary">{r.title}</span>
-                <span className="text-xs text-textSecondary shrink-0">{r.reply_count} answers</span>
-              </Link>
-            ))}
-          </div>
-        </section>
-      )}
-    </div>
+    <>
+      {schemas.map((s, i) => (
+        <JsonLd key={i} data={s} />
+      ))}
+      <Suspense fallback={<div className="py-10 text-center text-sm text-textSecondary">Loading…</div>}>
+        <AnswerPage />
+      </Suspense>
+    </>
   );
 }

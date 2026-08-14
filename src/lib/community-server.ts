@@ -38,11 +38,15 @@ const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
 
 /** Look up a forum post by slug (primary) or raw UUID id — NEVER use PostgREST
  * `.or(slug.eq.X,id.eq.X)` (it type-checks the whole OR and 400s on non-UUID). */
-export async function findPostBySlugOrId(supabase: SupabaseClient, value: string, select: string) {
+export async function findPostBySlugOrId<T>(
+  supabase: SupabaseClient,
+  value: string,
+  select: string
+): Promise<{ data: T | null }> {
   const bySlug = await supabase.from('forum_posts').select(select).eq('slug', value).maybeSingle();
-  if (bySlug.data) return bySlug;
-  if (UUID_RE.test(value)) return supabase.from('forum_posts').select(select).eq('id', value).maybeSingle();
-  return bySlug;
+  if (bySlug.data) return bySlug as { data: T | null };
+  if (UUID_RE.test(value)) return (await supabase.from('forum_posts').select(select).eq('id', value).maybeSingle()) as { data: T | null };
+  return bySlug as { data: T | null };
 }
 
 export type TopicShape = {
