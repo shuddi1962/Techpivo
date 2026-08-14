@@ -204,19 +204,19 @@ export default function AnswerPage() {
             mainEntity: {
               '@type': 'Question',
               name: post.title,
-              text: post.content,
+              text: post.content || '',
               dateCreated: post.created_at,
               author: { '@type': 'Person', name: post.author?.username || 'Anonymous' },
               acceptedAnswer: accepted ? {
                 '@type': 'Answer',
-                text: accepted.content.slice(0, 300),
+                text: (accepted.content || '').slice(0, 300),
                 dateCreated: accepted.created_at,
                 upvoteCount: accepted.vote_count,
                 author: { '@type': 'Person', name: accepted.author?.username || 'Anonymous' },
               } : undefined,
               suggestedAnswer: answers.filter(r => !r.is_accepted).slice(0, 3).map(r => ({
                 '@type': 'Answer',
-                text: r.content.slice(0, 300),
+                text: (r.content || '').slice(0, 300),
                 dateCreated: r.created_at,
                 upvoteCount: r.vote_count,
                 author: { '@type': 'Person', name: r.author?.username || 'Anonymous' },

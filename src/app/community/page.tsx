@@ -5,12 +5,13 @@ import { Button } from '@/components/ui/button';
 import { JsonLd } from '@/components/ui/jsonld';
 import { breadcrumbSchema, collectionPageSchema } from '@/lib/jsonld';
 import { createClient } from '@/lib/supabase/server';
-import { getLeaderboard, getQuizzes, getActivePolls, getForumCategories, getUpcomingEvents, LEVELS, BADGES, getLevelForXP } from '@/lib/community';
+import { getLeaderboard, getQuizzes, getForumCategories, getUpcomingEvents, LEVELS, BADGES, getLevelForXP } from '@/lib/community';
 import { MessageSquare, Trophy, Brain, BarChart3, BookOpen, Users, Flame, Star, ArrowRight, Zap, Target, Award, Calendar, MapPin, Clock, Star as StarIcon, Rocket, Cpu, Gem, Medal, Sparkles, Crown, HeartPulse, ShieldCheck, Wrench, GraduationCap, UserCheck, Smartphone } from 'lucide-react';
 import { SITE_URL } from '@/lib/constants';
 import PageIntro from '@/components/pages/page-intro';
 import { CommunityFeed } from '@/components/community/community-feed';
 import { CommunityHero } from '@/components/community/community-hero';
+import { ActivePolls } from '@/components/community/active-polls';
 
 export const metadata = {
   title: 'Community — TechPivo',
@@ -22,10 +23,9 @@ const badgeIcons = [Flame, Cpu, Brain, ShieldCheck, Smartphone, GraduationCap, T
 
 export default async function CommunityPage() {
   const supabase = await createClient();
-  const [leaderboard, quizzes, polls, categories, events] = await Promise.all([
+  const [leaderboard, quizzes, categories, events] = await Promise.all([
     getLeaderboard(5),
     getQuizzes(6),
-    getActivePolls(),
     getForumCategories(),
     getUpcomingEvents(3),
   ]);
@@ -122,26 +122,29 @@ export default async function CommunityPage() {
           </Card>
 
           <div className="space-y-6">
-            <Card>
-              <CardHeader>
+            <Card className="overflow-hidden">
+              <CardHeader className="border-b bg-gradient-to-r from-orange-500/10 to-transparent">
                 <CardTitle className="flex items-center gap-2">
                   <Flame className="h-5 w-5 text-orange-500" />
                   Levels
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="space-y-2">
+                <div className="space-y-1.5">
                   {LEVELS.map((l) => {
                     const Icon = levelIcons[(l.level - 1) % levelIcons.length];
                     return (
-                      <div key={l.level} className="flex items-center justify-between text-sm p-1.5 rounded hover:bg-muted/50">
-                        <div className="flex items-center gap-2">
-                          <span className={`inline-flex items-center justify-center w-7 h-7 rounded-lg bg-gradient-to-br ${l.level >= 50 ? 'from-amber-500 to-orange-500' : l.level >= 20 ? 'from-violet-500 to-purple-500' : l.level >= 10 ? 'from-blue-500 to-cyan-500' : 'from-emerald-500 to-teal-500'} text-white`}>
-                            <Icon className="h-3.5 w-3.5" />
+                      <div key={l.level} className="flex items-center justify-between text-sm p-2 rounded-xl hover:bg-surface-2/60 transition-colors">
+                        <div className="flex items-center gap-2.5">
+                          <span className={`inline-flex items-center justify-center w-8 h-8 rounded-xl bg-gradient-to-br ${l.level >= 50 ? 'from-amber-500 to-orange-500' : l.level >= 20 ? 'from-violet-500 to-purple-500' : l.level >= 10 ? 'from-blue-500 to-cyan-500' : 'from-emerald-500 to-teal-500'} text-white shadow-sm`}>
+                            <Icon className="h-4 w-4" />
                           </span>
-                          <span>{l.title}</span>
+                          <div>
+                            <div className="font-semibold text-textPrimary">{l.title}</div>
+                            <div className="text-[11px] text-textSecondary">{l.icon} · Level {l.level}</div>
+                          </div>
                         </div>
-                        <span className="text-muted-foreground">Lv.{l.level}</span>
+                        <span className="text-xs font-bold text-textSecondary bg-surface-2 px-2.5 py-1 rounded-full">Lv.{l.level}</span>
                       </div>
                     );
                   })}
@@ -149,8 +152,8 @@ export default async function CommunityPage() {
               </CardContent>
             </Card>
 
-            <Card>
-              <CardHeader>
+            <Card className="overflow-hidden">
+              <CardHeader className="border-b bg-gradient-to-r from-purple-500/10 to-transparent">
                 <CardTitle className="flex items-center gap-2">
                   <Award className="h-5 w-5 text-purple-500" />
                   Badges
@@ -161,9 +164,11 @@ export default async function CommunityPage() {
                   {BADGES.slice(0, 10).map((b, i) => {
                     const Icon = badgeIcons[i % badgeIcons.length];
                     return (
-                      <div key={b.id} className="flex items-center gap-1.5 text-xs bg-muted px-2 py-1 rounded-full" title={b.description}>
-                        <Icon className="h-3.5 w-3.5 text-amber-500" />
-                        <span>{b.name}</span>
+                      <div key={b.id} className="flex items-center gap-1.5 text-xs bg-surface-2/70 border border-borderSoft px-2.5 py-1.5 rounded-full hover:border-amber-400/50 transition-colors" title={b.description}>
+                        <span className="w-5 h-5 rounded-md bg-amber-400/15 flex items-center justify-center">
+                          <Icon className="h-3 w-3 text-amber-500" />
+                        </span>
+                        <span className="font-medium text-textPrimary">{b.name}</span>
                       </div>
                     );
                   })}
@@ -234,7 +239,7 @@ export default async function CommunityPage() {
                     )}
                     <div className="flex items-center gap-4 mt-3 text-sm text-muted-foreground">
                       <span>{quiz.attempt_count} attempts</span>
-                      <span>Avg: {quiz.avg_score.toFixed(0)}%</span>
+                      <span>Avg: {Number(quiz.avg_score || 0).toFixed(0)}%</span>
                     </div>
                   </CardContent>
                 </Card>
@@ -243,48 +248,7 @@ export default async function CommunityPage() {
           </div>
         </div>
 
-        {polls.length > 0 && (
-          <div>
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-2xl font-bold flex items-center gap-2">
-                <BarChart3 className="h-6 w-6 text-green-500" />
-                Active Polls
-              </h2>
-              <Link href="/community/polls">
-                <Button variant="outline" size="sm">All Polls <ArrowRight className="ml-1 h-4 w-4" /></Button>
-              </Link>
-            </div>
-            <div className="grid md:grid-cols-2 gap-4">
-              {polls.slice(0, 4).map((poll) => (
-                <Card key={poll.id}>
-                  <CardContent className="p-5">
-                    <h3 className="font-semibold mb-3">{poll.title}</h3>
-                    <div className="space-y-2">
-                      {(poll.options || []).map((opt) => {
-                        const pct = poll.total_votes > 0 ? (opt.vote_count / poll.total_votes) * 100 : 0;
-                        return (
-                          <div key={opt.id} className="relative">
-                            <div className="h-8 rounded-md bg-muted overflow-hidden">
-                              <div
-                                className="h-full bg-primary/20 transition-all"
-                                style={{ width: `${pct}%` }}
-                              />
-                            </div>
-                            <div className="absolute inset-0 flex items-center px-3 text-sm">
-                              <span className="flex-1">{opt.text}</span>
-                              <span className="font-medium">{pct.toFixed(0)}%</span>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                    <div className="text-sm text-muted-foreground mt-2">{poll.total_votes} votes</div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          </div>
-        )}
+        <ActivePolls />
 
         <div>
           <div className="flex items-center justify-between mb-4">

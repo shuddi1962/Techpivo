@@ -107,11 +107,13 @@ export default async function PageShell({
       )}
 
       <div className="px-4 md:px-12 lg:px-16 py-10">
-        <article
-          className="max-w-4xl prose prose-slate dark:prose-invert prose-headings:font-bold prose-h2:text-2xl prose-h3:text-xl prose-p:leading-relaxed prose-p:text-muted-foreground prose-a:text-accent prose-a:font-medium prose-strong:text-foreground prose-li:text-muted-foreground prose-blockquote:border-accent prose-blockquote:text-muted-foreground"
-          dangerouslySetInnerHTML={{ __html: html }}
-        />
-        {children}
+        <div className="max-w-4xl mx-auto rounded-2xl border border-borderSoft bg-surface shadow-sm p-6 md:p-10">
+          <article
+            className="prose prose-slate dark:prose-invert prose-headings:font-bold prose-h2:text-2xl prose-h3:text-xl prose-p:leading-relaxed prose-p:text-muted-foreground prose-a:text-accent prose-a:font-medium prose-strong:text-foreground prose-li:text-muted-foreground prose-blockquote:border-accent prose-blockquote:text-muted-foreground"
+            dangerouslySetInnerHTML={{ __html: html }}
+          />
+          {children}
+        </div>
       </div>
     </div>
   );

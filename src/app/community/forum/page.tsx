@@ -1,10 +1,11 @@
 import Link from 'next/link';
-import { MessageSquare, Plus, Pin, CheckCircle2, Eye, ThumbsUp, Clock, Sparkles, ArrowRight } from 'lucide-react';
+import { MessageSquare, Plus, Pin, CheckCircle2, Eye, ThumbsUp, Clock, Sparkles } from 'lucide-react';
 import { JsonLd } from '@/components/ui/jsonld';
 import { breadcrumbSchema } from '@/lib/jsonld';
 import { getForumCategories, getForumPosts, timeAgo } from '@/lib/community';
 import { SITE_URL } from '@/lib/constants';
 import { CommunityHero } from '@/components/community/community-hero';
+import { ForumCategoriesSidebar } from '@/components/community/forum-categories-sidebar';
 
 export const metadata = {
   title: 'Forum — TechPivo Community',
@@ -37,7 +38,7 @@ export default async function ForumPage() {
       >
         <Link
           href="/community/forum/new"
-          className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-amber-400 to-amber-500 px-5 py-2.5 text-sm font-semibold text-slate-950 transition-all duration-200 hover:from-amber-300 hover:to-amber-400"
+          className="inline-flex items-center gap-2 rounded-xl bg-white px-5 py-2.5 text-sm font-semibold text-slate-950 shadow-lg shadow-black/20 transition-all duration-200 hover:bg-white/90"
         >
           <Plus className="h-4 w-4" /> New Discussion
         </Link>
@@ -47,40 +48,7 @@ export default async function ForumPage() {
         <div className="grid lg:grid-cols-4 gap-6">
           {/* Sidebar */}
           <div className="lg:col-span-1">
-            <div className="rounded-2xl border border-border/60 bg-card/80 backdrop-blur-sm overflow-hidden">
-              <div className="p-4 border-b border-border/40">
-                <h2 className="font-semibold text-sm font-[family-name:var(--font-syne)]">Categories</h2>
-              </div>
-              <div className="p-2">
-                <Link
-                  href="/community/forum"
-                  className="flex items-center gap-2 px-3 py-2 rounded-lg bg-blue-500/10 text-blue-600 dark:text-blue-400 font-medium text-sm transition-colors"
-                >
-                  <MessageSquare className="h-4 w-4" />
-                  All Discussions
-                </Link>
-                {categories.map((cat) => (
-                  <Link
-                    key={cat.id}
-                    href={`/community/forum/${cat.slug}`}
-                    className="flex items-center gap-2.5 px-3 py-2 rounded-lg hover:bg-muted/50 text-sm transition-colors group"
-                  >
-                    {cat.image_url ? (
-                      <img
-                        src={cat.image_url}
-                        alt={cat.name}
-                        loading="lazy"
-                        className="w-7 h-7 rounded-lg object-cover flex-shrink-0"
-                      />
-                    ) : (
-                      <span className="text-base">{cat.icon}</span>
-                    )}
-                    <span className="flex-1 text-muted-foreground group-hover:text-foreground transition-colors truncate">{cat.name}</span>
-                    <span className="text-xs text-muted-foreground bg-muted/50 px-1.5 py-0.5 rounded-full">{cat.post_count}</span>
-                  </Link>
-                ))}
-              </div>
-            </div>
+            <ForumCategoriesSidebar categories={categories} />
           </div>
 
           {/* Main */}

@@ -120,7 +120,7 @@ export function TopicHub({
           disabled={following}
           className={cn(
             'inline-flex items-center gap-1.5 rounded-lg px-3.5 py-2 text-sm font-semibold transition-colors disabled:opacity-50',
-            myFollow ? 'border border-white/20 bg-white/10 text-white hover:bg-white/15' : 'bg-amber-400 text-slate-950 hover:bg-amber-300'
+            myFollow ? 'border border-white/20 bg-white/10 text-white hover:bg-white/15' : 'bg-white text-slate-950 hover:bg-white/90 shadow-lg shadow-black/20'
           )}
         >
           {following ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : myFollow ? <BellOff className="h-4 w-4" aria-hidden /> : <BellPlus className="h-4 w-4" aria-hidden />}

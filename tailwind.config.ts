@@ -18,6 +18,7 @@ const config: Config = {
     extend: {
       colors: {
         brand: {
+          DEFAULT: "hsl(var(--brand))",
           navy: "#0F172A",
           amber: "#F59E0B",
         },

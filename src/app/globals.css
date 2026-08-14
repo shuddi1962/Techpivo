@@ -227,6 +227,8 @@ body { position: relative; }
 .nav-links::-webkit-scrollbar { display: none; }
 .nav-link { display: inline-flex; align-items: center; gap: 4px; padding: 14px 12px; font-size: 13px; font-weight: 500; color: #fff; white-space: nowrap; text-decoration: none; border-bottom: 2px solid transparent; transition: color .2s, border-color .2s; }
 .nav-link:hover { color: #fff; border-bottom-color: var(--hover-color, rgba(255,255,255,.6)); }
+
+.nav-link-active { color: #fff !important; border-bottom-color: hsl(var(--brand)) !important; font-weight: 600; }
 .dark .nav-link { color: var(--muted); }
 .dark .nav-link:hover { color: var(--text); border-bottom-color: var(--hover-color, hsl(var(--accent))); }
 .nav-home { color: #fff; border-bottom-color: rgba(255,255,255,.6); }

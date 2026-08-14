@@ -12,7 +12,7 @@ import { ArrowLeft, Pin, CheckCircle2, ThumbsUp, ThumbsDown, MessageSquare, Eye,
 interface ForumPost {
   id: string;
   title: string;
-  content: string;
+  content: string | null;
   tags: string[];
   vote_count: number;
   reply_count: number;
@@ -181,7 +181,7 @@ export default function ForumPostPage({ params }: { params: Promise<{ category: 
                   <span className="flex items-center gap-1"><Clock className="h-3 w-3" /> {new Date(post.created_at).toLocaleDateString()}</span>
                 </div>
                 <div className="prose prose-sm max-w-none dark:prose-invert mb-4">
-                  {post.content.split('\n').map((p, i) => (
+                  {(post.content || '').split('\n').filter(p => p.trim()).map((p, i) => (
                     <p key={i}>{p}</p>
                   ))}
                 </div>

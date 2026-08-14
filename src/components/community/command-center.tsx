@@ -53,7 +53,7 @@ export function CommandCenter() {
       const target = e.target as HTMLElement | null;
       const typing =
         target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.tagName === 'SELECT' || target.isContentEditable);
-      if ((e.key === 'c' || e.key === 'C') && !typing) {
+      if ((e.key === 'c' || e.key === 'C') && !typing && !e.ctrlKey && !e.metaKey && !e.altKey && !e.shiftKey && !e.repeat) {
         e.preventDefault();
         setOpen(prev => !prev);
       }

@@ -12,7 +12,7 @@ export default function CommunityLayout({ children }: { children: React.ReactNod
     <div className="min-h-screen bg-surface-2">
       <CommunityHeader />
       <CommandCenter />
-      <main className="max-w-6xl mx-auto px-4 py-6">{children}</main>
+      <main className="w-full">{children}</main>
     </div>
   )
 }

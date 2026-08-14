@@ -180,7 +180,7 @@ export default function QuizRunnerPage({ params }: { params: Promise<{ id: strin
             <button
               type="button"
               onClick={startQuiz}
-              className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-amber-400 to-amber-500 px-5 py-2.5 text-sm font-semibold text-slate-950 transition-all duration-200 hover:from-amber-300 hover:to-amber-400"
+              className="inline-flex items-center gap-2 rounded-xl bg-white px-5 py-2.5 text-sm font-semibold text-slate-950 shadow-lg shadow-black/20 transition-all duration-200 hover:bg-white/90"
             >
               <Zap className="h-4 w-4" /> Start Quiz
             </button>

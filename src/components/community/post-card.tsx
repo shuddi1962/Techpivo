@@ -84,7 +84,7 @@ export function PostCard({ post, showBody = false, className }: Props) {
           </h3>
 
           {showBody && (
-            <p className="text-sm text-textSecondary line-clamp-2 mb-2">{post.excerpt || post.content.replace(/[#*`>\-\[\]()!]/g, '').slice(0, 240)}</p>
+            <p className="text-sm text-textSecondary line-clamp-2 mb-2">{post.excerpt || (post.content || '').replace(/[#*`>\-\[\]()!]/g, '').slice(0, 240)}</p>
           )}
 
           <div className="flex items-center gap-3 text-[11px] text-textSecondary">

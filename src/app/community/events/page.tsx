@@ -293,7 +293,7 @@ export default function EventsPage() {
                               className={`flex-1 inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 disabled:opacity-60 ${
                                 isGoing
                                   ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-300/50 hover:bg-emerald-500/25'
-                                  : 'bg-gradient-to-r from-amber-500 to-orange-500 text-white hover:from-amber-600 hover:to-orange-600 shadow-lg shadow-amber-500/20'
+                                  : 'bg-slate-900 text-white hover:bg-slate-800 shadow-lg shadow-slate-900/20'
                               }`}
                             >
                               {isGoing ? <Check className="h-4 w-4" /> : <CalendarCheck className="h-4 w-4" />}

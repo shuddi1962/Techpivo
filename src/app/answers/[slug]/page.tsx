@@ -20,7 +20,7 @@ interface AnswerPost {
   id: string;
   slug: string | null;
   title: string;
-  content: string;
+  content: string | null;
   content_type: string;
   created_at: string;
   updated_at: string | null;
@@ -29,7 +29,7 @@ interface AnswerPost {
   reply_count: number | null;
 }
 
-const stripMd = (s: string) => s.replace(/[#>*`\[\]()!-]/g, ' ').replace(/\s+/g, ' ').trim();
+const stripMd = (s: string | null) => (s || '').replace(/[#>*`\[\]()!-]/g, ' ').replace(/\s+/g, ' ').trim();
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { slug } = await params;

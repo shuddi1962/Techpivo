@@ -180,7 +180,7 @@ export default function QuizPage() {
                       </div>
                       <div className="flex items-center justify-between">
                         <span className="flex items-center gap-1.5 text-xs font-semibold bg-amber-500/10 text-amber-600 dark:text-amber-400 px-2.5 py-1 rounded-full">
-                          <Zap className="h-3 w-3" /> Avg: {quiz.avg_score ? quiz.avg_score.toFixed(0) : 0}%
+                          <Zap className="h-3 w-3" /> Avg: {Number(quiz.avg_score || 0).toFixed(0)}%
                         </span>
                         <span className="inline-flex items-center gap-1 text-sm font-medium text-purple-600 dark:text-purple-400 group-hover:gap-2 transition-all">
                           Start <ArrowRight className="h-4 w-4" />

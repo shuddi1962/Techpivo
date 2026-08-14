@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { getForumCategories, getForumPosts, timeAgo } from '@/lib/community';
@@ -7,6 +7,7 @@ import { MessageSquare, Plus, Pin, CheckCircle2, Eye, ThumbsUp, Clock } from 'lu
 import type { Metadata } from 'next/types';
 import { SITE_NAME, SITE_URL } from '@/lib/constants';
 import { CommunityHero } from '@/components/community/community-hero';
+import { ForumCategoriesSidebar } from '@/components/community/forum-categories-sidebar';
 
 export async function generateMetadata({ params }: { params: Promise<{ category: string }> }): Promise<Metadata> {
   const { category } = await params;
@@ -49,7 +50,7 @@ export default async function ForumCategoryPage({ params }: { params: Promise<{ 
       >
         <Link
           href="/community/forum/new"
-          className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-amber-400 to-amber-500 px-5 py-2.5 text-sm font-semibold text-slate-950 transition-all duration-200 hover:from-amber-300 hover:to-amber-400"
+          className="inline-flex items-center gap-2 rounded-xl bg-white px-5 py-2.5 text-sm font-semibold text-slate-950 shadow-lg shadow-black/20 transition-all duration-200 hover:bg-white/90"
         >
           <Plus className="h-4 w-4" /> New Discussion
         </Link>
@@ -58,33 +59,7 @@ export default async function ForumCategoryPage({ params }: { params: Promise<{ 
       <div className="max-w-7xl mx-auto px-4 py-8">
         <div className="grid lg:grid-cols-4 gap-6">
           <div className="lg:col-span-1 space-y-4">
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">Categories</CardTitle>
-              </CardHeader>
-              <CardContent className="p-2">
-                <Link href="/community/forum" className="block px-3 py-2 rounded-md hover:bg-muted text-sm transition-colors">
-                  All Discussions
-                </Link>
-                {categories.map((cat) => (
-                  <Link
-                    key={cat.id}
-                    href={`/community/forum/${cat.slug}`}
-                    className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm transition-colors ${
-                      cat.slug === category ? 'bg-primary/10 text-primary font-medium' : 'hover:bg-muted'
-                    }`}
-                  >
-                    {cat.image_url ? (
-                      <img src={cat.image_url} alt={cat.name} loading="lazy" className="w-6 h-6 rounded-md object-cover flex-shrink-0" />
-                    ) : (
-                      <span>{cat.icon}</span>
-                    )}
-                    <span className="flex-1 truncate">{cat.name}</span>
-                    <span className="text-xs text-muted-foreground">{cat.post_count}</span>
-                  </Link>
-                ))}
-              </CardContent>
-            </Card>
+            <ForumCategoriesSidebar categories={categories} activeSlug={category} />
           </div>
 
           <div className="lg:col-span-3 space-y-3">

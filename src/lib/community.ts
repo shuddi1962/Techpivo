@@ -229,7 +229,7 @@ export async function getQuizzes(limit: number = 20) {
     .eq('is_published', true)
     .order('created_at', { ascending: false })
     .limit(limit);
-  return data as Quiz[];
+  return (data || []) as Quiz[];
 }
 
 export async function getQuizQuestions(quizId: string) {
@@ -239,7 +239,7 @@ export async function getQuizQuestions(quizId: string) {
     .select('*')
     .eq('quiz_id', quizId)
     .order('sort_order');
-  return data as QuizQuestion[];
+  return (data || []) as QuizQuestion[];
 }
 
 export async function getActivePolls() {
@@ -249,7 +249,7 @@ export async function getActivePolls() {
     .select('*, options:poll_options(*)')
     .eq('is_active', true)
     .order('created_at', { ascending: false });
-  return data as Poll[];
+  return (data || []) as Poll[];
 }
 
 export async function getDiscussions(postId: string) {
@@ -261,7 +261,7 @@ export async function getDiscussions(postId: string) {
     .eq('is_hidden', false)
     .is('parent_id', null)
     .order('created_at', { ascending: false });
-  return data as Discussion[];
+  return (data || []) as Discussion[];
 }
 
 export async function getUserNotifications(userId: string, limit: number = 20) {
