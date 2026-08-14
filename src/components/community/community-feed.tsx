@@ -160,7 +160,7 @@ export function CommunityFeed({ rails = ['for_you', 'trending', 'latest', 'unans
             </div>
           )}
           {!hasMore && items.length > 0 && (
-            <p className="text-center text-xs text-textSecondary py-4">You're all caught up.</p>
+            <p className="text-center text-xs text-textSecondary py-4">You&apos;re all caught up.</p>
           )}
         </div>
       )}

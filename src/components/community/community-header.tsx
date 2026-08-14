@@ -6,7 +6,7 @@ import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import {
   LayoutGrid, HelpCircle, MessageSquare, BarChart3, GraduationCap,
-  Mic, Rocket, Scale, CalendarDays, Map, Trophy, Plus, Hash,
+  Mic, Rocket, Scale, CalendarDays, Map, Trophy, Plus, Hash, Search,
 } from 'lucide-react';
 
 const NAV = [
@@ -19,6 +19,7 @@ const NAV = [
   { href: '/community/events', label: 'Events', icon: CalendarDays },
   { href: '/community/learning-paths', label: 'Learn', icon: Map },
   { href: '/community/leaderboard', label: 'Leaderboard', icon: Trophy },
+  { href: '/community/search', label: 'Search', icon: Search },
 ];
 
 export function CommunityHeader({ onOpenComposer }: { onOpenComposer?: () => void }) {

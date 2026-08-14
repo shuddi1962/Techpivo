@@ -157,7 +157,7 @@ export function CommandCenter() {
             </>
           ) : results.length === 0 ? (
             <p className="px-4 py-6 text-sm text-textSecondary text-center">
-              {busy ? 'Searching…' : 'No posts found.'}
+              {busy ? 'Searching…' : 'No posts found. Try the full community search.'}
             </p>
           ) : (
             <ul className="py-1.5">
@@ -186,6 +186,15 @@ export function CommandCenter() {
         </div>
 
         <div className="flex items-center gap-3 border-t border-borderSoft bg-surface-2/50 px-4 py-2 text-[11px] text-textSecondary">
+          {q.trim().length >= 2 && (
+            <Link
+              href={`/community/search?q=${encodeURIComponent(q.trim().slice(0, 80))}`}
+              onClick={close}
+              className="flex items-center gap-1.5 rounded-md bg-accent/10 px-2 py-1 font-medium text-accent hover:bg-accent/20 transition-colors"
+            >
+              <Search className="h-3 w-3" aria-hidden /> Search the whole community
+            </Link>
+          )}
           <span className="flex items-center gap-1"><kbd className="rounded border border-borderSoft bg-surface px-1">C</kbd> open</span>
           <span className="flex items-center gap-1"><kbd className="rounded border border-borderSoft bg-surface px-1">↵</kbd> go</span>
           <span className="flex items-center gap-1"><kbd className="rounded border border-borderSoft bg-surface px-1">esc</kbd> close</span>

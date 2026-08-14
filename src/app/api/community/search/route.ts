@@ -1,0 +1,67 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { createClient } from '@/lib/supabase/server';
+import { checkRateLimit, clientIp, RATE_LIMITS } from '@/lib/rate-limiter';
+import { enrichAuthors } from '@/lib/community-server';
+
+export const dynamic = 'force-dynamic';
+
+const POST_SELECT = '*, category:forum_categories(name, slug, icon)';
+
+export async function GET(request: NextRequest) {
+  const q = request.nextUrl.searchParams.get('q')?.trim().slice(0, 80) ?? '';
+  const type = request.nextUrl.searchParams.get('type') ?? 'all';
+  if (q.length < 2) {
+    return NextResponse.json({ posts: [], topics: [], users: [], query: q });
+  }
+
+  const rl = checkRateLimit(`community-search:${clientIp(request)}`, RATE_LIMITS.search);
+  if (!rl.allowed) {
+    return NextResponse.json({ error: 'Slow down and try again in a moment.' }, { status: 429 });
+  }
+
+  const supabase = await createClient();
+  const term = `%${q}%`;
+  const wantsPosts = type === 'all' || type === 'posts';
+  const wantsTopics = type === 'all' || type === 'topics';
+  const wantsUsers = type === 'all' || type === 'users';
+
+  const [postRes, topicRes, userRes] = await Promise.all([
+    wantsPosts
+      ? supabase
+          .from('forum_posts')
+          .select(POST_SELECT)
+          .eq('is_locked', false)
+          .ilike('title', term)
+          .order('created_at', { ascending: false })
+          .limit(10)
+      : Promise.resolve({ data: [] as unknown[] }),
+    wantsTopics
+      ? supabase
+          .from('topics')
+          .select('id, slug, name, description, icon, color')
+          .eq('is_approved', true)
+          .ilike('name', term)
+          .order('name', { ascending: true })
+          .limit(8)
+      : Promise.resolve({ data: [] as unknown[] }),
+    wantsUsers
+      ? supabase
+          .from('user_profiles')
+          .select('id, username, full_name, avatar_url, level, reputation')
+          .eq('is_public', true)
+          .not('username', 'is', null)
+          .or(`username.ilike.${term},full_name.ilike.${term}`)
+          .order('reputation', { ascending: false })
+          .limit(8)
+      : Promise.resolve({ data: [] as unknown[] }),
+  ]);
+
+  const posts = await enrichAuthors(postRes.data ?? [], supabase);
+
+  return NextResponse.json({
+    query: q,
+    posts,
+    topics: topicRes.data ?? [],
+    users: userRes.data ?? [],
+  });
+}
