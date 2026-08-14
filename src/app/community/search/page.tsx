@@ -5,6 +5,7 @@ import { CommunitySearch } from './community-search';
 export const metadata: Metadata = {
   title: 'Search the Community',
   description: 'Search TechPivo community posts, topics, and members.',
+  robots: { index: false, follow: false },
 };
 
 export default function SearchPage() {
