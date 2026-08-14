@@ -24,21 +24,60 @@ const DEFAULT_PREFS = {
   weekly_digest: false,
 };
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ notifications: [], preferences: null });
+  if (!user) return NextResponse.json({ notifications: [], preferences: null, unread: 0 });
 
+  const countOnly = request.nextUrl.searchParams.get('count') === 'true';
   const [notifRes, profileRes] = await Promise.all([
     supabase.from('user_notifications').select('*').eq('user_id', user.id).order('created_at', { ascending: false }).limit(50),
     supabase.from('user_profiles').select('notification_preferences').eq('id', user.id).maybeSingle(),
   ]);
+
+  if (countOnly) {
+    const { count } = await supabase
+      .from('user_notifications')
+      .select('id', { count: 'exact', head: true })
+      .eq('user_id', user.id)
+      .eq('is_read', false);
+    return NextResponse.json({ unread: count || 0 });
+  }
 
   const stored = (profileRes.data?.notification_preferences ?? {}) as Record<string, boolean>;
   return NextResponse.json({
     notifications: notifRes.data || [],
     preferences: { ...DEFAULT_PREFS, ...stored },
   });
+}
+
+export async function POST(request: NextRequest) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+  const body = await request.json().catch(() => ({}));
+  const action = body.action === 'read_all' ? 'read_all' : 'read';
+
+  if (action === 'read_all') {
+    const { error } = await supabase
+      .from('user_notifications')
+      .update({ is_read: true })
+      .eq('user_id', user.id)
+      .eq('is_read', false);
+    if (error) return NextResponse.json({ error: error.message }, { status: 400 });
+    return NextResponse.json({ ok: true });
+  }
+
+  const id = typeof body.id === 'string' ? body.id : '';
+  if (!id) return NextResponse.json({ error: 'id is required' }, { status: 400 });
+  const { error } = await supabase
+    .from('user_notifications')
+    .update({ is_read: true })
+    .eq('id', id)
+    .eq('user_id', user.id);
+  if (error) return NextResponse.json({ error: error.message }, { status: 400 });
+  return NextResponse.json({ ok: true });
 }
 
 export async function PUT(request: NextRequest) {

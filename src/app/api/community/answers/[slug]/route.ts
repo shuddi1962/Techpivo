@@ -133,17 +133,7 @@ export async function POST(
     ref_type: 'forum_reply',
   });
 
-  // Notify the question author (service-role — insert is not owner-scoped)
-  if (post.author_id !== user.id) {
-    const service = createServiceClient();
-    await service.from('user_notifications').insert({
-      user_id: post.author_id,
-      type: 'answer',
-      title: 'New answer to your question',
-      message: `${user.user_metadata?.full_name || 'Someone'} answered "${post.title.slice(0, 80)}"`,
-      link: `/answers/${post.slug ?? post.id}?focus=${reply.id}`,
-    });
-  }
+  // Author notification handled by DB trigger trg_notify_forum_reply (migration 061).
 
   return NextResponse.json({ reply }, { status: 201 });
 }
