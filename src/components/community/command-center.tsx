@@ -7,7 +7,7 @@ import { cn } from '@/lib/utils';
 import { CONTENT_TYPE_META, CONTENT_TYPE_LIST, type CommunityContentType } from '@/lib/community-types';
 import {
   Command, FileQuestion, MessagesSquare, Vote, ListChecks, Mic2, Sparkles, Scale,
-  Search, CornerDownLeft, Compass, Trophy, CalendarDays, GraduationCap, PenSquare, X,
+  Search, CornerDownLeft, Compass, Trophy, CalendarDays, GraduationCap, PenSquare, X, Hash,
 } from 'lucide-react';
 
 interface SearchResult {
@@ -27,6 +27,7 @@ const QUICK_LINKS = [
   { href: '/community/events', label: 'Events', icon: CalendarDays },
   { href: '/community/learning-paths', label: 'Learn', icon: GraduationCap },
   { href: '/community/leaderboard', label: 'Leaderboard', icon: Trophy },
+  { href: '/community/topics', label: 'Topics', icon: Hash },
 ];
 
 function hrefFor(r: SearchResult): string {

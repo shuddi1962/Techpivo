@@ -6,13 +6,14 @@ import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import {
   LayoutGrid, HelpCircle, MessageSquare, BarChart3, GraduationCap,
-  Mic, Rocket, Scale, CalendarDays, Map, Trophy, Plus,
+  Mic, Rocket, Scale, CalendarDays, Map, Trophy, Plus, Hash,
 } from 'lucide-react';
 
 const NAV = [
   { href: '/community', label: 'Discover', icon: LayoutGrid },
   { href: '/community/questions', label: 'Questions', icon: HelpCircle },
   { href: '/community/forum', label: 'Discussions', icon: MessageSquare },
+  { href: '/community/topics', label: 'Topics', icon: Hash },
   { href: '/community/polls', label: 'Polls', icon: BarChart3 },
   { href: '/community/quiz', label: 'Quizzes', icon: GraduationCap },
   { href: '/community/events', label: 'Events', icon: CalendarDays },

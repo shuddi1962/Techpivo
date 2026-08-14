@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { checkRateLimit, clientIp, RATE_LIMITS } from '@/lib/rate-limiter';
+import { enrichAuthors } from '@/lib/community-server';
 
 export async function POST(
   request: NextRequest,
@@ -24,10 +25,11 @@ export async function POST(
       author_id: user.id,
       content: body.content,
     })
-    .select('*, author:user_profiles!forum_replies_author_id_fkey(username, full_name, avatar_url, level)')
+    .select('*')
     .single();
 
   if (error) return NextResponse.json({ error: error.message }, { status: 400 });
+  const [reply] = await enrichAuthors([data], supabase);
 
   // Update reply count on the post
   try {
@@ -40,5 +42,5 @@ export async function POST(
     }
   }
 
-  return NextResponse.json({ reply: data });
+  return NextResponse.json({ reply });
 }

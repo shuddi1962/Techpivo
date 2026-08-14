@@ -2,18 +2,28 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createClient as createServiceClient } from '@/lib/supabase/admin';
 import { checkRateLimit, clientIp, RATE_LIMITS } from '@/lib/rate-limiter';
+import { enrichAuthors } from '@/lib/community-server';
 
 const POST_SELECT = `
   *,
-  author:user_profiles!forum_posts_author_id_fkey(username, full_name, avatar_url, level, reputation),
   category:forum_categories(name, slug, icon),
   topics:post_topics(topic:topics(slug, name))
 `;
 
-const REPLY_SELECT = `
-  *,
-  author:user_profiles!forum_replies_author_id_fkey(username, full_name, avatar_url, level, reputation)
-`;
+const REPLY_SELECT = `*`;
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/** Look up a post by slug, falling back to id only when the value is a UUID.
+ *  PostgREST type-checks the whole `or(slug.eq.X,id.eq.X)` eagerly — a non-UUID
+ *  slug in id.eq makes the entire filter fail with 22P02. */
+async function findPost(supabase: Awaited<ReturnType<typeof createClient>>, slug: string) {
+  let { data } = await supabase.from('forum_posts').select(POST_SELECT).eq('slug', slug).maybeSingle();
+  if (!data && UUID_RE.test(slug)) {
+    ({ data } = await supabase.from('forum_posts').select(POST_SELECT).eq('id', slug).maybeSingle());
+  }
+  return data;
+}
 
 export async function GET(
   request: NextRequest,
@@ -22,24 +32,21 @@ export async function GET(
   const { slug } = await params;
   const supabase = await createClient();
 
-  const { data: post } = await supabase
-    .from('forum_posts')
-    .select(POST_SELECT)
-    .or(`slug.eq.${slug},id.eq.${slug}`)
-    .single();
+  const post = await findPost(supabase, slug);
 
   if (!post) return NextResponse.json({ error: 'Question not found' }, { status: 404 });
-  if (post.content_type !== 'question') {
-    return NextResponse.json({ error: 'Not a question', redirect: `/community/forum/${post.category?.slug ?? 'general'}/${post.id}` }, { status: 301 });
+  const [postFull] = await enrichAuthors([post], supabase);
+  if (postFull.content_type !== 'question') {
+    return NextResponse.json({ error: 'Not a question', redirect: `/community/forum/${postFull.category?.slug ?? 'general'}/${postFull.id}` }, { status: 301 });
   }
 
-  await supabase.rpc('increment_views', { target_id: post.id, target_type: 'forum' });
+  await supabase.rpc('increment_views', { target_id: postFull.id, target_type: 'forum' });
 
   const sort = request.nextUrl.searchParams.get('sort') || 'best';
   let query = supabase
     .from('forum_replies')
     .select(REPLY_SELECT)
-    .eq('post_id', post.id);
+    .eq('post_id', postFull.id);
 
   if (sort === 'newest') query = query.order('created_at', { ascending: false });
   else if (sort === 'oldest') query = query.order('created_at', { ascending: true });
@@ -51,13 +58,14 @@ export async function GET(
       .order('created_at', { ascending: true });
 
   const { data: replies } = await query;
+  const repliesFull = await enrichAuthors(replies || [], supabase);
 
   const { data: related } = await supabase
     .from('forum_posts')
     .select('id, title, slug, reply_count, vote_count, question_status, created_at')
     .eq('content_type', 'question')
-    .neq('id', post.id)
-    .eq('category_id', post.category_id)
+    .neq('id', postFull.id)
+    .eq('category_id', postFull.category_id)
     .order('created_at', { ascending: false })
     .limit(4);
 
@@ -68,13 +76,13 @@ export async function GET(
       .from('forum_votes')
       .select('target_id, vote')
       .eq('user_id', user.id)
-      .in('target_id', [post.id, ...(replies ?? []).map(r => r.id)]);
+      .in('target_id', [postFull.id, ...repliesFull.map(r => r.id)]);
     my_votes = votes || [];
   }
 
   return NextResponse.json({
-    post,
-    replies: replies || [],
+    post: postFull,
+    replies: repliesFull,
     related: related || [],
     my_votes,
     current_user: user ? { id: user.id } : null,
@@ -99,11 +107,7 @@ export async function POST(
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  const { data: post } = await supabase
-    .from('forum_posts')
-    .select('id, title, author_id, question_status, slug')
-    .or(`slug.eq.${slug},id.eq.${slug}`)
-    .single();
+  const post = await findPost(supabase, slug);
   if (!post) return NextResponse.json({ error: 'Question not found' }, { status: 404 });
   if (post.question_status === 'archived' || post.question_status === 'solved') {
     return NextResponse.json({ error: 'This question is closed for new answers.' }, { status: 409 });
@@ -115,6 +119,7 @@ export async function POST(
     .select(REPLY_SELECT)
     .single();
   if (error) return NextResponse.json({ error: error.message }, { status: 400 });
+  const [replyFull] = await enrichAuthors([reply], supabase);
 
   // Counts + rank + status
   await supabase.rpc('increment_reply_count', { target_post_id: post.id });
@@ -135,7 +140,7 @@ export async function POST(
 
   // Author notification handled by DB trigger trg_notify_forum_reply (migration 061).
 
-  return NextResponse.json({ reply }, { status: 201 });
+  return NextResponse.json({ reply: replyFull }, { status: 201 });
 }
 
 export async function PATCH(
@@ -151,11 +156,18 @@ export async function PATCH(
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  const { data: post } = await supabase
+  let { data: post } = await supabase
     .from('forum_posts')
     .select('id, title, slug, author_id, bounty_points, accepted_reply_id')
-    .or(`slug.eq.${slug},id.eq.${slug}`)
-    .single();
+    .eq('slug', slug)
+    .maybeSingle();
+  if (!post && UUID_RE.test(slug)) {
+    ({ data: post } = await supabase
+      .from('forum_posts')
+      .select('id, title, slug, author_id, bounty_points, accepted_reply_id')
+      .eq('id', slug)
+      .maybeSingle());
+  }
   if (!post) return NextResponse.json({ error: 'Question not found' }, { status: 404 });
   if (post.author_id !== user.id) {
     const { data: me } = await supabase.from('profiles').select('role').eq('id', user.id).single();

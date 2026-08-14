@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { enrichAuthors } from '@/lib/community-server';
 
 export const dynamic = 'force-dynamic';
 
 const RAILS = new Set(['for_you', 'following', 'trending', 'latest', 'unanswered', 'experts', 'open', 'solved']);
-const SELECT = '*, author:user_profiles!forum_posts_author_id_fkey(username, full_name, avatar_url, level), category:forum_categories(name, slug, icon)';
+const SELECT = '*, category:forum_categories(name, slug, icon)';
 const LIMIT = 20;
 
 type FeedItem = Record<string, unknown>;
@@ -92,8 +93,6 @@ export async function GET(request: NextRequest) {
 
   const { data: raw } = await q.limit(limit);
   let items: FeedItem[] = (raw ?? []) as FeedItem[];
-
-  // for_you = interleave trending + latest (no user model yet)
   if (rail === 'for_you') {
     const seen = new Set(items.map((i: FeedItem) => (i as { id: string }).id));
     const { data: extra } = await supabase
@@ -118,6 +117,8 @@ export async function GET(request: NextRequest) {
   if (rail === 'following' && following === null) {
     return NextResponse.json({ rail, items: [], next_cursor: null, has_more: false, requires_auth: true });
   }
+
+  items = await enrichAuthors(items, supabase);
 
   const last = items[items.length - 1] as { created_at?: string } | undefined;
   const has_more = items.length >= limit;
