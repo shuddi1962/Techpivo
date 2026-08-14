@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
@@ -35,7 +35,7 @@ const EMPTY_QUIZ_Q = (): QuizQuestionDraft => ({
   points: 1,
 });
 
-export default function CreatePage() {
+function CreatePage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const initial = (searchParams.get('type') || 'question') as CommunityContentType;
@@ -523,5 +523,13 @@ export default function CreatePage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function Page() {
+  return (
+    <Suspense fallback={<div className="max-w-3xl mx-auto animate-pulse text-textSecondary">Loading composer...</div>}>
+      <CreatePage />
+    </Suspense>
   );
 }

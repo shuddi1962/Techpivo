@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { titleSimilarity } from '@/app/api/community/posts/route';
+import { titleSimilarity } from '@/lib/title-similarity';
 
 describe('titleSimilarity (duplicate detection)', () => {
   it('returns 1 for identical titles', () => {
