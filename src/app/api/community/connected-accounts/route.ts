@@ -1,11 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { checkRateLimit, clientIp, RATE_LIMITS } from '@/lib/rate-limiter';
 
 const PROVIDERS = [
   { id: 'google', name: 'Google', icon: '🔵' },
   { id: 'github', name: 'GitHub', icon: '⚫' },
   { id: 'twitter', name: 'X (Twitter)', icon: '🐦' },
 ];
+
+const VALID_PROVIDER_IDS = new Set(PROVIDERS.map(p => p.id));
 
 export async function GET() {
   const supabase = await createClient();
@@ -29,10 +32,21 @@ export async function GET() {
 }
 
 export async function POST(request: NextRequest) {
+  const rl = checkRateLimit(`connected-accounts:${clientIp(request)}`, RATE_LIMITS.connectedAccounts);
+  if (!rl.allowed) {
+    return NextResponse.json({ error: 'Too many requests. Try again later.' }, { status: 429 });
+  }
+
   const body = await request.json();
   const { provider_id, url } = body;
   if (!provider_id || !url) {
     return NextResponse.json({ error: 'provider_id and url are required' }, { status: 400 });
+  }
+  if (!VALID_PROVIDER_IDS.has(provider_id)) {
+    return NextResponse.json({ error: 'Invalid provider_id' }, { status: 400 });
+  }
+  if (typeof url !== 'string' || !/^https?:\/\//i.test(url.trim())) {
+    return NextResponse.json({ error: 'url must start with http:// or https://' }, { status: 400 });
   }
 
   const supabase = await createClient();
@@ -45,7 +59,7 @@ export async function POST(request: NextRequest) {
     .eq('id', user.id)
     .single();
 
-  const socialLinks = { ...((profile?.social_links || {}) as Record<string, string>), [provider_id]: url };
+  const socialLinks = { ...((profile?.social_links || {}) as Record<string, string>), [provider_id]: url.trim().slice(0, 500) };
 
   const { error } = await supabase
     .from('user_profiles')
@@ -57,10 +71,18 @@ export async function POST(request: NextRequest) {
 }
 
 export async function DELETE(request: NextRequest) {
+  const rl = checkRateLimit(`connected-accounts:${clientIp(request)}`, RATE_LIMITS.connectedAccounts);
+  if (!rl.allowed) {
+    return NextResponse.json({ error: 'Too many requests. Try again later.' }, { status: 429 });
+  }
+
   const body = await request.json();
   const { provider_id } = body;
   if (!provider_id) {
     return NextResponse.json({ error: 'provider_id is required' }, { status: 400 });
+  }
+  if (!VALID_PROVIDER_IDS.has(provider_id)) {
+    return NextResponse.json({ error: 'Invalid provider_id' }, { status: 400 });
   }
 
   const supabase = await createClient();

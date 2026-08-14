@@ -6,8 +6,7 @@ export async function GET() {
 
   const { data: rows } = await supabase
     .from('user_profiles')
-    .select('id, username, full_name, avatar_url, level, xp')
-    .not('username', 'is', null)
+    .select('id, username, avatar_url, level, xp')
     .eq('is_public', true)
     .order('xp', { ascending: false })
     .limit(50);
@@ -15,7 +14,6 @@ export async function GET() {
   const entries = (rows || []).map((r, i) => ({
     user_id: r.id,
     username: r.username,
-    full_name: r.full_name,
     avatar_url: r.avatar_url,
     level: r.level || 1,
     score: r.xp || 0,

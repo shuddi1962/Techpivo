@@ -10,7 +10,6 @@ import { breadcrumbSchema } from '@/lib/jsonld';
 interface LeaderboardEntry {
   user_id: string;
   username: string;
-  full_name: string | null;
   avatar_url: string | null;
   level: number;
   score: number;
@@ -123,9 +122,9 @@ export default function LeaderboardPage() {
                     <div className={`rounded-2xl bg-gradient-to-b ${color} p-5 text-center hover:shadow-lg hover:shadow-amber-500/10 transition-all duration-300`}>
                       <div className="flex items-center justify-center mb-2">{medal}</div>
                       <div className="w-14 h-14 mx-auto mb-2 rounded-xl bg-gradient-to-br from-amber-500 to-orange-500 flex items-center justify-center text-lg font-bold text-white shadow-sm">
-                        {entry.full_name?.[0] || entry.username?.[0] || '?'}
+                        {entry.username?.[0]?.toUpperCase() || '?'}
                       </div>
-                      <div className="font-semibold text-sm truncate">{entry.full_name || entry.username}</div>
+                      <div className="font-semibold text-sm truncate">{entry.username}</div>
                       <div className="text-xs text-muted-foreground mt-0.5">Level {entry.level}</div>
                       <div className="text-sm font-bold text-amber-600 dark:text-amber-400 mt-1">{entry.score.toLocaleString()} XP</div>
                     </div>
@@ -153,10 +152,10 @@ export default function LeaderboardPage() {
                       {i === 0 ? <Crown className="h-4 w-4" /> : i === 1 ? <Medal className="h-4 w-4" /> : i === 2 ? <Medal className="h-4 w-4" /> : `#${i + 1}`}
                     </div>
                     <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-500 to-orange-500 flex items-center justify-center text-sm font-bold text-white shrink-0 shadow-sm">
-                      {entry.full_name?.[0] || entry.username?.[0] || '?'}
+                      {entry.username?.[0]?.toUpperCase() || '?'}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <div className="font-medium truncate">{entry.full_name || entry.username}</div>
+                      <div className="font-medium truncate">{entry.username}</div>
                       <div className="text-sm text-muted-foreground flex items-center gap-2">
                         <span>Level {entry.level}</span>
                         <span className="text-xs text-muted-foreground/40">·</span>

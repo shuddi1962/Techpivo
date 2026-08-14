@@ -37,7 +37,7 @@ export default function QuizPage() {
   const loadQuizzes = useCallback(async () => {
     const { data } = await supabase
       .from('quizzes')
-      .select('*')
+      .select('id, title, description, category, image_url, difficulty, time_limit, question_count, attempt_count, avg_score, is_published, created_at')
       .eq('is_published', true)
       .order('created_at', { ascending: false })
       .limit(30);

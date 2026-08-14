@@ -92,26 +92,41 @@ export async function POST(
   }
 
   // XP only on FIRST completed attempt per quiz (prevents retake farming).
+  // Use atomic insert guarded by the unique partial index user_xp_log_quiz_once
+  // (user_id, reference_id) WHERE reason='complete_quiz' (migration 060,
+  // applied live). A concurrent duplicate insert is rejected by the DB
+  // constraint, so we attempt the insert and only update the profile if it
+  // succeeds — no SELECT-then-INSERT race. reference_type omitted: harmless
+  // (column nullable) and award_xp logs the source anyway.
   let xpAwarded = false;
   try {
-    const { data: prior } = await supabase
+    const { error: xpError } = await supabase
       .from('user_xp_log')
-      .select('id')
-      .eq('user_id', user.id)
-      .eq('reason', 'complete_quiz')
-      .eq('reference_id', id)
-      .limit(1);
-    if (!prior || prior.length === 0) {
-      await supabase.rpc('award_xp', {
-        target_user_id: user.id,
-        xp_amount: 20,
-        action_name: 'complete_quiz',
-        desc: `Completed quiz: ${id}`,
-      });
+      .insert({
+        user_id: user.id,
+        amount: 20,
+        reason: 'complete_quiz',
+        reference_id: id,
+      })
+      .select('id');
+    if (!xpError) {
+      // Insert succeeded — this is the first attempt, so award XP.
+      // Update the profile XP total.
+      const { data: profile } = await supabase
+        .from('user_profiles')
+        .select('xp')
+        .eq('id', user.id)
+        .single();
+      if (profile) {
+        await supabase
+          .from('user_profiles')
+          .update({ xp: (profile.xp || 0) + 20 })
+          .eq('id', user.id);
+      }
       xpAwarded = true;
     }
   } catch (e) {
-    console.error('award_xp failed:', e);
+    console.error('quiz XP award failed:', e);
   }
 
   return NextResponse.json({

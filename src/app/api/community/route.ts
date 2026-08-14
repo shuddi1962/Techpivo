@@ -23,7 +23,7 @@ export async function GET(request: NextRequest) {
     case 'quizzes': {
       const { data } = await supabase
         .from('quizzes')
-        .select('*')
+        .select('id, title, description, category, image_url, difficulty, time_limit, question_count, is_published, created_at')
         .eq('is_published', true)
         .order('created_at', { ascending: false });
       return NextResponse.json({ quizzes: data || [] });
