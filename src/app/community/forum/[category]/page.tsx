@@ -3,9 +3,10 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { getForumCategories, getForumPosts, timeAgo } from '@/lib/community';
-import { MessageSquare, Plus, Pin, CheckCircle2, Eye, ThumbsUp, ArrowLeft, Clock } from 'lucide-react';
+import { MessageSquare, Plus, Pin, CheckCircle2, Eye, ThumbsUp, Clock } from 'lucide-react';
 import type { Metadata } from 'next/types';
 import { SITE_NAME, SITE_URL } from '@/lib/constants';
+import { CommunityHero } from '@/components/community/community-hero';
 
 export async function generateMetadata({ params }: { params: Promise<{ category: string }> }): Promise<Metadata> {
   const { category } = await params;
@@ -35,32 +36,26 @@ export default async function ForumCategoryPage({ params }: { params: Promise<{ 
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="max-w-7xl mx-auto px-4 py-8">
-        <Link href="/community/forum" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground mb-4">
-          <ArrowLeft className="h-4 w-4" /> Back to Forum
+      <CommunityHero
+        badge="Forum · Discussion"
+        title={currentCat?.name || category}
+        subtitle={currentCat?.description || `Browse ${currentCat?.name || category} discussions on the TechPivo forum.`}
+        icon={currentCat?.image_url ? (
+          <img src={currentCat.image_url} alt="" aria-hidden className="h-5 w-5 rounded object-cover" />
+        ) : undefined}
+        backHref="/community/forum"
+        backLabel="Back to Forum"
+        imageUrl={currentCat?.image_url || null}
+      >
+        <Link
+          href="/community/forum/new"
+          className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-amber-400 to-amber-500 px-5 py-2.5 text-sm font-semibold text-slate-950 transition-all duration-200 hover:from-amber-300 hover:to-amber-400"
+        >
+          <Plus className="h-4 w-4" /> New Discussion
         </Link>
+      </CommunityHero>
 
-        <div className="flex items-center justify-between mb-8">
-          <div className="flex items-center gap-4">
-            {currentCat?.image_url ? (
-              <img src={currentCat.image_url} alt={currentCat.name} className="w-16 h-16 rounded-2xl object-cover shadow-lg shadow-blue-500/10" />
-            ) : (
-              <span className="text-4xl">{currentCat?.icon || '💬'}</span>
-            )}
-            <div>
-              <h1 className="text-3xl font-bold">
-                {currentCat?.name || category}
-              </h1>
-              {currentCat?.description && (
-                <p className="text-muted-foreground mt-1">{currentCat.description}</p>
-              )}
-            </div>
-          </div>
-          <Link href="/community/forum/new">
-            <Button><Plus className="mr-2 h-4 w-4" /> New Discussion</Button>
-          </Link>
-        </div>
-
+      <div className="max-w-7xl mx-auto px-4 py-8">
         <div className="grid lg:grid-cols-4 gap-6">
           <div className="lg:col-span-1 space-y-4">
             <Card>

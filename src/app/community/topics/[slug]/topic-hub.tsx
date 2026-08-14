@@ -3,10 +3,11 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { PostCard } from '@/components/community/post-card';
 import { EmptyState } from '@/components/community/empty-state';
+import { CommunityHero } from '@/components/community/community-hero';
 import { createClient } from '@/lib/supabase/client';
 import { cn } from '@/lib/utils';
 import { type CommunityPost } from '@/lib/community-types';
-import { Hash, Loader2, Users, BellPlus, BellOff, ChevronDown } from 'lucide-react';
+import { Loader2, BellPlus, BellOff, ChevronDown, Sparkles } from 'lucide-react';
 
 interface TopicShape {
   id: string;
@@ -104,40 +105,30 @@ export function TopicHub({
 
   return (
     <div>
-      <div className="rounded-xl border border-borderSoft bg-surface p-5 mb-6">
-        <div className="flex items-start justify-between gap-4 flex-wrap">
-          <div className="flex items-center gap-3">
-            <span
-              className="flex h-12 w-12 items-center justify-center rounded-xl text-2xl"
-              style={{ background: `${topic.color || '#F59E0B'}22`, color: topic.color || '#F59E0B' }}
-            >
-              {topic.icon || '#'}
-            </span>
-            <div>
-              <h1 className="text-xl font-bold text-textPrimary flex items-center gap-2">
-                <Hash className="h-5 w-5 text-accent" aria-hidden /> {topic.name}
-              </h1>
-              <p className="text-sm text-textSecondary mt-0.5">
-                <Users className="inline h-3.5 w-3.5 mr-1" aria-hidden /> {followerCount} following
-              </p>
-            </div>
-          </div>
-          <button
-            type="button"
-            onClick={toggleFollow}
-            disabled={following}
-            className={cn(
-              'inline-flex items-center gap-1.5 rounded-lg px-3.5 py-2 text-sm font-semibold transition-colors disabled:opacity-50',
-              myFollow ? 'border border-borderSoft bg-surface-elevated text-textPrimary hover:bg-surface-2' : 'bg-accent text-white hover:opacity-90'
-            )}
-          >
-            {following ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : myFollow ? <BellOff className="h-4 w-4" aria-hidden /> : <BellPlus className="h-4 w-4" aria-hidden />}
-            {myFollow ? 'Following' : 'Follow'}
-          </button>
-        </div>
-        {topic.description && <p className="mt-3 text-sm text-textSecondary">{topic.description}</p>}
-      </div>
+      <CommunityHero
+        badge={`Topic · ${followerCount} following`}
+        title={`#${topic.name}`}
+        subtitle={topic.description || undefined}
+        icon={<span className="flex h-5 w-5 items-center justify-center overflow-hidden rounded-full text-[13px] leading-none" style={{ color: topic.color || '#FBBF24' }}>{topic.icon || <Sparkles className="h-3.5 w-3.5" />}</span>}
+        backHref="/community/topics"
+        backLabel="All topics"
+        imageUrl={null}
+      >
+        <button
+          type="button"
+          onClick={toggleFollow}
+          disabled={following}
+          className={cn(
+            'inline-flex items-center gap-1.5 rounded-lg px-3.5 py-2 text-sm font-semibold transition-colors disabled:opacity-50',
+            myFollow ? 'border border-white/20 bg-white/10 text-white hover:bg-white/15' : 'bg-amber-400 text-slate-950 hover:bg-amber-300'
+          )}
+        >
+          {following ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : myFollow ? <BellOff className="h-4 w-4" aria-hidden /> : <BellPlus className="h-4 w-4" aria-hidden />}
+          {myFollow ? 'Following' : 'Follow'}
+        </button>
+      </CommunityHero>
 
+      <div className="mx-auto max-w-3xl px-4 py-8">
       {loading && posts.length === 0 ? (
         <div className="py-8 text-center text-sm text-textSecondary">Loading…</div>
       ) : posts.length === 0 ? (
@@ -165,6 +156,7 @@ export function TopicHub({
           )}
         </>
       )}
+      </div>
     </div>
   );
 }

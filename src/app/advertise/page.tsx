@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import PageShell from "@/components/pages/page-shell";
+import { AdvertiseLive } from "@/components/ads/advertise-live";
 import { getSitePage } from "@/lib/pages";
 
 export const metadata: Metadata = {
@@ -8,5 +9,9 @@ export const metadata: Metadata = {
 };
 
 export default function AdvertisePage() {
-  return <PageShell slug="advertise" />;
+  return (
+    <PageShell slug="advertise">
+      <AdvertiseLive />
+    </PageShell>
+  );
 }

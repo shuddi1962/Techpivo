@@ -4,6 +4,7 @@ import { JsonLd } from '@/components/ui/jsonld';
 import { breadcrumbSchema } from '@/lib/jsonld';
 import { getForumCategories, getForumPosts, timeAgo } from '@/lib/community';
 import { SITE_URL } from '@/lib/constants';
+import { CommunityHero } from '@/components/community/community-hero';
 
 export const metadata = {
   title: 'Forum — TechPivo Community',
@@ -23,30 +24,24 @@ export default async function ForumPage() {
         { name: "Community", url: `${SITE_URL}/community` },
         { name: "Forum" },
       ])} />
-      <div className="min-h-screen bg-gradient-to-b from-background via-background to-muted/30">
+      <div className="min-h-screen bg-background">
       {/* Hero */}
-      <div className="relative overflow-hidden bg-gradient-to-br from-blue-600/10 via-cyan-500/5 to-sky-600/10 dark:from-blue-500/5 dark:via-cyan-500/5 dark:to-sky-500/5 border-b border-border/40">
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-blue-400/10 via-transparent to-transparent" />
-        <div className="max-w-7xl mx-auto px-4 py-16 md:py-20 relative">
-          <div className="max-w-2xl">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-500/10 border border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-400 text-xs font-medium mb-4">
-              <Sparkles className="h-3.5 w-3.5" /> Community Forum
-            </div>
-            <h1 className="text-4xl md:text-5xl font-bold font-[family-name:var(--font-syne)] tracking-tight">
-              Discussions
-            </h1>
-            <p className="text-lg text-muted-foreground mt-3 max-w-xl">
-              Ask questions, share knowledge, and help fellow tech enthusiasts.
-            </p>
-          </div>
-          <Link
-            href="/community/forum/new"
-            className="inline-flex items-center gap-2 mt-6 px-5 py-2.5 rounded-xl text-sm font-medium bg-gradient-to-r from-blue-500 to-cyan-500 text-white hover:from-blue-600 hover:to-cyan-600 transition-all duration-200 shadow-lg shadow-blue-500/20"
-          >
-            <Plus className="h-4 w-4" /> New Discussion
-          </Link>
-        </div>
-      </div>
+      <CommunityHero
+        badge="Community Forum"
+        title="Discussions"
+        subtitle="Ask questions, share knowledge, and help fellow tech enthusiasts."
+        icon={<Sparkles className="h-3.5 w-3.5" />}
+        backHref="/community"
+        backLabel="Back to Community"
+        imageUrl={null}
+      >
+        <Link
+          href="/community/forum/new"
+          className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-amber-400 to-amber-500 px-5 py-2.5 text-sm font-semibold text-slate-950 transition-all duration-200 hover:from-amber-300 hover:to-amber-400"
+        >
+          <Plus className="h-4 w-4" /> New Discussion
+        </Link>
+      </CommunityHero>
 
       <div className="max-w-7xl mx-auto px-4 py-8 md:py-12">
         <div className="grid lg:grid-cols-4 gap-6">

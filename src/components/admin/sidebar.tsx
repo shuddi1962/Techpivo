@@ -108,8 +108,6 @@ const navGroups: NavGroup[] = [
       { href: "/community/polls", label: "Polls", icon: BarChart3 },
       { href: "/admin/poll-builder", label: "Poll Builder", icon: Plus },
       { href: "/community/leaderboard", label: "Leaderboard", icon: Trophy },
-      { href: "/community/learning-paths", label: "Learning Paths", icon: BookOpen },
-      { href: "/community/events", label: "Events", icon: Calendar },
       { href: "/admin/community-events", label: "Event Manager", icon: CalendarPlus },
       { href: "/admin/moderation", label: "Moderation", icon: ShieldAlert },
     ],

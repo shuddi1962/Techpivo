@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { ArrowLeft, Clock, CheckCircle2, XCircle, Trophy, RotateCcw, PartyPopper, ThumbsUp, Sparkles, BookOpen, Zap } from 'lucide-react';
+import { CommunityHero } from '@/components/community/community-hero';
 
 interface Question {
   id: string;
@@ -158,17 +159,41 @@ export default function QuizRunnerPage({ params }: { params: Promise<{ id: strin
   if (state.status === 'ready') {
     return (
       <div className="min-h-screen bg-background">
-        <div className="max-w-2xl mx-auto px-4 py-12">
-          <Link href="/community/quiz" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground mb-4">
-            <ArrowLeft className="h-4 w-4" /> Back to Quizzes
-          </Link>
+        <CommunityHero
+          badge={`Quiz · ${quiz.difficulty}`}
+          title={quiz.title}
+          subtitle={quiz.description || undefined}
+          icon={<Zap className="h-3.5 w-3.5" />}
+          backHref="/community/quiz"
+          backLabel="Back to Quizzes"
+          imageUrl={quiz.image_url}
+        >
+          <div className="flex flex-wrap gap-2">
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-white/10 px-3 py-1 text-xs text-white/85">
+              {quiz.question_count} Questions
+            </span>
+            {quiz.time_limit && (
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-white/10 px-3 py-1 text-xs text-white/85">
+                <Clock className="h-3 w-3" /> {quiz.time_limit}s per question
+              </span>
+            )}
+            <button
+              type="button"
+              onClick={startQuiz}
+              className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-amber-400 to-amber-500 px-5 py-2.5 text-sm font-semibold text-slate-950 transition-all duration-200 hover:from-amber-300 hover:to-amber-400"
+            >
+              <Zap className="h-4 w-4" /> Start Quiz
+            </button>
+          </div>
+        </CommunityHero>
+        <div className="mx-auto max-w-2xl px-4 py-10">
           <Card>
             <CardContent className="p-8 text-center">
               {quiz.image_url && (
                 <img src={quiz.image_url} alt={quiz.title} className="w-full h-44 object-cover rounded-xl mb-6" />
               )}
-              <h1 className="text-3xl font-bold mb-4">{quiz.title}</h1>
-              {quiz.description && <p className="text-muted-foreground mb-6">{quiz.description}</p>}
+              <h2 className="text-xl font-bold mb-2">{quiz.title}</h2>
+              <p className="text-muted-foreground text-sm mb-4">Complete the quiz to earn XP and climb the leaderboard.</p>
               <div className="flex flex-wrap gap-3 justify-center mb-8">
                 <Badge variant={quiz.difficulty === 'easy' ? 'default' : quiz.difficulty === 'hard' ? 'destructive' : 'secondary'}>
                   {quiz.difficulty}
@@ -176,7 +201,6 @@ export default function QuizRunnerPage({ params }: { params: Promise<{ id: strin
                 <Badge variant="outline">{quiz.question_count} Questions</Badge>
                 {quiz.time_limit && <Badge variant="outline"><Clock className="h-3 w-3 mr-1" /> {quiz.time_limit}s per question</Badge>}
               </div>
-              <Button size="lg" onClick={startQuiz}>Start Quiz</Button>
             </CardContent>
           </Card>
         </div>

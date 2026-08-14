@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
+import { createClient } from '@/lib/supabase/client';
 import { PostCard } from '@/components/community/post-card';
 import { FeedSkeleton } from '@/components/community/skeletons';
 import { EmptyState } from '@/components/community/empty-state';
@@ -50,10 +51,10 @@ export function CommunityFeed({ rails = ['for_you', 'trending', 'latest', 'unans
   const sentinelRef = useRef<HTMLDivElement>(null);
   const busyRef = useRef(false);
 
-  const load = useCallback(async (railName: FeedRail, reset: boolean, cursorVal: string | null) => {
+  const load = useCallback(async (railName: FeedRail, reset: boolean, cursorVal: string | null, quiet = false) => {
     if (busyRef.current) return;
     busyRef.current = true;
-    if (reset) setLoading(true);
+    if (reset && !quiet) setLoading(true);
     else setLoadingMore(true);
     try {
       const params = new URLSearchParams({ rail: railName, limit: '20' });
@@ -97,6 +98,22 @@ export function CommunityFeed({ rails = ['for_you', 'trending', 'latest', 'unans
     obs.observe(el);
     return () => obs.disconnect();
   }, [rail, hasMore, cursor, load, rails]);
+
+  useEffect(() => {
+    const supabase = createClient();
+    const channel = supabase
+      .channel(`community_feed_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`)
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'forum_posts' }, () => void load(rail, true, null, true))
+      .subscribe();
+    const poll = setInterval(() => void load(rail, true, null, true), 30000);
+    const onFocus = () => void load(rail, true, null, true);
+    window.addEventListener('focus', onFocus);
+    return () => {
+      clearInterval(poll);
+      window.removeEventListener('focus', onFocus);
+      supabase.removeChannel(channel);
+    };
+  }, [rail, load]);
 
   const switchRail = (r: FeedRail) => {
     if (r === rail) return;

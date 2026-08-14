@@ -48,20 +48,26 @@ export default async function PageShell({
 
   const html = renderMarkdown(content);
 
+  const breadcrumb = (
+    <div className="text-sm mb-4">
+      <Link href="/" className="text-white/80 hover:text-white hover:underline">Home</Link>
+      <span className="mx-2 text-white/60">→</span>
+      <span className="font-medium text-white">{def.label}</span>
+    </div>
+  );
+
   return (
     <div className="w-full">
       {heroImage ? (
-        <div className="relative overflow-hidden mb-0 min-h-[320px] flex items-center">
+        <div className="relative overflow-hidden mb-0 min-h-[340px] flex items-center">
           <Image src={heroImage} alt={title} width={1200} height={675} className="absolute inset-0 w-full h-full object-cover" />
-          <div className="absolute inset-0 bg-black/40" />
+          <div className="absolute inset-0 bg-gradient-to-r from-black/80 via-black/60 to-black/40" />
           <div className="relative z-10 px-4 md:px-12 lg:px-16 py-16 text-white max-w-4xl">
-            <div className="text-sm mb-3">
-              <Link href="/" className="text-white/80 hover:text-white hover:underline">Home</Link>
-              <span className="mx-2 text-white/60">→</span>
-              <span className="font-medium">{def.label}</span>
+            {breadcrumb}
+            <div className="inline-flex items-center justify-center h-14 w-14 rounded-2xl bg-amber-400/20 border border-amber-300/30 text-3xl mb-5 shadow-lg shadow-black/20 backdrop-blur-sm">
+              {def.icon}
             </div>
-            <div className="text-5xl mb-4">{def.icon}</div>
-            <h1 className="text-4xl md:text-5xl font-bold mb-4">{title}</h1>
+            <h1 className="text-4xl md:text-5xl font-bold mb-4 font-[family-name:var(--font-syne)]">{title}</h1>
             <p className="text-lg text-white/80 max-w-2xl leading-relaxed">{subtitle}</p>
             {(def.hero.updatedLine || updatedAt) && (
               <p className="text-sm text-white/60 mt-4">
@@ -71,21 +77,31 @@ export default async function PageShell({
           </div>
         </div>
       ) : (
-        <div className="border-b bg-gradient-to-br from-[#FFF7E6] via-card to-card dark:from-[#1a1606] px-4 md:px-12 lg:px-16 py-14 md:py-16">
-          <div className="max-w-4xl">
-            <div className="text-sm mb-3 text-muted-foreground">
-              <Link href="/" className="text-accent hover:underline">Home</Link>
-              <span className="mx-2">→</span>
-              <span className="font-medium text-foreground">{def.label}</span>
+        <div className="relative overflow-hidden border-b border-border/60 bg-gradient-to-br from-slate-950 via-[#0b1035] to-[#1b1b4b]">
+          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,rgba(245,158,11,0.16),transparent_55%)]" />
+          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_left,rgba(99,102,241,0.18),transparent_55%)]" />
+          <div
+            className="absolute inset-0 opacity-[0.07]"
+            style={{
+              backgroundImage:
+                "linear-gradient(rgba(255,255,255,.6) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.6) 1px, transparent 1px)",
+              backgroundSize: "44px 44px",
+            }}
+          />
+          <div className="relative px-4 md:px-12 lg:px-16 py-16 md:py-20">
+            <div className="max-w-4xl">
+              <div className="mb-6">{breadcrumb}</div>
+              <div className="inline-flex items-center justify-center h-14 w-14 rounded-2xl bg-amber-400/20 border border-amber-300/30 text-3xl mb-5 shadow-lg shadow-black/20">
+                {def.icon}
+              </div>
+              <h1 className="text-4xl md:text-5xl font-bold mb-4 text-white font-[family-name:var(--font-syne)]">{title}</h1>
+              <p className="text-lg text-white/75 max-w-2xl leading-relaxed">{subtitle}</p>
+              {(def.hero.updatedLine || updatedAt) && (
+                <p className="text-sm text-white/60 mt-4">
+                  {def.hero.updatedLine || `Last updated: ${new Date(updatedAt!).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })}`}
+                </p>
+              )}
             </div>
-            <div className="text-5xl mb-4">{def.icon}</div>
-            <h1 className="text-4xl md:text-5xl font-bold mb-4">{title}</h1>
-            <p className="text-lg text-muted-foreground max-w-2xl leading-relaxed">{subtitle}</p>
-            {(def.hero.updatedLine || updatedAt) && (
-              <p className="text-sm text-muted-foreground/70 mt-4">
-                {def.hero.updatedLine || `Last updated: ${new Date(updatedAt!).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })}`}
-              </p>
-            )}
           </div>
         </div>
       )}

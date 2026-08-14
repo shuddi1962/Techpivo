@@ -10,6 +10,7 @@ import { MessageSquare, Trophy, Brain, BarChart3, BookOpen, Users, Flame, Star, 
 import { SITE_URL } from '@/lib/constants';
 import PageIntro from '@/components/pages/page-intro';
 import { CommunityFeed } from '@/components/community/community-feed';
+import { CommunityHero } from '@/components/community/community-hero';
 
 export const metadata = {
   title: 'Community — TechPivo',
@@ -39,30 +40,28 @@ export default async function CommunityPage() {
       <JsonLd data={collectionPageSchema("TechPivo Community", "Join the TechPivo community. Discuss tech, take quizzes, earn rewards, and connect with fellow technology enthusiasts.", `${SITE_URL}/community`)} />
       <div className="min-h-screen bg-background">
       <PageIntro slug="community" />
-      <div className="bg-gradient-to-br from-primary/5 via-background to-primary/10 border-b">
-        <div className="max-w-7xl mx-auto px-4 py-12">
-          <div className="text-center max-w-2xl mx-auto">
-            <h1 className="text-4xl font-bold mb-4">TechPivo Community</h1>
-            <p className="text-lg text-muted-foreground">
-              Join thousands of technology enthusiasts. Discuss, learn, compete, and grow together.
-            </p>
-          </div>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-8 max-w-3xl mx-auto">
-            {[
-              { icon: MessageSquare, label: 'Forum', desc: 'Tech discussions and Q&A' },
-              { icon: Brain, label: 'Quizzes', desc: 'Test your tech knowledge' },
-              { icon: BarChart3, label: 'Polls', desc: 'Share your opinion' },
-              { icon: Trophy, label: 'Leaderboard', desc: 'Compete and earn XP' },
-            ].map((stat) => (
-              <div key={stat.label} className="text-center p-4 rounded-xl bg-card border">
-                <stat.icon className="h-6 w-6 mx-auto mb-2 text-primary" />
-                <div className="font-bold text-lg">{stat.label}</div>
-                <div className="text-sm text-muted-foreground">{stat.desc}</div>
-              </div>
-            ))}
-          </div>
+      <CommunityHero
+        badge="Community"
+        title="TechPivo Community"
+        subtitle="Join thousands of technology enthusiasts. Discuss, learn, compete, and grow together."
+        icon={<Sparkles className="h-3.5 w-3.5" />}
+        imageUrl={null}
+      >
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 max-w-3xl">
+          {[
+            { icon: MessageSquare, label: 'Forum', desc: 'Discussions & Q&A' },
+            { icon: Brain, label: 'Quizzes', desc: 'Test your knowledge' },
+            { icon: BarChart3, label: 'Polls', desc: 'Share your opinion' },
+            { icon: Trophy, label: 'Leaderboard', desc: 'Compete and earn XP' },
+          ].map((stat) => (
+            <div key={stat.label} className="rounded-xl border border-white/10 bg-white/5 p-3 text-center backdrop-blur-sm">
+              <stat.icon className="h-5 w-5 mx-auto mb-1.5 text-amber-400" />
+              <div className="text-sm font-bold text-white">{stat.label}</div>
+              <div className="text-xs text-white/60">{stat.desc}</div>
+            </div>
+          ))}
         </div>
-      </div>
+      </CommunityHero>
 
       <div className="max-w-7xl mx-auto px-4 py-8 space-y-8">
         <section>

@@ -64,7 +64,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { path: "/community/quiz", priority: 0.7, freq: "weekly" },
     { path: "/community/polls", priority: 0.6, freq: "weekly" },
     { path: "/community/leaderboard", priority: 0.6, freq: "daily" },
-    { path: "/community/learning-paths", priority: 0.6, freq: "monthly" },
   ]
 
   const entries: MetadataRoute.Sitemap = staticPages

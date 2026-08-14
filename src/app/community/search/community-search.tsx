@@ -6,7 +6,8 @@ import Link from 'next/link';
 import { PostCard } from '@/components/community/post-card';
 import { EmptyState } from '@/components/community/empty-state';
 import { type CommunityPost } from '@/lib/community-types';
-import { Search, Hash, User as UserIcon, Loader2 } from 'lucide-react';
+import { Search, Hash, User as UserIcon, Loader2, Sparkles } from 'lucide-react';
+import { CommunityHero } from '@/components/community/community-hero';
 
 interface SearchResult {
   query: string;
@@ -57,13 +58,17 @@ export function CommunitySearch() {
 
   return (
     <div>
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-textPrimary flex items-center gap-2">
-          <Search className="h-6 w-6 text-accent" aria-hidden /> Community search
-        </h1>
-        <p className="text-sm text-textSecondary mt-1">Search posts, topics, and members.</p>
-      </div>
+      <CommunityHero
+        badge="Search"
+        title="Community search"
+        subtitle="Search posts, topics, and members across the community."
+        icon={<Sparkles className="h-3.5 w-3.5" />}
+        backHref="/community"
+        backLabel="Back to Community"
+        imageUrl={null}
+      />
 
+      <div className="mx-auto max-w-3xl px-4 py-8">
       <div className="relative mb-6 max-w-xl">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-textSecondary" aria-hidden />
         <input
@@ -147,6 +152,7 @@ export function CommunitySearch() {
           </div>
         </section>
       )}
+      </div>
     </div>
   );
 }

@@ -5,7 +5,9 @@ import Link from 'next/link';
 import { Calendar, MapPin, Users, Clock, ArrowLeft, Sparkles, ExternalLink, Check, CalendarCheck, Presentation, Handshake, Terminal, Video, Wrench, Rocket, CalendarDays } from 'lucide-react';
 import { JsonLd } from '@/components/ui/jsonld';
 import { breadcrumbSchema, eventListSchema, eventSchema } from '@/lib/jsonld';
+import { createClient } from '@/lib/supabase/client';
 import PageIntro from '@/components/pages/page-intro';
+import { CommunityHero } from '@/components/community/community-hero';
 
 interface Event {
   id: string;
@@ -83,12 +85,19 @@ export default function EventsPage() {
 
   useEffect(() => {
     loadEvents();
+    const supabase = createClient();
+    const channel = supabase
+      .channel(`events_page_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'community_events' }, () => loadEvents())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'event_rsvps' }, () => loadEvents())
+      .subscribe();
     const poll = setInterval(loadEvents, 30000);
     const onFocus = () => loadEvents();
     window.addEventListener('focus', onFocus);
     return () => {
       clearInterval(poll);
       window.removeEventListener('focus', onFocus);
+      supabase.removeChannel(channel);
     };
   }, [loadEvents]);
 
@@ -140,28 +149,18 @@ export default function EventsPage() {
           url: e.url,
         })))} />
       )}
-      <div className="min-h-screen bg-gradient-to-b from-background via-background to-muted/30">
+      <div className="min-h-screen bg-background">
       <PageIntro slug="community-events" />
       {/* Hero */}
-      <div className="relative overflow-hidden bg-gradient-to-br from-amber-600/10 via-orange-500/5 to-rose-600/10 dark:from-amber-500/5 dark:via-orange-500/5 dark:to-rose-500/5 border-b border-border/40">
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-amber-400/10 via-transparent to-transparent" />
-        <div className="max-w-7xl mx-auto px-4 py-16 md:py-24 relative">
-          <Link href="/community" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground mb-6 transition-colors">
-            <ArrowLeft className="h-4 w-4" /> Back to Community
-          </Link>
-          <div className="max-w-2xl">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-500/10 border border-amber-200 dark:border-amber-800 text-amber-700 dark:text-amber-400 text-xs font-medium mb-4">
-              <Sparkles className="h-3.5 w-3.5" /> Community Events
-            </div>
-            <h1 className="text-4xl md:text-5xl font-bold font-[family-name:var(--font-syne)] tracking-tight">
-              Tech Events
-            </h1>
-            <p className="text-lg text-muted-foreground mt-3 max-w-xl">
-              Conferences, meetups, hackathons, workshops and product launches — all in one place.
-            </p>
-          </div>
-        </div>
-      </div>
+      <CommunityHero
+        badge="Community Events"
+        title="Tech Events"
+        subtitle="Conferences, meetups, hackathons, workshops and product launches — all in one place."
+        icon={<Sparkles className="h-3.5 w-3.5" />}
+        backHref="/community"
+        backLabel="Back to Community"
+        imageUrl={events[0]?.image_url || null}
+      />
 
       {/* Content */}
       <div className="max-w-7xl mx-auto px-4 py-8 md:py-12">

@@ -6,6 +6,7 @@ import { Brain, Clock, Users, BarChart, Sparkles, ArrowRight, Zap } from 'lucide
 import { createClient } from '@/lib/supabase/client';
 import { JsonLd } from '@/components/ui/jsonld';
 import { breadcrumbSchema } from '@/lib/jsonld';
+import { CommunityHero } from '@/components/community/community-hero';
 
 interface Quiz {
   id: string;
@@ -72,24 +73,17 @@ export default function QuizPage() {
         { name: "Community", url: "https://techpivo.com/community" },
         { name: "Quizzes" },
       ])} />
-      <div className="min-h-screen bg-gradient-to-b from-background via-background to-muted/30">
+      <div className="min-h-screen bg-background">
       {/* Hero */}
-      <div className="relative overflow-hidden bg-gradient-to-br from-purple-600/10 via-violet-500/5 to-pink-600/10 dark:from-purple-500/5 dark:via-violet-500/5 dark:to-pink-500/5 border-b border-border/40">
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_left,_var(--tw-gradient-stops))] from-purple-400/10 via-transparent to-transparent" />
-        <div className="max-w-7xl mx-auto px-4 py-16 md:py-20 relative">
-          <div className="max-w-2xl">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-purple-500/10 border border-purple-200 dark:border-purple-800 text-purple-700 dark:text-purple-400 text-xs font-medium mb-4">
-              <Sparkles className="h-3.5 w-3.5" /> Quiz Center
-            </div>
-            <h1 className="text-4xl md:text-5xl font-bold font-[family-name:var(--font-syne)] tracking-tight">
-              Test Your Knowledge
-            </h1>
-            <p className="text-lg text-muted-foreground mt-3 max-w-xl">
-              Challenge yourself with quizzes on programming, AI, cybersecurity, and more.
-            </p>
-          </div>
-        </div>
-      </div>
+      <CommunityHero
+        badge="Quiz Center"
+        title="Test Your Knowledge"
+        subtitle="Challenge yourself with quizzes on programming, AI, cybersecurity, and more."
+        icon={<Sparkles className="h-3.5 w-3.5" />}
+        backHref="/community"
+        backLabel="Back to Community"
+        imageUrl={quizzes[0]?.image_url || null}
+      />
 
       <div className="max-w-7xl mx-auto px-4 py-8 md:py-12">
         {/* Category pills */}

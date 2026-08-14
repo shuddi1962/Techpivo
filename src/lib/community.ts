@@ -176,47 +176,6 @@ export interface CommunityEvent {
   created_at: string;
 }
 
-export interface LearningPath {
-  id: string;
-  title: string;
-  slug: string;
-  description: string;
-  icon: string;
-  color_from: string;
-  color_to: string;
-  difficulty: string;
-  duration: string;
-  category: string | null;
-  lesson_count: number;
-  enrolled_count: number;
-  xp_reward: number;
-  is_published: boolean;
-  sort_order: number;
-  image_url: string | null;
-  created_at: string;
-}
-
-export interface LearningPathLesson {
-  id: string;
-  path_id: string;
-  title: string;
-  description: string | null;
-  article_slug: string | null;
-  sort_order: number;
-  duration_minutes: number | null;
-  created_at: string;
-}
-
-export async function getLearningPaths() {
-  const supabase = await createClient();
-  const { data } = await supabase
-    .from('learning_paths')
-    .select('*')
-    .eq('is_published', true)
-    .order('sort_order');
-  return data as LearningPath[];
-}
-
 export async function getUserProfile(userId: string) {
   const supabase = await createClient();
   const { data } = await supabase
@@ -336,25 +295,4 @@ export async function getUpcomingEvents(limit: number = 12) {
     .order('start_date', { ascending: true })
     .limit(limit);
   return (data || []) as CommunityEvent[];
-}
-
-export async function getLearningPathBySlug(slug: string) {
-  const supabase = await createClient();
-  const { data } = await supabase
-    .from('learning_paths')
-    .select('*')
-    .eq('slug', slug)
-    .eq('is_published', true)
-    .single();
-  return data as LearningPath | null;
-}
-
-export async function getLearningPathLessons(pathId: string) {
-  const supabase = await createClient();
-  const { data } = await supabase
-    .from('learning_path_lessons')
-    .select('*')
-    .eq('path_id', pathId)
-    .order('sort_order', { ascending: true });
-  return (data || []) as LearningPathLesson[];
 }

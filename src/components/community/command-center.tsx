@@ -25,7 +25,6 @@ const QUICK_LINKS = [
   { href: '/community/polls', label: 'Polls', icon: Vote },
   { href: '/community/quiz', label: 'Quizzes', icon: ListChecks },
   { href: '/community/events', label: 'Events', icon: CalendarDays },
-  { href: '/community/learning-paths', label: 'Learn', icon: GraduationCap },
   { href: '/community/leaderboard', label: 'Leaderboard', icon: Trophy },
   { href: '/community/topics', label: 'Topics', icon: Hash },
 ];

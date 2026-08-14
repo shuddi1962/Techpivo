@@ -23,7 +23,6 @@ export function TopBar({ socialUrls = {} }: { socialUrls?: Record<string, string
           {pageVisible("contact") && <Link href="/contact">Contact</Link>}
           {pageVisible("disclaimer") && <Link href="/disclaimer">Disclaimer</Link>}
           {pageVisible("advertise") && <Link href="/advertise">Advertise</Link>}
-          <Link href="/community/events">Events</Link>
           {pageVisible("newsletter") && <Link href="/newsletter">Newsletter</Link>}
           <span className="top-divider" />
           {pageVisible("write-for-us") && <Link href="/write-for-us">Write for Us</Link>}

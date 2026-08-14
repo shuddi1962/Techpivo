@@ -6,6 +6,7 @@ import { ArrowLeft, BarChart3, CheckCircle2, Sparkles } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { JsonLd } from '@/components/ui/jsonld';
 import { breadcrumbSchema } from '@/lib/jsonld';
+import { CommunityHero } from '@/components/community/community-hero';
 
 interface PollOption {
   id: string;
@@ -117,27 +118,17 @@ export default function PollsPage() {
         { name: "Community", url: "https://techpivo.com/community" },
         { name: "Polls" },
       ])} />
-      <div className="min-h-screen bg-gradient-to-b from-background via-background to-muted/30">
+      <div className="min-h-screen bg-background">
       {/* Hero */}
-      <div className="relative overflow-hidden bg-gradient-to-br from-green-600/10 via-emerald-500/5 to-teal-600/10 dark:from-green-500/5 dark:via-emerald-500/5 dark:to-teal-500/5 border-b border-border/40">
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-emerald-400/10 via-transparent to-transparent" />
-        <div className="max-w-3xl mx-auto px-4 py-16 md:py-20 relative">
-          <Link href="/community" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground mb-6 transition-colors">
-            <ArrowLeft className="h-4 w-4" /> Back to Community
-          </Link>
-          <div className="max-w-2xl">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-400 text-xs font-medium mb-4">
-              <Sparkles className="h-3.5 w-3.5" /> Community Polls
-            </div>
-            <h1 className="text-4xl md:text-5xl font-bold font-[family-name:var(--font-syne)] tracking-tight">
-              Share Your Opinion
-            </h1>
-            <p className="text-lg text-muted-foreground mt-3 max-w-xl">
-              Vote on technology topics and see what the community thinks.
-            </p>
-          </div>
-        </div>
-      </div>
+      <CommunityHero
+        badge="Community Polls"
+        title="Share Your Opinion"
+        subtitle="Vote on technology topics and see what the community thinks."
+        icon={<Sparkles className="h-3.5 w-3.5" />}
+        backHref="/community"
+        backLabel="Back to Community"
+        imageUrl={null}
+      />
 
       <div className="max-w-3xl mx-auto px-4 py-8 md:py-12">
         {voteError && (

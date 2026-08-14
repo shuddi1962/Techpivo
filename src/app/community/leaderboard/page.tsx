@@ -6,6 +6,7 @@ import { Trophy, Star, ArrowLeft, Sparkles, Crown, Medal, Timer, RefreshCw } fro
 import { createClient } from '@/lib/supabase/client';
 import { JsonLd } from '@/components/ui/jsonld';
 import { breadcrumbSchema } from '@/lib/jsonld';
+import { CommunityHero } from '@/components/community/community-hero';
 
 interface LeaderboardEntry {
   user_id: string;
@@ -62,53 +63,44 @@ export default function LeaderboardPage() {
         { name: "Community", url: "https://techpivo.com/community" },
         { name: "Leaderboard" },
       ])} />
-      <div className="min-h-screen bg-gradient-to-b from-background via-background to-muted/30">
+      <div className="min-h-screen bg-background">
       {/* Hero */}
-      <div className="relative overflow-hidden bg-gradient-to-br from-amber-600/10 via-yellow-500/5 to-orange-600/10 dark:from-amber-500/5 dark:via-yellow-500/5 dark:to-orange-500/5 border-b border-border/40">
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_center,_var(--tw-gradient-stops))] from-amber-400/10 via-transparent to-transparent" />
-        <div className="max-w-4xl mx-auto px-4 py-16 md:py-20 relative">
-          <Link href="/community" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground mb-6 transition-colors">
-            <ArrowLeft className="h-4 w-4" /> Back to Community
-          </Link>
-          <div className="max-w-2xl">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-500/10 border border-amber-200 dark:border-amber-800 text-amber-700 dark:text-amber-400 text-xs font-medium mb-4">
-              <Sparkles className="h-3.5 w-3.5" /> Leaderboard
-            </div>
-            <h1 className="text-4xl md:text-5xl font-bold font-[family-name:var(--font-syne)] tracking-tight">
-              Top Contributors
-            </h1>
-            <p className="text-lg text-muted-foreground mt-3 max-w-xl">
-              Ranked by experience points. Participate to climb the ranks!
-            </p>
-            <div className="flex items-center gap-3 mt-4 flex-wrap">
-              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500/10 border border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-400 text-xs font-medium">
-                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" /> LIVE
-              </span>
-              <div className="flex gap-1 rounded-lg bg-card border border-border/60 p-0.5">
-                {([['all', 'All time'], ['weekly', 'This week'], ['daily', 'Today']] as const).map(([key, label]) => (
-                  <button
-                    key={key}
-                    type="button"
-                    onClick={() => setPeriod(key)}
-                    className={`px-3 py-1 rounded-md text-xs font-medium transition-colors ${
-                      period === key
-                        ? 'bg-amber-500 text-white'
-                        : 'text-muted-foreground hover:text-foreground'
-                    }`}
-                  >
-                    {label}
-                  </button>
-                ))}
-              </div>
-              {lastSync && (
-                <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
-                  <RefreshCw className="h-3 w-3" /> Updated {lastSync.toLocaleTimeString()}
-                </span>
-              )}
-            </div>
+      <CommunityHero
+        badge="Leaderboard"
+        title="Top Contributors"
+        subtitle="Ranked by experience points. Participate to climb the ranks!"
+        icon={<Sparkles className="h-3.5 w-3.5" />}
+        backHref="/community"
+        backLabel="Back to Community"
+        imageUrl={null}
+      >
+        <div className="flex items-center gap-3 flex-wrap">
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500/15 border border-emerald-400/30 text-emerald-300 text-xs font-medium">
+            <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" /> LIVE
+          </span>
+          <div className="flex gap-1 rounded-lg bg-white/10 border border-white/15 p-0.5">
+            {([['all', 'All time'], ['weekly', 'This week'], ['daily', 'Today']] as const).map(([key, label]) => (
+              <button
+                key={key}
+                type="button"
+                onClick={() => setPeriod(key)}
+                className={`px-3 py-1 rounded-md text-xs font-medium transition-colors ${
+                  period === key
+                    ? 'bg-amber-400 text-slate-950'
+                    : 'text-white/70 hover:text-white'
+                }`}
+              >
+                {label}
+              </button>
+            ))}
           </div>
+          {lastSync && (
+            <span className="inline-flex items-center gap-1.5 text-xs text-white/60">
+              <RefreshCw className="h-3 w-3" /> Updated {lastSync.toLocaleTimeString()}
+            </span>
+          )}
         </div>
-      </div>
+      </CommunityHero>
 
       <div className="max-w-4xl mx-auto px-4 py-8 md:py-12">
         {loading ? (

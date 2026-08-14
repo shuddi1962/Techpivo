@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
-import { ArrowLeft, Pin, CheckCircle2, ThumbsUp, ThumbsDown, MessageSquare, Eye, Clock, Send, Bookmark, Share2 } from 'lucide-react';
+import { ArrowLeft, Pin, CheckCircle2, ThumbsUp, ThumbsDown, MessageSquare, Eye, Clock, Send, Bookmark, BookmarkCheck, Share2 } from 'lucide-react';
 
 interface ForumPost {
   id: string;
@@ -40,6 +40,8 @@ export default function ForumPostPage({ params }: { params: Promise<{ category: 
   const [replyContent, setReplyContent] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [saved, setSaved] = useState(false);
+  const [saveBusy, setSaveBusy] = useState(false);
 
   useEffect(() => {
     params.then(({ id }) => {
@@ -56,8 +58,38 @@ export default function ForumPostPage({ params }: { params: Promise<{ category: 
           setLoading(false);
         })
         .catch(() => setLoading(false));
+      fetch('/api/community/bookmarks')
+        .then(r => r.json())
+        .then(d => {
+          if (Array.isArray(d.bookmarks)) {
+            setSaved(d.bookmarks.some((b: { item_type: string; item_id: string }) => b.item_type === 'forum_post' && b.item_id === id));
+          }
+        })
+        .catch(() => {});
     });
   }, [params, router]);
+
+  const toggleSave = async () => {
+    if (!post || saveBusy) return;
+    setSaveBusy(true);
+    try {
+      const method = saved ? 'DELETE' : 'POST';
+      const res = await fetch('/api/community/bookmarks', {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          item_type: 'forum_post',
+          item_id: post.id,
+          title: post.title,
+          url: `/community/forum/${post.category?.slug || 'general'}/${post.id}`,
+        }),
+      });
+      if (res.ok) setSaved(!saved);
+    } catch (e) {
+      console.error('Failed to save post');
+    }
+    setSaveBusy(false);
+  };
 
   const submitReply = async () => {
     if (!replyContent.trim() || !post) return;
@@ -168,8 +200,22 @@ export default function ForumPostPage({ params }: { params: Promise<{ category: 
                   </div>
                   <span className="flex items-center gap-1"><MessageSquare className="h-4 w-4" /> {post.reply_count}</span>
                   <span className="flex items-center gap-1"><Eye className="h-4 w-4" /> {post.view_count}</span>
-                  <button className="flex items-center gap-1 hover:text-primary ml-auto"><Bookmark className="h-4 w-4" /> Save</button>
-                  <button className="flex items-center gap-1 hover:text-primary"><Share2 className="h-4 w-4" /> Share</button>
+                  <button
+                    type="button"
+                    onClick={toggleSave}
+                    disabled={saveBusy}
+                    aria-pressed={saved}
+                    className={`flex items-center gap-1 ml-auto hover:text-primary disabled:opacity-50 ${saved ? 'text-primary' : ''}`}
+                  >
+                    {saved ? <BookmarkCheck className="h-4 w-4" /> : <Bookmark className="h-4 w-4" />} {saved ? 'Saved' : 'Save'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { if (navigator.share) navigator.share({ title: post.title, url: window.location.href }).catch(() => {}); }}
+                    className="flex items-center gap-1 hover:text-primary"
+                  >
+                    <Share2 className="h-4 w-4" /> Share
+                  </button>
                 </div>
               </div>
             </div>

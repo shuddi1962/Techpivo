@@ -51,8 +51,6 @@ const quickLinksRight = [
   { label: "Forum", href: "/community/forum" },
   { label: "Quizzes", href: "/community/quiz" },
   { label: "Polls", href: "/community/polls" },
-  { label: "Events", href: "/community/events" },
-  { label: "Learning Paths", href: "/community/learning-paths" },
   { label: "Leaderboard", href: "/community/leaderboard" },
   { label: "My Account", href: "/account" },
   { label: "Newsletter", href: "/newsletter" },

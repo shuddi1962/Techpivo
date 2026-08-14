@@ -17,7 +17,6 @@ const NAV = [
   { href: '/community/polls', label: 'Polls', icon: BarChart3 },
   { href: '/community/quiz', label: 'Quizzes', icon: GraduationCap },
   { href: '/community/events', label: 'Events', icon: CalendarDays },
-  { href: '/community/learning-paths', label: 'Learn', icon: Map },
   { href: '/community/leaderboard', label: 'Leaderboard', icon: Trophy },
   { href: '/community/search', label: 'Search', icon: Search },
 ];

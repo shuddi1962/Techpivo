@@ -3,7 +3,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
-import { Search, Hash, FileText, Users } from 'lucide-react';
+import { Search, Hash, FileText, Users, Sparkles } from 'lucide-react';
+import { CommunityHero } from '@/components/community/community-hero';
 
 interface TopicRow {
   id: string;
@@ -47,13 +48,17 @@ export default function TopicsDirectoryPage() {
 
   return (
     <div>
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-textPrimary flex items-center gap-2">
-          <Hash className="h-6 w-6 text-accent" aria-hidden /> Topics
-        </h1>
-        <p className="text-sm text-textSecondary mt-1">Follow topics to see focused discussions from the TechPivo community.</p>
-      </div>
+      <CommunityHero
+        badge="Topics"
+        title="Explore Topics"
+        subtitle="Follow topics to see focused discussions from the TechPivo community."
+        icon={<Sparkles className="h-3.5 w-3.5" />}
+        backHref="/community"
+        backLabel="Back to Community"
+        imageUrl={null}
+      />
 
+      <div className="max-w-7xl mx-auto px-4 py-8">
         <div className="relative mb-6 max-w-md">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-textSecondary" aria-hidden />
           <input
@@ -104,6 +109,7 @@ export default function TopicsDirectoryPage() {
             ))}
           </div>
         )}
+      </div>
     </div>
   );
 }
