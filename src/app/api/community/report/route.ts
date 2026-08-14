@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { checkRateLimit, clientIp, RATE_LIMITS } from '@/lib/rate-limiter';
+import { isSameOrigin } from '@/lib/csrf';
 
 const TARGET_TYPES = new Set(['forum_post', 'forum_reply', 'comment', 'user']);
 const REASONS = new Set([
@@ -9,6 +10,9 @@ const REASONS = new Set([
 ]);
 
 export async function POST(request: NextRequest) {
+  if (!isSameOrigin(request)) {
+    return NextResponse.json({ error: 'Cross-origin request blocked' }, { status: 403 });
+  }
   const rl = checkRateLimit(`report:${clientIp(request)}`, RATE_LIMITS.report);
   if (!rl.allowed) return NextResponse.json({ error: 'Too many reports. Try again later.' }, { status: 429 });
 

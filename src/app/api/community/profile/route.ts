@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { checkRateLimit, clientIp, RATE_LIMITS } from '@/lib/rate-limiter';
+import { isSameOrigin } from '@/lib/csrf';
 
 export async function GET() {
   const supabase = await createClient();
@@ -11,6 +12,9 @@ export async function GET() {
 }
 
 export async function PUT(request: NextRequest) {
+  if (!isSameOrigin(request)) {
+    return NextResponse.json({ error: 'Cross-origin request blocked' }, { status: 403 });
+  }
   const rl = checkRateLimit(`profile:${clientIp(request)}`, RATE_LIMITS.profileUpdate);
   if (!rl.allowed) {
     return NextResponse.json({ error: 'Too many profile updates. Try again later.' }, { status: 429 });

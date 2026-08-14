@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { checkRateLimit, clientIp, RATE_LIMITS } from '@/lib/rate-limiter';
+import { isSameOrigin } from '@/lib/csrf';
 
 const PROVIDERS = [
   { id: 'google', name: 'Google', icon: '🔵' },
@@ -32,6 +33,9 @@ export async function GET() {
 }
 
 export async function POST(request: NextRequest) {
+  if (!isSameOrigin(request)) {
+    return NextResponse.json({ error: 'Cross-origin request blocked' }, { status: 403 });
+  }
   const rl = checkRateLimit(`connected-accounts:${clientIp(request)}`, RATE_LIMITS.connectedAccounts);
   if (!rl.allowed) {
     return NextResponse.json({ error: 'Too many requests. Try again later.' }, { status: 429 });
@@ -71,6 +75,9 @@ export async function POST(request: NextRequest) {
 }
 
 export async function DELETE(request: NextRequest) {
+  if (!isSameOrigin(request)) {
+    return NextResponse.json({ error: 'Cross-origin request blocked' }, { status: 403 });
+  }
   const rl = checkRateLimit(`connected-accounts:${clientIp(request)}`, RATE_LIMITS.connectedAccounts);
   if (!rl.allowed) {
     return NextResponse.json({ error: 'Too many requests. Try again later.' }, { status: 429 });

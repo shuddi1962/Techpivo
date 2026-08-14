@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server';
 import { createClient as createServiceClient } from '@/lib/supabase/admin';
 import { checkRateLimit, clientIp, RATE_LIMITS } from '@/lib/rate-limiter';
 import { enrichAuthors } from '@/lib/community-server';
+import { isSameOrigin } from '@/lib/csrf';
 
 const POST_SELECT = `
   *,
@@ -93,6 +94,9 @@ export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ slug: string }> }
 ) {
+  if (!isSameOrigin(request)) {
+    return NextResponse.json({ error: 'Cross-origin request blocked' }, { status: 403 });
+  }
   const rl = checkRateLimit(`answer:${clientIp(request)}`, RATE_LIMITS.replyCreate);
   if (!rl.allowed) return NextResponse.json({ error: 'Too many replies. Try again later.' }, { status: 429 });
 
@@ -147,6 +151,13 @@ export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ slug: string }> }
 ) {
+  if (!isSameOrigin(request)) {
+    return NextResponse.json({ error: 'Cross-origin request blocked' }, { status: 403 });
+  }
+  const rl = checkRateLimit(`answer-accept:${clientIp(request)}`, RATE_LIMITS.acceptAnswer);
+  if (!rl.allowed) {
+    return NextResponse.json({ error: 'Too many requests. Try again later.' }, { status: 429 });
+  }
   const { slug } = await params;
   const body = await request.json().catch(() => ({}));
   const replyId = typeof body.reply_id === 'string' ? body.reply_id : '';

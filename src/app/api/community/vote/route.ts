@@ -1,8 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { checkRateLimit, clientIp, RATE_LIMITS } from '@/lib/rate-limiter';
+import { isSameOrigin } from '@/lib/csrf';
 
 export async function POST(request: NextRequest) {
+  if (!isSameOrigin(request)) {
+    return NextResponse.json({ error: 'Cross-origin request blocked' }, { status: 403 });
+  }
   const rl = checkRateLimit(`vote:${clientIp(request)}`, RATE_LIMITS.vote);
   if (!rl.allowed) {
     return NextResponse.json({ error: 'Too many votes. Try again later.' }, { status: 429 });
@@ -26,11 +30,16 @@ export async function POST(request: NextRequest) {
   const targetTable = post_id ? 'forum_posts' : 'forum_replies';
   const { data: target } = await supabase
     .from(targetTable)
-    .select('id')
+    .select('id, author_id')
     .eq('id', post_id || reply_id)
     .maybeSingle();
   if (!target) {
     return NextResponse.json({ error: 'Target not found' }, { status: 404 });
+  }
+
+  // Anti-sybil: no self-votes (voting on your own post/reply inflates counts)
+  if (target.author_id && target.author_id === user.id) {
+    return NextResponse.json({ error: 'You cannot vote on your own content.' }, { status: 400 });
   }
 
   // Check existing vote

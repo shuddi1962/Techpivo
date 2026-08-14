@@ -1,8 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { checkRateLimit, clientIp, RATE_LIMITS } from '@/lib/rate-limiter';
+import { isSameOrigin } from '@/lib/csrf';
 
 export async function POST(request: NextRequest) {
+  if (!isSameOrigin(request)) {
+    return NextResponse.json({ error: 'Cross-origin request blocked' }, { status: 403 });
+  }
   const rl = checkRateLimit(`follow:${clientIp(request)}`, RATE_LIMITS.follow);
   if (!rl.allowed) {
     return NextResponse.json({ error: 'Too many follow actions. Try again later.' }, { status: 429 });

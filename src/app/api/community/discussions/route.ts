@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { getForumCategories } from '@/lib/community';
 import { checkRateLimit, clientIp, RATE_LIMITS } from '@/lib/rate-limiter';
+import { isSameOrigin } from '@/lib/csrf';
 
 export async function GET() {
   const categories = await getForumCategories();
@@ -9,6 +10,9 @@ export async function GET() {
 }
 
 export async function POST(request: NextRequest) {
+  if (!isSameOrigin(request)) {
+    return NextResponse.json({ error: 'Cross-origin request blocked' }, { status: 403 });
+  }
   const rl = checkRateLimit(`forum-post:${clientIp(request)}`, RATE_LIMITS.postCreate);
   if (!rl.allowed) {
     return NextResponse.json({ error: 'Too many posts. Try again later.' }, { status: 429 });

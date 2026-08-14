@@ -1,7 +1,11 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { isSameOrigin } from '@/lib/csrf';
 
-export async function POST() {
+export async function POST(request: Request) {
+  if (!isSameOrigin(request)) {
+    return NextResponse.json({ error: 'Cross-origin request blocked' }, { status: 403 });
+  }
   const response = NextResponse.json({ success: true });
   try {
     const supabase = await createClient();

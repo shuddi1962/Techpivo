@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { checkRateLimit, clientIp, RATE_LIMITS } from '@/lib/rate-limiter';
+import { isSameOrigin } from '@/lib/csrf';
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
@@ -34,6 +35,9 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
+  if (!isSameOrigin(request)) {
+    return NextResponse.json({ error: 'Cross-origin request blocked' }, { status: 403 });
+  }
   const rl = checkRateLimit(`event-rsvp:${clientIp(request)}`, RATE_LIMITS.eventRsvp);
   if (!rl.allowed) {
     return NextResponse.json({ error: 'Too many RSVP changes. Try again later.' }, { status: 429 });

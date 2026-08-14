@@ -2,9 +2,17 @@ import { NextRequest, NextResponse } from "next/server"
 import { createServerClient } from "@supabase/ssr"
 import { SITE_URL } from "@/lib/constants"
 import { sendBrandedEmail } from "@/lib/email"
+import { isSameOrigin } from "@/lib/csrf"
 
 export async function POST(request: NextRequest) {
-  const { email, password, fullName } = await request.json()
+  if (!isSameOrigin(request)) {
+    return NextResponse.json({ error: "Cross-origin request blocked" }, { status: 403 })
+  }
+  const body = await request.json().catch(() => null)
+  if (!body || typeof body.email !== "string" || typeof body.password !== "string") {
+    return NextResponse.json({ error: "Email and password are required" }, { status: 400 })
+  }
+  const { email, password, fullName } = body
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,

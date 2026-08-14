@@ -2,11 +2,15 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { checkRateLimit, clientIp, RATE_LIMITS } from '@/lib/rate-limiter';
 import { enrichAuthors } from '@/lib/community-server';
+import { isSameOrigin } from '@/lib/csrf';
 
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  if (!isSameOrigin(request)) {
+    return NextResponse.json({ error: 'Cross-origin request blocked' }, { status: 403 });
+  }
   const rl = checkRateLimit(`forum-reply:${clientIp(request)}`, RATE_LIMITS.replyCreate);
   if (!rl.allowed) {
     return NextResponse.json({ error: 'Too many replies. Try again later.' }, { status: 429 });

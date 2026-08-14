@@ -67,6 +67,7 @@ export const RATE_LIMITS = {
   amaQuestion: { limit: 20, windowMs: 60 * 60 * 1000 },
   reportCreate: { limit: 10, windowMs: 60 * 60 * 1000 },
   acceptAnswer: { limit: 30, windowMs: 60 * 60 * 1000 },
+  aiAnswer: { limit: 10, windowMs: 60 * 60 * 1000 },
 } as const
 
 /** Extract client IP from request headers (x-forwarded-for from proxies). */

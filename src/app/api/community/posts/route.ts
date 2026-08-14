@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createClient as createServiceClient } from '@/lib/supabase/admin';
 import { checkRateLimit, clientIp, RATE_LIMITS } from '@/lib/rate-limiter';
+import { isSameOrigin } from '@/lib/csrf';
 import { slugify } from '@/lib/community-types';
 
 const CONTENT_TYPES = new Set(['question', 'discussion', 'poll', 'quiz', 'ama', 'showcase', 'debate']);
@@ -83,6 +84,9 @@ async function resolveTopics(
 }
 
 export async function POST(request: NextRequest) {
+  if (!isSameOrigin(request)) {
+    return NextResponse.json({ error: 'Cross-origin request blocked' }, { status: 403 });
+  }
   const rl = checkRateLimit(`post-create:${clientIp(request)}`, RATE_LIMITS.postCreate);
   if (!rl.allowed) {
     return NextResponse.json({ error: 'Too many posts. Try again later.' }, { status: 429 });

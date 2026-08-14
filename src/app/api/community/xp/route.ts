@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { checkRateLimit, clientIp, RATE_LIMITS } from '@/lib/rate-limiter';
+import { isSameOrigin } from '@/lib/csrf';
 
 const XP_VALUES: Record<string, number> = {
   read_article: 5,
@@ -31,6 +32,9 @@ const CLIENT_ACTIONS = new Set([
 ]);
 
 export async function POST(request: NextRequest) {
+  if (!isSameOrigin(request)) {
+    return NextResponse.json({ error: 'Cross-origin request blocked' }, { status: 403 });
+  }
   const ip = clientIp(request);
   const rl = checkRateLimit(`xp:${ip}`, RATE_LIMITS.xp);
   if (!rl.allowed) {

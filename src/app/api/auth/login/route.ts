@@ -1,8 +1,12 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createServerClient } from "@supabase/ssr"
 import { checkRateLimit, resetRateLimit } from "@/lib/rate-limiter"
+import { isSameOrigin } from "@/lib/csrf"
 
 export async function POST(request: NextRequest) {
+  if (!isSameOrigin(request)) {
+    return NextResponse.json({ error: "Cross-origin request blocked" }, { status: 403 })
+  }
   const forwarded = request.headers.get("x-forwarded-for")
   const ip = forwarded?.split(",")[0]?.trim() || "127.0.0.1"
   const key = `login:${ip}`

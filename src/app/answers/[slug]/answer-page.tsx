@@ -47,6 +47,9 @@ export default function AnswerPage() {
   const [submitting, setSubmitting] = useState(false);
   const [copied, setCopied] = useState(false);
   const [focusReplyId, setFocusReplyId] = useState<string | null>(null);
+  const [aiAnswer, setAiAnswer] = useState('');
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiError, setAiError] = useState('');
 
   const slug = params.slug;
   const answerBoxRef = useRef<HTMLDivElement>(null);
@@ -95,6 +98,26 @@ export default function AnswerPage() {
   const answers = data?.replies ?? [];
   const answeredIds = useMemo(() => new Set(data?.my_votes.map(v => v.target_id) ?? []), [data]);
   const accepted = answers.find(r => r.is_accepted);
+
+  const askAI = async () => {
+    if (!post || aiLoading) return;
+    setAiLoading(true);
+    setAiError('');
+    try {
+      const res = await fetch('/api/community/ai-answer', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ post_id: post.id }),
+      });
+      const d = await res.json();
+      if (!res.ok) { setAiError(d.error || 'Could not generate an AI answer. Try again in a moment.'); return; }
+      setAiAnswer(d.answer_md);
+    } catch {
+      setAiError('Failed to get an AI answer. Try again.');
+    } finally {
+      setAiLoading(false);
+    }
+  };
 
   const submitAnswer = async () => {
     if (!answerContent.trim() || submitting) return;
@@ -293,10 +316,37 @@ export default function AnswerPage() {
             </button>
           )}
         </div>
-      ) : status === 'stale' && (
+) : status === 'stale' && (
         <div className="mt-4 rounded-xl border border-info/30 bg-info/5 p-4 text-sm text-textPrimary">
-          <strong className="text-info">This question may need a fresh answer.</strong> Tech changes fast ΓÇö if you have updated info, add it below.
+          <strong className="text-info">This question may need a fresh answer.</strong> Tech changes fast — if you have updated info, add it below.
         </div>
+      )}
+
+      {/* AI Answer */}
+      {post.content_type === 'question' && (
+        <section className="mt-4 rounded-xl border border-brand/20 bg-brand/5 p-4" aria-label="AI answer">
+          <div className="flex items-center justify-between flex-wrap gap-2">
+            <h2 className="flex items-center gap-2 text-sm font-semibold text-textPrimary font-[family-name:var(--font-syne)]">
+              <Sparkles className="h-4 w-4 text-brand" aria-hidden /> AI Answer
+            </h2>
+            <button
+              type="button"
+              onClick={askAI}
+              disabled={aiLoading}
+              className="inline-flex items-center gap-1.5 rounded-lg bg-brand px-3.5 py-1.5 text-xs font-semibold text-white hover:opacity-90 disabled:opacity-60"
+            >
+              <Loader2 className={cn('h-3.5 w-3.5', aiLoading && 'animate-spin')} aria-hidden />
+              {aiLoading ? 'Thinking…' : aiAnswer ? 'Regenerate' : 'Get an AI answer'}
+            </button>
+          </div>
+          {aiError && <p className="mt-2 text-xs text-danger">{aiError}</p>}
+          {aiAnswer && (
+            <div className="mt-3 border-t border-brand/15 pt-3 text-[15px] leading-relaxed text-textPrimary">
+              <CommunityMarkdown content={aiAnswer} />
+              <p className="mt-3 text-[11px] text-textSecondary">AI-generated summary grounded in this discussion. Verify important claims before relying on them.</p>
+            </div>
+          )}
+        </section>
       )}
 
       {/* Answers */}

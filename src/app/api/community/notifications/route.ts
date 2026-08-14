@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { checkRateLimit, clientIp, RATE_LIMITS } from '@/lib/rate-limiter';
+import { isSameOrigin } from '@/lib/csrf';
 
 const PREF_KEYS = [
   'email_notifications',
@@ -52,6 +53,13 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
+  if (!isSameOrigin(request)) {
+    return NextResponse.json({ error: 'Cross-origin request blocked' }, { status: 403 });
+  }
+  const rl = checkRateLimit(`notif-read:${clientIp(request)}`, RATE_LIMITS.notificationPrefs);
+  if (!rl.allowed) {
+    return NextResponse.json({ error: 'Too many requests. Try again later.' }, { status: 429 });
+  }
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -81,6 +89,9 @@ export async function POST(request: NextRequest) {
 }
 
 export async function PUT(request: NextRequest) {
+  if (!isSameOrigin(request)) {
+    return NextResponse.json({ error: 'Cross-origin request blocked' }, { status: 403 });
+  }
   const rl = checkRateLimit(`notif-prefs:${clientIp(request)}`, RATE_LIMITS.notificationPrefs);
   if (!rl.allowed) {
     return NextResponse.json({ error: 'Too many requests. Try again later.' }, { status: 429 });

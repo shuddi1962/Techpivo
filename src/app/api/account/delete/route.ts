@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createClient as createAdminClient } from "@/lib/supabase/admin"
 import { createClient as createSessionClient } from "@/lib/supabase/server"
+import { isSameOrigin } from "@/lib/csrf"
 
 const TABLES: { table: string; col: string }[] = [
   { table: "user_profiles", col: "id" },
@@ -29,6 +30,9 @@ const TABLES: { table: string; col: string }[] = [
 ]
 
 export async function POST(request: NextRequest) {
+  if (!isSameOrigin(request)) {
+    return NextResponse.json({ error: "Cross-origin request blocked" }, { status: 403 })
+  }
   // Identity from the session cookie (anon client), privileged work via the
   // service-role client (auth.admin.deleteUser + cross-table cleanup).
   const session = await createSessionClient()

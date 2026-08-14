@@ -10,7 +10,8 @@ import { History, BookOpen, Clock, ArrowRight } from 'lucide-react';
 interface HistoryEntry {
   id: string;
   post_id: string;
-  title: string;
+  title: string | null;
+  slug: string | null;
   progress: number;
   completed: boolean;
   last_read: string;
@@ -67,7 +68,7 @@ export default function HistoryPage() {
                     <BookOpen className="h-5 w-5 text-primary" />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <Link href={`/${entry.post_id}`} className="font-medium hover:text-primary transition-colors truncate block">
+                    <Link href={`/${entry.slug || entry.post_id}`} className="font-medium hover:text-primary transition-colors truncate block">
                       {entry.title || 'Untitled Article'}
                     </Link>
                     <div className="flex items-center gap-3 mt-1">
@@ -80,7 +81,7 @@ export default function HistoryPage() {
                       </Badge>
                     </div>
                   </div>
-                  <Link href={`/${entry.post_id}`}>
+                  <Link href={`/${entry.slug || entry.post_id}`}>
                     <Button variant="ghost" size="sm">
                       <ArrowRight className="h-4 w-4" />
                     </Button>

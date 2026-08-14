@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { checkRateLimit, clientIp, RATE_LIMITS } from '@/lib/rate-limiter';
 import { enrichAuthors } from '@/lib/community-server';
+import { isSameOrigin } from '@/lib/csrf';
 
 export const dynamic = 'force-dynamic';
 
@@ -72,6 +73,9 @@ export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ slug: string }> }
 ) {
+  if (!isSameOrigin(request)) {
+    return NextResponse.json({ error: 'Cross-origin request blocked' }, { status: 403 });
+  }
   const rl = checkRateLimit(`topic-follow:${clientIp(request)}`, RATE_LIMITS.follow);
   if (!rl.allowed) return NextResponse.json({ error: 'Too many requests. Try again later.' }, { status: 429 });
 
