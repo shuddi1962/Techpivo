@@ -21,11 +21,12 @@ export default function LeaderboardPage() {
   const [entries, setEntries] = useState<LeaderboardEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [lastSync, setLastSync] = useState<Date | null>(null);
+  const [period, setPeriod] = useState<'all' | 'daily' | 'weekly'>('all');
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
 
-  const loadLeaderboard = useCallback(async () => {
+  const loadLeaderboard = useCallback(async (p: 'all' | 'daily' | 'weekly' = 'all') => {
     try {
-      const res = await fetch('/api/community/leaderboard');
+      const res = await fetch(`/api/community/leaderboard?period=${p}`);
       const d = await res.json();
       setEntries(d.entries || []);
       setLastSync(new Date());
@@ -37,22 +38,22 @@ export default function LeaderboardPage() {
   }, []);
 
   useEffect(() => {
-    loadLeaderboard();
+    loadLeaderboard(period);
     const channel = supabase
       .channel(`leaderboard_live_${Date.now()}_${Math.random().toString(36).slice(2)}`)
-      .on("postgres_changes", { event: "INSERT", schema: "public", table: "user_xp_log" }, () => loadLeaderboard())
-      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "user_profiles" }, () => loadLeaderboard())
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "user_xp_log" }, () => loadLeaderboard(period))
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "user_profiles" }, () => loadLeaderboard(period))
       .subscribe();
     channelRef.current = channel;
-    const poll = setInterval(loadLeaderboard, 30000);
-    const onFocus = () => loadLeaderboard();
+    const poll = setInterval(() => loadLeaderboard(period), 30000);
+    const onFocus = () => loadLeaderboard(period);
     window.addEventListener("focus", onFocus);
     return () => {
       clearInterval(poll);
       window.removeEventListener("focus", onFocus);
       supabase.removeChannel(channelRef.current!);
     };
-  }, [supabase, loadLeaderboard]);
+  }, [supabase, loadLeaderboard, period]);
 
   return (
     <>
@@ -79,10 +80,26 @@ export default function LeaderboardPage() {
             <p className="text-lg text-muted-foreground mt-3 max-w-xl">
               Ranked by experience points. Participate to climb the ranks!
             </p>
-            <div className="flex items-center gap-3 mt-4">
+            <div className="flex items-center gap-3 mt-4 flex-wrap">
               <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500/10 border border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-400 text-xs font-medium">
                 <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" /> LIVE
               </span>
+              <div className="flex gap-1 rounded-lg bg-card border border-border/60 p-0.5">
+                {([['all', 'All time'], ['weekly', 'This week'], ['daily', 'Today']] as const).map(([key, label]) => (
+                  <button
+                    key={key}
+                    type="button"
+                    onClick={() => setPeriod(key)}
+                    className={`px-3 py-1 rounded-md text-xs font-medium transition-colors ${
+                      period === key
+                        ? 'bg-amber-500 text-white'
+                        : 'text-muted-foreground hover:text-foreground'
+                    }`}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
               {lastSync && (
                 <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
                   <RefreshCw className="h-3 w-3" /> Updated {lastSync.toLocaleTimeString()}

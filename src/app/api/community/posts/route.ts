@@ -25,6 +25,39 @@ function validateUrl(v: unknown): string | null {
   }
 }
 
+/** Token bigrams of a title — used for fuzzy duplicate detection. */
+function titleTokens(value: string): string[] {
+  const tokens = value.toLowerCase().replace(/[^a-z0-9\s]/g, ' ').split(/\s+/).filter(t => t.length >= 3);
+  const grams: string[] = [];
+  for (let i = 0; i < tokens.length - 1; i++) grams.push(`${tokens[i]} ${tokens[i + 1]}`);
+  if (grams.length === 0 && tokens.length > 0) grams.push(tokens[0]);
+  return grams;
+}
+
+/** Jaccard similarity between two title token sets (0..1). */
+export function titleSimilarity(a: string, b: string): number {
+  const ga = titleTokens(a);
+  const gb = titleTokens(b);
+  if (ga.length === 0 || gb.length === 0) return 0;
+  const union = new Set([...ga, ...gb]);
+  const inter = new Set(ga.filter(g => gb.includes(g)));
+  return inter.size / union.size;
+}
+
+export async function GET(request: NextRequest) {
+  const q = (request.nextUrl.searchParams.get('q') || '').trim();
+  if (!q || q.length < 2) return NextResponse.json({ results: [] });
+
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from('forum_posts')
+    .select('id, title, slug, content_type, reply_count, created_at')
+    .ilike('title', `%${q.slice(0, 80)}%`)
+    .order('created_at', { ascending: false })
+    .limit(8);
+  return NextResponse.json({ results: data || [] });
+}
+
 async function resolveTopics(
   service: ReturnType<typeof createServiceClient>,
   tags: string[],
@@ -74,6 +107,24 @@ export async function POST(request: NextRequest) {
   const title = str(body.title, 200);
   if (title.length < 5 || title.length > 200) {
     return NextResponse.json({ error: 'Title must be between 5 and 200 characters.' }, { status: 400 });
+  }
+
+  // Duplicate detection — fuzzy match against recent post titles (P3).
+  const { data: recent } = await supabase
+    .from('forum_posts')
+    .select('id, title, slug, content_type, created_at')
+    .order('created_at', { ascending: false })
+    .limit(200);
+  const duplicates = (recent ?? [])
+    .map(p => ({ ...p, similarity: titleSimilarity(p.title, title) }))
+    .filter(p => p.similarity >= 0.7 && p.title.toLowerCase() !== title.toLowerCase())
+    .sort((a, b) => b.similarity - a.similarity)
+    .slice(0, 3);
+  if (duplicates.length > 0) {
+    return NextResponse.json(
+      { error: 'A very similar post already exists.', duplicates },
+      { status: 409 }
+    );
   }
 
   const content = str(body.content, 50000);

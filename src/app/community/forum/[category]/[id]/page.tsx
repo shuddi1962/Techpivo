@@ -46,13 +46,18 @@ export default function ForumPostPage({ params }: { params: Promise<{ category: 
       fetch(`/api/community/discussions/${id}`)
         .then(r => r.json())
         .then(d => {
+          if (d.redirect) { router.replace(d.redirect); return; }
+          if (d.post?.content_type === 'question') {
+            router.replace(`/answers/${d.post.slug ?? d.post.id}`);
+            return;
+          }
           setPost(d.post);
           setReplies(d.replies || []);
           setLoading(false);
         })
         .catch(() => setLoading(false));
     });
-  }, [params]);
+  }, [params, router]);
 
   const submitReply = async () => {
     if (!replyContent.trim() || !post) return;

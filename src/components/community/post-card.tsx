@@ -25,7 +25,6 @@ const STATUS_TONE: Record<string, string> = {
 
 export function postHref(post: CommunityPost): string {
   if (post.content_type === 'question') return `/answers/${post.slug ?? post.id}`;
-  if (post.content_type === 'discussion') return `/community/discussions/${post.slug ?? post.id}`;
   return `/community/forum/${post.category?.slug ?? 'general'}/${post.id}`;
 }
 

@@ -1,5 +1,6 @@
 import type { Metadata } from "next"
 import { CommunityHeader } from '@/components/community/community-header'
+import { CommandCenter } from '@/components/community/command-center'
 
 export const metadata: Metadata = {
   title: "Community — TechPivo",
@@ -10,6 +11,7 @@ export default function CommunityLayout({ children }: { children: React.ReactNod
   return (
     <div className="min-h-screen bg-surface-2">
       <CommunityHeader />
+      <CommandCenter />
       <main className="max-w-6xl mx-auto px-4 py-6">{children}</main>
     </div>
   )

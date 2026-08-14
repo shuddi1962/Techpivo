@@ -9,6 +9,7 @@ import { getLeaderboard, getQuizzes, getActivePolls, getForumCategories, getUpco
 import { MessageSquare, Trophy, Brain, BarChart3, BookOpen, Users, Flame, Star, ArrowRight, Zap, Target, Award, Calendar, MapPin, Clock, Star as StarIcon, Rocket, Cpu, Gem, Medal, Sparkles, Crown, HeartPulse, ShieldCheck, Wrench, GraduationCap, UserCheck, Smartphone } from 'lucide-react';
 import { SITE_URL } from '@/lib/constants';
 import PageIntro from '@/components/pages/page-intro';
+import { CommunityFeed } from '@/components/community/community-feed';
 
 export const metadata = {
   title: 'Community — TechPivo',
@@ -64,6 +65,16 @@ export default async function CommunityPage() {
       </div>
 
       <div className="max-w-7xl mx-auto px-4 py-8 space-y-8">
+        <section>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-xl font-bold">Discover feed</h2>
+            <Link href="/community/questions" className="text-sm text-primary hover:underline">
+              Ask a question <ArrowRight className="ml-1 h-3.5 w-3.5 inline" />
+            </Link>
+          </div>
+          <CommunityFeed />
+        </section>
+
         <div className="grid md:grid-cols-3 gap-6">
           <Card className="md:col-span-2">
             <CardHeader>
