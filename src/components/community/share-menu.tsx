@@ -158,8 +158,20 @@ export function ShareMenu({
   const openShare = (href: string) => {
     close();
     if (href.startsWith('mailto:')) {
-      // mailto: cannot open in a popup (browsers block it / open blank) — navigate instead
-      window.location.href = href;
+      // mailto: cannot open in a popup (browsers block it / open a blank tab) —
+      // navigate via a synthetic anchor click, the most reliable cross-browser
+      // way to hand the URI to the OS mail handler.
+      try {
+        const a = document.createElement('a');
+        a.href = href;
+        a.rel = 'noopener noreferrer';
+        a.style.display = 'none';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+      } catch {
+        window.location.href = href;
+      }
       return;
     }
     const w = 620;

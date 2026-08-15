@@ -5,10 +5,23 @@ import { enrichAuthors } from '@/lib/community-server';
 export const dynamic = 'force-dynamic';
 
 const RAILS = new Set(['for_you', 'following', 'trending', 'latest', 'unanswered', 'experts', 'open', 'solved']);
-const SELECT = '*, category:forum_categories(name, slug, icon)';
+const SELECT = '*, category:forum_categories(name, slug, icon), topics:post_topics(topic:topics(id, slug, name))';
 const LIMIT = 20;
 
 type FeedItem = Record<string, unknown>;
+
+/** PostgREST returns topics as post_topics[{topic:{id,slug,name}}] — flatten
+ *  to the plain topic shape PostCard/TopicChip expect ({id, slug, name}). */
+function normalizeItem(row: FeedItem): FeedItem {
+  const nested = row.topics;
+  if (Array.isArray(nested)) {
+    const flat = nested
+      .map(x => (x && typeof x === 'object' ? (x as { topic?: unknown }).topic : null))
+      .filter((t): t is { id: string; slug: string; name: string } => Boolean(t && typeof t === 'object' && (t as { id?: unknown }).id));
+    return { ...row, topics: flat };
+  }
+  return row;
+}
 
 async function baseQuery(supabase: Awaited<ReturnType<typeof createClient>>, rail: string, cursor: string | null) {
   const q = supabase
@@ -118,6 +131,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ rail, items: [], next_cursor: null, has_more: false, requires_auth: true });
   }
 
+  items = (items.map(normalizeItem)) as FeedItem[];
   items = await enrichAuthors(items, supabase);
 
   // Current user's vote state for these posts (RLS owner policy: only own rows)

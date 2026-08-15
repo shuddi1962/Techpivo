@@ -211,14 +211,23 @@ export async function getForumPosts(categoryId?: string, limit: number = 20) {
   const supabase = await createClient();
   let query = supabase
     .from('forum_posts')
-    .select('*, author:user_profiles(username, full_name, avatar_url, level), category:forum_categories(name, slug, icon, image_url)')
+    .select('*, author:user_profiles(username, full_name, avatar_url, level), category:forum_categories(name, slug, icon, image_url), topics:post_topics(topic:topics(id, slug, name))')
     .order('is_pinned', { ascending: false })
     .order('last_reply_at', { ascending: false, nullsFirst: false })
     .order('created_at', { ascending: false })
     .limit(limit);
   if (categoryId) query = query.eq('category_id', categoryId);
   const { data } = await query;
-  return (data || []) as ForumPost[];
+  return ((data || []) as ForumPost[]).map(row => {
+    // post_topics embed arrives as [{topic:{id,slug,name}}] — flatten for PostCard/TopicChip.
+    const nested = (row as unknown as { topics?: unknown }).topics;
+    const topics = Array.isArray(nested)
+      ? nested
+          .map(x => (x && typeof x === 'object' ? (x as { topic?: unknown }).topic : null))
+          .filter((t): t is { id: string; slug: string; name: string } => Boolean(t && typeof t === 'object' && (t as { id?: unknown }).id))
+      : [];
+    return { ...row, topics };
+  }) as ForumPost[];
 }
 
 export async function getQuizzes(limit: number = 20) {

@@ -133,6 +133,22 @@ export function timeAgo(date: string): string {
   return `${Math.floor(seconds / 31536000)}y ago`;
 }
 
+/**
+ * forum_posts.tags is a plain TEXT column (comma/space-joined string, e.g.
+ * "security,passwords,teams") but is typed as string[] — PostgREST returns the
+ * raw string. Normalize to a clean, trimmed, deduped array so pages can safely
+ * render chips without iterating characters.
+ */
+export function parseTags(tags: unknown): string[] {
+  if (Array.isArray(tags)) {
+    return [...new Set(tags.map(t => String(t).trim()).filter(Boolean))].slice(0, 8);
+  }
+  if (typeof tags === 'string' && tags.trim()) {
+    return [...new Set(tags.split(/[,;]+/).map(t => t.trim()).filter(Boolean))].slice(0, 8);
+  }
+  return [];
+}
+
 const VIEW_KEY = 'tp_viewed_posts_v1';
 
 /**

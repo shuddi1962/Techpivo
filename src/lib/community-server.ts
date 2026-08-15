@@ -80,7 +80,7 @@ export async function getTopicPosts<T extends RowWithAuthor & { created_at?: str
   if (postIds.length === 0) return { posts: [], next_cursor: null, has_more: false };
   let query = supabase
     .from('forum_posts')
-    .select('*, category:forum_categories(name, slug, icon)')
+    .select('*, category:forum_categories(name, slug, icon), topics:post_topics(topic:topics(id, slug, name))')
     .eq('is_locked', false)
     .in('id', postIds)
     .order('created_at', { ascending: false })
@@ -90,7 +90,17 @@ export async function getTopicPosts<T extends RowWithAuthor & { created_at?: str
   const rows = (data ?? []) as T[];
   const hasMore = rows.length > limit;
   const page = hasMore ? rows.slice(0, limit) : rows;
-  const enriched = await enrichAuthors(page, supabase);
+  const normalized = page.map(row => {
+    // PostgREST returns post_topics[{topic:{id,slug,name}}] — flatten for PostCard/TopicChip.
+    const nested = (row as unknown as Record<string, unknown>).topics;
+    const flat = Array.isArray(nested)
+      ? nested
+          .map(x => (x && typeof x === 'object' ? (x as { topic?: unknown }).topic : null))
+          .filter((t): t is { id: string; slug: string; name: string } => Boolean(t && typeof t === 'object' && (t as { id?: unknown }).id))
+      : [];
+    return { ...row, topics: flat };
+  }) as T[];
+  const enriched = await enrichAuthors(normalized, supabase);
   return {
     posts: enriched,
     next_cursor: hasMore ? String(rows[limit - 1].created_at) : null,

@@ -8,7 +8,7 @@ import { VoteControl } from '@/components/community/vote-control';
 import { TopicChip } from '@/components/community/topic-chip';
 import { AnswerSkeleton } from '@/components/community/skeletons';
 import { CONTENT_TYPE_META, QUESTION_STATUS_META, questionHealthFor, type CommunityPost, type CommunityReply } from '@/lib/community-types';
-import { timeAgo, formatNumber, getLevelForXP, shouldCountView } from '@/lib/community-utils';
+import { timeAgo, formatNumber, getLevelForXP, shouldCountView, parseTags } from '@/lib/community-utils';
 import { cn } from '@/lib/utils';
 import {
   CheckCircle2, CircleCheck, Eye, Gift, Loader2, MessageSquare,
@@ -277,7 +277,7 @@ export default function AnswerPage() {
                     in {post.category.name}
                   </Link>
                 )}
-                {post.tags?.map(t => <TopicChip key={t} topic={{ slug: t, name: t } as never} />)}
+                {parseTags(post.tags).map(t => <TopicChip key={t} topic={{ slug: t, name: t } as never} />)}
               </div>
             )}
 

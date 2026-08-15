@@ -10,7 +10,7 @@ import { CommunityMarkdown } from '@/components/community/community-markdown';
 import { PollWidget } from '@/components/community/poll-widget';
 import { ShareMenu } from '@/components/community/share-menu';
 import { CONTENT_TYPE_META, QUESTION_STATUS_META, questionHealthFor, type CommunityPost, type CommunityReply } from '@/lib/community-types';
-import { timeAgo, formatNumber, shouldCountView } from '@/lib/community-utils';
+import { timeAgo, formatNumber, shouldCountView, parseTags } from '@/lib/community-utils';
 import { cn } from '@/lib/utils';
 import {
   Bookmark, BookmarkCheck, CalendarDays, CheckCircle2, CircleCheck, Clock, Eye,
@@ -409,7 +409,7 @@ export default function ForumPostPage({ params }: { params: { category: string; 
                       in {post.category.name}
                     </Link>
                   )}
-                  {post.tags?.map(t => <TopicChip key={t} topic={{ slug: t, name: t } as never} />)}
+                  {parseTags(post.tags).map(t => <TopicChip key={t} topic={{ slug: t, name: t } as never} />)}
                 </div>
               )}
 

@@ -5,7 +5,7 @@ import { enrichAuthors } from '@/lib/community-server';
 
 export const dynamic = 'force-dynamic';
 
-const POST_SELECT = '*, category:forum_categories(name, slug, icon)';
+const POST_SELECT = '*, category:forum_categories(name, slug, icon), topics:post_topics(topic:topics(id, slug, name))';
 
 export async function GET(request: NextRequest) {
   const q = request.nextUrl.searchParams.get('q')?.trim().slice(0, 80) ?? '';
@@ -56,7 +56,17 @@ export async function GET(request: NextRequest) {
       : Promise.resolve({ data: [] as unknown[] }),
   ]);
 
-  const posts = await enrichAuthors(postRes.data ?? [], supabase);
+  const flatPosts = (postRes.data ?? []).map(row => {
+    // post_topics embed arrives as [{topic:{id,slug,name}}] — flatten for PostCard/TopicChip.
+    const nested = (row as Record<string, unknown>).topics;
+    const topics = Array.isArray(nested)
+      ? nested
+          .map(x => (x && typeof x === 'object' ? (x as { topic?: unknown }).topic : null))
+          .filter((t): t is { id: string; slug: string; name: string } => Boolean(t && typeof t === 'object' && (t as { id?: unknown }).id))
+      : [];
+    return { ...row, topics };
+  });
+  const posts = await enrichAuthors(flatPosts, supabase);
 
   const postIds = posts.map(p => p.id).filter(Boolean) as string[];
   let my_votes: { target_id: string; vote: string }[] = [];

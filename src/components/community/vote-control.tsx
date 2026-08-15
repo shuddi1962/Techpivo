@@ -1,6 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { createClient } from '@/lib/supabase/client';
 import { ArrowBigUp, ArrowBigDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -22,6 +23,36 @@ export function VoteControl({ postId, replyId, initialCount, initialVote = null,
   const [vote, setVote] = useState<'up' | 'down' | null>(initialVote);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const busyRef = useRef(false);
+
+  // Realtime vote-count sync. The vote RPCs (update_post_vote_count /
+  // update_reply_vote_count) rewrite vote_count on the post/reply row, which is
+  // publicly readable — UPDATE events broadcast to everyone, so counts stay live
+  // across feed, hub, search, detail and answer pages. (forum_votes has owner-only
+  // RLS, so its own realtime can never carry other users' votes.)
+  useEffect(() => {
+    const id = postId || replyId;
+    if (!id) return;
+    const table = postId ? 'forum_posts' : 'forum_replies';
+    const supabase = createClient();
+    const channel = supabase
+      .channel(`votes_${table}_${id}_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`)
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table, filter: `id=eq.${id}` }, () => {
+        if (busyRef.current) return;
+        void (async () => {
+          try {
+            const { data } = await supabase.from(table).select('vote_count').eq('id', id).maybeSingle();
+            if (typeof data?.vote_count === 'number') setCount(data.vote_count);
+          } catch {
+            // ignore
+          }
+        })();
+      })
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [postId, replyId]);
 
   const cast = async (next: 'up' | 'down') => {
     if (busy) return;
@@ -31,6 +62,7 @@ export function VoteControl({ postId, replyId, initialCount, initialVote = null,
     setVote(target);
     setError(null);
     setBusy(true);
+    busyRef.current = true;
     try {
       const res = await fetch('/api/community/vote', {
         method: 'POST',
@@ -51,6 +83,7 @@ export function VoteControl({ postId, replyId, initialCount, initialVote = null,
       setError(msg === 'sign-in-required' ? 'Sign in to vote' : msg === 'Vote failed' || msg === 'Failed to fetch' ? 'Could not save vote' : msg);
     } finally {
       setBusy(false);
+      busyRef.current = false;
     }
   };
 
