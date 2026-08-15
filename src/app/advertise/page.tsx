@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { AdvertiseLanding } from "@/components/ads/advertise-landing";
+import PageIntro from "@/components/pages/page-intro";
 import { getSitePage } from "@/lib/pages";
 
 export const metadata: Metadata = {
@@ -8,5 +9,10 @@ export const metadata: Metadata = {
 };
 
 export default function AdvertisePage() {
-  return <AdvertiseLanding />;
+  return (
+    <>
+      <PageIntro slug="advertise" />
+      <AdvertiseLanding />
+    </>
+  );
 }

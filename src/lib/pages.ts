@@ -440,95 +440,20 @@ We typically respond within 48 hours. All submissions are treated confidentially
     hero: {
       title: "Reach the Tech Audience That Builds, Buys & Decides",
       subtitle: "Developers, IT professionals and gadget buyers read Techpivo every day. Run your campaign on your terms — set your own budget and bid, and track every impression, click and naira spent in real time.",
+      heroImage: "https://images.pexels.com/photos/590016/pexels-photo-590016.jpeg",
     },
-    contentMd: `🚀 **Launch takes minutes** — campaigns are reviewed and approved within 24 hours.
+    contentMd: `## Advertise on Techpivo
 
-[Start Your Campaign](/account/ads/new) · [Talk to Our Ads Team](mailto:ads@techpivo.com)
+From developers and IT professionals to gadget buyers — Techpivo readers research before they buy, which makes every impression count.
 
----
+- **Self-serve campaigns** — pick an ad space, set your budget and bid, and launch in minutes
+- **Auction-based pricing** — you set the price: CPM or CPC, no fixed rate cards
+- **Real-time analytics** — impressions, clicks, CTR and spend tracked on every campaign
+- **Human review** — every campaign is approved by our team within 24 hours
 
-## An Audience That Matters
+Browse the ad inventory and minimum bids below, or launch your first campaign in minutes.
 
-Techpivo serves readers who research before they buy — from hosting and developer tools to laptops and security software.
-
-- **Developers & Programmers** — Tutorials on Python, JavaScript, web development and AI tooling.
-- **IT & Network Professionals** — Networking, infrastructure and enterprise technology content.
-- **Gadget Buyers** — Reviews, comparisons and buying guides for phones and laptops.
-- **Learners & Enthusiasts** — Guides on AI, cybersecurity and career skills in technology.
-
-## Ad Formats for Every Goal
-
-Browse the full inventory of ad spaces — with minimum bids and real-time delivery stats — inside your account.
-
-- **Leaderboard Banner** (728 × 90) — High-visibility banner above article content.
-- **Rectangle / Sidebar** (300 × 250) — Mid-page rectangle on articles & categories.
-- **In-Content** (336 × 280) — Inline within articles, between paragraphs.
-- **Video Ads** — Motion ads on video-capable placements.
-
-[See all ad spaces & minimum bids](/account/ads/new)
-
-## How It Works
-
-Everything happens in your account — from setup to real-time reporting.
-
-1. **Create your campaign** — Sign in, open My Ads and pick an ad space — every placement shows its minimum bid.
-2. **Set budget & bid** — Choose CPM or CPC, set your own bid and daily budget, pick your audience and duration.
-3. **Upload or AI-generate creative** — Upload a banner or video — or let our AI write your headline and copy in one click.
-4. **Approved, live & tracked** — We approve within 24 hours. Watch impressions, clicks, CTR and spend update in real time.
-
-## Why Advertisers Choose Techpivo
-
-- **You set the price** — Auction-based bidding, Google Ads style. You choose your bid and daily budget — there are no fixed rate cards.
-- **Only pay for what delivers** — You're charged against actual impressions or clicks, capped at your daily budget. No hidden fees.
-- **Real-time analytics** — Live impressions, clicks, CTR and spend on every campaign, with a 14-day performance chart in your account.
-- **Measurable results** — See which placements deliver and which creative works — then pause, tweak and resume anytime.
-- **Full control** — Pause or resume your campaign whenever you like. Change direction without waiting for us.
-- **Reviewed by humans** — Every campaign is reviewed within 24 hours to protect your brand and our readers.
-
-## Every Naira, Tracked
-
-From the moment your campaign goes live, Techpivo records each impression and click on the placement. Your account shows:
-
-- Live impressions, clicks, CTR and spend on every campaign
-- A 14-day daily delivery chart so you can spot what works
-- Pause / resume controls with no penalty or re-approval
-- Campaign status at every step — pending, approved, live, paused
-
-[Create Your First Campaign](/account/ads/new)
-
-## Frequently Asked Questions
-
-**Where do I create a campaign?**
-Sign in and go to your account — My Ads. There you'll find the full inventory of ad spaces with their minimum bids, plus the campaign builder. It only takes a few minutes.
-
-**How does bidding work?**
-Each ad space has a minimum bid (CPM — per 1,000 impressions — or CPC — per click). You set a bid at or above that floor, plus a daily budget that covers it. Higher bids win more delivery; you only pay for what actually serves, up to your daily cap.
-
-**When do I pay?**
-No payment is collected when you submit. Our team reviews your campaign and confirms it before we arrange payment — usually within 24 hours.
-
-**Which currencies do you support?**
-We support NGN, USD, EUR, GBP, GHS, KES, ZAR, CAD, AUD and INR. Minimum bids are converted live at published rates when you set up your campaign.
-
-**Can I run video ads?**
-Yes. Ad spaces marked VIDEO support video creatives (MP4/WebM, max 30s recommended). Upload the video URL and an optional poster image.
-
-**What targeting options are available?**
-You can target by country, device and interest (category). We apply it best-effort when your campaign goes live.
-
-**Can I see my campaign performance?**
-Every campaign tracks impressions, clicks, CTR and spend in real time — with a 14-day performance chart in your account, plus Pause/Resume whenever you like.
-
-**What if my creative is rejected?**
-We'll send you the reason and you can fix and resubmit. Common issues: low-res images, misleading claims or off-topic content.
-
-## Launch Your Campaign in Minutes
-
-Sign in, pick your ad space, set your budget and bid — our team approves within 24 hours and your results are live from day one.
-
-[Start Your Campaign](/account/ads/new) · [ads@techpivo.com](mailto:ads@techpivo.com)
-
-Already have an account? [Open My Ads](/account/ads)`,
+[Start Your Campaign](/account/ads/new) · [Open My Ads](/account/ads)`,
     metaTitle: "Advertise on Techpivo – Self-Serve Tech Ads Marketplace",
     metaDescription: "Reach developers, IT professionals and gadget buyers. Launch a self-serve ad campaign in minutes — set your budget, bid CPM or CPC, and track impressions, clicks and spend in real time.",
   },
@@ -568,6 +493,7 @@ Get the latest tech news, expert analysis and tutorials delivered to your inbox 
     hero: {
       title: "Free Tech Tools & Utilities",
       subtitle: "50+ free utilities for developers, SEO specialists, designers and everyday users — all running right in your browser, with no sign-ups and no uploads.",
+      heroImage: "https://images.pexels.com/photos/1108101/pexels-photo-1108101.jpeg",
     },
     contentMd: `## Free Tools for Everyone
 
@@ -591,6 +517,7 @@ No sign-ups. No uploads. Most tools work offline and nothing you process leaves 
     hero: {
       title: "TechPivo Community",
       subtitle: "Learn, discuss and grow — join forums, follow topics, test your knowledge with quizzes and connect with fellow tech enthusiasts.",
+      heroImage: "https://images.pexels.com/photos/3861969/pexels-photo-3861969.jpeg",
     },
     contentMd: `## Learn, Discuss & Grow
 
@@ -614,6 +541,7 @@ Everyone starts as a New Member. Post, answer and complete quizzes to earn XP, l
     hero: {
       title: "Tech Events & Meetups",
       subtitle: "From global conferences to local meetups and hackathons — find the events worth attending and mark yourself as going in one click.",
+      heroImage: "https://images.pexels.com/photos/2774556/pexels-photo-2774556.jpeg",
     },
     contentMd: `## Never Miss a Tech Event
 
