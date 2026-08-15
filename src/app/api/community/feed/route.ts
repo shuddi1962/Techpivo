@@ -5,7 +5,7 @@ import { enrichAuthors } from '@/lib/community-server';
 export const dynamic = 'force-dynamic';
 
 const RAILS = new Set(['for_you', 'following', 'trending', 'latest', 'unanswered', 'experts', 'open', 'solved']);
-const SELECT = '*, category:forum_categories(name, slug, icon), topics:post_topics(topic:topics(id, slug, name))';
+const SELECT = '*, category:forum_categories(name, slug, icon, image_url), topics:post_topics(topic:topics(id, slug, name))';
 const LIMIT = 20;
 
 type FeedItem = Record<string, unknown>;
@@ -100,13 +100,18 @@ export async function GET(request: NextRequest) {
   const rail = RAILS.has(railParam) ? railParam : 'for_you';
   const cursor = request.nextUrl.searchParams.get('cursor');
   const limit = Math.min(40, Math.max(5, Number(request.nextUrl.searchParams.get('limit')) || LIMIT));
+  const category = request.nextUrl.searchParams.get('category')?.trim() || null;
 
   const supabase = await createClient();
   const { q, following, ids } = await baseQuery(supabase, rail, cursor);
 
+  if (category) {
+    q.eq('category.slug', category);
+  }
+
   const { data: raw } = await q.limit(limit);
   let items: FeedItem[] = (raw ?? []) as FeedItem[];
-  if (rail === 'for_you') {
+  if (rail === 'for_you' && !category) {
     const seen = new Set(items.map((i: FeedItem) => (i as { id: string }).id));
     const { data: extra } = await supabase
       .from('forum_posts')

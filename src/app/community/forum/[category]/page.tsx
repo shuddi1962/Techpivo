@@ -1,29 +1,26 @@
 import Link from 'next/link';
-import { Card, CardContent } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { getForumCategories, getForumPosts, timeAgo } from '@/lib/community';
-import { MessageSquare, Plus, Pin, CheckCircle2, Eye, ThumbsUp, Clock } from 'lucide-react';
+import { Plus } from 'lucide-react';
 import type { Metadata } from 'next/types';
 import { SITE_NAME, SITE_URL } from '@/lib/constants';
 import { CommunityHero } from '@/components/community/community-hero';
-import { ForumCategoriesSidebar } from '@/components/community/forum-categories-sidebar';
+import { ForumListing } from '@/components/community/forum-listing';
+import { getForumCategories } from '@/lib/community';
 
 export async function generateMetadata({ params }: { params: Promise<{ category: string }> }): Promise<Metadata> {
   const { category } = await params;
   const name = category.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
   const description = `Browse ${name} discussions on the TechPivo forum. Join the conversation about technology topics.`
   return {
-    title: `${name} — TechPivo Forum`,
+    title: `${name} — ${SITE_NAME} Forum`,
     description,
     alternates: { canonical: `${SITE_URL}/community/forum/${category}` },
     openGraph: {
-      title: `${name} — TechPivo Forum`,
+      title: `${name} — ${SITE_NAME} Forum`,
       description,
     },
     twitter: {
       card: "summary",
-      title: `${name} — TechPivo Forum`,
+      title: `${name} — ${SITE_NAME} Forum`,
       description,
     },
   }
@@ -33,7 +30,6 @@ export default async function ForumCategoryPage({ params }: { params: Promise<{ 
   const { category } = await params;
   const categories = await getForumCategories();
   const currentCat = categories.find(c => c.slug === category);
-  const posts = await getForumPosts(currentCat?.id);
 
   return (
     <div className="min-h-screen bg-background">
@@ -42,6 +38,7 @@ export default async function ForumCategoryPage({ params }: { params: Promise<{ 
         title={currentCat?.name || category}
         subtitle={currentCat?.description || `Browse ${currentCat?.name || category} discussions on the TechPivo forum.`}
         icon={currentCat?.image_url ? (
+          // eslint-disable-next-line @next/next/no-img-element
           <img src={currentCat.image_url} alt="" aria-hidden className="h-5 w-5 rounded object-cover" />
         ) : undefined}
         backHref="/community/forum"
@@ -57,60 +54,7 @@ export default async function ForumCategoryPage({ params }: { params: Promise<{ 
       </CommunityHero>
 
       <div className="max-w-7xl mx-auto px-4 py-8">
-        <div className="grid lg:grid-cols-4 gap-6">
-          <div className="lg:col-span-1 space-y-4">
-            <ForumCategoriesSidebar categories={categories} activeSlug={category} />
-          </div>
-
-          <div className="lg:col-span-3 space-y-3">
-            {posts.length === 0 ? (
-              <Card>
-                <CardContent className="p-12 text-center">
-                  <MessageSquare className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-                  <h3 className="text-lg font-semibold mb-2">No Discussions Yet</h3>
-                  <p className="text-muted-foreground mb-4">Start the first conversation in this category.</p>
-                  <Link href="/community/forum/new">
-                    <Button><Plus className="mr-2 h-4 w-4" /> Start Discussion</Button>
-                  </Link>
-                </CardContent>
-              </Card>
-            ) : (
-              posts.map((post) => (
-                <Link key={post.id} href={`/community/forum/${category}/${post.id}`}>
-                  <Card className="hover:shadow-md transition-shadow cursor-pointer">
-                    <CardContent className="p-4">
-                      <div className="flex items-start gap-3">
-                        <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-sm font-bold text-primary shrink-0">
-                          {post.author?.full_name?.[0] || post.author?.username?.[0] || '?'}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 mb-1">
-                            {post.is_pinned && <Pin className="h-3 w-3 text-yellow-500" />}
-                            {post.is_solved && <CheckCircle2 className="h-3 w-3 text-green-500" />}
-                            <h3 className="font-semibold truncate">{post.title}</h3>
-                          </div>
-                          <div className="flex items-center gap-3 text-sm text-muted-foreground">
-                            <span>{post.author?.full_name || post.author?.username || 'Anonymous'}</span>
-                            <span>·</span>
-                            <span className="flex items-center gap-1"><Clock className="h-3 w-3" /> {timeAgo(post.created_at)}</span>
-                          </div>
-                          <div className="flex items-center gap-4 mt-2 text-sm text-muted-foreground">
-                            <span className="flex items-center gap-1"><ThumbsUp className="h-3 w-3" /> {post.vote_count}</span>
-                            <span className="flex items-center gap-1"><MessageSquare className="h-3 w-3" /> {post.reply_count}</span>
-                            <span className="flex items-center gap-1"><Eye className="h-3 w-3" /> {post.view_count}</span>
-                          </div>
-                        </div>
-                        {post.author?.level && (
-                          <Badge variant="secondary" className="shrink-0">Lv.{post.author.level}</Badge>
-                        )}
-                      </div>
-                    </CardContent>
-                  </Card>
-                </Link>
-              ))
-            )}
-          </div>
-        </div>
+        <ForumListing categorySlug={category} />
       </div>
     </div>
   );
