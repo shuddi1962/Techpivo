@@ -17,7 +17,7 @@ export function FeaturedImagePanel() {
   const [searching, setSearching] = useState(false)
   const [searchError, setSearchError] = useState("")
   const [activeSource, setActiveSource] = useState<"pexels" | "google" | "bing" | "wikimedia" | null>(null)
-  const [source, setSource] = useState<"pexels" | "web" | "library">("pexels")
+  const [source, setSource] = useState<"pexels" | "web" | "library">("web")
 
   const handleFileUpload = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -110,8 +110,8 @@ export function FeaturedImagePanel() {
 
         <div className="border-t-2 border-gray-100 dark:border-[#1F2937] pt-3">
           <div className="flex gap-2 mb-2">
-            <button onClick={() => { setSource("pexels"); setResults([]) }} className={`px-3 py-1.5 text-xs font-semibold rounded-lg border-2 transition-colors ${source === "pexels" ? "bg-[#F59E0B] text-white border-[#F59E0B]" : "bg-white dark:bg-[#0A0F1E] text-gray-600 dark:text-gray-300 border-gray-300 dark:border-[#374151] hover:border-[#F59E0B]"}`}>Pexels</button>
             <button onClick={() => { setSource("web"); setResults([]) }} className={`px-3 py-1.5 text-xs font-semibold rounded-lg border-2 transition-colors ${source === "web" ? "bg-[#F59E0B] text-white border-[#F59E0B]" : "bg-white dark:bg-[#0A0F1E] text-gray-600 dark:text-gray-300 border-gray-300 dark:border-[#374151] hover:border-[#F59E0B]"}`}>Web</button>
+            <button onClick={() => { setSource("pexels"); setResults([]) }} className={`px-3 py-1.5 text-xs font-semibold rounded-lg border-2 transition-colors ${source === "pexels" ? "bg-[#F59E0B] text-white border-[#F59E0B]" : "bg-white dark:bg-[#0A0F1E] text-gray-600 dark:text-gray-300 border-gray-300 dark:border-[#374151] hover:border-[#F59E0B]"}`}>Pexels</button>
             <button onClick={() => { setSource("library"); setResults([]) }} className={`flex items-center gap-1 px-3 py-1.5 text-xs font-semibold rounded-lg border-2 transition-colors ${source === "library" ? "bg-[#F59E0B] text-white border-[#F59E0B]" : "bg-white dark:bg-[#0A0F1E] text-gray-600 dark:text-gray-300 border-gray-300 dark:border-[#374151] hover:border-[#F59E0B]"}`}><Library className="h-3 w-3" /> Library</button>
           </div>
           {source === "library" ? (

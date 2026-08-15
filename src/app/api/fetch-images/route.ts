@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server"
 import { createClient as createSupabaseClient } from "@supabase/supabase-js"
+import { searchFeaturedImage } from "@/lib/web-images"
 
 export const dynamic = "force-dynamic"
 
@@ -9,8 +10,6 @@ function getSupabase() {
     process.env.SUPABASE_SERVICE_ROLE_KEY!
   )
 }
-
-const PEXELS_API_KEY = "GH735sp9bohSxSm2PnTFewYGjsZvGS2UoE0JzLCMgFgG2bAV0UTihSVn"
 
 async function fetchOgImage(url: string): Promise<string | null> {
   try {
@@ -44,23 +43,7 @@ async function fetchOgImage(url: string): Promise<string | null> {
 }
 
 async function searchPexels(query: string): Promise<string | null> {
-  try {
-    const response = await fetch(
-      "https://api.pexels.com/v1/search?query=" + encodeURIComponent(query) + "&per_page=3",
-      {
-        headers: { Authorization: PEXELS_API_KEY },
-        signal: AbortSignal.timeout(10000),
-      }
-    )
-    if (!response.ok) return null
-    const data = await response.json()
-    if (data.photos?.length > 0) {
-      return data.photos[0].src?.large || data.photos[0].src?.medium || null
-    }
-    return null
-  } catch {
-    return null
-  }
+  return searchFeaturedImage(query)
 }
 
 export async function GET() {

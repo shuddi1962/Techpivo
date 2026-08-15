@@ -37,6 +37,7 @@ export function SafeImage({
       loading={loading || "lazy"}
       onError={() => setError(true)}
       style={style}
+      referrerPolicy="no-referrer"
       {...(fill ? { fill: true } : { width: 800, height: 450 })}
     />
   )

@@ -490,7 +490,6 @@ async function geminiGrounded(
         generationConfig: {
           temperature:       0.45,
           maxOutputTokens:   8192,
-          responseMimeType:  'application/json',
         },
         tools: [
           { googleSearch: {} },

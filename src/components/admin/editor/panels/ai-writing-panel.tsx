@@ -14,6 +14,7 @@ export function AiWritingPanel() {
   const [error, setError] = useState("")
   const [quota, setQuota] = useState<{ used: number; cap: number; remaining: number } | null>(null)
   const [lastResult, setLastResult] = useState<{ headline: string; elapsed: string } | null>(null)
+  const [imageNote, setImageNote] = useState("")
 
   // Show the monthly manual AI quota immediately (matches /api/admin/ai-write
   // limits: ai_usage_log type=manual, 2000/month, resets on the 1st).
@@ -42,6 +43,7 @@ export function AiWritingPanel() {
     setLoading(true)
     setError("")
     setLastResult(null)
+    setImageNote("")
 
     try {
       const res = await fetch("/api/admin/ai-write", {
@@ -124,6 +126,25 @@ export function AiWritingPanel() {
         source_name:        source?.name || post.source_name,
         original_source_url: source?.url || post.original_source_url,
       })
+
+      // Web images are the default source site-wide — when the post has no
+      // featured image yet, auto-fetch one from the live web search so the
+      // article page always shows an image above the headline.
+      if (!featured) {
+        try {
+          const imgRes = await fetch(
+            `/api/google-images?query=${encodeURIComponent(a.headline.split(/\s+/).slice(0, 5).join(" "))}&engine=auto`
+          )
+          const imgData = await imgRes.json()
+          const img = imgData.items?.find((i: any) => i?.src?.startsWith("http"))
+          if (img?.src) {
+            updatePost({ featured_image: img.src, og_image: img.src, twitter_image: img.src })
+            setImageNote(
+              `Featured image auto-fetched from live web search${imgData.source ? ` (${imgData.source})` : ""}.`
+            )
+          }
+        } catch { /* image fetch is best-effort */ }
+      }
 
     } catch (e) {
       setError("Network error. Check your connection and try again.")
@@ -241,6 +262,12 @@ export function AiWritingPanel() {
               {lastResult.headline.slice(0, 80)}
               <br />
               <span className="text-green-500/70">Took {lastResult.elapsed}s | Auto-filled title, content, SEO, FAQ, key points, quick brief, tags & category</span>
+              {imageNote && (
+                <>
+                  <br />
+                  <span className="text-green-500/70">{imageNote}</span>
+                </>
+              )}
             </div>
           </div>
         )}

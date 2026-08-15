@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/admin"
 import { storeRemoteImage } from "@/lib/media"
+import { searchFeaturedImage } from "@/lib/web-images"
 
 export const dynamic = "force-dynamic"
 export const maxDuration = 120
@@ -38,22 +39,6 @@ function buildMeta(post: { title: string; content: string; seo_keywords: unknown
   return { title, description, keywords }
 }
 
-async function pexelsSearch(query: string): Promise<string | null> {
-  const key = process.env.PEXELS_API_KEY
-  if (!key) return null
-  try {
-    const res = await fetch(
-      `https://api.pexels.com/v1/search?query=${encodeURIComponent(query)}&per_page=1&orientation=landscape`,
-      { headers: { Authorization: key }, signal: AbortSignal.timeout(8000) }
-    )
-    if (!res.ok) return null
-    const data = await res.json()
-    return data.photos?.[0]?.src?.large2x || null
-  } catch {
-    return null
-  }
-}
-
 export async function POST(req: Request) {
   const supabase = createClient()
   const body = await req.json().catch(() => null)
@@ -87,7 +72,7 @@ export async function POST(req: Request) {
 
   if (actions.includes("image") && !post.featured_image) {
     const q = post.title.split(/[^A-Za-z0-9 ]/).join(" ").split(/\s+/).slice(0, 4).join(" ")
-    const remote = (await pexelsSearch(q)) || (await pexelsSearch("technology"))
+    const remote = (await searchFeaturedImage(q)) || (await searchFeaturedImage("technology"))
     const url = remote ? await storeRemoteImage(remote, "featured") : null
     if (url) {
       patch.featured_image = url

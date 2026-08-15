@@ -18,7 +18,7 @@ import { SITE_NAME, SITE_URL } from "@/lib/constants"
 import { JsonLd } from "@/components/ui/jsonld"
 import { articleSchema, breadcrumbSchema, faqPageSchema, collectionPageSchema } from "@/lib/jsonld"
 
-export const revalidate = 3600
+export const revalidate = 60
 
 type Props = { params: { slug: string } }
 
@@ -100,6 +100,11 @@ export default async function PostPage({ params }: Props) {
   const trendingPosts = trendingRes.data || []
   const allTags = tagsRes.data || []
   const sidebarTags = Array.from(new Set(allTags.flatMap((p: any) => p.seo_keywords || []))).slice(0, 20) as string[]
+  const postTags = Array.isArray(post.tags)
+    ? post.tags
+    : typeof post.tags === "string"
+      ? post.tags.split(",").map((t: string) => t.trim()).filter(Boolean)
+      : []
 
   const faqData = (() => {
     try {
@@ -289,9 +294,9 @@ export default async function PostPage({ params }: Props) {
             )}
 
             {/* Tags */}
-            {post.tags && post.tags.length > 0 && (
+            {postTags.length > 0 && (
               <div className="flex flex-wrap gap-2 mb-8">
-                {post.tags.map((tag: string) => (
+                {postTags.map((tag: string) => (
                   <Link key={tag} href={`/tag/${tag}`}>
                     <Badge
                       variant="secondary"

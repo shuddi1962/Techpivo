@@ -4,6 +4,7 @@ import { manualWriteFromTopic, manualWriteFromUrl, getGeminiQuotaStatus } from "
 import { SITE_URL } from "@/lib/constants"
 import { logAIUsage } from "@/lib/ai-usage"
 import { storeRemoteImage } from "@/lib/media"
+import { searchFeaturedImage } from "@/lib/web-images"
 
 export const dynamic = "force-dynamic"
 export const maxDuration = 300
@@ -34,22 +35,6 @@ function makeSlug(title: string): string {
 
 function normalizeTitle(s: string): string {
   return s.toLowerCase().replace(/[^a-z0-9]/g, "")
-}
-
-async function pexelsSearch(query: string): Promise<string | null> {
-  const key = process.env.PEXELS_API_KEY
-  if (!key) return null
-  try {
-    const res = await fetch(
-      `https://api.pexels.com/v1/search?query=${encodeURIComponent(query)}&per_page=1&orientation=landscape`,
-      { headers: { Authorization: key }, signal: AbortSignal.timeout(5000) }
-    )
-    if (!res.ok) return null
-    const data = await res.json()
-    return data.photos?.[0]?.src?.large2x || null
-  } catch {
-    return null
-  }
 }
 
 async function findInternalLinks(keyword: string): Promise<string[]> {
@@ -142,8 +127,8 @@ export async function POST(request: Request) {
     const categoryId = catMap.get(catSlug) || null
 
     const searchTerm = headline.split(/\s+/).slice(0, 4).join(" ")
-    let remoteImage = await pexelsSearch(searchTerm)
-    if (!remoteImage) remoteImage = await pexelsSearch(catSlug.replace("-", " ") + " technology")
+    let remoteImage = await searchFeaturedImage(searchTerm)
+    if (!remoteImage) remoteImage = await searchFeaturedImage(catSlug.replace("-", " ") + " technology")
     // Store the picked image in the Media Library bucket (falls back to remote URL)
     const image = remoteImage ? (await storeRemoteImage(remoteImage, "featured")) || remoteImage : null
 
@@ -153,11 +138,6 @@ export async function POST(request: Request) {
       const linksSection = `<section><h2>Related Resources</h2><p>For more context, check our ${internalLinks.join(", ")}.</p></section>`
       finalContent = finalContent + linksSection
     }
-
-    const externalLinks = isUrl
-      ? `<section><h2>Source</h2><p>Based on <a href="${url.trim()}" target="_blank" rel="noopener noreferrer">the original story</a>${article.namedEntities.length > 0 ? ` and reporting from ${article.namedEntities.slice(0, 3).join(", ")}` : ""}, rewritten and expanded by TechPivo with Google Search grounding.</p></section>`
-      : `<section><h2>Sources</h2><p>This article was researched using Google Search via Gemini 2.5 Flash with real-time grounding. For further reading, search for "${headline}" on Google.</p></section>`
-    finalContent = finalContent + externalLinks
 
     const answerCapsule = article.quickBrief.length > 0
       ? article.quickBrief.join(" ")

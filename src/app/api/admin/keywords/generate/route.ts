@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/admin"
 import { manualWriteFromTopic, getGeminiQuotaStatus } from "@/lib/ai-rewriter"
 import { SITE_URL } from "@/lib/constants"
+import { searchFeaturedImage } from "@/lib/web-images"
 
 export const dynamic = "force-dynamic"
 export const maxDuration = 300
@@ -19,20 +20,6 @@ function makeSlug(title: string): string {
     .replace(/[^a-z0-9\s-]/g, "").replace(/\s+/g, "-")
     .replace(/-+/g, "-").replace(/^-|-$/g, "")
     .slice(0, 80) + "-" + Date.now().toString(36)
-}
-
-async function pexelsSearch(query: string): Promise<string | null> {
-  const key = process.env.PEXELS_API_KEY
-  if (!key) return null
-  try {
-    const res = await fetch(
-      `https://api.pexels.com/v1/search?query=${encodeURIComponent(query)}&per_page=1&orientation=landscape`,
-      { headers: { Authorization: key }, signal: AbortSignal.timeout(5000) }
-    )
-    if (!res.ok) return null
-    const data = await res.json()
-    return data.photos?.[0]?.src?.large2x || null
-  } catch { return null }
 }
 
 async function findInternalLinks(keyword: string): Promise<string[]> {
@@ -85,15 +72,14 @@ export async function POST(request: Request) {
     const catSlug = CATEGORY_SLUG_MAP[article.suggestedCategory] || "tech-news"
     const categoryId = catMap.get(catSlug) || kw.category_id
 
-    let image = await pexelsSearch(keyword)
-    if (!image) image = await pexelsSearch(catSlug.replace("-", " ") + " technology")
+    let image = await searchFeaturedImage(keyword)
+    if (!image) image = await searchFeaturedImage(catSlug.replace("-", " ") + " technology")
 
     const internalLinks = await findInternalLinks(keyword)
     let finalContent = article.content
     if (internalLinks.length > 0) {
       finalContent += `<section><h2>Related Resources</h2><p>For more context, check our ${internalLinks.join(", ")}.</p></section>`
     }
-    finalContent += `<section><h2>Sources</h2><p>This article was researched using Google Search via Gemini 2.5 Flash with real-time grounding.</p></section>`
 
     const answerCapsule = article.quickBrief.length > 0
       ? article.quickBrief.join(" ")

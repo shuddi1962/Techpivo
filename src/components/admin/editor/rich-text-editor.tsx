@@ -36,7 +36,7 @@ export function RichTextEditor() {
   const [webSearching, setWebSearching] = useState(false)
   const [webError, setWebError] = useState("")
   const [webActiveSource, setWebActiveSource] = useState<"pexels" | "google" | "bing" | "wikimedia" | null>(null)
-  const [webSource, setWebSource] = useState<"pexels" | "web" | "library">("pexels")
+  const [webSource, setWebSource] = useState<"pexels" | "web" | "library">("web")
   const { items: libraryItems, loading: libraryLoading, uploadFiles } = useMediaLibrary()
   const [selectedImage, setSelectedImage] = useState<string | null>(null)
   const [imageWidth, setImageWidth] = useState("100%")
@@ -291,8 +291,8 @@ export function RichTextEditor() {
             </div>
             <div className="p-6 space-y-4">
               <div className="flex gap-2">
-                <button onClick={() => setWebSource("pexels")} className={`px-4 py-2 text-sm font-semibold rounded-lg border-2 transition-colors ${webSource === "pexels" ? "bg-[#F59E0B] text-white border-[#F59E0B]" : "bg-white dark:bg-[#0A0F1E] text-gray-600 dark:text-gray-300 border-gray-300 dark:border-[#374151] hover:border-[#F59E0B]"}`}>Pexels</button>
                 <button onClick={() => setWebSource("web")} className={`px-4 py-2 text-sm font-semibold rounded-lg border-2 transition-colors ${webSource === "web" ? "bg-[#F59E0B] text-white border-[#F59E0B]" : "bg-white dark:bg-[#0A0F1E] text-gray-600 dark:text-gray-300 border-gray-300 dark:border-[#374151] hover:border-[#F59E0B]"}`}>Web</button>
+                <button onClick={() => setWebSource("pexels")} className={`px-4 py-2 text-sm font-semibold rounded-lg border-2 transition-colors ${webSource === "pexels" ? "bg-[#F59E0B] text-white border-[#F59E0B]" : "bg-white dark:bg-[#0A0F1E] text-gray-600 dark:text-gray-300 border-gray-300 dark:border-[#374151] hover:border-[#F59E0B]"}`}>Pexels</button>
                 <button onClick={() => setWebSource("library")} className={`flex items-center gap-1.5 px-4 py-2 text-sm font-semibold rounded-lg border-2 transition-colors ${webSource === "library" ? "bg-[#F59E0B] text-white border-[#F59E0B]" : "bg-white dark:bg-[#0A0F1E] text-gray-600 dark:text-gray-300 border-gray-300 dark:border-[#374151] hover:border-[#F59E0B]"}`}><Library className="h-4 w-4" /> Library</button>
               </div>
               {webSource === "library" ? (

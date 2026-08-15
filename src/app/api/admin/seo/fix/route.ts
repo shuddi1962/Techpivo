@@ -74,27 +74,14 @@ async function pickImages(supabase: any, post: any, count: number): Promise<{ ur
   return picked
 }
 
-function injectImagesIntoContent(content: string, images: { url: string; alt: string }[]): string {
+// Removes previously auto-injected figure images (same-category featured
+// images the old auto-fix inserted) — users want only relevant, hand-picked
+// images inside articles, so the auto-inject path is gone.
+function stripInjectedImages(content: string): string {
   if (!content) return content
-  const blocks = images.map(i => {
-    const alt = (i.alt || '').replace(/"/g, '&quot;').slice(0, 120)
-    return `<figure><img src="${i.url}" alt="${alt}" loading="lazy" /></figure>`
-  })
-
-  // HTML content — insert after the first paragraph close
-  if (content.includes('</p>')) {
-    const idx = content.indexOf('</p>') + 4
-    return content.slice(0, idx) + '\n' + blocks.join('\n') + '\n' + content.slice(idx)
-  }
-
-  // Markdown content — insert after first paragraph block
-  const mdBlocks = images.map(i => `\n\n![${(i.alt || '').slice(0, 120)}](${i.url})\n\n`)
-  const m = content.match(/^(.*?)(\n\n|\r?\n\r?\n)/)
-  if (m) {
-    const idx = m[0].length
-    return content.slice(0, idx) + mdBlocks.join('') + content.slice(idx)
-  }
-  return mdBlocks.join('') + content
+  return content
+    .replace(/<figure>\s*<img[^>]*loading="lazy"[^>]*>\s*<\/figure>\s*/gi, '')
+    .replace(/<p>\s*<\/p>/gi, '')
 }
 
 async function fixMetaDescription(supabase: any, post: any, issueId?: string) {
@@ -140,17 +127,18 @@ async function fixFeaturedImage(supabase: any, post: any, issueId?: string) {
 }
 
 async function fixContentImages(supabase: any, post: any, issueId?: string, count = 1) {
+  void count
   const content = post.content || ''
   if (/<img[^>]+>/i.test(content) || /!\[.*?\]\(.*?\)/.test(content)) {
     await resolveIssue(supabase, post.id, 'no_content_images', issueId)
     return true
   }
-  const images = await pickImages(supabase, post, count)
-  if (images.length === 0) return false
-  const updated = injectImagesIntoContent(content, images)
+  // No injection anymore — just strip any previously auto-injected figures
+  // (non-corresponding same-category images) and resolve the issue.
+  const stripped = stripInjectedImages(content)
   const { error } = await supabase
     .from('posts')
-    .update({ content: updated, updated_at: new Date().toISOString() })
+    .update({ content: stripped, updated_at: new Date().toISOString() })
     .eq('id', post.id)
   if (error) throw error
   await resolveIssue(supabase, post.id, 'no_content_images', issueId)

@@ -38,7 +38,6 @@ function analyzePost(post: any) {
   if (!post.seo_description) issues.push({ issue_type: 'missing_meta', severity: 'critical', description: 'Missing meta description', suggestion: 'Add a compelling meta description between 150-160 characters' })
   if (keywords.length === 0) issues.push({ issue_type: 'missing_keywords', severity: 'warning', description: 'No SEO keywords defined', suggestion: 'Add primary and secondary keywords' })
   if (!post.featured_image) issues.push({ issue_type: 'missing_featured_image', severity: 'warning', description: 'No featured image set', suggestion: 'Set a featured image from the Media Library' })
-  if (imgCount === 0) issues.push({ issue_type: 'no_content_images', severity: 'info', description: 'No images inside article body', suggestion: 'Add at least one relevant image in the content' })
   if (internalLinks < 2) issues.push({ issue_type: 'few_internal_links', severity: 'info', description: `${internalLinks} internal link(s) found`, suggestion: 'Add 2-3 internal links to related articles' })
   if (externalLinks < 1) issues.push({ issue_type: 'no_external_links', severity: 'info', description: 'No external authority links found', suggestion: 'Link to official documentation or trusted sources' })
   if (h2Count < 2) issues.push({ issue_type: 'heading_structure', severity: 'warning', description: 'Poor heading structure', suggestion: 'Use H2 (and H3) headings to structure content' })
