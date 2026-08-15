@@ -1,13 +1,14 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
+import Link from "next/link"
 import { createClient } from "@/lib/supabase/client"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { 
   Workflow, Clock, CheckCircle, AlertCircle, 
-  RefreshCw, ArrowRight, FileText, Eye 
+  RefreshCw, ArrowRight, FileText, Eye, ExternalLink
 } from "lucide-react"
 
 interface PublishTask {
@@ -20,8 +21,10 @@ interface PublishTask {
 }
 
 export function LivePublishingQueue() {
+  const supabaseRef = useRef(createClient())
   const [tasks, setTasks] = useState<PublishTask[]>([])
   const [loading, setLoading] = useState(true)
+  const busyRef = useRef(false)
   const [stats, setStats] = useState({
     drafts: 0,
     review: 0,
@@ -33,11 +36,27 @@ export function LivePublishingQueue() {
     loadTasks()
     // Refresh every 30 seconds
     const interval = setInterval(loadTasks, 30000)
-    return () => clearInterval(interval)
+
+    const client = supabaseRef.current
+    const channel = client
+      .channel(`publish_queue_${Date.now()}_${Math.random().toString(36).slice(2)}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "posts" }, () => loadTasks())
+      .subscribe()
+
+    const onFocus = () => loadTasks()
+    window.addEventListener("focus", onFocus)
+
+    return () => {
+      clearInterval(interval)
+      client.removeChannel(channel)
+      window.removeEventListener("focus", onFocus)
+    }
   }, [])
 
   const loadTasks = async () => {
-    const supabase = createClient()
+    if (busyRef.current) return
+    busyRef.current = true
+    const supabase = supabaseRef.current
     
     const { data: posts, error } = await supabase
       .from("posts")
@@ -49,6 +68,7 @@ export function LivePublishingQueue() {
     if (error) {
       console.error("Error loading tasks:", error)
       setLoading(false)
+      busyRef.current = false
       return
     }
 
@@ -78,6 +98,7 @@ export function LivePublishingQueue() {
     }
 
     setLoading(false)
+    busyRef.current = false
   }
 
   const getStatusIcon = (status: string) => {
@@ -143,30 +164,42 @@ export function LivePublishingQueue() {
             <Workflow className="h-5 w-5" />
             Live Publishing Queue
           </CardTitle>
-          <Button variant="ghost" size="sm" onClick={loadTasks}>
-            <RefreshCw className="h-4 w-4" />
-          </Button>
+          <div className="flex items-center gap-1">
+            <span className="hidden sm:flex items-center gap-1.5 text-[11px] text-muted-foreground mr-1">
+              <span className="h-1.5 w-1.5 rounded-full bg-green-500 animate-pulse" />
+              Live
+            </span>
+            <Button variant="ghost" size="sm" asChild>
+              <Link href="/admin/posts">
+                <span className="text-xs">All posts</span>
+                <ExternalLink className="h-3.5 w-3.5" />
+              </Link>
+            </Button>
+            <Button variant="ghost" size="sm" onClick={loadTasks}>
+              <RefreshCw className="h-4 w-4" />
+            </Button>
+          </div>
         </div>
       </CardHeader>
       <CardContent>
         {/* Stats */}
         <div className="grid grid-cols-4 gap-2 mb-4">
-          <div className="text-center p-2 rounded-lg bg-gray-50">
-            <p className="text-lg font-bold text-gray-600">{stats.drafts}</p>
+          <Link href="/admin/posts" className="text-center p-2 rounded-lg bg-gray-50 dark:bg-gray-800/50 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors group">
+            <p className="text-lg font-bold text-gray-600 dark:text-gray-300 group-hover:text-primary transition-colors">{stats.drafts}</p>
             <p className="text-xs text-muted-foreground">Drafts</p>
-          </div>
-          <div className="text-center p-2 rounded-lg bg-yellow-50">
-            <p className="text-lg font-bold text-yellow-600">{stats.review}</p>
+          </Link>
+          <Link href="/admin/posts" className="text-center p-2 rounded-lg bg-yellow-50 dark:bg-yellow-900/20 hover:bg-yellow-100 dark:hover:bg-yellow-900/30 transition-colors group">
+            <p className="text-lg font-bold text-yellow-600 group-hover:text-primary transition-colors">{stats.review}</p>
             <p className="text-xs text-muted-foreground">In Review</p>
-          </div>
-          <div className="text-center p-2 rounded-lg bg-purple-50">
-            <p className="text-lg font-bold text-purple-600">{stats.scheduled}</p>
+          </Link>
+          <Link href="/admin/posts" className="text-center p-2 rounded-lg bg-purple-50 dark:bg-purple-900/20 hover:bg-purple-100 dark:hover:bg-purple-900/30 transition-colors group">
+            <p className="text-lg font-bold text-purple-600 group-hover:text-primary transition-colors">{stats.scheduled}</p>
             <p className="text-xs text-muted-foreground">Scheduled</p>
-          </div>
-          <div className="text-center p-2 rounded-lg bg-blue-50">
-            <p className="text-lg font-bold text-blue-600">{stats.publishing}</p>
+          </Link>
+          <Link href="/admin/posts" className="text-center p-2 rounded-lg bg-blue-50 dark:bg-blue-900/20 hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-colors group">
+            <p className="text-lg font-bold text-blue-600 group-hover:text-primary transition-colors">{stats.publishing}</p>
             <p className="text-xs text-muted-foreground">Publishing</p>
-          </div>
+          </Link>
         </div>
 
         {/* Task List */}
@@ -175,17 +208,21 @@ export function LivePublishingQueue() {
             <p className="text-center text-muted-foreground py-4">No pending tasks</p>
           ) : (
             tasks.map((task) => (
-              <div key={task.id} className="flex items-center gap-3 p-2 rounded-lg border hover:bg-muted/50 transition-colors">
+              <Link
+                key={task.id}
+                href={`/admin/posts/${task.id}/edit`}
+                className="flex items-center gap-3 p-2 rounded-lg border hover:bg-muted/50 hover:border-primary/30 transition-colors group"
+              >
                 {getStatusIcon(task.status)}
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium truncate">{task.title}</p>
+                  <p className="text-sm font-medium truncate group-hover:text-primary transition-colors">{task.title}</p>
                   <p className="text-xs text-muted-foreground">
                     {task.author} • {getTimeAgo(task.updatedAt)}
                   </p>
                 </div>
                 {getStatusBadge(task.status)}
-                <ArrowRight className="h-4 w-4 text-muted-foreground" />
-              </div>
+                <ArrowRight className="h-4 w-4 text-muted-foreground group-hover:text-primary group-hover:translate-x-0.5 transition-all" />
+              </Link>
             ))
           )}
         </div>

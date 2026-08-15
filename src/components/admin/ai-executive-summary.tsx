@@ -1,36 +1,60 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
+import { useRouter } from "next/navigation"
 import { createClient } from "@/lib/supabase/client"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Brain, TrendingUp, TrendingDown, AlertCircle, RefreshCw, Zap, Target, ArrowRight } from "lucide-react"
+import { Brain, TrendingUp, TrendingDown, AlertCircle, RefreshCw, Zap, Target, ArrowRight, ExternalLink } from "lucide-react"
 
 interface AiInsight {
   type: "positive" | "negative" | "neutral" | "action"
   message: string
   metric?: string
   value?: string
+  href?: string
 }
 
 export function AiExecutiveSummary() {
+  const router = useRouter()
+  const supabaseRef = useRef(createClient())
   const [insights, setInsights] = useState<AiInsight[]>([])
   const [loading, setLoading] = useState(true)
+  const busyRef = useRef(false)
 
   useEffect(() => {
     generateInsights()
     const interval = setInterval(generateInsights, 60000)
-    return () => clearInterval(interval)
+
+    const client = supabaseRef.current
+    const channel = client
+      .channel(`ai_exec_summary_${Date.now()}_${Math.random().toString(36).slice(2)}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "posts" }, () => generateInsights(true))
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "analytics_events" }, () => generateInsights(true))
+      .on("postgres_changes", { event: "*", schema: "public", table: "seo_issues" }, () => generateInsights(true))
+      .subscribe()
+
+    const onFocus = () => generateInsights(true)
+    window.addEventListener("focus", onFocus)
+
+    return () => {
+      clearInterval(interval)
+      client.removeChannel(channel)
+      window.removeEventListener("focus", onFocus)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  const generateInsights = async () => {
-    const supabase = createClient()
-    setLoading(true)
+  const generateInsights = async (quiet = false) => {
+    if (busyRef.current) return
+    busyRef.current = true
+    if (!quiet) setLoading(true)
+    const supabase = supabaseRef.current
 
     const [postsRes, analyticsRes, seoRes, categoriesRes] = await Promise.all([
       supabase.from("posts").select("id, title, status, published_at, created_at, views, category_id").eq("status", "published"),
-      supabase.from("analytics_events").select("created_at").eq("event_type", "page_view").gte("created_at", new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()),
+      supabase.from("analytics_events").select("created_at").eq("event_type", "page_view").gte("created_at", new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString()),
       supabase.from("seo_issues").select("id, severity").eq("resolved", false),
       supabase.from("categories").select("id, name")
     ])
@@ -57,7 +81,8 @@ export function AiExecutiveSummary() {
           ? `Page views are ${diff >= 0 ? "up" : "down"} ${Math.abs(Math.round((diff / lastWeekCount) * 100))}% compared with last week`
           : `${thisWeekCount} page views recorded this week`,
         metric: "Weekly Traffic",
-        value: `${thisWeekCount.toLocaleString()} views`
+        value: `${thisWeekCount.toLocaleString()} views`,
+        href: "/admin/analytics"
       })
     }
 
@@ -72,7 +97,8 @@ export function AiExecutiveSummary() {
         type: "positive",
         message: `${thisWeekPosts.length} articles published this week with ${totalViews.toLocaleString()} combined views`,
         metric: "Weekly Output",
-        value: `${thisWeekPosts.length} articles`
+        value: `${thisWeekPosts.length} articles`,
+        href: "/admin/posts"
       })
     }
 
@@ -83,7 +109,16 @@ export function AiExecutiveSummary() {
         type: "negative",
         message: `${criticalIssues.length} critical SEO issues need attention`,
         metric: "Critical Issues",
-        value: `${criticalIssues.length} found`
+        value: `${criticalIssues.length} found`,
+        href: "/admin/seo"
+      })
+    } else if (seoIssues.length > 0) {
+      newInsights.push({
+        type: "neutral",
+        message: `${seoIssues.length} SEO issues are open across your articles`,
+        metric: "SEO Health",
+        value: `${seoIssues.length} open`,
+        href: "/admin/seo"
       })
     }
 
@@ -101,7 +136,8 @@ export function AiExecutiveSummary() {
         type: "action",
         message: `Refresh "${firstTitle}"${extra} top articles to maintain rankings`,
         metric: "Content Refresh",
-        value: `${stalePosts.length} articles`
+        value: `${stalePosts.length} articles`,
+        href: `/admin/posts/${stalePosts[0].id}/edit`
       })
     }
 
@@ -118,7 +154,8 @@ export function AiExecutiveSummary() {
         type: "neutral",
         message: `Your strongest category is ${catName} with ${topCategory[1]} published articles`,
         metric: "Top Category",
-        value: catName
+        value: catName,
+        href: "/admin/posts"
       })
     }
 
@@ -128,12 +165,14 @@ export function AiExecutiveSummary() {
         type: "neutral",
         message: "Publish your first article to start seeing AI insights here",
         metric: "Getting Started",
-        value: "No data yet"
+        value: "No data yet",
+        href: "/admin/posts/new"
       })
     }
 
     setInsights(newInsights)
     setLoading(false)
+    busyRef.current = false
   }
 
   const getIcon = (type: string) => {
@@ -180,18 +219,33 @@ export function AiExecutiveSummary() {
             <Brain className="h-5 w-5" />
             AI Executive Summary
           </CardTitle>
-          <Button variant="ghost" size="sm" onClick={generateInsights}>
-            <RefreshCw className="h-4 w-4" />
-          </Button>
+          <div className="flex items-center gap-1">
+            <span className="hidden sm:flex items-center gap-1.5 text-[11px] text-muted-foreground mr-1">
+              <span className="h-1.5 w-1.5 rounded-full bg-green-500 animate-pulse" />
+              Realtime
+            </span>
+            <Button variant="ghost" size="sm" onClick={() => generateInsights()}>
+              <RefreshCw className="h-4 w-4" />
+            </Button>
+          </div>
         </div>
       </CardHeader>
       <CardContent>
-        <div className="space-y-3">
+        <div className="grid gap-3 md:grid-cols-2">
           {insights.map((insight, i) => (
-            <div key={i} className="flex items-start gap-3 p-3 rounded-lg border">
+            <div
+              key={i}
+              role={insight.href ? "button" : undefined}
+              tabIndex={insight.href ? 0 : undefined}
+              onClick={() => insight.href && router.push(insight.href)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && insight.href) router.push(insight.href)
+              }}
+              className={`group flex items-start gap-3 p-3 rounded-lg border transition-colors ${insight.href ? "cursor-pointer hover:border-primary/40 hover:bg-muted/40" : ""}`}
+            >
               <div className="mt-0.5">{getIcon(insight.type)}</div>
-              <div className="flex-1">
-                <div className="flex items-center gap-2 mb-1">
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 mb-1 flex-wrap">
                   {getBadge(insight.type)}
                   {insight.metric && (
                     <span className="text-sm font-medium text-muted-foreground">
@@ -201,7 +255,11 @@ export function AiExecutiveSummary() {
                 </div>
                 <p className="text-sm">{insight.message}</p>
               </div>
-              <ArrowRight className="h-4 w-4 text-muted-foreground" />
+              {insight.href ? (
+                <ExternalLink className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity shrink-0 mt-0.5" />
+              ) : (
+                <ArrowRight className="h-4 w-4 text-muted-foreground/40 shrink-0 mt-0.5" />
+              )}
             </div>
           ))}
         </div>

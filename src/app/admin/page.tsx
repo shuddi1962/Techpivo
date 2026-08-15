@@ -3,8 +3,8 @@
 import { useState, useEffect, useCallback, useRef } from "react"
 import Link from "next/link"
 import { createClient } from "@/lib/supabase/client"
+import { SITE_URL } from "@/lib/constants"
 import { AiExecutiveSummary } from "@/components/admin/ai-executive-summary"
-import { AiOpportunityCenter } from "@/components/admin/ai-opportunity-center"
 import { LivePublishingQueue } from "@/components/admin/live-publishing-queue"
 import { NotificationCenter } from "@/components/admin/notification-center"
 import { ExecutiveKpiCards } from "@/components/admin/executive-kpi-cards"
@@ -15,7 +15,7 @@ import {
   FileText, Clock, ArrowUpRight, Eye, Users, Wallet,
 } from "lucide-react"
 import {
-  ChartLine, ChartBar, ChartPie, ChartComposed, ChartLeaderboard, ChartRealTimeMap
+  ChartPie, ChartComposed, ChartLeaderboard
 } from "@/components/charts"
 
 const COLORS = ["#3b82f6", "#22c55e", "#f59e0b", "#ef4444", "#8b5cf6", "#ec4899", "#14b8a6", "#f97316"]
@@ -242,7 +242,6 @@ export default function AdminDashboard() {
   const [regions, setRegions] = useState<{ name: string; value: number }[]>([])
   const [pages, setPages] = useState<{ name: string; value: number }[]>([])
   const [referrers, setReferrers] = useState<{ name: string; value: number }[]>([])
-  const [geoData, setGeoData] = useState<{ country: string; lat: number; lng: number; value: number; label?: string }[]>([])
   const [liveVisitors, setLiveVisitors] = useState(0)
   const [viewsToday, setViewsToday] = useState(0)
   const [sessionsToday, setSessionsToday] = useState(0)
@@ -251,6 +250,12 @@ export default function AdminDashboard() {
   const [pendingOrders, setPendingOrders] = useState(0)
   const [recentOrders, setRecentOrders] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
+  const [now, setNow] = useState(() => new Date())
+
+  useEffect(() => {
+    const tick = setInterval(() => setNow(new Date()), 1000)
+    return () => clearInterval(tick)
+  }, [])
 
   const fetchData = useCallback(async () => {
     try {
@@ -323,15 +328,6 @@ export default function AdminDashboard() {
         return { name: meta ? `${meta.flag} ${meta.name}` : raw, value }
       }))
 
-      const geo: { country: string; lat: number; lng: number; value: number; label?: string }[] = []
-      sortedRegions.forEach(([raw, value]) => {
-        const meta = resolveCountry(raw)
-        if (meta) {
-          geo.push({ country: meta.name, lat: meta.lat, lng: meta.lng, value, label: `${meta.flag} ${meta.name}` })
-        }
-      })
-      setGeoData(geo)
-
       setLiveVisitors(liveRes.count || 0)
       setViewsToday(viewsTodayRes.count || 0)
       const sessionEvents = (sessionsRes.data || []).filter((e: any) => e.session_id)
@@ -366,17 +362,20 @@ export default function AdminDashboard() {
     fetchData()
     const client = supabaseRef.current
     const channel = client
-      .channel("dashboard-realtime")
-      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "posts" }, () => { fetchData() })
+      .channel(`admin_dashboard_${Date.now()}_${Math.random().toString(36).slice(2)}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "posts" }, () => { fetchData() })
       .on("postgres_changes", { event: "INSERT", schema: "public", table: "analytics_events" }, () => { fetchData() })
       .on("postgres_changes", { event: "*", schema: "public", table: "ad_revenue" }, () => { fetchData() })
       .on("postgres_changes", { event: "*", schema: "public", table: "ad_campaigns" }, () => { fetchData() })
       .on("postgres_changes", { event: "*", schema: "public", table: "ad_campaign_daily_stats" }, () => { fetchData() })
       .subscribe()
     const interval = setInterval(fetchData, 30000)
+    const onFocus = () => fetchData()
+    window.addEventListener("focus", onFocus)
     return () => {
       client.removeChannel(channel)
       clearInterval(interval)
+      window.removeEventListener("focus", onFocus)
     }
   }, [fetchData])
 
@@ -395,7 +394,11 @@ export default function AdminDashboard() {
             <p className="text-sm text-muted-foreground">Your publishing command center</p>
           </div>
           {!loading && (
-            <div className="hidden sm:flex items-center gap-3 pl-4 border-l border-border">
+            <Link
+              href="/admin/analytics"
+              className="hidden sm:flex items-center gap-3 pl-4 border-l border-border group"
+              title="Open analytics"
+            >
               <div className="flex items-center gap-2">
                 <span className="relative flex h-2.5 w-2.5">
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
@@ -403,24 +406,24 @@ export default function AdminDashboard() {
                 </span>
                 <span className="text-xs text-muted-foreground">Live</span>
               </div>
-              <div className="text-right">
+              <div className="text-right group-hover:opacity-80 transition-opacity">
                 <span className="text-xl font-bold text-emerald-500 tabular-nums">{liveVisitors}</span>
                 <span className="text-xs text-muted-foreground ml-1.5">visitors / 5min</span>
               </div>
-              <div className="text-right">
+              <div className="text-right group-hover:opacity-80 transition-opacity">
                 <span className="text-xl font-bold text-amber-500 tabular-nums">{viewsToday.toLocaleString()}</span>
                 <span className="text-xs text-muted-foreground ml-1.5">today</span>
               </div>
-              <div className="text-right">
+              <div className="text-right group-hover:opacity-80 transition-opacity">
                 <span className="text-xl font-bold text-blue-500 tabular-nums">{sessionsToday.toLocaleString()}</span>
                 <span className="text-xs text-muted-foreground ml-1.5">sessions</span>
               </div>
-            </div>
+            </Link>
           )}
         </div>
         <div className="flex items-center gap-2">
-          <span className="text-xs text-muted-foreground hidden sm:inline">
-            {new Date().toLocaleTimeString()}
+          <span className="text-xs text-muted-foreground hidden sm:inline tabular-nums">
+            {now.toLocaleTimeString()}
           </span>
           <button
             onClick={fetchData}
@@ -434,8 +437,12 @@ export default function AdminDashboard() {
 
       {/* ── Mobile live counter ── */}
       {!loading && (
-        <div className="flex sm:hidden items-center justify-around bg-card border rounded-xl p-4">
-          <div className="text-center">
+        <Link
+          href="/admin/analytics"
+          className="flex sm:hidden items-center justify-around bg-card border rounded-xl p-4 group"
+          title="Open analytics"
+        >
+          <div className="text-center group-hover:opacity-80 transition-opacity">
             <div className="flex items-center justify-center gap-1.5 mb-1">
               <span className="relative flex h-2 w-2">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
@@ -447,18 +454,18 @@ export default function AdminDashboard() {
             <p className="text-[10px] text-muted-foreground">visitors / 5min</p>
           </div>
           <div className="w-px h-10 bg-border" />
-          <div className="text-center">
+          <div className="text-center group-hover:opacity-80 transition-opacity">
             <Eye className="h-4 w-4 text-amber-500 mx-auto mb-1" />
             <span className="text-2xl font-bold text-amber-500 tabular-nums">{viewsToday.toLocaleString()}</span>
             <p className="text-[10px] text-muted-foreground">views today</p>
           </div>
           <div className="w-px h-10 bg-border" />
-          <div className="text-center">
+          <div className="text-center group-hover:opacity-80 transition-opacity">
             <BarChart3 className="h-4 w-4 text-blue-500 mx-auto mb-1" />
             <span className="text-2xl font-bold text-blue-500 tabular-nums">{weekTotal.toLocaleString()}</span>
             <p className="text-[10px] text-muted-foreground">this week</p>
           </div>
-        </div>
+        </Link>
       )}
 
       <ExecutiveKpiCards />
@@ -476,36 +483,41 @@ export default function AdminDashboard() {
           )}
         </div>
         <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-          <div className="rounded-xl bg-muted/40 p-4">
+          <Link href="/admin/ads" className="rounded-xl bg-muted/40 p-4 hover:bg-muted/60 hover:border-primary/30 border border-transparent transition-colors group">
             <p className="text-xs text-muted-foreground flex items-center gap-1"><Wallet className="h-3 w-3" /> Ad Revenue (30d)</p>
-            <p className="text-2xl font-bold mt-1 tabular-nums">{loading ? "…" : `$${revenue30d.toFixed(2)}`}</p>
+            <p className="text-2xl font-bold mt-1 tabular-nums group-hover:text-primary transition-colors">{loading ? "…" : `$${revenue30d.toFixed(2)}`}</p>
             {!loading && revenue30d > 0 && <FxApprox amount={revenue30d} from="USD" className="block text-xs text-muted-foreground mt-0.5" />}
-          </div>
-          <div className="rounded-xl bg-muted/40 p-4">
+          </Link>
+          <Link href="/admin/ads" className="rounded-xl bg-muted/40 p-4 hover:bg-muted/60 hover:border-primary/30 border border-transparent transition-colors group">
             <p className="text-xs text-muted-foreground flex items-center gap-1"><Clock className="h-3 w-3" /> Pending Orders</p>
-            <p className="text-2xl font-bold mt-1 tabular-nums text-amber-500">{loading ? "…" : pendingOrders}</p>
-          </div>
-          <div className="rounded-xl bg-muted/40 p-4">
+            <p className="text-2xl font-bold mt-1 tabular-nums text-amber-500 group-hover:text-primary transition-colors">{loading ? "…" : pendingOrders}</p>
+          </Link>
+          <Link href="/admin/analytics" className="rounded-xl bg-muted/40 p-4 hover:bg-muted/60 hover:border-primary/30 border border-transparent transition-colors group">
             <p className="text-xs text-muted-foreground flex items-center gap-1"><Activity className="h-3 w-3" /> Sessions Today</p>
-            <p className="text-2xl font-bold mt-1 tabular-nums text-emerald-500">{loading ? "…" : sessionsToday.toLocaleString()}</p>
-          </div>
-          <div className="rounded-xl bg-muted/40 p-4">
+            <p className="text-2xl font-bold mt-1 tabular-nums text-emerald-500 group-hover:text-primary transition-colors">{loading ? "…" : sessionsToday.toLocaleString()}</p>
+          </Link>
+          <Link href="/admin/analytics" className="rounded-xl bg-muted/40 p-4 hover:bg-muted/60 hover:border-primary/30 border border-transparent transition-colors group">
             <p className="text-xs text-muted-foreground flex items-center gap-1"><Users className="h-3 w-3" /> Sessions (7d)</p>
-            <p className="text-2xl font-bold mt-1 tabular-nums text-blue-500">{loading ? "…" : sessions7d.toLocaleString()}</p>
-          </div>
-          <div className="rounded-xl bg-muted/40 p-4">
+            <p className="text-2xl font-bold mt-1 tabular-nums text-blue-500 group-hover:text-primary transition-colors">{loading ? "…" : sessions7d.toLocaleString()}</p>
+          </Link>
+          <Link href="/admin/analytics" className="rounded-xl bg-muted/40 p-4 hover:bg-muted/60 hover:border-primary/30 border border-transparent transition-colors group">
             <p className="text-xs text-muted-foreground flex items-center gap-1"><BarChart3 className="h-3 w-3" /> Views Today</p>
-            <p className="text-2xl font-bold mt-1 tabular-nums">{loading ? "…" : viewsToday.toLocaleString()}</p>
-          </div>
+            <p className="text-2xl font-bold mt-1 tabular-nums group-hover:text-primary transition-colors">{loading ? "…" : viewsToday.toLocaleString()}</p>
+          </Link>
         </div>
         {!loading && recentOrders.length > 0 && (
           <div className="mt-4">
-            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Recent Campaign Orders</p>
+            <div className="flex items-center justify-between mb-2">
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Recent Campaign Orders</p>
+              <Link href="/admin/ads" className="text-xs font-medium text-primary hover:underline inline-flex items-center gap-1">
+                Manage ads <ArrowUpRight className="h-3 w-3" />
+              </Link>
+            </div>
             <div className="grid md:grid-cols-2 gap-2">
               {recentOrders.map((c: any) => (
-                <div key={c.id} className="flex items-center justify-between rounded-lg bg-muted/30 px-3 py-2 text-sm">
+                <Link key={c.id} href="/admin/ads" className="flex items-center justify-between rounded-lg bg-muted/30 px-3 py-2 text-sm hover:bg-muted/60 hover:border-primary/30 border border-transparent transition-colors group/order">
                   <div className="min-w-0">
-                    <p className="font-medium truncate">{c.headline || "Untitled campaign"}</p>
+                    <p className="font-medium truncate group-hover/order:text-primary transition-colors">{c.headline || "Untitled campaign"}</p>
                     <p className="text-xs text-muted-foreground truncate">
                       {c.advertiser_email || "—"} · {new Date(c.created_at).toLocaleDateString()}
                     </p>
@@ -523,16 +535,15 @@ export default function AdminDashboard() {
                       {c.status}
                     </span>
                   </div>
-                </div>
+                </Link>
               ))}
             </div>
           </div>
         )}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 gap-6">
         <AiExecutiveSummary />
-        <AiOpportunityCenter />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -547,11 +558,16 @@ export default function AdminDashboard() {
               <Activity className="h-5 w-5 text-amber-500" />
               <h2 className="text-base font-semibold">Views This Week</h2>
             </div>
-            {!loading && (
-              <span className="text-xs font-medium text-muted-foreground bg-muted/50 px-2.5 py-1 rounded-md border">
-                {weekTotal.toLocaleString()} total
-              </span>
-            )}
+            <div className="flex items-center gap-2">
+              {!loading && (
+                <span className="text-xs font-medium text-muted-foreground bg-muted/50 px-2.5 py-1 rounded-md border">
+                  {weekTotal.toLocaleString()} total
+                </span>
+              )}
+              <Link href="/admin/analytics" className="text-xs font-medium text-primary hover:underline inline-flex items-center gap-1">
+                Analytics <ArrowUpRight className="h-3 w-3" />
+              </Link>
+            </div>
           </div>
           {loading ? (
             <div className="h-64 flex items-center justify-center text-sm text-muted-foreground">
@@ -560,20 +576,27 @@ export default function AdminDashboard() {
           ) : !hasViewsData ? (
             <div className="h-64 flex items-center justify-center text-sm text-muted-foreground">No data yet</div>
           ) : (
-            <ChartComposed
-              data={viewsOverTime}
-              xKey="date"
-              bars={[{ key: "views", color: "#f59e0b", name: "Views" }]}
-              lines={[{ key: "sessions", color: "#3b82f6", name: "Sessions" }]}
-              height={260}
-            />
+            <Link href="/admin/analytics" className="block group">
+              <ChartComposed
+                data={viewsOverTime}
+                xKey="date"
+                bars={[{ key: "views", color: "#f59e0b", name: "Views" }]}
+                lines={[{ key: "sessions", color: "#3b82f6", name: "Sessions" }]}
+                height={260}
+              />
+            </Link>
           )}
         </div>
 
         <div className="lg:col-span-3 bg-card border rounded-xl p-5">
-          <div className="flex items-center gap-2.5 mb-5">
-            <BarChart3 className="h-5 w-5 text-amber-500" />
-            <h2 className="text-base font-semibold">Post Status Distribution</h2>
+          <div className="flex items-center justify-between mb-5">
+            <div className="flex items-center gap-2.5">
+              <BarChart3 className="h-5 w-5 text-amber-500" />
+              <h2 className="text-base font-semibold">Post Status Distribution</h2>
+            </div>
+            <Link href="/admin/posts" className="text-xs font-medium text-primary hover:underline inline-flex items-center gap-1">
+              Manage posts <ArrowUpRight className="h-3 w-3" />
+            </Link>
           </div>
           {loading ? (
             <div className="h-64 flex items-center justify-center text-sm text-muted-foreground">Loading...</div>
@@ -601,34 +624,6 @@ export default function AdminDashboard() {
             </div>
           )}
         </div>
-      </div>
-
-      {/* ── Geographic Map (full width) ── */}
-      <div className="bg-card border rounded-xl p-5">
-        <div className="flex items-center justify-between mb-5">
-          <div className="flex items-center gap-2.5">
-            <Globe className="h-5 w-5 text-emerald-500" />
-            <h2 className="text-base font-semibold">Geographic Traffic Map</h2>
-          </div>
-          {!loading && geoData.length > 0 && (
-            <span className="text-xs font-medium text-muted-foreground bg-muted/50 px-2.5 py-1 rounded-md border">
-              {geoData.length} countries
-            </span>
-          )}
-        </div>
-        {loading ? (
-          <div className="h-80 flex items-center justify-center text-sm text-muted-foreground">
-            <RefreshCw className="h-4 w-4 animate-spin mr-2" /> Loading map...
-          </div>
-        ) : geoData.length === 0 ? (
-          <div className="h-80 flex flex-col items-center justify-center text-sm text-muted-foreground">
-            <Globe className="h-12 w-12 text-muted-foreground/30 mb-3" />
-            <p>No geographic data yet</p>
-            <p className="text-xs mt-1">Data appears as visitors arrive from different countries</p>
-          </div>
-        ) : (
-          <ChartRealTimeMap data={geoData} height={420} />
-        )}
       </div>
 
       {/* ── Top Posts + Top Regions + Top Pages ── */}
@@ -675,9 +670,14 @@ export default function AdminDashboard() {
         </div>
 
         <div className="lg:col-span-2 bg-card border rounded-xl p-5">
-          <div className="flex items-center gap-2.5 mb-5">
-            <Globe className="h-5 w-5 text-amber-500" />
-            <h2 className="text-base font-semibold">Top Regions</h2>
+          <div className="flex items-center justify-between mb-5">
+            <div className="flex items-center gap-2.5">
+              <Globe className="h-5 w-5 text-amber-500" />
+              <h2 className="text-base font-semibold">Top Regions</h2>
+            </div>
+            <Link href="/admin/analytics" className="text-xs font-medium text-primary hover:underline inline-flex items-center gap-1">
+              Analytics <ArrowUpRight className="h-3 w-3" />
+            </Link>
           </div>
           {loading ? (
             <div className="h-64 flex items-center justify-center text-sm text-muted-foreground">Loading...</div>
@@ -713,12 +713,18 @@ export default function AdminDashboard() {
           ) : (
             <div className="space-y-1">
               {pages.map((p, i) => (
-                <div key={i} className="flex items-center justify-between py-2 px-1 border-b border-border/50 last:border-0">
-                  <span className="text-sm text-muted-foreground truncate flex-1 min-w-0" title={p.name}>
+                <Link
+                  key={i}
+                  href={`${SITE_URL}${p.name}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center justify-between py-2 px-1 border-b border-border/50 last:border-0 hover:bg-muted/40 rounded-md group/page"
+                >
+                  <span className="text-sm text-muted-foreground truncate flex-1 min-w-0 group-hover/page:text-primary transition-colors" title={p.name}>
                     {p.name.length > 28 ? p.name.slice(0, 25) + "..." : p.name}
                   </span>
-                  <span className="text-sm font-semibold tabular-nums ml-3">{p.value.toLocaleString()}</span>
-                </div>
+                  <span className="text-sm font-semibold tabular-nums ml-3 group-hover/page:text-primary transition-colors">{p.value.toLocaleString()}</span>
+                </Link>
               ))}
             </div>
           )}
@@ -727,9 +733,14 @@ export default function AdminDashboard() {
 
       {/* ── Traffic Sources ── */}
       <div className="bg-card border rounded-xl p-5">
-        <div className="flex items-center gap-2.5 mb-5">
-          <Smartphone className="h-5 w-5 text-lime-500" />
-          <h2 className="text-base font-semibold">Traffic Sources</h2>
+        <div className="flex items-center justify-between mb-5">
+          <div className="flex items-center gap-2.5">
+            <Smartphone className="h-5 w-5 text-lime-500" />
+            <h2 className="text-base font-semibold">Traffic Sources</h2>
+          </div>
+          <Link href="/admin/analytics" className="text-xs font-medium text-primary hover:underline inline-flex items-center gap-1">
+            Analytics <ArrowUpRight className="h-3 w-3" />
+          </Link>
         </div>
         {loading ? (
           <div className="h-64 flex items-center justify-center text-sm text-muted-foreground">Loading...</div>

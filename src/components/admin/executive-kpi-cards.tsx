@@ -34,7 +34,6 @@ export function ExecutiveKpiCards() {
     const fetchKpi = async () => {
       try {
         const supabase = supabaseRef.current
-
         const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()
         const monthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString()
         const lastMonthStart = new Date(new Date().getFullYear(), new Date().getMonth() - 1, 1).toISOString()
@@ -104,8 +103,25 @@ export function ExecutiveKpiCards() {
     }
 
     fetchKpi()
-    const interval = setInterval(fetchKpi, 60000)
-    return () => clearInterval(interval)
+    const interval = setInterval(fetchKpi, 30000)
+
+    const client = supabaseRef.current
+    const channel = client
+      .channel(`admin_kpis_${Date.now()}_${Math.random().toString(36).slice(2)}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "posts" }, () => fetchKpi())
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "analytics_events" }, () => fetchKpi())
+      .on("postgres_changes", { event: "*", schema: "public", table: "subscribers" }, () => fetchKpi())
+      .on("postgres_changes", { event: "*", schema: "public", table: "rss_feeds" }, () => fetchKpi())
+      .subscribe()
+
+    const onFocus = () => fetchKpi()
+    window.addEventListener("focus", onFocus)
+
+    return () => {
+      clearInterval(interval)
+      client.removeChannel(channel)
+      window.removeEventListener("focus", onFocus)
+    }
   }, [])
 
   const formatValue = (card: KpiCard): string => {

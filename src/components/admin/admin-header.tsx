@@ -6,7 +6,7 @@ import { useRouter, usePathname } from "next/navigation"
 import {
   Bell, ExternalLink, LogOut, Settings, User, Plus, Search,
   Moon, Sun, Menu, FileText, Image, Users, Hash, X,
-  ChevronRight, Home, Globe, Zap,
+  ChevronRight, Home, Globe, Zap, RefreshCw,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
@@ -24,6 +24,8 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { createClient } from "@/lib/supabase/client"
 import { useSidebar } from "./sidebar-context"
 import { CommandDialog, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command"
+import { useAdminNotifications } from "@/lib/use-admin-notifications"
+import { CheckCircle2, AlertTriangle, Info, XCircle } from "lucide-react"
 
 const breadcrumbMap: Record<string, string> = {
   "admin": "Dashboard",
@@ -90,6 +92,7 @@ export function AdminHeader() {
   const pathname = usePathname()
   const supabase = createClient()
   const { toggleMobile } = useSidebar()
+  const { notifications, unreadCount, loading, markRead } = useAdminNotifications()
   const [searchOpen, setSearchOpen] = useState(false)
   const [darkMode, setDarkMode] = useState(false)
 
@@ -225,38 +228,63 @@ export function AdminHeader() {
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" size="icon" className="relative text-muted-foreground">
                   <Bell className="h-4 w-4" />
-                  <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-red-500 ring-2 ring-background" />
+                  {unreadCount > 0 && (
+                    <span className="absolute -top-0.5 -right-0.5 h-4 min-w-4 px-1 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center ring-2 ring-background tabular-nums">
+                      {unreadCount > 9 ? "9+" : unreadCount}
+                    </span>
+                  )}
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-80">
-                <DropdownMenuLabel>Notifications</DropdownMenuLabel>
+                <DropdownMenuLabel className="flex items-center justify-between">
+                  <span>Notifications</span>
+                  {unreadCount > 0 && (
+                    <span className="text-xs text-muted-foreground">{unreadCount} unread</span>
+                  )}
+                </DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 <div className="max-h-72 overflow-y-auto">
-                  {[
-                    { title: "New comment on 'AI Guide'", time: "2m ago", type: "comment" },
-                    { title: "Article 'Python Tutorial' published", time: "15m ago", type: "publish" },
-                    { title: "SEO score dropped for 3 articles", time: "1h ago", type: "warning" },
-                    { title: "RSS feed 'TechCrunch' failed", time: "2h ago", type: "error" },
-                    { title: "2 new subscribers joined", time: "3h ago", type: "success" },
-                  ].map((notif, i) => (
-                    <div key={i} className="flex items-start gap-3 px-3 py-2.5 hover:bg-muted/50 transition-colors cursor-pointer">
-                      <div className={cn(
-                        "w-2 h-2 rounded-full mt-1.5 shrink-0",
-                        notif.type === "comment" && "bg-blue-500",
-                        notif.type === "publish" && "bg-green-500",
-                        notif.type === "warning" && "bg-yellow-500",
-                        notif.type === "error" && "bg-red-500",
-                        notif.type === "success" && "bg-emerald-500",
-                      )} />
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm text-foreground truncate">{notif.title}</p>
-                        <p className="text-xs text-muted-foreground">{notif.time}</p>
-                      </div>
+                  {loading ? (
+                    <div className="flex items-center justify-center py-8">
+                      <RefreshCw className="h-5 w-5 animate-spin text-muted-foreground" />
                     </div>
-                  ))}
+                  ) : notifications.length === 0 ? (
+                    <p className="px-3 py-8 text-center text-sm text-muted-foreground">No notifications yet</p>
+                  ) : (
+                    notifications.map((notif) => {
+                      const Icon =
+                        notif.type === "critical" ? XCircle :
+                        notif.type === "warning" ? AlertTriangle :
+                        notif.type === "success" ? CheckCircle2 : Info
+                      return (
+                        <DropdownMenuItem
+                          key={notif.id}
+                          className="flex items-start gap-3 px-3 py-2.5 cursor-pointer"
+                          onClick={() => {
+                            markRead(notif.id)
+                            if (notif.href) router.push(notif.href)
+                          }}
+                        >
+                          <Icon className={cn(
+                            "mt-0.5 h-4 w-4 shrink-0",
+                            notif.type === "critical" && "text-red-500",
+                            notif.type === "warning" && "text-yellow-500",
+                            notif.type === "success" && "text-emerald-500",
+                            notif.type === "info" && "text-blue-500",
+                          )} />
+                          <div className="flex-1 min-w-0">
+                            <p className={cn("text-sm truncate", notif.read ? "text-muted-foreground" : "text-foreground font-medium")}>
+                              {notif.title}
+                            </p>
+                            <p className="text-xs text-muted-foreground truncate">{notif.message}</p>
+                          </div>
+                        </DropdownMenuItem>
+                      )
+                    })
+                  )}
                 </div>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem className="justify-center text-xs text-muted-foreground">
+                <DropdownMenuItem className="justify-center text-xs text-muted-foreground" onClick={() => router.push("/admin")}>
                   View all notifications
                 </DropdownMenuItem>
               </DropdownMenuContent>
