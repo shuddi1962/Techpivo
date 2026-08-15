@@ -89,7 +89,7 @@ export default async function PostPage({ params }: Props) {
 
   const rawQuickBrief = (post as any).quick_brief
   const quickBrief = Array.isArray(rawQuickBrief)
-    ? rawQuickBrief.map((p: any) => typeof p === 'string' ? p : p?.text || p?.name || String(p))
+    ? rawQuickBrief.map((p: any) => typeof p === 'string' ? p : p?.value || p?.text || p?.name || String(p))
     : []
   const keyPoints = (post as any).key_points
   const faq = (post as any).faq

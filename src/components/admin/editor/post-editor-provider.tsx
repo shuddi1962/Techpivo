@@ -69,6 +69,8 @@ const initialState: EditorPostState = {
   flesch_score: 0,
   secondary_keywords: [],
   quick_brief: null,
+  key_points: [],
+  faq: null,
   quality_score: 0,
   is_featured: false,
   is_breaking: false,
@@ -96,6 +98,15 @@ function normalizePost(raw: Record<string, unknown>): Record<string, unknown> {
   out.tags = arr(raw.tags)
   out.seo_keywords = arr(raw.seo_keywords)
   out.secondary_keywords = arr(raw.secondary_keywords)
+  out.key_points = Array.isArray(raw.key_points)
+    ? (raw.key_points as unknown[]).filter((k): k is string => typeof k === "string").slice(0, 6)
+    : []
+  out.faq = Array.isArray(raw.faq)
+    ? (raw.faq as Array<Record<string, unknown>>)
+        .filter((f) => f && typeof f === "object")
+        .map((f) => ({ question: str(f.question), answer: str(f.answer) }))
+        .filter((f) => f.question)
+    : null
   out.title = str(raw.title)
   out.slug = str(raw.slug)
   out.content = str(raw.content)
@@ -354,6 +365,8 @@ export function PostEditorProvider({
         flesch_score: readability.flesch,
         secondary_keywords: post.secondary_keywords,
         quick_brief: post.quick_brief,
+        key_points: post.key_points,
+        faq: post.faq,
         series_id: post.series_id || null,
         source_name: post.source_name,
         original_source_url: post.original_source_url,
@@ -462,6 +475,8 @@ export function PostEditorProvider({
         enable_comments: post.enable_comments,
         secondary_keywords: post.secondary_keywords,
         quick_brief: post.quick_brief,
+        key_points: post.key_points,
+        faq: post.faq,
         series_id: post.series_id || null,
         source_name: post.source_name,
         original_source_url: post.original_source_url,

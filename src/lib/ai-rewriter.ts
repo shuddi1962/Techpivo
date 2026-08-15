@@ -39,7 +39,7 @@ CATEGORY: ${category}
 SOURCE CONTENT — extract every fact, name, date, statistic, and quote:
 ${source.slice(0, 4500)}
 
-Use Google Search to verify and expand on this story with the latest available information. Cross-check facts before including them.
+Use Google Search to verify and expand on this story with the latest available information. Cross-check facts before including them. If a URL was provided, open it with your browsing tool to read the full article.
 
 GOOGLE POLICY COMPLIANCE — MANDATORY, NO EXCEPTIONS
 - Never copy sentences verbatim from the source — full rewrite required
@@ -246,6 +246,14 @@ const BANNED_PHRASES = [
 ]
 
 const CORRECTIVE_PROMPTS: Record<string, string> = {
+  json_parse_fail_after_object_extract:
+    "Your previous response could not be parsed as JSON. You MUST respond with ONLY a single valid raw JSON object — no markdown, no code fences (```), no text before or after the JSON, and no comments or trailing commas inside it. Double-check that every string is properly quoted and escaped (especially the HTML content field — any inner double quotes must be escaped as \\\"). Return ONLY the JSON object.",
+  no_json_object_found:
+    "Your previous response contained no JSON object at all. You MUST respond with ONLY a single valid raw JSON object — no markdown, no code fences, no preamble or explanation. Return ONLY the JSON object.",
+  raw_too_short:
+    "Your previous response was too short to be a complete article. You MUST write the full article (at least 700 words) and return it as a single valid JSON object with all required fields.",
+  truncated:
+    "Your previous response was cut off before it finished. Regenerate the complete article in a more concise form (minimum acceptable word count) and return it as a single valid JSON object with all required fields.",
   no_h2_in_content:
     "Your previous response was rejected because there were no <h2> or <h3> section headings in the content. You MUST include at least one heading tag (`<h2>` or `<h3>`) to structure the article. Please regenerate with proper HTML section headings.",
   faq_too_few:
@@ -270,6 +278,30 @@ function repairJson(str: string): string {
     .trim()
 }
 
+function extractJsonObject(text: string): string | null {
+  const start = text.indexOf("{")
+  if (start === -1) return null
+  let depth = 0
+  let inString = false
+  let escaped = false
+  for (let i = start; i < text.length; i++) {
+    const ch = text[i]
+    if (inString) {
+      if (escaped) { escaped = false }
+      else if (ch === "\\") { escaped = true }
+      else if (ch === '"') { inString = false }
+      continue
+    }
+    if (ch === '"') { inString = true }
+    else if (ch === "{") { depth += 1 }
+    else if (ch === "}") {
+      depth -= 1
+      if (depth === 0) return text.slice(start, i + 1)
+    }
+  }
+  return null
+}
+
 function validate(raw: string, model: AIArticle['modelUsed']): { article: AIArticle | null; reason: string } {
   if (!raw || raw.length < 100) { return { article: null, reason: `raw_too_short:${raw?.length || 0}` } }
 
@@ -283,12 +315,12 @@ function validate(raw: string, model: AIArticle['modelUsed']): { article: AIArti
   try {
     p = JSON.parse(clean)
   } catch {
-    const jsonMatch = clean.match(/\{[\s\S]*\}/)
+    const jsonMatch = extractJsonObject(clean) || clean.match(/\{[\s\S]*\}/)?.[0] || null
     if (!jsonMatch) { return { article: null, reason: 'no_json_object_found' } }
-    jsonStr = jsonMatch[0]
-    try { p = JSON.parse(jsonMatch[0]) }
+    jsonStr = jsonMatch
+    try { p = JSON.parse(jsonMatch) }
     catch {
-      const repaired = repairJson(jsonMatch[0])
+      const repaired = repairJson(jsonMatch)
       try { p = JSON.parse(repaired) }
       catch { return { article: null, reason: 'json_parse_fail_after_object_extract' } }
     }
@@ -456,17 +488,21 @@ async function geminiGrounded(
       const body = {
         contents: [{ role: 'user', parts: [{ text: prompt }] }],
         generationConfig: {
-          temperature:     0.45,
-          maxOutputTokens: 8192,
+          temperature:       0.45,
+          maxOutputTokens:   8192,
+          responseMimeType:  'application/json',
         },
-        tools: [{ googleSearch: {} }],
+        tools: [
+          { googleSearch: {} },
+          { googleSearchRetrieval: { dynamicRetrievalConfig: { mode: 'MODE_DYNAMIC', dynamicThreshold: 0.5 } } },
+        ],
       }
 
       const res = await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
-        signal: AbortSignal.timeout(25000),
+        signal: AbortSignal.timeout(60000),
       })
 
       if (!res.ok) {
@@ -496,9 +532,16 @@ async function geminiGrounded(
 
       // Corrective retry: if validate had a fixable issue, give Gemini a second chance
       lastDebug = `validate:${reason}`
-      const corrective = CORRECTIVE_PROMPTS[reason]
+      const finishReason = String(data?.candidates?.[0]?.finishReason || '')
+      const correctiveKey =
+        finishReason === 'MAX_TOKENS'
+          ? 'truncated'
+          : CORRECTIVE_PROMPTS[reason]
+          ? reason
+          : String(reason).split(':')[0]
+      const corrective = CORRECTIVE_PROMPTS[correctiveKey]
       if (corrective && attempt < maxRetries) {
-        console.warn(`[Gemini corrective ${attempt + 1}/${maxRetries}] ${reason} — retrying`)
+        console.warn(`[Gemini corrective ${attempt + 1}/${maxRetries}] ${correctiveKey} (${reason}) — retrying`)
         prompt = prompt + '\n\n⚠️ CORRECTION: ' + corrective
         await new Promise(r => setTimeout(r, 1500))
         continue
@@ -581,12 +624,18 @@ function buildManualPrompt(input: string, inputType: "topic" | "url" | "content"
   const sourceSection = inputType === "topic"
     ? `TOPIC TO RESEARCH AND WRITE ABOUT:\n${input}`
     : inputType === "url"
-    ? `SOURCE URL TO RESEARCH:\n${input}\n\nUse Google Search to find everything about this story.`
-    : `SOURCE CONTENT FROM ${sourceName || "a tech publication"}:\n${input.slice(0, 4000)}`
+    ? `SOURCE URL TO RESEARCH:\n${input}\n\nOpen this URL with your browsing tool and read the full article, then use Google Search to verify and expand with the latest facts.`
+    : `SOURCE CONTENT FROM ${sourceName || "a tech publication"}:\n${input.slice(0, 4000)}\n\nAlso use Google Search to verify and expand on this story with the latest available information.`
 
   return `You are a senior tech journalist writing for Techpivo (techpivo.com), a premium technology news blog.
 
 ${sourceSection}
+
+RESEARCH REQUIREMENT (MANDATORY):
+- Use Google Search (and your browsing tool for URL sources) to research this story BEFORE writing
+- Verify facts, dates, names, and quotes from at least 2-3 sources
+- Only include information you can attribute to a source
+- Never invent prices, dates, quotes, or people
 
 INSTRUCTIONS:
 1. Research this topic thoroughly using Google Search — find latest facts, quotes, context
@@ -624,8 +673,11 @@ Return ONLY valid JSON — no markdown, no code blocks, no explanation:
 {
   "headline": "Compelling headline here",
   "content": "<p>Lead paragraph summarizing key news.</p><h2>Key Developments</h2><p>Detailed facts, quotes, context.</p><p>More analysis.</p><h2>What This Means</h2><p>Why it matters to tech readers.</p><h2>What's Next</h2><p>Forward-looking takeaway.</p><h2>Key Points</h2><ul><li>Fact 1</li><li>Fact 2</li><li>Fact 3</li></ul><h2>The Bottom Line</h2><p>Final summary sentence.</p>",
+  "answerCapsule": "2-3 sentence plain-text direct answer for AI overviews",
   "seoTitle": "60 char max SEO title",
   "seoDescription": "155 char max meta description with focus keyword",
+  "focusKeyword": "primary keyword phrase",
+  "secondaryKeywords": ["related1", "related2", "related3"],
   "seoKeywords": ["keyword1", "keyword2", "keyword3", "keyword4", "keyword5"],
   "tags": ["Tag1", "Tag2", "Tag3", "Tag4"],
   "keyPoints": [
@@ -643,6 +695,7 @@ Return ONLY valid JSON — no markdown, no code blocks, no explanation:
     {"question": "Another specific question?", "answer": "Direct factual answer."},
     {"question": "Third question?", "answer": "Direct factual answer."}
   ],
+  "namedEntities": ["Entity1", "Entity2", "Entity3"],
   "qualityScore": 85,
   "isBreaking": false,
   "suggestedCategory": "tech-news"
@@ -700,10 +753,11 @@ export async function manualWriteFromUrl(url: string): Promise<{ article: AIArti
     console.warn(`[Techpivo Manual] Could not pre-fetch ${url}, relying on Gemini grounding`)
   }
 
-  const input = sourceContent.length > 200 ? sourceContent : url
-  const inputType = sourceContent.length > 200 ? "content" : "url"
+  const input = sourceContent.length > 200
+    ? `SOURCE URL: ${url}\n\nEXTRACTED CONTENT FROM THE PAGE:\n${sourceContent}`
+    : url
 
-  const prompt = buildManualPrompt(input, inputType, sourceName)
+  const prompt = buildManualPrompt(input, "url", sourceName)
   const result = await geminiGrounded(prompt, 'manual', MANUAL_GEMINI_DAILY_CAP)
   if (result.article) {
     console.log(`[✓ Gemini+Search] ${result.article.headline.slice(0, 55)}`)

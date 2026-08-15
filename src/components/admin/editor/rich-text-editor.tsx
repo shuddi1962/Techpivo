@@ -35,8 +35,8 @@ export function RichTextEditor() {
   const [webResults, setWebResults] = useState<{ src: string; alt: string; link?: string; license?: string }[]>([])
   const [webSearching, setWebSearching] = useState(false)
   const [webError, setWebError] = useState("")
-  const [webActiveSource, setWebActiveSource] = useState<"pexels" | "google" | "wikimedia" | null>(null)
-  const [webSource, setWebSource] = useState<"pexels" | "google" | "library">("pexels")
+  const [webActiveSource, setWebActiveSource] = useState<"pexels" | "google" | "bing" | "wikimedia" | null>(null)
+  const [webSource, setWebSource] = useState<"pexels" | "web" | "library">("pexels")
   const { items: libraryItems, loading: libraryLoading, uploadFiles } = useMediaLibrary()
   const [selectedImage, setSelectedImage] = useState<string | null>(null)
   const [imageWidth, setImageWidth] = useState("100%")
@@ -197,11 +197,11 @@ export function RichTextEditor() {
       }
     } else {
       try {
-        const res = await fetch(`/api/google-images?query=${encodeURIComponent(webQuery)}`)
+        const res = await fetch(`/api/google-images?query=${encodeURIComponent(webQuery)}&engine=auto`)
         const data = await res.json()
         if (data.items?.length) {
           setWebResults(data.items.map((p: any) => ({ src: p.src, alt: p.alt, link: p.link, license: p.license })))
-          setWebActiveSource(data.source === "google" ? "google" : "wikimedia")
+          setWebActiveSource(data.source === "bing" ? "bing" : data.source === "google" ? "google" : data.source === "wikimedia" ? "wikimedia" : null)
         } else {
           setWebResults([])
           setWebError("No image results. Try different keywords.")
@@ -292,7 +292,7 @@ export function RichTextEditor() {
             <div className="p-6 space-y-4">
               <div className="flex gap-2">
                 <button onClick={() => setWebSource("pexels")} className={`px-4 py-2 text-sm font-semibold rounded-lg border-2 transition-colors ${webSource === "pexels" ? "bg-[#F59E0B] text-white border-[#F59E0B]" : "bg-white dark:bg-[#0A0F1E] text-gray-600 dark:text-gray-300 border-gray-300 dark:border-[#374151] hover:border-[#F59E0B]"}`}>Pexels</button>
-                <button onClick={() => setWebSource("google")} className={`px-4 py-2 text-sm font-semibold rounded-lg border-2 transition-colors ${webSource === "google" ? "bg-[#F59E0B] text-white border-[#F59E0B]" : "bg-white dark:bg-[#0A0F1E] text-gray-600 dark:text-gray-300 border-gray-300 dark:border-[#374151] hover:border-[#F59E0B]"}`}>Google</button>
+                <button onClick={() => setWebSource("web")} className={`px-4 py-2 text-sm font-semibold rounded-lg border-2 transition-colors ${webSource === "web" ? "bg-[#F59E0B] text-white border-[#F59E0B]" : "bg-white dark:bg-[#0A0F1E] text-gray-600 dark:text-gray-300 border-gray-300 dark:border-[#374151] hover:border-[#F59E0B]"}`}>Web</button>
                 <button onClick={() => setWebSource("library")} className={`flex items-center gap-1.5 px-4 py-2 text-sm font-semibold rounded-lg border-2 transition-colors ${webSource === "library" ? "bg-[#F59E0B] text-white border-[#F59E0B]" : "bg-white dark:bg-[#0A0F1E] text-gray-600 dark:text-gray-300 border-gray-300 dark:border-[#374151] hover:border-[#F59E0B]"}`}><Library className="h-4 w-4" /> Library</button>
               </div>
               {webSource === "library" ? (
@@ -331,7 +331,7 @@ export function RichTextEditor() {
                 </div>
               ) : (<>
               <div className="flex gap-2">
-                <input value={webQuery} onChange={(e) => setWebQuery(e.target.value)} onKeyDown={(e) => e.key === "Enter" && searchWebImages()} placeholder={`Search ${webSource === "pexels" ? "free stock photos" : "the web"}...`} className="flex-1 bg-gray-50 dark:bg-[#0A0F1E] border-2 border-gray-300 dark:border-[#374151] rounded-lg px-4 py-2.5 text-sm text-gray-900 dark:text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#F59E0B] focus:border-transparent" />
+                <input value={webQuery} onChange={(e) => setWebQuery(e.target.value)} onKeyDown={(e) => e.key === "Enter" && searchWebImages()} placeholder={`Search ${webSource === "pexels" ? "free stock photos" : "the live web for any image"}...`} className="flex-1 bg-gray-50 dark:bg-[#0A0F1E] border-2 border-gray-300 dark:border-[#374151] rounded-lg px-4 py-2.5 text-sm text-gray-900 dark:text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#F59E0B] focus:border-transparent" />
                 <button onClick={searchWebImages} disabled={webSearching} className="bg-[#F59E0B] hover:bg-[#D97706] disabled:bg-gray-300 text-white px-4 py-2 rounded-lg transition-colors shadow-sm">
                   {webSearching ? <Loader2 className="h-5 w-5 animate-spin" /> : <Search className="h-5 w-5" />}
                 </button>
@@ -340,7 +340,7 @@ export function RichTextEditor() {
                 <p className="text-xs text-gray-400 dark:text-[#6B7280]">
                   Photos from{" "}
                   <span className="font-semibold text-gray-500 dark:text-gray-400">
-                    {webActiveSource === "google" ? "Google Custom Search" : webActiveSource === "wikimedia" ? "Wikimedia Commons (free license)" : "Pexels"}
+                    {webActiveSource === "google" ? "Google Custom Search" : webActiveSource === "bing" ? "Live web search (Bing)" : webActiveSource === "wikimedia" ? "Wikimedia Commons (free license)" : "Pexels"}
                   </span>
                   {webActiveSource === "wikimedia" && " — hover a photo for its license"}
                 </p>

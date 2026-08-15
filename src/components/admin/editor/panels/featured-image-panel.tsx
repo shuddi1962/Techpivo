@@ -16,8 +16,8 @@ export function FeaturedImagePanel() {
   const [results, setResults] = useState<{ src: string; alt: string; link?: string; license?: string }[]>([])
   const [searching, setSearching] = useState(false)
   const [searchError, setSearchError] = useState("")
-  const [activeSource, setActiveSource] = useState<"pexels" | "google" | "wikimedia" | null>(null)
-  const [source, setSource] = useState<"pexels" | "google" | "library">("pexels")
+  const [activeSource, setActiveSource] = useState<"pexels" | "google" | "bing" | "wikimedia" | null>(null)
+  const [source, setSource] = useState<"pexels" | "web" | "library">("pexels")
 
   const handleFileUpload = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -58,11 +58,11 @@ export function FeaturedImagePanel() {
           setSearchError("No Pexels results. Try different keywords.")
         }
       } else {
-        const res = await fetch(`/api/google-images?query=${encodeURIComponent(query)}`)
+        const res = await fetch(`/api/google-images?query=${encodeURIComponent(query)}&engine=auto`)
         const data = await res.json()
         if (data.items?.length) {
           setResults(data.items.map((p: any) => ({ src: p.src, alt: p.alt, link: p.link, license: p.license })))
-          setActiveSource(data.source === "google" ? "google" : "wikimedia")
+          setActiveSource(data.source === "bing" ? "bing" : data.source === "google" ? "google" : data.source === "wikimedia" ? "wikimedia" : null)
         } else {
           setResults([])
           setSearchError("No image results. Try different keywords.")
@@ -111,7 +111,7 @@ export function FeaturedImagePanel() {
         <div className="border-t-2 border-gray-100 dark:border-[#1F2937] pt-3">
           <div className="flex gap-2 mb-2">
             <button onClick={() => { setSource("pexels"); setResults([]) }} className={`px-3 py-1.5 text-xs font-semibold rounded-lg border-2 transition-colors ${source === "pexels" ? "bg-[#F59E0B] text-white border-[#F59E0B]" : "bg-white dark:bg-[#0A0F1E] text-gray-600 dark:text-gray-300 border-gray-300 dark:border-[#374151] hover:border-[#F59E0B]"}`}>Pexels</button>
-            <button onClick={() => { setSource("google"); setResults([]) }} className={`px-3 py-1.5 text-xs font-semibold rounded-lg border-2 transition-colors ${source === "google" ? "bg-[#F59E0B] text-white border-[#F59E0B]" : "bg-white dark:bg-[#0A0F1E] text-gray-600 dark:text-gray-300 border-gray-300 dark:border-[#374151] hover:border-[#F59E0B]"}`}>Google</button>
+            <button onClick={() => { setSource("web"); setResults([]) }} className={`px-3 py-1.5 text-xs font-semibold rounded-lg border-2 transition-colors ${source === "web" ? "bg-[#F59E0B] text-white border-[#F59E0B]" : "bg-white dark:bg-[#0A0F1E] text-gray-600 dark:text-gray-300 border-gray-300 dark:border-[#374151] hover:border-[#F59E0B]"}`}>Web</button>
             <button onClick={() => { setSource("library"); setResults([]) }} className={`flex items-center gap-1 px-3 py-1.5 text-xs font-semibold rounded-lg border-2 transition-colors ${source === "library" ? "bg-[#F59E0B] text-white border-[#F59E0B]" : "bg-white dark:bg-[#0A0F1E] text-gray-600 dark:text-gray-300 border-gray-300 dark:border-[#374151] hover:border-[#F59E0B]"}`}><Library className="h-3 w-3" /> Library</button>
           </div>
           {source === "library" ? (
@@ -152,7 +152,7 @@ export function FeaturedImagePanel() {
             <input
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder={`Search ${source === "pexels" ? "free stock photos" : "licensed web photos"}...`}
+              placeholder={`Search ${source === "pexels" ? "free stock photos" : "the live web for any image"}...`}
               onKeyDown={(e) => e.key === "Enter" && searchImages()}
               className="flex-1 bg-gray-50 dark:bg-[#0A0F1E] border-2 border-gray-300 dark:border-[#374151] rounded-lg px-3 py-2 text-sm text-gray-900 dark:text-[#F9FAFB] placeholder:text-gray-400 dark:placeholder:text-[#4B5563] focus:outline-none focus:ring-2 focus:ring-[#F59E0B] focus:border-transparent"
             />
@@ -169,7 +169,7 @@ export function FeaturedImagePanel() {
             <p className="text-[10px] text-gray-400 dark:text-[#6B7280] mt-2">
               Photos from{" "}
               <span className="font-semibold text-gray-500 dark:text-gray-400">
-                {activeSource === "google" ? "Google Custom Search" : activeSource === "wikimedia" ? "Wikimedia Commons (free license)" : "Pexels"}
+                {activeSource === "google" ? "Google Custom Search" : activeSource === "bing" ? "Live web search (Bing)" : activeSource === "wikimedia" ? "Wikimedia Commons (free license)" : "Pexels"}
               </span>
               {activeSource === "wikimedia" && " — hover a photo for its license"}
             </p>

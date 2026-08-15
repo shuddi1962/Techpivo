@@ -82,6 +82,10 @@ export async function POST(req: NextRequest) {
     const remaining = MONTHLY_MANUAL_CAP - usedThisMonth
     console.log(`[Techpivo Manual AI] ${mode.toUpperCase()} | User: ${user.email} | Quota: ${usedThisMonth}/${MONTHLY_MANUAL_CAP}`)
 
+    const source = mode === "url"
+      ? { name: (() => { try { return new URL(input).hostname.replace(/^www\./, "") } catch { return input } })(), url: input }
+      : null
+
     const startTime = Date.now()
 
     const result = mode === "topic"
@@ -115,6 +119,7 @@ export async function POST(req: NextRequest) {
         quota_remaining:   remaining - 1,
         quota_resets:      "First of next month",
         model_used:        "Gemini 2.5 Flash + Google Search Grounding",
+        source,
       },
     })
 

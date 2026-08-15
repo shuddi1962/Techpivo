@@ -34,6 +34,8 @@ export interface EditorPostState {
   flesch_score: number
   secondary_keywords: string[]
   quick_brief: Record<string, unknown> | null
+  key_points: string[]
+  faq: Array<{ question: string; answer: string }> | null
   quality_score: number
   is_featured: boolean
   is_breaking: boolean

@@ -3,10 +3,11 @@
 import { useState, useEffect } from "react"
 import { usePostEditor } from "../post-editor-provider"
 import { CollapsibleSection } from "../collapsible-section"
+import { slugify } from "@/lib/utils"
 import { Sparkles, Loader2, Globe, FileText, CheckCircle, AlertCircle, BarChart3 } from "lucide-react"
 
 export function AiWritingPanel() {
-  const { post, updatePost, seoKeyword } = usePostEditor()
+  const { post, updatePost, seoKeyword, categories } = usePostEditor()
   const [mode, setMode] = useState<"topic" | "url">("topic")
   const [input, setInput] = useState("")
   const [loading, setLoading] = useState(false)
@@ -75,18 +76,53 @@ export function AiWritingPanel() {
       })
 
       const a = data.article
+      const faq = Array.isArray(a.faq)
+        ? (a.faq as Array<{ question: string; answer: string }>).filter((f) => f?.question && f?.answer)
+        : []
+      const source = data.meta?.source as { name?: string; url?: string } | null | undefined
+      const excerpt = a.answerCapsule || a.seoDescription || a.keyPoints?.[0] || ""
+      const category = categories.find((c) => c.slug === a.suggestedCategory)
+      const featured = post.featured_image || ""
+
       updatePost({
-        title:            a.headline,
-        content:          a.content,
-        excerpt:          a.excerpt,
-        seo_title:        a.seoTitle,
-        seo_description:  a.seoDescription,
-        seo_keywords:     a.seoKeywords,
-        tags:             a.tags,
-        quality_score:    a.qualityScore,
-        is_breaking:      a.isBreaking,
-        focus_keyword:    a.seoKeywords?.[0] || "",
-        source_name:      a.suggestedCategory,
+        title:              a.headline,
+        slug:               slugify(a.headline),
+        content:            a.content,
+        excerpt,
+        featured_image:     featured,
+        category_id:        category?.id || post.category_id,
+        subcategory_id:     post.subcategory_id,
+        tags:               Array.isArray(a.tags) ? a.tags : [],
+        focus_keyword:      a.focusKeyword || a.seoKeywords?.[0] || "",
+        seo_title:          a.seoTitle || a.headline,
+        seo_description:    a.seoDescription || excerpt,
+        seo_keywords:       Array.isArray(a.seoKeywords) ? a.seoKeywords : [],
+        secondary_keywords: Array.isArray(a.secondaryKeywords) ? a.secondaryKeywords : [],
+        quick_brief:        Array.isArray(a.quickBrief) ? (a.quickBrief as unknown as Record<string, unknown>) : null,
+        key_points:         Array.isArray(a.keyPoints) ? a.keyPoints : [],
+        faq:                faq.length ? faq : null,
+        schema_type:        "Article",
+        schema_data:        faq.length
+          ? {
+              "@context": "https://schema.org",
+              "@type": "FAQPage",
+              mainEntity: faq.map((f) => ({
+                "@type": "Question",
+                name: f.question,
+                acceptedAnswer: { "@type": "Answer", text: f.answer },
+              })),
+            }
+          : null,
+        og_title:           a.seoTitle || a.headline,
+        og_description:     a.seoDescription || excerpt,
+        og_image:           featured,
+        twitter_title:      a.seoTitle || a.headline,
+        twitter_description: a.seoDescription || excerpt,
+        twitter_image:      featured,
+        quality_score:      a.qualityScore,
+        is_breaking:        a.isBreaking,
+        source_name:        source?.name || post.source_name,
+        original_source_url: source?.url || post.original_source_url,
       })
 
     } catch (e) {
@@ -204,7 +240,7 @@ export function AiWritingPanel() {
               <br />
               {lastResult.headline.slice(0, 80)}
               <br />
-              <span className="text-green-500/70">Took {lastResult.elapsed}s | Auto-filled editor fields</span>
+              <span className="text-green-500/70">Took {lastResult.elapsed}s | Auto-filled title, content, SEO, FAQ, key points, quick brief, tags & category</span>
             </div>
           </div>
         )}

@@ -14,7 +14,16 @@ export function QuickBriefPanel() {
   const { post, updatePost } = usePostEditor()
   const [items, setItems] = useState<BriefItem[]>(() => {
     if (post.quick_brief && Array.isArray(post.quick_brief)) {
-      return post.quick_brief as unknown as BriefItem[]
+      // Coerce string[] (AI/ingest writes plain strings) and {label,value}/{text}
+      // objects into editable BriefItems so the panel never shows blank rows.
+      return (post.quick_brief as unknown[]).map((v) =>
+        typeof v === "string"
+          ? { label: "Takeaway", value: v }
+          : {
+              label: String((v as any)?.label || (v as any)?.text || ""),
+              value: String((v as any)?.value || (v as any)?.text || ""),
+            }
+      )
     }
     return [
       { label: "Key Takeaways", value: "" },
