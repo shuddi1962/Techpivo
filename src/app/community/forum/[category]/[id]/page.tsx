@@ -7,7 +7,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
-import { ArrowLeft, Pin, CheckCircle2, ThumbsUp, ThumbsDown, MessageSquare, Eye, Clock, Send, Bookmark, BookmarkCheck, Share2 } from 'lucide-react';
+import { ArrowLeft, Pin, CheckCircle2, ThumbsUp, ThumbsDown, MessageSquare, Eye, Clock, Send, Bookmark, BookmarkCheck } from 'lucide-react';
+import { ShareMenu } from '@/components/community/share-menu';
 
 interface ForumPost {
   id: string;
@@ -214,13 +215,7 @@ export default function ForumPostPage({ params }: { params: { category: string; 
                   >
                     {saved ? <BookmarkCheck className="h-4 w-4" /> : <Bookmark className="h-4 w-4" />} {saved ? 'Saved' : 'Save'}
                   </button>
-                  <button
-                    type="button"
-                    onClick={() => { if (navigator.share) navigator.share({ title: post.title, url: window.location.href }).catch(() => {}); }}
-                    className="flex items-center gap-1 hover:text-primary"
-                  >
-                    <Share2 className="h-4 w-4" /> Share
-                  </button>
+                  <ShareMenu title={post.title} />
                 </div>
               </div>
             </div>

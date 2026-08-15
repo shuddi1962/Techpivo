@@ -6,6 +6,15 @@ import { isSameOrigin } from '@/lib/csrf';
 
 export const dynamic = 'force-dynamic';
 
+async function countTopicFollowers(topicId: string): Promise<number> {
+  // topic_follows RLS is owner-only — a session client would count only the
+  // viewer's own follows. Counts are public aggregates → service client.
+  const { createServiceClient } = await import('@/lib/admin-auth');
+  const service = createServiceClient();
+  const { count } = await service.from('topic_follows').select('*', { count: 'exact', head: true }).eq('topic_id', topicId);
+  return count ?? 0;
+}
+
 const POST_SELECT = '*, category:forum_categories(name, slug, icon)';
 
 export async function GET(
@@ -33,13 +42,13 @@ export async function GET(
     .order('created_at', { ascending: false })
     .limit(limit + 1);
 
-  const [{ data: links }, { count: followerCount }] = await Promise.all([
+  const [{ data: links }, followerCount] = await Promise.all([
     supabase.from('post_topics').select('post_id').eq('topic_id', topic.id),
-    supabase.from('topic_follows').select('id', { count: 'exact', head: true }).eq('topic_id', topic.id),
+    countTopicFollowers(topic.id),
   ]);
   const postIds = (links || []).map(l => l.post_id);
   if (postIds.length === 0) {
-    return NextResponse.json({ topic, posts: [], next_cursor: null, has_more: false, follower_count: followerCount || 0, my_follow: false });
+    return NextResponse.json({ topic, posts: [], next_cursor: null, has_more: false, follower_count: followerCount || 0, my_follow: false, post_count: 0 });
   }
   query = query.in('id', postIds);
   if (cursor) query = query.lt('created_at', cursor);
@@ -66,6 +75,7 @@ export async function GET(
     has_more: (raw || []).length > limit,
     follower_count: followerCount || 0,
     my_follow,
+    post_count: postIds.length,
   });
 }
 
@@ -106,7 +116,8 @@ export async function POST(
     await supabase.from('topic_follows').delete().eq('user_id', user.id).eq('topic_id', topic.id);
   }
 
-  const { count } = await supabase
+  const { createServiceClient } = await import('@/lib/admin-auth');
+  const { count } = await createServiceClient()
     .from('topic_follows')
     .select('id', { count: 'exact', head: true })
     .eq('topic_id', topic.id);

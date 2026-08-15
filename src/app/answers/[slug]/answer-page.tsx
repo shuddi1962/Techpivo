@@ -11,9 +11,10 @@ import { CONTENT_TYPE_META, QUESTION_STATUS_META, questionHealthFor, type Commun
 import { timeAgo, formatNumber, getLevelForXP } from '@/lib/community-utils';
 import { cn } from '@/lib/utils';
 import {
-  CheckCircle2, CircleCheck, Copy, Eye, Gift, Link2, Loader2, MessageSquare,
-  PenLine, Share2, Sparkles, TriangleAlert, Send,
+  CheckCircle2, CircleCheck, Eye, Gift, Loader2, MessageSquare,
+  PenLine, Sparkles, TriangleAlert, Send,
 } from 'lucide-react';
+import { ShareMenu } from '@/components/community/share-menu';
 
 type Sort = 'best' | 'newest' | 'oldest';
 
@@ -45,7 +46,6 @@ export default function AnswerPage() {
   const [error, setError] = useState('');
   const [answerContent, setAnswerContent] = useState('');
   const [submitting, setSubmitting] = useState(false);
-  const [copied, setCopied] = useState(false);
   const [focusReplyId, setFocusReplyId] = useState<string | null>(null);
   const [aiAnswer, setAiAnswer] = useState('');
   const [aiLoading, setAiLoading] = useState(false);
@@ -168,20 +168,7 @@ export default function AnswerPage() {
     }
   };
 
-  const share = async () => {
-    const url = window.location.href;
-    try {
-      if (navigator.share) { await navigator.share({ title: post?.title, url }); return; }
-      await navigator.clipboard.writeText(url);
-    } catch {
-      // fall through
-    }
-    setCopied(true);
-    setTimeout(() => setCopied(false), 1500);
-  };
-
   if (loading) return <AnswerSkeleton />;
-
   if (!post || error) {
     return (
       <div className="max-w-3xl mx-auto py-16 text-center">
@@ -250,6 +237,7 @@ export default function AnswerPage() {
               <span className="ml-auto text-xs text-textSecondary flex items-center gap-3">
                 <span className="flex items-center gap-1"><Eye className="h-3.5 w-3.5" aria-hidden /> {formatNumber(post.view_count)}</span>
                 <span className="flex items-center gap-1"><MessageSquare className="h-3.5 w-3.5" aria-hidden /> {formatNumber(answers.length)}</span>
+                <ShareMenu title={post.title} buttonClassName="text-xs" />
               </span>
             </div>
 
@@ -291,10 +279,7 @@ export default function AnswerPage() {
 
             <div className="flex items-center gap-3 mt-5 pt-4 border-t border-borderSoft sm:hidden">
               <VoteControl postId={post.id} initialCount={post.vote_count} size="sm" />
-              <button type="button" onClick={share} className="inline-flex items-center gap-1.5 text-xs text-textSecondary hover:text-brand">
-                {copied ? <Copy className="h-3.5 w-3.5" aria-hidden /> : <Share2 className="h-3.5 w-3.5" aria-hidden />}
-                {copied ? 'Copied!' : 'Share'}
-              </button>
+              <ShareMenu title={post.title} buttonClassName="text-xs" />
             </div>
           </div>
         </div>

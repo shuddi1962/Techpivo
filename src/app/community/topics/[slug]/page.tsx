@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
-import { getTopicBySlug, getTopicPosts, getTopicFollowerCount, getMyTopicFollow } from '@/lib/community-server';
+import { getTopicBySlug, getTopicPosts, getTopicFollowerCount, getTopicPostCount, getMyTopicFollow } from '@/lib/community-server';
 import { type CommunityPost } from '@/lib/community-types';
 import { TopicHub } from './topic-hub';
 
@@ -28,9 +28,10 @@ export default async function TopicHubPage({ params }: PageProps) {
   const topic = await getTopicBySlug(supabase, slug);
   if (!topic) notFound();
 
-  const [{ posts, next_cursor, has_more }, followerCount] = await Promise.all([
+  const [{ posts, next_cursor, has_more }, followerCount, postCount] = await Promise.all([
     getTopicPosts<CommunityPost>(supabase, topic.id, { limit: 15 }),
-    getTopicFollowerCount(supabase, topic.id),
+    getTopicFollowerCount(topic.id),
+    getTopicPostCount(supabase, topic.id),
   ]);
   const { data: { user } } = await supabase.auth.getUser();
   const myFollow = user ? await getMyTopicFollow(supabase, topic.id, user.id) : false;
@@ -69,6 +70,7 @@ export default async function TopicHubPage({ params }: PageProps) {
         }}
         initialPosts={posts}
         initialFollowerCount={followerCount}
+        initialPostCount={postCount}
         initialHasMore={has_more}
         initialNextCursor={next_cursor}
         initialMyFollow={myFollow}

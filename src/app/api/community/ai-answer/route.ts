@@ -40,7 +40,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Question not found.' }, { status: 404 });
   }
 
-  const [repliesRes, relatedRes] = await Promise.all([
+  const [repliesRes] = await Promise.all([
     supabase
       .from('forum_replies')
       .select('id, content, vote_count, is_accepted, created_at, author_id')
@@ -48,17 +48,9 @@ export async function POST(request: Request) {
       .order('is_accepted', { ascending: false })
       .order('vote_count', { ascending: false })
       .limit(8),
-    supabase
-      .from('forum_posts')
-      .select('title, slug, reply_count')
-      .eq('content_type', 'question')
-      .neq('id', postId)
-      .order('reply_count', { ascending: false })
-      .limit(5),
   ]);
 
   const replies = repliesRes.data ?? [];
-  const related = relatedRes.data ?? [];
 
   const authorIds = [post.author_id, ...replies.map(r => r.author_id)].filter(Boolean) as string[];
   const names = new Map<string, string>();
@@ -71,12 +63,21 @@ export async function POST(request: Request) {
   }
   const nameOf = (id: string | null) => (id ? names.get(id) ?? 'Member' : 'Guest');
 
-  const discussion = [
-    `QUESTION (by ${nameOf(post.author_id)}): ${post.title}\n\n${post.content ?? ''}`,
-    ...replies.map(r => `ANSWER by ${nameOf(r.author_id)}${r.is_accepted ? ' (accepted)' : ''} [${r.vote_count} votes]:\n${r.content}`),
-  ].join('\n\n---\n\n');
+  const prompt = `You are TechPivo's community assistant. Write a direct, helpful answer to THE EXACT question below — and only that question. Never answer a different, related, or hypothetical question; if the provided discussion does not contain enough information to answer it, say so clearly and suggest what details would help.
 
-  const prompt = `You are TechPivo's community assistant. Write a helpful, concise answer (5-8 short sections or bullet points) to the community question below, grounded ONLY in the provided discussion. Synthesize the best answers; mention when the community is split or uncertain. Do not invent facts, links, prices, or dates. End with a one-line "Next steps" suggestion. Use plain markdown (## headings, - bullets). No intro boilerplate.\n\n${discussion.slice(0, 18000)}${related.length ? `\n\nRELATED TechPivo questions (reference titles only if useful):\n${related.map(r => `- ${r.title}`).join('\n')}` : ''}`;
+Rules:
+- Ground your answer ONLY in the question and the community answers provided below.
+- Synthesize the best community answers; note when members disagree or are uncertain.
+- Do not invent facts, links, prices, dates, or product names not present in the discussion.
+- Use 5-8 short markdown sections or bullet points (## headings, - bullets). No intro boilerplate, no "as an AI" phrasing.
+- End with a one-line "Next steps" suggestion.
+
+QUESTION (by ${nameOf(post.author_id)}): ${post.title}
+
+${post.content ?? '(no additional detail was provided by the author)'}
+
+COMMUNITY ANSWERS:
+${replies.length ? replies.map(r => `- ANSWER by ${nameOf(r.author_id)}${r.is_accepted ? ' (accepted)' : ''} [${r.vote_count} votes]: ${r.content}`).join('\n') : '(none yet — synthesize from the question itself, staying strictly on-topic)'}`;
 
   const apiKey = process.env.GEMINI_API_KEY ?? process.env.OPENROUTER_API_KEY;
   if (!apiKey) {

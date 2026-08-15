@@ -98,9 +98,19 @@ export async function getTopicPosts<T extends RowWithAuthor & { created_at?: str
   };
 }
 
-export async function getTopicFollowerCount(supabase: SupabaseClient, topicId: string): Promise<number> {
-  const { count } = await supabase.from('topic_follows').select('*', { count: 'exact', head: true }).eq('topic_id', topicId);
+export async function getTopicFollowerCount(topicId: string): Promise<number> {
+  // topic_follows RLS is owner-only (auth.uid() = user_id) — a session client
+  // would return only the viewer's own follows. Counts are public aggregates,
+  // so bypass RLS with the service client.
+  const { createServiceClient } = await import('@/lib/admin-auth');
+  const service = createServiceClient();
+  const { count } = await service.from('topic_follows').select('*', { count: 'exact', head: true }).eq('topic_id', topicId);
   return count ?? 0;
+}
+
+export async function getTopicPostCount(supabase: SupabaseClient, topicId: string): Promise<number> {
+  const { data } = await supabase.from('post_topics').select('post_id').eq('topic_id', topicId);
+  return data?.length ?? 0;
 }
 
 export async function getMyTopicFollow(supabase: SupabaseClient, topicId: string, userId: string): Promise<boolean> {

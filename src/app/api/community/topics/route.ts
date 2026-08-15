@@ -22,14 +22,19 @@ export async function GET(request: NextRequest) {
 
   const rows = topics || [];
 
-  // Counts via aggregate subqueries (topics has no counts column)
+  // Counts via aggregate subqueries (topics has no counts column).
+  // topic_follows RLS is owner-only → follower counts must use the service
+  // client (counts are public aggregates; rows stay RLS-private).
+  const { createServiceClient } = await import('@/lib/admin-auth');
   const topicIds = rows.map(t => t.id);
   const counts = new Map<string, { posts: number; followers: number }>();
   if (topicIds.length > 0) {
-    const [{ data: postCounts }, { data: followCounts }] = await Promise.all([
+    const [postResp, followResp] = await Promise.all([
       supabase.from('post_topics').select('topic_id', { count: 'exact', head: false }).in('topic_id', topicIds),
-      supabase.from('topic_follows').select('topic_id', { count: 'exact', head: false }).in('topic_id', topicIds),
+      createServiceClient().from('topic_follows').select('topic_id').in('topic_id', topicIds),
     ]);
+    const postCounts = postResp.data;
+    const followCounts = followResp.data;
     const pc = new Map<string, number>();
     for (const row of postCounts || []) pc.set(row.topic_id, (pc.get(row.topic_id) || 0) + 1);
     const fc = new Map<string, number>();

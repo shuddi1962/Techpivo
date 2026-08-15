@@ -250,7 +250,7 @@ export async function POST(request: NextRequest) {
     meta.position_against = positionAgainst;
   }
 
-  const questionStatus = type === 'question' ? (content.length >= 60 ? 'unanswered' : 'needs_context') : null;
+  const questionStatus = type === 'question' ? (content.length >= 60 ? 'unanswered' : 'needs_context') : 'new';
   const bounty = type === 'question' ? Math.min(500, Math.max(0, Number(body.bounty_points) || 0)) : 0;
 
   // ── Insert post + sub-resources (best-effort cleanup on failure) ───────
