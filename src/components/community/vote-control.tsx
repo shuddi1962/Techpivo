@@ -38,10 +38,14 @@ export function VoteControl({ postId, replyId, initialCount, initialVote = null,
     const channel = supabase
       .channel(`votes_${table}_${id}_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`)
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table, filter: `id=eq.${id}` }, () => {
-        if (busyRef.current) return;
         void (async () => {
           try {
             const { data } = await supabase.from(table).select('vote_count').eq('id', id).maybeSingle();
+            // Apply-time guard: a refetch that STARTED before the user's own cast
+            // could resolve AFTER the optimistic update with the pre-vote value —
+            // discard any result while a cast is in flight (the cast's own
+            // response is authoritative).
+            if (busyRef.current) return;
             if (typeof data?.vote_count === 'number') setCount(data.vote_count);
           } catch {
             // ignore
@@ -77,10 +81,23 @@ export function VoteControl({ postId, replyId, initialCount, initialVote = null,
       const data = await res.json().catch(() => ({}));
       if (typeof data.vote_count === 'number') setCount(data.vote_count);
     } catch (e) {
-      setCount(prev.count);
+      // The request failed — but the vote may still have committed server-side
+      // (connection drop after commit), so don't blind-rollback. Reconcile from
+      // the authoritative row instead; the realtime subscription keeps it live.
       setVote(prev.vote);
       const msg = (e as Error).message;
       setError(msg === 'sign-in-required' ? 'Sign in to vote' : msg === 'Vote failed' || msg === 'Failed to fetch' ? 'Could not save vote' : msg);
+      busyRef.current = false;
+      try {
+        const supabase = createClient();
+        const table = postId ? 'forum_posts' : 'forum_replies';
+        const id = postId || replyId;
+        const { data } = await supabase.from(table).select('vote_count').eq('id', id).maybeSingle();
+        if (typeof data?.vote_count === 'number') setCount(data.vote_count);
+        else setCount(prev.count);
+      } catch {
+        setCount(prev.count);
+      }
     } finally {
       setBusy(false);
       busyRef.current = false;

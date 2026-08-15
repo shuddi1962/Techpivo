@@ -159,13 +159,16 @@ export function ShareMenu({
     close();
     if (href.startsWith('mailto:')) {
       // mailto: cannot open in a popup (browsers block it / open a blank tab) —
-      // navigate via a synthetic anchor click, the most reliable cross-browser
-      // way to hand the URI to the OS mail handler.
+      // hand it to the OS mail handler via an offscreen anchor click, the most
+      // reliable cross-browser method. NOTE: display:none anchors swallow the
+      // click in some browsers — keep it rendered, just offscreen.
       try {
         const a = document.createElement('a');
         a.href = href;
         a.rel = 'noopener noreferrer';
-        a.style.display = 'none';
+        a.style.position = 'fixed';
+        a.style.left = '-9999px';
+        a.style.top = '0';
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);

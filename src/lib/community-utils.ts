@@ -144,7 +144,9 @@ export function parseTags(tags: unknown): string[] {
     return [...new Set(tags.map(t => String(t).trim()).filter(Boolean))].slice(0, 8);
   }
   if (typeof tags === 'string' && tags.trim()) {
-    return [...new Set(tags.split(/[,;]+/).map(t => t.trim()).filter(Boolean))].slice(0, 8);
+    // Stored values are plain strings — seeds use spaces ("security passwords teams"),
+    // composer writes may use commas — cover both.
+    return [...new Set(tags.split(/[\s,;]+/).map(t => t.trim()).filter(Boolean))].slice(0, 8);
   }
   return [];
 }

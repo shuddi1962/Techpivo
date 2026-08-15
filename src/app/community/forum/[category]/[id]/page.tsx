@@ -222,9 +222,9 @@ export default function ForumPostPage({ params }: { params: { category: string; 
       </Link>
 
       {/* Post */}
-      <article className="rounded-2xl border border-borderSoft bg-surface overflow-hidden">
+      <article className="rounded-2xl border border-borderSoft bg-surface">
         {post.image_url && (
-          <div className="relative h-52 sm:h-64 overflow-hidden">
+        <div className="relative h-52 sm:h-64 overflow-hidden rounded-t-2xl">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={post.image_url} alt={post.title} className="w-full h-full object-cover" />
             <div className="absolute inset-0 bg-gradient-to-t from-surface via-surface/10 to-transparent" />
