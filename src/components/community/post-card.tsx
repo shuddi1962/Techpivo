@@ -58,12 +58,6 @@ export function PostCard({ post, showBody = false, className, myVote = null }: P
                 {statusMeta.label}
               </span>
             )}
-            {post.is_solved && (
-              <span className="inline-flex items-center gap-1 text-[11px] font-medium text-accepted">
-                <CircleCheck className="h-3 w-3" aria-hidden />
-                Solved
-              </span>
-            )}
             {post.bounty_points > 0 && (
               <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-warning">
                 <Gift className="h-3 w-3" aria-hidden />

@@ -15,7 +15,7 @@ async function countTopicFollowers(topicId: string): Promise<number> {
   return count ?? 0;
 }
 
-const POST_SELECT = '*, category:forum_categories(name, slug, icon)';
+const POST_SELECT = '*, category:forum_categories(name, slug, icon), topics:post_topics(topic:topics(id, slug, name))';
 
 export async function GET(
   request: NextRequest,
@@ -54,7 +54,15 @@ export async function GET(
   if (cursor) query = query.lt('created_at', cursor);
 
   const { data: raw } = await query.limit(limit + 1);
-  const posts = await enrichAuthors((raw || []).slice(0, limit), supabase);
+  const posts = await enrichAuthors(
+    (raw || []).slice(0, limit).map(p => ({
+      ...p,
+      topics: ((p as Record<string, unknown>).topics as { topic?: { id: string; slug: string; name: string } }[] | null)
+        ?.map(x => x.topic)
+        .filter(Boolean) ?? [],
+    })),
+    supabase
+  );
 
   const { data: { user } } = await supabase.auth.getUser();
   let my_follow = false;

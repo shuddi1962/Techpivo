@@ -158,22 +158,26 @@ export function ShareMenu({
   const openShare = (href: string) => {
     close();
     if (href.startsWith('mailto:')) {
-      // mailto: cannot open in a popup (browsers block it / open a blank tab) —
-      // hand it to the OS mail handler via an offscreen anchor click, the most
-      // reliable cross-browser method. NOTE: display:none anchors swallow the
-      // click in some browsers — keep it rendered, just offscreen.
+      // mailto: cannot open in a popup (browsers block it) and synthetic
+      // anchor clicks are swallowed by Safari/Chrome on iOS — the reliable
+      // cross-browser method is navigating the tab itself to the mailto URI
+      // (the page stays loaded; the OS/webmail handler takes over).
       try {
-        const a = document.createElement('a');
-        a.href = href;
-        a.rel = 'noopener noreferrer';
-        a.style.position = 'fixed';
-        a.style.left = '-9999px';
-        a.style.top = '0';
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-      } catch {
         window.location.href = href;
+      } catch {
+        try {
+          const a = document.createElement('a');
+          a.href = href;
+          a.rel = 'noopener noreferrer';
+          a.style.position = 'fixed';
+          a.style.left = '-9999px';
+          a.style.top = '0';
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+        } catch {
+          // nothing more we can do
+        }
       }
       return;
     }
