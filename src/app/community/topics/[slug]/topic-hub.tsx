@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { PostCard } from '@/components/community/post-card';
 import { EmptyState } from '@/components/community/empty-state';
 import { CommunityHero } from '@/components/community/community-hero';
+import { TopicIcon } from '@/components/community/topic-icon';
 import { createClient } from '@/lib/supabase/client';
 import { cn } from '@/lib/utils';
 import { type CommunityPost } from '@/lib/community-types';
@@ -118,7 +119,7 @@ export function TopicHub({
         badge="Topic"
         title={`#${topic.name}`}
         subtitle={topic.description || undefined}
-        icon={<span className="flex h-5 w-5 items-center justify-center overflow-hidden rounded-full text-[13px] leading-none" style={{ color: topic.color || '#FBBF24' }}>{topic.icon || <Sparkles className="h-3.5 w-3.5" />}</span>}
+        icon={<span className="flex h-5 w-5 items-center justify-center rounded-full" style={{ color: topic.color || '#FBBF24' }}><TopicIcon name={topic.icon} className="h-3.5 w-3.5" fallback={Sparkles} /></span>}
         backHref="/community/topics"
         backLabel="All topics"
         imageUrl={null}

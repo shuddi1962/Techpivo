@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { cn } from '@/lib/utils';
 import { Search, Hash, FileText, Users, Sparkles, ChevronRight } from 'lucide-react';
 import { CommunityHero } from '@/components/community/community-hero';
+import { TopicIcon } from '@/components/community/topic-icon';
 
 interface TopicRow {
   id: string;
@@ -140,10 +141,10 @@ export default function TopicsDirectoryPage() {
                       className="group flex items-center gap-3.5 px-4 py-3.5 transition-colors hover:bg-surface-elevated"
                     >
                       <span
-                        className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-lg"
+                        className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl"
                         style={tileStyle(t)}
                       >
-                        {t.icon || '#'}
+                        <TopicIcon name={t.icon} className="h-5 w-5" />
                       </span>
                       <div className="min-w-0 flex-1">
                         <p className={cn('font-semibold text-textPrimary transition-colors group-hover:text-brand', t.description ? '' : 'truncate')}>
