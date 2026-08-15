@@ -15,7 +15,6 @@ const linkGroups = [
     links: [
       { name: "Posts", href: "/admin/posts", desc: "Manage your articles and blog posts" },
       { name: "Categories", href: "/admin/categories", desc: "Organize content by categories" },
-      { name: "RSS Feeds", href: "/admin/rss-feeds", desc: "Import content from RSS sources" },
       { name: "Keywords", href: "/admin/keywords", desc: "SEO keyword research and tracking" },
     ],
   },

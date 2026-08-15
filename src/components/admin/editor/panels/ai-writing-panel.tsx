@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { usePostEditor } from "../post-editor-provider"
 import { CollapsibleSection } from "../collapsible-section"
 import { Sparkles, Loader2, Globe, FileText, CheckCircle, AlertCircle, BarChart3 } from "lucide-react"
@@ -13,6 +13,20 @@ export function AiWritingPanel() {
   const [error, setError] = useState("")
   const [quota, setQuota] = useState<{ used: number; cap: number; remaining: number } | null>(null)
   const [lastResult, setLastResult] = useState<{ headline: string; elapsed: string } | null>(null)
+
+  // Show the monthly manual AI quota immediately (matches /api/admin/ai-write
+  // limits: ai_usage_log type=manual, 2000/month, resets on the 1st).
+  useEffect(() => {
+    let cancelled = false
+    fetch("/api/admin/ai-quota")
+      .then((res) => res.json().catch(() => null))
+      .then((data) => {
+        if (cancelled || !data?.manual) return
+        setQuota({ used: data.manual.used, cap: data.manual.cap, remaining: data.manual.remaining })
+      })
+      .catch(() => {})
+    return () => { cancelled = true }
+  }, [])
 
   const handleGenerate = async () => {
     if (!input.trim()) {
@@ -82,7 +96,7 @@ export function AiWritingPanel() {
     }
   }
 
-  const quotaPct = quota ? Math.round((quota.used / quota.cap) * 100) : 0
+  const quotaPct = quota && quota.cap > 0 ? Math.min(100, Math.round((quota.used / quota.cap) * 100)) : 0
   const quotaColor = quotaPct < 60 ? "#10B981" : quotaPct < 85 ? "#F59E0B" : "#EF4444"
 
   return (

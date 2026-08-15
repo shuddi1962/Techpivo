@@ -181,13 +181,38 @@ export function PostEditorProvider({
     setDirty(true)
   }, [])
 
-  const saveDraft = useCallback(async () => {
+  // Empty-string ids ("" is not a valid uuid) make every insert/update fail
+  // with PostgREST "invalid input syntax for type uuid" — coerce to null.
+  const cleanUuidFields = useCallback((p: EditorPostState) => {
+    const c = { ...p }
+    if (!c.category_id) c.category_id = null as unknown as string
+    if (!c.subcategory_id) c.subcategory_id = null as unknown as string
+    if (!c.series_id) c.series_id = null as unknown as string
+    if (!c.author_id) c.author_id = null as unknown as string
+    return c
+  }, [])
+
+  const ensureUniqueSlug = useCallback(async (supabase: ReturnType<typeof createClient>, base: string) => {
+    const slug = base || slugify(postRef.current.title) || `post-${Date.now()}`
+    let candidate = slug
+    let i = 2
+    for (;;) {
+      const { data } = await supabase.from("posts").select("id").eq("slug", candidate).maybeSingle()
+      if (!data) return candidate
+      candidate = `${slug}-${i}`
+      i += 1
+      if (i > 20) return `${slug}-${Date.now()}` // give up on a weird conflict loop
+    }
+  }, [])
+
+  const saveDraft = useCallback(async (opts?: { silent?: boolean }) => {
+    const silent = opts?.silent === true
     const supabase = createClient()
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return
 
     setIsSaving(true)
-    const { seo_score: _s, readability_score: _r, flesch_score: _f, ...clean } = postRef.current
+    const { seo_score: _s, readability_score: _r, flesch_score: _f, ...clean } = cleanUuidFields(postRef.current)
 
     try {
       const readability = calculateReadability(postRef.current.content)
@@ -212,7 +237,10 @@ export function PostEditorProvider({
         const { error } = await supabase.from("posts").update(publishPayload).eq("id", postRef.current.id)
         if (error) throw error
       } else {
-        const { data, error } = await supabase.from("posts").insert({ ...publishPayload, created_at: now }).select("id").single()
+        const insertPayload = { ...publishPayload, created_at: now }
+        insertPayload.slug = insertPayload.slug || slugify(postRef.current.title) || `post-${Date.now()}`
+        insertPayload.slug = await ensureUniqueSlug(supabase, insertPayload.slug)
+        const { data, error } = await supabase.from("posts").insert(insertPayload).select("id").single()
         if (error) throw error
         if (data) {
           setPost(prev => ({ ...prev, id: data.id }))
@@ -225,11 +253,14 @@ export function PostEditorProvider({
     } catch (err) {
       console.error("Error saving draft:", err)
       localStorage.setItem(DRAFT_KEY, JSON.stringify(postRef.current))
-      alert("Failed to save draft. Your changes have been saved locally as a backup.")
-      throw err
+      if (!silent) {
+        alert("Failed to save draft. Your changes have been saved locally as a backup.")
+        throw err
+      }
+    } finally {
+      setIsSaving(false)
     }
-    setIsSaving(false)
-  }, [seoKeyword])
+  }, [seoKeyword, cleanUuidFields, ensureUniqueSlug])
 
   useEffect(() => {
     if (autoSaveTimer.current) clearInterval(autoSaveTimer.current)
@@ -237,7 +268,7 @@ export function PostEditorProvider({
 
     autoSaveTimer.current = setInterval(() => {
       if (postRef.current.id || (postRef.current.title || postRef.current.content)) {
-        saveDraft()
+        saveDraft({ silent: true })
       }
     }, AUTO_SAVE_INTERVAL)
 
@@ -259,62 +290,76 @@ export function PostEditorProvider({
       return
     }
 
+    if (!post.title.trim()) {
+      alert("A title is required before publishing.")
+      return
+    }
+
     const wordCount = post.content.replace(/<[^>]*>/g, "").split(/\s+/).filter(Boolean).length
     if (wordCount < 100) {
       alert("Content must be at least 100 words before publishing.")
       return
     }
 
-    setIsSaving(true)
-
-    const readability = calculateReadability(post.content)
     const seoResult = calculateSeoScore(seoKeyword, post)
-    const now = new Date().toISOString()
-
-    const payload = {
-      title: post.title,
-      slug: post.slug || slugify(post.title),
-      content: post.content,
-      excerpt: post.excerpt || post.content.replace(/<[^>]*>/g, "").slice(0, 160),
-      featured_image: post.featured_image,
-      category_id: post.category_id || categories[0]?.id,
-      subcategory_id: post.subcategory_id,
-      author_id: user.id,
-      status: "published" as PostStatus,
-      tags: post.tags,
-      published_at: now,
-      reading_time: Math.max(1, Math.ceil(wordCount / 200)),
-      seo_title: post.seo_title || post.title,
-      seo_description: post.seo_description || post.excerpt || "",
-      seo_keywords: seoKeyword ? [seoKeyword, ...post.secondary_keywords] : post.seo_keywords,
-      seo_score: seoResult.score,
-      focus_keyword: seoKeyword,
-      canonical_url: post.canonical_url,
-      robots_noindex: post.robots_noindex,
-      robots_nofollow: post.robots_nofollow,
-      breadcrumb_title: post.breadcrumb_title || post.title,
-      og_title: post.og_title || post.seo_title || post.title,
-      og_description: post.og_description || post.seo_description || post.excerpt || "",
-      og_image: post.og_image || post.featured_image,
-      twitter_title: post.twitter_title || post.og_title || post.seo_title || post.title,
-      twitter_description: post.twitter_description || post.og_description || post.seo_description || post.excerpt || "",
-      twitter_image: post.twitter_image || post.og_image || post.featured_image,
-      schema_type: post.schema_type || "Article",
-      post_format: post.post_format || "standard",
-      is_sticky: post.is_sticky,
-      is_featured: post.is_featured,
-      is_breaking: post.is_breaking,
-      is_sponsored: post.is_sponsored,
-      enable_comments: post.enable_comments,
-      readability_score: readability.score,
-      flesch_score: readability.flesch,
-      secondary_keywords: post.secondary_keywords,
-      source_name: post.source_name,
-      original_source_url: post.original_source_url,
-      updated_at: now,
+    if (seoResult.score < 40) {
+      const proceed = window.confirm(`SEO score is ${seoResult.score}/100. Are you sure you want to publish?`)
+      if (!proceed) return
     }
 
+    setIsSaving(true)
+
     try {
+      const readability = calculateReadability(post.content)
+      const now = new Date().toISOString()
+      const finalSlug = post.id ? (post.slug || slugify(post.title)) : await ensureUniqueSlug(supabase, post.slug || slugify(post.title))
+
+      const payload = {
+        title: post.title,
+        slug: finalSlug,
+        content: post.content,
+        excerpt: post.excerpt || post.content.replace(/<[^>]*>/g, "").slice(0, 160),
+        featured_image: post.featured_image,
+        category_id: post.category_id || categories[0]?.id || null,
+        subcategory_id: post.subcategory_id || null,
+        author_id: user.id,
+        status: "published" as PostStatus,
+        tags: post.tags,
+        published_at: now,
+        reading_time: Math.max(1, Math.ceil(wordCount / 200)),
+        seo_title: post.seo_title || post.title,
+        seo_description: post.seo_description || post.excerpt || "",
+        seo_keywords: seoKeyword ? [seoKeyword, ...post.secondary_keywords] : post.seo_keywords,
+        seo_score: seoResult.score,
+        focus_keyword: seoKeyword,
+        canonical_url: post.canonical_url,
+        robots_noindex: post.robots_noindex,
+        robots_nofollow: post.robots_nofollow,
+        breadcrumb_title: post.breadcrumb_title || post.title,
+        og_title: post.og_title || post.seo_title || post.title,
+        og_description: post.og_description || post.seo_description || post.excerpt || "",
+        og_image: post.og_image || post.featured_image,
+        twitter_title: post.twitter_title || post.og_title || post.seo_title || post.title,
+        twitter_description: post.twitter_description || post.og_description || post.seo_description || post.excerpt || "",
+        twitter_image: post.twitter_image || post.og_image || post.featured_image,
+        schema_type: post.schema_type || "Article",
+        schema_data: post.schema_data,
+        post_format: post.post_format || "standard",
+        is_sticky: post.is_sticky,
+        is_featured: post.is_featured,
+        is_breaking: post.is_breaking,
+        is_sponsored: post.is_sponsored,
+        enable_comments: post.enable_comments,
+        readability_score: readability.score,
+        flesch_score: readability.flesch,
+        secondary_keywords: post.secondary_keywords,
+        quick_brief: post.quick_brief,
+        series_id: post.series_id || null,
+        source_name: post.source_name,
+        original_source_url: post.original_source_url,
+        updated_at: now,
+      }
+
       if (post.id) {
         const { error } = await supabase.from("posts").update(payload).eq("id", post.id)
         if (error) throw error
@@ -322,11 +367,6 @@ export function PostEditorProvider({
         const { data, error } = await supabase.from("posts").insert(payload).select("id").single()
         if (error) throw error
         if (data) setPost(prev => ({ ...prev, id: data.id }))
-      }
-
-      if (seoResult.score < 40) {
-        const proceed = window.confirm(`SEO score is ${seoResult.score}/100. Are you sure you want to publish?`)
-        if (!proceed) { setIsSaving(false); return }
       }
 
       // Fire-and-forget: enqueue for indexing + submit to IndexNow (Bing/Yandex/Seznam)
@@ -356,9 +396,10 @@ export function PostEditorProvider({
     } catch (err) {
       console.error("Error publishing post:", err)
       alert("Failed to publish post. Check console for details.")
+    } finally {
+      setIsSaving(false)
     }
-    setIsSaving(false)
-  }, [post, seoKeyword, categories, router])
+  }, [post, seoKeyword, categories, router, ensureUniqueSlug])
 
   const schedule = useCallback(async (when: string) => {
     const supabase = createClient()
@@ -373,50 +414,60 @@ export function PostEditorProvider({
       return
     }
 
-    setIsSaving(true)
-    const now = new Date().toISOString()
-    const payload = {
-      title: post.title,
-      slug: post.slug || slugify(post.title),
-      content: post.content,
-      excerpt: post.excerpt,
-      featured_image: post.featured_image,
-      category_id: post.category_id,
-      subcategory_id: post.subcategory_id,
-      author_id: user.id,
-      status: "scheduled" as PostStatus,
-      tags: post.tags,
-      scheduled_at: when,
-      reading_time: Math.max(1, Math.ceil((post.content.replace(/<[^>]*>/g, "").split(/\s+/).filter(Boolean).length || 1) / 200)),
-      seo_title: post.seo_title || post.title,
-      seo_description: post.seo_description || post.excerpt || "",
-      seo_keywords: seoKeyword ? [seoKeyword, ...post.secondary_keywords] : post.seo_keywords,
-      seo_score: calculateSeoScore(seoKeyword, post).score,
-      focus_keyword: seoKeyword,
-      canonical_url: post.canonical_url,
-      robots_noindex: post.robots_noindex,
-      robots_nofollow: post.robots_nofollow,
-      breadcrumb_title: post.breadcrumb_title || post.title,
-      og_title: post.og_title || post.seo_title || post.title,
-      og_description: post.og_description || post.seo_description || post.excerpt || "",
-      og_image: post.og_image || post.featured_image,
-      twitter_title: post.twitter_title || post.og_title || post.seo_title || post.title,
-      twitter_description: post.twitter_description || post.og_description || post.seo_description || post.excerpt || "",
-      twitter_image: post.twitter_image || post.og_image || post.featured_image,
-      schema_type: post.schema_type || "Article",
-      post_format: post.post_format || "standard",
-      is_sticky: post.is_sticky,
-      is_featured: post.is_featured,
-      is_breaking: post.is_breaking,
-      is_sponsored: post.is_sponsored,
-      enable_comments: post.enable_comments,
-      secondary_keywords: post.secondary_keywords,
-      source_name: post.source_name,
-      original_source_url: post.original_source_url,
-      updated_at: now,
+    if (!post.title.trim()) {
+      alert("A title is required before scheduling.")
+      return
     }
 
+    setIsSaving(true)
+
     try {
+      const now = new Date().toISOString()
+      const finalSlug = post.id ? (post.slug || slugify(post.title)) : await ensureUniqueSlug(supabase, post.slug || slugify(post.title)) || `post-${Date.now()}`
+      const payload = {
+        title: post.title,
+        slug: finalSlug,
+        content: post.content,
+        excerpt: post.excerpt,
+        featured_image: post.featured_image,
+        category_id: post.category_id || null,
+        subcategory_id: post.subcategory_id || null,
+        author_id: user.id,
+        status: "scheduled" as PostStatus,
+        tags: post.tags,
+        scheduled_at: when,
+        reading_time: Math.max(1, Math.ceil((post.content.replace(/<[^>]*>/g, "").split(/\s+/).filter(Boolean).length || 1) / 200)),
+        seo_title: post.seo_title || post.title,
+        seo_description: post.seo_description || post.excerpt || "",
+        seo_keywords: seoKeyword ? [seoKeyword, ...post.secondary_keywords] : post.seo_keywords,
+        seo_score: calculateSeoScore(seoKeyword, post).score,
+        focus_keyword: seoKeyword,
+        canonical_url: post.canonical_url,
+        robots_noindex: post.robots_noindex,
+        robots_nofollow: post.robots_nofollow,
+        breadcrumb_title: post.breadcrumb_title || post.title,
+        og_title: post.og_title || post.seo_title || post.title,
+        og_description: post.og_description || post.seo_description || post.excerpt || "",
+        og_image: post.og_image || post.featured_image,
+        twitter_title: post.twitter_title || post.og_title || post.seo_title || post.title,
+        twitter_description: post.twitter_description || post.og_description || post.seo_description || post.excerpt || "",
+        twitter_image: post.twitter_image || post.og_image || post.featured_image,
+        schema_type: post.schema_type || "Article",
+        schema_data: post.schema_data,
+        post_format: post.post_format || "standard",
+        is_sticky: post.is_sticky,
+        is_featured: post.is_featured,
+        is_breaking: post.is_breaking,
+        is_sponsored: post.is_sponsored,
+        enable_comments: post.enable_comments,
+        secondary_keywords: post.secondary_keywords,
+        quick_brief: post.quick_brief,
+        series_id: post.series_id || null,
+        source_name: post.source_name,
+        original_source_url: post.original_source_url,
+        updated_at: now,
+      }
+
       if (post.id) {
         const { error } = await supabase.from("posts").update(payload).eq("id", post.id)
         if (error) throw error
@@ -431,9 +482,10 @@ export function PostEditorProvider({
     } catch (err) {
       console.error("Error scheduling post:", err)
       alert("Failed to schedule post. Check console for details.")
+    } finally {
+      setIsSaving(false)
     }
-    setIsSaving(false)
-  }, [post, seoKeyword, router])
+  }, [post, seoKeyword, router, ensureUniqueSlug])
 
   const uploadImage = useCallback(async (file: File): Promise<string | null> => {
     const supabase = createClient()

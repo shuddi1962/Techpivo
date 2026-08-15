@@ -21,6 +21,38 @@ export function PostEditorLayout() {
   const router = useRouter()
   const { post, isSaving, loading, dirty, lastSaved, saveDraft, publish } = usePostEditor()
   const [shareOpen, setShareOpen] = useState(false)
+  const [previewing, setPreviewing] = useState(false)
+
+  const handlePreview = useCallback(async () => {
+    if (previewing) return
+    setPreviewing(true)
+    try {
+      const body = {
+        post_id: post.id || null,
+        slug: post.slug || slugify(post.title),
+        title: post.title,
+        content: post.content,
+        excerpt: post.excerpt,
+        featured_image: post.featured_image || post.og_image || "",
+      }
+      const res = await fetch("/api/preview-drafts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      })
+      const data = await res.json()
+      if (res.ok && data.url) {
+        window.open(data.url, "_blank")
+      } else {
+        alert(data?.error || "Could not create a live preview. Save the post and try again.")
+      }
+    } catch (err) {
+      console.error("Preview error:", err)
+      alert("Could not create a live preview. Save the post and try again.")
+    } finally {
+      setPreviewing(false)
+    }
+  }, [post, previewing])
 
   const handleKeyDown = useCallback((e: KeyboardEvent) => {
     if ((e.ctrlKey || e.metaKey) && e.key === "s") {
@@ -90,11 +122,12 @@ export function PostEditorLayout() {
             <span className="text-[10px] text-gray-400 dark:text-[#6B7280] hidden md:inline">Ctrl+S</span>
           </button>
           <button
-            onClick={() => window.open(`/preview/${post.slug || slugify(post.title)}`, "_blank")}
-            className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-200 bg-white dark:bg-[#1F2937] border-2 border-gray-300 dark:border-[#374151] rounded-lg hover:bg-gray-50 dark:hover:bg-[#374151] transition-all shadow-sm"
+            onClick={handlePreview}
+            disabled={previewing}
+            className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-200 bg-white dark:bg-[#1F2937] border-2 border-gray-300 dark:border-[#374151] rounded-lg hover:bg-gray-50 dark:hover:bg-[#374151] disabled:opacity-50 transition-all shadow-sm"
           >
-            <Eye className="h-4 w-4" />
-            <span className="hidden sm:inline">Preview</span>
+            {previewing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Eye className="h-4 w-4" />}
+            <span className="hidden sm:inline">{previewing ? "Building..." : "Preview"}</span>
           </button>
           <button
             onClick={() => setShareOpen(true)}

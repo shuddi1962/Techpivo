@@ -37,7 +37,6 @@ const breadcrumbMap: Record<string, string> = {
   "media": "Media",
   "content-health": "Content Health",
   "keywords": "Keywords",
-  "rss-feeds": "RSS Feeds",
   "seo": "SEO Center",
   "indexing": "Indexing",
   "competitor-intelligence": "Competitors",

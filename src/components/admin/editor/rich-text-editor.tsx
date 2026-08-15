@@ -32,8 +32,10 @@ export function RichTextEditor() {
   const [charCount, setCharCount] = useState(initialText.length)
   const [showWebImage, setShowWebImage] = useState(false)
   const [webQuery, setWebQuery] = useState("")
-  const [webResults, setWebResults] = useState<{ src: string; alt: string }[]>([])
+  const [webResults, setWebResults] = useState<{ src: string; alt: string; link?: string; license?: string }[]>([])
   const [webSearching, setWebSearching] = useState(false)
+  const [webError, setWebError] = useState("")
+  const [webActiveSource, setWebActiveSource] = useState<"pexels" | "google" | "wikimedia" | null>(null)
   const [webSource, setWebSource] = useState<"pexels" | "google" | "library">("pexels")
   const { items: libraryItems, loading: libraryLoading, uploadFiles } = useMediaLibrary()
   const [selectedImage, setSelectedImage] = useState<string | null>(null)
@@ -65,6 +67,22 @@ export function RichTextEditor() {
         mimetype: file.type || null,
         size: file.size,
       }).then(() => {}, () => {})
+    } else {
+      console.error("Image upload failed:", error)
+      ed.chain().focus().command(({ tr, dispatch }) => {
+        let removed = false
+        tr.doc.descendants((node, pos) => {
+          if (!removed && node.type.name === "image" && node.attrs.src === blobUrl) {
+            tr.deleteRange(pos, pos + node.nodeSize)
+            removed = true
+            return false
+          }
+          return true
+        })
+        return removed && dispatch ? dispatch(tr) : false
+      }).run()
+      URL.revokeObjectURL(blobUrl)
+      alert(`Image upload failed: ${error.message || "storage error"}. Try a smaller image.`)
     }
   }, [])
 
@@ -160,22 +178,38 @@ export function RichTextEditor() {
   const searchWebImages = async () => {
     if (!webQuery) return
     setWebSearching(true)
+    setWebError("")
+    setWebActiveSource(null)
     if (webSource === "pexels") {
       try {
         const res = await fetch(`/api/pexels?query=${encodeURIComponent(webQuery)}`)
         const data = await res.json()
         if (data.photos) {
-          setWebResults(data.photos.map((p: any) => ({ src: p.src.large2x || p.src.large, alt: p.alt })))
+          setWebResults(data.photos.map((p: any) => ({ src: p.src.large2x || p.src.large, alt: p.alt, link: p.url, license: "Free (Pexels)" })))
+          setWebActiveSource("pexels")
+        } else {
+          setWebResults([])
+          setWebError("No Pexels results. Try different keywords.")
         }
-      } catch {}
+      } catch {
+        setWebResults([])
+        setWebError("Search failed. Please try again.")
+      }
     } else {
       try {
         const res = await fetch(`/api/google-images?query=${encodeURIComponent(webQuery)}`)
         const data = await res.json()
-        if (data.items) {
-          setWebResults(data.items.map((p: any) => ({ src: p.link, alt: p.title })))
+        if (data.items?.length) {
+          setWebResults(data.items.map((p: any) => ({ src: p.src, alt: p.alt, link: p.link, license: p.license })))
+          setWebActiveSource(data.source === "google" ? "google" : "wikimedia")
+        } else {
+          setWebResults([])
+          setWebError("No image results. Try different keywords.")
         }
-      } catch {}
+      } catch {
+        setWebResults([])
+        setWebError("Search failed. Please try again.")
+      }
     }
     setWebSearching(false)
   }
@@ -302,13 +336,31 @@ export function RichTextEditor() {
                   {webSearching ? <Loader2 className="h-5 w-5 animate-spin" /> : <Search className="h-5 w-5" />}
                 </button>
               </div>
+              {webActiveSource && webResults.length > 0 && (
+                <p className="text-xs text-gray-400 dark:text-[#6B7280]">
+                  Photos from{" "}
+                  <span className="font-semibold text-gray-500 dark:text-gray-400">
+                    {webActiveSource === "google" ? "Google Custom Search" : webActiveSource === "wikimedia" ? "Wikimedia Commons (free license)" : "Pexels"}
+                  </span>
+                  {webActiveSource === "wikimedia" && " — hover a photo for its license"}
+                </p>
+              )}
+              {webError && !webSearching && (
+                <p className="text-sm text-red-500 dark:text-red-400">{webError}</p>
+              )}
               {webResults.length > 0 && (
                 <div className="grid grid-cols-3 gap-3 max-h-60 overflow-y-auto">
                   {webResults.map((img, i) => (
                     <button key={i} onClick={() => insertWebImage(img.src)}
+                      title={`${img.alt || ""}${img.license ? ` — ${img.license}` : ""}${img.link ? ` (${img.link})` : ""}`}
                       className="relative group rounded-xl overflow-hidden border-2 border-gray-200 dark:border-[#374151] hover:border-[#F59E0B] transition-all">
                       <Image src={img.src} alt={img.alt} width={120} height={80} className="w-full h-24 object-cover" />
                       <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors" />
+                      {img.license && (
+                        <span className="absolute bottom-0 left-0 right-0 text-[8px] text-white bg-black/60 px-1 py-0.5 truncate opacity-0 group-hover:opacity-100 transition-opacity">
+                          {img.license}
+                        </span>
+                      )}
                     </button>
                   ))}
                 </div>

@@ -13,8 +13,10 @@ export function FeaturedImagePanel() {
   const { items: libraryItems, loading: libraryLoading, uploadFiles, deleteItem } = useMediaLibrary()
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [query, setQuery] = useState("")
-  const [results, setResults] = useState<{ src: string; alt: string }[]>([])
+  const [results, setResults] = useState<{ src: string; alt: string; link?: string; license?: string }[]>([])
   const [searching, setSearching] = useState(false)
+  const [searchError, setSearchError] = useState("")
+  const [activeSource, setActiveSource] = useState<"pexels" | "google" | "wikimedia" | null>(null)
   const [source, setSource] = useState<"pexels" | "google" | "library">("pexels")
 
   const handleFileUpload = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -42,21 +44,34 @@ export function FeaturedImagePanel() {
   const searchImages = async () => {
     if (!query) return
     setSearching(true)
+    setSearchError("")
+    setActiveSource(null)
     try {
       if (source === "pexels") {
         const res = await fetch(`/api/pexels?query=${encodeURIComponent(query)}`)
         const data = await res.json()
         if (data.photos) {
-          setResults(data.photos.map((p: any) => ({ src: p.src.large2x || p.src.large, alt: p.alt })))
+          setResults(data.photos.map((p: any) => ({ src: p.src.large2x || p.src.large, alt: p.alt, link: p.url, license: "Free (Pexels)" })))
+          setActiveSource("pexels")
+        } else {
+          setResults([])
+          setSearchError("No Pexels results. Try different keywords.")
         }
       } else {
         const res = await fetch(`/api/google-images?query=${encodeURIComponent(query)}`)
         const data = await res.json()
-        if (data.items) {
-          setResults(data.items.map((p: any) => ({ src: p.link, alt: p.title })))
+        if (data.items?.length) {
+          setResults(data.items.map((p: any) => ({ src: p.src, alt: p.alt, link: p.link, license: p.license })))
+          setActiveSource(data.source === "google" ? "google" : "wikimedia")
+        } else {
+          setResults([])
+          setSearchError("No image results. Try different keywords.")
         }
       }
-    } catch {}
+    } catch {
+      setResults([])
+      setSearchError("Search failed. Please try again.")
+    }
     setSearching(false)
   }
 
@@ -137,7 +152,7 @@ export function FeaturedImagePanel() {
             <input
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder={`Search ${source === "pexels" ? "free stock photos" : "the web"}...`}
+              placeholder={`Search ${source === "pexels" ? "free stock photos" : "licensed web photos"}...`}
               onKeyDown={(e) => e.key === "Enter" && searchImages()}
               className="flex-1 bg-gray-50 dark:bg-[#0A0F1E] border-2 border-gray-300 dark:border-[#374151] rounded-lg px-3 py-2 text-sm text-gray-900 dark:text-[#F9FAFB] placeholder:text-gray-400 dark:placeholder:text-[#4B5563] focus:outline-none focus:ring-2 focus:ring-[#F59E0B] focus:border-transparent"
             />
@@ -150,16 +165,36 @@ export function FeaturedImagePanel() {
             </button>
           </div>
 
+          {activeSource && results.length > 0 && (
+            <p className="text-[10px] text-gray-400 dark:text-[#6B7280] mt-2">
+              Photos from{" "}
+              <span className="font-semibold text-gray-500 dark:text-gray-400">
+                {activeSource === "google" ? "Google Custom Search" : activeSource === "wikimedia" ? "Wikimedia Commons (free license)" : "Pexels"}
+              </span>
+              {activeSource === "wikimedia" && " — hover a photo for its license"}
+            </p>
+          )}
+
+          {searchError && !searching && (
+            <p className="text-xs text-red-500 dark:text-red-400 mt-2">{searchError}</p>
+          )}
+
           {results.length > 0 && (
             <div className="grid grid-cols-3 gap-2 mt-3">
               {results.slice(0, 6).map((img, i) => (
                 <button
                   key={i}
                   onClick={() => setField("featured_image", img.src)}
+                  title={`${img.alt || ""}${img.license ? ` — ${img.license}` : ""}${img.link ? ` (${img.link})` : ""}`}
                   className="relative group rounded-lg overflow-hidden border-2 border-gray-200 dark:border-[#1F2937]"
                 >
                   <NextImage src={img.src} alt={img.alt} width={120} height={80} className="w-full h-16 object-cover" />
                   <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors" />
+                  {img.license && (
+                    <span className="absolute bottom-0 left-0 right-0 text-[8px] text-white bg-black/60 px-1 py-0.5 truncate opacity-0 group-hover:opacity-100 transition-opacity">
+                      {img.license}
+                    </span>
+                  )}
                 </button>
               ))}
             </div>

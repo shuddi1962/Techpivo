@@ -4,7 +4,7 @@ import { useEffect, useState, useRef } from "react"
 import Link from "next/link"
 import { createClient } from "@/lib/supabase/client"
 import {
-  FileText, Eye, Users, Rss, TrendingUp, TrendingDown,
+  FileText, Eye, Users, TrendingUp, TrendingDown,
   DollarSign, Activity,
 } from "lucide-react"
 
@@ -25,7 +25,7 @@ export function ExecutiveKpiCards() {
     { label: "Published Posts", value: 0, change: "—", trend: "neutral", icon: FileText, color: "#F59E0B", href: "/admin/posts" },
     { label: "Total Views", value: 0, change: "—", trend: "neutral", icon: Eye, color: "#10B981", href: "/admin/analytics", format: "views" },
     { label: "Revenue", value: 0, change: "—", trend: "neutral", icon: DollarSign, color: "#8B5CF6", href: "/admin/ads", format: "currency" },
-    { label: "Active RSS Feeds", value: 0, change: "—", trend: "neutral", icon: Rss, color: "#F59E0B", href: "/admin/rss-feeds" },
+    { label: "Sessions (7d)", value: 0, change: "—", trend: "neutral", icon: Activity, color: "#F97316", href: "/admin/analytics" },
     { label: "Subscribers", value: 0, change: "—", trend: "neutral", icon: Users, color: "#EC4899", href: "/admin/newsletter" },
   ])
   const [loading, setLoading] = useState(true)
@@ -38,20 +38,23 @@ export function ExecutiveKpiCards() {
         const monthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString()
         const lastMonthStart = new Date(new Date().getFullYear(), new Date().getMonth() - 1, 1).toISOString()
 
-        const [postsCount, postsViews, publishedThisWeek, rssFeeds, subsRes, subsThisWeek, viewsThisWeek, adRevenue, affSales] = await Promise.all([
+        const [postsCount, postsViews, publishedThisWeek, subsRes, subsThisWeek, viewsThisWeek, weekSessions, adRevenue, affSales] = await Promise.all([
           supabase.from("posts").select("*", { count: "exact", head: true }).eq("status", "published"),
           supabase.from("posts").select("views"),
           supabase.from("posts").select("*", { count: "exact", head: true }).eq("status", "published").gte("published_at", weekAgo),
-          supabase.from("rss_feeds").select("id, is_active"),
           supabase.from("subscribers").select("*", { count: "exact", head: true }).eq("status", "active"),
           supabase.from("subscribers").select("*", { count: "exact", head: true }).eq("status", "active").gte("subscribed_at", weekAgo),
           supabase.from("analytics_events").select("*", { count: "exact", head: true }).eq("event_type", "page_view").gte("created_at", weekAgo),
+          supabase.from("analytics_events").select("session_id").eq("event_type", "page_view").gte("created_at", weekAgo),
           supabase.from("ad_revenue").select("revenue, date"),
           supabase.from("affiliate_sales").select("commission, converted_at"),
         ])
 
         const totalV = (postsViews.data || []).reduce((s: number, p: any) => s + (p.views || 0), 0)
         const weekViews = viewsThisWeek.count || 0
+
+        const weekSessionSet = new Set((weekSessions.data || []).map((e: any) => e.session_id).filter(Boolean))
+        const sessions7d = weekSessionSet.size
 
         const adTotal = (adRevenue.data || []).reduce((s: number, r: any) => s + (r.revenue || 0), 0)
         const affTotal = (affSales.data || []).reduce((s: number, r: any) => s + (r.commission || 0), 0)
@@ -65,9 +68,6 @@ export function ExecutiveKpiCards() {
         const revThisMonth = monthRevenue + affMonthRevenue
         const revLastMonth = lastMonthRevenue + affLastMonthRevenue
         const revChangePct = revLastMonth > 0 ? Math.round(((revThisMonth - revLastMonth) / revLastMonth) * 100) : (revThisMonth > 0 ? 100 : 0)
-
-        const rssList = rssFeeds.data || []
-        const activeFeeds = rssList.filter((f: any) => f.is_active).length
 
         setCards((prev) => {
           const updated = [...prev]
@@ -87,9 +87,9 @@ export function ExecutiveKpiCards() {
             trend: revChangePct > 0 ? "up" : revChangePct < 0 ? "down" : "neutral",
           }
           updated[3] = {
-            ...updated[3], value: activeFeeds,
-            change: `${rssList.length} total`,
-            trend: "neutral",
+            ...updated[3], value: sessions7d,
+            change: weekViews > 0 ? `+${weekViews.toLocaleString()} views wk` : "—",
+            trend: weekViews > 0 ? "up" : "neutral",
           }
           updated[4] = {
             ...updated[4], value: subsRes.count || 0,
@@ -111,7 +111,6 @@ export function ExecutiveKpiCards() {
       .on("postgres_changes", { event: "*", schema: "public", table: "posts" }, () => fetchKpi())
       .on("postgres_changes", { event: "INSERT", schema: "public", table: "analytics_events" }, () => fetchKpi())
       .on("postgres_changes", { event: "*", schema: "public", table: "subscribers" }, () => fetchKpi())
-      .on("postgres_changes", { event: "*", schema: "public", table: "rss_feeds" }, () => fetchKpi())
       .subscribe()
 
     const onFocus = () => fetchKpi()
