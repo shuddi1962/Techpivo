@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
-import { Search, Hash, FileText, Users, Sparkles, ArrowRight, TrendingUp } from 'lucide-react';
+import { Search, Hash, FileText, Users, Sparkles, ChevronRight } from 'lucide-react';
 import { CommunityHero } from '@/components/community/community-hero';
 
 interface TopicRow {
@@ -18,6 +18,11 @@ interface TopicRow {
 }
 
 const FALLBACK_COLOR = '#2563eb';
+
+function topicLetter(name: string): string {
+  const ch = (name || '').trim().charAt(0).toUpperCase();
+  return /[A-Z0-9]/.test(ch) ? ch : '#';
+}
 
 export default function TopicsDirectoryPage() {
   const [topics, setTopics] = useState<TopicRow[]>([]);
@@ -50,7 +55,6 @@ export default function TopicsDirectoryPage() {
 
   const totalPosts = topics.reduce((a, t) => a + t.post_count, 0);
   const totalFollowers = topics.reduce((a, t) => a + t.follower_count, 0);
-  const trending = [...topics].sort((a, b) => b.post_count - a.post_count).slice(0, 3);
 
   const tileStyle = (t: TopicRow) => {
     const c = t.color || FALLBACK_COLOR;
@@ -59,6 +63,15 @@ export default function TopicsDirectoryPage() {
       color: c,
     };
   };
+
+  const sorted = [...topics].sort((a, b) => a.name.localeCompare(b.name));
+  const groups: { letter: string; items: TopicRow[] }[] = [];
+  for (const t of sorted) {
+    const letter = topicLetter(t.name);
+    const last = groups[groups.length - 1];
+    if (last && last.letter === letter) last.items.push(t);
+    else groups.push({ letter, items: [t] });
+  }
 
   return (
     <div>
@@ -72,7 +85,7 @@ export default function TopicsDirectoryPage() {
         imageUrl={null}
       />
 
-      <div className="max-w-7xl mx-auto px-4 py-8">
+      <div className="max-w-5xl mx-auto px-4 py-8">
         {/* Stats strip */}
         <div className="grid grid-cols-3 gap-3 mb-6 max-w-md">
           {[
@@ -89,7 +102,7 @@ export default function TopicsDirectoryPage() {
           ))}
         </div>
 
-        <div className="relative mb-6 max-w-md">
+        <div className="relative mb-8 max-w-md">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-textSecondary" aria-hidden />
           <input
             value={q}
@@ -100,9 +113,9 @@ export default function TopicsDirectoryPage() {
         </div>
 
         {loading ? (
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
-            {Array.from({ length: 6 }).map((_, i) => (
-              <div key={i} className="h-28 rounded-xl bg-surface-2 animate-pulse" />
+          <div className="space-y-2">
+            {Array.from({ length: 8 }).map((_, i) => (
+              <div key={i} className="h-16 rounded-xl bg-surface-2 animate-pulse" />
             ))}
           </div>
         ) : topics.length === 0 ? (
@@ -110,73 +123,54 @@ export default function TopicsDirectoryPage() {
             No topics found{q ? ` for "${q}"` : ''}.
           </div>
         ) : (
-          <>
-            {!q && trending.length > 0 && (
-              <section className="mb-8" aria-label="Trending topics">
-                <h2 className="flex items-center gap-2 text-sm font-bold uppercase tracking-wide text-textSecondary mb-3">
-                  <TrendingUp className="h-4 w-4 text-brand" aria-hidden /> Trending now
+          <div className="space-y-7">
+            {groups.map(g => (
+              <section key={g.letter} aria-label={`Topics starting with ${g.letter}`}>
+                <h2 className="mb-2.5 flex items-center gap-2.5">
+                  <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-brand/10 text-[13px] font-black text-brand">
+                    {g.letter}
+                  </span>
+                  <span className="text-xs font-bold uppercase tracking-wider text-textSecondary">{g.letter} · {g.items.length} topic{g.items.length === 1 ? '' : 's'}</span>
                 </h2>
-                <div className="grid sm:grid-cols-3 gap-3">
-                  {trending.map((t, i) => (
+                <div className="divide-y divide-borderSoft overflow-hidden rounded-2xl border border-borderSoft bg-surface">
+                  {g.items.map(t => (
                     <Link
                       key={t.id}
                       href={`/community/topics/${t.slug}`}
-                      className="group relative overflow-hidden rounded-2xl border border-borderSoft bg-gradient-to-br from-surface via-surface to-surface-2 p-5 hover:border-brand/40 transition-colors"
+                      className="group flex items-center gap-3.5 px-4 py-3.5 transition-colors hover:bg-surface-elevated"
                     >
-                      <div
-                        className="absolute inset-x-0 top-0 h-1"
-                        style={{ background: `linear-gradient(90deg, ${t.color || FALLBACK_COLOR}, transparent)` }}
-                      />
-                      <div className="flex items-start justify-between">
-                        <span
-                          className="flex h-11 w-11 items-center justify-center rounded-xl text-xl"
-                          style={tileStyle(t)}
-                        >
-                          {t.icon || '#'}
+                      <span
+                        className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-lg"
+                        style={tileStyle(t)}
+                      >
+                        {t.icon || '#'}
+                      </span>
+                      <div className="min-w-0 flex-1">
+                        <p className={cn('font-semibold text-textPrimary transition-colors group-hover:text-brand', t.description ? '' : 'truncate')}>
+                          {t.name}
+                        </p>
+                        {t.description && (
+                          <p className="mt-0.5 truncate text-xs text-textSecondary">{t.description}</p>
+                        )}
+                      </div>
+                      <div className="hidden shrink-0 items-center gap-3 sm:flex">
+                        <span className="inline-flex items-center gap-1.5 rounded-md bg-surface-2 px-2 py-1 text-[11px] font-medium text-textSecondary tabular-nums">
+                          <FileText className="h-3 w-3" aria-hidden /> {t.post_count}
                         </span>
-                        <span className="rounded-full bg-surface-2 px-2 py-0.5 text-[11px] font-semibold text-textSecondary tabular-nums">
-                          #{i + 1}
+                        <span className="inline-flex items-center gap-1.5 rounded-md bg-surface-2 px-2 py-1 text-[11px] font-medium text-textSecondary tabular-nums">
+                          <Users className="h-3 w-3" aria-hidden /> {t.follower_count}
                         </span>
                       </div>
-                      <p className="mt-3 font-bold text-textPrimary group-hover:text-brand transition-colors">{t.name}</p>
-                      <p className="mt-0.5 text-xs text-textSecondary">{t.post_count} posts · {t.follower_count} following</p>
+                      <ChevronRight
+                        className="h-4 w-4 shrink-0 text-textSecondary/40 transition-all group-hover:translate-x-0.5 group-hover:text-brand"
+                        aria-hidden
+                      />
                     </Link>
                   ))}
                 </div>
               </section>
-            )}
-
-            <h2 className="flex items-center gap-2 text-sm font-bold uppercase tracking-wide text-textSecondary mb-3">
-              <Hash className="h-4 w-4 text-brand" aria-hidden /> All topics
-              <span className="ml-auto font-medium normal-case text-textSecondary/70">{topics.length} topics</span>
-            </h2>
-            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
-              {topics.map(t => (
-                <Link
-                  key={t.id}
-                  href={`/community/topics/${t.slug}`}
-                  className="group rounded-2xl border border-borderSoft bg-surface p-4 hover:bg-surface-elevated hover:border-brand/40 transition-colors"
-                >
-                  <div className="flex items-center gap-3">
-                    <span className="flex h-10 w-10 items-center justify-center rounded-xl text-lg" style={tileStyle(t)}>
-                      {t.icon || '#'}
-                    </span>
-                    <div className="min-w-0 flex-1">
-                      <p className="font-semibold text-textPrimary truncate group-hover:text-brand transition-colors">{t.name}</p>
-                      <p className="text-xs text-textSecondary flex items-center gap-2">
-                        <span className="inline-flex items-center gap-1"><FileText className="h-3 w-3" aria-hidden /> {t.post_count} posts</span>
-                        <span className="inline-flex items-center gap-1"><Users className="h-3 w-3" aria-hidden /> {t.follower_count}</span>
-                      </p>
-                    </div>
-                    <ArrowRight className="h-4 w-4 text-textSecondary/40 group-hover:text-brand group-hover:translate-x-0.5 transition-all shrink-0" aria-hidden />
-                  </div>
-                  {t.description && (
-                    <p className="mt-2 text-xs text-textSecondary line-clamp-2">{t.description}</p>
-                  )}
-                </Link>
-              ))}
-            </div>
-          </>
+            ))}
+          </div>
         )}
       </div>
     </div>

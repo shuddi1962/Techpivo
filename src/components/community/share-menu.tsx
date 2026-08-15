@@ -100,6 +100,7 @@ export function ShareMenu({
 }) {
   const [open, setOpen] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [emailCopied, setEmailCopied] = useState(false);
   const [href, setHref] = useState<string | null>(url ?? null);
   const rootRef = useRef<HTMLDivElement>(null);
 
@@ -143,6 +144,24 @@ export function ShareMenu({
     }
     setCopied(true);
     setTimeout(() => setCopied(false), 1500);
+  };
+
+  const copyEmailLink = async () => {
+    const mailtoUrl = `mailto:?subject=${encodeURIComponent(title)}&body=${encodeURIComponent(`${title}\n${shareUrl}`)}`;
+    try {
+      await navigator.clipboard.writeText(mailtoUrl);
+    } catch {
+      const ta = document.createElement('textarea');
+      ta.value = mailtoUrl;
+      ta.style.position = 'fixed';
+      ta.style.opacity = '0';
+      document.body.appendChild(ta);
+      ta.select();
+      try { document.execCommand('copy'); } catch { /* ignore */ }
+      document.body.removeChild(ta);
+    }
+    setEmailCopied(true);
+    setTimeout(() => setEmailCopied(false), 1500);
   };
 
   const nativeShare = async () => {
@@ -266,6 +285,18 @@ export function ShareMenu({
               <Mail className="h-3.5 w-3.5" aria-hidden />
             </span>
             Email
+          </button>
+
+          <button
+            type="button"
+            role="menuitem"
+            onClick={() => void copyEmailLink()}
+            className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-sm text-textPrimary hover:bg-surface-elevated transition-colors"
+          >
+            <span className="flex h-7 w-7 items-center justify-center rounded-md bg-surface-2">
+              {emailCopied ? <Check className="h-3.5 w-3.5 text-success" aria-hidden /> : <Copy className="h-3.5 w-3.5" aria-hidden />}
+            </span>
+            {emailCopied ? 'Email link copied!' : 'Copy email link'}
           </button>
         </div>
       )}
