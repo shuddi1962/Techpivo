@@ -19,7 +19,7 @@ export default function PageIntro({ slug }: { slug: string }) {
   const def = getSitePage(slug);
   const supabase = createClient();
   const [row, setRow] = useState<IntroRow | null>(null);
-  const [show, setShow] = useState(false);
+  const [loaded, setLoaded] = useState(false);
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
 
   useEffect(() => {
@@ -27,13 +27,8 @@ export default function PageIntro({ slug }: { slug: string }) {
     const load = async () => {
       const { data } = await supabase.from("site_pages").select("*").eq("slug", slug).maybeSingle();
       if (!mounted) return;
-      const r = (data as IntroRow | null) || null;
-      setRow(r);
-      setShow(
-        !!r &&
-          !!r.is_published &&
-          (!!(r.content_md && r.content_md.trim() !== "") || !!(r.title && r.title.trim() !== "") || !!(r.hero_image && r.hero_image.trim() !== ""))
-      );
+      setRow((data as IntroRow | null) || null);
+      setLoaded(true);
     };
     load();
     const channel = supabase
@@ -47,24 +42,37 @@ export default function PageIntro({ slug }: { slug: string }) {
     };
   }, [supabase, slug]);
 
-  if (!def || !show || !row) return null;
+  if (!def || !loaded) return null;
 
-  const html = renderMarkdown(row.content_md || "");
+  const published = !!row && !!row.is_published;
+  const hasCustom =
+    published &&
+    (!!(row.content_md && row.content_md.trim() !== "") ||
+      !!(row.title && row.title.trim() !== "") ||
+      !!(row.subtitle && row.subtitle.trim() !== "") ||
+      !!(row.hero_image && row.hero_image.trim() !== ""));
+  if (!hasCustom && !def.hero.heroImage) return null;
+
+  const title = (published && row.title) || def.hero.title;
+  const subtitle = (published && row.subtitle) || def.hero.subtitle;
+  const heroImage = (published && row.hero_image) || def.hero.heroImage;
+  const body = hasCustom && row.content_md && row.content_md.trim() !== "" ? row.content_md : def.contentMd;
+  const html = renderMarkdown(body);
 
   return (
     <div className="mb-10">
       <div className="relative overflow-hidden rounded-2xl border min-h-[160px]">
-        {row.hero_image && (
+        {heroImage && (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={row.hero_image} alt={row.title || def.label} className="absolute inset-0 w-full h-full object-cover" loading="lazy" />
+          <img src={heroImage} alt={title || def.label} className="absolute inset-0 w-full h-full object-cover" loading="lazy" />
         )}
         <div className="absolute inset-0 bg-black/40" />
         <div className="relative z-10 px-6 py-8 text-white">
-          {row.title && <h1 className="text-3xl font-bold mb-2">{row.title}</h1>}
-          {row.subtitle && <p className="text-white/85 text-base max-w-2xl">{row.subtitle}</p>}
+          {title && <h1 className="text-3xl font-bold mb-2">{title}</h1>}
+          {subtitle && <p className="text-white/85 text-base max-w-2xl">{subtitle}</p>}
         </div>
       </div>
-      {row.content_md && row.content_md.trim() !== "" && (
+      {body.trim() !== "" && (
         <article
           className="page-intro-body px-6 py-6 prose prose-slate dark:prose-invert max-w-none prose-headings:font-bold prose-p:leading-relaxed prose-p:text-muted-foreground prose-a:text-accent prose-strong:text-foreground prose-blockquote:border-accent prose-li:text-muted-foreground prose-h2:text-2xl"
           dangerouslySetInnerHTML={{ __html: html }}

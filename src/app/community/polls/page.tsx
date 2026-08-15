@@ -194,11 +194,11 @@ export default function PollsPage() {
             {polls.map((poll) => {
               const hasVoted = !!votedPolls[poll.id];
               return (
-                <div key={poll.id} className="rounded-2xl border border-border/60 bg-card/80 backdrop-blur-sm overflow-hidden">
+                <div key={poll.id} className="rounded-2xl border border-border/60 bg-card overflow-hidden">
                   {poll.image_url && (
                     <div className="relative h-44 overflow-hidden">
                       <img src={poll.image_url} alt={poll.title} loading="lazy" className="w-full h-full object-cover" />
-                      <div className="absolute inset-0 bg-gradient-to-t from-card via-card/20 to-transparent" />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/25 to-transparent" />
                     </div>
                   )}
                   <div className="p-6 md:p-7">

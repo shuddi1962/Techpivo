@@ -10,7 +10,6 @@ import { MessageSquare, Trophy, Brain, BarChart3, BookOpen, Users, Flame, Star, 
 import { SITE_URL } from '@/lib/constants';
 import PageIntro from '@/components/pages/page-intro';
 import { CommunityFeed } from '@/components/community/community-feed';
-import { CommunityHero } from '@/components/community/community-hero';
 import { ActivePolls } from '@/components/community/active-polls';
 
 export const metadata = {
@@ -40,28 +39,23 @@ export default async function CommunityPage() {
       <JsonLd data={collectionPageSchema("TechPivo Community", "Join the TechPivo community. Discuss tech, take quizzes, earn rewards, and connect with fellow technology enthusiasts.", `${SITE_URL}/community`)} />
       <div className="min-h-screen bg-background">
       <PageIntro slug="community" />
-      <CommunityHero
-        badge="Community"
-        title="TechPivo Community"
-        subtitle="Join thousands of technology enthusiasts. Discuss, learn, compete, and grow together."
-        icon={<Sparkles className="h-3.5 w-3.5" />}
-        imageUrl={null}
-      >
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 max-w-3xl">
+
+      <div className="max-w-7xl mx-auto px-4 pb-4">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           {[
             { icon: MessageSquare, label: 'Forum', desc: 'Discussions & Q&A' },
             { icon: Brain, label: 'Quizzes', desc: 'Test your knowledge' },
             { icon: BarChart3, label: 'Polls', desc: 'Share your opinion' },
             { icon: Trophy, label: 'Leaderboard', desc: 'Compete and earn XP' },
           ].map((stat) => (
-            <div key={stat.label} className="rounded-xl border border-white/10 bg-white/5 p-3 text-center backdrop-blur-sm">
-              <stat.icon className="h-5 w-5 mx-auto mb-1.5 text-amber-400" />
-              <div className="text-sm font-bold text-white">{stat.label}</div>
-              <div className="text-xs text-white/60">{stat.desc}</div>
+            <div key={stat.label} className="rounded-xl border border-border/60 bg-card p-3 text-center shadow-sm">
+              <stat.icon className="h-5 w-5 mx-auto mb-1.5 text-amber-500" />
+              <div className="text-sm font-bold text-foreground">{stat.label}</div>
+              <div className="text-xs text-muted-foreground">{stat.desc}</div>
             </div>
           ))}
         </div>
-      </CommunityHero>
+      </div>
 
       <div className="max-w-7xl mx-auto px-4 py-8 space-y-8">
         <section>

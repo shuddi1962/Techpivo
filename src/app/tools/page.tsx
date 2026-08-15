@@ -44,13 +44,6 @@ export default function PublicToolsPage() {
 
       <div style={{ maxWidth: 1200, margin: "0 auto", padding: "40px 20px" }}>
         <PageIntro slug="tools" />
-        <div style={{ textAlign: "center", marginBottom: 16 }}>
-          <h1 style={{ fontFamily: "'Syne', sans-serif", fontSize: 36, fontWeight: 800, marginBottom: 12 }}>Free Tech Tools &amp; Utilities</h1>
-          <p style={{ fontSize: 16, color: "var(--muted)", maxWidth: 640, margin: "0 auto" }}>
-            {TOOL_SLUGS.length} tools for developers, SEO professionals, and everyday users.
-            Fast, free, and private — everything runs in your browser.
-          </p>
-        </div>
 
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap", justifyContent: "center", marginBottom: 36 }}>
           {grouped.map(g => {

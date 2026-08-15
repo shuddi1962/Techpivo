@@ -141,7 +141,7 @@ export default function QuizPage() {
               const cfg = difficultyConfig[quiz.difficulty] || difficultyConfig.medium;
               return (
                 <Link key={quiz.id} href={`/community/quiz/${quiz.id}`} className="group block">
-                  <div className="relative rounded-2xl border border-border/60 bg-card/80 backdrop-blur-sm hover:shadow-xl hover:shadow-purple-500/5 hover:border-purple-300/30 dark:hover:border-purple-700/30 transition-all duration-300 overflow-hidden h-full">
+                  <div className="relative rounded-2xl border border-border/60 bg-card hover:shadow-xl hover:shadow-purple-500/5 hover:border-purple-300/30 dark:hover:border-purple-700/30 transition-all duration-300 overflow-hidden h-full">
                     {quiz.image_url && (
                       <div className="relative h-40 overflow-hidden">
                         <img
@@ -150,7 +150,7 @@ export default function QuizPage() {
                           loading="lazy"
                           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                         />
-                        <div className="absolute inset-0 bg-gradient-to-t from-card via-card/20 to-transparent" />
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/25 to-transparent" />
                       </div>
                     )}
                     {!quiz.image_url && <div className={`h-1.5 w-full bg-gradient-to-r ${cfg.gradient}`} />}

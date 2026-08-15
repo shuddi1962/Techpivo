@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import {
@@ -73,52 +72,6 @@ export function AdvertiseLanding() {
 
   return (
     <div className="w-full">
-      {/* ==================== HERO ==================== */}
-      <div className="relative overflow-hidden">
-        <Image
-          src="https://images.pexels.com/photos/3184291/pexels-photo-3184291.jpeg"
-          alt="Advertise on Techpivo"
-          width={1600}
-          height={900}
-          priority
-          className="absolute inset-0 w-full h-full object-cover"
-        />
-        <div className="absolute inset-0 bg-black/55" />
-        <div className="relative z-10 px-6 md:px-12 lg:px-16 py-20 md:py-28 text-white max-w-4xl">
-          <div className="inline-flex items-center gap-2 bg-white/15 backdrop-blur border border-white/25 rounded-full px-4 py-1.5 text-sm mb-6">
-            <span className="w-2 h-2 rounded-full bg-blue-400 animate-pulse" />
-            Techpivo Ads — self-serve, transparent, measurable
-          </div>
-          <h1 className="text-4xl md:text-5xl font-bold leading-tight mb-5">
-            Reach the Tech Audience That Builds, Buys &amp; Decides
-          </h1>
-          <p className="text-lg md:text-xl text-white/85 max-w-2xl leading-relaxed">
-            Developers, IT professionals and gadget buyers read Techpivo every day. Run your
-            campaign on your terms — set your own budget and bid, and track every impression
-            and click in real time.
-          </p>
-          <div className="flex flex-wrap gap-3 mt-8">
-            <Link
-              href="/account/ads/new"
-              className="inline-flex items-center gap-2 font-semibold rounded-xl px-6 py-3.5 text-[15px]"
-              style={{ background: PRIMARY, color: "#fff" }}
-            >
-              <Megaphone size={18} /> Start Your Campaign <ArrowRight size={16} />
-            </Link>
-            <a
-              href="mailto:ads@techpivo.com"
-              className="inline-flex items-center font-semibold rounded-xl px-6 py-3.5 text-[15px]"
-              style={{ background: "rgba(255,255,255,0.14)", border: "1px solid rgba(255,255,255,0.35)", color: "#fff" }}
-            >
-              Talk to Our Ads Team
-            </a>
-          </div>
-          <p className="text-sm text-white/70 mt-5">
-            Launch takes minutes — campaigns are reviewed and approved within 24 hours.
-          </p>
-        </div>
-      </div>
-
       {/* ==================== TRUST BAR ==================== */}
       <div className="px-4 md:px-12 lg:px-16 pt-12">
         <div className="grid grid-cols-2 md:grid-cols-5 gap-4">

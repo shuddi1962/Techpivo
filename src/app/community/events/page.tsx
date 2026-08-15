@@ -2,12 +2,11 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
-import { Calendar, MapPin, Users, Clock, ArrowLeft, Sparkles, ExternalLink, Check, CalendarCheck, Presentation, Handshake, Terminal, Video, Wrench, Rocket, CalendarDays } from 'lucide-react';
+import { Calendar, MapPin, Users, Clock, ArrowLeft, ExternalLink, Check, CalendarCheck, Presentation, Handshake, Terminal, Video, Wrench, Rocket, CalendarDays } from 'lucide-react';
 import { JsonLd } from '@/components/ui/jsonld';
 import { breadcrumbSchema, eventListSchema, eventSchema } from '@/lib/jsonld';
 import { createClient } from '@/lib/supabase/client';
 import PageIntro from '@/components/pages/page-intro';
-import { CommunityHero } from '@/components/community/community-hero';
 
 interface Event {
   id: string;
@@ -151,16 +150,16 @@ export default function EventsPage() {
       )}
       <div className="min-h-screen bg-background">
       <PageIntro slug="community-events" />
-      {/* Hero */}
-      <CommunityHero
-        badge="Community Events"
-        title="Tech Events"
-        subtitle="Conferences, meetups, hackathons, workshops and product launches — all in one place."
-        icon={<Sparkles className="h-3.5 w-3.5" />}
-        backHref="/community"
-        backLabel="Back to Community"
-        imageUrl={events[0]?.image_url || null}
-      />
+
+      {/* Back link */}
+      <div className="max-w-7xl mx-auto px-4 pt-2">
+        <Link
+          href="/community"
+          className="inline-flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground"
+        >
+          <ArrowLeft className="h-4 w-4" /> Back to Community
+        </Link>
+      </div>
 
       {/* Content */}
       <div className="max-w-7xl mx-auto px-4 py-8 md:py-12">
@@ -222,7 +221,7 @@ export default function EventsPage() {
                     const startDate = new Date(event.start_date);
                     const isGoing = myRsvps.includes(event.id);
                     return (
-                      <div key={event.id} className="group relative rounded-2xl border border-border/60 bg-card/80 backdrop-blur-sm hover:shadow-xl hover:shadow-amber-500/5 hover:border-amber-500/30 transition-all duration-300 overflow-hidden">
+                      <div key={event.id} className="group relative rounded-2xl border border-border/60 bg-card hover:shadow-xl hover:shadow-amber-500/5 hover:border-amber-500/30 transition-all duration-300 overflow-hidden">
                         {event.image_url && (
                           <div className="relative h-40 overflow-hidden">
                             <img
@@ -231,8 +230,8 @@ export default function EventsPage() {
                               loading="lazy"
                               className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                             />
-                            <div className="absolute inset-0 bg-gradient-to-t from-card via-card/30 to-transparent" />
-                            <span className="absolute top-3 right-3 text-xs font-semibold bg-amber-500/90 text-white px-2.5 py-1 rounded-full backdrop-blur-sm whitespace-nowrap">
+                            <div className="absolute inset-0 bg-gradient-to-t from-black/25 to-transparent" />
+                            <span className="absolute top-3 right-3 text-xs font-semibold bg-amber-500/90 text-white px-2.5 py-1 rounded-full whitespace-nowrap">
                               in {getTimeUntil(startDate)}
                             </span>
                           </div>

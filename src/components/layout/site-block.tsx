@@ -59,10 +59,14 @@ export default function SiteBlock({ blockKey }: { blockKey: string }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [blockKey, def, row]);
 
-  if (!def || !ready || !row || !row.is_active || !row.content_md || row.content_md.trim() === "") return null;
+  if (!def || !ready) return null;
 
-  const style: SiteBlockStyle = normalizeBlockStyle(row.style);
-  const html = renderMarkdown(row.content_md);
+  const effectiveRow: BlockRow | null =
+    row || (def.contentMd.trim() !== "" ? { block_key: def.blockKey, title: null, content_md: def.contentMd, is_active: true, style: null, updated_at: null } : null);
+  if (!effectiveRow || !effectiveRow.is_active || !effectiveRow.content_md || effectiveRow.content_md.trim() === "") return null;
+
+  const style: SiteBlockStyle = normalizeBlockStyle(effectiveRow.style);
+  const html = renderMarkdown(effectiveRow.content_md);
 
   if (def.mode === "banner") {
     if (bannerDismissed) return null;
@@ -83,7 +87,7 @@ export default function SiteBlock({ blockKey }: { blockKey: string }) {
           <button
             onClick={() => {
               try {
-                localStorage.setItem(`tp_banner_dismiss_${blockKey}`, `${row.updated_at}|${row.content_md}`);
+                localStorage.setItem(`tp_banner_dismiss_${blockKey}`, `${effectiveRow.updated_at}|${effectiveRow.content_md}`);
               } catch {}
               setBannerDismissed(true);
             }}
@@ -111,7 +115,7 @@ export default function SiteBlock({ blockKey }: { blockKey: string }) {
             <button
               onClick={() => {
                 try {
-                  localStorage.setItem(`tp_banner_dismiss_${blockKey}`, `${row.updated_at}|${row.content_md}`);
+                  localStorage.setItem(`tp_banner_dismiss_${blockKey}`, `${effectiveRow.updated_at}|${effectiveRow.content_md}`);
                 } catch {}
                 setBannerDismissed(true);
               }}
@@ -139,7 +143,7 @@ export default function SiteBlock({ blockKey }: { blockKey: string }) {
           <button
             onClick={() => {
               try {
-                localStorage.setItem(`tp_banner_dismiss_${blockKey}`, `${row.updated_at}|${row.content_md}`);
+                localStorage.setItem(`tp_banner_dismiss_${blockKey}`, `${effectiveRow.updated_at}|${effectiveRow.content_md}`);
               } catch {}
               setBannerDismissed(true);
             }}
@@ -156,7 +160,7 @@ export default function SiteBlock({ blockKey }: { blockKey: string }) {
   if (def.mode === "links") {
     return (
       <div>
-        <h3 className="footer-col-title">{row.title || def.label}</h3>
+        <h3 className="footer-col-title">{effectiveRow.title || def.label}</h3>
         <div
           className="site-block-links footer-col-links"
           dangerouslySetInnerHTML={{ __html: html.replace(/<p>/g, "").replace(/<\/p>/g, "") }}
@@ -172,7 +176,7 @@ export default function SiteBlock({ blockKey }: { blockKey: string }) {
           className="rounded-2xl p-8 md:p-10 border border-accent/20 bg-accent/5"
           style={{ backgroundColor: style.bg || undefined, color: style.text || undefined }}
         >
-          {row.title && <h2 className="text-2xl md:text-3xl font-bold mb-3">{row.title}</h2>}
+          {effectiveRow.title && <h2 className="text-2xl md:text-3xl font-bold mb-3">{effectiveRow.title}</h2>}
           <div
             className={`site-block-intro text-muted-foreground leading-relaxed prose prose-slate dark:prose-invert max-w-none prose-a:text-accent prose-strong:text-foreground prose-headings:text-foreground overflow-hidden ${
               style.align === "center" ? "text-center" : style.align === "right" ? "text-right" : ""
