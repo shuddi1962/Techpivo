@@ -42,6 +42,7 @@ export function RichTextEditor() {
   const [imageWidth, setImageWidth] = useState("100%")
   const [imageLink, setImageLink] = useState("")
   const editorRef = useRef<Editor | null>(null)
+  const lastEmittedHtml = useRef(post.content)
 
   const handleImageUpload = useCallback(async (file: File) => {
     const ed = editorRef.current
@@ -166,6 +167,7 @@ export function RichTextEditor() {
     },
     onUpdate: ({ editor }) => {
       const html = editor.getHTML()
+      lastEmittedHtml.current = html
       updatePost({ content: html })
       const text = editor.getText()
       setWordCount(text.split(/\s+/).filter(Boolean).length)
@@ -174,6 +176,14 @@ export function RichTextEditor() {
   })
 
   editorRef.current = editor
+
+  useEffect(() => {
+    if (!editor || post.content === lastEmittedHtml.current) return
+    editor.commands.setContent(post.content)
+    const text = editor.getText()
+    setWordCount(text.split(/\s+/).filter(Boolean).length)
+    setCharCount(text.length)
+  }, [post.content, editor])
 
   const searchWebImages = async () => {
     if (!webQuery) return

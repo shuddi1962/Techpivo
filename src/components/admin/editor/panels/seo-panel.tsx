@@ -130,7 +130,10 @@ Only provide fields that need changes. Return valid JSON only.`
           <div className="relative">
             <KeywordSuggest
               value={seoKeyword}
-              onChange={setSeoKeyword}
+              onChange={(v) => {
+                setSeoKeyword(v)
+                updatePost({ focus_keyword: v })
+              }}
               placeholder="Enter focus keyword..."
               className="pr-14"
               rightElement={

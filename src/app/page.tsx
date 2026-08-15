@@ -165,8 +165,9 @@ export default async function HomePage() {
         results[i]?.status === "fulfilled" ? results[i].value.data : null
 
       const allRecent = extract(results[0], 0) || []
-      const shuffled = shuffle(allRecent)
-      heroPosts = shuffled.slice(0, 6)
+      const sticky = allRecent.filter((p: any) => p.is_sticky === true)
+      const shuffled = shuffle(allRecent.filter((p: any) => p.is_sticky !== true))
+      heroPosts = [...sticky, ...shuffled].slice(0, 6)
 
       const allLatest = extract(results[1], 1) || []
       const shuffledLatest = shuffle(allLatest)

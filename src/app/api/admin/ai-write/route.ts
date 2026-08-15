@@ -108,7 +108,7 @@ export async function POST(req: NextRequest) {
     const enriched = await enrichArticleWithWebImages(
       result.article.content,
       result.article.headline || input,
-      2
+      3
     )
     const article = {
       ...result.article,

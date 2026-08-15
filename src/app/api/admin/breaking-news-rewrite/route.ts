@@ -129,7 +129,7 @@ export async function POST(request: Request) {
     const searchTerm = headline.split(/\s+/).slice(0, 4).join(" ")
     // Web images are the default site-wide: enrich the article body with real
     // web figures (charts, diagrams, photos) matching each section + a featured image.
-    const enriched = await enrichArticleWithWebImages(article.content, searchTerm, 2)
+    const enriched = await enrichArticleWithWebImages(article.content, searchTerm, 3)
     let remoteImage = enriched.featuredImage
     if (!remoteImage) remoteImage = await searchFeaturedImage(catSlug.replace("-", " ") + " technology")
     // Store the picked image in the Media Library bucket (falls back to remote URL)

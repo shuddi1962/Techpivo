@@ -155,6 +155,7 @@ WRITING STYLE:
 - Write for a smart 16-year-old: clear, no unexplained jargon
 - Explain every acronym on first use
 - Average sentence length under 20 words
+- READABILITY TARGET: aim for Flesch Reading Ease 60+ — keep most sentences between 10-18 words, split any sentence over 22 words into two, prefer short common words over long ones (say "use" not "utilize", "show" not "demonstrate", "start" not "initiate"), and keep every paragraph under 4 sentences. Run the Flesch formula mentally: 206.835 - (1.015 x avg words/sentence) - (84.6 x avg syllables/word) should stay above 60.
 - BANNED phrases — NEVER use: "In today's fast-paced world", "It goes without saying", "At the end of the day", "Game-changing", "Revolutionary technology", "Leveraging synergies", "Deep dive", "Unpacking", "Delve into", "Paradigm shift", "In conclusion", "To summarize", "Furthermore", "Moreover", "Additionally", "It's worth noting", "It's important to mention", "This article will explore"
 - Minimum 1200 words, maximum 2000 words in the content field — must be substantial and comprehensive
 - Use contractions: don't, can't, isn't, won't, it's, we've, they've

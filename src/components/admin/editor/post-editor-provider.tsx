@@ -155,6 +155,16 @@ export function PostEditorProvider({
   const postRef = useRef(post)
   postRef.current = post
 
+  // Fire-and-forget ISR revalidation so toggling publish/sticky state and
+  // content edits reflect on the public article page + front page instantly.
+  const revalidatePublic = useCallback((slug?: string) => {
+    fetch("/api/admin/revalidate", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ slug: slug || null }),
+    }).catch((e) => console.warn("Revalidate failed:", e))
+  }, [])
+
   useEffect(() => {
     const load = async () => {
       const { data: cats } = await supabase.from("categories").select("id, name, slug").order("name")
@@ -181,6 +191,16 @@ export function PostEditorProvider({
     const seo = calculateSeoScore(seoKeyword, post)
     setPost(prev => (prev.seo_score === seo.score ? prev : { ...prev, seo_score: seo.score }))
   }, [post.title, post.content, post.slug, post.seo_title, post.seo_description, post.excerpt, post.featured_image, post.schema_type, seoKeyword])
+
+  // Keep the SEO panel's keyword state in sync with external writes to
+  // post.focus_keyword (AI write, draft restore). User typing stays in sync
+  // because seo-panel writes through to post.focus_keyword too.
+  const focusKeyword = post.focus_keyword
+  useEffect(() => {
+    if (focusKeyword && focusKeyword !== seoKeyword) {
+      setSeoKeyword(focusKeyword)
+    }
+  }, [focusKeyword, seoKeyword])
 
   const updatePost = useCallback((partial: Partial<EditorPostState>) => {
     setPost(prev => ({ ...prev, ...partial }))
@@ -261,6 +281,10 @@ export function PostEditorProvider({
       setLastSaved(new Date())
       setDirty(false)
       localStorage.removeItem(DRAFT_KEY)
+      setPost(prev => (prev.focus_keyword === seoKeyword ? prev : { ...prev, focus_keyword: seoKeyword }))
+      if (publishPayload.status === "published") {
+        revalidatePublic(publishPayload.slug)
+      }
     } catch (err) {
       console.error("Error saving draft:", err)
       localStorage.setItem(DRAFT_KEY, JSON.stringify(postRef.current))
@@ -271,7 +295,7 @@ export function PostEditorProvider({
     } finally {
       setIsSaving(false)
     }
-  }, [seoKeyword, cleanUuidFields, ensureUniqueSlug])
+  }, [seoKeyword, cleanUuidFields, ensureUniqueSlug, revalidatePublic])
 
   useEffect(() => {
     if (autoSaveTimer.current) clearInterval(autoSaveTimer.current)
@@ -405,6 +429,7 @@ export function PostEditorProvider({
       setLastSaved(new Date())
       setDirty(false)
       localStorage.removeItem(DRAFT_KEY)
+      revalidatePublic(payload.slug)
       router.push(`/admin/posts`)
     } catch (err) {
       console.error("Error publishing post:", err)
@@ -412,7 +437,7 @@ export function PostEditorProvider({
     } finally {
       setIsSaving(false)
     }
-  }, [post, seoKeyword, categories, router, ensureUniqueSlug])
+  }, [post, seoKeyword, categories, router, ensureUniqueSlug, revalidatePublic])
 
   const schedule = useCallback(async (when: string) => {
     const supabase = createClient()
