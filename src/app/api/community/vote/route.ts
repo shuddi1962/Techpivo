@@ -19,11 +19,16 @@ export async function POST(request: NextRequest) {
 
   const { post_id, reply_id, vote_type } = body;
 
-  if (vote_type !== 'up' && vote_type !== 'down') {
-    return NextResponse.json({ error: 'vote_type must be up or down' }, { status: 400 });
-  }
   if ((post_id && reply_id) || (!post_id && !reply_id)) {
     return NextResponse.json({ error: 'Exactly one of post_id or reply_id is required' }, { status: 400 });
+  }
+
+  // forum_votes.vote_type is INTEGER (1 up, -1 down) — accept 'up'/'down' or 1/-1; null = toggle-off (remove vote)
+  let dbVote: 1 | -1 | null = null;
+  if (vote_type === 'up' || vote_type === 1 || vote_type === '1') dbVote = 1;
+  else if (vote_type === 'down' || vote_type === -1 || vote_type === '-1') dbVote = -1;
+  else if (vote_type !== null && vote_type !== undefined) {
+    return NextResponse.json({ error: 'vote_type must be "up", "down", or null' }, { status: 400 });
   }
 
   // Validate target exists before voting
@@ -49,33 +54,41 @@ export async function POST(request: NextRequest) {
   const { data: existing } = await query.maybeSingle();
 
   if (existing) {
-    if (existing.vote_type === vote_type) {
-      // Remove vote
+    if (dbVote === null || existing.vote_type === dbVote) {
+      // Remove vote (explicit null toggle-off, or same-direction re-click)
       const { error } = await supabase.from('forum_votes').delete().eq('id', existing.id);
       if (error) return NextResponse.json({ error: error.message }, { status: 400 });
     } else {
       // Change vote
-      const { error } = await supabase.from('forum_votes').update({ vote_type }).eq('id', existing.id);
+      const { error } = await supabase.from('forum_votes').update({ vote_type: dbVote }).eq('id', existing.id);
       if (error) return NextResponse.json({ error: error.message }, { status: 400 });
     }
   } else {
+    if (dbVote === null) {
+      return NextResponse.json({ success: true });
+    }
     // New vote
     const { error } = await supabase.from('forum_votes').insert({
       user_id: user.id,
       post_id: post_id || null,
       reply_id: reply_id || null,
-      vote_type,
+      vote_type: dbVote,
     });
     if (error) return NextResponse.json({ error: error.message }, { status: 400 });
   }
 
   // Update counts via SECURITY DEFINER RPCs (RLS-safe: users vote on others' posts)
+  let voteCount: number | null = null;
   if (post_id) {
     await supabase.rpc('update_post_vote_count', { target_post_id: post_id });
+    const { data: p } = await supabase.from('forum_posts').select('vote_count').eq('id', post_id).single();
+    voteCount = p?.vote_count ?? null;
   }
   if (reply_id) {
     await supabase.rpc('update_reply_vote_count', { target_reply_id: reply_id });
+    const { data: r } = await supabase.from('forum_replies').select('vote_count').eq('id', reply_id).single();
+    voteCount = r?.vote_count ?? null;
   }
 
-  return NextResponse.json({ success: true });
+  return NextResponse.json({ success: true, vote_count: voteCount });
 }

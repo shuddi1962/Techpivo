@@ -1,4 +1,4 @@
-import { createClient } from "@/lib/supabase/server"
+import { createPublicClient } from "@/lib/supabase/server"
 import { notFound } from "next/navigation"
 import Link from "next/link"
 import { Badge } from "@/components/ui/badge"
@@ -11,7 +11,7 @@ import type { Metadata } from "next"
 type Props = { params: { username: string } }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const supabase = createClient()
+  const supabase = createPublicClient()
   const { data: author } = await supabase.from("profiles").select("full_name, bio, id").eq("username", params.username).single()
   if (!author) return { title: "Author Not Found" }
 
@@ -33,7 +33,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 }
 
 export default async function AuthorPage({ params }: Props) {
-  const supabase = createClient()
+  const supabase = createPublicClient()
   const { data: author } = await supabase
     .from("profiles")
     .select("*")

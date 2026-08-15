@@ -121,13 +121,15 @@ export default function ForumPostPage({ params }: { params: { category: string; 
           vote_type: voteType,
         }),
       });
+      const d = await res.json().catch(() => ({}));
       if (!res.ok) return;
-      // Refresh votes
-      const delta = voteType === 'up' ? 1 : -1;
-      if (type === 'post' && post) {
-        setPost({ ...post, vote_count: post.vote_count + delta });
-      } else if (type === 'reply') {
-        setReplies(prev => prev.map(r => (r.id === id ? { ...r, vote_count: r.vote_count + delta } : r)));
+      // Use authoritative count from the server (route toggles: same-direction click removes the vote)
+      if (d.vote_count !== undefined && d.vote_count !== null) {
+        if (type === 'post' && post) {
+          setPost({ ...post, vote_count: d.vote_count });
+        } else if (type === 'reply') {
+          setReplies(prev => prev.map(r => (r.id === id ? { ...r, vote_count: d.vote_count } : r)));
+        }
       }
     } catch (e) {
       console.error('Failed to vote');

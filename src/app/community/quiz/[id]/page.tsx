@@ -36,7 +36,7 @@ interface Quiz {
 }
 
 interface QuizState {
-  status: 'loading' | 'ready' | 'answering' | 'finished';
+  status: 'loading' | 'ready' | 'answering' | 'grading' | 'finished';
   questions: Question[];
   currentIndex: number;
   answers: Record<string, string>;
@@ -97,7 +97,7 @@ export default function QuizRunnerPage({ params }: { params: { id: string } }) {
       setState(prev => ({ ...prev, currentIndex: prev.currentIndex + 1 }));
     } else {
       // Server-side grading — correct answers never reach the browser.
-      setState(prev => ({ ...prev, status: 'finished' }));
+      setState(prev => ({ ...prev, status: 'grading' }));
       const id = params.id;
       fetch(`/api/community/quiz/${id}/attempt`, {
         method: 'POST',
@@ -112,6 +112,7 @@ export default function QuizRunnerPage({ params }: { params: { id: string } }) {
           if (ok) {
             setState(prev => ({
               ...prev,
+              status: 'finished',
               attemptSaved: true,
               score: data.score ?? prev.score,
               correctAnswers: data.correct_answers ?? prev.correctAnswers,
@@ -119,10 +120,10 @@ export default function QuizRunnerPage({ params }: { params: { id: string } }) {
               results: data.results ?? [],
             }));
           } else {
-            setState(prev => ({ ...prev, saveError: true }));
+            setState(prev => ({ ...prev, status: 'finished', saveError: true }));
           }
         })
-        .catch(() => setState(prev => ({ ...prev, saveError: true })));
+        .catch(() => setState(prev => ({ ...prev, status: 'finished', saveError: true })));
     }
   };
 
@@ -252,6 +253,22 @@ export default function QuizRunnerPage({ params }: { params: { id: string } }) {
                   {state.currentIndex < state.questions.length - 1 ? 'Next Question' : 'Finish Quiz'}
                 </Button>
               </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    );
+  }
+
+  if (state.status === 'grading') {
+    return (
+      <div className="min-h-screen bg-background">
+        <div className="max-w-2xl mx-auto px-4 py-16 text-center">
+          <Card>
+            <CardContent className="p-12">
+              <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary mx-auto mb-6" />
+              <h1 className="text-2xl font-bold mb-2">Grading your answers…</h1>
+              <p className="text-muted-foreground text-sm">Scoring your quiz and updating your XP. One moment.</p>
             </CardContent>
           </Card>
         </div>

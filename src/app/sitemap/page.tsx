@@ -1,5 +1,5 @@
 import Image from "next/image"
-import { createClient } from "@/lib/supabase/server"
+import { createPublicClient } from "@/lib/supabase/server"
 import Link from "next/link"
 import { SITE_NAME, SITE_URL } from "@/lib/constants"
 import type { Metadata } from "next"
@@ -28,7 +28,7 @@ const staticPages = [
 ]
 
 export default async function SitemapPage() {
-  const supabase = createClient()
+  const supabase = createPublicClient()
 
   const [catsRes, postsRes, seriesRes, profilesRes] = await Promise.all([
     supabase.from("categories").select("*, subcategories(*)").order("name"),

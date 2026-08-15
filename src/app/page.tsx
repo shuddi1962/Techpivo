@@ -1,5 +1,5 @@
 import type { Metadata } from "next"
-import { createClient } from "@/lib/supabase/server"
+import { createPublicClient } from "@/lib/supabase/server"
 import { TopBar } from "@/components/layout/TopBar"
 import { Header } from "@/components/layout/Header"
 import { MainNav } from "@/components/layout/MainNav"
@@ -30,9 +30,9 @@ export const metadata: Metadata = {
 }
 
 export default async function HomePage() {
-  let supabase: ReturnType<typeof createClient> | null = null
+  let supabase: ReturnType<typeof createPublicClient> | null = null
   try {
-    supabase = createClient()
+    supabase = createPublicClient()
   } catch (e) {
     console.error("Failed to create Supabase client", e)
   }

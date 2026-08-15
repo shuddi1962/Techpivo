@@ -1,4 +1,4 @@
-import { createClient } from "@/lib/supabase/server"
+import { createPublicClient } from "@/lib/supabase/server"
 import { notFound } from "next/navigation"
 import Link from "next/link"
 import { Badge } from "@/components/ui/badge"
@@ -13,7 +13,7 @@ import type { Metadata } from "next"
 type Props = { params: { slug: string } }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const supabase = createClient()
+  const supabase = createPublicClient()
   const { data: cat } = await supabase.from("categories").select("*").eq("slug", params.slug).single()
   if (!cat) return { title: "Category Not Found" }
 
@@ -35,7 +35,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 }
 
 export default async function CategoryPage({ params }: Props) {
-  const supabase = createClient()
+  const supabase = createPublicClient()
   const { data: category } = await supabase
     .from("categories")
     .select("*, subcategories(*)")

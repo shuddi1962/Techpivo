@@ -42,10 +42,13 @@ export function VoteControl({ postId, replyId, initialCount, initialVote = null,
         if (res.status === 401) throw new Error('sign-in-required');
         throw new Error(data.error || 'Vote failed');
       }
+      const data = await res.json().catch(() => ({}));
+      if (typeof data.vote_count === 'number') setCount(data.vote_count);
     } catch (e) {
       setCount(prev.count);
       setVote(prev.vote);
-      setError((e as Error).message === 'sign-in-required' ? 'Sign in to vote' : 'Could not save vote');
+      const msg = (e as Error).message;
+      setError(msg === 'sign-in-required' ? 'Sign in to vote' : msg === 'Vote failed' || msg === 'Failed to fetch' ? 'Could not save vote' : msg);
     } finally {
       setBusy(false);
     }

@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { createClient as createServiceClient } from '@/lib/supabase/admin';
 import { checkRateLimit, clientIp, RATE_LIMITS } from '@/lib/rate-limiter';
 import { isSameOrigin } from '@/lib/csrf';
 
@@ -32,7 +33,7 @@ export async function POST(request: Request) {
 
   const { data: post, error: postErr } = await supabase
     .from('forum_posts')
-    .select('id, slug, title, content, content_type, created_at, author_id, accepted_reply_id')
+    .select('id, slug, title, content, content_type, created_at, author_id, accepted_reply_id, meta')
     .eq('id', postId)
     .maybeSingle();
   if (postErr || !post) {
@@ -128,7 +129,19 @@ export async function POST(request: Request) {
     if (!answerMd.trim()) {
       return NextResponse.json({ error: 'The AI returned an empty answer. Try again.' }, { status: 502 });
     }
-    return NextResponse.json({ answer_md: answerMd.trim() });
+
+    const answer = answerMd.trim();
+    try {
+      const service = createServiceClient();
+      await service
+        .from('forum_posts')
+        .update({ meta: { ...(post.meta ?? {}), ai_answer: answer } })
+        .eq('id', postId);
+    } catch {
+      // persistence is best-effort; the answer is still returned
+    }
+
+    return NextResponse.json({ answer_md: answer });
   } catch (e) {
     console.error('[ai-answer]', e);
     return NextResponse.json({ error: 'Failed to generate an AI answer.' }, { status: 502 });

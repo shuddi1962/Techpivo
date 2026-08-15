@@ -6,6 +6,7 @@ import { ArrowRight, BarChart3, CheckCircle2 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { getStoredVotes, storeVotes } from '@/lib/poll-votes';
 
 interface PollOption {
   id: string;
@@ -26,7 +27,7 @@ interface Poll {
 export function ActivePolls() {
   const supabase = createClient();
   const [polls, setPolls] = useState<Poll[]>([]);
-  const [votedPolls, setVotedPolls] = useState<Record<string, string>>({});
+  const [votedPolls, setVotedPolls] = useState<Record<string, string>>(() => getStoredVotes());
   const [error, setError] = useState<string | null>(null);
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
   const [liveAt, setLiveAt] = useState<Date | null>(null);
@@ -64,7 +65,11 @@ export function ActivePolls() {
   const vote = async (pollId: string, optionId: string) => {
     if (votedPolls[pollId]) return;
     setError(null);
-    setVotedPolls(prev => ({ ...prev, [pollId]: optionId }));
+    setVotedPolls(prev => {
+      const next = { ...prev, [pollId]: optionId };
+      storeVotes(next);
+      return next;
+    });
     setPolls(prev => prev.map(p =>
       p.id !== pollId ? p : {
         ...p,
@@ -81,11 +86,28 @@ export function ActivePolls() {
         body: JSON.stringify({ poll_id: pollId, option_id: optionId }),
       });
       if (!res.ok) {
-        setVotedPolls(prev => { const n = { ...prev }; delete n[pollId]; return n; });
-        setError('Vote failed. Please try again.');
+        setVotedPolls(prev => {
+          const n = { ...prev };
+          delete n[pollId];
+          storeVotes(n);
+          return n;
+        });
+        const data = await res.json().catch(() => ({}));
+        if (res.status === 401) {
+          setError('Sign in to vote in polls. <a class="underline" href="/auth/login">Sign in</a>');
+        } else if (res.status === 429) {
+          setError('Too many votes. Please wait a moment and try again.');
+        } else {
+          setError(data.error ? `Vote failed: ${data.error}` : 'Vote failed. Please try again.');
+        }
       }
     } catch {
-      setVotedPolls(prev => { const n = { ...prev }; delete n[pollId]; return n; });
+      setVotedPolls(prev => {
+        const n = { ...prev };
+        delete n[pollId];
+        storeVotes(n);
+        return n;
+      });
       setError('Network error. Please try again.');
     }
   };
@@ -111,7 +133,7 @@ export function ActivePolls() {
       </div>
       {error && (
         <div className="mb-4 p-3 rounded-xl bg-red-500/10 border border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 text-sm">
-          {error}
+          <span dangerouslySetInnerHTML={{ __html: error }} />
         </div>
       )}
       <div className="grid md:grid-cols-2 gap-4">

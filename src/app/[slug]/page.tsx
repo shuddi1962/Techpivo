@@ -1,4 +1,4 @@
-import { createClient } from "@/lib/supabase/server"
+import { createPublicClient } from "@/lib/supabase/server"
 import { notFound } from "next/navigation"
 import Link from "next/link"
 import { Badge } from "@/components/ui/badge"
@@ -23,7 +23,7 @@ export const revalidate = 3600
 type Props = { params: { slug: string } }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const supabase = createClient()
+  const supabase = createPublicClient()
   const { data: post } = await supabase
     .from("posts")
     .select("*, category:categories(*)")
@@ -58,7 +58,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 }
 
 export default async function PostPage({ params }: Props) {
-  const supabase = createClient()
+  const supabase = createPublicClient()
   const { data: post } = await supabase
     .from("posts")
     .select("*, category:categories(*), author:profiles(*)")

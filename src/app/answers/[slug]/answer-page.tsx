@@ -69,6 +69,7 @@ export default function AnswerPage() {
       }
       const d: ApiResponse = await res.json();
       setData(d);
+      setAiAnswer((d.post.meta?.ai_answer as string | undefined) ?? '');
       setError('');
     } catch {
       setError('Failed to load question.');
@@ -141,7 +142,7 @@ export default function AnswerPage() {
         document.getElementById(`reply-${d.reply?.id}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
       }, 150);
     } catch {
-      setError('Network error ΓÇö try again.');
+      setError('Network error — try again.');
     }
     setSubmitting(false);
   };
@@ -163,7 +164,7 @@ export default function AnswerPage() {
       }
       await load();
     } catch {
-      setError('Network error ΓÇö try again.');
+      setError('Network error — try again.');
     }
   };
 
@@ -267,7 +268,7 @@ export default function AnswerPage() {
                 <span className="truncate font-medium text-textPrimary hover:text-brand">{post.author?.full_name || post.author?.username || 'Member'}</span>
               </Link>
               <span className="text-xs">Lv.{post.author?.level ?? 1}</span>
-              <span aria-hidden>┬╖</span>
+              <span aria-hidden>·</span>
               <span className="text-xs">{timeAgo(post.created_at)}</span>
             </div>
 
@@ -300,11 +301,11 @@ export default function AnswerPage() {
       </article>
 
       {/* Health / resurrection panel */}
-      {status === 'unanswered' || status === 'new' || status === 'needs_context' ? (
+      {!aiAnswer && (status === 'unanswered' || status === 'new' || status === 'needs_context') ? (
         <div className="mt-4 rounded-xl border border-warning/30 bg-warning/5 p-4 flex flex-col sm:flex-row sm:items-center gap-3">
           <Sparkles className="h-5 w-5 text-warning shrink-0" aria-hidden />
           <div className="flex-1 text-sm text-textPrimary">
-            <strong>No answers yet.</strong> {isAuthor ? 'Your question is still open ΓÇö share it to get help.' : 'Be the first to help this member.'}
+            <strong>No answers yet.</strong> {isAuthor ? 'Your question is still open — share it to get help.' : 'Be the first to help this member.'}
           </div>
           {!isAuthor && (
             <button
@@ -460,7 +461,7 @@ export default function AnswerPage() {
             className="inline-flex items-center gap-2 rounded-lg bg-brand px-5 py-2.5 text-sm font-semibold text-white hover:opacity-90 disabled:opacity-50 transition-opacity"
           >
             {submitting ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : <Send className="h-4 w-4" aria-hidden />}
-            {submitting ? 'PostingΓÇª' : 'Post answer'}
+            {submitting ? 'Posting…' : 'Post answer'}
           </button>
         </div>
       </div>

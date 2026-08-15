@@ -1,4 +1,4 @@
-import { createClient } from "@/lib/supabase/server"
+import { createPublicClient } from "@/lib/supabase/server"
 import { SITE_URL } from "@/lib/constants"
 import { TOOL_SLUGS } from "@/lib/tools-metadata"
 import { CATEGORY_SLUGS, CATEGORY_ROUTE } from "@/lib/tools-categories"
@@ -8,7 +8,7 @@ import type { MetadataRoute } from "next"
 export const revalidate = 3600
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const supabase = createClient()
+  const supabase = createPublicClient()
   const now = new Date().toISOString()
 
   let posts: any[] = [], categories: any[] = [], subcategories: any[] = []

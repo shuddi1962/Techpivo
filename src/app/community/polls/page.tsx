@@ -7,6 +7,7 @@ import { createClient } from '@/lib/supabase/client';
 import { JsonLd } from '@/components/ui/jsonld';
 import { breadcrumbSchema } from '@/lib/jsonld';
 import { CommunityHero } from '@/components/community/community-hero';
+import { getStoredVotes, storeVotes } from '@/lib/poll-votes';
 
 interface PollOption {
   id: string;
@@ -27,7 +28,7 @@ interface Poll {
 export default function PollsPage() {
   const supabase = createClient();
   const [polls, setPolls] = useState<Poll[]>([]);
-  const [votedPolls, setVotedPolls] = useState<Record<string, string>>({});
+  const [votedPolls, setVotedPolls] = useState<Record<string, string>>(() => getStoredVotes());
   const [loading, setLoading] = useState(true);
   const [voteError, setVoteError] = useState<string | null>(null);
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
@@ -66,7 +67,11 @@ export default function PollsPage() {
   const vote = async (pollId: string, optionId: string) => {
     if (votedPolls[pollId]) return;
     setVoteError(null);
-    setVotedPolls(prev => ({ ...prev, [pollId]: optionId }));
+    setVotedPolls(prev => {
+      const next = { ...prev, [pollId]: optionId };
+      storeVotes(next);
+      return next;
+    });
     setPolls(prev => prev.map(p => {
       if (p.id !== pollId) return p;
       return {
@@ -84,7 +89,12 @@ export default function PollsPage() {
         body: JSON.stringify({ poll_id: pollId, option_id: optionId }),
       });
       if (!res.ok) {
-        setVotedPolls(prev => { const n = { ...prev }; delete n[pollId]; return n; });
+        setVotedPolls(prev => {
+          const n = { ...prev };
+          delete n[pollId];
+          storeVotes(n);
+          return n;
+        });
         setPolls(prev => prev.map(p => {
           if (p.id !== pollId) return p;
           return {
@@ -95,10 +105,22 @@ export default function PollsPage() {
             ),
           };
         }));
-        setVoteError('Vote failed. Please try again.');
+        const data = await res.json().catch(() => ({}));
+        if (res.status === 401) {
+          setVoteError('Sign in to vote in polls. <a class="underline" href="/auth/login">Sign in</a>');
+        } else if (res.status === 429) {
+          setVoteError('Too many votes. Please wait a moment and try again.');
+        } else {
+          setVoteError(data.error ? `Vote failed: ${data.error}` : 'Vote failed. Please try again.');
+        }
       }
     } catch {
-      setVotedPolls(prev => { const n = { ...prev }; delete n[pollId]; return n; });
+      setVotedPolls(prev => {
+        const n = { ...prev };
+        delete n[pollId];
+        storeVotes(n);
+        return n;
+      });
       setPolls(prev => prev.map(p => {
         if (p.id !== pollId) return p;
         return {
@@ -141,7 +163,7 @@ export default function PollsPage() {
         </div>
         {voteError && (
           <div className="mb-6 p-4 rounded-xl bg-red-500/10 border border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 text-sm">
-            {voteError}
+            <span dangerouslySetInnerHTML={{ __html: voteError }} />
           </div>
         )}
 
