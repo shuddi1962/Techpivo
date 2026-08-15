@@ -58,10 +58,25 @@ export async function GET(request: NextRequest) {
 
   const posts = await enrichAuthors(postRes.data ?? [], supabase);
 
+  const postIds = posts.map(p => p.id).filter(Boolean) as string[];
+  let my_votes: { target_id: string; vote: string }[] = [];
+  if (postIds.length) {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      const { data: votes } = await supabase
+        .from('forum_votes')
+        .select('post_id, reply_id, vote_type')
+        .eq('user_id', user.id)
+        .or(`post_id.in.(${postIds.join(',')})`);
+      my_votes = (votes ?? []).map(v => ({ target_id: v.post_id ?? v.reply_id, vote: v.vote_type === 1 ? 'up' : 'down' }));
+    }
+  }
+
   return NextResponse.json({
     query: q,
     posts,
     topics: topicRes.data ?? [],
     users: userRes.data ?? [],
+    my_votes,
   });
 }

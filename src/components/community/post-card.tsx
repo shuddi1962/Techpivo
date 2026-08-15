@@ -12,6 +12,7 @@ interface Props {
   post: CommunityPost;
   showBody?: boolean;
   className?: string;
+  myVote?: 'up' | 'down' | null;
 }
 
 const STATUS_TONE: Record<string, string> = {
@@ -28,16 +29,23 @@ export function postHref(post: CommunityPost): string {
   return `/community/forum/${post.category?.slug ?? 'general'}/${post.id}`;
 }
 
-export function PostCard({ post, showBody = false, className }: Props) {
+export function PostCard({ post, showBody = false, className, myVote = null }: Props) {
   const meta = CONTENT_TYPE_META[post.content_type];
   const status = questionHealthFor(post);
   const statusMeta = QUESTION_STATUS_META[status];
   const Icon = meta.icon;
 
   return (
-    <article className={cn('group relative border border-borderSoft rounded-xl bg-surface hover:bg-surface-elevated transition-colors', className)}>
+    <article className={cn('group relative border border-borderSoft rounded-xl bg-surface hover:bg-surface-elevated transition-colors overflow-hidden', className)}>
+      {post.image_url && (
+        <Link href={postHref(post)} className="block relative h-36 sm:h-44 overflow-hidden" tabIndex={-1} aria-hidden>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={post.image_url} alt="" loading="lazy" className="w-full h-full object-cover group-hover:scale-[1.02] transition-transform duration-500" />
+          <div className="absolute inset-0 bg-gradient-to-t from-surface via-surface/10 to-transparent" />
+        </Link>
+      )}
       <div className="flex gap-3 p-4">
-        <VoteControl postId={post.id} initialCount={post.vote_count} size="sm" className="pt-0.5" />
+        <VoteControl postId={post.id} initialCount={post.vote_count} initialVote={myVote} size="sm" className="pt-0.5" />
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-1 flex-wrap">
             <span className="inline-flex items-center gap-1 text-[11px] font-medium uppercase tracking-wide text-textSecondary">

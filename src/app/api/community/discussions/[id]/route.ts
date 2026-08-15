@@ -20,8 +20,11 @@ export async function GET(
   if (!post) return NextResponse.json({ error: 'Not found' }, { status: 404 });
   const [postFull] = await enrichAuthors([post], supabase);
 
-  // Increment view count via SECURITY DEFINER RPC (RLS-safe)
-  await supabase.rpc('increment_views', { target_id: id, target_type: 'forum' });
+  // Increment view count via SECURITY DEFINER RPC (RLS-safe).
+  // Only when count_view=1 — the client dedupes to once per post per 24h.
+  if (request.nextUrl.searchParams.get('count_view') === '1') {
+    await supabase.rpc('increment_views', { target_id: id, target_type: 'forum' });
+  }
 
   const { data: replies } = await supabase
     .from('forum_replies')
@@ -33,5 +36,21 @@ export async function GET(
 
   const repliesFull = await enrichAuthors(replies || [], supabase);
 
-  return NextResponse.json({ post: postFull, replies: repliesFull });
+  // Current user's vote state (RLS owner policy: only own rows)
+  const { data: { user } } = await supabase.auth.getUser();
+  let my_votes: { target_id: string; vote: string }[] = [];
+  if (user) {
+    const ids = [postFull.id, ...repliesFull.map(r => r.id)];
+    const { data: votes } = await supabase
+      .from('forum_votes')
+      .select('post_id, reply_id, vote_type')
+      .eq('user_id', user.id)
+      .or(`post_id.in.(${ids.join(',')}),reply_id.in.(${ids.join(',')})`);
+    my_votes = (votes || []).map(v => ({
+      target_id: v.post_id ?? v.reply_id,
+      vote: v.vote_type === 1 ? 'up' : 'down',
+    }));
+  }
+
+  return NextResponse.json({ post: postFull, replies: repliesFull, my_votes });
 }

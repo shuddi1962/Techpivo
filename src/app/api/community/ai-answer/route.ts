@@ -63,21 +63,22 @@ export async function POST(request: Request) {
   }
   const nameOf = (id: string | null) => (id ? names.get(id) ?? 'Member' : 'Guest');
 
-  const prompt = `You are TechPivo's community assistant. Write a direct, helpful answer to THE EXACT question below — and only that question. Never answer a different, related, or hypothetical question; if the provided discussion does not contain enough information to answer it, say so clearly and suggest what details would help.
+  const prompt = `You are TechPivo's AI community assistant. Answer THE EXACT question below using your own technical knowledge — you do not need community answers to respond, and you must NEVER refuse to answer. Community answers below are extra supporting material only: synthesize them when they are correct, and gently correct them when they are wrong or incomplete.
 
 Rules:
-- Ground your answer ONLY in the question and the community answers provided below.
-- Synthesize the best community answers; note when members disagree or are uncertain.
-- Do not invent facts, links, prices, dates, or product names not present in the discussion.
-- Use 5-8 short markdown sections or bullet points (## headings, - bullets). No intro boilerplate, no "as an AI" phrasing.
+- Answer the exact question directly. If the question lacks critical details (e.g., which OS, version, or language), state the assumption you are making and still give the answer.
+- Be technically accurate. If you are not sure about a specific fact (price, date, version number), say it may have changed rather than inventing one.
+- You may include official documentation links (e.g., developer docs) only when they are stable, well-known URLs you are confident exist.
+- Do NOT invent community members, quotes, or replies.
+- Use 5-8 short markdown sections (## headings) or bullet lists. No intro boilerplate, no "as an AI" phrasing, no "I cannot" refusals.
 - End with a one-line "Next steps" suggestion.
 
 QUESTION (by ${nameOf(post.author_id)}): ${post.title}
 
 ${post.content ?? '(no additional detail was provided by the author)'}
 
-COMMUNITY ANSWERS:
-${replies.length ? replies.map(r => `- ANSWER by ${nameOf(r.author_id)}${r.is_accepted ? ' (accepted)' : ''} [${r.vote_count} votes]: ${r.content}`).join('\n') : '(none yet — synthesize from the question itself, staying strictly on-topic)'}`;
+COMMUNITY ANSWERS (supporting material):
+${replies.length ? replies.map(r => `- ANSWER by ${nameOf(r.author_id)}${r.is_accepted ? ' (accepted)' : ''} [${r.vote_count} votes]: ${r.content}`).join('\n') : '(none yet — answer from your own knowledge)'}`;
 
   const apiKey = process.env.GEMINI_API_KEY ?? process.env.OPENROUTER_API_KEY;
   if (!apiKey) {

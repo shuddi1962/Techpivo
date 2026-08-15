@@ -22,6 +22,7 @@ export function CommunitySearch() {
   const initialQ = searchParams.get('q') ?? '';
   const [q, setQ] = useState(initialQ);
   const [results, setResults] = useState<SearchResult | null>(null);
+  const [myVotes, setMyVotes] = useState<Record<string, 'up' | 'down'>>({});
   const [loading, setLoading] = useState(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -36,6 +37,9 @@ export function CommunitySearch() {
       const res = await fetch(`/api/community/search?q=${encodeURIComponent(term)}`, { cache: 'no-store' });
       const d = await res.json();
       setResults(d);
+      if (Array.isArray(d.my_votes)) {
+        setMyVotes(Object.fromEntries(d.my_votes.map((v: { target_id: string; vote: string }) => [v.target_id, v.vote as 'up' | 'down'])));
+      }
     } catch {
       setResults(null);
     } finally {
@@ -94,7 +98,7 @@ export function CommunitySearch() {
         <section className="mb-8">
           <h2 className="text-sm font-semibold uppercase tracking-wide text-textSecondary mb-3">Posts ({results.posts.length})</h2>
           <div className="space-y-3">
-            {results.posts.map(p => <PostCard key={p.id} post={p} showBody={false} />)}
+            {results.posts.map(p => <PostCard key={p.id} post={p} showBody={false} myVote={myVotes[p.id] ?? null} />)}
           </div>
         </section>
       )}

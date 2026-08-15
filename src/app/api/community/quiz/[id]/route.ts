@@ -12,7 +12,7 @@ export async function GET(
 
   const { data: quiz } = await supabase
     .from('quizzes')
-    .select('id, title, description, category, image_url, difficulty, time_limit, question_count, is_published, created_at')
+    .select('id, title, description, category, image_url, difficulty, time_limit, question_count, is_published, created_at, community_post_id')
     .eq('id', id)
     .eq('is_published', true)
     .single();

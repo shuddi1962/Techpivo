@@ -132,3 +132,23 @@ export function timeAgo(date: string): string {
   if (seconds < 31536000) return `${Math.floor(seconds / 2592000)}mo ago`;
   return `${Math.floor(seconds / 31536000)}y ago`;
 }
+
+const VIEW_KEY = 'tp_viewed_posts_v1';
+
+/**
+ * View-count realism: only count one view per post per 24h per browser.
+ * Returns true the first time a post is seen; marks it seen when
+ * shouldCountView is consumed (call after a successful page load).
+ */
+export function shouldCountView(postId: string): boolean {
+  try {
+    const stored = JSON.parse(localStorage.getItem(VIEW_KEY) || '{}') as Record<string, number>;
+    const last = stored[postId];
+    if (last && Date.now() - last < 24 * 60 * 60 * 1000) return false;
+    stored[postId] = Date.now();
+    localStorage.setItem(VIEW_KEY, JSON.stringify(stored));
+    return true;
+  } catch {
+    return true;
+  }
+}

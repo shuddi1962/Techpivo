@@ -46,6 +46,7 @@ export interface CommunityPost {
   bounty_points: number;
   is_locked: boolean;
   excerpt: string | null;
+  image_url: string | null;
   meta: Record<string, unknown>;
   author?: CommunityAuthor | null;
   category?: { name: string; slug: string; image_url?: string | null } | null;

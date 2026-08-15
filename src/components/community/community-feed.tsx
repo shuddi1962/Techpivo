@@ -25,6 +25,7 @@ const RAIL_META: Record<FeedRail, { label: string; icon: typeof Compass }> = {
 
 interface FeedResponse {
   items: CommunityPost[];
+  my_votes?: { target_id: string; vote: string }[];
   next_cursor: string | null;
   has_more: boolean;
   requires_auth?: boolean;
@@ -48,6 +49,7 @@ export function CommunityFeed({ rails = ['for_you', 'trending', 'latest', 'unans
   const [loadingMore, setLoadingMore] = useState(false);
   const [requiresAuth, setRequiresAuth] = useState(false);
   const [error, setError] = useState('');
+  const [myVotes, setMyVotes] = useState<Record<string, 'up' | 'down'>>({});
   const sentinelRef = useRef<HTMLDivElement>(null);
   const busyRef = useRef(false);
 
@@ -71,6 +73,10 @@ export function CommunityFeed({ rails = ['for_you', 'trending', 'latest', 'unans
         setItems(prev => (reset ? d.items : [...prev, ...d.items]));
         setCursor(d.next_cursor);
         setHasMore(d.has_more);
+        if (d.my_votes) {
+          const next = Object.fromEntries(d.my_votes.map(v => [v.target_id, v.vote as 'up' | 'down']));
+          setMyVotes(prev => ({ ...prev, ...next }));
+        }
       }
       setError('');
     } catch {
@@ -168,7 +174,7 @@ export function CommunityFeed({ rails = ['for_you', 'trending', 'latest', 'unans
       ) : (
         <div className="space-y-3">
           {items.map(p => (
-            <PostCard key={p.id} post={p} />
+            <PostCard key={p.id} post={p} myVote={myVotes[p.id] ?? null} />
           ))}
           <div ref={sentinelRef} className="h-1" />
           {loadingMore && (

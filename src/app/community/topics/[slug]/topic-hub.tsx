@@ -41,6 +41,7 @@ export function TopicHub({
   const supabase = createClient();
   const [topic] = useState<TopicShape>(initialTopic);
   const [posts, setPosts] = useState<CommunityPost[]>(initialPosts);
+  const [myVotes, setMyVotes] = useState<Record<string, 'up' | 'down'>>({});
   const [followerCount, setFollowerCount] = useState(initialFollowerCount);
   const [postCount, setPostCount] = useState(initialPostCount);
   const [myFollow, setMyFollow] = useState(initialMyFollow);
@@ -60,6 +61,9 @@ export function TopicHub({
         setFollowerCount(d.follower_count);
         if (d.post_count !== undefined) setPostCount(d.post_count);
         setMyFollow(d.my_follow);
+      }
+      if (Array.isArray(d.my_votes)) {
+        setMyVotes(prev => ({ ...prev, ...Object.fromEntries(d.my_votes.map((v: { target_id: string; vote: string }) => [v.target_id, v.vote as 'up' | 'down'])) }));
       }
       setHasMore(d.has_more);
       cursorRef.current = d.next_cursor;
@@ -179,7 +183,7 @@ export function TopicHub({
         ) : (
           <>
             <div className="space-y-3">
-              {posts.map(p => <PostCard key={p.id} post={p} showBody={false} />)}
+              {posts.map(p => <PostCard key={p.id} post={p} showBody={false} myVote={myVotes[p.id] ?? null} />)}
             </div>
             {hasMore && (
               <div className="mt-5 text-center">

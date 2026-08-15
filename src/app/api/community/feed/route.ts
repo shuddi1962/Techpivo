@@ -120,12 +120,29 @@ export async function GET(request: NextRequest) {
 
   items = await enrichAuthors(items, supabase);
 
+  // Current user's vote state for these posts (RLS owner policy: only own rows)
+  const { data: { user } } = await supabase.auth.getUser();
+  let my_votes: { target_id: string; vote: string }[] = [];
+  if (user && items.length > 0) {
+    const ids = items.map(i => (i as { id: string }).id);
+    const { data: votes } = await supabase
+      .from('forum_votes')
+      .select('post_id, vote_type')
+      .eq('user_id', user.id)
+      .in('post_id', ids);
+    my_votes = (votes || []).map(v => ({
+      target_id: v.post_id,
+      vote: v.vote_type === 1 ? 'up' : 'down',
+    }));
+  }
+
   const last = items[items.length - 1] as { created_at?: string } | undefined;
   const has_more = items.length >= limit;
 
   return NextResponse.json({
     rail,
     items,
+    my_votes,
     next_cursor: last?.created_at ?? null,
     has_more,
     experts_fallback: rail === 'experts' && ids.length === 0,

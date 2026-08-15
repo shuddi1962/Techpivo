@@ -153,6 +153,7 @@ export async function POST(request: NextRequest) {
   }
 
   const meta: Record<string, unknown> = {};
+  const imageUrl = validateUrl(body.image_url);
   let pollPayload: Record<string, unknown> | null = null;
   let quizPayload: { quiz: Record<string, unknown>; questions: Record<string, unknown>[] } | null = null;
 
@@ -169,6 +170,7 @@ export async function POST(request: NextRequest) {
     pollPayload = {
       title,
       description: content || null,
+      image_url: imageUrl,
       community_post_id: null,
       allow_change: bool(body.allow_change),
       allow_multiple: bool(body.allow_multiple),
@@ -211,6 +213,7 @@ export async function POST(request: NextRequest) {
       quiz: {
         title,
         description: content || null,
+        image_url: imageUrl,
         difficulty: difficulty ?? 'beginner',
         time_limit: [0, 300, 600, 900, 1800].includes(Number(body.time_limit_seconds)) ? Number(body.time_limit_seconds) : 0,
         question_count: clean.length,
@@ -268,6 +271,7 @@ export async function POST(request: NextRequest) {
       difficulty,
       bounty_points: bounty,
       excerpt: content.length > 240 ? content.slice(0, 240) + '…' : content || null,
+      image_url: imageUrl,
       meta: Object.keys(meta).length ? meta : {},
     })
     .select()
@@ -293,6 +297,7 @@ export async function POST(request: NextRequest) {
         .insert({
           title: pollPayload.title,
           description: pollPayload.description,
+          image_url: pollPayload.image_url,
           community_post_id: postId,
           allow_change: pollPayload.allow_change,
           allow_multiple: pollPayload.allow_multiple,
@@ -315,6 +320,7 @@ export async function POST(request: NextRequest) {
         .insert({
           title: quizPayload.quiz.title,
           description: quizPayload.quiz.description,
+          image_url: quizPayload.quiz.image_url,
           difficulty: quizPayload.quiz.difficulty,
           time_limit: quizPayload.quiz.time_limit,
           question_count: quizPayload.quiz.question_count,

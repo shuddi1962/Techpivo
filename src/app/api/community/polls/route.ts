@@ -3,13 +3,16 @@ import { createClient } from '@/lib/supabase/server';
 import { checkRateLimit, clientIp, RATE_LIMITS } from '@/lib/rate-limiter';
 import { isSameOrigin } from '@/lib/csrf';
 
-export async function GET() {
+export async function GET(request: NextRequest) {
+  const postId = request.nextUrl.searchParams.get('post_id');
   const supabase = await createClient();
-  const { data } = await supabase
+  let q = supabase
     .from('polls')
     .select('*, options:poll_options(*)')
     .eq('is_active', true)
     .order('created_at', { ascending: false });
+  if (postId) q = q.eq('community_post_id', postId);
+  const { data } = await q;
   return NextResponse.json({ polls: data || [] });
 }
 

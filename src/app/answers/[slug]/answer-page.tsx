@@ -8,7 +8,7 @@ import { VoteControl } from '@/components/community/vote-control';
 import { TopicChip } from '@/components/community/topic-chip';
 import { AnswerSkeleton } from '@/components/community/skeletons';
 import { CONTENT_TYPE_META, QUESTION_STATUS_META, questionHealthFor, type CommunityPost, type CommunityReply } from '@/lib/community-types';
-import { timeAgo, formatNumber, getLevelForXP } from '@/lib/community-utils';
+import { timeAgo, formatNumber, getLevelForXP, shouldCountView } from '@/lib/community-utils';
 import { cn } from '@/lib/utils';
 import {
   CheckCircle2, CircleCheck, Eye, Gift, Loader2, MessageSquare,
@@ -53,11 +53,14 @@ export default function AnswerPage() {
 
   const slug = params.slug;
   const answerBoxRef = useRef<HTMLDivElement>(null);
+  const countViewRef = useRef(shouldCountView(slug));
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch(`/api/community/answers/${encodeURIComponent(slug)}?sort=${sort}`);
+      const params = new URLSearchParams({ sort });
+      if (countViewRef.current) params.set('count_view', '1');
+      const res = await fetch(`/api/community/answers/${encodeURIComponent(slug)}?${params}`);
       if (res.status === 301) {
         const d = await res.json();
         if (d.redirect) { router.replace(d.redirect); return; }
@@ -67,6 +70,7 @@ export default function AnswerPage() {
         setLoading(false);
         return;
       }
+      countViewRef.current = false;
       const d: ApiResponse = await res.json();
       setData(d);
       setAiAnswer((d.post.meta?.ai_answer as string | undefined) ?? '');
@@ -278,7 +282,7 @@ export default function AnswerPage() {
             )}
 
             <div className="flex items-center gap-3 mt-5 pt-4 border-t border-borderSoft sm:hidden">
-              <VoteControl postId={post.id} initialCount={post.vote_count} size="sm" />
+              <VoteControl postId={post.id} initialCount={post.vote_count} initialVote={answeredIds.has(post.id) ? (data!.my_votes.find(v => v.target_id === post.id)?.vote as 'up' | 'down') || null : null} size="sm" />
               <ShareMenu title={post.title} buttonClassName="text-xs" />
             </div>
           </div>
@@ -406,7 +410,7 @@ export default function AnswerPage() {
                     <CommunityMarkdown content={r.content} />
                   </div>
                   <div className="flex items-center gap-3 mt-3 sm:hidden">
-                    <VoteControl replyId={r.id} initialCount={r.vote_count} size="sm" />
+                    <VoteControl replyId={r.id} initialCount={r.vote_count} initialVote={answeredIds.has(r.id) ? (data!.my_votes.find(v => v.target_id === r.id)?.vote as 'up' | 'down') || null : null} size="sm" />
                   </div>
                   {isAuthor && !post.is_solved && (
                     <div className="mt-3 flex justify-end">

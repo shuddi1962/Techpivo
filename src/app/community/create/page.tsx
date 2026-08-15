@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
 import { CONTENT_TYPE_META, CONTENT_TYPE_LIST, type CommunityContentType } from '@/lib/community-types';
-import { AlertTriangle, CheckCircle2, Loader2, Plus, Trash2, X, Wand2 } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, ImagePlus, Loader2, Plus, Trash2, UploadCloud, Wand2, X } from 'lucide-react';
 
 interface DuplicateHit {
   id: string;
@@ -57,6 +57,7 @@ function CreatePage() {
   const [anonymous, setAnonymous] = useState(false);
 
   const [quizQuestions, setQuizQuestions] = useState<QuizQuestionDraft[]>([EMPTY_QUIZ_Q()]);
+  const [quizTimeLimit, setQuizTimeLimit] = useState(0);
 
   const [amaHost, setAmaHost] = useState('');
   const [amaGuests, setAmaGuests] = useState('');
@@ -69,6 +70,9 @@ function CreatePage() {
   const [feedbackMode, setFeedbackMode] = useState('');
 
   const [positionFor, setPositionFor] = useState('');
+  const [imageUrl, setImageUrl] = useState('');
+  const [uploading, setUploading] = useState(false);
+  const [imageError, setImageError] = useState('');
   const [positionAgainst, setPositionAgainst] = useState('');
 
   const [categories, setCategories] = useState<{ id: string; name: string }[]>([]);
@@ -120,6 +124,7 @@ function CreatePage() {
       content: content.trim(),
       tags: tags.split(',').map(t => t.trim()).filter(Boolean),
       category_id: categoryId || undefined,
+      image_url: imageUrl || undefined,
     };
 
     if (type === 'question') {
@@ -149,6 +154,7 @@ function CreatePage() {
         explanation: q.explanation.trim() || undefined,
         points: Math.min(10, Math.max(1, q.points)),
       }));
+      payload.time_limit_seconds = quizTimeLimit;
     }
 
     if (type === 'ama') {
@@ -194,6 +200,24 @@ function CreatePage() {
       setError('Network error. Please try again.');
     }
     setBusy(false);
+  };
+
+  const uploadImage = async (file: File) => {
+    setImageError('');
+    if (!file.type.startsWith('image/')) { setImageError('Please choose an image file.'); return; }
+    if (file.size > 8 * 1024 * 1024) { setImageError('Image must be under 8 MB.'); return; }
+    setUploading(true);
+    try {
+      const fd = new FormData();
+      fd.append('file', file);
+      const res = await fetch('/api/upload', { method: 'POST', body: fd });
+      const d = await res.json().catch(() => ({}));
+      if (!res.ok || !d.url) { setImageError(d.error || 'Upload failed. Try again.'); return; }
+      setImageUrl(d.url);
+    } catch {
+      setImageError('Upload failed. Try again.');
+    }
+    setUploading(false);
   };
 
   const improve = async () => {
@@ -401,6 +425,16 @@ function CreatePage() {
                   </div>
                 ))}
               </div>
+              <div className="mt-4">
+                <label className={labelCls}>Time limit (optional)</label>
+                <select className={inputCls} value={quizTimeLimit} onChange={e => setQuizTimeLimit(Number(e.target.value))}>
+                  <option value={0}>No time limit</option>
+                  <option value={300}>5 minutes</option>
+                  <option value={600}>10 minutes</option>
+                  <option value={900}>15 minutes</option>
+                  <option value={1800}>30 minutes</option>
+                </select>
+              </div>
             </div>
           )}
 
@@ -461,6 +495,50 @@ function CreatePage() {
               </div>
             </div>
           )}
+
+          {/* Optional image (all types) */}
+          <div className="mb-4">
+            <label className={labelCls}>Cover image (optional)</label>
+            {imageUrl ? (
+              <div className="relative rounded-xl border border-borderSoft overflow-hidden">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={imageUrl} alt="Post cover preview" className="h-44 w-full object-cover" />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+                <div className="absolute bottom-2 right-2 flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setImageUrl('')}
+                    className="inline-flex items-center gap-1 rounded-lg bg-black/70 px-3 py-1.5 text-xs font-medium text-white hover:bg-black/90"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" aria-hidden /> Remove
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="flex flex-col sm:flex-row gap-2">
+                <label
+                  className={cn(
+                    'flex flex-1 cursor-pointer items-center justify-center gap-2 rounded-lg border border-dashed border-borderSoft bg-surface-2/50 px-4 py-6 text-sm text-textSecondary hover:border-brand/50 hover:text-brand transition-colors',
+                    uploading && 'opacity-60 pointer-events-none'
+                  )}
+                >
+                  {uploading ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : <UploadCloud className="h-4 w-4" aria-hidden />}
+                  {uploading ? 'Uploading…' : 'Upload an image'}
+                  <input type="file" accept="image/*" className="hidden" onChange={e => { const f = e.target.files?.[0]; if (f) void uploadImage(f); e.target.value = ''; }} />
+                </label>
+                <div className="flex-1 flex items-center gap-2">
+                  <ImagePlus className="h-4 w-4 text-textSecondary shrink-0" aria-hidden />
+                  <input
+                    className={inputCls}
+                    value={imageUrl}
+                    onChange={e => { setImageUrl(e.target.value); setImageError(''); }}
+                    placeholder="…or paste an image URL (https://)"
+                  />
+                </div>
+              </div>
+            )}
+            {imageError && <p className="text-xs text-danger mt-1">{imageError}</p>}
+          </div>
 
           <div className="grid grid-cols-2 gap-4">
             <div>

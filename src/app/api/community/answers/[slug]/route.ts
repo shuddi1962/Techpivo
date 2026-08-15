@@ -41,7 +41,10 @@ export async function GET(
     return NextResponse.json({ error: 'Not a question', redirect: `/community/forum/${postFull.category?.slug ?? 'general'}/${postFull.id}` }, { status: 301 });
   }
 
-  await supabase.rpc('increment_views', { target_id: postFull.id, target_type: 'forum' });
+  const count_view = request.nextUrl.searchParams.get('count_view') === '1';
+  if (count_view) {
+    await supabase.rpc('increment_views', { target_id: postFull.id, target_type: 'forum' });
+  }
 
   const sort = request.nextUrl.searchParams.get('sort') || 'best';
   let query = supabase
@@ -73,12 +76,18 @@ export async function GET(
   const { data: { user } } = await supabase.auth.getUser();
   let my_votes: { target_id: string; vote: string }[] = [];
   if (user) {
+    const ids = [postFull.id, ...repliesFull.map(r => r.id)];
+    // forum_votes columns are post_id / reply_id / vote_type (INTEGER: 1 up, -1 down).
+    // RLS limits rows to the current user's own votes (owner policy), so no leak.
     const { data: votes } = await supabase
       .from('forum_votes')
-      .select('target_id, vote')
+      .select('post_id, reply_id, vote_type')
       .eq('user_id', user.id)
-      .in('target_id', [postFull.id, ...repliesFull.map(r => r.id)]);
-    my_votes = votes || [];
+      .or(`post_id.in.(${ids.join(',')}),reply_id.in.(${ids.join(',')})`);
+    my_votes = (votes || []).map(v => ({
+      target_id: v.post_id ?? v.reply_id,
+      vote: v.vote_type === 1 ? 'up' : 'down',
+    }));
   }
 
   return NextResponse.json({

@@ -48,7 +48,7 @@ export async function GET(
   ]);
   const postIds = (links || []).map(l => l.post_id);
   if (postIds.length === 0) {
-    return NextResponse.json({ topic, posts: [], next_cursor: null, has_more: false, follower_count: followerCount || 0, my_follow: false, post_count: 0 });
+    return NextResponse.json({ topic, posts: [], next_cursor: null, has_more: false, follower_count: followerCount || 0, my_follow: false, post_count: 0, my_votes: [] });
   }
   query = query.in('id', postIds);
   if (cursor) query = query.lt('created_at', cursor);
@@ -58,14 +58,18 @@ export async function GET(
 
   const { data: { user } } = await supabase.auth.getUser();
   let my_follow = false;
+  let my_votes: { target_id: string; vote: string }[] = [];
   if (user) {
-    const { data: follow } = await supabase
-      .from('topic_follows')
-      .select('id')
-      .eq('user_id', user.id)
-      .eq('topic_id', topic.id)
-      .maybeSingle();
-    my_follow = Boolean(follow);
+    const [followRes, votesRes] = await Promise.all([
+      supabase.from('topic_follows').select('id').eq('user_id', user.id).eq('topic_id', topic.id).maybeSingle(),
+      supabase
+        .from('forum_votes')
+        .select('post_id, reply_id, vote_type')
+        .eq('user_id', user.id)
+        .or(`post_id.in.(${postIds.join(',')})`),
+    ]);
+    my_follow = Boolean(followRes.data);
+    my_votes = (votesRes.data ?? []).map(v => ({ target_id: v.post_id ?? v.reply_id, vote: v.vote_type === 1 ? 'up' : 'down' }));
   }
 
   return NextResponse.json({
@@ -75,6 +79,7 @@ export async function GET(
     has_more: (raw || []).length > limit,
     follower_count: followerCount || 0,
     my_follow,
+    my_votes,
     post_count: postIds.length,
   });
 }
