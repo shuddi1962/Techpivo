@@ -151,3 +151,73 @@ export async function searchFeaturedImage(query: string): Promise<string | null>
     return null
   }
 }
+
+interface EnrichResult {
+  content: string
+  featuredImage: string | null
+}
+
+function escapeAttr(value: string): string {
+  return value.replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+}
+
+function figureHtml(url: string, alt: string): string {
+  return `<figure><img src="${escapeAttr(url)}" alt="${escapeAttr(alt.slice(0, 120))}" loading="lazy" /></figure>`
+}
+
+/**
+ * AI article enrichment: picks a web featured image AND inserts real, relevant
+ * web images (charts, diagrams, screenshots, photos) into the article body —
+ * one figure per matching H2 section — so AI-written articles are fully
+ * illustrated from the live web. Pexels is only a fallback for the featured slot.
+ */
+export async function enrichArticleWithWebImages(
+  content: string,
+  topic: string,
+  maxFigures = 2
+): Promise<EnrichResult> {
+  if (!content) return { content, featuredImage: null }
+
+  const cleanTopic = topic.trim().replace(/\s+/g, " ").slice(0, 80)
+
+  const featuredPromise = searchFeaturedImage(cleanTopic)
+
+  const headings: { text: string; end: number }[] = []
+  const h2Re = /<h2[^>]*>(.*?)<\/h2>/gi
+  let m: RegExpExecArray | null
+  while ((m = h2Re.exec(content)) !== null) {
+    const text = m[1].replace(/<[^>]*>/g, "").trim()
+    if (text) headings.push({ text: text.slice(0, 80), end: h2Re.lastIndex })
+  }
+
+  const figureQueries = headings
+    .slice(0, 4)
+    .map((h) => h.text)
+    .filter((t) => t && t.toLowerCase() !== cleanTopic.toLowerCase())
+
+  const figurePromises = figureQueries.map(async (q) => ({
+    query: q,
+    src: await searchWebImage(q),
+  }))
+
+  const [featuredImage, figureResults] = await Promise.all([
+    featuredPromise,
+    Promise.all(figurePromises),
+  ])
+
+  let out = content
+  let inserted = 0
+  for (let i = 0; i < headings.length && inserted < maxFigures; i++) {
+    const result = figureResults.find((r) => r.query === headings[i].text)
+    const src = result?.src
+    if (!src) continue
+    const figure = figureHtml(src, headings[i].text)
+    const afterH2 = out.slice(headings[i].end)
+    const pClose = afterH2.indexOf("</p>")
+    const insertAt = pClose >= 0 ? headings[i].end + pClose + 4 : headings[i].end
+    out = out.slice(0, insertAt) + "\n" + figure + "\n" + out.slice(insertAt)
+    inserted++
+  }
+
+  return { content: out, featuredImage }
+}

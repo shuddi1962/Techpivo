@@ -141,7 +141,7 @@ export default async function PostPage({ params }: Props) {
 
             {/* Featured Image Card */}
             <div className="bg-card border rounded-2xl overflow-hidden mb-8 shadow-sm">
-              <div className="relative w-full bg-muted max-h-72 md:max-h-96 overflow-hidden">
+              <div className="relative w-full h-72 md:h-96 bg-muted overflow-hidden">
                 <SafeImage
                   src={post.featured_image}
                   alt={post.title}

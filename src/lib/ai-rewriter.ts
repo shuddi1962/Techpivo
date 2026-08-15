@@ -493,7 +493,6 @@ async function geminiGrounded(
         },
         tools: [
           { googleSearch: {} },
-          { googleSearchRetrieval: { dynamicRetrievalConfig: { mode: 'MODE_DYNAMIC', dynamicThreshold: 0.5 } } },
         ],
       }
 

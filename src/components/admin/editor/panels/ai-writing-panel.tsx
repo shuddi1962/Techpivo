@@ -84,7 +84,7 @@ export function AiWritingPanel() {
       const source = data.meta?.source as { name?: string; url?: string } | null | undefined
       const excerpt = a.answerCapsule || a.seoDescription || a.keyPoints?.[0] || ""
       const category = categories.find((c) => c.slug === a.suggestedCategory)
-      const featured = post.featured_image || ""
+      const featured = (a as { featured_image?: string }).featured_image || post.featured_image || ""
 
       updatePost({
         title:              a.headline,

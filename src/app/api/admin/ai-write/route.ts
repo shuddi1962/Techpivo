@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { manualWriteFromTopic, manualWriteFromUrl } from "@/lib/ai-rewriter"
+import { enrichArticleWithWebImages } from "@/lib/web-images"
 import { createClient } from "@/lib/supabase/server"
 
 const MONTHLY_MANUAL_CAP = 2000
@@ -101,17 +102,33 @@ export async function POST(req: NextRequest) {
       }, { status: 500 })
     }
 
+    // Web images are the default source site-wide: fetch a featured image AND
+    // insert real, relevant web figures (charts, diagrams, photos) into the
+    // article body so AI output arrives fully illustrated.
+    const enriched = await enrichArticleWithWebImages(
+      result.article.content,
+      result.article.headline || input,
+      2
+    )
+    const article = {
+      ...result.article,
+      content:        enriched.content,
+      featured_image: enriched.featuredImage,
+      og_image:       enriched.featuredImage,
+      twitter_image:  enriched.featuredImage,
+    }
+
     await logManualUsage(
       supabase,
       mode,
       input,
-      result.article.headline,
+      article.headline,
       "gemini-2.5-flash",
     )
 
     return NextResponse.json({
       ok: true,
-      article: result.article,
+      article,
       meta: {
         elapsed_seconds:   elapsed,
         quota_used:        usedThisMonth + 1,

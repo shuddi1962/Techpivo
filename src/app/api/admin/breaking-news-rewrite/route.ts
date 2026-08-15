@@ -4,7 +4,7 @@ import { manualWriteFromTopic, manualWriteFromUrl, getGeminiQuotaStatus } from "
 import { SITE_URL } from "@/lib/constants"
 import { logAIUsage } from "@/lib/ai-usage"
 import { storeRemoteImage } from "@/lib/media"
-import { searchFeaturedImage } from "@/lib/web-images"
+import { searchFeaturedImage, enrichArticleWithWebImages } from "@/lib/web-images"
 
 export const dynamic = "force-dynamic"
 export const maxDuration = 300
@@ -127,13 +127,16 @@ export async function POST(request: Request) {
     const categoryId = catMap.get(catSlug) || null
 
     const searchTerm = headline.split(/\s+/).slice(0, 4).join(" ")
-    let remoteImage = await searchFeaturedImage(searchTerm)
+    // Web images are the default site-wide: enrich the article body with real
+    // web figures (charts, diagrams, photos) matching each section + a featured image.
+    const enriched = await enrichArticleWithWebImages(article.content, searchTerm, 2)
+    let remoteImage = enriched.featuredImage
     if (!remoteImage) remoteImage = await searchFeaturedImage(catSlug.replace("-", " ") + " technology")
     // Store the picked image in the Media Library bucket (falls back to remote URL)
     const image = remoteImage ? (await storeRemoteImage(remoteImage, "featured")) || remoteImage : null
 
     const internalLinks = await findInternalLinks(headline)
-    let finalContent = article.content
+    let finalContent = enriched.content
     if (internalLinks.length > 0) {
       const linksSection = `<section><h2>Related Resources</h2><p>For more context, check our ${internalLinks.join(", ")}.</p></section>`
       finalContent = finalContent + linksSection
