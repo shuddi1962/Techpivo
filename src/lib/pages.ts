@@ -540,10 +540,11 @@ Already have an account? [Open My Ads](/account/ads)`,
     hero: {
       title: "Newsletter",
       subtitle: "Stay ahead of the curve. Get the latest tech news, expert analysis, and exclusive content delivered straight to your inbox every week.",
+      heroImage: "https://images.pexels.com/photos/3184291/pexels-photo-3184291.jpeg",
     },
     contentMd: `## Subscribe to Our Newsletter
 
-Join 8,000+ subscribers who stay informed with Techpivo. No spam, ever. Unsubscribe anytime.
+Get the latest tech news, expert analysis and tutorials delivered to your inbox every week. No spam, ever — unsubscribe anytime.
 
 ## What to Expect
 
@@ -551,20 +552,11 @@ Join 8,000+ subscribers who stay informed with Techpivo. No spam, ever. Unsubscr
 - **🔍 Exclusive Analysis** — In-depth breakdowns of trends and events you won't find anywhere else.
 - **🎁 Subscriber Perks** — Early access to content, special offers, and community invites.
 
-## Recent Editions
+## How It Works
 
-| Date | Edition |
-|------|---------|
-| May 20, 2026 | The AI Revolution Accelerates |
-| May 13, 2026 | Cybersecurity Threats to Watch |
-| May 6, 2026 | Cloud Computing Trends for 2026 |
-| April 29, 2026 | Gadget Roundup: Summer Edition |
-
-## What Subscribers Say
-
-> "Techpivo's newsletter is the first thing I read every Monday morning. The curation is outstanding." — Alex K., Software Engineer
-
-> "I've been subscribed for 6 months and the quality has been consistently excellent." — Maria S., Product Manager`,
+1. Enter your email above and confirm your subscription.
+2. Receive the Techpivo digest every week — news, tutorials and reviews worth your time.
+3. Unsubscribe with one click whenever you like.`,
     metaTitle: "Newsletter – Techpivo",
     metaDescription: "Subscribe to Techpivo's newsletter — the latest tech news, expert analysis, tutorials and exclusive content delivered to your inbox every week.",
   },
@@ -575,9 +567,19 @@ Join 8,000+ subscribers who stay informed with Techpivo. No spam, ever. Unsubscr
     icon: "🧰",
     hero: {
       title: "Free Tech Tools & Utilities",
-      subtitle: "The intro text above the tools hub. Edit it in Admin → Pages → Tools Center.",
+      subtitle: "50+ free utilities for developers, SEO specialists, designers and everyday users — all running right in your browser, with no sign-ups and no uploads.",
     },
-    contentMd: "",
+    contentMd: `## Free Tools for Everyone
+
+Fifty-plus free utilities for developers, SEO specialists, designers and everyday users — all running directly in your browser.
+
+- **Developer** — JSON, CSV, regex, base64, JWT, hashing, UUID and more
+- **Security** — password generator, strength checker, DNS lookup
+- **SEO** — meta tags, schema, robots.txt, sitemaps, SERP preview
+- **Image & PDF** — compress, convert, resize and merge without uploads
+- **Calculators** — loan, BMI, age, unit and currency conversion
+
+No sign-ups. No uploads. Most tools work offline and nothing you process leaves your device.`,
     metaTitle: "Free Tech Tools & Utilities — Developer, SEO & Image Tools | Techpivo",
     metaDescription: "50+ free online tools for developers, SEO professionals, designers and everyday users. JSON, regex, converters, calculators and more — all in your browser.",
   },
@@ -588,9 +590,19 @@ Join 8,000+ subscribers who stay informed with Techpivo. No spam, ever. Unsubscr
     icon: "🌍",
     hero: {
       title: "TechPivo Community",
-      subtitle: "The intro text above the community hub. Edit it in Admin → Pages → Community Hub.",
+      subtitle: "Learn, discuss and grow — join forums, follow topics, test your knowledge with quizzes and connect with fellow tech enthusiasts.",
     },
-    contentMd: "",
+    contentMd: `## Learn, Discuss & Grow
+
+The Techpivo community is where readers become members — share knowledge, test your skills and earn rewards along the way.
+
+- **Forum** — ask questions, share tutorials and discuss the topics you love
+- **Topics** — follow the subjects that matter to you and get fresh discussions
+- **Quizzes & Polls** — test your knowledge and vote on the big debates
+- **Leaderboard** — climb the ranks and earn XP for participating
+- **Events** — discover tech conferences, meetups and hackathons
+
+Everyone starts as a New Member. Post, answer and complete quizzes to earn XP, level up and unlock badges.`,
     metaTitle: "TechPivo Community — Forums, Quizzes, Polls & Events",
     metaDescription: "Join the TechPivo community. Discuss tech, take quizzes, earn rewards, and connect with fellow technology enthusiasts.",
   },
@@ -601,9 +613,19 @@ Join 8,000+ subscribers who stay informed with Techpivo. No spam, ever. Unsubscr
     icon: "📅",
     hero: {
       title: "Tech Events & Meetups",
-      subtitle: "The intro text above the events page. Edit it in Admin → Pages → Community Events.",
+      subtitle: "From global conferences to local meetups and hackathons — find the events worth attending and mark yourself as going in one click.",
     },
-    contentMd: "",
+    contentMd: `## Never Miss a Tech Event
+
+From global conferences to local meetups and hackathons — find the events worth attending, mark yourself as going and discover what's next on the calendar.
+
+Events are hand-curated by the Techpivo team. RSVP in one click and we will keep you updated when details change.
+
+- **Conferences** — industry-shaping events from IFA to Web Summit
+- **Meetups** — local gatherings for developers and tech enthusiasts
+- **Hackathons** — build, compete and learn in person or online
+- **Webinars & Workshops** — learn from experts from anywhere
+- **Launches** — product reveals from the world's biggest brands`,
     metaTitle: "Tech Events & Meetups — Conferences, Workshops, Hackathons | Techpivo",
     metaDescription: "Upcoming technology events, conferences, workshops, webinars and hackathons for the Techpivo community.",
   },

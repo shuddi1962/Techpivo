@@ -13,7 +13,7 @@ import {
   Brain, HeartPulse, Calendar,
   FileBarChart, Cpu, Key, Wrench, Lock,
   Trophy, BookOpen, PanelLeftClose, PanelLeftOpen, Newspaper, PieChart,
-  Plus, ExternalLink, Radar, Zap, PanelsTopLeft, CalendarPlus, ShieldAlert, Hash, type LucideIcon,
+  Plus, ExternalLink, Radar, Zap, PanelsTopLeft, LayoutTemplate, CalendarPlus, ShieldAlert, Hash, type LucideIcon,
 } from "lucide-react"
 import { Sheet, SheetContent } from "@/components/ui/sheet"
 import { useSidebar } from "./sidebar-context"
@@ -48,6 +48,7 @@ const navGroups: NavGroup[] = [
     links: [
       { href: "/admin/posts", label: "Posts", icon: FileText },
       { href: "/admin/pages", label: "Pages", icon: PanelsTopLeft },
+      { href: "/admin/pages/blocks", label: "Site Blocks", icon: LayoutTemplate },
       { href: "/admin/categories", label: "Categories", icon: FolderTree },
       { href: "/admin/media", label: "Media Library", icon: Image },
       { href: "/admin/content-health", label: "Content Health", icon: HeartPulse },

@@ -6,7 +6,9 @@ import { useParams } from "next/navigation"
 import { createClient } from "@/lib/supabase/client"
 import { getSitePage } from "@/lib/pages"
 import { renderMarkdown } from "@/lib/markdown"
-import { ArrowLeft, Check, ExternalLink, Eye, Loader2, RotateCcw, Save, ImagePlus, Trash2 } from "lucide-react"
+import {
+  ArrowLeft, Check, ExternalLink, Eye, ImagePlus, Loader2, RotateCcw, Save, Search, Trash2, Wand2,
+} from "lucide-react"
 
 interface DbPage {
   slug: string
@@ -19,6 +21,9 @@ interface DbPage {
   is_published: boolean
   updated_at: string | null
 }
+
+const TITLE_MAX = 60
+const DESC_MAX = 160
 
 export default function PageEditor() {
   const params = useParams<{ slug: string }>()
@@ -64,7 +69,7 @@ export default function PageEditor() {
   useEffect(() => {
     fetchPage()
     const channel = supabase
-      .channel(`admin_page_editor_${slug}_${Date.now()}`)
+      .channel(`admin_page_editor_${slug}_${Date.now()}_${Math.random().toString(36).slice(2)}`)
       .on("postgres_changes", { event: "*", schema: "public", table: "site_pages", filter: `slug=eq.${slug}` }, () => {
         if (dirtyFlag.current) return
         fetchPage()
@@ -179,39 +184,48 @@ export default function PageEditor() {
   }
 
   const previewHtml = renderMarkdown(content)
+  const titleRemaining = TITLE_MAX - metaTitle.length
+  const descRemaining = DESC_MAX - metaDescription.length
+  const counterColor = (remaining: number) =>
+    remaining < 0 ? "text-red-600" : remaining < 20 ? "text-amber-600" : "text-muted-foreground"
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between gap-4 flex-wrap">
-        <div className="flex items-center gap-4">
-          <Link href="/admin/pages" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground">
-            <ArrowLeft className="w-4 h-4" /> Pages
-          </Link>
-          <div>
-            <h1 className="text-xl font-bold flex items-center gap-2">
-              <span className="text-2xl">{def.icon}</span> {def.label}
-            </h1>
-            <p className="text-xs text-muted-foreground">/{def.path}</p>
+      {/* Sticky save bar */}
+      <div className="sticky top-0 z-20 -mx-4 px-4 md:-mx-6 md:px-6 bg-background/95 backdrop-blur border-b border-border py-3 flex items-center gap-3 flex-wrap">
+        <Link href="/admin/pages" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground">
+          <ArrowLeft className="w-4 h-4" /> Pages
+        </Link>
+        <span className="h-4 w-px bg-border" />
+        <div className="flex items-center gap-2 min-w-0">
+          <span className="inline-flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-to-br from-slate-950 via-[#0b1035] to-[#1b1b4b] text-lg border border-white/10 shrink-0">
+            {def.icon}
+          </span>
+          <div className="min-w-0">
+            <h1 className="text-sm font-bold truncate">{def.label}</h1>
+            <p className="text-[11px] text-muted-foreground truncate">/{def.path}</p>
           </div>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="ml-auto flex items-center gap-2.5">
+          {dirtyRef && <span className="text-[11px] text-amber-600 font-medium">Unsaved changes</span>}
           {saveState === "saving" && (
             <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground"><Loader2 className="w-3.5 h-3.5 animate-spin" /> Saving…</span>
           )}
           {saveState === "saved" && (
-            <span className="inline-flex items-center gap-1.5 text-xs text-green-600"><Check className="w-3.5 h-3.5" /> Saved</span>
+            <span className="inline-flex items-center gap-1.5 text-xs text-emerald-600 font-medium"><Check className="w-3.5 h-3.5" /> Saved — live on the site</span>
           )}
           {saveState === "error" && <span className="text-xs text-red-600">Save failed</span>}
           <Link
             href={def.path}
             target="_blank"
-            className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
+            className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground border rounded-lg px-3 py-2 hover:border-accent transition-colors"
           >
             <ExternalLink className="w-4 h-4" /> Open page
           </Link>
           <button
             onClick={() => savePage(false)}
-            className="inline-flex items-center gap-1.5 bg-accent text-white text-sm font-medium px-4 py-2 rounded-lg hover:opacity-90"
+            disabled={saveState === "saving"}
+            className="inline-flex items-center gap-1.5 bg-slate-900 text-white dark:bg-white dark:text-slate-900 text-sm font-semibold px-4 py-2 rounded-lg hover:opacity-90 disabled:opacity-50 transition-opacity"
           >
             <Save className="w-4 h-4" /> Save
           </button>
@@ -220,37 +234,51 @@ export default function PageEditor() {
 
       {error && <div className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-4 py-3">{error}</div>}
 
-      <div className="flex items-center gap-3 bg-card border rounded-lg px-4 py-3">
-        <label className="text-sm font-medium">Published</label>
+      {/* Publish + reset row */}
+      <div className="flex flex-wrap items-center gap-4 bg-card border rounded-xl px-4 py-3.5">
+        <div className="flex items-center gap-3">
+          <span className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-500/10 border border-emerald-500/20">
+            <Check className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+          </span>
+          <div>
+            <p className="text-sm font-semibold">{published ? "Published" : "Unpublished"}</p>
+            <p className="text-[11px] text-muted-foreground">
+              {published ? "Visible to visitors right now" : "Hidden on the public site (admins can still edit)"}
+            </p>
+          </div>
+        </div>
         <button
           onClick={() => {
             setPublished(!published)
             markDirty()
           }}
-          className={`relative w-10 h-5.5 rounded-full transition-colors ${published ? "bg-green-500" : "bg-gray-300 dark:bg-gray-600"}`}
-          style={{ width: 40, height: 22 }}
+          className={`relative rounded-full transition-colors ${published ? "bg-emerald-500" : "bg-gray-300 dark:bg-gray-600"}`}
+          style={{ width: 44, height: 24 }}
           aria-pressed={published}
+          title={published ? "Click to unpublish" : "Click to publish"}
         >
           <span
-            className="absolute top-0.5 w-4.5 h-4.5 rounded-full bg-white shadow transition-all"
-            style={{ left: published ? 20 : 2, width: 18, height: 18, top: 2 }}
+            className="absolute rounded-full bg-white shadow transition-all"
+            style={{ left: published ? 22 : 2, width: 20, height: 20, top: 2 }}
           />
         </button>
-        <span className="text-xs text-muted-foreground">
-          {published ? "Visible to visitors" : "Hidden on the public site (admins can still edit)"}
-        </span>
-        <button
-          onClick={resetToDefault}
-          className="ml-auto inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-red-600"
-        >
-          <RotateCcw className="w-4 h-4" /> Reset to default
-        </button>
+        <div className="ml-auto flex items-center gap-2">
+          <span className="hidden md:inline-flex items-center gap-1.5 text-xs text-muted-foreground">
+            <Wand2 className="w-3.5 h-3.5 text-accent" /> Autosaves while you type
+          </span>
+          <button
+            onClick={resetToDefault}
+            className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-red-600 border border-border rounded-lg px-3 py-2 hover:border-red-300 transition-colors"
+          >
+            <RotateCcw className="w-4 h-4" /> Reset to default
+          </button>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="space-y-4">
+        <div className="space-y-5">
           <div>
-            <label className="block text-sm font-medium mb-1">Title</label>
+            <label className="block text-sm font-semibold mb-1.5">Page title</label>
             <input
               value={title}
               onChange={(e) => { setTitle(e.target.value); markDirty() }}
@@ -258,20 +286,21 @@ export default function PageEditor() {
             />
           </div>
           <div>
-            <label className="block text-sm font-medium mb-1">Subtitle</label>
+            <label className="block text-sm font-semibold mb-1.5">Subtitle</label>
             <input
               value={subtitle}
               onChange={(e) => { setSubtitle(e.target.value); markDirty() }}
+              placeholder="A one-line description shown under the page title"
               className="w-full bg-card border rounded-lg px-4 py-2.5 text-sm focus:border-accent focus:ring-1 focus:ring-accent outline-none"
             />
           </div>
           <div>
-            <label className="block text-sm font-medium mb-1">Hero image</label>
+            <label className="block text-sm font-semibold mb-1.5">Hero image</label>
             <div className="flex gap-2 items-start">
               <input
                 value={heroImage}
                 onChange={(e) => { setHeroImage(e.target.value); markDirty() }}
-                placeholder="Image URL"
+                placeholder="https://… or upload below"
                 className="flex-1 bg-card border rounded-lg px-4 py-2.5 text-sm focus:border-accent focus:ring-1 focus:ring-accent outline-none"
               />
               <label className="inline-flex items-center gap-1.5 bg-background border rounded-lg px-3 py-2.5 text-sm cursor-pointer hover:bg-muted/50 shrink-0">
@@ -299,58 +328,93 @@ export default function PageEditor() {
                 </button>
               )}
             </div>
-            {heroImage && (
-              <div className="mt-2">
+            {heroImage ? (
+              <div className="mt-2.5 relative rounded-xl overflow-hidden border aspect-[21/9]">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={heroImage} alt="Hero preview" className="h-24 rounded-lg border object-cover" />
+                <img src={heroImage} alt="Hero preview" className="w-full h-full object-cover" />
+              </div>
+            ) : (
+              <div className="mt-2.5 rounded-xl border border-dashed bg-muted/30 h-20 flex items-center justify-center text-xs text-muted-foreground">
+                No hero image — the page will use the gradient banner.
               </div>
             )}
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium mb-1">Meta title <span className="text-muted-foreground font-normal">(SEO)</span></label>
+              <label className="block text-sm font-semibold mb-1.5">
+                Meta title <span className="text-muted-foreground font-normal">(SEO)</span>
+              </label>
               <input
                 value={metaTitle}
                 onChange={(e) => { setMetaTitle(e.target.value); markDirty() }}
                 className="w-full bg-card border rounded-lg px-4 py-2.5 text-sm focus:border-accent focus:ring-1 focus:ring-accent outline-none"
               />
+              <p className={`text-[11px] mt-1 ${counterColor(titleRemaining)}`}>
+                {Math.abs(titleRemaining)} character(s) {titleRemaining < 0 ? "over" : "remaining"} · {metaTitle.length} / {TITLE_MAX}
+              </p>
             </div>
             <div>
-              <label className="block text-sm font-medium mb-1">Meta description <span className="text-muted-foreground font-normal">(SEO)</span></label>
+              <label className="block text-sm font-semibold mb-1.5">
+                Meta description <span className="text-muted-foreground font-normal">(SEO)</span>
+              </label>
               <input
                 value={metaDescription}
                 onChange={(e) => { setMetaDescription(e.target.value); markDirty() }}
                 className="w-full bg-card border rounded-lg px-4 py-2.5 text-sm focus:border-accent focus:ring-1 focus:ring-accent outline-none"
               />
+              <p className={`text-[11px] mt-1 ${counterColor(descRemaining)}`}>
+                {Math.abs(descRemaining)} character(s) {descRemaining < 0 ? "over" : "remaining"} · {metaDescription.length} / {DESC_MAX}
+              </p>
             </div>
           </div>
           <div>
-            <label className="block text-sm font-medium mb-1">Content <span className="text-muted-foreground font-normal">(Markdown)</span></label>
+            <label className="block text-sm font-semibold mb-1.5">
+              Content <span className="text-muted-foreground font-normal">(Markdown — supports images, links, tables)</span>
+            </label>
             <textarea
               value={content}
               onChange={(e) => { setContent(e.target.value); markDirty() }}
-              rows={24}
+              rows={26}
               className="w-full bg-card border rounded-lg px-4 py-3 text-sm font-mono leading-relaxed focus:border-accent focus:ring-1 focus:ring-accent outline-none resize-y"
             />
           </div>
         </div>
 
-        <div>
-          <div className="flex items-center gap-2 mb-2 text-sm font-medium">
-            <Eye className="w-4 h-4" /> Live preview
+        <div className="lg:sticky lg:top-16 self-start">
+          <div className="flex items-center gap-2 mb-2 text-sm font-semibold">
+            <Eye className="w-4 h-4 text-accent" /> Live preview
             <span className="text-xs text-muted-foreground font-normal">(rendered from current markdown)</span>
             {dirtyRef && <span className="text-xs text-amber-600 font-normal">· unsaved changes</span>}
           </div>
-          <div className="border rounded-xl bg-background">
-            <div className="border-b bg-gradient-to-br from-[#FFF7E6] via-card to-card dark:from-[#1a1606] rounded-t-xl px-6 py-8">
-              <div className="text-4xl mb-3">{def.icon}</div>
-              <div className="text-2xl font-bold mb-2">{title || def.hero.title}</div>
-              <p className="text-sm text-muted-foreground max-w-xl leading-relaxed">{subtitle || def.hero.subtitle}</p>
-            </div>
+          <div className="border rounded-xl bg-background overflow-hidden">
+            {heroImage ? (
+              <div className="relative h-44 md:h-52 overflow-hidden">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={heroImage} alt="" className="absolute inset-0 w-full h-full object-cover" />
+                <div className="absolute inset-0 bg-gradient-to-r from-black/80 via-black/60 to-black/40" />
+                <div className="relative z-10 p-6 h-full flex flex-col justify-end text-white">
+                  <div className="text-2xl mb-1">{def.icon}</div>
+                  <div className="text-lg font-bold leading-tight">{title || def.hero.title}</div>
+                  <p className="text-xs text-white/75 mt-1 line-clamp-2">{subtitle || def.hero.subtitle}</p>
+                </div>
+              </div>
+            ) : (
+              <div className="bg-gradient-to-br from-slate-950 via-[#0b1035] to-[#1b1b4b] px-6 py-8 relative overflow-hidden">
+                <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,rgba(245,158,11,0.16),transparent_55%)]" />
+                <div className="relative">
+                  <div className="text-2xl mb-2">{def.icon}</div>
+                  <div className="text-xl font-bold text-white mb-1.5">{title || def.hero.title}</div>
+                  <p className="text-xs text-white/70 max-w-md leading-relaxed">{subtitle || def.hero.subtitle}</p>
+                </div>
+              </div>
+            )}
             <article
               className="px-6 py-6 prose prose-slate dark:prose-invert max-w-none prose-headings:font-bold prose-p:leading-relaxed prose-p:text-muted-foreground prose-a:text-accent prose-strong:text-foreground prose-blockquote:border-accent prose-li:text-muted-foreground"
               dangerouslySetInnerHTML={{ __html: previewHtml }}
             />
+            <div className="border-t px-6 py-3 flex items-center gap-2 text-[11px] text-muted-foreground bg-muted/20">
+              <Search className="w-3.5 h-3.5" /> This preview mirrors the exact public rendering on /{def.path}
+            </div>
           </div>
         </div>
       </div>
