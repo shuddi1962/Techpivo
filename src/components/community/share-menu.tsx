@@ -164,6 +164,21 @@ export function ShareMenu({
     setTimeout(() => setEmailCopied(false), 1500);
   };
 
+  const webmailOptions = () => {
+    const subject = encodeURIComponent(title);
+    const body = encodeURIComponent(`${title}\n${shareUrl}`);
+    return [
+      { key: 'gmail', label: 'Gmail', url: `https://mail.google.com/mail/?view=cm&fs=1&su=${subject}&body=${body}` },
+      { key: 'outlook', label: 'Outlook', url: `https://outlook.live.com/mail/0/deeplink/compose?subject=${subject}&body=${body}` },
+      { key: 'yahoo', label: 'Yahoo', url: `https://compose.mail.yahoo.com/?subject=${subject}&body=${body}` },
+    ];
+  };
+
+  const openWebmail = (url: string) => {
+    close();
+    window.open(url, '_blank', 'noopener,noreferrer,width=800,height=640');
+  };
+
   const nativeShare = async () => {
     if (!navigator.share) return;
     try {
@@ -286,6 +301,25 @@ export function ShareMenu({
             </span>
             Email
           </button>
+
+          <div className="px-2.5 py-1">
+            <p className="text-[10px] font-semibold uppercase tracking-wide text-textSecondary/70">
+              Mail app not opening? Compose in webmail
+            </p>
+            <div className="mt-1.5 grid grid-cols-3 gap-1.5">
+              {webmailOptions().map(w => (
+                <button
+                  key={w.key}
+                  type="button"
+                  role="menuitem"
+                  onClick={() => openWebmail(w.url)}
+                  className="rounded-lg border border-borderSoft bg-surface-2 px-2 py-1.5 text-xs font-medium text-textPrimary transition-colors hover:border-brand/40 hover:bg-surface"
+                >
+                  {w.label}
+                </button>
+              ))}
+            </div>
+          </div>
 
           <button
             type="button"
