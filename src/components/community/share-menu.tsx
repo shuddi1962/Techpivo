@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { cn } from '@/lib/utils';
-import { Check, Copy, Link2, Mail, Share2 } from 'lucide-react';
+import { Check, Link2, Share2 } from 'lucide-react';
 
 const XLogo = ({ className }: { className?: string }) => (
   <svg viewBox="0 0 1200 1227" className={className} fill="currentColor" aria-hidden="true">
@@ -100,7 +100,6 @@ export function ShareMenu({
 }) {
   const [open, setOpen] = useState(false);
   const [copied, setCopied] = useState(false);
-  const [emailCopied, setEmailCopied] = useState(false);
   const [href, setHref] = useState<string | null>(url ?? null);
   const rootRef = useRef<HTMLDivElement>(null);
 
@@ -146,24 +145,6 @@ export function ShareMenu({
     setTimeout(() => setCopied(false), 1500);
   };
 
-  const copyEmailLink = async () => {
-    const mailtoUrl = `mailto:?subject=${encodeURIComponent(title)}&body=${encodeURIComponent(`${title}\n${shareUrl}`)}`;
-    try {
-      await navigator.clipboard.writeText(mailtoUrl);
-    } catch {
-      const ta = document.createElement('textarea');
-      ta.value = mailtoUrl;
-      ta.style.position = 'fixed';
-      ta.style.opacity = '0';
-      document.body.appendChild(ta);
-      ta.select();
-      try { document.execCommand('copy'); } catch { /* ignore */ }
-      document.body.removeChild(ta);
-    }
-    setEmailCopied(true);
-    setTimeout(() => setEmailCopied(false), 1500);
-  };
-
   const webmailOptions = () => {
     const subject = encodeURIComponent(title);
     const body = encodeURIComponent(`${title}\n${shareUrl}`);
@@ -191,30 +172,6 @@ export function ShareMenu({
 
   const openShare = (href: string) => {
     close();
-    if (href.startsWith('mailto:')) {
-      // mailto: cannot open in a popup (browsers block it) and synthetic
-      // anchor clicks are swallowed by Safari/Chrome on iOS — the reliable
-      // cross-browser method is navigating the tab itself to the mailto URI
-      // (the page stays loaded; the OS/webmail handler takes over).
-      try {
-        window.location.href = href;
-      } catch {
-        try {
-          const a = document.createElement('a');
-          a.href = href;
-          a.rel = 'noopener noreferrer';
-          a.style.position = 'fixed';
-          a.style.left = '-9999px';
-          a.style.top = '0';
-          document.body.appendChild(a);
-          a.click();
-          document.body.removeChild(a);
-        } catch {
-          // nothing more we can do
-        }
-      }
-      return;
-    }
     const w = 620;
     const h = 520;
     const left = Math.max(0, (window.innerWidth - w) / 2);
@@ -290,21 +247,9 @@ export function ShareMenu({
             ))}
           </div>
 
-          <button
-            type="button"
-            role="menuitem"
-            onClick={() => openShare(`mailto:?subject=${encodeURIComponent(title)}&body=${encodeURIComponent(`${title}\n${shareUrl}`)}`)}
-            className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-sm text-textPrimary hover:bg-surface-elevated transition-colors"
-          >
-            <span className="flex h-7 w-7 items-center justify-center rounded-md bg-surface-2">
-              <Mail className="h-3.5 w-3.5" aria-hidden />
-            </span>
-            Email
-          </button>
-
           <div className="px-2.5 py-1">
             <p className="text-[10px] font-semibold uppercase tracking-wide text-textSecondary/70">
-              Mail app not opening? Compose in webmail
+              Share by email
             </p>
             <div className="mt-1.5 grid grid-cols-3 gap-1.5">
               {webmailOptions().map(w => (
@@ -320,18 +265,6 @@ export function ShareMenu({
               ))}
             </div>
           </div>
-
-          <button
-            type="button"
-            role="menuitem"
-            onClick={() => void copyEmailLink()}
-            className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-sm text-textPrimary hover:bg-surface-elevated transition-colors"
-          >
-            <span className="flex h-7 w-7 items-center justify-center rounded-md bg-surface-2">
-              {emailCopied ? <Check className="h-3.5 w-3.5 text-success" aria-hidden /> : <Copy className="h-3.5 w-3.5" aria-hidden />}
-            </span>
-            {emailCopied ? 'Email link copied!' : 'Copy email link'}
-          </button>
         </div>
       )}
     </div>
