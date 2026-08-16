@@ -6,7 +6,7 @@ import { createClient } from '@/lib/supabase/client';
 import { FxApprox } from '@/components/fx-approx';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { AlertCircle, ArrowLeft, ArrowRight, Check, Globe, Monitor, Sparkles, Star, Tag, Upload, Video, Wallet } from 'lucide-react';
+import { AlertCircle, ArrowLeft, ArrowRight, Check, ChevronDown, Globe, Monitor, Search, Sparkles, Star, Tag, Upload, Video, Wallet, X, type LucideIcon } from 'lucide-react';
 import {
   ADS_CURRENCIES, ADS_GOALS, ADS_CTA_TYPES, ADS_CTA_LABELS,
   ADS_AUDIENCE_COUNTRIES, ADS_AUDIENCE_DEVICES, ADS_AUDIENCE_INTERESTS,
@@ -32,6 +32,103 @@ interface Placement {
 }
 
 const isPopupType = (t?: string) => t === 'popup' || t === 'popup_toast';
+
+function AudienceMultiSelect({
+  label, icon: Icon, options, selected, onChange,
+}: {
+  label: string
+  icon: LucideIcon
+  options: string[]
+  selected: string[]
+  onChange: (next: string[]) => void
+}) {
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState('');
+  const boxRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const onDown = (e: MouseEvent) => {
+      if (boxRef.current && !boxRef.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener('mousedown', onDown);
+    return () => document.removeEventListener('mousedown', onDown);
+  }, [open]);
+
+  const toggle = (opt: string) => {
+    onChange(selected.includes(opt) ? selected.filter((s) => s !== opt) : [...selected, opt]);
+  };
+
+  const filtered = query.trim()
+    ? options.filter((o) => o.toLowerCase().includes(query.trim().toLowerCase()))
+    : options;
+
+  const buttonLabel = selected.length === 0
+    ? `All ${label.toLowerCase()}`
+    : selected.length === 1 ? selected[0] : `${selected.length} selected`;
+
+  return (
+    <div ref={boxRef} className="relative">
+      <button
+        type="button"
+        onClick={() => { setOpen((v) => !v); setQuery(''); }}
+        className={`w-full bg-white border rounded-lg px-3.5 py-2.5 text-sm text-left flex items-center gap-2 hover:border-blue-300 ${open ? 'border-blue-500 ring-1 ring-blue-200' : 'border-slate-200'}`}
+      >
+        <Icon className="h-4 w-4 text-blue-600 shrink-0" />
+        <span className={`flex-1 truncate ${selected.length ? 'text-slate-800 font-medium' : 'text-slate-400'}`}>{buttonLabel}</span>
+        <ChevronDown className={`h-4 w-4 text-slate-400 transition-transform shrink-0 ${open ? 'rotate-180' : ''}`} />
+      </button>
+      {selected.length > 0 && (
+        <div className="mt-2 flex flex-wrap gap-1.5">
+          {selected.map((s) => (
+            <span key={s} className="inline-flex items-center gap-1 bg-blue-50 text-blue-700 border border-blue-200 rounded-full pl-2.5 pr-1.5 py-0.5 text-xs font-medium">
+              {s}
+              <button type="button" onClick={() => onChange(selected.filter((x) => x !== s))} className="text-blue-400 hover:text-blue-700" aria-label={`Remove ${s}`}>
+                <X className="h-3 w-3" />
+              </button>
+            </span>
+          ))}
+        </div>
+      )}
+      {open && (
+        <div className="absolute z-30 mt-1 w-full bg-white border border-slate-200 rounded-xl shadow-lg p-2">
+          <div className="relative mb-1.5">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
+            <input
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder={`Search ${label.toLowerCase()}...`}
+              className="w-full bg-slate-50 border border-slate-200 rounded-lg pl-8 pr-3 py-2 text-xs outline-none focus:border-blue-400"
+            />
+          </div>
+          <div className="max-h-56 overflow-y-auto pr-1">
+            {filtered.length === 0 && <p className="text-xs text-slate-400 px-2 py-3 text-center">No matches</p>}
+            {filtered.map((opt) => {
+              const active = selected.includes(opt);
+              return (
+                <button
+                  key={opt}
+                  type="button"
+                  onClick={() => toggle(opt)}
+                  className="w-full flex items-center gap-2 px-2 py-1.5 rounded-lg text-left text-xs hover:bg-blue-50"
+                >
+                  <span className={`w-4 h-4 rounded border flex items-center justify-center shrink-0 ${active ? 'bg-blue-600 border-blue-600' : 'border-slate-300'}`}>
+                    {active && <Check className="h-3 w-3 text-white" />}
+                  </span>
+                  <span className="text-slate-700 truncate">{opt}</span>
+                </button>
+              );
+            })}
+          </div>
+          <div className="border-t border-slate-100 mt-1.5 pt-1.5 flex justify-between px-1">
+            <button type="button" onClick={() => onChange([])} className="text-[11px] text-slate-400 hover:text-red-500">Clear all</button>
+            <span className="text-[11px] text-slate-400">{selected.length} selected</span>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default function NewCampaignPage() {
   const router = useRouter();
@@ -132,10 +229,6 @@ export default function NewCampaignPage() {
   const days = Math.max(1, Math.min(90, Math.floor(durationDays) || 1));
   const total = Math.round(budget * days * 100) / 100;
   const estImpressions = placement ? Math.round((placement.est_impressions / 30) * days) : 0;
-
-  const toggleChip = (list: string[], setList: (v: string[]) => void, value: string) => {
-    setList(list.includes(value) ? list.filter((c) => c !== value) : [...list, value]);
-  };
 
   const handleUpload = async (file: File) => {
     setUploading(true);
@@ -433,31 +526,13 @@ export default function NewCampaignPage() {
                   <span className="text-sm font-semibold text-slate-700">Target audience</span>
                   <span className="text-[11px] text-slate-400">(optional — we target best-effort)</span>
                 </div>
-                {[
-                  { label: 'Countries', icon: Globe, list: countries, set: setCountries, options: ADS_AUDIENCE_COUNTRIES },
-                  { label: 'Devices', icon: Monitor, list: devices, set: setDevices, options: [...ADS_AUDIENCE_DEVICES] as string[] },
-                  { label: 'Interests', icon: Tag, list: interests, set: setInterests, options: [...ADS_AUDIENCE_INTERESTS] as string[] },
-                ].map((group) => (
-                  <div key={group.label} className="mb-3">
-                    <div className="text-xs font-semibold text-slate-500 mb-1.5">
-                      {group.label} — <span className="text-slate-400 font-normal">{group.list.length ? group.list.join(', ') : 'All'}</span>
-                    </div>
-                    <div className="flex gap-1.5 flex-wrap">
-                      {group.options.map((opt) => {
-                        const active = group.list.includes(opt);
-                        return (
-                          <button
-                            key={opt}
-                            onClick={() => toggleChip(group.list, group.set, opt)}
-                            className={`px-3 py-1 rounded-full text-xs font-medium border transition-colors ${active ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-slate-500 border-slate-200 hover:border-blue-300'}`}
-                          >
-                            {opt}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-                ))}
+                <div className="grid sm:grid-cols-2 gap-3">
+                  <AudienceMultiSelect label="Countries" icon={Globe} options={ADS_AUDIENCE_COUNTRIES} selected={countries} onChange={setCountries} />
+                  <AudienceMultiSelect label="Devices" icon={Monitor} options={[...ADS_AUDIENCE_DEVICES] as string[]} selected={devices} onChange={setDevices} />
+                </div>
+                <div className="mt-3">
+                  <AudienceMultiSelect label="Interests" icon={Tag} options={[...ADS_AUDIENCE_INTERESTS] as string[]} selected={interests} onChange={setInterests} />
+                </div>
               </div>
             </CardContent>
           </Card>

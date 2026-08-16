@@ -52,8 +52,23 @@ export const ADS_CTA_TYPES = [
 ] as const
 
 export const ADS_AUDIENCE_COUNTRIES = [
-  "Nigeria", "Kenya", "Ghana", "South Africa", "United States", "United Kingdom",
-  "India", "Canada", "Australia", "Germany", "France", "Netherlands", "UAE", "Egypt", "Morocco",
+  "Nigeria", "Kenya", "Ghana", "South Africa", "Egypt", "Morocco", "Algeria", "Tunisia", "Libya", "Sudan",
+  "Ethiopia", "Somalia", "Uganda", "Tanzania", "Rwanda", "Burundi", "DR Congo", "Congo", "Gabon", "Cameroon",
+  "Central African Republic", "Chad", "Niger", "Mali", "Burkina Faso", "Senegal", "Gambia", "Guinea",
+  "Guinea-Bissau", "Sierra Leone", "Liberia", "Ivory Coast", "Benin", "Togo", "Angola", "Zambia", "Zimbabwe",
+  "Malawi", "Mozambique", "Botswana", "Namibia", "Eswatini", "Lesotho", "Madagascar", "Mauritius",
+  "Seychelles", "Cape Verde", "Comoros", "Mauritania",
+  "United States", "Canada", "Mexico", "Brazil", "Argentina", "Chile", "Colombia", "Peru", "Venezuela",
+  "Ecuador", "Bolivia", "Paraguay", "Uruguay", "Costa Rica", "Panama", "Dominican Republic", "Jamaica",
+  "Trinidad and Tobago", "Bahamas", "Puerto Rico", "Guatemala", "Honduras", "El Salvador", "Nicaragua", "Cuba", "Haiti",
+  "United Kingdom", "Ireland", "Germany", "France", "Spain", "Portugal", "Italy", "Netherlands", "Belgium",
+  "Switzerland", "Austria", "Sweden", "Norway", "Denmark", "Finland", "Iceland", "Poland", "Czechia",
+  "Slovakia", "Hungary", "Romania", "Bulgaria", "Greece", "Croatia", "Serbia", "Ukraine", "Turkey",
+  "India", "Pakistan", "Bangladesh", "Sri Lanka", "Nepal", "China", "Japan", "South Korea", "Taiwan",
+  "Hong Kong", "Philippines", "Indonesia", "Malaysia", "Singapore", "Thailand", "Vietnam", "Cambodia",
+  "Myanmar", "Saudi Arabia", "UAE", "Qatar", "Kuwait", "Bahrain", "Oman", "Jordan", "Lebanon", "Israel",
+  "Iran", "Iraq", "Kazakhstan", "Uzbekistan",
+  "Australia", "New Zealand", "Fiji", "Papua New Guinea",
 ]
 
 export const ADS_AUDIENCE_DEVICES = ["Desktop", "Mobile", "Tablet"] as const
@@ -61,6 +76,10 @@ export const ADS_AUDIENCE_DEVICES = ["Desktop", "Mobile", "Tablet"] as const
 export const ADS_AUDIENCE_INTERESTS = [
   "AI & Automation", "Programming", "Cybersecurity", "Gadgets & Reviews", "Networking & IT",
   "Web Development", "Digital Business", "Tech News", "Tutorials",
+  "Fashion & Style", "Music", "Sports", "Gaming", "Finance & Investments", "Health & Fitness",
+  "Education", "Travel & Tourism", "Food & Recipes", "Real Estate", "Crypto & Blockchain",
+  "Movies & TV", "Business & Entrepreneurship", "Photography & Design", "Beauty & Skincare",
+  "Automotive", "Agriculture", "Books & Reading", "Science & Space", "Startups & VC", "Jobs & Careers",
 ] as const
 
 export const ADS_GOAL_LABELS: Record<string, string> = Object.fromEntries(

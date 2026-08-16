@@ -108,7 +108,7 @@ export async function GET(request: Request) {
         .from("ad_campaigns")
         .select("*, placements:ad_placements(name, position, ad_type, min_bid_cpm, min_bid_cpc, sizes)")
         .order("created_at", { ascending: false })
-        .limit(100)
+        .limit(1000)
       return NextResponse.json({ campaigns: campaigns || [] })
     }
 

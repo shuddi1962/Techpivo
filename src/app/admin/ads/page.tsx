@@ -390,6 +390,11 @@ export default function AdminAdsPage() {
       ? campaigns
       : campaigns.filter((c) => c.status === campaignFilter)
 
+  const statusCounts: Record<string, number> = campaigns.reduce<Record<string, number>>((acc, c) => {
+    acc[c.status] = (acc[c.status] || 0) + 1
+    return acc
+  }, {})
+
   const totalCampaignSpend = campaigns.reduce((s, c) => s + computeCampaignSpend(c), 0)
   const combinedRevenue = totalRevenue + totalCampaignSpend
 
@@ -483,6 +488,7 @@ export default function AdminAdsPage() {
         {activeTab === "campaigns" && (
           <CampaignsTab
             campaigns={filteredCampaigns}
+            counts={statusCounts}
             filter={campaignFilter}
             setFilter={setCampaignFilter}
             isAdmin={isAdmin}
@@ -950,9 +956,10 @@ const labelStyle: React.CSSProperties = {
 /* ================== CAMPAIGNS ================== */
 
 function CampaignsTab({
-  campaigns, filter, setFilter, isAdmin, onAction, onEdit,
+  campaigns, counts, filter, setFilter, isAdmin, onAction, onEdit,
 }: {
   campaigns: Campaign[]
+  counts: Record<string, number>
   filter: string
   setFilter: (f: string) => void
   isAdmin: boolean
@@ -1003,6 +1010,7 @@ function CampaignsTab({
               }}
             >
               {f === "all" ? "All" : f.charAt(0).toUpperCase() + f.slice(1)}
+              <span style={{ opacity: 0.75, marginLeft: 4, fontWeight: 700 }}>{f === "all" ? campaigns.length : (counts[f] || 0)}</span>
             </button>
           ))}
         </div>
@@ -1123,12 +1131,12 @@ function CampaignsTab({
                     <Pencil size={14} /> Edit
                   </button>
                 )}
-                {isAdmin && !EDITABLE_STATUSES.has(c.status) && (
+                {isAdmin && (
                   <button onClick={() => onAction("delete", c)} style={{ ...btnSecondary, flex: 1, color: S.red, borderColor: "#FECACA", display: "flex", alignItems: "center", justifyContent: "center", gap: 5 }}>
                     <Trash2 size={14} /> Delete
                   </button>
                 )}
-                {c.status === "draft" && (
+                {c.status === "draft" && !isAdmin && (
                   <button onClick={() => onAction("delete", c)} style={{ ...btnSecondary, flex: 1, color: S.red, borderColor: "#FECACA", display: "flex", alignItems: "center", justifyContent: "center", gap: 5 }}>
                     <Trash2 size={14} /> Cancel
                   </button>

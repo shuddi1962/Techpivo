@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/client"
 import { cn } from "@/lib/utils"
 import { AD_POSITIONS } from "@/lib/constants"
 import { hasConsentFor } from "@/lib/consent"
+import { getGeoOnce } from "@/lib/tools-geo"
 
 interface AdSlotProps {
   positionKey: keyof typeof AD_POSITIONS
@@ -27,6 +28,32 @@ interface CampaignAd {
   media_type?: string | null
   video_url?: string | null
   poster_url?: string | null
+  target_audience?: {
+    countries?: string[]
+    devices?: string[]
+    interests?: string[]
+  } | null
+}
+
+function detectDevice(): string {
+  if (typeof navigator === "undefined") return "Desktop"
+  const ua = navigator.userAgent || ""
+  if (/ipad|tablet|playbook|silk|(android(?!.*mobile))/i.test(ua)) return "Tablet"
+  if (/mobile|iphone|ipod|android|blackberry|opera mini|iemobile/i.test(ua)) return "Mobile"
+  return "Desktop"
+}
+
+function audienceAllows(c: CampaignAd, device: string, country: string | null): boolean {
+  const ta = c.target_audience
+  if (!ta) return true
+  if (Array.isArray(ta.devices) && ta.devices.length && !ta.devices.includes(device)) return false
+  if (
+    country &&
+    Array.isArray(ta.countries) &&
+    ta.countries.length &&
+    !ta.countries.some((name) => name.toLowerCase() === country.toLowerCase())
+  ) return false
+  return true
 }
 export function AdSlot({ positionKey, className, preview }: AdSlotProps) {
   const [slotAd, setSlotAd] = useState<SlotAd | null>(null)
@@ -61,7 +88,7 @@ export function AdSlot({ positionKey, className, preview }: AdSlotProps) {
         .maybeSingle(),
       supabase
         .from("ad_campaigns")
-        .select("id, advertiser_name, ad_image_url, destination_url, ad_code, media_type, video_url, poster_url")
+        .select("id, advertiser_name, ad_image_url, destination_url, ad_code, media_type, video_url, poster_url, target_audience")
         .contains("positions", [positionKey])
         .eq("is_active", true)
         .in("status", ["approved", "live"])
@@ -80,7 +107,20 @@ export function AdSlot({ positionKey, className, preview }: AdSlotProps) {
 
     if (!mountedRef.current) return
     if (slotRes.data) setSlotAd(slotRes.data)
-    if (campaignsRes.data) setCampaignAds(campaignsRes.data)
+    if (campaignsRes.data) {
+      const allCampaigns = campaignsRes.data as CampaignAd[]
+      const device = detectDevice()
+      let country: string | null = null
+      try {
+        const geo = await getGeoOnce()
+        country = geo?.country || null
+      } catch {
+        country = null
+      }
+      if (mountedRef.current) {
+        setCampaignAds(allCampaigns.filter((c) => audienceAllows(c, device, country)))
+      }
+    }
     if (placementRes.data) setPlacementSizes(placementRes.data.sizes)
     if (settingsRes.data) {
       const result: Record<string, any> = {}
@@ -221,12 +261,12 @@ export function AdSlot({ positionKey, className, preview }: AdSlotProps) {
           {campaign.destination_url ? (
             <a href={preview ? "#" : campaign.destination_url} target="_blank" rel="noopener" onClick={() => trackCampaignClick(campaign.id)}>
               <span className="block mx-auto" style={sizeBox}>
-                <Image src={campaign.ad_image_url} alt={campaign.advertiser_name} width={designSize?.w || 800} height={designSize?.h || 450} className="w-full h-auto object-contain" />
+                <Image src={campaign.ad_image_url} alt={campaign.advertiser_name} width={designSize?.w || 800} height={designSize?.h || 450} className="w-full h-auto object-contain" style={designSize ? { maxHeight: designSize.h } : undefined} />
               </span>
             </a>
           ) : (
             <span className="block mx-auto" style={sizeBox}>
-              <Image src={campaign.ad_image_url} alt={campaign.advertiser_name} width={designSize?.w || 800} height={designSize?.h || 450} className="w-full h-auto object-contain" />
+              <Image src={campaign.ad_image_url} alt={campaign.advertiser_name} width={designSize?.w || 800} height={designSize?.h || 450} className="w-full h-auto object-contain" style={designSize ? { maxHeight: designSize.h } : undefined} />
             </span>
           )}
         </div>
@@ -249,9 +289,28 @@ export function AdSlot({ positionKey, className, preview }: AdSlotProps) {
     return null
   }
 
-  // Public visitors see ONLY approved/live campaigns. Legacy slot ads (ads table) and
-  // AdSense auto-ads are reserved for admin preview mode (preview=true) so their ad_code
-  // never ships to real visitors.
+  const renderAdSense = () => (
+    <div
+      dangerouslySetInnerHTML={{
+        __html: `
+          <script async
+            src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${settings.adsense_publisher_id}"
+            crossorigin="anonymous"
+          ></script>
+          <ins class="adsbygoogle"
+            style="display:block"
+            data-ad-client="${settings.adsense_publisher_id}"
+            data-ad-format="auto"
+            data-full-width-responsive="true"
+          ></ins>
+          <script>(adsbygoogle = window.adsbygoogle || []).push({})</script>
+        `,
+      }}
+    />
+  )
+
+  // Admin preview sees the full picture: legacy slot ads (ads table), campaigns,
+  // and AdSense fallback — so ad_code is vetted before it ever ships.
   if (preview) {
     return (
       <div className={cn("ad-slot", className)}>
@@ -273,24 +332,7 @@ export function AdSlot({ positionKey, className, preview }: AdSlotProps) {
             )}
           </div>
         ) : showAutoAds ? (
-          <div
-            className="mt-1"
-            dangerouslySetInnerHTML={{
-              __html: `
-                <script async
-                  src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${settings.adsense_publisher_id}"
-                  crossorigin="anonymous"
-                ></script>
-                <ins class="adsbygoogle"
-                  style="display:block"
-                  data-ad-client="${settings.adsense_publisher_id}"
-                  data-ad-format="auto"
-                  data-full-width-responsive="true"
-                ></ins>
-                <script>(adsbygoogle = window.adsbygoogle || []).push({})</script>
-              `,
-            }}
-          />
+          <div className="mt-1">{renderAdSense()}</div>
         ) : (
           <span className="text-[10px] uppercase tracking-widest text-muted-foreground/40 block mt-1">
             No active campaign — preview
@@ -300,7 +342,8 @@ export function AdSlot({ positionKey, className, preview }: AdSlotProps) {
     )
   }
 
-  // Campaign ads only (public)
+  // Public: approved/live campaigns win their slot; AdSense auto-ads fill slots
+  // with no eligible campaign (only when enabled + publisher id + consent).
   if (campaign) {
     return (
       <div className={cn("ad-slot", className)}>
@@ -314,6 +357,10 @@ export function AdSlot({ positionKey, className, preview }: AdSlotProps) {
         )}
       </div>
     )
+  }
+
+  if (showAutoAds) {
+    return <div className={cn("ad-slot", className)}>{renderAdSense()}</div>
   }
 
   // Nothing to render — hide the slot entirely (no placeholder box)
