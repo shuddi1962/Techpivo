@@ -11,6 +11,18 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
+    // Kill switch: disabled via site_settings.fetch_trending_keywords_enabled
+    // (must be exactly true to run — missing/false = disabled).
+    const supabase = createClient()
+    const { data: setting } = await supabase
+      .from("site_settings")
+      .select("value")
+      .eq("key", "fetch_trending_keywords_enabled")
+      .maybeSingle()
+    if (setting?.value !== true) {
+      return NextResponse.json({ message: "fetch-trending-keywords is disabled", processed: 0 })
+    }
+
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
     const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
 

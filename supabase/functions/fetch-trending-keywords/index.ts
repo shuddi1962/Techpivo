@@ -92,6 +92,21 @@ function isTechRelated(keyword: string): boolean {
 
 serve(async () => {
   try {
+    // Kill switch: disabled via site_settings.fetch_trending_keywords_enabled
+    // (must be exactly true to run — missing/false = disabled). Guards direct
+    // invocations too, not just the cron route.
+    const { data: setting } = await supabase
+      .from("site_settings")
+      .select("value")
+      .eq("key", "fetch_trending_keywords_enabled")
+      .maybeSingle()
+    if (setting?.value !== true) {
+      return new Response(
+        JSON.stringify({ message: "fetch-trending-keywords is disabled", inserted: 0 }),
+        { headers: { "Content-Type": "application/json" } }
+      )
+    }
+
     const keywords: Array<{ keyword: string; source: string; search_volume: number }> = []
     const seen = new Set<string>()
 
