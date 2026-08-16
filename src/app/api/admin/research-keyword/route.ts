@@ -1,5 +1,6 @@
-import { NextResponse } from "next/server"
+import { NextRequest, NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/admin"
+import { requireAdminRole } from "@/lib/admin-auth"
 import { manualWriteFromTopic, getGeminiQuotaStatus } from "@/lib/ai-rewriter"
 import { SITE_URL } from "@/lib/constants"
 import { storeRemoteImage } from "@/lib/media"
@@ -60,7 +61,10 @@ async function findInternalLinks(keyword: string): Promise<string[]> {
     })
 }
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
+  const auth = await requireAdminRole(["admin", "editor"], request)
+  if (!auth.ok) return auth.response
+
   try {
     const { keyword } = await request.json()
 
@@ -77,7 +81,7 @@ export async function POST(request: Request) {
         ? `Manual quota OK (${capCheck.manualUsed}/${capCheck.manualCap}). Gemini debug: ${debug}.`
         : `Manual Gemini limit reached (${capCheck.manualUsed}/${capCheck.manualCap}). Resets at ${capCheck.resetsAt}.`
       return NextResponse.json(
-        { error: `AI research failed across all providers. ${capMsg}`, debug, cap: capCheck },
+        { error: `Gemini research failed. ${capMsg}`, debug, cap: capCheck },
         { status: 500 }
       )
     }

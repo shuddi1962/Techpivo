@@ -1,5 +1,6 @@
-import { NextResponse } from "next/server"
+import { NextRequest, NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/admin"
+import { requireAdminRole } from "@/lib/admin-auth"
 import { manualWriteFromTopic, getGeminiQuotaStatus } from "@/lib/ai-rewriter"
 import { SITE_URL } from "@/lib/constants"
 import { searchFeaturedImage } from "@/lib/web-images"
@@ -36,7 +37,10 @@ async function findInternalLinks(keyword: string): Promise<string[]> {
     )
 }
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
+  const auth = await requireAdminRole(["admin", "editor"], request)
+  if (!auth.ok) return auth.response
+
   try {
     const { id } = await request.json()
     if (!id) {

@@ -6,8 +6,8 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import {
-  Search, RefreshCw, TrendingUp, TrendingDown, Clock, CheckCircle,
-  Loader2, Sparkles, ExternalLink, X, Hash,
+  Search, RefreshCw, TrendingUp, TrendingDown, CheckCircle,
+  Loader2, Sparkles, ExternalLink, X,
   Filter, Globe, Layers, Eye
 } from "lucide-react"
 import Link from "next/link"
@@ -75,6 +75,30 @@ export default function AdminKeywordsPage() {
   }, [])
 
   useEffect(() => { fetchData() }, [fetchData])
+
+  // Realtime: new research, published generations and (future) deletes appear
+  // live. Unique channel per mount + removeChannel cleanup (supabase-js
+  // returns the SAME channel object for the same name).
+  useEffect(() => {
+    const supabase = createClient()
+    const channel = supabase
+      .channel(`admin_keywords_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "keyword_articles" },
+        () => fetchData()
+      )
+      .subscribe()
+
+    const interval = setInterval(fetchData, 30000)
+    const onFocus = () => fetchData()
+    window.addEventListener("focus", onFocus)
+    return () => {
+      clearInterval(interval)
+      window.removeEventListener("focus", onFocus)
+      supabase.removeChannel(channel)
+    }
+  }, [fetchData])
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
@@ -252,19 +276,7 @@ export default function AdminKeywordsPage() {
         </CardContent>
       </Card>
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-        <Card>
-          <CardContent className="p-4 flex items-center gap-3">
-            <Hash className="h-8 w-8 text-blue-500 shrink-0" />
-            <div><p className="text-2xl font-bold">{stats.total}</p><p className="text-xs text-muted-foreground">Total</p></div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4 flex items-center gap-3">
-            <Clock className="h-8 w-8 text-amber-500 shrink-0" />
-            <div><p className="text-2xl font-bold">{stats.draft}</p><p className="text-xs text-muted-foreground">Drafts</p></div>
-          </CardContent>
-        </Card>
+      <div className="grid grid-cols-2 gap-4 mb-6">
         <Card>
           <CardContent className="p-4 flex items-center gap-3">
             <CheckCircle className="h-8 w-8 text-green-500 shrink-0" />

@@ -38,7 +38,8 @@ export function PostActionsDropdown({ postId, slug, title, excerpt, featured_ima
       if (res.ok) {
         router.refresh()
       } else {
-        alert("Failed to delete post.")
+        const data = await res.json().catch(() => null)
+        alert(data?.error || "Failed to delete post.")
       }
     } catch {
       alert("Error deleting post.")

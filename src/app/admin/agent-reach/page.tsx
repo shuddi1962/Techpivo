@@ -379,7 +379,7 @@ export default function AgentReachPage() {
           <div>
             <p className="font-medium">{error}</p>
             <p className="mt-0.5 text-xs text-red-500/80">
-              Try again — the research engine retries across multiple providers automatically.
+              Try again — the research engine retries automatically when Gemini rate-limits or the daily quota resets.
             </p>
           </div>
         </div>

@@ -99,14 +99,22 @@ export default function AdminPostsPage() {
 
   useEffect(() => {
     const supabase = createClient()
+    let timer: ReturnType<typeof setTimeout> | undefined
     const channel = supabase
-      .channel("posts-realtime")
+      .channel(`admin_posts_list_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`)
       .on("postgres_changes", { event: "*", schema: "public", table: "posts" }, () => {
-        fetchCounts()
+        if (timer) clearTimeout(timer)
+        timer = setTimeout(() => {
+          fetchCounts()
+          fetchPage(page)
+        }, 400)
       })
       .subscribe()
-    return () => { supabase.removeChannel(channel) }
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+    return () => {
+      if (timer) clearTimeout(timer)
+      supabase.removeChannel(channel)
+    }
+  }, [fetchCounts, fetchPage, page])
 
   const totalPages = Math.ceil(totalCount / PAGE_SIZE)
 

@@ -6,7 +6,7 @@ import { CollapsibleSection } from "../collapsible-section"
 import { slugify } from "@/lib/utils"
 import { keywordSlug, keywordTitle, improveReadability, addInternalLinks } from "@/lib/editor-autofix"
 import { createClient } from "@/lib/supabase/client"
-import { Sparkles, Loader2, Globe, FileText, CheckCircle, AlertCircle, BarChart3 } from "lucide-react"
+import { Sparkles, Loader2, Globe, FileText, CheckCircle, AlertCircle } from "lucide-react"
 
 export function AiWritingPanel() {
   const { post, updatePost, seoKeyword, categories } = usePostEditor()
@@ -14,23 +14,8 @@ export function AiWritingPanel() {
   const [input, setInput] = useState("")
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
-  const [quota, setQuota] = useState<{ used: number; cap: number; remaining: number } | null>(null)
   const [lastResult, setLastResult] = useState<{ headline: string; elapsed: string } | null>(null)
   const [imageNote, setImageNote] = useState("")
-
-  // Show the monthly manual AI quota immediately (matches /api/admin/ai-write
-  // limits: ai_usage_log type=manual, 2000/month, resets on the 1st).
-  useEffect(() => {
-    let cancelled = false
-    fetch("/api/admin/ai-quota")
-      .then((res) => res.json().catch(() => null))
-      .then((data) => {
-        if (cancelled || !data?.manual) return
-        setQuota({ used: data.manual.used, cap: data.manual.cap, remaining: data.manual.remaining })
-      })
-      .catch(() => {})
-    return () => { cancelled = true }
-  }, [])
 
   const handleGenerate = async () => {
     if (!input.trim()) {
@@ -59,19 +44,10 @@ export function AiWritingPanel() {
       if (!res.ok) {
         if (res.status === 429) {
           setError(`Monthly quota reached (${data.quota?.used}/${data.quota?.cap}). Resets on the 1st.`)
-          setQuota(data.quota)
         } else {
           setError(data.error || "AI writing failed. Try again.")
         }
         return
-      }
-
-      if (data.meta) {
-        setQuota({
-          used:      data.meta.quota_used,
-          cap:       data.meta.quota_cap,
-          remaining: data.meta.quota_remaining,
-        })
       }
 
       setLastResult({
@@ -199,9 +175,6 @@ export function AiWritingPanel() {
     }
   }
 
-  const quotaPct = quota && quota.cap > 0 ? Math.min(100, Math.round((quota.used / quota.cap) * 100)) : 0
-  const quotaColor = quotaPct < 60 ? "#10B981" : quotaPct < 85 ? "#F59E0B" : "#EF4444"
-
   return (
     <CollapsibleSection
       title="AI Research & Write"
@@ -209,20 +182,6 @@ export function AiWritingPanel() {
       defaultOpen={true}
     >
       <div className="space-y-3">
-        {quota && (
-          <div className="flex items-center gap-2 px-3 py-2 bg-gray-50 dark:bg-[#0A0F1E] rounded-lg border border-gray-200 dark:border-[#1F2937]">
-            <BarChart3 className="h-3.5 w-3.5 text-gray-400" />
-            <div className="flex-1">
-              <div className="h-1.5 rounded-full bg-gray-200 dark:bg-[#1F2937] overflow-hidden">
-                <div className="h-full rounded-full transition-all" style={{ width: `${quotaPct}%`, background: quotaColor }} />
-              </div>
-            </div>
-            <span className="text-[10px] font-medium text-gray-500 dark:text-[#6B7280] whitespace-nowrap">
-              {quota.remaining}/{quota.cap} left
-            </span>
-          </div>
-        )}
-
         <div className="flex border-2 border-gray-200 dark:border-[#1F2937] rounded-xl overflow-hidden">
           <button
             onClick={() => { setMode("topic"); setInput(""); setError("") }}
