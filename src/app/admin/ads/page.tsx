@@ -8,8 +8,8 @@ import { useFx } from "@/lib/use-fx"
 import {
   LayoutGrid, Megaphone, ListChecks, TrendingUp, Settings2, BarChart3,
   Plus, Trash2, CheckCircle, XCircle, PauseCircle, PlayCircle, RefreshCw,
-  Eye, MousePointerClick, Users, Wallet, Clock,
-  ArrowRight, AlertCircle, Search, Video,
+  Eye, MousePointerClick, Users, Wallet, Clock, Pencil,
+  ArrowRight, AlertCircle, Search, Video, X,
 } from "lucide-react"
 import {
   AreaChart, Area, ComposedChart, Bar, Line, XAxis, YAxis, CartesianGrid,
@@ -62,6 +62,8 @@ const STATUS_META: Record<string, { label: string; color: string; bg: string }> 
 
 const NGN = (n: number | string | null | undefined) =>
   "₦" + Number(n || 0).toLocaleString(undefined, { maximumFractionDigits: 0 })
+
+const EDITABLE_STATUSES = new Set(["draft", "pending", "approved", "live", "paused", "rejected"])
 
 const fmt = (n: number | null | undefined) => Number(n || 0).toLocaleString()
 
@@ -164,6 +166,7 @@ interface Campaign {
   media_type: string | null
   video_url: string | null
   poster_url: string | null
+  content_url: string | null
   daily_budget: number | null
   bid_amount: number | null
   placements?: Placement | null
@@ -224,6 +227,63 @@ export default function AdminAdsPage() {
   const [campaignFilter, setCampaignFilter] = useState("all")
 
   const isAdmin = role === "admin" || role === "editor"
+
+  const [editCampaign, setEditCampaign] = useState<Campaign | null>(null)
+  const [editForm, setEditForm] = useState({
+    headline: "",
+    description: "",
+    cta_text: "",
+    destination_url: "",
+    ad_image_url: "",
+    video_url: "",
+    poster_url: "",
+    content_url: "",
+  })
+  const [savingEdit, setSavingEdit] = useState(false)
+
+  const openEditCampaign = (c: Campaign) => {
+    setEditCampaign(c)
+    setEditForm({
+      headline: c.headline || "",
+      description: c.description || "",
+      cta_text: c.cta_text || "",
+      destination_url: c.destination_url || "",
+      ad_image_url: c.ad_image_url || "",
+      video_url: c.video_url || "",
+      poster_url: c.poster_url || "",
+      content_url: c.content_url || "",
+    })
+  }
+
+  const saveEditCampaign = async () => {
+    if (!editCampaign) return
+    setSavingEdit(true)
+    const res = await fetch("/admin/ads/api", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        action: "update",
+        campaign_id: editCampaign.id,
+        headline: editForm.headline,
+        description: editForm.description,
+        cta_text: editForm.cta_text,
+        destination_url: editForm.destination_url,
+        ad_image_url: editForm.ad_image_url,
+        video_url: editForm.video_url,
+        poster_url: editForm.poster_url,
+        content_url: editForm.content_url,
+      }),
+    })
+    const data = await res.json()
+    setSavingEdit(false)
+    if (res.ok) {
+      setEditCampaign(null)
+      showNotice("success", "Campaign updated")
+      loadAll()
+    } else {
+      showNotice("error", data.error || "Update failed")
+    }
+  }
 
   const showNotice = useCallback((type: "success" | "error", text: string) => {
     setNotice({ type, text })
@@ -426,6 +486,7 @@ export default function AdminAdsPage() {
             filter={campaignFilter}
             setFilter={setCampaignFilter}
             isAdmin={isAdmin}
+            onEdit={openEditCampaign}
             onAction={async (action, campaign) => {
               if (action === "delete") {
                 if (!window.confirm(`Delete this campaign? This cannot be undone.`)) return
@@ -470,6 +531,121 @@ export default function AdminAdsPage() {
             onChanged={() => { loadAll(); showNotice("success", "Ad space updated") }}
             onError={showNotice}
           />
+        )}
+
+        {editCampaign && (
+          <div style={{
+            position: "fixed", inset: 0, zIndex: 1100,
+            background: S.overlay, display: "flex", alignItems: "center", justifyContent: "center",
+            padding: 20,
+          }}>
+            <div style={{ ...cardStyle(), width: "100%", maxWidth: 520, maxHeight: "88vh", overflowY: "auto" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+                <h3 style={{ fontSize: 17, fontWeight: 700, color: S.text, margin: 0 }}>Edit campaign</h3>
+                <button
+                  onClick={() => setEditCampaign(null)}
+                  style={{ background: "transparent", border: "none", cursor: "pointer", color: S.textDim, padding: 4 }}
+                  aria-label="Close"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                <div>
+                  <label style={{ fontSize: 12, fontWeight: 600, color: S.textMuted, display: "block", marginBottom: 4 }}>Headline</label>
+                  <input
+                    style={inputStyle}
+                    value={editForm.headline}
+                    onChange={(e) => setEditForm({ ...editForm, headline: e.target.value })}
+                    placeholder="Campaign headline"
+                  />
+                </div>
+                <div>
+                  <label style={{ fontSize: 12, fontWeight: 600, color: S.textMuted, display: "block", marginBottom: 4 }}>Description</label>
+                  <textarea
+                    style={{ ...inputStyle, minHeight: 70, resize: "vertical" }}
+                    value={editForm.description}
+                    onChange={(e) => setEditForm({ ...editForm, description: e.target.value })}
+                    placeholder="Short description shown with the ad"
+                  />
+                </div>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                  <div>
+                    <label style={{ fontSize: 12, fontWeight: 600, color: S.textMuted, display: "block", marginBottom: 4 }}>Button text</label>
+                    <input
+                      style={inputStyle}
+                      value={editForm.cta_text}
+                      onChange={(e) => setEditForm({ ...editForm, cta_text: e.target.value })}
+                      placeholder="Learn more"
+                    />
+                  </div>
+                  <div>
+                    <label style={{ fontSize: 12, fontWeight: 600, color: S.textMuted, display: "block", marginBottom: 4 }}>Destination URL</label>
+                    <input
+                      style={inputStyle}
+                      value={editForm.destination_url}
+                      onChange={(e) => setEditForm({ ...editForm, destination_url: e.target.value })}
+                      placeholder="https://..."
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label style={{ fontSize: 12, fontWeight: 600, color: S.textMuted, display: "block", marginBottom: 4 }}>Ad image URL</label>
+                  <input
+                    style={inputStyle}
+                    value={editForm.ad_image_url}
+                    onChange={(e) => setEditForm({ ...editForm, ad_image_url: e.target.value })}
+                    placeholder="https://... (image ad)"
+                  />
+                </div>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                  <div>
+                    <label style={{ fontSize: 12, fontWeight: 600, color: S.textMuted, display: "block", marginBottom: 4 }}>Video URL</label>
+                    <input
+                      style={inputStyle}
+                      value={editForm.video_url}
+                      onChange={(e) => setEditForm({ ...editForm, video_url: e.target.value })}
+                      placeholder="https://... (video ad)"
+                    />
+                  </div>
+                  <div>
+                    <label style={{ fontSize: 12, fontWeight: 600, color: S.textMuted, display: "block", marginBottom: 4 }}>Poster URL</label>
+                    <input
+                      style={inputStyle}
+                      value={editForm.poster_url}
+                      onChange={(e) => setEditForm({ ...editForm, poster_url: e.target.value })}
+                      placeholder="https://... (video thumbnail)"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label style={{ fontSize: 12, fontWeight: 600, color: S.textMuted, display: "block", marginBottom: 4 }}>Article / content URL (sponsored articles)</label>
+                  <input
+                    style={inputStyle}
+                    value={editForm.content_url}
+                    onChange={(e) => setEditForm({ ...editForm, content_url: e.target.value })}
+                    placeholder="https://... (sponsored_article only)"
+                  />
+                </div>
+              </div>
+              <div style={{ display: "flex", gap: 10, marginTop: 18 }}>
+                <button
+                  onClick={() => setEditCampaign(null)}
+                  style={{ ...btnSecondary, flex: 1 }}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={saveEditCampaign}
+                  style={{ ...btnPrimary, flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}
+                  disabled={savingEdit}
+                >
+                  {savingEdit && <RefreshCw size={14} style={{ animation: "spin 1s linear infinite" }} />}
+                  Save changes
+                </button>
+              </div>
+            </div>
+          </div>
         )}
       </div>
     </div>
@@ -774,13 +950,14 @@ const labelStyle: React.CSSProperties = {
 /* ================== CAMPAIGNS ================== */
 
 function CampaignsTab({
-  campaigns, filter, setFilter, isAdmin, onAction,
+  campaigns, filter, setFilter, isAdmin, onAction, onEdit,
 }: {
   campaigns: Campaign[]
   filter: string
   setFilter: (f: string) => void
   isAdmin: boolean
   onAction: (action: string, campaign: Campaign) => void
+  onEdit: (campaign: Campaign) => void
 }) {
   const filters = ["all", "pending", "live", "approved", "paused", "expired", "rejected", "completed", "cancelled"]
 
@@ -939,6 +1116,16 @@ function CampaignsTab({
                 {isAdmin && (c.status === "expired" || c.status === "completed" || c.status === "paused") && (
                   <button onClick={() => handleRenew(c)} style={{ ...btnSecondary, flex: 1, color: S.primary, borderColor: "#BFDBFE", display: "flex", alignItems: "center", justifyContent: "center", gap: 5 }}>
                     <RefreshCw size={14} /> Renew
+                  </button>
+                )}
+                {isAdmin && EDITABLE_STATUSES.has(c.status) && (
+                  <button onClick={() => onEdit(c)} style={{ ...btnSecondary, flex: 1, color: S.textMuted, display: "flex", alignItems: "center", justifyContent: "center", gap: 5 }}>
+                    <Pencil size={14} /> Edit
+                  </button>
+                )}
+                {isAdmin && !EDITABLE_STATUSES.has(c.status) && (
+                  <button onClick={() => onAction("delete", c)} style={{ ...btnSecondary, flex: 1, color: S.red, borderColor: "#FECACA", display: "flex", alignItems: "center", justifyContent: "center", gap: 5 }}>
+                    <Trash2 size={14} /> Delete
                   </button>
                 )}
                 {c.status === "draft" && (

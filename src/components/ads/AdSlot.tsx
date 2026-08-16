@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState, useRef } from "react"
+import { useEffect, useState, useRef, useCallback } from "react"
 import Image from "next/image"
 import { createClient } from "@/lib/supabase/client"
 import { cn } from "@/lib/utils"
@@ -31,56 +31,94 @@ interface CampaignAd {
 export function AdSlot({ positionKey, className, preview }: AdSlotProps) {
   const [slotAd, setSlotAd] = useState<SlotAd | null>(null)
   const [campaignAds, setCampaignAds] = useState<CampaignAd[]>([])
+  const [placementSizes, setPlacementSizes] = useState<string[] | null>(null)
   const [settings, setSettings] = useState<{ enable_auto_ads?: boolean; adsense_publisher_id?: string }>({})
   const [loading, setLoading] = useState(true)
   const [currentCampaignIndex, setCurrentCampaignIndex] = useState(0)
   const recordedRef = useRef(false)
   const intervalRef = useRef<NodeJS.Timeout | null>(null)
   const lastTrackedCampaignRef = useRef<string | null>(null)
+  const mountedRef = useRef(true)
+
+  useEffect(() => {
+    mountedRef.current = true
+    return () => {
+      mountedRef.current = false
+    }
+  }, [])
+
+  const refresh = useCallback(async () => {
+    const supabase = createClient()
+    const today = new Date().toISOString().slice(0, 10)
+
+    const [slotRes, campaignsRes, placementRes, settingsRes] = await Promise.all([
+      supabase
+        .from("ads")
+        .select("id, ad_code")
+        .eq("position", positionKey)
+        .eq("is_active", true)
+        .limit(1)
+        .maybeSingle(),
+      supabase
+        .from("ad_campaigns")
+        .select("id, advertiser_name, ad_image_url, destination_url, ad_code, media_type, video_url, poster_url")
+        .contains("positions", [positionKey])
+        .eq("is_active", true)
+        .in("status", ["approved", "live"])
+        .gte("end_date", today),
+      supabase
+        .from("ad_placements")
+        .select("position, sizes")
+        .eq("position", positionKey)
+        .eq("is_active", true)
+        .maybeSingle(),
+      supabase
+        .from("site_settings")
+        .select("key, value")
+        .in("key", ["enable_auto_ads", "adsense_publisher_id"]),
+    ])
+
+    if (!mountedRef.current) return
+    if (slotRes.data) setSlotAd(slotRes.data)
+    if (campaignsRes.data) setCampaignAds(campaignsRes.data)
+    if (placementRes.data) setPlacementSizes(placementRes.data.sizes)
+    if (settingsRes.data) {
+      const result: Record<string, any> = {}
+      for (const row of settingsRes.data) {
+        result[row.key] = row.value
+      }
+      setSettings(result)
+    }
+    setLoading(false)
+  }, [positionKey])
+
+  useEffect(() => {
+    refresh()
+  }, [refresh])
 
   useEffect(() => {
     const supabase = createClient()
-    let cancelled = false
-    const today = new Date().toISOString().slice(0, 10)
-
-    async function load() {
-      const [slotRes, campaignsRes, settingsRes] = await Promise.all([
-        supabase
-          .from("ads")
-          .select("id, ad_code")
-          .eq("position", positionKey)
-          .eq("is_active", true)
-          .limit(1)
-          .maybeSingle(),
-        supabase
-          .from("ad_campaigns")
-          .select("id, advertiser_name, ad_image_url, destination_url, ad_code, media_type, video_url, poster_url")
-          .contains("positions", [positionKey])
-          .eq("is_active", true)
-          .in("status", ["approved", "live"])
-          .gte("end_date", today),
-        supabase
-          .from("site_settings")
-          .select("key, value")
-          .in("key", ["enable_auto_ads", "adsense_publisher_id"]),
-      ])
-
-      if (cancelled) return
-      if (slotRes.data) setSlotAd(slotRes.data)
-      if (campaignsRes.data) setCampaignAds(campaignsRes.data)
-      if (settingsRes.data) {
-        const result: Record<string, any> = {}
-        for (const row of settingsRes.data) {
-          result[row.key] = row.value
-        }
-        setSettings(result)
-      }
-      setLoading(false)
+    const channel = supabase
+      .channel(`adslot_${positionKey}_${Math.random().toString(36).slice(2)}`)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "ad_campaigns" },
+        () => {
+          refresh()
+        },
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "ads" },
+        () => {
+          refresh()
+        },
+      )
+      .subscribe()
+    return () => {
+      supabase.removeChannel(channel)
     }
-
-    load()
-    return () => { cancelled = true }
-  }, [positionKey])
+  }, [refresh])
 
   useEffect(() => {
     if (campaignAds.length <= 1) {
@@ -96,13 +134,14 @@ export function AdSlot({ positionKey, className, preview }: AdSlotProps) {
   }, [campaignAds.length])
 
   useEffect(() => {
-    if (!slotAd || recordedRef.current) return
+    if (!slotAd || recordedRef.current || preview) return
     recordedRef.current = true
     const supabase = createClient()
     supabase.rpc("increment_ad_impressions", { ad_id: slotAd.id }).then()
-  }, [slotAd])
+  }, [slotAd, preview])
 
   useEffect(() => {
+    if (preview) return
     const campaign = campaignAds[currentCampaignIndex]
     if (!campaign) return
     if (lastTrackedCampaignRef.current === campaign.id) return
@@ -110,9 +149,10 @@ export function AdSlot({ positionKey, className, preview }: AdSlotProps) {
     const supabase = createClient()
     supabase.rpc("increment_campaign_impressions", { campaign_id: campaign.id }).then()
     supabase.rpc("increment_campaign_daily_stats", { campaign_id: campaign.id, kind: "impressions" }).then()
-  }, [campaignAds, currentCampaignIndex])
+  }, [campaignAds, currentCampaignIndex, preview])
 
   const trackCampaignClick = (campaignId: string) => {
+    if (preview) return
     const supabase = createClient()
     supabase.rpc("increment_campaign_clicks", { campaign_id: campaignId }).then()
     supabase.rpc("increment_campaign_daily_stats", { campaign_id: campaignId, kind: "clicks" }).then()
@@ -121,13 +161,21 @@ export function AdSlot({ positionKey, className, preview }: AdSlotProps) {
   const marketingConsent = hasConsentFor("marketing")
   const showAutoAds = settings.enable_auto_ads && settings.adsense_publisher_id && marketingConsent
 
-  if (loading) {
-    return (
-      <div className={cn("flex items-center justify-center min-h-[90px] bg-muted/30 rounded-md border border-dashed", className)}>
-        <span className="text-[10px] uppercase tracking-widest text-muted-foreground/40">Loading...</span>
-      </div>
-    )
-  }
+  if (loading) return null
+
+  // Follow the placement's declared size (first entry, e.g. "728x90") — creatives
+  // are width-capped at the placement width and height-capped so they never blow out of their space.
+  const designSize = (() => {
+    const raw = Array.isArray(placementSizes) ? placementSizes[0] : undefined
+    if (!raw) return null
+    const [w, h] = String(raw).toLowerCase().split("x").map((n) => parseInt(n, 10))
+    if (!w || !h || w <= 0 || h <= 0) return null
+    return { w, h }
+  })()
+
+  const sizeBox = designSize
+    ? { maxWidth: designSize.w, maxHeight: designSize.h, width: "100%" as const }
+    : { width: "100%" as const }
 
   const campaign = campaignAds[currentCampaignIndex]
 
@@ -143,18 +191,21 @@ export function AdSlot({ positionKey, className, preview }: AdSlotProps) {
               Campaign: {campaign.advertiser_name}
             </span>
           )}
-          <video
-            src={campaign.video_url}
-            poster={campaign.poster_url || undefined}
-            controls
-            muted
-            loop
-            playsInline
-            preload="metadata"
-            className="max-w-full h-auto rounded-md"
-            onClick={() => trackCampaignClick(campaign.id)}
-            onPlay={() => trackCampaignClick(campaign.id)}
-          />
+          <div className="mx-auto" style={sizeBox}>
+            <video
+              src={campaign.video_url}
+              poster={campaign.poster_url || undefined}
+              controls
+              muted
+              loop
+              playsInline
+              preload="metadata"
+              className="w-full h-auto rounded-md"
+              style={designSize ? { maxHeight: designSize.h } : undefined}
+              onClick={() => trackCampaignClick(campaign.id)}
+              onPlay={() => trackCampaignClick(campaign.id)}
+            />
+          </div>
         </div>
       )
     }
@@ -169,10 +220,14 @@ export function AdSlot({ positionKey, className, preview }: AdSlotProps) {
           )}
           {campaign.destination_url ? (
             <a href={preview ? "#" : campaign.destination_url} target="_blank" rel="noopener" onClick={() => trackCampaignClick(campaign.id)}>
-              <Image src={campaign.ad_image_url} alt={campaign.advertiser_name} width={800} height={450} className="max-w-full h-auto" />
+              <span className="block mx-auto" style={sizeBox}>
+                <Image src={campaign.ad_image_url} alt={campaign.advertiser_name} width={designSize?.w || 800} height={designSize?.h || 450} className="w-full h-auto object-contain" />
+              </span>
             </a>
           ) : (
-            <Image src={campaign.ad_image_url} alt={campaign.advertiser_name} width={800} height={450} className="max-w-full h-auto" />
+            <span className="block mx-auto" style={sizeBox}>
+              <Image src={campaign.ad_image_url} alt={campaign.advertiser_name} width={designSize?.w || 800} height={designSize?.h || 450} className="w-full h-auto object-contain" />
+            </span>
           )}
         </div>
       )
@@ -186,7 +241,7 @@ export function AdSlot({ positionKey, className, preview }: AdSlotProps) {
               Campaign: {campaign.advertiser_name}
             </span>
           )}
-          <div dangerouslySetInnerHTML={{ __html: campaign.ad_code }} />
+          <div className="mx-auto" style={sizeBox} dangerouslySetInnerHTML={{ __html: campaign.ad_code }} />
         </div>
       )
     }
@@ -194,18 +249,20 @@ export function AdSlot({ positionKey, className, preview }: AdSlotProps) {
     return null
   }
 
-  // Slot ad with ad_code
-  if (slotAd?.ad_code) {
+  // Public visitors see ONLY approved/live campaigns. Legacy slot ads (ads table) and
+  // AdSense auto-ads are reserved for admin preview mode (preview=true) so their ad_code
+  // never ships to real visitors.
+  if (preview) {
     return (
       <div className={cn("ad-slot", className)}>
-        {preview && (
-          <span className="text-[9px] uppercase tracking-wider text-muted-foreground mb-0.5 block">
-            Slot: {AD_POSITIONS[positionKey]}
-          </span>
+        <span className="text-[9px] uppercase tracking-wider text-muted-foreground mb-0.5 block">
+          Slot: {AD_POSITIONS[positionKey]}
+        </span>
+        {slotAd?.ad_code && (
+          <div className="mx-auto" style={sizeBox} dangerouslySetInnerHTML={{ __html: slotAd.ad_code }} />
         )}
-        <div dangerouslySetInnerHTML={{ __html: slotAd.ad_code }} />
-        {campaignAds.length > 0 && (
-          <div className="mt-2 border-t pt-2">
+        {campaign ? (
+          <div className={slotAd?.ad_code ? "mt-2 border-t pt-2" : "mt-1"}>
             {renderCampaign()}
             {campaignAds.length > 1 && (
               <div className="flex justify-center gap-1 mt-1">
@@ -215,12 +272,35 @@ export function AdSlot({ positionKey, className, preview }: AdSlotProps) {
               </div>
             )}
           </div>
+        ) : showAutoAds ? (
+          <div
+            className="mt-1"
+            dangerouslySetInnerHTML={{
+              __html: `
+                <script async
+                  src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${settings.adsense_publisher_id}"
+                  crossorigin="anonymous"
+                ></script>
+                <ins class="adsbygoogle"
+                  style="display:block"
+                  data-ad-client="${settings.adsense_publisher_id}"
+                  data-ad-format="auto"
+                  data-full-width-responsive="true"
+                ></ins>
+                <script>(adsbygoogle = window.adsbygoogle || []).push({})</script>
+              `,
+            }}
+          />
+        ) : (
+          <span className="text-[10px] uppercase tracking-widest text-muted-foreground/40 block mt-1">
+            No active campaign — preview
+          </span>
         )}
       </div>
     )
   }
 
-  // Campaign ads only (no slot ad)
+  // Campaign ads only (public)
   if (campaign) {
     return (
       <div className={cn("ad-slot", className)}>
@@ -232,32 +312,6 @@ export function AdSlot({ positionKey, className, preview }: AdSlotProps) {
             ))}
           </div>
         )}
-      </div>
-    )
-  }
-
-  // Auto-ads fallback
-  if (showAutoAds) {
-    return (
-      <div className={cn("ad-slot ad-slot--auto", className)}>
-        <span className="text-[10px] uppercase tracking-widest text-muted-foreground/40 block text-center mb-1">Advertisement</span>
-        <div
-          dangerouslySetInnerHTML={{
-            __html: `
-              <script async
-                src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${settings.adsense_publisher_id}"
-                crossorigin="anonymous"
-              ></script>
-              <ins class="adsbygoogle"
-                style="display:block"
-                data-ad-client="${settings.adsense_publisher_id}"
-                data-ad-format="auto"
-                data-full-width-responsive="true"
-              ></ins>
-              <script>(adsbygoogle = window.adsbygoogle || []).push({})</script>
-            `,
-          }}
-        />
       </div>
     )
   }

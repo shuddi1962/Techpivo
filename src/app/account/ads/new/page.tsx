@@ -31,6 +31,8 @@ interface Placement {
   est_impressions: number;
 }
 
+const isPopupType = (t?: string) => t === 'popup' || t === 'popup_toast';
+
 export default function NewCampaignPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -296,7 +298,7 @@ export default function NewCampaignPage() {
                       <div className="flex justify-between gap-2 items-center">
                         <span className="text-sm font-semibold text-slate-800">{p.name}</span>
                         <span className="flex items-center gap-1">
-                          {p.ad_type === 'popup_toast' && (
+                          {isPopupType(p.ad_type) && (
                             <span className="flex items-center gap-0.5 text-[10px] font-bold text-purple-600 bg-purple-100 rounded px-1.5 py-0.5 whitespace-nowrap">POPUP</span>
                           )}
                           {p.ad_type === 'sponsored_article' && (
@@ -307,7 +309,7 @@ export default function NewCampaignPage() {
                           )}
                         </span>
                       </div>
-                      <div className="text-xs font-bold text-blue-600 mt-1">Min {formatMoney(Math.round((f / fx) * 100) / 100, currency)} {billingModel.toUpperCase()}</div>
+                      {selected && <div className="text-xs font-bold text-blue-600 mt-1">Min {formatMoney(Math.round((f / fx) * 100) / 100, currency)} {billingModel.toUpperCase()}</div>}
                       <div className="text-[11px] text-slate-400 mt-0.5">
                         {(p.sizes || []).slice(0, 2).join(' · ') || p.ad_type} · ~{p.est_impressions.toLocaleString()}/mo
                       </div>
@@ -316,6 +318,28 @@ export default function NewCampaignPage() {
                 })}
                 {placements.length === 0 && <p className="text-sm text-muted-foreground col-span-2 text-center py-8">No ad spaces available right now.</p>}
               </div>
+              {placement && (isPopupType(placement.ad_type) || placement.ad_type === 'sponsored_article' || placement.supports_video) && (
+                <div className="mt-3 rounded-lg border border-blue-100 bg-blue-50/60 px-3.5 py-3 text-xs text-slate-600 space-y-1.5">
+                  {isPopupType(placement.ad_type) && (
+                    <p className="flex items-start gap-1.5">
+                      <Sparkles className="h-3.5 w-3.5 mt-0.5 text-purple-600 shrink-0" />
+                      <span><b>Popup Toast</b> — readers see your image + headline as a dismissible popup in the bottom-right corner about 6 seconds after a page loads.</span>
+                    </p>
+                  )}
+                  {placement.ad_type === 'sponsored_article' && (
+                    <p className="flex items-start gap-1.5">
+                      <Star className="h-3.5 w-3.5 mt-0.5 text-amber-600 shrink-0" />
+                      <span><b>Sponsored Article</b> — a &quot;Sponsored&quot; card in the article sidebar that links to your own article page. You&apos;ll add the article URL in Step 3.</span>
+                    </p>
+                  )}
+                  {placement.supports_video && (
+                    <p className="flex items-start gap-1.5">
+                      <Video className="h-3.5 w-3.5 mt-0.5 text-blue-600 shrink-0" />
+                      <span><b>Video-enabled space</b> — you can upload an MP4/WebM video creative in Step 3 (image is fine too).</span>
+                    </p>
+                  )}
+                </div>
+              )}
             </CardContent>
           </Card>
 
@@ -546,7 +570,7 @@ export default function NewCampaignPage() {
                 </div>
               )}
 
-              {placement?.ad_type === 'popup_toast' && (
+              {isPopupType(placement?.ad_type) && (
                 <div className="mt-4">
                   <label className={labelCls}>Popup preview — how readers will see it</label>
                   <div className="border border-slate-200 rounded-xl p-4 bg-slate-50/70 max-w-sm">

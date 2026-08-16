@@ -9,7 +9,7 @@ import {
 } from "lucide-react";
 import { useFx } from "@/lib/use-fx";
 import { FX_POPULAR } from "@/lib/fx-shared";
-import { ChevronDown, ChevronUp } from "lucide-react";
+import { createClient } from "@/lib/supabase/client";
 
 const PRIMARY = "#2563EB";
 const PRIMARY_DARK = "#1D4ED8";
@@ -44,6 +44,7 @@ const POSITION_ICONS: Record<string, string> = {
 };
 
 const AD_TYPE_BADGES: Record<string, { label: string; cls: string }> = {
+  popup: { label: "POPUP", cls: "bg-purple-100 text-purple-700" },
   popup_toast: { label: "POPUP", cls: "bg-purple-100 text-purple-700" },
   sponsored_article: { label: "SPONSORED", cls: "bg-amber-100 text-amber-700" },
   video: { label: "VIDEO", cls: "bg-blue-100 text-blue-700" },
@@ -64,7 +65,6 @@ const FORMAT_EXAMPLES = [
 
 export function AdvertiseLanding() {
   const [placements, setPlacements] = useState<Placement[]>([]);
-  const [openPricing, setOpenPricing] = useState<string | null>(null);
   const fx = useFx();
   const currency = fx.displayCurrency;
 
@@ -82,9 +82,20 @@ export function AdvertiseLanding() {
 
   useEffect(() => {
     load();
+    const supabase = createClient();
+    const channel = supabase
+      .channel(`advertise_landing_placements_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "ad_placements" }, () => load())
+      .subscribe();
+    const id = window.setInterval(load, 60000);
+    const onFocus = () => load();
+    window.addEventListener("focus", onFocus);
+    return () => {
+      window.clearInterval(id);
+      window.removeEventListener("focus", onFocus);
+      supabase.removeChannel(channel);
+    };
   }, [load]);
-
-  const price = (ngn: number) => fx.format(Number(ngn || 0), "NGN", undefined, { maxFrac: currency === "NGN" ? 0 : 2 });
 
   return (
     <div className="w-full">
@@ -178,7 +189,7 @@ export function AdvertiseLanding() {
         </div>
         <p className="text-center mt-8">
           <Link href={`/account/ads/new?currency=${currency}`} className="inline-flex items-center gap-2 font-semibold text-[15px]" style={{ color: PRIMARY_DARK }}>
-            See all ad spaces &amp; minimum bids <ArrowRight size={16} />
+            See all ad spaces <ArrowRight size={16} />
           </Link>
         </p>
       </div>
@@ -188,10 +199,9 @@ export function AdvertiseLanding() {
         <div className="max-w-2xl mb-10">
           <h2 className="text-3xl font-bold mb-3 text-slate-900">Choose Your Ad Space</h2>
           <p className="text-slate-500 text-[15px] leading-relaxed">
-            Open spots with minimum bids in{" "}
-            <span className="font-semibold" style={{ color: PRIMARY_DARK }}>{currency}</span> — we
-            detected your location and converted prices at today&apos;s live exchange rate. You
-            can pay in your local currency.
+            No fixed rate cards. Every space has a transparent minimum bid — see it in{" "}
+            <span className="font-semibold" style={{ color: PRIMARY_DARK }}>{currency}</span> when
+            you start booking, and you can pay in your local currency.
           </p>
           <div className="mt-4 flex items-center gap-2">
             <MapPin size={15} className="text-slate-400" />
@@ -213,9 +223,12 @@ export function AdvertiseLanding() {
           {(placements.length > 0 ? placements : []).map((p) => {
             const badge = AD_TYPE_BADGES[p.ad_type] || (p.supports_video ? AD_TYPE_BADGES.video : AD_TYPE_BADGES.banner);
             const sizeLabel = (p.sizes || []).slice(0, 2).join(" · ") || badge.label;
-            const open = openPricing === p.id;
             return (
-              <div key={p.id} className="bg-white border border-slate-200 rounded-2xl p-5 flex flex-col shadow-sm">
+              <Link
+                key={p.id}
+                href={`/account/ads/new?placement=${p.id}&currency=${currency}`}
+                className="group bg-white border border-slate-200 rounded-2xl p-5 flex flex-col shadow-sm hover:shadow-md hover:border-slate-300 transition-all"
+              >
                 <div className="flex items-center justify-between mb-3">
                   <span className="text-2xl">{POSITION_ICONS[p.position] || "📢"}</span>
                   <div className="flex items-center gap-1.5">
@@ -227,45 +240,25 @@ export function AdvertiseLanding() {
                     <span className={`text-[10px] font-semibold uppercase tracking-wide rounded-full px-2 py-0.5 ${badge.cls}`}>{badge.label}</span>
                   </div>
                 </div>
-                <h3 className="font-bold text-slate-900">{p.name}</h3>
+                <h3 className="font-bold text-slate-900 group-hover:underline">{p.name}</h3>
                 <div className="mt-1.5 text-xs text-slate-500">
                   <span className="font-mono bg-slate-50 border border-slate-200 rounded px-1.5 py-0.5">{sizeLabel}</span>
                   {p.est_impressions ? <span className="ml-2">~{Number(p.est_impressions).toLocaleString()} monthly impressions</span> : null}
                 </div>
 
-                <button
-                  type="button"
-                  onClick={() => setOpenPricing(open ? null : p.id)}
-                  className="mt-3 inline-flex items-center gap-1 text-xs font-semibold transition-colors"
-                  style={{ color: PRIMARY_DARK }}
-                  aria-expanded={open}
-                >
-                  {open ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
-                  {open ? "Hide pricing" : "Show pricing"}
-                </button>
-
-                {open && (
-                  <div className="mt-2 space-y-1.5 text-xs text-slate-600 bg-blue-50/60 border border-blue-100 rounded-lg px-3 py-2.5">
-                    <p className="flex justify-between gap-2"><span className="text-slate-500">CPM floor (per 1,000 imps)</span><span className="font-semibold text-slate-900">{price(p.min_bid_cpm)}</span></p>
-                    <p className="flex justify-between gap-2"><span className="text-slate-500">CPC floor (per click)</span><span className="font-semibold text-slate-900">{price(p.min_bid_cpc)}</span></p>
-                    <p className="text-[11px] text-slate-400 pt-0.5 border-t border-blue-100">Shown in {currency} at today&apos;s live rate. You set your own bid at or above these floors.</p>
-                  </div>
-                )}
-
-                <Link
-                  href={`/account/ads/new?placement=${p.id}&currency=${currency}`}
-                  className="mt-auto pt-4 inline-flex items-center justify-center gap-1.5 rounded-lg border px-3 py-2 text-sm font-semibold transition-colors"
+                <span
+                  className="mt-auto pt-4 inline-flex items-center justify-center gap-1.5 rounded-lg border px-3 py-2 text-sm font-semibold transition-colors group-hover:brightness-95"
                   style={{ borderColor: `${PRIMARY}40`, background: PRIMARY_SOFT, color: PRIMARY_DARK }}
                 >
                   <LayoutGrid size={14} /> Book this space
-                </Link>
-              </div>
+                </span>
+              </Link>
             );
           })}
         </div>
         {placements.length === 0 && (
           <p className="text-sm text-slate-400 text-center py-8">
-            <Link href={`/account/ads/new?currency=${currency}`} className="font-semibold" style={{ color: PRIMARY_DARK }}>Open My Ads</Link> to see the full inventory with live minimum bids.
+            <Link href={`/account/ads/new?currency=${currency}`} className="font-semibold" style={{ color: PRIMARY_DARK }}>Open My Ads</Link> to see the full inventory and start booking.
           </p>
         )}
       </div>
@@ -415,7 +408,7 @@ export function AdvertiseLanding() {
                   Hi — is the sidebar placement good for a SaaS product targeting dev teams?
                 </div>
                 <div className="max-w-[85%] ml-auto rounded-2xl rounded-tr-sm px-4 py-2.5 text-sm text-white" style={{ background: PRIMARY }}>
-                  Absolutely! The sidebar has a {price(500)} CPM floor and 30k+ monthly impressions. Want me to walk you through the setup?
+                  Absolutely! The sidebar is a top performer for dev-focused SaaS and averages 30k+ impressions a month. Want me to walk you through the setup?
                 </div>
                 <div className="max-w-[85%] rounded-2xl rounded-tl-sm bg-slate-100 px-4 py-2.5 text-sm text-slate-700">
                   Yes please — also, does the AI creative generator work for banners?
