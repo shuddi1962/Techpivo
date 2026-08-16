@@ -56,17 +56,18 @@ export default function AdminKeywordsPage() {
 
   const fetchData = useCallback(async () => {
     const supabase = createClient()
-    const [allRes, draftRes, pubRes] = await Promise.all([
+    const [allRes, draftRes, pubRes, totalRes] = await Promise.all([
       supabase.from("keyword_articles")
         .select("*, category:categories(name, slug)")
         .order("created_at", { ascending: false })
-        .limit(500),
+        .limit(5000),
       supabase.from("keyword_articles").select("*", { count: "exact", head: true }).eq("status", "draft"),
       supabase.from("keyword_articles").select("*", { count: "exact", head: true }).eq("status", "published"),
+      supabase.from("keyword_articles").select("*", { count: "exact", head: true }),
     ])
     if (allRes.data) setArticles(allRes.data as unknown as KeywordArticle[])
     setStats({
-      total: allRes.data?.length || 0,
+      total: totalRes.count || allRes.data?.length || 0,
       draft: draftRes.count || 0,
       published: pubRes.count || 0,
       volume: (allRes.data || []).reduce((s: number, a: any) => s + (a.search_volume || 0), 0),
@@ -321,7 +322,7 @@ export default function AdminKeywordsPage() {
               <option value="volume">Search Volume</option>
               <option value="views">Views</option>
             </select>
-            <span className="text-xs text-muted-foreground ml-auto">{sorted.length} of {articles.length}</span>
+            <span className="text-xs text-muted-foreground ml-auto">{sorted.length} of {stats.total}</span>
           </div>
         </CardContent>
       </Card>
