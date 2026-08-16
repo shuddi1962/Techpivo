@@ -520,7 +520,7 @@ export async function POST(request: Request) {
       }
 
       const updater = isAdmin ? createAdminClient() : supabase
-      const patch: Record<string, any> = { updated_at: new Date().toISOString() }
+      const patch: Record<string, any> = {}
       const validUrl = (v: any) => (v && /^https?:\/\/.+/i.test(String(v).trim()) ? String(v).trim() : null)
       if (body.headline !== undefined) patch.headline = String(body.headline).slice(0, 120)
       if (body.description !== undefined) patch.description = String(body.description).slice(0, 300)
@@ -633,7 +633,6 @@ export async function POST(request: Request) {
           bid_amount: bidAmt,
           status: "live",
           is_active: true,
-          updated_at: new Date().toISOString(),
         })
         .eq("id", target.id)
       if (error) throw error
