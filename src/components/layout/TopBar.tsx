@@ -25,7 +25,6 @@ export function TopBar({ socialUrls = {} }: { socialUrls?: Record<string, string
           {pageVisible("advertise") && <Link href="/advertise">Advertise</Link>}
           {pageVisible("newsletter") && <Link href="/newsletter">Newsletter</Link>}
           <span className="top-divider" />
-          {pageVisible("write-for-us") && <Link href="/write-for-us">Write for Us</Link>}
         </div>
         <div className="top-bar-right">
           <div className="top-social" style={{ display: "flex", gap: 6, alignItems: "center" }}>

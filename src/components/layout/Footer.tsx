@@ -36,7 +36,6 @@ const quickLinksLeft = [
   { label: "About Us", href: "/about" },
   { label: "Contact Us", href: "/contact" },
   { label: "Advertise With Us", href: "/advertise" },
-  { label: "Write For Us", href: "/write-for-us" },
   { label: "Disclaimer", href: "/disclaimer" },
   { label: "Privacy Policy", href: "/privacy-policy" },
   { label: "Cookies Policy", href: "/cookies-policy" },

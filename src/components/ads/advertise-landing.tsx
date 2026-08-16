@@ -43,7 +43,7 @@ const POSITION_ICONS: Record<string, string> = {
 const FORMAT_EXAMPLES = [
   { title: "Leaderboard Banner", size: "728 × 90", video: false, hint: "High-visibility banner above article content", img: "https://images.pexels.com/photos/3184291/pexels-photo-3184291.jpeg", h: "h-24" },
   { title: "Rectangle / Sidebar", size: "300 × 250", video: false, hint: "Mid-page rectangle on articles & categories", img: "https://images.pexels.com/photos/1181671/pexels-photo-1181671.jpeg", h: "h-44" },
-  { title: "In-Content", size: "336 × 280", video: false, hint: "Inline within articles, between paragraphs", img: "https://images.pexels.com/photos/159306/pexels-photo-159306.jpeg", h: "h-40" },
+  { title: "In-Content", size: "336 × 280", video: false, hint: "Inline within articles, between paragraphs", img: "https://images.pexels.com/photos/1181263/pexels-photo-1181263.jpeg", h: "h-40" },
   { title: "Video Ads", size: "VIDEO", video: true, hint: "Motion ads on video-capable placements", img: "https://images.pexels.com/photos/1181244/pexels-photo-1181244.jpeg", h: "h-40" },
 ];
 
@@ -161,7 +161,7 @@ export function AdvertiseLanding() {
           ))}
         </div>
         <p className="text-center mt-8">
-          <Link href="/account/ads/new" className="inline-flex items-center gap-2 font-semibold text-[15px]" style={{ color: PRIMARY_DARK }}>
+          <Link href={`/account/ads/new?currency=${currency}`} className="inline-flex items-center gap-2 font-semibold text-[15px]" style={{ color: PRIMARY_DARK }}>
             See all ad spaces &amp; minimum bids <ArrowRight size={16} />
           </Link>
         </p>
@@ -210,7 +210,7 @@ export function AdvertiseLanding() {
                 {p.est_impressions ? <p>~{Number(p.est_impressions).toLocaleString()} monthly impressions</p> : null}
               </div>
               <Link
-                href="/account/ads/new"
+                href={`/account/ads/new?placement=${p.id}&currency=${currency}`}
                 className="mt-4 inline-flex items-center justify-center gap-1.5 rounded-lg border px-3 py-2 text-sm font-semibold transition-colors"
                 style={{ borderColor: `${PRIMARY}40`, background: PRIMARY_SOFT, color: PRIMARY_DARK }}
               >
@@ -221,7 +221,7 @@ export function AdvertiseLanding() {
         </div>
         {placements.length === 0 && (
           <p className="text-sm text-slate-400 text-center py-8">
-            <Link href="/account/ads/new" className="font-semibold" style={{ color: PRIMARY_DARK }}>Open My Ads</Link> to see the full inventory with live minimum bids.
+            <Link href={`/account/ads/new?currency=${currency}`} className="font-semibold" style={{ color: PRIMARY_DARK }}>Open My Ads</Link> to see the full inventory with live minimum bids.
           </p>
         )}
       </div>
@@ -314,7 +314,7 @@ export function AdvertiseLanding() {
               ))}
             </ul>
             <Link
-              href="/account/ads/new"
+              href={`/account/ads/new?currency=${currency}`}
               className="inline-flex items-center gap-2 font-semibold rounded-xl px-6 py-3.5 text-[15px] mt-7"
               style={{ background: PRIMARY, color: "#fff" }}
             >
@@ -424,7 +424,7 @@ export function AdvertiseLanding() {
         </p>
         <div className="flex justify-center gap-3 flex-wrap">
           <Link
-            href="/account/ads/new"
+            href={`/account/ads/new?currency=${currency}`}
             className="inline-flex items-center gap-2 bg-white font-semibold px-7 py-3.5 rounded-xl"
             style={{ color: PRIMARY_DARK }}
           >

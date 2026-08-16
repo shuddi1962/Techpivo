@@ -107,11 +107,13 @@ export function AdSlot({ positionKey, className, preview }: AdSlotProps) {
     lastTrackedCampaignRef.current = campaign.id
     const supabase = createClient()
     supabase.rpc("increment_campaign_impressions", { campaign_id: campaign.id }).then()
+    supabase.rpc("increment_campaign_daily_stats", { campaign_id: campaign.id, kind: "impressions" }).then()
   }, [campaignAds, currentCampaignIndex])
 
   const trackCampaignClick = (campaignId: string) => {
     const supabase = createClient()
     supabase.rpc("increment_campaign_clicks", { campaign_id: campaignId }).then()
+    supabase.rpc("increment_campaign_daily_stats", { campaign_id: campaignId, kind: "clicks" }).then()
   }
 
   const marketingConsent = hasConsentFor("marketing")

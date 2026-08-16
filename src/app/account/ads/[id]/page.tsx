@@ -21,6 +21,7 @@ interface Campaign {
   description: string | null;
   cta_text: string | null;
   destination_url: string | null;
+  content_url: string | null;
   ad_image_url: string | null;
   status: string;
   billing_model: string;
@@ -294,6 +295,9 @@ export default function CampaignDetailPage() {
               <div className="flex justify-between gap-2"><span className="text-slate-500">Media</span><span className="font-medium capitalize">{campaign.media_type || 'image'}</span></div>
               {campaign.destination_url && (
                 <div className="flex justify-between gap-2"><span className="text-slate-500">Destination</span><a href={campaign.destination_url} target="_blank" rel="noopener" className="font-medium text-blue-600 hover:underline truncate max-w-[60%]">{campaign.destination_url}</a></div>
+              )}
+              {campaign.content_url && (
+                <div className="flex justify-between gap-2"><span className="text-slate-500">Article URL</span><a href={campaign.content_url} target="_blank" rel="noopener" className="font-medium text-blue-600 hover:underline truncate max-w-[60%]">{campaign.content_url}</a></div>
               )}
               {audienceParts.length > 0 && (
                 <div className="flex justify-between gap-2 items-start">

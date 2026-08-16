@@ -106,7 +106,7 @@ export async function GET(request: Request) {
     if (section === "campaigns") {
       const { data: campaigns } = await supabase
         .from("ad_campaigns")
-        .select("*, placements:ad_placements(name, position, min_bid_cpm, min_bid_cpc, sizes)")
+        .select("*, placements:ad_placements(name, position, ad_type, min_bid_cpm, min_bid_cpc, sizes)")
         .order("created_at", { ascending: false })
         .limit(100)
       return NextResponse.json({ campaigns: campaigns || [] })
@@ -262,7 +262,7 @@ export async function POST(request: Request) {
       if (!user) return NextResponse.json({ error: "Please sign in to create a campaign" }, { status: 401 })
 
       const { placement_id, billing_model, daily_budget, bid_amount, duration_days, advertiser_name, headline, description, cta_text, destination_url, ad_image_url, advertiser_email,
-        currency, goal, cta_type, target_audience, media_type, video_url, poster_url } = body
+        currency, goal, cta_type, target_audience, media_type, video_url, poster_url, content_url } = body
 
       if (!placement_id) return NextResponse.json({ error: "Select an ad space" }, { status: 400 })
       if (!advertiser_name || !headline || !destination_url) {
@@ -271,11 +271,18 @@ export async function POST(request: Request) {
 
       const { data: placement } = await supabase
         .from("ad_placements")
-        .select("id, name, position, min_bid_cpm, min_bid_cpc, supports_video, est_impressions")
+        .select("id, name, position, ad_type, min_bid_cpm, min_bid_cpc, supports_video, est_impressions")
         .eq("id", placement_id)
         .eq("is_active", true)
         .maybeSingle()
       if (!placement) return NextResponse.json({ error: "Ad space not available" }, { status: 400 })
+
+      // Sponsored article placements require a content URL (destination falls back to it)
+      if (placement.ad_type === "sponsored_article") {
+        if (!content_url || !/^https?:\/\/.+/i.test(String(content_url).trim())) {
+          return NextResponse.json({ error: "A valid article URL is required for sponsored article placements" }, { status: 400 })
+        }
+      }
 
       const model = billing_model === "cpc" ? "cpc" : "cpm"
       const cur = String(currency || "NGN").toUpperCase()
@@ -351,6 +358,7 @@ export async function POST(request: Request) {
           media_type: isVideo ? "video" : "image",
           video_url: isVideo ? video_url : null,
           poster_url: poster_url || null,
+          content_url: placement.ad_type === "sponsored_article" ? String(content_url).trim() : null,
           start_date: new Date().toISOString().slice(0, 10),
           end_date: new Date(Date.now() + days * 86400000).toISOString().slice(0, 10),
           status: "pending",

@@ -13,7 +13,6 @@ export function QuickLinksWidget() {
           { href: "/about", label: "About Us" },
           { href: "/contact", label: "Contact Us" },
           { href: "/advertise", label: "Advertise With Us" },
-          { href: "/write-for-us", label: "Write For Us" },
           { href: "/newsletter", label: "Newsletter" },
           { href: "/privacy-policy", label: "Privacy Policy" },
           { href: "/terms-of-use", label: "Terms of Use" },

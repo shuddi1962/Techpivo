@@ -17,6 +17,7 @@ import { LiveViewCount } from "@/components/post/live-view-count"
 import { SITE_NAME, SITE_URL } from "@/lib/constants"
 import { JsonLd } from "@/components/ui/jsonld"
 import { articleSchema, breadcrumbSchema, faqPageSchema, collectionPageSchema } from "@/lib/jsonld"
+import { AdSlot } from "@/components/ads/AdSlot"
 
 export const revalidate = 60
 
@@ -94,6 +95,17 @@ export default async function PostPage({ params }: Props) {
   const keyPoints = (post as any).key_points
   const faq = (post as any).faq
   // source link intentionally removed
+  const contentParts = (() => {
+    const html = post.content || ""
+    let idx = -1
+    for (let i = 0; i < 3; i++) {
+      const next = html.indexOf("</p>", idx + 1)
+      if (next === -1) { idx = -1; break }
+      idx = next
+    }
+    if (idx === -1 || idx + 4 > html.length) return null
+    return { before: html.slice(0, idx + 4), after: html.slice(idx + 4) }
+  })()
   const popularPosts = popularRes.data || []
   const sidebarCategories = categoriesRes.data || []
   const recentPosts = recentRes.data || []
@@ -214,6 +226,8 @@ export default async function PostPage({ params }: Props) {
               </div>
             </div>
 
+            <AdSlot positionKey="post_top_banner" className="mb-8" />
+
             {/* Quick Brief */}
             {quickBrief && Array.isArray(quickBrief) && quickBrief.length > 0 && (
               <div className="quick-brief-widget">
@@ -257,22 +271,60 @@ export default async function PostPage({ params }: Props) {
 
             {/* Post Content */}
             <div className="mb-10">
-              <div
-                className="article-content prose prose-lg max-w-none dark:prose-invert
-                  prose-headings:font-bold prose-headings:tracking-tight
-                  prose-h2:text-3xl prose-h2:mt-10 prose-h2:mb-5
-                  prose-h3:text-2xl prose-h3:mt-8 prose-h3:mb-4
-                  prose-p:text-[17px] prose-p:leading-[1.8] prose-p:text-black dark:prose-p:text-[#D1D5DB] prose-p:mb-5
-                  prose-a:text-black dark:prose-a:text-blue-400 prose-a:underline prose-a:font-medium
-                  prose-strong:text-black dark:prose-strong:text-white prose-strong:font-semibold
-                  prose-blockquote:border-l-black dark:prose-blockquote:border-l-blue-400 prose-blockquote:py-2 prose-blockquote:px-5 prose-blockquote:rounded-r-lg prose-blockquote:text-black dark:prose-blockquote:text-[#D1D5DB] prose-blockquote:italic
-                  prose-code:text-black dark:prose-code:text-[#D1D5DB] prose-code:bg-gray-100 dark:prose-code:bg-gray-800 prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded prose-code:text-sm prose-code:font-normal
-                  prose-pre:bg-gray-100 dark:prose-pre:bg-gray-900 prose-pre:border prose-pre:border-gray-300 dark:prose-pre:border-gray-700 prose-pre:rounded-xl
-                  prose-img:rounded-xl prose-img:shadow-lg
-                  prose-li:text-[17px] prose-li:leading-[1.8] prose-li:text-black dark:prose-li:text-[#D1D5DB]
-                  prose-hr:border-gray-300 dark:prose-hr:border-gray-700"
-                dangerouslySetInnerHTML={{ __html: post.content }}
-              />
+              {contentParts ? (
+                <>
+                  <div
+                    className="article-content prose prose-lg max-w-none dark:prose-invert
+                      prose-headings:font-bold prose-headings:tracking-tight
+                      prose-h2:text-3xl prose-h2:mt-10 prose-h2:mb-5
+                      prose-h3:text-2xl prose-h3:mt-8 prose-h3:mb-4
+                      prose-p:text-[17px] prose-p:leading-[1.8] prose-p:text-black dark:prose-p:text-[#D1D5DB] prose-p:mb-5
+                      prose-a:text-black dark:prose-a:text-blue-400 prose-a:underline prose-a:font-medium
+                      prose-strong:text-black dark:prose-strong:text-white prose-strong:font-semibold
+                      prose-blockquote:border-l-black dark:prose-blockquote:border-l-blue-400 prose-blockquote:py-2 prose-blockquote:px-5 prose-blockquote:rounded-r-lg prose-blockquote:text-black dark:prose-blockquote:text-[#D1D5DB] prose-blockquote:italic
+                      prose-code:text-black dark:prose-code:text-[#D1D5DB] prose-code:bg-gray-100 dark:prose-code:bg-gray-800 prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded prose-code:text-sm prose-code:font-normal
+                      prose-pre:bg-gray-100 dark:prose-pre:bg-gray-900 prose-pre:border prose-pre:border-gray-300 dark:prose-pre:border-gray-700 prose-pre:rounded-xl
+                      prose-img:rounded-xl prose-img:shadow-lg
+                      prose-li:text-[17px] prose-li:leading-[1.8] prose-li:text-black dark:prose-li:text-[#D1D5DB]
+                      prose-hr:border-gray-300 dark:prose-hr:border-gray-700"
+                    dangerouslySetInnerHTML={{ __html: contentParts.before }}
+                  />
+                  <AdSlot positionKey="post_in_content_1" className="my-8" />
+                  <div
+                    className="article-content prose prose-lg max-w-none dark:prose-invert
+                      prose-headings:font-bold prose-headings:tracking-tight
+                      prose-h2:text-3xl prose-h2:mt-10 prose-h2:mb-5
+                      prose-h3:text-2xl prose-h3:mt-8 prose-h3:mb-4
+                      prose-p:text-[17px] prose-p:leading-[1.8] prose-p:text-black dark:prose-p:text-[#D1D5DB] prose-p:mb-5
+                      prose-a:text-black dark:prose-a:text-blue-400 prose-a:underline prose-a:font-medium
+                      prose-strong:text-black dark:prose-strong:text-white prose-strong:font-semibold
+                      prose-blockquote:border-l-black dark:prose-blockquote:border-l-blue-400 prose-blockquote:py-2 prose-blockquote:px-5 prose-blockquote:rounded-r-lg prose-blockquote:text-black dark:prose-blockquote:text-[#D1D5DB] prose-blockquote:italic
+                      prose-code:text-black dark:prose-code:text-[#D1D5DB] prose-code:bg-gray-100 dark:prose-code:bg-gray-800 prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded prose-code:text-sm prose-code:font-normal
+                      prose-pre:bg-gray-100 dark:prose-pre:bg-gray-900 prose-pre:border prose-pre:border-gray-300 dark:prose-pre:border-gray-700 prose-pre:rounded-xl
+                      prose-img:rounded-xl prose-img:shadow-lg
+                      prose-li:text-[17px] prose-li:leading-[1.8] prose-li:text-black dark:prose-li:text-[#D1D5DB]
+                      prose-hr:border-gray-300 dark:prose-hr:border-gray-700"
+                    dangerouslySetInnerHTML={{ __html: contentParts.after }}
+                  />
+                </>
+              ) : (
+                <div
+                  className="article-content prose prose-lg max-w-none dark:prose-invert
+                    prose-headings:font-bold prose-headings:tracking-tight
+                    prose-h2:text-3xl prose-h2:mt-10 prose-h2:mb-5
+                    prose-h3:text-2xl prose-h3:mt-8 prose-h3:mb-4
+                    prose-p:text-[17px] prose-p:leading-[1.8] prose-p:text-black dark:prose-p:text-[#D1D5DB] prose-p:mb-5
+                    prose-a:text-black dark:prose-a:text-blue-400 prose-a:underline prose-a:font-medium
+                    prose-strong:text-black dark:prose-strong:text-white prose-strong:font-semibold
+                    prose-blockquote:border-l-black dark:prose-blockquote:border-l-blue-400 prose-blockquote:py-2 prose-blockquote:px-5 prose-blockquote:rounded-r-lg prose-blockquote:text-black dark:prose-blockquote:text-[#D1D5DB] prose-blockquote:italic
+                    prose-code:text-black dark:prose-code:text-[#D1D5DB] prose-code:bg-gray-100 dark:prose-code:bg-gray-800 prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded prose-code:text-sm prose-code:font-normal
+                    prose-pre:bg-gray-100 dark:prose-pre:bg-gray-900 prose-pre:border prose-pre:border-gray-300 dark:prose-pre:border-gray-700 prose-pre:rounded-xl
+                    prose-img:rounded-xl prose-img:shadow-lg
+                    prose-li:text-[17px] prose-li:leading-[1.8] prose-li:text-black dark:prose-li:text-[#D1D5DB]
+                    prose-hr:border-gray-300 dark:prose-hr:border-gray-700"
+                  dangerouslySetInnerHTML={{ __html: post.content }}
+                />
+              )}
             </div>
 
             {/* FAQ */}
@@ -387,7 +439,7 @@ export default async function PostPage({ params }: Props) {
 
           <div className="lg:col-span-1">
             <div className="sticky top-24">
-              <Sidebar trending={trendingPosts} popular={popularPosts} categories={sidebarCategories} tags={sidebarTags} />
+              <Sidebar trending={trendingPosts} popular={popularPosts} categories={sidebarCategories} tags={sidebarTags} variant="post" />
             </div>
           </div>
         </div>

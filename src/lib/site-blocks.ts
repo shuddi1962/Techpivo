@@ -92,7 +92,7 @@ export const SITE_BLOCKS: SiteBlockDef[] = [
     description: "A list of links shown in the footer. One link per line: [Label](https://example.com)",
     mode: "links",
     contentMd:
-      "[About Us](/about)\n[Contact](/contact)\n[Advertise](/advertise)\n[Write For Us](/write-for-us)\n[Newsletter](/newsletter)",
+      "[About Us](/about)\n[Contact](/contact)\n[Advertise](/advertise)\n[Newsletter](/newsletter)",
   },
 ];
 

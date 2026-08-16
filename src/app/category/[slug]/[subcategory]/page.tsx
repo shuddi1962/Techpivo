@@ -100,7 +100,7 @@ export default async function SubcategoryPage({ params }: Props) {
             <div className="text-center py-12 text-muted-foreground">No posts found.</div>
           )}
         </div>
-        <div className="lg:col-span-1"><Sidebar trending={trendingPosts} popular={popularPosts} categories={sidebarCategories} tags={sidebarTags} /></div>
+        <div className="lg:col-span-1"><Sidebar trending={trendingPosts} popular={popularPosts} categories={sidebarCategories} tags={sidebarTags} variant="category" /></div>
       </div>
     </div>
   )

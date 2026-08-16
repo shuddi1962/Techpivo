@@ -34,7 +34,7 @@ interface Campaign {
   start_date: string | null;
   end_date: string | null;
   created_at: string;
-  placements?: { name?: string } | null;
+  placements?: { name?: string; ad_type?: string } | null;
 }
 
 const STATUS_STYLES: Record<string, { label: string; cls: string }> = {
@@ -65,7 +65,7 @@ export default function MyAdsPage() {
     }
     const { data, error: err } = await supabase
       .from('ad_campaigns')
-      .select('*, placements:ad_placements(name)')
+      .select('*, placements:ad_placements(name, ad_type)')
       .eq('user_id', user.id)
       .order('created_at', { ascending: false })
       .limit(100);
@@ -230,6 +230,7 @@ export default function MyAdsPage() {
                       <div className="text-xs text-muted-foreground mt-1">
                         {c.advertiser_name}
                         {c.placements?.name ? ` · ${c.placements.name}` : ''}
+                        {c.placements?.ad_type ? ` · ${c.placements.ad_type.split('_').map((w: string) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')}` : ''}
                         {' · '}{ADS_BILLING_LABELS[c.billing_model] || c.billing_model}
                         {c.goal ? ` · ${ADS_GOAL_LABELS[c.goal] || c.goal}` : ''}
                       </div>

@@ -6,6 +6,7 @@ import { PHProvider } from "@/components/posthog-provider"
 import { PageViewTracker } from "@/components/post/page-view-tracker"
 import { GoogleCMP } from "@/components/cookies/GoogleCMP"
 import { CookieConsentBanner } from "@/components/cookies/cookie-consent-banner"
+import { PopupAd } from "@/components/ads/popup-ad"
 import { SITE_NAME, SITE_TAGLINE, SITE_URL } from "@/lib/constants"
 import { JsonLd } from "@/components/ui/jsonld"
 import { organizationSchema, websiteSchema } from "@/lib/jsonld"
@@ -134,6 +135,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <PageViewTracker />
         <GoogleCMP />
         <CookieConsentBanner />
+        <PopupAd />
       </body>
     </html>
   )

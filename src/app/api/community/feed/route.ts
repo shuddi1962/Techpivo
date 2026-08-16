@@ -106,7 +106,7 @@ export async function GET(request: NextRequest) {
   const { q, following, ids } = await baseQuery(supabase, rail, cursor);
 
   if (category) {
-    q.eq('category.slug', category);
+    q.eq('category!inner.slug', category);
   }
 
   const { data: raw } = await q.limit(limit);

@@ -6,10 +6,10 @@ import { createClient } from "@/lib/supabase/client"
 import { FxApprox } from "@/components/fx-approx"
 import { useFx } from "@/lib/use-fx"
 import {
-  Store, LayoutGrid, Megaphone, ListChecks, TrendingUp, Settings2, BarChart3,
+  LayoutGrid, Megaphone, ListChecks, TrendingUp, Settings2, BarChart3,
   Plus, Trash2, CheckCircle, XCircle, PauseCircle, PlayCircle, RefreshCw,
-  Eye, MousePointerClick, Users, Wallet, Clock, ShieldCheck,
-  ArrowRight, Image as ImageIcon, AlertCircle, Crown, Search, Video,
+  Eye, MousePointerClick, Users, Wallet, Clock,
+  ArrowRight, AlertCircle, Search, Video,
 } from "lucide-react"
 import {
   AreaChart, Area, ComposedChart, Bar, Line, XAxis, YAxis, CartesianGrid,
@@ -41,7 +41,6 @@ const S = {
 }
 
 const TABS = [
-  { id: "marketplace", label: "Marketplace", icon: Store },
   { id: "analytics", label: "Analytics", icon: BarChart3 },
   { id: "spaces", label: "Ad Spaces", icon: LayoutGrid },
   { id: "campaigns", label: "Campaigns", icon: ListChecks },
@@ -210,7 +209,7 @@ let channelCounter = 0
 export default function AdminAdsPage() {
   const router = useRouter()
   const supabaseRef = useRef(createClient())
-  const [activeTab, setActiveTab] = useState("marketplace")
+  const [activeTab, setActiveTab] = useState("analytics")
   const [loading, setLoading] = useState(true)
   const [placements, setPlacements] = useState<Placement[]>([])
   const [campaigns, setCampaigns] = useState<Campaign[]>([])
@@ -312,12 +311,6 @@ export default function AdminAdsPage() {
   const totalCampaignImpressions = campaigns.reduce((s, c) => s + (c.impressions || 0), 0)
   const totalCampaignClicks = campaigns.reduce((s, c) => s + (c.clicks || 0), 0)
   const totalRevenue = revenue.reduce((s, r) => s + Number(r.revenue || 0), 0)
-  const totalRevImpressions = revenue.reduce((s, r) => s + (r.impressions || 0), 0)
-  const totalRevClicks = revenue.reduce((s, r) => s + (r.clicks || 0), 0)
-  const allImpressions = totalCampaignImpressions + totalRevImpressions
-  const allClicks = totalCampaignClicks + totalRevClicks
-  const avgCtr = allImpressions > 0 ? (allClicks / allImpressions) * 100 : 0
-  const estMonthlyReach = activePlacements.reduce((s, p) => s + (p.est_impressions || 0), 0)
 
   const sourceMap: Record<string, { revenue: number; impressions: number }> = {}
   for (const r of revenue) {
@@ -343,7 +336,7 @@ export default function AdminAdsPage() {
     return (
       <div style={{ background: S.bg, minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", gap: 12 }}>
         <RefreshCw style={{ width: 24, height: 24, color: S.primary, animation: "spin 1s linear infinite" }} />
-        <span style={{ color: S.textMuted, fontSize: 15 }}>Loading Advertising Marketplace...</span>
+        <span style={{ color: S.textMuted, fontSize: 15 }}>Loading Ad Analytics...</span>
       </div>
     )
   }
@@ -412,23 +405,6 @@ export default function AdminAdsPage() {
             )
           })}
         </div>
-
-        {activeTab === "marketplace" && (
-          <MarketplaceTab
-            totalRevenue={combinedRevenue}
-            liveCampaigns={liveCampaigns.length}
-            pendingCampaigns={pendingCampaigns.length}
-            activePlacements={activePlacements.length}
-            estMonthlyReach={estMonthlyReach}
-            avgCtr={avgCtr}
-            allImpressions={allImpressions}
-            allClicks={allClicks}
-            topSources={topSources}
-            campaigns={campaigns}
-            placements={activePlacements}
-            onBuy={startCampaign}
-          />
-        )}
 
         {activeTab === "analytics" && (
           <AnalyticsTab
@@ -499,182 +475,6 @@ export default function AdminAdsPage() {
   )
 }
 
-/* ================== MARKETPLACE ================== */
-
-function MarketplaceTab(props: {
-  totalRevenue: number
-  liveCampaigns: number
-  pendingCampaigns: number
-  activePlacements: number
-  estMonthlyReach: number
-  avgCtr: number
-  allImpressions: number
-  allClicks: number
-  topSources: { source: string; revenue: number; impressions: number }[]
-  campaigns: Campaign[]
-  placements: Placement[]
-  onBuy: (p?: Placement) => void
-}) {
-  const kpis = [
-    { label: "Total Ad Revenue", value: NGN(props.totalRevenue), icon: Wallet, color: S.green, bg: "#DCFCE7" },
-    { label: "Live Campaigns", value: fmt(props.liveCampaigns), icon: Megaphone, color: S.primary, bg: "#DBEAFE" },
-    { label: "Pending Approvals", value: fmt(props.pendingCampaigns), icon: Clock, color: S.amber, bg: "#FEF3C7" },
-    { label: "Active Ad Spaces", value: fmt(props.activePlacements), icon: LayoutGrid, color: S.purple, bg: "#EDE9FE" },
-    { label: "Est. Monthly Reach", value: fmt(props.estMonthlyReach), icon: Users, color: "#0EA5E9", bg: "#E0F2FE" },
-    { label: "Avg. CTR", value: `${props.avgCtr.toFixed(2)}%`, icon: MousePointerClick, color: S.yellow, bg: "#FEF9C3" },
-  ]
-
-  const recentOrders = [...props.campaigns].sort((a, b) => b.created_at.localeCompare(a.created_at)).slice(0, 5)
-
-  return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 22 }}>
-      {/* Hero */}
-      <div style={{
-        background: "linear-gradient(120deg, #1E3A8A 0%, #2563EB 55%, #3B82F6 100%)",
-        borderRadius: 16, padding: "34px 36px", color: "#fff", position: "relative", overflow: "hidden",
-      }}>
-        <div style={{ position: "absolute", right: -60, top: -60, width: 260, height: 260, borderRadius: "50%", background: "rgba(255,255,255,0.08)" }} />
-        <div style={{ position: "absolute", right: 40, bottom: -80, width: 200, height: 200, borderRadius: "50%", background: "rgba(255,255,255,0.06)" }} />
-        <div style={{ position: "relative", maxWidth: 640 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
-            <Crown size={18} />
-            <span style={{ fontSize: 13, fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase" }}>Premium Audience · 20,000+ Monthly Tech Readers</span>
-          </div>
-          <h2 style={{ fontSize: 28, fontWeight: 700, margin: 0, letterSpacing: "-0.02em", lineHeight: 1.25 }}>
-            Put your brand in front of developers, IT pros &amp; gadget buyers.
-          </h2>
-          <p style={{ fontSize: 14.5, margin: "12px 0 20px", opacity: 0.92, lineHeight: 1.6 }}>
-            Auction-based advertising, Google Ads style. You set your own daily budget and bid —
-            we show your ad to the right audience and charge you only for what it delivers.
-          </p>
-          <div style={{ display: "flex", gap: 10 }}>
-            <button
-              onClick={() => props.onBuy()}
-              style={{ background: "#fff", color: S.primary, border: "none", borderRadius: 10, padding: "11px 22px", fontWeight: 600, fontSize: 14, cursor: "pointer" }}
-            >
-              Start a Campaign
-            </button>
-            <button
-              onClick={() => document.getElementById("how-it-works")?.scrollIntoView({ behavior: "smooth" })}
-              style={{ background: "rgba(255,255,255,0.14)", color: "#fff", border: "1px solid rgba(255,255,255,0.35)", borderRadius: 10, padding: "11px 22px", fontWeight: 600, fontSize: 14, cursor: "pointer" }}
-            >
-              How it works
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* KPIs */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))", gap: 14 }}>
-        {kpis.map((k) => {
-          const Icon = k.icon
-          return (
-            <div key={k.label} style={cardStyle({ padding: 16, display: "flex", alignItems: "center", gap: 12 })}>
-              <div style={{ width: 40, height: 40, borderRadius: 10, background: k.bg, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                <Icon size={19} color={k.color} />
-              </div>
-              <div>
-                <div style={{ fontSize: 19, fontWeight: 700, color: S.text, lineHeight: 1.2 }}>{k.value}</div>
-                <div style={{ fontSize: 12, color: S.textDim }}>{k.label}</div>
-              </div>
-            </div>
-          )
-        })}
-      </div>
-
-      {/* How it works */}
-      <div id="how-it-works" style={cardStyle()}>
-        <h3 style={{ fontSize: 17, fontWeight: 700, color: S.text, margin: "0 0 18px" }}>How It Works</h3>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 16 }}>
-          {[
-            { step: "1", title: "Pick an ad space", desc: "Browse our inventory — leaderboards, sidebars, in-content units — each with a minimum bid.", icon: LayoutGrid },
-            { step: "2", title: "Set budget & bid", desc: "Choose CPM or CPC, set your own daily budget and bid above the floor. No fixed prices.", icon: Wallet },
-            { step: "3", title: "Submit creative", desc: "Upload your banner or video, add your destination URL, and create your campaign in minutes.", icon: ImageIcon },
-            { step: "4", title: "We approve & go live", desc: "Our team reviews your ad within 24 hours. Once approved, it starts serving immediately.", icon: ShieldCheck },
-          ].map((s) => {
-            const Icon = s.icon
-            return (
-              <div key={s.step} style={{ background: S.input, borderRadius: 12, padding: 16 }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
-                  <span style={{ width: 26, height: 26, borderRadius: "50%", background: S.primary, color: "#fff", fontSize: 13, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center" }}>{s.step}</span>
-                  <Icon size={18} color={S.primary} />
-                </div>
-                <p style={{ fontSize: 14, fontWeight: 600, color: S.text, margin: "0 0 4px" }}>{s.title}</p>
-                <p style={{ fontSize: 12.5, color: S.textMuted, margin: 0, lineHeight: 1.5 }}>{s.desc}</p>
-              </div>
-            )
-          })}
-        </div>
-      </div>
-
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 18 }}>
-        {/* Top sources */}
-        <div style={cardStyle()}>
-          <h3 style={{ fontSize: 16, fontWeight: 700, color: S.text, margin: "0 0 14px" }}>Revenue by Source</h3>
-          {props.topSources.length === 0 ? (
-            <p style={{ color: S.textDim, fontSize: 13.5, margin: 0 }}>No revenue data yet. Connect ad networks or sell direct ad space.</p>
-          ) : (
-            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-              {props.topSources.map((s) => (
-                <div key={s.source} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "11px 14px", background: S.input, borderRadius: 10 }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                    <span style={{ width: 30, height: 30, borderRadius: 8, background: "#DBEAFE", color: S.primary, fontWeight: 700, fontSize: 13, display: "flex", alignItems: "center", justifyContent: "center", textTransform: "capitalize" }}>
-                      {s.source.charAt(0)}
-                    </span>
-                    <span style={{ fontSize: 14, fontWeight: 500, color: S.text, textTransform: "capitalize" }}>{s.source}</span>
-                  </div>
-                  <div style={{ display: "flex", gap: 22, alignItems: "center" }}>
-                    <div style={{ textAlign: "right" }}>
-                      <div style={{ fontSize: 13, fontWeight: 600, color: S.text }}>{fmt(s.impressions)}</div>
-                      <div style={{ fontSize: 11, color: S.textDim }}>impressions</div>
-                    </div>
-                    <div style={{ textAlign: "right", minWidth: 90 }}>
-                      <div style={{ fontSize: 13, fontWeight: 700, color: S.green }}>{NGN(s.revenue)}</div>
-                      <div style={{ fontSize: 11, color: S.textDim }}>revenue</div>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* Recent orders */}
-        <div style={cardStyle()}>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
-            <h3 style={{ fontSize: 16, fontWeight: 700, color: S.text, margin: 0 }}>Recent Campaigns</h3>
-            <button onClick={() => (document.querySelector('[data-tab="campaigns"]') as HTMLElement)?.click()} style={btnSecondary}>View all</button>
-          </div>
-          {recentOrders.length === 0 ? (
-            <p style={{ color: S.textDim, fontSize: 13.5, margin: 0 }}>No campaigns yet — be the first advertiser on Techpivo.</p>
-          ) : (
-            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-              {recentOrders.map((c) => {
-                const st = STATUS_META[c.status] || STATUS_META.draft
-                return (
-                  <div key={c.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "11px 14px", background: S.input, borderRadius: 10 }}>
-                    <div style={{ minWidth: 0 }}>
-                      <p style={{ fontSize: 13.5, fontWeight: 600, color: S.text, margin: 0, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-                        {c.headline || c.advertiser_name}
-                      </p>
-                      <p style={{ fontSize: 12, color: S.textDim, margin: "2px 0 0" }}>
-                        {c.advertiser_name} · {ADS_BILLING_LABELS[c.billing_model] || c.billing_model} · {c.units} day{c.units > 1 ? "s" : ""}
-                      </p>
-                    </div>
-                    <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                      <span style={{ fontSize: 13, fontWeight: 700, color: S.text }}>{formatMoney(c.total_price, c.currency || "NGN")}</span>
-                      <span style={{ background: st.bg, color: st.color, borderRadius: 20, padding: "3px 10px", fontSize: 11, fontWeight: 600 }}>{st.label}</span>
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
-  )
-}
 
 /* ================== ANALYTICS ================== */
 

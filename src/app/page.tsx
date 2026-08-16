@@ -12,6 +12,7 @@ import { NewsletterStrip } from "@/components/home/NewsletterStrip"
 import { Sidebar } from "@/components/layout/Sidebar"
 import { Footer } from "@/components/layout/Footer"
 import SiteBlock from "@/components/layout/site-block"
+import { AdSlot } from "@/components/ads/AdSlot"
 import { SITE_NAME } from "@/lib/constants"
 
 export const revalidate = 60
@@ -268,6 +269,8 @@ export default async function HomePage() {
       <div className="site-main">
         <div className="main-layout">
           <div className="content-col">
+            <AdSlot positionKey="home_top_banner" />
+
             <HeroSection
               featured={featuredPost}
               secondary={heroSecondary}
@@ -278,6 +281,8 @@ export default async function HomePage() {
             <CategoryTabSection categories={cats} posts={latestPosts || []} />
 
             <LatestGrid posts={latestPosts || []} />
+
+            <AdSlot positionKey="home_infeed_1" />
 
             <CategoryStrip
               categoryName="AI & Automation"

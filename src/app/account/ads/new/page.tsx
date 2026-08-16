@@ -63,6 +63,7 @@ export default function NewCampaignPage() {
   const [imageUrl, setImageUrl] = useState('');
   const [videoUrl, setVideoUrl] = useState('');
   const [posterUrl, setPosterUrl] = useState('');
+  const [contentUrl, setContentUrl] = useState('');
 
   const [submitting, setSubmitting] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -102,6 +103,10 @@ export default function NewCampaignPage() {
       const fromParam = searchParams.get('placement');
       if (fromParam && placementsRes.data?.some((p: Placement) => p.id === fromParam)) {
         setPlacementId(fromParam);
+      }
+      const curParam = searchParams.get('currency');
+      if (curParam && ADS_CURRENCIES.some((c) => c.code === curParam)) {
+        setCurrency(curParam);
       }
       setLoading(false);
     });
@@ -182,6 +187,9 @@ export default function NewCampaignPage() {
     } else if (!imageUrl.trim()) {
       showNotice('error', 'Upload or paste a banner image for your ad'); return
     }
+    if (placement.ad_type === 'sponsored_article' && !contentUrl.trim()) {
+      showNotice('error', 'The URL of your article or landing page is required for a Sponsored Article ad'); return
+    }
     setSubmitting(true);
     try {
       const res = await fetch('/admin/ads/api', {
@@ -207,6 +215,7 @@ export default function NewCampaignPage() {
           media_type: mediaType,
           video_url: mediaType === 'video' ? videoUrl.trim() || null : null,
           poster_url: mediaType === 'video' ? posterUrl.trim() || null : null,
+          content_url: placement.ad_type === 'sponsored_article' ? contentUrl.trim() || null : null,
           target_audience: { countries, devices, interests },
         }),
       });
@@ -284,9 +293,9 @@ export default function NewCampaignPage() {
                           <span className="flex items-center gap-0.5 text-[10px] font-bold text-purple-600 bg-purple-100 rounded px-1.5 py-0.5 whitespace-nowrap"><Video className="h-2.5 w-2.5" />VIDEO</span>
                         )}
                       </div>
-                      <div className="text-xs font-bold text-blue-600 mt-1">Min {f.toLocaleString()}₦ {billingModel.toUpperCase()}</div>
+                      <div className="text-xs font-bold text-blue-600 mt-1">Min {formatMoney(Math.round((f / fx) * 100) / 100, currency)} {billingModel.toUpperCase()}</div>
                       <div className="text-[11px] text-slate-400 mt-0.5">
-                        {(p.sizes || []).slice(0, 2).join(' · ')} · ~{p.est_impressions.toLocaleString()}/mo
+                        {(p.sizes || []).slice(0, 2).join(' · ') || p.ad_type} · ~{p.est_impressions.toLocaleString()}/mo
                       </div>
                     </button>
                   );
@@ -449,6 +458,13 @@ export default function NewCampaignPage() {
                 </div>
               </div>
 
+              {placement?.ad_type === 'sponsored_article' && (
+                <div className="mt-4">
+                  <label className={labelCls}>Article / content URL * <span className="text-slate-400 font-normal">(the page readers see when they click your Sponsored Article)</span></label>
+                  <input value={contentUrl} onChange={(e) => setContentUrl(e.target.value)} placeholder="https://your-site.com/your-article" className={inputCls} />
+                </div>
+              )}
+
               <div className="mt-4">
                 <label className={labelCls}>Short description (optional)</label>
                 <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={2} placeholder="One line about what you offer..." className={`${inputCls} resize-y`} />
@@ -512,7 +528,7 @@ export default function NewCampaignPage() {
                       <img src={imageUrl} alt="Ad preview" className="w-full h-auto block" />
                     </div>
                   )}
-                  <p className="text-[11px] text-slate-400 mt-2">Recommended: 728x90 (leaderboard), 300x250 (rectangle) or 336x280 (in-content). PNG/JPG, max 2MB.</p>
+                  <p className="text-[11px] text-slate-400 mt-2">Recommended size{placement?.sizes?.length ? `s: ${placement.sizes.slice(0, 3).join(', ')}` : ': 728x90 (leaderboard), 300x250 (rectangle) or 336x280 (in-content)'}. PNG/JPG, max 2MB.</p>
                 </div>
               )}
             </CardContent>

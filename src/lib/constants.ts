@@ -46,6 +46,8 @@ export const AD_POSITIONS = {
   category_top_banner: "728×90 Category Top",
   category_infeed: "In-feed Category",
   category_sidebar: "300×250 Category",
+  popup_toast: "Popup Toast",
+  sponsored_article: "Sponsored Article",
 } as const
 
 export const SOCIAL_PLATFORMS = [

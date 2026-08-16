@@ -17,7 +17,6 @@ const staticPages = [
   { label: "About Us", href: "/about" },
   { label: "Contact Us", href: "/contact" },
   { label: "Advertise With Us", href: "/advertise" },
-  { label: "Write For Us", href: "/write-for-us" },
   { label: "Newsletter", href: "/newsletter" },
   { label: "Marketplace", href: "/marketplace" },
   { label: "Disclaimer", href: "/disclaimer" },
