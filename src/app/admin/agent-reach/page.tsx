@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useEffect, useRef } from "react";
 import Link from "next/link";
+import { titleOverlaps } from "@/lib/duplicate-check";
 import {
   Globe,
   Search,
@@ -109,6 +110,7 @@ export default function AgentReachPage() {
   const [publishInfo, setPublishInfo] = useState<PublishInfo | null>(null);
   const [trendingData, setTrendingData] = useState<TrendingBundle | null>(null);
   const [trendingBusy, setTrendingBusy] = useState(false);
+  const [writtenTopics, setWrittenTopics] = useState<string[]>([]);
   const [now, setNow] = useState<number>(Date.now());
   const mountedRef = useRef(false);
 
@@ -302,8 +304,15 @@ export default function AgentReachPage() {
           qualityScore: data.qualityScore ?? 0,
           postId: data.post?.id,
         });
+        // Topic is now covered — hide it from every trending list immediately
+        setWrittenTopics(prev => (prev.includes(topic) ? prev : [...prev, topic]));
       } catch (e: any) {
-        setError(e.message || "Article generation failed");
+        const message = e.message || "Article generation failed";
+        // Duplicate (409) = already covered — hide it too so it is never re-offered
+        if (/duplicate/i.test(message)) {
+          setWrittenTopics(prev => (prev.includes(topic) ? prev : [...prev, topic]));
+        }
+        setError(message);
       } finally {
         setWriting(false);
       }
@@ -505,21 +514,21 @@ export default function AgentReachPage() {
             <div className="grid gap-4 p-4 md:grid-cols-2">
               <TrendingList
                 title="Hacker News"
-                items={trendingData?.hackerNews || []}
+                items={(trendingData?.hackerNews || []).filter(i => !writtenTopics.some(w => titleOverlaps(i.title, w)))}
                 onWrite={writeArticle}
                 writing={writing}
                 onSearch={searchFromChip}
               />
               <TrendingList
                 title="GitHub Trending"
-                items={trendingData?.github || []}
+                items={(trendingData?.github || []).filter(i => !writtenTopics.some(w => titleOverlaps(i.title, w)))}
                 onWrite={writeArticle}
                 writing={writing}
                 onSearch={searchFromChip}
               />
               <TrendingList
                 title="Google & Bing Trends"
-                items={trendingData?.trends || []}
+                items={(trendingData?.trends || []).filter(i => !writtenTopics.some(w => titleOverlaps(i.title, w)))}
                 onWrite={writeArticle}
                 writing={writing}
                 onSearch={searchFromChip}

@@ -152,6 +152,25 @@ export async function searchFeaturedImage(query: string): Promise<string | null>
   }
 }
 
+/** In-article figure image: web first, Pexels fallback (guarantees figures even when Bing is blocked). */
+export async function searchFigureImage(query: string): Promise<string | null> {
+  const web = await searchWebImage(query)
+  if (web) return web
+  const key = process.env.PEXELS_API_KEY
+  if (!key) return null
+  try {
+    const res = await fetch(
+      `https://api.pexels.com/v1/search?query=${encodeURIComponent(query)}&per_page=3`,
+      { headers: { Authorization: key }, signal: AbortSignal.timeout(8000) }
+    )
+    if (!res.ok) return null
+    const data = await res.json()
+    return data.photos?.[0]?.src?.medium || data.photos?.[0]?.src?.large2x || null
+  } catch {
+    return null
+  }
+}
+
 interface EnrichResult {
   content: string
   featuredImage: string | null
@@ -220,7 +239,7 @@ export async function enrichArticleWithWebImages(
 
   const figurePromises = figureQueries.map(async (q) => ({
     query: q,
-    src: await searchWebImage(q),
+    src: await searchFigureImage(q),
   }))
 
   const [featuredImage, figureResults] = await Promise.all([

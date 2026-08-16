@@ -3,6 +3,7 @@ import { rssFetch } from "@/lib/agent-reach"
 import { RSS_FEEDS } from "@/lib/rss-feeds"
 import { filterVerified } from "@/lib/link-verify"
 import { logAIUsageThrottled } from "@/lib/ai-usage"
+import { titleOverlaps } from "@/lib/duplicate-check"
 
 export interface OpportunityScore {
   topic: string
@@ -318,8 +319,10 @@ export async function generateBreakingNews() {
     .from("posts")
     .select("title")
     .limit(2000)
-  const coveredTitles = new Set((posts || []).map(p => normalizeForDedup(p.title || "")))
-  const fresh = unique.filter(item => !coveredTitles.has(normalizeForDedup(item.title)))
+  const existingTitles = (posts || []).map(p => String(p.title || "")).filter(Boolean)
+  // Fuzzy overlap (not just exact title) — a story we already rewrote under a
+  // different headline must never be offered again in Breaking News.
+  const fresh = unique.filter(item => !existingTitles.some(t => titleOverlaps(item.title, t)))
 
   // Verify links before showing — drop anything that 404s, times out, or is dead
   const verified = await filterVerified(fresh.slice(0, 30))

@@ -51,6 +51,7 @@ async function filterAlreadyCovered(supabase: SupabaseClient, bundle: TrendingBu
     ...bundle,
     hackerNews: bundle.hackerNews.filter((i) => !coveredCheck(i.title)),
     github: bundle.github.filter((i) => !coveredCheck(i.title)),
+    trends: bundle.trends.filter((i) => !coveredCheck(i.title)),
     keywords: bundle.keywords.filter((k) => !coveredCheck(k)),
   }
 }

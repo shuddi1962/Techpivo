@@ -62,8 +62,16 @@ export default function BreakingNewsPage() {
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || "Rewrite failed")
       setRewriteInfo({ headline: data.headline || story.title, url: data.url })
+      // Story is now covered — drop it from the list so it is never offered again
+      setStories(prev => prev.filter(s => (s.url || s.title) !== key))
     } catch (e: any) {
-      setRewriteError(e.message || "Rewrite failed")
+      const message = e.message || "Rewrite failed"
+      // Duplicate (409) means the story is already covered — remove it too
+      if (/duplicate/i.test(message)) {
+        setRewriteInfo(null)
+        setStories(prev => prev.filter(s => (s.url || s.title) !== key))
+      }
+      setRewriteError(message)
     } finally {
       setRewritingKey(null)
     }
