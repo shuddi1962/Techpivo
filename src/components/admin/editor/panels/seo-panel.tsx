@@ -6,7 +6,7 @@ import { CollapsibleSection } from "../collapsible-section"
 import { calculateSeoScore, generateSerpPreview } from "@/lib/seo-utils"
 import {
   keywordSlug, keywordTitle, insertKeywordSentence, keywordFirstHeading,
-  addInternalLinks, splitLongSentences, ensureKeywordDensity, improveReadability,
+  addInternalLinks, splitLongSentences, ensureKeywordDensity, improveReadability, splitLongParagraphs,
 } from "@/lib/editor-autofix"
 import { slugify } from "@/lib/utils"
 import { createClient } from "@/lib/supabase/client"
@@ -157,6 +157,10 @@ Only provide fields that need changes. Return valid JSON only.`
           updatePost({ content: improveReadability(post.content) })
           break
         }
+        case "paragraph_length": {
+          updatePost({ content: splitLongParagraphs(post.content) })
+          break
+        }
         case "internal_links": {
           const supabase = createClient()
           const { data } = await supabase
@@ -232,6 +236,8 @@ Only provide fields that need changes. Return valid JSON only.`
       apply("keyword density", c, c3); c = c3
       const c4 = improveReadability(c)
       apply("readability", c, c4); c = c4
+      const c5 = splitLongParagraphs(c)
+      apply("paragraph length", c, c5); c = c5
 
       const supabase = createClient()
       const { data } = await supabase
@@ -465,6 +471,7 @@ Only provide fields that need changes. Return valid JSON only.`
                             const fixable = [
                               "keyword_in_title", "keyword_in_slug", "keyword_in_first_para",
                               "keyword_in_headings", "keyword_density", "readability_score", "internal_links",
+                              "paragraph_length",
                             ].includes(item.id)
                             return (
                               <div key={item.id} className="flex items-start gap-2.5">

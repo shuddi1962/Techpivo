@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/admin'
+import { SITE_URL } from '@/lib/constants'
 
 const GEMINI_DAILY_CAP = 100
 const MANUAL_GEMINI_DAILY_CAP = 20
@@ -21,7 +22,7 @@ export interface AIArticle {
   qualityScore:      number
   isBreaking:        boolean
   suggestedCategory: string
-  modelUsed:         'gemini-grounded'
+  modelUsed:         'gemini-grounded' | 'openrouter'
 }
 
 function buildPrompt(
@@ -752,8 +753,17 @@ export async function manualWriteFromTopic(topic: string): Promise<{ article: AI
     return result
   }
 
-  console.error(`[✗ ALL FAILED] Topic: ${topic.slice(0, 50)} — ${result.debug}`)
-  return result
+  // Quota overflow / Gemini outage → OpenRouter fallback so manual research
+  // keeps working when the daily manual Gemini cap is exhausted.
+  console.warn(`[Techpivo Manual] Gemini failed (${result.debug}) — trying OpenRouter fallback`)
+  const fallback = await manualWriteWithOpenRouter(prompt)
+  if (fallback.article) {
+    console.log(`[✓ OpenRouter] ${fallback.article.headline.slice(0, 55)}`)
+    return fallback
+  }
+
+  console.error(`[✗ ALL FAILED] Topic: ${topic.slice(0, 50)} — ${result.debug} / ${fallback.debug}`)
+  return { article: null, debug: `${result.debug} / ${fallback.debug}` }
 }
 
 export async function manualWriteFromUrl(url: string): Promise<{ article: AIArticle | null; debug: string }> {
@@ -803,8 +813,92 @@ export async function manualWriteFromUrl(url: string): Promise<{ article: AIArti
     return result
   }
 
-  console.error(`[✗ ALL FAILED] URL: ${url.slice(0, 60)} — ${result.debug}`)
-  return result
+  // Quota overflow / Gemini outage → OpenRouter fallback so manual research
+  // keeps working when the daily manual Gemini cap is exhausted.
+  console.warn(`[Techpivo Manual] Gemini failed (${result.debug}) — trying OpenRouter fallback`)
+  const fallback = await manualWriteWithOpenRouter(prompt)
+  if (fallback.article) {
+    console.log(`[✓ OpenRouter] ${fallback.article.headline.slice(0, 55)}`)
+    return fallback
+  }
+
+  console.error(`[✗ ALL FAILED] URL: ${url.slice(0, 60)} — ${result.debug} / ${fallback.debug}`)
+  return { article: null, debug: `${result.debug} / ${fallback.debug}` }
+}
+
+// ── OPENROUTER FALLBACK (manual writes) ───────────────────────────────────
+
+/**
+ * Cross-provider fallback for the admin manual write flows. Runs only when
+ * Gemini fails (daily manual cap reached, 429/503, or repeated validation
+ * failures) so manual research keeps working. Key: env OPENROUTER_API_KEY →
+ * site_settings.openrouter_api_key; model: env OPENROUTER_MODEL →
+ * site_settings.openrouter_model → default google/gemini-2.5-flash.
+ */
+async function manualWriteWithOpenRouter(prompt: string): Promise<{ article: AIArticle | null; debug: string }> {
+  try {
+    const supabase = createClient()
+    let apiKey = process.env.OPENROUTER_API_KEY
+    let model = process.env.OPENROUTER_MODEL
+
+    const [{ data: keySetting }, { data: modelSetting }] = await Promise.all([
+      supabase.from('site_settings').select('value').eq('key', 'openrouter_api_key').maybeSingle(),
+      supabase.from('site_settings').select('value').eq('key', 'openrouter_model').maybeSingle(),
+    ])
+    if (!apiKey && keySetting?.value) apiKey = String(keySetting.value)
+    if (!model && modelSetting?.value) model = String(modelSetting.value)
+    model = model || 'google/gemini-2.5-flash'
+
+    if (!apiKey) {
+      console.warn('[Techpivo OpenRouter] No OPENROUTER_API_KEY configured — skipping fallback')
+      return { article: null, debug: 'openrouter_no_key' }
+    }
+
+    const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`,
+        'HTTP-Referer': SITE_URL,
+        'X-Title': 'Techpivo AI Newsroom',
+      },
+      body: JSON.stringify({
+        model,
+        messages: [
+          {
+            role: 'system',
+            content:
+              'You are a senior tech journalist writing for Techpivo (techpivo.com). ' +
+              'Respond with ONLY a single valid raw JSON object matching the requested schema — ' +
+              'no markdown, no code fences, no preamble, no comments. Every string must be ' +
+              'properly quoted and escaped (escape any inner double quotes in the HTML content).',
+          },
+          { role: 'user', content: prompt },
+        ],
+        max_tokens: 8192,
+        temperature: 0.45,
+      }),
+      signal: AbortSignal.timeout(90000),
+    })
+
+    if (!res.ok) {
+      const errText = await res.text().catch(() => '')
+      return { article: null, debug: `openrouter_http_${res.status}:${errText.slice(0, 150)}` }
+    }
+
+    const data = await res.json()
+    const raw = data?.choices?.[0]?.message?.content || ''
+    if (!raw || raw.length < 100) {
+      return { article: null, debug: `openrouter_empty:${String(data?.error || 'no content').slice(0, 80)}` }
+    }
+
+    const { article, reason } = validate(raw, 'openrouter')
+    if (!article) return { article: null, debug: `openrouter_validate:${reason}` }
+    console.log(`[✓ OpenRouter fallback] ${article.headline.slice(0, 55)} (${model})`)
+    return { article, debug: 'ok' }
+  } catch (e: any) {
+    return { article: null, debug: `openrouter_error:${String(e).slice(0, 150)}` }
+  }
 }
 
 export async function geminiRewriteContent(title: string, content: string): Promise<string> {

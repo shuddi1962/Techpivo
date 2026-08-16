@@ -150,7 +150,14 @@ function SidebarLink({
       />
       <span className="flex-1 truncate">{link.label}</span>
       {link.badge && (
-        <span className="rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
+        <span
+          className={cn(
+            "rounded-full px-1.5 py-0.5 text-[10px] font-semibold",
+            link.badge === "LIVE"
+              ? "bg-red-500 text-white"
+              : "bg-muted text-muted-foreground"
+          )}
+        >
           {link.badge}
         </span>
       )}

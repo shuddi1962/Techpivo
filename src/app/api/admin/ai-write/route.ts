@@ -123,7 +123,7 @@ export async function POST(req: NextRequest) {
       mode,
       input,
       article.headline,
-      "gemini-2.5-flash",
+      article.modelUsed === "openrouter" ? "openrouter-fallback" : "gemini-2.5-flash",
     )
 
     return NextResponse.json({

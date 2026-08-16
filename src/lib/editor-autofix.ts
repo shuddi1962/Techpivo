@@ -3,7 +3,7 @@
 // panel and the checklist update in realtime.
 
 import { slugify } from "@/lib/utils"
-import { calculateReadability } from "@/lib/seo-utils"
+import { calculateReadability, countKeywordOccurrences } from "@/lib/seo-utils"
 
 export interface RelatedPost {
   title: string
@@ -152,7 +152,26 @@ function splitSentenceIntoTwo(sentence: string, maxWords: number): string[] {
   // Very long sentences with only an early clause break: split at the first
   // usable boundary instead of giving up — both halves stay substantial.
   if (bestEnd === -1 && fallbackEnd !== -1) bestEnd = fallbackEnd
-  if (bestEnd === -1) return [sentence]
+  // No clause boundary anywhere: hard-split at a word boundary near 85% of
+  // the cap so even a single marathon sentence can be broken (Flesch needs
+  // the words per sentence down, not perfect grammar).
+  if (bestEnd === -1) {
+    const target = Math.max(fallbackMin, Math.floor(maxWords * 0.85))
+    let charEnd = 0
+    for (let i = 0; i < target; i++) {
+      const w = words[i]
+      if (i > 0) charEnd += 1
+      if (w === undefined) break
+      charEnd += w.length
+    }
+    if (charEnd < sentence.length - 1) {
+      const first = sentence.slice(0, charEnd).replace(/[\s,;]+$/, "")
+      let second = sentence.slice(charEnd).replace(/^\s+/, "")
+      second = second.charAt(0).toUpperCase() + second.slice(1)
+      if (second) return [first + ".", second]
+    }
+    return [sentence]
+  }
   // Cut BEFORE the clause boundary so the conjunction/starter ("and", "but",
   // "which"…) begins the second sentence: "X, and it changes" → "X. And it changes".
   const first = sentence.slice(0, bestEnd).replace(/[\s,;]+$/, "")
@@ -223,8 +242,7 @@ export function ensureKeywordDensity(
   const plain = html.replace(/<[^>]*>/g, "").replace(/\s+/g, " ").trim()
   const words = plain.split(/\s+/).filter(Boolean).length
   if (words === 0) return html
-  const re = new RegExp(keyword.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "gi")
-  const occ = (plain.match(re) || []).length
+  const occ = countKeywordOccurrences(keyword, plain)
   const needed = Math.max(0, Math.ceil((words * minPct) / 100) - occ)
   if (needed === 0) return html
 
@@ -275,4 +293,61 @@ export function improveReadability(html: string): string {
   const aggressive = splitLongSentences(base, 16)
   if (calculateReadability(aggressive).flesch > calculateReadability(base).flesch) return aggressive
   return base
+}
+
+/**
+ * Sentence-boundary candidates inside a paragraph's inner HTML. A point is
+ * valid only when it sits outside any tag, away from URLs, and both the chunk
+ * before it and the text after it stay at least minChunk words — so the
+ * rebuild never produces a one-line stub or a broken link.
+ */
+function findParagraphSplitPoints(inner: string, maxWords: number, minChunk: number): number[] {
+  const points: number[] = []
+  const re = /\.\s+/g
+  let m: RegExpExecArray | null
+  let lastChunkWords = 0
+  const totalWords = inner.replace(/<[^>]*>/g, "").split(/\s+/).filter(Boolean).length
+  while ((m = re.exec(inner)) !== null) {
+    const i = m.index
+    const lastOpen = inner.lastIndexOf("<", i)
+    const lastClose = inner.lastIndexOf(">", i)
+    if (lastClose < lastOpen) continue // inside a tag — can't split there
+    const before = inner.slice(Math.max(0, i - 80), i)
+    if (/https?:\/\/|www\./i.test(before)) continue // sentence boundary near a URL — skip
+    const chunkWords = inner.slice(0, i + 1).replace(/<[^>]*>/g, "").split(/\s+/).filter(Boolean).length
+    const gap = chunkWords - lastChunkWords
+    const remaining = totalWords - chunkWords
+    if (gap < minChunk || remaining < minChunk) continue
+    points.push(i)
+    lastChunkWords = chunkWords
+  }
+  return points
+}
+
+/**
+ * Split paragraphs over maxWords (default 150) into multiple <p> blocks at
+ * sentence boundaries. Only the paragraph boundary is touched — each chunk
+ * keeps its original inline tag structure untouched.
+ */
+export function splitLongParagraphs(html: string, maxWords = 150): string {
+  const pRe = /<p[^>]*>[\s\S]*?<\/p>/gi
+  let changed = false
+  const out = html.replace(pRe, (whole) => {
+    const openTag = /^<p[^>]*>/.exec(whole)?.[0]
+    if (!openTag || !whole.endsWith("</p>")) return whole
+    const contentStart = openTag.length
+    const inner = whole.slice(contentStart, whole.length - "</p>".length)
+    const words = inner.replace(/<[^>]*>/g, "").split(/\s+/).filter(Boolean).length
+    if (words <= maxWords) return whole
+    const minChunk = Math.max(40, Math.floor(maxWords * 0.6))
+    const points = findParagraphSplitPoints(inner, maxWords, minChunk)
+    if (points.length === 0) return whole
+    changed = true
+    let rebuilt = inner
+    for (const p of points.slice().reverse()) {
+      rebuilt = rebuilt.slice(0, p) + "</p><p>" + rebuilt.slice(p)
+    }
+    return openTag + rebuilt + "</p>"
+  })
+  return changed ? out : html
 }

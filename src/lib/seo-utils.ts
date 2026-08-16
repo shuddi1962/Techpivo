@@ -1,9 +1,22 @@
 import { SITE_URL } from "@/lib/constants"
+import { slugify } from "@/lib/utils"
 import type { EditorPostState, SeoChecklistItem } from "@/types/editor"
 
 function countInText(keyword: string, text: string): number {
   if (!keyword || !text) return 0
   const re = new RegExp(keyword.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "gi")
+  return (text.match(re) || []).length
+}
+
+/**
+ * Word-boundary occurrence count: a keyword like "ai" must NOT match inside
+ * "again" or "available". Used for density math so short keywords can't
+ * inflate their own count.
+ */
+export function countKeywordOccurrences(keyword: string, text: string): number {
+  if (!keyword || !text) return 0
+  const escaped = keyword.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
+  const re = new RegExp(`(^|[^a-z0-9])${escaped}([^a-z0-9]|$)`, "gi")
   return (text.match(re) || []).length
 }
 
@@ -14,7 +27,7 @@ function stripHtml(html: string): string {
 export function getSeoChecklist(keyword: string, state: EditorPostState): SeoChecklistItem[] {
   const plainContent = stripHtml(state.content)
   const wordCount = plainContent.split(/\s+/).filter(Boolean).length
-  const keywordDensity = wordCount > 0 ? ((countInText(keyword, plainContent) / wordCount) * 100) : 0
+  const keywordDensity = wordCount > 0 ? ((countKeywordOccurrences(keyword, plainContent) / wordCount) * 100) : 0
   const titleLength = state.seo_title?.length || state.title.length
   const descLength = state.seo_description?.length || state.excerpt?.length || 0
   const firstParagraph = plainContent.split("\n").find(p => p.trim().length > 50) || ""
@@ -86,7 +99,7 @@ export function getSeoChecklist(keyword: string, state: EditorPostState): SeoChe
       id: "keyword_in_slug",
       label: "Focus keyword appears in slug",
       weight: 5,
-      check: () => countInText(keyword, state.slug) > 0,
+      check: () => countInText(slugify(keyword), state.slug) > 0,
     },
     {
       id: "h2_headings",

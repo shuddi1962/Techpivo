@@ -230,17 +230,52 @@ export async function enrichArticleWithWebImages(
 
   let out = content
   let inserted = 0
+  const usedSrcs = new Set<string>()
   const srcByQuery = new Map(figureResults.map((r) => [r.query, r.src]))
   for (let i = 0; i < headings.length && inserted < maxFigures; i++) {
     const query = `${cleanTopic} ${headings[i].text}`.trim().slice(0, 100)
     const src = srcByQuery.get(query)
     if (!src) continue
+    usedSrcs.add(src)
     const figure = figureHtml(src, `${headings[i].text} — ${cleanTopic}`)
     const afterH2 = out.slice(headings[i].end)
     const pClose = afterH2.indexOf("</p>")
     const insertAt = pClose >= 0 ? headings[i].end + pClose + 4 : headings[i].end
     out = out.slice(0, insertAt) + "\n" + figure + "\n" + out.slice(insertAt)
     inserted++
+  }
+
+  // Paragraph fallback: articles with no usable H2 sections (or failed
+  // heading-image searches) still get in-article figures — spread across the
+  // first/middle/last paragraphs using the unused web results.
+  if (inserted < maxFigures) {
+    const spare = figureResults
+      .map((r) => ({ src: r.src, alt: r.query.replace(`${cleanTopic} `, "") }))
+      .filter((f): f is { src: string; alt: string } => {
+        const s = f.src
+        return s !== null && s !== undefined && s.length > 0 && !usedSrcs.has(s)
+      })
+      .slice(0, maxFigures - inserted)
+    if (spare.length > 0) {
+      const points: number[] = []
+      const pRe = /<p[^>]*>[\s\S]*?<\/p>/gi
+      let pm: RegExpExecArray | null
+      while ((pm = pRe.exec(out)) !== null) points.push(pm.index + pm[0].length)
+      const picks =
+        points.length === 0
+          ? []
+          : points.length === 1
+            ? [points[0]]
+            : points.length === 2
+              ? [points[0], points[1]]
+              : [points[0], points[Math.floor(points.length / 2)], points[points.length - 1]]
+      const limit = Math.min(spare.length, picks.length)
+      for (let i = limit - 1; i >= 0; i--) {
+        const at = picks[i]
+        const figure = figureHtml(spare[i].src, `${spare[i].alt || cleanTopic} — ${cleanTopic}`)
+        out = out.slice(0, at) + "\n" + figure + "\n" + out.slice(at)
+      }
+    }
   }
 
   return { content: out, featuredImage }

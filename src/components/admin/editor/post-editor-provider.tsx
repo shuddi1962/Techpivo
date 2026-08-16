@@ -31,7 +31,16 @@ interface PostEditorContextType {
 
 const PostEditorContext = createContext<PostEditorContextType | null>(null)
 
-const DRAFT_KEY = "techpivo-editor-draft"
+// Per-post backup keys so a new-post draft can never inherit (or overwrite) an
+// existing published post's id/status when it's restored from localStorage.
+const LEGACY_DRAFT_KEY = "techpivo-editor-draft"
+const draftKey = (id?: string | null) => (id ? `techpivo-editor-draft-${id}` : "techpivo-editor-draft-new")
+const clearDraftKeys = (id?: string | null) => {
+  try {
+    localStorage.removeItem(draftKey(id))
+    localStorage.removeItem(draftKey(null))
+  } catch { /* ignore */ }
+}
 const AUTO_SAVE_INTERVAL = 30000
 
 const initialState: EditorPostState = {
@@ -173,12 +182,32 @@ export function PostEditorProvider({
       if (subcats) setSubcategories(subcats)
 
       if (!initialPost) {
-        const saved = localStorage.getItem(DRAFT_KEY)
-        if (saved) {
+        const tryRestore = (raw: string | null): Record<string, unknown> | null => {
+          if (!raw) return null
           try {
-            const parsed = JSON.parse(saved)
-            if (parsed) setPost(prev => ({ ...prev, ...normalizePost(parsed) } as EditorPostState))
-          } catch { /* ignore */ }
+            const parsed = JSON.parse(raw)
+            return parsed && typeof parsed === "object" ? (parsed as Record<string, unknown>) : null
+          } catch { return null }
+        }
+        // New-post drafts restore from the new-post key; an existing post's
+        // backup is only restored when it is still open in the editor.
+        let saved = tryRestore(localStorage.getItem(draftKey(postRef.current.id || null)))
+        if (!saved && !postRef.current.id) {
+          // One-time migration from the pre-fix single key.
+          const legacy = tryRestore(localStorage.getItem(LEGACY_DRAFT_KEY))
+          if (legacy) {
+            saved = legacy
+            try { localStorage.removeItem(LEGACY_DRAFT_KEY) } catch { /* ignore */ }
+          }
+        }
+        if (saved) {
+          // A recovered backup must never resurrect a published/scheduled post
+          // (or keep steering edits at an old row) — restore as a fresh draft.
+          delete saved.id
+          delete saved.status
+          delete saved.published_at
+          delete saved.scheduled_at
+          setPost(prev => ({ ...prev, ...normalizePost(saved) } as EditorPostState))
         }
       }
       setLoading(false)
@@ -280,14 +309,14 @@ export function PostEditorProvider({
 
       setLastSaved(new Date())
       setDirty(false)
-      localStorage.removeItem(DRAFT_KEY)
+      clearDraftKeys(postRef.current.id)
       setPost(prev => (prev.focus_keyword === seoKeyword ? prev : { ...prev, focus_keyword: seoKeyword }))
       if (publishPayload.status === "published") {
         revalidatePublic(publishPayload.slug)
       }
     } catch (err) {
       console.error("Error saving draft:", err)
-      localStorage.setItem(DRAFT_KEY, JSON.stringify(postRef.current))
+      localStorage.setItem(draftKey(postRef.current.id), JSON.stringify(postRef.current))
       if (!silent) {
         alert("Failed to save draft. Your changes have been saved locally as a backup.")
         throw err
@@ -428,7 +457,7 @@ export function PostEditorProvider({
 
       setLastSaved(new Date())
       setDirty(false)
-      localStorage.removeItem(DRAFT_KEY)
+      clearDraftKeys(post.id)
       revalidatePublic(payload.slug)
       router.push(`/admin/posts`)
     } catch (err) {
@@ -525,7 +554,7 @@ export function PostEditorProvider({
       setPost(prev => ({ ...prev, status: "scheduled", scheduled_at: when }))
       setLastSaved(new Date())
       setDirty(false)
-      localStorage.removeItem(DRAFT_KEY)
+      clearDraftKeys(post.id)
       router.push("/admin/posts")
     } catch (err) {
       console.error("Error scheduling post:", err)
