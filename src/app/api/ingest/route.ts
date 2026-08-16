@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse }      from 'next/server'
 import { RSS_FEEDS }                       from '@/lib/rss-feeds'
 import { rewriteArticle, type AIArticle }      from '@/lib/ai-rewriter'
+import { titleOverlaps }                   from '@/lib/duplicate-check'
 import { createClient }                    from '@/lib/supabase/admin'
 import { watermarkImage }                  from '@/lib/watermark'
 import { SITE_URL }                        from '@/lib/constants'
@@ -388,8 +389,8 @@ async function run(req: NextRequest) {
       const itemNorm = item.title.toLowerCase().replace(/[^a-z0-9\s]/g, '').replace(/\s+/g, ' ').trim()
       if (itemNorm.length > 20) {
         let isDup = false
-        for (const existingNorm of Array.from(seenTitles.keys())) {
-          if (itemNorm === existingNorm) {
+        for (const existingTitle of Array.from(seenTitles.values())) {
+          if (titleOverlaps(item.title, existingTitle)) {
             isDup = true; break
           }
         }

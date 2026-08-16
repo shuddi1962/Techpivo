@@ -141,6 +141,36 @@ function makeSlug(title: string): string {
     .slice(0, 80) + "-" + Date.now().toString(36)
 }
 
+function normalizeTitle(s: string): string {
+  return (s || "").toLowerCase().replace(/[^a-z0-9\s-]/g, " ").replace(/\s+/g, " ").trim()
+}
+
+// Fuzzy duplicate guard: same topic with a different title must never be
+// written twice. Exact keyword inclusion or >=60% significant-word overlap.
+async function findDuplicate(topic: string): Promise<string | null> {
+  const { data: posts } = await supabase
+    .from("posts")
+    .select("title, slug, status")
+    .in("status", ["published", "draft", "scheduled"])
+    .not("title", "is", null)
+    .limit(2000)
+  if (!posts || posts.length === 0) return null
+
+  const kw = normalizeTitle(topic)
+  if (!kw) return null
+  const words = kw.split(" ").filter((w) => w.length > 3)
+
+  for (const p of posts) {
+    const t = normalizeTitle(p.title || "")
+    if (!t) continue
+    if (kw.length >= 5 && t.includes(kw)) return `${p.title} (${p.status})`
+    if (words.length === 0) continue
+    const hit = words.filter((w) => t.includes(w)).length
+    if (hit / words.length >= 0.6) return `${p.title} (${p.status})`
+  }
+  return null
+}
+
 serve(async () => {
   try {
     const { data: kwArticles } = await supabase
@@ -173,6 +203,12 @@ serve(async () => {
 
     for (const article of kwArticles) {
       try {
+        const dup = await findDuplicate(article.keyword)
+        if (dup) {
+          results.push({ keyword: article.keyword, success: false, error: `duplicate: already covered by "${dup}"` })
+          continue
+        }
+
         const useGemini = await logGeminiCall()
         const aiCaller = useGemini ? callGemini : callOpenRouter
         const modelUsed = useGemini ? "gemini-2.5-flash" : "openrouter-meta-llama-3.3-70b"

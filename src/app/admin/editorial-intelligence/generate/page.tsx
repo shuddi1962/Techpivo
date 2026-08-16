@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, Suspense } from "react"
 import Link from "next/link"
 import { useSearchParams, useRouter } from "next/navigation"
 import { createClient } from "@/lib/supabase/client"
+import { titleOverlaps } from "@/lib/duplicate-check"
 import { ArrowLeft, Zap, RefreshCw, FileText, Search, Image, Share2, CheckCircle, Copy, ExternalLink, Loader2 } from "lucide-react"
 
 function GenerateContent() {
@@ -42,8 +43,33 @@ function GenerateContent() {
     if (initialTopic) generatePlan()
   }, [initialTopic, generatePlan])
 
+  const checkDuplicate = async (title: string): Promise<string | null> => {
+    try {
+      const supabase = createClient()
+      const { data: existing } = await supabase
+        .from("posts")
+        .select("title, slug, status")
+        .in("status", ["published", "draft", "scheduled"])
+        .limit(2000)
+      if (!existing?.length) return null
+      for (const p of existing) {
+        if (p.title && titleOverlaps(title, p.title)) {
+          return `${p.title} (${p.status})`
+        }
+      }
+    } catch {
+      // fall through — never block saving on a check failure
+    }
+    return null
+  }
+
   const saveAsDraft = async () => {
     if (!plan) return
+    const dup = await checkDuplicate(plan.title || "")
+    if (dup) {
+      alert(`Duplicate detected — "${dup}" already exists. The AI won't write it again.`)
+      return
+    }
     setSaving("draft")
     try {
       const supabase = createClient()
@@ -68,6 +94,11 @@ function GenerateContent() {
 
   const approveAndPublish = async () => {
     if (!plan) return
+    const dup = await checkDuplicate(plan.title || "")
+    if (dup) {
+      alert(`Duplicate detected — "${dup}" already exists. The AI won't write it again.`)
+      return
+    }
     setSaving("publish")
     try {
       const supabase = createClient()
