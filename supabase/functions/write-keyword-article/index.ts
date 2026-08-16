@@ -226,6 +226,8 @@ async function semanticDuplicate(keyword: string): Promise<string | null> {
     return null
   }
 }
+
+serve(async (req) => {
   try {
     const { data: kwArticles } = await supabase
       .from("keyword_articles")
