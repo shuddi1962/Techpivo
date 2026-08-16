@@ -6,11 +6,12 @@ import { CollapsibleSection } from "../collapsible-section"
 import { calculateSeoScore, generateSerpPreview } from "@/lib/seo-utils"
 import {
   keywordSlug, keywordTitle, insertKeywordSentence, keywordFirstHeading,
-  addInternalLinks, splitLongSentences,
+  addInternalLinks, splitLongSentences, ensureKeywordDensity, improveReadability,
 } from "@/lib/editor-autofix"
 import { slugify } from "@/lib/utils"
 import { createClient } from "@/lib/supabase/client"
 import NextImage from "next/image"
+import type { EditorPostState } from "@/types/editor"
 import { Search, CheckCircle2, XCircle, Globe, MessageCircle, Image, Sparkles, ChevronDown, ChevronRight, Loader2, TrendingUp, Wand2 } from "lucide-react"
 import { KeywordSuggest } from "../keyword-suggest"
 
@@ -149,11 +150,11 @@ Only provide fields that need changes. Return valid JSON only.`
           break
         }
         case "keyword_density": {
-          updatePost({ content: insertKeywordSentence(post.content, seoKeyword) })
+          updatePost({ content: ensureKeywordDensity(post.content, seoKeyword) })
           break
         }
         case "readability_score": {
-          updatePost({ content: splitLongSentences(post.content) })
+          updatePost({ content: improveReadability(post.content) })
           break
         }
         case "internal_links": {
@@ -190,6 +191,81 @@ Only provide fields that need changes. Return valid JSON only.`
         }
         default:
           break
+      }
+    } catch {
+      setFixResult("Fix failed. Try again.")
+    }
+    setFixingId("")
+  }
+
+  // Deterministic "Fix All" — no AI needed. Runs every auto-fixable check on one
+  // working object (each transform sees the previous output) and applies a
+  // SINGLE updatePost, so the checklist + score + editor all refresh instantly.
+  const fixAllChecks = async () => {
+    if (fixingId) return
+    setFixingId("fix-all")
+    setFixResult("")
+    try {
+      if (!seoKeyword) {
+        setFixResult("Set a focus keyword first — the keyword checks need it.")
+        setFixingId("")
+        return
+      }
+      const applied: Partial<EditorPostState> = {}
+      const changes: string[] = []
+      const apply = (field: string, before: string, after: string) => {
+        if (before !== after) changes.push(field)
+      }
+
+      apply("slug", post.slug, keywordSlug(seoKeyword, post.slug))
+      if (changes.length && changes[changes.length - 1] === "slug") applied.slug = keywordSlug(seoKeyword, post.slug)
+      const seoTitleFix = keywordTitle(seoKeyword, post.seo_title || post.title)
+      apply("SEO title", post.seo_title || post.title, seoTitleFix)
+      if (changes.includes("SEO title")) applied.seo_title = seoTitleFix
+
+      let c = post.content
+      const c1 = insertKeywordSentence(c, seoKeyword)
+      apply("first paragraph", c, c1); c = c1
+      const c2 = keywordFirstHeading(c, seoKeyword)
+      apply("H2 heading", c, c2); c = c2
+      const c3 = ensureKeywordDensity(c, seoKeyword)
+      apply("keyword density", c, c3); c = c3
+      const c4 = improveReadability(c)
+      apply("readability", c, c4); c = c4
+
+      const supabase = createClient()
+      const { data } = await supabase
+        .from("posts")
+        .select("id, title, slug")
+        .neq("id", post.id || "")
+        .neq("status", "draft")
+        .limit(10)
+      if (data?.length) {
+        const keywords = [post.title, ...post.tags, seoKeyword]
+          .filter(Boolean)
+          .flatMap((k) => String(k).split(/\s+/).filter((w) => w.length > 3))
+          .slice(0, 6)
+        const related = data
+          .map((p) => {
+            const rel = keywords.filter((w) => p.title.toLowerCase().includes(w.toLowerCase())).length
+            return { title: p.title, slug: p.slug, rel }
+          })
+          .filter((p) => p.rel > 0)
+          .sort((a, b) => b.rel - a.rel)
+          .slice(0, 3)
+        if (related.length > 0) {
+          const { html, added } = addInternalLinks(c, related)
+          apply(added > 0 ? `${added} internal link${added > 1 ? "s" : ""}` : "internal links", c, html)
+          c = html
+        }
+      }
+      if (c !== post.content) applied.content = c
+
+      if (Object.keys(applied).length > 0) {
+        updatePost(applied)
+        setFixResult(`Fixed: ${changes.join(", ")}. The checklist updates instantly.`)
+      } else {
+        setFixResult("Nothing to fix — all auto-fixable checks already pass.")
       }
     } catch {
       setFixResult("Fix failed. Try again.")
@@ -334,14 +410,25 @@ Only provide fields that need changes. Return valid JSON only.`
                 <label className="text-xs font-semibold text-gray-500 dark:text-[#9CA3AF] uppercase tracking-wider">
                   SEO Checklist ({items.filter(i => i.check(post)).length}/{items.length})
                 </label>
-                <button
-                  onClick={autoFixSeo}
-                  disabled={aiFixing}
-                  className="flex items-center gap-1.5 text-xs font-semibold text-[#F59E0B] hover:text-[#D97706] disabled:text-gray-300 dark:disabled:text-[#6B7280] px-2.5 py-1.5 rounded-lg hover:bg-[#F59E0B]/10 transition-colors"
-                >
-                  {aiFixing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
-                  {aiFixing ? "Fixing..." : "Auto-Fix"}
-                </button>
+                <div className="flex items-center gap-1.5">
+                  <button
+                    onClick={fixAllChecks}
+                    disabled={!!fixingId}
+                    className="flex items-center gap-1.5 text-xs font-semibold bg-[#F59E0B] hover:bg-[#D97706] disabled:bg-gray-200 dark:disabled:bg-[#374151] disabled:text-gray-400 dark:disabled:text-[#6B7280] text-white px-2.5 py-1.5 rounded-lg transition-colors shadow-sm"
+                    title="Fix every auto-fixable check instantly (no AI needed)"
+                  >
+                    {fixingId === "fix-all" ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Wand2 className="h-3.5 w-3.5" />}
+                    {fixingId === "fix-all" ? "Fixing..." : "Fix All"}
+                  </button>
+                  <button
+                    onClick={autoFixSeo}
+                    disabled={aiFixing || !!fixingId}
+                    className="flex items-center gap-1.5 text-xs font-semibold text-[#F59E0B] hover:text-[#D97706] disabled:text-gray-300 dark:disabled:text-[#6B7280] px-2.5 py-1.5 rounded-lg hover:bg-[#F59E0B]/10 transition-colors"
+                  >
+                    {aiFixing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
+                    {aiFixing ? "Fixing..." : "AI Auto-Fix"}
+                  </button>
+                </div>
               </div>
 
               {fixResult && (

@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react"
 import { usePostEditor } from "../post-editor-provider"
 import { CollapsibleSection } from "../collapsible-section"
-import { splitLongSentences } from "@/lib/editor-autofix"
+import { improveReadability } from "@/lib/editor-autofix"
 import { BarChart3, Wand2, Loader2 } from "lucide-react"
 
 export function ReadabilityPanel() {
@@ -84,17 +84,17 @@ export function ReadabilityPanel() {
             <button
               onClick={() => {
                 setFixing(true)
-                updatePost({ content: splitLongSentences(post.content) })
+                updatePost({ content: improveReadability(post.content) })
                 setTimeout(() => setFixing(false), 500)
               }}
               disabled={fixing}
               className="w-full flex items-center justify-center gap-2 bg-[#F59E0B] hover:bg-[#D97706] disabled:bg-gray-200 dark:disabled:bg-[#374151] disabled:text-gray-400 dark:disabled:text-[#6B7280] text-white text-xs font-semibold py-2 rounded-lg transition-colors shadow-sm"
             >
               {fixing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Wand2 className="h-3.5 w-3.5" />}
-              {fixing ? "Splitting long sentences..." : `Fix ${stats.longSentences} long sentence${stats.longSentences > 1 ? "s" : ""}`}
+              {fixing ? "Improving readability..." : `Fix ${stats.longSentences} long sentence${stats.longSentences > 1 ? "s" : ""}`}
             </button>
             <p className="text-[10px] text-gray-400 dark:text-[#6B7280] mt-2 text-center">
-              Splits sentences over 24 words at natural clause breaks to raise the Flesch score — updates live in the editor.
+              Splits long sentences at natural clause breaks (24 then 16 words) until the Flesch score reaches 50+ — updates live in the editor.
             </p>
           </div>
         )}

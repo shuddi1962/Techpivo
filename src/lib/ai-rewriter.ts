@@ -270,9 +270,40 @@ const CORRECTIVE_PROMPTS: Record<string, string> = {
 }
 
 function repairJson(str: string): string {
-  return str
-    .replace(/\/\/.*$/gm, '')               // strip // comments
-    .replace(/\/\*[\s\S]*?\*\//g, '')       // strip /* */ comments
+  // String-aware pass: strip comments ONLY outside strings (never touch URLs
+  // like https:// inside values) and escape literal newlines inside strings.
+  let out = ''
+  let inString = false
+  let escaped = false
+  let i = 0
+  while (i < str.length) {
+    const ch = str[i]
+    if (inString) {
+      if (escaped) { out += ch; escaped = false; i++; continue }
+      if (ch === '\\') { escaped = true; out += ch; i++; continue }
+      if (ch === '"') { inString = false; out += ch; i++; continue }
+      if (ch === '\n' || ch === '\r') { out += '\\n'; i++; continue }
+      out += ch
+      i++
+      continue
+    }
+    if (ch === '"') { inString = true; out += ch; i++; continue }
+    if (ch === '/' && str[i + 1] === '/') {
+      while (i < str.length && str[i] !== '\n') i++
+      out += ' '
+      continue
+    }
+    if (ch === '/' && str[i + 1] === '*') {
+      i += 2
+      while (i < str.length && !(str[i] === '*' && str[i + 1] === '/')) i++
+      i += 2
+      out += ' '
+      continue
+    }
+    out += ch
+    i++
+  }
+  return out
     .replace(/,\s*([}\]])/g, '$1')           // trailing commas before ] or }
     .replace(/([{,])\s*'([^']+?)'\s*:/g, '$1"$2":')  // single-quoted keys → double-quoted
     .replace(/:\s*'([^']*?)'\s*([,}])/g, ':"$1"$2')  // single-quoted strings → double-quoted
@@ -483,14 +514,16 @@ async function geminiGrounded(
 
   const maxRetries = 2
   let lastDebug = ''
+  let useJsonMime = true
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
     try {
       const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`
-      const body = {
+      const body: Record<string, unknown> = {
         contents: [{ role: 'user', parts: [{ text: prompt }] }],
         generationConfig: {
           temperature:       0.45,
           maxOutputTokens:   8192,
+          ...(useJsonMime ? { responseMimeType: 'application/json' } : {}),
         },
         tools: [
           { googleSearch: {} },
@@ -506,6 +539,13 @@ async function geminiGrounded(
 
       if (!res.ok) {
         const errText = await res.text().catch(() => '')
+        // Some Gemini builds reject JSON mime together with googleSearch —
+        // retry once without the mime type instead of failing hard.
+        if (useJsonMime && /response[_ ]?mime|mime[_ ]?type|application\/json/i.test(errText) && attempt < maxRetries) {
+          console.warn('[Gemini] JSON mime rejected with googleSearch — retrying without responseMimeType')
+          useJsonMime = false
+          continue
+        }
         if (attempt < maxRetries && (res.status === 429 || res.status === 503)) {
           console.warn(`[Gemini retry ${attempt + 1}] HTTP ${res.status}`)
           await new Promise(r => setTimeout(r, 2000))

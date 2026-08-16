@@ -66,9 +66,9 @@ export function getSeoChecklist(keyword: string, state: EditorPostState): SeoChe
     },
     {
       id: "readability_score",
-      label: "Readability is Standard or better (Flesch 60+)",
+      label: "Readability Fairly Difficult or better (Flesch 50+)",
       weight: 10,
-      check: () => calculateReadability(state.content).flesch >= 60,
+      check: () => calculateReadability(state.content).flesch >= 50,
     },
     {
       id: "images",

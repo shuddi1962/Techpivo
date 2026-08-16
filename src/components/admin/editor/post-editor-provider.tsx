@@ -457,6 +457,11 @@ export function PostEditorProvider({
       return
     }
 
+    if (!when || new Date(when).getTime() <= Date.now()) {
+      alert("Pick a future date and time for the scheduled publish.")
+      return
+    }
+
     setIsSaving(true)
 
     try {
@@ -516,8 +521,11 @@ export function PostEditorProvider({
         if (error) throw error
         if (data) setPost(prev => ({ ...prev, id: data.id }))
       }
+      // Sync local state so the editor + admin posts list reflect the schedule immediately
+      setPost(prev => ({ ...prev, status: "scheduled", scheduled_at: when }))
       setLastSaved(new Date())
       setDirty(false)
+      localStorage.removeItem(DRAFT_KEY)
       router.push("/admin/posts")
     } catch (err) {
       console.error("Error scheduling post:", err)

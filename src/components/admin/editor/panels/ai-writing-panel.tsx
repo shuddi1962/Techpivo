@@ -4,7 +4,7 @@ import { useState, useEffect } from "react"
 import { usePostEditor } from "../post-editor-provider"
 import { CollapsibleSection } from "../collapsible-section"
 import { slugify } from "@/lib/utils"
-import { keywordSlug, keywordTitle, splitLongSentences, addInternalLinks } from "@/lib/editor-autofix"
+import { keywordSlug, keywordTitle, improveReadability, addInternalLinks } from "@/lib/editor-autofix"
 import { createClient } from "@/lib/supabase/client"
 import { Sparkles, Loader2, Globe, FileText, CheckCircle, AlertCircle, BarChart3 } from "lucide-react"
 
@@ -130,10 +130,10 @@ export function AiWritingPanel() {
       })
 
       // Automatic polish so the SEO checklist passes from the start:
-      // keyword-first slug + SEO title, and long sentences split for readability.
+      // keyword-first slug + SEO title, and readability improved to Flesch 50+.
       const kw = a.focusKeyword || a.seoKeywords?.[0] || ""
       const baseContent = a.content || post.content
-      const polishedContent = splitLongSentences(baseContent)
+      const polishedContent = improveReadability(baseContent)
       const polish: Record<string, unknown> = {}
       if (polishedContent !== baseContent) polish.content = polishedContent
       if (kw) {

@@ -6,7 +6,10 @@ import {
   keywordFirstHeading,
   addInternalLinks,
   splitLongSentences,
+  ensureKeywordDensity,
+  improveReadability,
 } from "@/lib/editor-autofix"
+import { calculateReadability } from "@/lib/seo-utils"
 
 describe("keywordSlug", () => {
   it("prepends the keyword when missing", () => {
@@ -105,5 +108,51 @@ describe("splitLongSentences", () => {
     const out = splitLongSentences(html)
     expect(out.startsWith("<p>")).toBe(true)
     expect(out.endsWith("</p>")).toBe(true)
+  })
+  it("honors a custom maxWords cap", () => {
+    const html = "<p>The quick brown fox jumps over the lazy dog near the riverbank while the sun sets slowly behind the mountains in the distance today.</p>"
+    const loose = splitLongSentences(html, 24)
+    const tight = splitLongSentences(html, 12)
+    expect(tight.replace(/<[^>]*>/g, "").split(/[.!?]+/).filter(Boolean).length)
+      .toBeGreaterThanOrEqual(loose.replace(/<[^>]*>/g, "").split(/[.!?]+/).filter(Boolean).length)
+  })
+})
+
+describe("ensureKeywordDensity", () => {
+  it("adds keyword mentions until the density threshold is reached", () => {
+    const html = "<p>This article talks about ai writing tools for editors and publishers around the world who create content every day online.</p>"
+    const out = ensureKeywordDensity(html, "ai writing tools", 0.5)
+    const text = out.replace(/<[^>]*>/g, " ")
+    const words = text.split(/\s+/).filter(Boolean).length
+    const mentions = (text.match(/ai writing tools/gi) || []).length
+    expect(mentions / words * 100).toBeGreaterThanOrEqual(0.5)
+  })
+  it("leaves content alone when density is already met", () => {
+    const html = "<p>ai writing tools are great. ai writing tools save time. ai writing tools help editors. ai writing tools work well for everyone using them online today.</p>"
+    expect(ensureKeywordDensity(html, "ai writing tools")).toBe(html)
+  })
+  it("preserves HTML structure", () => {
+    const html = "<h2>Heading</h2><p>Body paragraph about ai writing tools and how they help publishers write faster with better results every day.</p>"
+    const out = ensureKeywordDensity(html, "ai writing tools")
+    expect(out.startsWith("<h2>")).toBe(true)
+    expect(out.includes("</p>")).toBe(true)
+  })
+})
+
+describe("improveReadability", () => {
+  it("raises the Flesch score by splitting long sentences", () => {
+    const html = "<p>" +
+      "Artificial intelligence is transforming the way we build software products, and it fundamentally changes how developers approach problem solving every single day across every single industry in the entire world." +
+      " Machine learning models are becoming increasingly sophisticated and they require enormous amounts of computing power to train effectively." +
+      " Companies around the globe are investing heavily in these technologies because they believe the potential returns are truly enormous." +
+      "</p>"
+    const before = calculateReadability(html).flesch
+    const out = improveReadability(html)
+    const after = calculateReadability(out).flesch
+    expect(after).toBeGreaterThanOrEqual(before)
+  })
+  it("returns content unchanged when it is already readable", () => {
+    const html = "<p>This is fine. It reads well. Short sentences work.</p>"
+    expect(improveReadability(html)).toBe(html)
   })
 })

@@ -3,6 +3,7 @@
 // panel and the checklist update in realtime.
 
 import { slugify } from "@/lib/utils"
+import { calculateReadability } from "@/lib/seo-utils"
 
 export interface RelatedPost {
   title: string
@@ -129,22 +130,27 @@ const CLAUSE_BOUNDARIES = [
   " meanwhile, ", " in addition, ", " for example, ", " such as ", " including ",
 ]
 
-function splitSentenceIntoTwo(sentence: string): string[] {
+function splitSentenceIntoTwo(sentence: string, maxWords: number): string[] {
   const words = sentence.split(/\s+/).filter(Boolean)
-  if (words.length <= 24) return [sentence]
+  if (words.length <= maxWords) return [sentence]
+  const lo = Math.max(6, Math.floor(maxWords * 0.5))
+  const hi = Math.max(10, Math.floor(maxWords * 0.92))
+  // Fallback boundary may be earlier than lo — it only needs to produce a
+  // usable first half (≥ ~1/3 of the cap) so very long sentences still split.
+  const fallbackMin = Math.max(6, Math.floor(maxWords * 0.35))
   let bestEnd = -1
   let fallbackEnd = -1
   for (const b of CLAUSE_BOUNDARIES) {
     let idx = sentence.toLowerCase().indexOf(b)
     while (idx !== -1) {
       const firstWords = sentence.slice(0, idx).trim().split(/\s+/).filter(Boolean).length
-      if (firstWords >= 12 && firstWords <= 22) bestEnd = idx
-      else if (fallbackEnd === -1 && firstWords >= 8) fallbackEnd = idx
+      if (firstWords >= lo && firstWords <= hi) bestEnd = idx
+      else if (fallbackEnd === -1 && firstWords >= fallbackMin) fallbackEnd = idx
       idx = sentence.toLowerCase().indexOf(b, idx + 1)
     }
   }
   // Very long sentences with only an early clause break: split at the first
-  // usable boundary instead of giving up — both halves stay ≥ 8 words.
+  // usable boundary instead of giving up — both halves stay substantial.
   if (bestEnd === -1 && fallbackEnd !== -1) bestEnd = fallbackEnd
   if (bestEnd === -1) return [sentence]
   // Cut BEFORE the clause boundary so the conjunction/starter ("and", "but",
@@ -156,24 +162,24 @@ function splitSentenceIntoTwo(sentence: string): string[] {
   return [first + ".", second]
 }
 
-function splitSentence(sentence: string, depth: number): string[] {
+function splitSentence(sentence: string, depth: number, maxWords: number): string[] {
   if (depth <= 0) return [sentence]
   const words = sentence.split(/\s+/).filter(Boolean)
-  if (words.length <= 24) return [sentence]
+  if (words.length <= maxWords) return [sentence]
   if (sentence.includes("http") || sentence.includes("://")) return [sentence]
-  const parts = splitSentenceIntoTwo(sentence)
+  const parts = splitSentenceIntoTwo(sentence, maxWords)
   if (parts.length === 1) return parts
-  return [parts[0], ...splitSentence(parts[1], depth - 1)]
+  return [parts[0], ...splitSentence(parts[1], depth - 1, maxWords)]
 }
 
 const SENTENCE_RE = /[^.!?]+[.!?]+(?:\s+|$)|[^.!?]+$/g
 
-function fixTextRun(run: string): string {
+function fixTextRun(run: string, maxWords: number): string {
   let changed = false
   const rebuilt = run.replace(SENTENCE_RE, (sentence) => {
-    if (sentence.split(/\s+/).filter(Boolean).length <= 24) return sentence
+    if (sentence.split(/\s+/).filter(Boolean).length <= maxWords) return sentence
     if (sentence.includes("http")) return sentence
-    const parts = splitSentence(sentence, 3)
+    const parts = splitSentence(sentence, 3, maxWords)
     if (parts.length === 1) return sentence
     changed = true
     return parts.join(" ")
@@ -194,9 +200,79 @@ export function splitLongSentences(html: string, maxWords = 24): string {
   const out = segments.map((seg) => {
     if (seg.startsWith("<") || seg.endsWith(">") || !seg.trim()) return seg
     if (/[\[\]*#`>_|]/.test(seg)) return seg
-    const fixed = fixTextRun(seg)
+    const fixed = fixTextRun(seg, maxWords)
     if (fixed !== seg) changed = true
     return fixed
   })
   return changed ? out.join("") : html
+}
+
+/**
+ * Keep the focus keyword density at the target (default 0.5%):
+ * insert natural keyword sentences at spread-out paragraph points until the
+ * density threshold is reached (or maxInserts). Never duplicates when the
+ * keyword is already used enough.
+ */
+export function ensureKeywordDensity(
+  html: string,
+  keyword: string,
+  minPct = 0.5,
+  maxInserts = 6
+): string {
+  if (!keyword) return html
+  const plain = html.replace(/<[^>]*>/g, "").replace(/\s+/g, " ").trim()
+  const words = plain.split(/\s+/).filter(Boolean).length
+  if (words === 0) return html
+  const re = new RegExp(keyword.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "gi")
+  const occ = (plain.match(re) || []).length
+  const needed = Math.max(0, Math.ceil((words * minPct) / 100) - occ)
+  if (needed === 0) return html
+
+  const pTags: number[] = []
+  const pRe = /<p[^>]*>[\s\S]*?<\/p>/gi
+  let m: RegExpExecArray | null
+  while ((m = pRe.exec(html)) !== null) pTags.push(m.index + m[0].length - "</p>".length)
+
+  const insertPoints =
+    pTags.length === 0
+      ? []
+      : pTags.length === 1
+        ? [pTags[0]]
+        : pTags.length === 2
+          ? [pTags[0], pTags[1]]
+          : [pTags[0], pTags[Math.floor(pTags.length / 2)], pTags[pTags.length - 1]]
+  if (insertPoints.length === 0) {
+    return `${html}\n\nThis guide covers ${keyword} in detail.`
+  }
+
+  const DENSITY_SENTENCES = [
+    (kw: string) => `This guide covers ${kw} in detail.`,
+    (kw: string) => `Whether you are new to ${kw} or already experienced, the sections below have you covered.`,
+    (kw: string) => `Keep this reference handy whenever you work with ${kw}.`,
+    (kw: string) => `Here is everything you need to know about ${kw}, step by step.`,
+    (kw: string) => `The rest of this article focuses on ${kw} in practice.`,
+    (kw: string) => `If ${kw} is on your radar, keep reading.`,
+  ]
+
+  let out = html
+  const limit = Math.min(needed, maxInserts)
+  for (let i = 0; i < limit; i++) {
+    const at = insertPoints[i % insertPoints.length]
+    const sentence = ` ${DENSITY_SENTENCES[i % DENSITY_SENTENCES.length](keyword)}`
+    out = out.slice(0, at) + sentence + out.slice(at)
+  }
+  return out
+}
+
+/**
+ * Sentence-split pass tuned to actually lift the Flesch score: first a gentle
+ * pass at 24 words, then a more aggressive pass at 16 words when the Flesch
+ * score is still below 50 — the better result wins.
+ */
+export function improveReadability(html: string): string {
+  const base = splitLongSentences(html, 24)
+  if (calculateReadability(base).flesch >= 50) return base
+  const aggressive = splitLongSentences(base, 16)
+  if (calculateReadability(aggressive).flesch > calculateReadability(base).flesch) return aggressive
+  return base
 }
