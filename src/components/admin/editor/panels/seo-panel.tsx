@@ -4,8 +4,14 @@ import { useState, useMemo } from "react"
 import { usePostEditor } from "../post-editor-provider"
 import { CollapsibleSection } from "../collapsible-section"
 import { calculateSeoScore, generateSerpPreview } from "@/lib/seo-utils"
+import {
+  keywordSlug, keywordTitle, insertKeywordSentence, keywordFirstHeading,
+  addInternalLinks, splitLongSentences,
+} from "@/lib/editor-autofix"
+import { slugify } from "@/lib/utils"
+import { createClient } from "@/lib/supabase/client"
 import NextImage from "next/image"
-import { Search, CheckCircle2, XCircle, Globe, MessageCircle, Image, Sparkles, ChevronDown, ChevronRight, Loader2, TrendingUp } from "lucide-react"
+import { Search, CheckCircle2, XCircle, Globe, MessageCircle, Image, Sparkles, ChevronDown, ChevronRight, Loader2, TrendingUp, Wand2 } from "lucide-react"
 import { KeywordSuggest } from "../keyword-suggest"
 
 const schemaTypes = [
@@ -23,15 +29,15 @@ const tabs = [
 const checklistGroups = [
   {
     label: "Keyword Usage",
-    items: ["keyword_in_title", "keyword_in_first_paragraph", "keyword_in_heading", "keyword_in_content", "keyword_in_slug", "keyword_in_seo_title", "keyword_in_meta_description"],
+    items: ["keyword_in_title", "keyword_in_first_para", "keyword_in_headings", "keyword_in_slug", "keyword_density"],
   },
   {
     label: "Content Quality",
-    items: ["content_length", "readability_score", "image_present", "image_alt_tags", "outgoing_links", "internal_links"],
+    items: ["content_length", "readability_score", "images", "internal_links", "h2_headings", "paragraph_length"],
   },
   {
     label: "Meta & Social",
-    items: ["seo_title_length", "meta_description_length", "social_previews", "schema_markup", "slug_format"],
+    items: ["title_length", "meta_desc_length", "featured_image_set", "excerpt_set", "schema_markup"],
   },
 ]
 
@@ -41,6 +47,7 @@ export function SeoPanel() {
   const [collapsedGroups, setCollapsedGroups] = useState<string[]>([])
   const [aiFixing, setAiFixing] = useState(false)
   const [fixResult, setFixResult] = useState("")
+  const [fixingId, setFixingId] = useState("")
 
   const { score, items } = useMemo(() => calculateSeoScore(seoKeyword, post), [seoKeyword, post])
   const serpPreview = useMemo(() => generateSerpPreview(post), [post])
@@ -119,6 +126,77 @@ Only provide fields that need changes. Return valid JSON only.`
     setAiFixing(false)
   }
 
+  const fixItem = async (id: string) => {
+    if (fixingId) return
+    setFixingId(id)
+    setFixResult("")
+    try {
+      switch (id) {
+        case "keyword_in_title": {
+          updatePost({ seo_title: keywordTitle(seoKeyword, post.seo_title || post.title) })
+          break
+        }
+        case "keyword_in_slug": {
+          updatePost({ slug: keywordSlug(seoKeyword, post.slug) })
+          break
+        }
+        case "keyword_in_first_para": {
+          updatePost({ content: insertKeywordSentence(post.content, seoKeyword) })
+          break
+        }
+        case "keyword_in_headings": {
+          updatePost({ content: keywordFirstHeading(post.content, seoKeyword) })
+          break
+        }
+        case "keyword_density": {
+          updatePost({ content: insertKeywordSentence(post.content, seoKeyword) })
+          break
+        }
+        case "readability_score": {
+          updatePost({ content: splitLongSentences(post.content) })
+          break
+        }
+        case "internal_links": {
+          const supabase = createClient()
+          const { data } = await supabase
+            .from("posts")
+            .select("id, title, slug")
+            .neq("id", post.id || "")
+            .neq("status", "draft")
+            .limit(10)
+          if (data?.length) {
+            const keywords = [post.title, ...post.tags, post.focus_keyword]
+              .filter(Boolean)
+              .flatMap((k) => String(k).split(/\s+/).filter((w) => w.length > 3))
+              .slice(0, 6)
+            const related = data
+              .map((p) => {
+                const rel = keywords.filter((w) => p.title.toLowerCase().includes(w.toLowerCase())).length
+                return { title: p.title, slug: p.slug, rel }
+              })
+              .filter((p) => p.rel > 0)
+              .sort((a, b) => b.rel - a.rel)
+              .slice(0, 3)
+            if (related.length > 0) {
+              const { html } = addInternalLinks(post.content, related)
+              updatePost({ content: html })
+            } else {
+              setFixResult("No related published posts found to link to.")
+            }
+          } else {
+            setFixResult("No published posts found to link to.")
+          }
+          break
+        }
+        default:
+          break
+      }
+    } catch {
+      setFixResult("Fix failed. Try again.")
+    }
+    setFixingId("")
+  }
+
   return (
     <CollapsibleSection
       title={`SEO${seoKeyword ? ` (${score})` : ""}`}
@@ -164,12 +242,12 @@ Only provide fields that need changes. Return valid JSON only.`
           </div>
         </div>
 
-        <div className="flex border-b-2 border-gray-200 dark:border-[#1F2937] gap-0">
+        <div className="flex border-b-2 border-gray-200 dark:border-[#1F2937] gap-0 overflow-x-auto">
           {tabs.map((tab) => (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={`px-3 py-1.5 text-xs font-semibold border-b-2 transition-colors ${
+              className={`shrink-0 px-3 py-1.5 text-xs font-semibold border-b-2 transition-colors ${
                 activeTab === tab.id
                   ? "text-[#F59E0B] border-[#F59E0B]"
                   : "text-gray-400 dark:text-[#6B7280] border-transparent hover:text-gray-600 dark:hover:text-[#9CA3AF]"
@@ -297,6 +375,10 @@ Only provide fields that need changes. Return valid JSON only.`
                           {groupItems.map((item) => {
                             if (!item) return null
                             const passed = item.check(post)
+                            const fixable = [
+                              "keyword_in_title", "keyword_in_slug", "keyword_in_first_para",
+                              "keyword_in_headings", "keyword_density", "readability_score", "internal_links",
+                            ].includes(item.id)
                             return (
                               <div key={item.id} className="flex items-start gap-2.5">
                                 {passed ? (
@@ -305,10 +387,21 @@ Only provide fields that need changes. Return valid JSON only.`
                                   <XCircle className="h-4 w-4 text-gray-300 dark:text-[#4B5563] mt-0.5 shrink-0" />
                                 )}
                                 <div className="flex-1 min-w-0">
-                                  <p className={`text-xs font-medium ${passed ? "text-green-700 dark:text-green-400" : "text-gray-500 dark:text-[#9CA3AF]"}`}>
+                                  <p className={`text-xs font-medium break-words ${passed ? "text-green-700 dark:text-green-400" : "text-gray-500 dark:text-[#9CA3AF]"}`}>
                                     {item.label}
                                   </p>
                                 </div>
+                                {!passed && fixable && (
+                                  <button
+                                    onClick={() => fixItem(item.id)}
+                                    disabled={!!fixingId}
+                                    className="flex items-center gap-1 shrink-0 text-[10px] font-semibold text-[#F59E0B] hover:text-[#D97706] hover:bg-[#F59E0B]/10 px-2 py-1 rounded-md transition-colors disabled:opacity-50"
+                                    title="Auto-fix this check"
+                                  >
+                                    {fixingId === item.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <Wand2 className="h-3 w-3" />}
+                                    Fix
+                                  </button>
+                                )}
                                 <span className={`text-[10px] font-semibold shrink-0 px-1.5 py-0.5 rounded ${
                                   passed
                                     ? "bg-green-50 text-green-600 dark:bg-green-900/20 dark:text-green-400"
@@ -401,8 +494,8 @@ Only provide fields that need changes. Return valid JSON only.`
               </select>
             </div>
             {post.schema_type && (
-              <div className="bg-gray-50 dark:bg-[#0A0F1E] rounded-xl p-3 border-2 border-gray-200 dark:border-[#1F2937]">
-                <p className="text-[10px] text-gray-500 dark:text-[#6B7280] font-mono leading-relaxed whitespace-pre">
+              <div className="bg-gray-50 dark:bg-[#0A0F1E] rounded-xl p-3 border-2 border-gray-200 dark:border-[#1F2937] overflow-x-auto min-w-0">
+                <p className="text-[10px] text-gray-500 dark:text-[#6B7280] font-mono leading-relaxed whitespace-pre w-max min-w-full">
 {`<script type="application/ld+json">
 {
   "@context": "https://schema.org",

@@ -4,6 +4,8 @@ import { useState, useEffect } from "react"
 import { usePostEditor } from "../post-editor-provider"
 import { CollapsibleSection } from "../collapsible-section"
 import { slugify } from "@/lib/utils"
+import { keywordSlug, keywordTitle, splitLongSentences, addInternalLinks } from "@/lib/editor-autofix"
+import { createClient } from "@/lib/supabase/client"
 import { Sparkles, Loader2, Globe, FileText, CheckCircle, AlertCircle, BarChart3 } from "lucide-react"
 
 export function AiWritingPanel() {
@@ -126,6 +128,50 @@ export function AiWritingPanel() {
         source_name:        source?.name || post.source_name,
         original_source_url: source?.url || post.original_source_url,
       })
+
+      // Automatic polish so the SEO checklist passes from the start:
+      // keyword-first slug + SEO title, and long sentences split for readability.
+      const kw = a.focusKeyword || a.seoKeywords?.[0] || ""
+      const baseContent = a.content || post.content
+      const polishedContent = splitLongSentences(baseContent)
+      const polish: Record<string, unknown> = {}
+      if (polishedContent !== baseContent) polish.content = polishedContent
+      if (kw) {
+        const kwSlug = keywordSlug(kw, slugify(a.headline))
+        if (kwSlug !== slugify(a.headline)) polish.slug = kwSlug
+        polish.seo_title = keywordTitle(kw, a.seoTitle || a.headline)
+      }
+      if (Object.keys(polish).length > 0) updatePost(polish)
+
+      // Auto internal links: link 1-3 related published posts into the content.
+      void (async () => {
+        try {
+          const supabase = createClient()
+          const { data } = await supabase
+            .from("posts")
+            .select("id, title, slug")
+            .neq("id", post.id || "")
+            .neq("status", "draft")
+            .limit(10)
+          if (!data?.length) return
+          const kwList = [a.headline, ...(Array.isArray(a.tags) ? a.tags : [])]
+            .filter(Boolean)
+            .flatMap((k) => String(k).split(/\s+/).filter((w) => w.length > 3))
+            .slice(0, 6)
+          const related = data
+            .map((p) => ({
+              title: p.title,
+              slug: p.slug,
+              rel: kwList.filter((w) => p.title.toLowerCase().includes(w.toLowerCase())).length,
+            }))
+            .filter((x) => x.rel > 0)
+            .sort((x, y) => y.rel - x.rel)
+            .slice(0, 3)
+          if (!related.length) return
+          const { html } = addInternalLinks(polishedContent, related)
+          if (html !== polishedContent) updatePost({ content: html })
+        } catch { /* internal-link auto-fix is best-effort */ }
+      })()
 
       // Web images are the default source site-wide — when the post has no
       // featured image yet, auto-fetch one from the live web search so the

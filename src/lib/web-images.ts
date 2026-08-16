@@ -166,6 +166,26 @@ function figureHtml(url: string, alt: string): string {
 }
 
 /**
+ * Section headings that never produce a relevant image on their own
+ * ("Introduction", "FAQ", "Related resources"…) — searching the live web for
+ * those returns generic/irrelevant photos, so they are skipped.
+ */
+const GENERIC_HEADINGS = [
+  "introduction", "intro", "overview", "key takeaways", "takeaways", "key points",
+  "key developments", "the bottom line", "bottom line", "what this means",
+  "what's next", "conclusion", "summary", "final thoughts", "wrap up",
+  "faq", "frequently asked questions", "related resources", "related coverage",
+  "more coverage", "see also", "references", "what you need to know",
+]
+
+function isGenericHeading(text: string, topic: string): boolean {
+  const t = text.toLowerCase().trim()
+  if (t.length < 3) return true
+  if (topic.toLowerCase() && t === topic.toLowerCase()) return true
+  return GENERIC_HEADINGS.some((g) => t === g || t.startsWith(`${g}:`) || t.startsWith(`${g} `))
+}
+
+/**
  * AI article enrichment: picks a web featured image AND inserts real, relevant
  * web images (charts, diagrams, screenshots, photos) into the article body —
  * one figure per matching H2 section — so AI-written articles are fully
@@ -191,9 +211,12 @@ export async function enrichArticleWithWebImages(
   }
 
   const figureQueries = headings
-    .slice(0, 4)
+    .slice(0, 6)
     .map((h) => h.text)
-    .filter((t) => t && t.toLowerCase() !== cleanTopic.toLowerCase())
+    .filter((t) => !isGenericHeading(t, cleanTopic))
+    .map((t) => `${cleanTopic} ${t}`.trim().slice(0, 100))
+    .filter((q, i, arr) => arr.indexOf(q) === i)
+    .slice(0, 4)
 
   const figurePromises = figureQueries.map(async (q) => ({
     query: q,
@@ -207,11 +230,12 @@ export async function enrichArticleWithWebImages(
 
   let out = content
   let inserted = 0
+  const srcByQuery = new Map(figureResults.map((r) => [r.query, r.src]))
   for (let i = 0; i < headings.length && inserted < maxFigures; i++) {
-    const result = figureResults.find((r) => r.query === headings[i].text)
-    const src = result?.src
+    const query = `${cleanTopic} ${headings[i].text}`.trim().slice(0, 100)
+    const src = srcByQuery.get(query)
     if (!src) continue
-    const figure = figureHtml(src, headings[i].text)
+    const figure = figureHtml(src, `${headings[i].text} — ${cleanTopic}`)
     const afterH2 = out.slice(headings[i].end)
     const pClose = afterH2.indexOf("</p>")
     const insertAt = pClose >= 0 ? headings[i].end + pClose + 4 : headings[i].end

@@ -65,6 +65,12 @@ export function getSeoChecklist(keyword: string, state: EditorPostState): SeoChe
       check: () => wordCount > 600,
     },
     {
+      id: "readability_score",
+      label: "Readability is Standard or better (Flesch 60+)",
+      weight: 10,
+      check: () => calculateReadability(state.content).flesch >= 60,
+    },
+    {
       id: "images",
       label: "Content has at least one image",
       weight: 5,
