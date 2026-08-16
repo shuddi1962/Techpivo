@@ -1,12 +1,12 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { usePostEditor } from "../post-editor-provider"
 import { CollapsibleSection } from "../collapsible-section"
 import { slugify } from "@/lib/utils"
 import { keywordSlug, keywordTitle, improveReadability, addInternalLinks } from "@/lib/editor-autofix"
 import { createClient } from "@/lib/supabase/client"
-import { Sparkles, Loader2, Globe, FileText, CheckCircle, AlertCircle } from "lucide-react"
+import { Sparkles, Loader2, Globe, FileText, CheckCircle, AlertCircle, Gauge } from "lucide-react"
 
 export function AiWritingPanel() {
   const { post, updatePost, seoKeyword, categories } = usePostEditor()
@@ -16,6 +16,35 @@ export function AiWritingPanel() {
   const [error, setError] = useState("")
   const [lastResult, setLastResult] = useState<{ headline: string; elapsed: string } | null>(null)
   const [imageNote, setImageNote] = useState("")
+  const [quota, setQuota] = useState({
+    daily: { used: 0, cap: 50 },
+    monthly: { used: 0, cap: 2000 },
+  })
+
+  // Live quota: refreshes on mount, every 30s, on window focus, and after
+  // every write attempt so "used so far" is always current.
+  const loadQuota = useCallback(async () => {
+    try {
+      const res = await fetch("/api/admin/ai-quota")
+      if (!res.ok) return
+      const q = await res.json()
+      setQuota({
+        daily: { used: q.manualGemini?.used ?? 0, cap: q.manualGemini?.cap ?? 50 },
+        monthly: { used: q.manual?.used ?? 0, cap: q.manual?.cap ?? 2000 },
+      })
+    } catch { /* quota display is best-effort */ }
+  }, [])
+
+  useEffect(() => {
+    loadQuota()
+    const t = setInterval(loadQuota, 30000)
+    const onFocus = () => loadQuota()
+    window.addEventListener("focus", onFocus)
+    return () => {
+      clearInterval(t)
+      window.removeEventListener("focus", onFocus)
+    }
+  }, [loadQuota])
 
   const handleGenerate = async () => {
     if (!input.trim()) {
@@ -172,6 +201,7 @@ export function AiWritingPanel() {
       setError("Network error. Check your connection and try again.")
     } finally {
       setLoading(false)
+      void loadQuota()
     }
   }
 
@@ -182,6 +212,31 @@ export function AiWritingPanel() {
       defaultOpen={true}
     >
       <div className="space-y-3">
+        <div className="rounded-xl border-2 border-gray-200 dark:border-[#1F2937] bg-gray-50 dark:bg-[#0A0F1E] px-3 py-2.5">
+          <div className="flex items-center justify-between text-[11px] font-semibold text-gray-600 dark:text-[#9CA3AF]">
+            <span className="flex items-center gap-1.5">
+              <Gauge className="h-3.5 w-3.5 text-amber-500" />
+              Manual AI writes today
+            </span>
+            <span className="tabular-nums text-gray-900 dark:text-[#F9FAFB]">
+              {quota.daily.used} / {quota.daily.cap} used
+            </span>
+          </div>
+          <div className="mt-1.5 h-1.5 rounded-full bg-gray-200 dark:bg-[#1F2937] overflow-hidden">
+            <div
+              className={`h-full rounded-full transition-all duration-500 ${
+                quota.daily.used >= quota.daily.cap ? "bg-red-500" : "bg-[#F59E0B]"
+              }`}
+              style={{ width: `${Math.min(100, (quota.daily.used / Math.max(1, quota.daily.cap)) * 100)}%` }}
+            />
+          </div>
+          <p className="mt-1.5 text-[10px] text-gray-400 dark:text-[#6B7280]">
+            {quota.daily.used >= quota.daily.cap
+              ? "Daily cap reached — the AI won't write again until tomorrow."
+              : `${Math.max(0, quota.daily.cap - quota.daily.used)} writes left today · ${quota.monthly.used} / ${quota.monthly.cap} used this month`}
+          </p>
+        </div>
+
         <div className="flex border-2 border-gray-200 dark:border-[#1F2937] rounded-xl overflow-hidden">
           <button
             onClick={() => { setMode("topic"); setInput(""); setError("") }}
@@ -280,7 +335,7 @@ export function AiWritingPanel() {
         <p className="text-[10px] text-gray-400 dark:text-[#6B7280] text-center leading-relaxed">
           Powered by <strong>Gemini 2.5 Flash</strong> with Google Search Grounding.
           <br />
-          Each write uses 1 of 2,000 monthly manual credits.
+          Quota refreshes automatically — today&rsquo;s daily manual budget: {quota.daily.used} / {quota.daily.cap} used.
         </p>
       </div>
     </CollapsibleSection>

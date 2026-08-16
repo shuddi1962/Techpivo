@@ -171,7 +171,61 @@ async function findDuplicate(topic: string): Promise<string | null> {
   return null
 }
 
-serve(async () => {
+// Semantic duplicate guard: the fuzzy title check cannot catch two articles
+// about the SAME story written with completely different vocabulary. When the
+// title check misses, ask Gemini to compare the keyword against the most
+// recent existing posts' titles AND content snippets. Never blocks a write on
+// LLM failure — returns null on any error.
+async function semanticDuplicate(keyword: string): Promise<string | null> {
+  const key = Deno.env.get("GEMINI_API_KEY")
+  if (!key) return null
+
+  const { data: posts } = await supabase
+    .from("posts")
+    .select("title, slug, status, content")
+    .in("status", ["published", "draft", "scheduled"])
+    .not("title", "is", null)
+    .order("created_at", { ascending: false })
+    .limit(200)
+  if (!posts || posts.length === 0) return null
+
+  const candidates = posts.map((p) => ({
+    title: String(p.title || ""),
+    status: String(p.status || ""),
+    snippet: String(p.content || "").replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim().slice(0, 220),
+  }))
+
+  const prompt =
+    `You are a duplicate-content detector for a technology news site.\n\n` +
+    `NEW ARTICLE TOPIC: ${keyword}\n\n` +
+    `EXISTING ARTICLES (index: title | content snippet):\n` +
+    candidates.map((c, i) => `${i}: ${c.title} | ${c.snippet}`).join("\n") +
+    `\n\nQuestion: does ANY existing article cover essentially the SAME story, subject, product, research, or tutorial as the new article — even if the wording, title, and angle are completely different? Answer with ONLY the index number of the FIRST matching existing article, or the word NONE.`
+
+  try {
+    const res = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${key}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          contents: [{ role: "user", parts: [{ text: prompt }] }],
+          generationConfig: { temperature: 0, maxOutputTokens: 8 },
+        }),
+        signal: AbortSignal.timeout(30000),
+      }
+    )
+    if (!res.ok) return null
+    const data = await res.json()
+    const answer = String(data?.candidates?.[0]?.content?.parts?.[0]?.text || "").trim()
+    const idx = parseInt(answer, 10)
+    if (!/^\d+$/.test(answer) || Number.isNaN(idx) || idx < 0 || idx >= candidates.length) return null
+    const match = candidates[idx]
+    return `${match.title} (${match.status})`
+  } catch {
+    return null
+  }
+}
   try {
     const { data: kwArticles } = await supabase
       .from("keyword_articles")
@@ -203,7 +257,7 @@ serve(async () => {
 
     for (const article of kwArticles) {
       try {
-        const dup = await findDuplicate(article.keyword)
+        const dup = (await findDuplicate(article.keyword)) || (await semanticDuplicate(article.keyword))
         if (dup) {
           results.push({ keyword: article.keyword, success: false, error: `duplicate: already covered by "${dup}"` })
           continue

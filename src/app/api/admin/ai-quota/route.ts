@@ -33,7 +33,7 @@ export async function GET() {
   nextFirstOfMonth.setMonth(nextFirstOfMonth.getMonth() + 1)
 
   const GEMINI_CAP = 30
-  const MANUAL_GEMINI_CAP = 20
+  const MANUAL_GEMINI_CAP = 50
   const MANUAL_MONTHLY_CAP = 2000
 
   return NextResponse.json({

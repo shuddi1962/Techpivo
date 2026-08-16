@@ -1,8 +1,8 @@
 import { createClient } from '@/lib/supabase/admin'
-import { findDuplicatePost } from '@/lib/duplicate-check'
+import { findDuplicatePost, type DuplicatePost } from '@/lib/duplicate-check'
 
 const GEMINI_DAILY_CAP = 100
-const MANUAL_GEMINI_DAILY_CAP = 20
+const MANUAL_GEMINI_DAILY_CAP = 50
 const GEMINI_RATE_MS = 1000
 
 export interface AIArticle {
@@ -803,10 +803,113 @@ Return ONLY valid JSON — no markdown, no code blocks, no explanation:
 }`
 }
 
+// Semantic duplicate detection: title word-overlap alone cannot catch two
+// articles about the SAME story written with completely different vocabulary
+// (e.g. "A child's mind, a machine's limits…" vs "The child-like mind of AI…").
+// The LLM compares the new topic (+ extracted source content when available)
+// against the most recent existing posts' titles AND content snippets.
+// Runs as the second pass, only when the cheap title check found nothing.
+
+interface SemanticCandidate {
+  id: string
+  title: string
+  slug: string
+  status: string
+  snippet: string
+}
+
+export function buildSemanticPrompt(
+  topic: string,
+  sourceContent: string | undefined,
+  candidates: Array<{ title: string; snippet: string }>
+): string {
+  return `You are a duplicate-content detector for a technology news site.
+
+NEW ARTICLE:
+Topic: ${topic}
+${sourceContent && sourceContent.length > 200 ? `Source content (excerpt):\n${sourceContent.slice(0, 3000)}\n` : ""}
+
+EXISTING ARTICLES (index: title | content snippet):
+${candidates.map((c, i) => `${i}: ${c.title} | ${c.snippet}`).join("\n")}
+
+Question: does ANY existing article cover essentially the SAME story, subject, product, research, or tutorial as the NEW article — even if the wording, title, and angle are completely different? Yes/no by similarity of subject matter and content, not by shared words.
+
+Answer with ONLY the index number of the FIRST matching existing article, or the word NONE.`
+}
+
+export function parseSemanticAnswer(answer: string, count: number): number | null {
+  const trimmed = (answer || "").trim()
+  if (!/^\d+$/.test(trimmed)) return null
+  const idx = parseInt(trimmed, 10)
+  if (Number.isNaN(idx) || idx < 0 || idx >= count) return null
+  return idx
+}
+
+async function semanticDuplicateCheck(
+  topic: string,
+  sourceContent?: string
+): Promise<DuplicatePost | null> {
+  const key = process.env.GEMINI_API_KEY
+  if (!key) return null
+
+  const supabase = createClient()
+  const { data } = await supabase
+    .from("posts")
+    .select("id, title, slug, status, content")
+    .in("status", ["published", "draft", "scheduled"])
+    .not("title", "is", null)
+    .order("created_at", { ascending: false })
+    .limit(200)
+
+  if (!data || data.length === 0) return null
+
+  const candidates: SemanticCandidate[] = data.map((p) => ({
+    id: String(p.id),
+    title: String(p.title || ""),
+    slug: String(p.slug || ""),
+    status: String(p.status || ""),
+    snippet: String(p.content || "")
+      .replace(/<[^>]+>/g, " ")
+      .replace(/\s+/g, " ")
+      .trim()
+      .slice(0, 220),
+  }))
+
+  const prompt = buildSemanticPrompt(topic, sourceContent, candidates)
+
+  try {
+    const res = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${key}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          contents: [{ role: "user", parts: [{ text: prompt }] }],
+          generationConfig: { temperature: 0, maxOutputTokens: 8 },
+        }),
+        signal: AbortSignal.timeout(30000),
+      }
+    )
+    if (!res.ok) {
+      console.warn(`[Duplicate] semantic check HTTP ${res.status} — skipping`)
+      return null
+    }
+    const data2 = await res.json()
+    const answer = (data2?.candidates?.[0]?.content?.parts?.[0]?.text || "").trim()
+    const idx = parseSemanticAnswer(answer, candidates.length)
+    if (idx === null) return null
+    const match = candidates[idx]
+    return { id: match.id, title: match.title, slug: match.slug, status: match.status }
+  } catch (e) {
+    console.warn(`[Duplicate] semantic check error — ${e instanceof Error ? e.message : String(e)}`)
+    return null
+  }
+}
+
 export async function manualWriteFromTopic(topic: string): Promise<{ article: AIArticle | null; debug: string }> {
   if (!topic || topic.length < 5) return { article: null, debug: 'topic_too_short' }
 
-  const dup = await findDuplicatePost(topic)
+  const dup = (await findDuplicatePost(topic)) || (await semanticDuplicateCheck(topic))
   if (dup) {
     console.warn(`[Duplicate] "${topic.slice(0, 50)}" already covered by "${dup.title}" (${dup.status}) — skipping AI write`)
     return { article: null, debug: `duplicate:${dup.title}|${dup.slug}|${dup.status}` }
@@ -831,6 +934,7 @@ export async function manualWriteFromUrl(url: string): Promise<{ article: AIArti
 
   let sourceContent = ""
   let sourceName = new URL(url).hostname.replace("www.", "")
+  let pageTitle: string | null = null
   try {
     const res = await fetch(url, {
       headers: { "User-Agent": "Mozilla/5.0 (compatible; Techpivo/1.0; +https://techpivo.com/bot)" },
@@ -860,15 +964,24 @@ export async function manualWriteFromUrl(url: string): Promise<{ article: AIArti
 
     // Skip the write when the source page's own title matches an existing post
     const titleMatch = html.match(/<title[^>]*>([^<]+)<\/title>/i)
-    if (titleMatch?.[1]) {
-      const dup = await findDuplicatePost(titleMatch[1])
+    pageTitle = titleMatch?.[1] ?? null
+    if (pageTitle) {
+      const dup = await findDuplicatePost(pageTitle)
       if (dup) {
-        console.warn(`[Duplicate] URL title "${titleMatch[1].slice(0, 50)}" already covered by "${dup.title}" (${dup.status}) — skipping AI write`)
+        console.warn(`[Duplicate] URL title "${pageTitle.slice(0, 50)}" already covered by "${dup.title}" (${dup.status}) — skipping AI write`)
         return { article: null, debug: `duplicate:${dup.title}|${dup.slug}|${dup.status}` }
       }
     }
   } catch {
     console.warn(`[Techpivo Manual] Could not pre-fetch ${url}, relying on Gemini grounding`)
+  }
+
+  // Second pass: semantic check against existing post titles AND content —
+  // catches same-story duplicates whose wording shares almost no words.
+  const semanticDup = await semanticDuplicateCheck(pageTitle || url, sourceContent)
+  if (semanticDup) {
+    console.warn(`[Duplicate] URL "${(pageTitle || url).slice(0, 50)}" semantically covered by "${semanticDup.title}" (${semanticDup.status}) — skipping AI write`)
+    return { article: null, debug: `duplicate:${semanticDup.title}|${semanticDup.slug}|${semanticDup.status}` }
   }
 
   const input = sourceContent.length > 200

@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button"
 import { createClient } from "@/lib/supabase/client"
 import { PostActionsDropdown } from "@/components/admin/post-actions-dropdown"
 import { SafeImage } from "@/components/ui/safe-image"
-import { Plus, FileText, Search, RefreshCw, ChevronLeft, ChevronRight } from "lucide-react"
+import { Plus, FileText, Search, RefreshCw, ChevronLeft, ChevronRight, Trash2 } from "lucide-react"
 
 const PAGE_SIZE = 20
 
@@ -36,6 +36,9 @@ export default function AdminPostsPage() {
   const [aiFilter, setAiFilter] = useState("all")
   const [page, setPage] = useState(1)
   const [counts, setCounts] = useState({ total: 0, published: 0, drafts: 0, views: 0 })
+  const [selected, setSelected] = useState<Set<string>>(new Set())
+  const [deleting, setDeleting] = useState(false)
+  const [deleteError, setDeleteError] = useState("")
   const searchTimeout = useRef<ReturnType<typeof setTimeout>>()
 
   const buildQuery = useCallback((client: ReturnType<typeof createClient>, pageNum: number) => {
@@ -117,6 +120,60 @@ export default function AdminPostsPage() {
   }, [fetchCounts, fetchPage, page])
 
   const totalPages = Math.ceil(totalCount / PAGE_SIZE)
+
+  const pageIds = posts.map((p) => p.id)
+  const allOnPageSelected = pageIds.length > 0 && pageIds.every((id) => selected.has(id))
+
+  const toggleSelect = (id: string) => {
+    setSelected((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
+  const toggleSelectAll = () => {
+    setSelected((prev) => {
+      const next = new Set(prev)
+      if (allOnPageSelected) pageIds.forEach((id) => next.delete(id))
+      else pageIds.forEach((id) => next.add(id))
+      return next
+    })
+  }
+
+  const deleteSelected = async () => {
+    if (selected.size === 0) return
+    if (!window.confirm(`Delete ${selected.size} selected post${selected.size === 1 ? "" : "s"}? This cannot be undone.`)) return
+    setDeleting(true)
+    setDeleteError("")
+    try {
+      const results = await Promise.all(
+        Array.from(selected).map(async (id) => {
+          const res = await fetch(`/api/posts/${id}`, { method: "DELETE" })
+          if (!res.ok) {
+            let msg = "Failed to delete post."
+            try { msg = (await res.json()).error || msg } catch { /* keep default */ }
+            return { id, ok: false, msg }
+          }
+          return { id, ok: true, msg: "" }
+        })
+      )
+      const failed = results.filter((r) => !r.ok)
+      if (failed.length > 0) {
+        setDeleteError(`${failed.length} of ${results.length} could not be deleted. ${failed[0].msg}`)
+      }
+      // Realtime channel + refetch keep the list in sync instantly; clear the
+      // selection so deleted ids never linger.
+      setSelected(new Set())
+      fetchCounts()
+      fetchPage(page)
+    } catch {
+      setDeleteError("Network error while deleting posts.")
+    } finally {
+      setDeleting(false)
+    }
+  }
 
   function formatDate(d: string) {
     return new Date(d).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
@@ -200,10 +257,51 @@ export default function AdminPostsPage() {
           </select>
         </div>
 
+        {selected.size > 0 && (
+          <div className="flex flex-wrap items-center justify-between gap-3 px-5 py-3 bg-[#F59E0B]/10 dark:bg-[#F59E0B]/10 border-b-2 border-[#F59E0B]/30">
+            <div className="flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-[#F59E0B] animate-pulse" />
+              <span className="text-sm font-semibold text-gray-900 dark:text-white">
+                {selected.size} post{selected.size === 1 ? "" : "s"} selected
+              </span>
+              <button
+                onClick={() => setSelected(new Set())}
+                className="text-xs font-medium text-gray-500 dark:text-gray-400 hover:text-[#F59E0B] underline underline-offset-2"
+              >
+                Clear selection
+              </button>
+            </div>
+            <button
+              onClick={deleteSelected}
+              disabled={deleting}
+              className="flex items-center gap-2 bg-red-600 hover:bg-red-700 disabled:bg-gray-300 dark:disabled:bg-[#374151] disabled:text-gray-500 text-white text-xs font-semibold px-4 py-2 rounded-lg transition-colors shadow-sm shadow-red-600/20"
+            >
+              {deleting ? (
+                <RefreshCw className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <Trash2 className="h-3.5 w-3.5" />
+              )}
+              Delete {selected.size === 1 ? "post" : `all ${selected.size}`}
+            </button>
+            {deleteError && (
+              <span className="w-full text-xs text-red-600 dark:text-red-400">{deleteError}</span>
+            )}
+          </div>
+        )}
+
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead>
               <tr className="border-b-2 border-gray-100 dark:border-[#1F2937]">
+                <th className="px-5 py-3 w-10">
+                  <input
+                    type="checkbox"
+                    checked={allOnPageSelected}
+                    onChange={toggleSelectAll}
+                    aria-label={allOnPageSelected ? "Deselect all on page" : "Select all on page"}
+                    className="h-4 w-4 rounded border-gray-300 dark:border-[#374151] accent-[#F59E0B] cursor-pointer"
+                  />
+                </th>
                 <th className="text-left px-5 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Title</th>
                 <th className="text-left px-5 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider hidden md:table-cell">Category</th>
                 <th className="text-left px-5 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider hidden sm:table-cell">Status</th>
@@ -216,7 +314,7 @@ export default function AdminPostsPage() {
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan={7} className="px-5 py-12 text-center">
+                  <td colSpan={8} className="px-5 py-12 text-center">
                     <div className="flex items-center justify-center gap-2 text-sm text-gray-400">
                       <RefreshCw className="h-4 w-4 animate-spin" />
                       Loading posts...
@@ -225,7 +323,7 @@ export default function AdminPostsPage() {
                 </tr>
               ) : posts.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="px-5 py-12 text-center">
+                  <td colSpan={8} className="px-5 py-12 text-center">
                     <FileText className="h-10 w-10 text-gray-300 dark:text-gray-600 mx-auto mb-3" />
                     <p className="text-sm text-gray-500 dark:text-gray-400">
                       {search || statusFilter !== "all" ? "No posts match your filter" : "No posts yet"}
@@ -242,7 +340,16 @@ export default function AdminPostsPage() {
                 </tr>
               ) : (
                 posts.map((post, i) => (
-                  <tr key={post.id} className={`border-b border-gray-50 dark:border-[#1F2937]/50 hover:bg-gray-50 dark:hover:bg-[#1a2235] transition-colors ${i === 0 ? "" : ""}`}>
+                  <tr key={post.id} className={`border-b border-gray-50 dark:border-[#1F2937]/50 hover:bg-gray-50 dark:hover:bg-[#1a2235] transition-colors ${selected.has(post.id) ? "bg-[#F59E0B]/5" : ""}`}>
+                    <td className="px-5 py-4 w-10">
+                      <input
+                        type="checkbox"
+                        checked={selected.has(post.id)}
+                        onChange={() => toggleSelect(post.id)}
+                        aria-label={`Select ${post.title}`}
+                        className="h-4 w-4 rounded border-gray-300 dark:border-[#374151] accent-[#F59E0B] cursor-pointer"
+                      />
+                    </td>
                     <td className="px-5 py-4">
                       <div className="flex items-center gap-3">
                         {post.featured_image ? (
