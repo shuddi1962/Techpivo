@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState, useRef } from "react"
+import { useEffect, useState, useRef, useCallback } from "react"
 import Image from "next/image"
 import { createClient } from "@/lib/supabase/client"
 import { X } from "lucide-react"
@@ -24,14 +24,13 @@ export function PopupAd() {
   const [campaign, setCampaign] = useState<PopupCampaign | null>(null)
   const [visible, setVisible] = useState(false)
   const [dismissed, setDismissed] = useState(false)
-  const recordedRef = useRef(false)
+  const lastTrackedRef = useRef<string | null>(null)
 
-  useEffect(() => {
+  const load = useCallback(async () => {
     const supabase = createClient()
-    let cancelled = false
     const today = new Date().toISOString().slice(0, 10)
 
-    supabase
+    const { data } = await supabase
       .from("ad_campaigns")
       .select("id, advertiser_name, headline, description, cta_text, destination_url, ad_image_url, media_type, video_url, poster_url")
       .contains("positions", ["popup_toast"])
@@ -41,26 +40,46 @@ export function PopupAd() {
       .order("created_at", { ascending: false })
       .limit(1)
       .maybeSingle()
-      .then((res) => {
-        if (cancelled || !res.data) return
-        if (localStorage.getItem(DISMISS_PREFIX + res.data.id)) {
-          setDismissed(true)
-          return
-        }
-        setCampaign(res.data)
-        const t = window.setTimeout(() => setVisible(true), 6000)
-        return () => window.clearTimeout(t)
-      })
 
-    return () => { cancelled = true }
+    if (!data || data.media_type === "video") {
+      setCampaign(null)
+      setVisible(false)
+      return
+    }
+    if (localStorage.getItem(DISMISS_PREFIX + data.id)) {
+      setDismissed(true)
+      return
+    }
+    setDismissed(false)
+    setCampaign(data)
   }, [])
 
   useEffect(() => {
-    if (!visible || !campaign || recordedRef.current) return
-    recordedRef.current = true
+    load()
+    const supabase = createClient()
+    const channel = supabase
+      .channel(`popup_ad_${Math.random().toString(36).slice(2)}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "ad_campaigns" }, () => {
+        load()
+      })
+      .subscribe()
+    return () => {
+      supabase.removeChannel(channel)
+    }
+  }, [load])
+
+  useEffect(() => {
+    if (!campaign || dismissed || visible) return
+    const t = window.setTimeout(() => setVisible(true), 6000)
+    return () => window.clearTimeout(t)
+  }, [campaign, dismissed, visible])
+
+  useEffect(() => {
+    if (!visible || !campaign || lastTrackedRef.current === campaign.id) return
+    lastTrackedRef.current = campaign.id
     const supabase = createClient()
     supabase.rpc("increment_campaign_impressions", { campaign_id: campaign.id }).then()
-    supabase.rpc("increment_campaign_daily_stats", { campaign_id: campaign.id, kind: "impressions" }).then()
+    supabase.rpc("increment_campaign_daily_stats", { p_campaign_id: campaign.id, p_kind: "impressions" }).then()
   }, [visible, campaign])
 
   if (!campaign || !visible || dismissed) return null
@@ -73,7 +92,7 @@ export function PopupAd() {
   const trackClick = () => {
     const supabase = createClient()
     supabase.rpc("increment_campaign_clicks", { campaign_id: campaign.id }).then()
-    supabase.rpc("increment_campaign_daily_stats", { campaign_id: campaign.id, kind: "clicks" }).then()
+    supabase.rpc("increment_campaign_daily_stats", { p_campaign_id: campaign.id, p_kind: "clicks" }).then()
   }
 
   return (

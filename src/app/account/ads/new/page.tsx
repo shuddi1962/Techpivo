@@ -481,7 +481,7 @@ export default function NewCampaignPage() {
                   />
                   {placement && (
                     <p className={`text-[11px] mt-1.5 ${bidOk ? 'text-green-600' : 'text-amber-600'}`}>
-                      Minimum bid for this space: {formatMoney(floorInCurrency, currency)} ({floorNGN.toLocaleString()}₦)
+                      Minimum bid for this space: {formatMoney(floorInCurrency, currency)}
                     </p>
                   )}
                 </div>

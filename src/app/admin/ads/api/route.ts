@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
 import { createClient as createAdminClient } from "@/lib/supabase/admin"
-import { DEFAULT_FX_RATES, computeCampaignSpend } from "@/lib/ads"
+import { DEFAULT_FX_RATES, computeCampaignSpend, formatMoney } from "@/lib/ads"
 import { getFxRatesPerNgn } from "@/lib/fx"
 
 async function requireRole(allowed: string[] = ["admin", "editor"]) {
@@ -47,9 +47,12 @@ async function generateCreative(
   brand: string,
   goal: string,
   audienceHint: string
-) {
+): Promise<
+  | { ok: true; creative: { headline: string; description: string; cta_type: string } }
+  | { ok: false; reason: "not_configured" | "empty" | "parse" | `http_${number}` }
+> {
   const apiKey = process.env.GEMINI_API_KEY
-  if (!apiKey) return null
+  if (!apiKey) return { ok: false, reason: "not_configured" }
   const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`
   const prompt = [
     "You are an expert digital ad copywriter for a technology news website called Techpivo.",
@@ -70,21 +73,24 @@ async function generateCreative(
       generationConfig: { temperature: 0.8, maxOutputTokens: 200 },
     }),
   })
-  if (!res.ok) return null
+  if (!res.ok) return { ok: false, reason: `http_${res.status}` }
   const json = await res.json()
   const text: string | undefined = json?.candidates?.[0]?.content?.parts?.[0]?.text
-  if (!text) return null
+  if (!text) return { ok: false, reason: "empty" }
   try {
     const match = text.match(/\{[\s\S]*\}/)
     const parsed = JSON.parse(match ? match[0] : text)
     const validCtas = ["learn_more", "buy_now", "get_started", "sign_up", "subscribe", "download", "book_now", "contact_us", "try_free", "shop_now", "watch_video", "read_more", "apply_now", "call_now"]
     return {
-      headline: String(parsed.headline || "").slice(0, 60),
-      description: String(parsed.description || "").slice(0, 160),
-      cta_type: validCtas.includes(parsed.cta_type) ? parsed.cta_type : "learn_more",
+      ok: true,
+      creative: {
+        headline: String(parsed.headline || "").slice(0, 60),
+        description: String(parsed.description || "").slice(0, 160),
+        cta_type: validCtas.includes(parsed.cta_type) ? parsed.cta_type : "learn_more",
+      },
     }
   } catch (e) {
-    return null
+    return { ok: false, reason: "parse" }
   }
 }
 
@@ -302,13 +308,13 @@ export async function POST(request: Request) {
         }, { status: 400 })
       }
 
-      // Budget must at least cover one billing unit of the bid
+      // Budget must at least cover one billing unit of the bid (stored in the campaign's own currency)
       const budget = Math.max(0, Number(daily_budget || 0))
       const minBudget = bid
       if (budget < minBudget) {
-        return NextResponse.json({ error: `Daily budget must be at least ${formatNGN(minBudget * fxRate)} to cover your bid` }, { status: 400 })
+        return NextResponse.json({ error: `Daily budget must be at least ${formatMoney(minBudget, cur)} to cover your bid` }, { status: 400 })
       }
-      if (budget > 500000) {
+      if (budget * fxRate > 500000) {
         return NextResponse.json({ error: "Daily budget looks too high — contact support for large campaigns" }, { status: 400 })
       }
 
@@ -322,8 +328,8 @@ export async function POST(request: Request) {
       }
 
       const days = Math.min(90, Math.max(1, Math.floor(Number(duration_days) || 7)))
-      const bidConverted = Math.round(bid * fxRate * 100) / 100
-      const budgetConverted = Math.round(budget * fxRate * 100) / 100
+      const bidConverted = Math.round(bid * 100) / 100
+      const budgetConverted = Math.round(budget * 100) / 100
       const totalPrice = Math.round(budgetConverted * days * 100) / 100
       const audience = target_audience && typeof target_audience === "object"
         ? { countries: Array.isArray(target_audience.countries) ? target_audience.countries : [], devices: Array.isArray(target_audience.devices) ? target_audience.devices : [], interests: Array.isArray(target_audience.interests) ? target_audience.interests : [] }
@@ -388,10 +394,21 @@ export async function POST(request: Request) {
         if (p) placementName = p.name
       }
       const creative = await generateCreative(placementName, brand, goal, audience_hint)
-      if (!creative) {
-        return NextResponse.json({ error: "AI creative generation failed — try again in a moment" }, { status: 502 })
+      if (!creative.ok) {
+        const reason = creative.reason
+        const error =
+          reason === "not_configured"
+            ? "AI creative generation is not configured yet — upload your own image or video instead"
+            : reason === "empty"
+              ? "The AI returned no creative — try again in a moment"
+              : reason === "parse"
+                ? "The AI returned an unreadable creative — try again in a moment"
+                : reason.startsWith("http_")
+                  ? `AI generation failed (Gemini ${reason.slice(5)}) — try again in a moment`
+                  : "AI creative generation failed — try again in a moment"
+        return NextResponse.json({ error }, { status: 502 })
       }
-      return NextResponse.json({ creative })
+      return NextResponse.json({ creative: creative.creative })
     }
 
     // ---- Admin/editor actions ----
@@ -570,8 +587,8 @@ export async function POST(request: Request) {
       const cur = String(target.currency || "NGN").toUpperCase()
       const fx = await getFxRates(supabase)
       const fxRate = Number(fx[cur] || 1) || 1
-      let budgetNGN = Number(target.daily_budget || 0)
-      let bidNGN = Number(target.bid_amount || 0)
+      let budgetAmt = Number(target.daily_budget || 0)
+      let bidAmt = Number(target.bid_amount || 0)
 
       if (body.daily_budget !== undefined || body.bid_amount !== undefined) {
         if (body.bid_amount !== undefined) {
@@ -587,25 +604,24 @@ export async function POST(request: Request) {
           if (bid * fxRate < floorNGN) {
             return NextResponse.json({ error: `Minimum ${target.billing_model.toUpperCase()} bid is ${formatNGN(floorNGN)}` }, { status: 400 })
           }
-          bidNGN = Math.round(bid * fxRate * 100) / 100
+          bidAmt = Math.round(bid * 100) / 100
         }
         if (body.daily_budget !== undefined) {
           const budget = Math.max(0, Number(body.daily_budget || 0))
-          const minBudget = bidNGN / fxRate
-          if (budget < minBudget) {
+          if (budget < bidAmt) {
             return NextResponse.json({ error: "Daily budget must be at least your bid" }, { status: 400 })
           }
           if (budget * fxRate > 500000) {
             return NextResponse.json({ error: "Daily budget looks too high — contact support" }, { status: 400 })
           }
-          budgetNGN = Math.round(budget * fxRate * 100) / 100
+          budgetAmt = Math.round(budget * 100) / 100
         }
       }
 
       const today = new Date().toISOString().slice(0, 10)
       const baseDate = target.end_date && String(target.end_date).slice(0, 10) > today ? String(target.end_date).slice(0, 10) : today
       const endDate = new Date(new Date(baseDate).getTime() + extraDays * 86400000).toISOString().slice(0, 10)
-      const totalPrice = Number(target.total_price || 0) + Math.round(budgetNGN * extraDays * 100) / 100
+      const totalPrice = Number(target.total_price || 0) + Math.round(budgetAmt * extraDays * 100) / 100
 
       const updater = isAdmin ? createAdminClient() : supabase
       const { error } = await updater
@@ -613,8 +629,8 @@ export async function POST(request: Request) {
         .update({
           end_date: endDate,
           total_price: totalPrice,
-          daily_budget: budgetNGN,
-          bid_amount: bidNGN,
+          daily_budget: budgetAmt,
+          bid_amount: bidAmt,
           status: "live",
           is_active: true,
           updated_at: new Date().toISOString(),

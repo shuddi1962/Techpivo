@@ -262,6 +262,7 @@ export default function CampaignDetailPage() {
     });
   }
   const maxImps = Math.max(1, ...buckets.map((b) => b.impressions));
+  const totalDailyImps = buckets.reduce((s, b) => s + b.impressions, 0);
   const audience = campaign.target_audience || {};
   const audienceParts = [
     (audience.countries || []).join(', '),
@@ -341,20 +342,27 @@ export default function CampaignDetailPage() {
           <h3 className="font-semibold mb-1 flex items-center gap-2"><BarChart3 className="h-4 w-4 text-blue-600" /> Performance — last 14 days</h3>
           <p className="text-xs text-muted-foreground mb-4">Delivered impressions per day (clicks shown on hover).</p>
           <div className="flex items-end gap-1 h-36">
-            {buckets.map((b) => (
-              <div key={b.date} className="flex-1 flex flex-col items-center gap-1 group relative min-w-0">
-                <div className="relative w-full flex flex-col items-center">
-                  <div
-                    className="w-full max-w-[26px] rounded-t bg-blue-500 group-hover:bg-blue-600 transition-colors"
-                    style={{ height: `${Math.max(2, (b.impressions / maxImps) * 100)}%`, minHeight: 2 }}
-                  />
-                  <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 hidden group-hover:block bg-slate-800 text-white text-[10px] rounded px-1.5 py-0.5 whitespace-nowrap z-10">
-                    {b.impressions.toLocaleString()} imps · {b.clicks} clicks
-                  </div>
-                </div>
-                <span className="text-[9px] text-muted-foreground whitespace-nowrap">{b.label}</span>
+            {totalDailyImps === 0 ? (
+              <div className="w-full h-full flex flex-col items-center justify-center text-center">
+                <BarChart3 className="h-8 w-8 text-slate-300 mb-2" />
+                <p className="text-sm text-muted-foreground max-w-xs">No impressions delivered yet — the chart fills in as your ad serves.</p>
               </div>
-            ))}
+            ) : (
+              buckets.map((b) => (
+                <div key={b.date} className="flex-1 flex flex-col items-center gap-1 group relative min-w-0">
+                  <div className="relative w-full flex flex-col items-center">
+                    <div
+                      className="w-full max-w-[26px] rounded-t bg-blue-500 group-hover:bg-blue-600 transition-colors"
+                      style={{ height: `${Math.max(2, (b.impressions / maxImps) * 100)}%`, minHeight: 2 }}
+                    />
+                    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 hidden group-hover:block bg-slate-800 text-white text-[10px] rounded px-1.5 py-0.5 whitespace-nowrap z-10">
+                      {b.impressions.toLocaleString()} imps · {b.clicks} clicks
+                    </div>
+                  </div>
+                  <span className="text-[9px] text-muted-foreground whitespace-nowrap">{b.label}</span>
+                </div>
+              ))
+            )}
           </div>
         </CardContent>
       </Card>

@@ -95,7 +95,7 @@ export function AdSlot({ positionKey, className, preview }: AdSlotProps) {
         .gte("end_date", today),
       supabase
         .from("ad_placements")
-        .select("position, sizes")
+        .select("position, sizes, supports_video")
         .eq("position", positionKey)
         .eq("is_active", true)
         .maybeSingle(),
@@ -109,6 +109,10 @@ export function AdSlot({ positionKey, className, preview }: AdSlotProps) {
     if (slotRes.data) setSlotAd(slotRes.data)
     if (campaignsRes.data) {
       const allCampaigns = campaignsRes.data as CampaignAd[]
+      // Banner-or-video choice: the advertiser picks the creative type, and the
+      // placement decides whether video is even allowed (supports_video). Video
+      // campaigns only serve on video-capable placements; images serve anywhere.
+      const supportsVideo = placementRes.data?.supports_video !== false
       const device = detectDevice()
       let country: string | null = null
       try {
@@ -118,7 +122,9 @@ export function AdSlot({ positionKey, className, preview }: AdSlotProps) {
         country = null
       }
       if (mountedRef.current) {
-        setCampaignAds(allCampaigns.filter((c) => audienceAllows(c, device, country)))
+        setCampaignAds(
+          allCampaigns.filter((c) => (supportsVideo || c.media_type !== "video") && audienceAllows(c, device, country)),
+        )
       }
     }
     if (placementRes.data) setPlacementSizes(placementRes.data.sizes)
@@ -188,14 +194,14 @@ export function AdSlot({ positionKey, className, preview }: AdSlotProps) {
     lastTrackedCampaignRef.current = campaign.id
     const supabase = createClient()
     supabase.rpc("increment_campaign_impressions", { campaign_id: campaign.id }).then()
-    supabase.rpc("increment_campaign_daily_stats", { campaign_id: campaign.id, kind: "impressions" }).then()
+    supabase.rpc("increment_campaign_daily_stats", { p_campaign_id: campaign.id, p_kind: "impressions" }).then()
   }, [campaignAds, currentCampaignIndex, preview])
 
   const trackCampaignClick = (campaignId: string) => {
     if (preview) return
     const supabase = createClient()
     supabase.rpc("increment_campaign_clicks", { campaign_id: campaignId }).then()
-    supabase.rpc("increment_campaign_daily_stats", { campaign_id: campaignId, kind: "clicks" }).then()
+    supabase.rpc("increment_campaign_daily_stats", { p_campaign_id: campaignId, p_kind: "clicks" }).then()
   }
 
   const marketingConsent = hasConsentFor("marketing")

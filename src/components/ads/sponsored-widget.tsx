@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState, useRef } from "react"
+import { useEffect, useState, useRef, useCallback } from "react"
 import Image from "next/image"
 import { createClient } from "@/lib/supabase/client"
 import { Star } from "lucide-react"
@@ -14,20 +14,20 @@ interface SponsoredCampaign {
   destination_url: string | null
   content_url: string | null
   ad_image_url: string | null
+  media_type: string | null
 }
 
 export function SponsoredWidget() {
   const [campaign, setCampaign] = useState<SponsoredCampaign | null>(null)
-  const recordedRef = useRef(false)
+  const lastTrackedRef = useRef<string | null>(null)
 
-  useEffect(() => {
+  const load = useCallback(async () => {
     const supabase = createClient()
-    let cancelled = false
     const today = new Date().toISOString().slice(0, 10)
 
-    supabase
+    const { data } = await supabase
       .from("ad_campaigns")
-      .select("id, advertiser_name, headline, description, cta_text, destination_url, content_url, ad_image_url")
+      .select("id, advertiser_name, headline, description, cta_text, destination_url, content_url, ad_image_url, media_type")
       .contains("positions", ["sponsored_article"])
       .eq("is_active", true)
       .in("status", ["approved", "live"])
@@ -35,15 +35,35 @@ export function SponsoredWidget() {
       .order("created_at", { ascending: false })
       .limit(1)
       .maybeSingle()
-      .then((res) => {
-        if (cancelled || !res.data) return
-        setCampaign(res.data)
-        supabase.rpc("increment_campaign_impressions", { campaign_id: res.data.id }).then()
-        supabase.rpc("increment_campaign_daily_stats", { campaign_id: res.data.id, kind: "impressions" }).then()
-      })
 
-    return () => { cancelled = true }
+    if (!data || data.media_type === "video") {
+      setCampaign(null)
+      return
+    }
+    setCampaign(data)
   }, [])
+
+  useEffect(() => {
+    load()
+    const supabase = createClient()
+    const channel = supabase
+      .channel(`sponsored_widget_${Math.random().toString(36).slice(2)}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "ad_campaigns" }, () => {
+        load()
+      })
+      .subscribe()
+    return () => {
+      supabase.removeChannel(channel)
+    }
+  }, [load])
+
+  useEffect(() => {
+    if (!campaign || lastTrackedRef.current === campaign.id) return
+    lastTrackedRef.current = campaign.id
+    const supabase = createClient()
+    supabase.rpc("increment_campaign_impressions", { campaign_id: campaign.id }).then()
+    supabase.rpc("increment_campaign_daily_stats", { p_campaign_id: campaign.id, p_kind: "impressions" }).then()
+  }, [campaign])
 
   if (!campaign) return null
 
@@ -53,7 +73,7 @@ export function SponsoredWidget() {
   const trackClick = () => {
     const supabase = createClient()
     supabase.rpc("increment_campaign_clicks", { campaign_id: campaign.id }).then()
-    supabase.rpc("increment_campaign_daily_stats", { campaign_id: campaign.id, kind: "clicks" }).then()
+    supabase.rpc("increment_campaign_daily_stats", { p_campaign_id: campaign.id, p_kind: "clicks" }).then()
   }
 
   return (
