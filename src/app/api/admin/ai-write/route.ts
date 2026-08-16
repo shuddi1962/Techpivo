@@ -96,6 +96,14 @@ export async function POST(req: NextRequest) {
     const elapsed = ((Date.now() - startTime) / 1000).toFixed(1)
 
     if (!result.article) {
+      if (result.debug.startsWith("duplicate:")) {
+        const [, title, slug, status] = result.debug.split("|")
+        return NextResponse.json({
+          error: `Duplicate detected — "${title}" already exists (${status}). The AI won't write it again. Edit the existing article instead.`,
+          debug:  result.debug,
+          duplicate: { title, slug, status },
+        }, { status: 409 })
+      }
       return NextResponse.json({
         error: `AI writing failed. Debug: ${result.debug}. Suggestions: try a more specific topic, check API keys, or check server logs.`,
         debug: result.debug,

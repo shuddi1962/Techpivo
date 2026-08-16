@@ -77,6 +77,17 @@ export async function POST(request: NextRequest) {
     const { article, debug } = await manualWriteFromTopic(trimmed)
     if (!article) {
       const capCheck = await getGeminiQuotaStatus()
+      if (debug.startsWith("duplicate:")) {
+        const [, title, slug, status] = debug.split("|")
+        return NextResponse.json(
+          {
+            error: `Duplicate detected — "${title}" already exists (${status}). The AI won't write it again. Edit the existing article instead.`,
+            debug,
+            duplicate: { title, slug, status },
+          },
+          { status: 409 }
+        )
+      }
       const capMsg = capCheck.canUseManualGemini
         ? `Manual quota OK (${capCheck.manualUsed}/${capCheck.manualCap}). Gemini debug: ${debug}.`
         : `Manual Gemini limit reached (${capCheck.manualUsed}/${capCheck.manualCap}). Resets at ${capCheck.resetsAt}.`

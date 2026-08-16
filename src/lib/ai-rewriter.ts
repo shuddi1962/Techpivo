@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/admin'
+import { findDuplicatePost } from '@/lib/duplicate-check'
 
 const GEMINI_DAILY_CAP = 100
 const MANUAL_GEMINI_DAILY_CAP = 20
@@ -269,7 +270,7 @@ const CORRECTIVE_PROMPTS: Record<string, string> = {
     "Your previous response was rejected because the 'content' field was missing. Please include article content.",
 }
 
-function repairJson(str: string): string {
+export function repairJson(str: string): string {
   // String-aware pass: strip comments ONLY outside strings (never touch URLs
   // like https:// inside values) and escape literal newlines inside strings.
   let out = ''
@@ -283,6 +284,7 @@ function repairJson(str: string): string {
       if (ch === '\\') { escaped = true; out += ch; i++; continue }
       if (ch === '"') { inString = false; out += ch; i++; continue }
       if (ch === '\n' || ch === '\r') { out += '\\n'; i++; continue }
+      if (ch === '\t') { out += '\\t'; i++; continue }
       out += ch
       i++
       continue
@@ -308,6 +310,56 @@ function repairJson(str: string): string {
     .replace(/([{,])\s*'([^']+?)'\s*:/g, '$1"$2":')  // single-quoted keys → double-quoted
     .replace(/:\s*'([^']*?)'\s*([,}])/g, ':"$1"$2')  // single-quoted strings → double-quoted
     .trim()
+}
+
+// Gemini sometimes writes HTML (e.g. <img src="x">) inside the JSON "content"
+// string WITHOUT escaping the inner double quotes — JSON.parse then dies at
+// the first unescaped quote. This pass walks the text and backslash-escapes
+// every quote that sits MID-value inside a string (a string only legitimately
+// ends when its closing quote is followed by a structural char , } ] : or end).
+export function escapeInnerQuotes(str: string): string {
+  let out = ''
+  let inString = false
+  let escaped = false
+  let i = 0
+  while (i < str.length) {
+    const ch = str[i]
+    if (inString) {
+      if (escaped) { out += ch; escaped = false; i++; continue }
+      if (ch === '\\') { escaped = true; out += ch; i++; continue }
+      if (ch === '"') {
+        let j = i + 1
+        while (j < str.length && (str[j] === ' ' || str[j] === '\t')) j++
+        const next = str[j]
+        if (j >= str.length || next === ',' || next === '}' || next === ']' || next === ':') {
+          inString = false
+          out += ch
+        } else {
+          out += '\\"'
+        }
+        i++
+        continue
+      }
+      out += ch
+      i++
+      continue
+    }
+    if (ch === '"') {
+      // only open a string after a structural char (or at the very start)
+      let j = i - 1
+      while (j >= 0 && (str[j] === ' ' || str[j] === '\t')) j--
+      const prev = j < 0 ? null : str[j]
+      if (prev === null || prev === '{' || prev === ',' || prev === '[' || prev === ':') {
+        inString = true
+      }
+      out += ch
+      i++
+      continue
+    }
+    out += ch
+    i++
+  }
+  return out
 }
 
 function extractJsonObject(text: string): string | null {
@@ -352,9 +404,15 @@ function validate(raw: string, model: AIArticle['modelUsed']): { article: AIArti
     jsonStr = jsonMatch
     try { p = JSON.parse(jsonMatch) }
     catch {
+      // 1) comment/newline/trailing-comma repair
       const repaired = repairJson(jsonMatch)
       try { p = JSON.parse(repaired) }
-      catch { return { article: null, reason: 'json_parse_fail_after_object_extract' } }
+      catch {
+        // 2) unescaped inner quotes (HTML like <img src="x"> inside strings)
+        const quotesFixed = escapeInnerQuotes(repaired)
+        try { p = JSON.parse(quotesFixed) }
+        catch { return { article: null, reason: 'json_parse_fail_after_object_extract' } }
+      }
     }
   }
 
@@ -555,7 +613,11 @@ async function geminiGrounded(
       }
 
       const data = await res.json()
-      const raw = data?.candidates?.[0]?.content?.parts?.[0]?.text || ''
+      // With googleSearch grounding the model can emit multiple parts —
+      // join ALL text parts so we never lose half the article.
+      const raw = (data?.candidates?.[0]?.content?.parts || [])
+        .map((p: any) => p?.text || '')
+        .join('')
       if (!raw || raw.length < 100) {
         const reason = data?.candidates?.[0]?.finishReason || 'NO_CANDIDATE'
         return { article: null, debug: `empty:${reason}/len=${raw.length}` }
@@ -743,6 +805,13 @@ Return ONLY valid JSON — no markdown, no code blocks, no explanation:
 
 export async function manualWriteFromTopic(topic: string): Promise<{ article: AIArticle | null; debug: string }> {
   if (!topic || topic.length < 5) return { article: null, debug: 'topic_too_short' }
+
+  const dup = await findDuplicatePost(topic)
+  if (dup) {
+    console.warn(`[Duplicate] "${topic.slice(0, 50)}" already covered by "${dup.title}" (${dup.status}) — skipping AI write`)
+    return { article: null, debug: `duplicate:${dup.title}|${dup.slug}|${dup.status}` }
+  }
+
   console.log(`[Techpivo Manual] Writing from topic: ${topic.slice(0, 60)}`)
 
   const prompt = buildManualPrompt(topic, "topic")
@@ -788,6 +857,16 @@ export async function manualWriteFromUrl(url: string): Promise<{ article: AIArti
 
     const siteNameMatch = html.match(/<meta[^>]+property=["']og:site_name["'][^>]+content=["']([^"']+)["']/i)
     if (siteNameMatch?.[1]) sourceName = siteNameMatch[1]
+
+    // Skip the write when the source page's own title matches an existing post
+    const titleMatch = html.match(/<title[^>]*>([^<]+)<\/title>/i)
+    if (titleMatch?.[1]) {
+      const dup = await findDuplicatePost(titleMatch[1])
+      if (dup) {
+        console.warn(`[Duplicate] URL title "${titleMatch[1].slice(0, 50)}" already covered by "${dup.title}" (${dup.status}) — skipping AI write`)
+        return { article: null, debug: `duplicate:${dup.title}|${dup.slug}|${dup.status}` }
+      }
+    }
   } catch {
     console.warn(`[Techpivo Manual] Could not pre-fetch ${url}, relying on Gemini grounding`)
   }
