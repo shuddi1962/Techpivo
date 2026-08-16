@@ -6,7 +6,7 @@ import { createClient } from '@/lib/supabase/client';
 import { FxApprox } from '@/components/fx-approx';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { AlertCircle, ArrowLeft, ArrowRight, Check, Globe, Monitor, Sparkles, Tag, Upload, Video, Wallet } from 'lucide-react';
+import { AlertCircle, ArrowLeft, ArrowRight, Check, Globe, Monitor, Sparkles, Star, Tag, Upload, Video, Wallet } from 'lucide-react';
 import {
   ADS_CURRENCIES, ADS_GOALS, ADS_CTA_TYPES, ADS_CTA_LABELS,
   ADS_AUDIENCE_COUNTRIES, ADS_AUDIENCE_DEVICES, ADS_AUDIENCE_INTERESTS,
@@ -114,6 +114,12 @@ export default function NewCampaignPage() {
 
   const placement = placements.find((p) => p.id === placementId) || null;
   const fx = Number(fxRates[currency] || 1) || 1;
+
+  useEffect(() => {
+    if (placement && !placement.supports_video && mediaType === 'video') {
+      setMediaType('image');
+    }
+  }, [placement, mediaType]);
   const floorNGN = billingModel === 'cpc' ? (placement?.min_bid_cpc ?? 50) : (placement?.min_bid_cpm ?? 500);
   const floorInCurrency = Math.round((floorNGN / fx) * 100) / 100;
   const bid = parseFloat(bidAmount) || 0;
@@ -289,9 +295,17 @@ export default function NewCampaignPage() {
                     >
                       <div className="flex justify-between gap-2 items-center">
                         <span className="text-sm font-semibold text-slate-800">{p.name}</span>
-                        {p.supports_video && (
-                          <span className="flex items-center gap-0.5 text-[10px] font-bold text-purple-600 bg-purple-100 rounded px-1.5 py-0.5 whitespace-nowrap"><Video className="h-2.5 w-2.5" />VIDEO</span>
-                        )}
+                        <span className="flex items-center gap-1">
+                          {p.ad_type === 'popup_toast' && (
+                            <span className="flex items-center gap-0.5 text-[10px] font-bold text-purple-600 bg-purple-100 rounded px-1.5 py-0.5 whitespace-nowrap">POPUP</span>
+                          )}
+                          {p.ad_type === 'sponsored_article' && (
+                            <span className="flex items-center gap-0.5 text-[10px] font-bold text-amber-600 bg-amber-100 rounded px-1.5 py-0.5 whitespace-nowrap">SPONSORED</span>
+                          )}
+                          {p.supports_video && (
+                            <span className="flex items-center gap-0.5 text-[10px] font-bold text-purple-600 bg-purple-100 rounded px-1.5 py-0.5 whitespace-nowrap"><Video className="h-2.5 w-2.5" />VIDEO</span>
+                          )}
+                        </span>
                       </div>
                       <div className="text-xs font-bold text-blue-600 mt-1">Min {formatMoney(Math.round((f / fx) * 100) / 100, currency)} {billingModel.toUpperCase()}</div>
                       <div className="text-[11px] text-slate-400 mt-0.5">
@@ -529,6 +543,69 @@ export default function NewCampaignPage() {
                     </div>
                   )}
                   <p className="text-[11px] text-slate-400 mt-2">Recommended size{placement?.sizes?.length ? `s: ${placement.sizes.slice(0, 3).join(', ')}` : ': 728x90 (leaderboard), 300x250 (rectangle) or 336x280 (in-content)'}. PNG/JPG, max 2MB.</p>
+                </div>
+              )}
+
+              {placement?.ad_type === 'popup_toast' && (
+                <div className="mt-4">
+                  <label className={labelCls}>Popup preview — how readers will see it</label>
+                  <div className="border border-slate-200 rounded-xl p-4 bg-slate-50/70 max-w-sm">
+                    <div className="relative bg-white border border-slate-200 rounded-xl shadow-lg w-[300px] mx-auto overflow-hidden">
+                      <div className="flex items-center gap-1.5 bg-slate-100 border-b border-slate-200 px-2.5 py-1.5">
+                        <span className="w-2 h-2 rounded-full bg-red-400" />
+                        <span className="w-2 h-2 rounded-full bg-amber-400" />
+                        <span className="w-2 h-2 rounded-full bg-green-400" />
+                        <span className="text-[10px] text-slate-400 ml-2">techpivo.com — ad preview</span>
+                      </div>
+                      {imageUrl && (
+                        <div className="bg-slate-50">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img src={imageUrl} alt="Popup ad preview" className="w-full h-auto max-h-40 object-cover" />
+                        </div>
+                      )}
+                      <div className="p-3">
+                        <p className="text-[10px] font-bold uppercase tracking-wide text-purple-600">Sponsored</p>
+                        <p className="text-sm font-semibold text-slate-900 mt-0.5 leading-snug">{headline || 'Your headline appears here'}</p>
+                        {description && <p className="text-[11px] text-slate-500 mt-1 line-clamp-2">{description}</p>}
+                        <span className="mt-2 inline-flex items-center text-xs font-semibold text-white bg-blue-600 rounded-lg px-3 py-1.5">
+                          {ctaText || 'Learn More'}
+                        </span>
+                      </div>
+                      <button type="button" tabIndex={-1} className="absolute top-7 right-1.5 w-5 h-5 rounded-full bg-slate-200 text-slate-500 text-[10px] font-bold flex items-center justify-center">✕</button>
+                    </div>
+                    <p className="text-[11px] text-slate-400 mt-3 text-center">Appears bottom-right on Techpivo pages 6 seconds after load. Readers can dismiss it — you only pay for what shows.</p>
+                  </div>
+                </div>
+              )}
+
+              {placement?.ad_type === 'sponsored_article' && (
+                <div className="mt-4">
+                  <label className={labelCls}>Sponsored Article preview — how it looks in the sidebar</label>
+                  <div className="border border-slate-200 rounded-xl max-w-sm overflow-hidden bg-white shadow-sm">
+                    <div className="bg-amber-50 border-b border-amber-100 px-3 py-1.5 flex items-center gap-1.5">
+                      <Star className="h-3 w-3 text-amber-500" />
+                      <span className="text-[10px] font-bold uppercase tracking-wide text-amber-700">Sponsored</span>
+                    </div>
+                    {imageUrl && (
+                      <div className="bg-slate-50">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={imageUrl} alt="Sponsored article preview" className="w-full h-auto max-h-40 object-cover" />
+                      </div>
+                    )}
+                    <div className="p-3.5">
+                      <h4 className="font-bold text-slate-900 text-sm leading-snug">{headline || 'Your article headline appears here'}</h4>
+                      {description && <p className="text-xs text-slate-500 mt-1 line-clamp-2">{description}</p>}
+                      <div className="mt-2.5 flex items-center gap-2 text-[11px]">
+                        {contentUrl ? (
+                          <span className="truncate max-w-[65%] text-slate-400">{contentUrl}</span>
+                        ) : (
+                          <span className="text-slate-400">Article URL</span>
+                        )}
+                        <span className="text-blue-600 font-semibold whitespace-nowrap">{ctaText || 'Read more'}</span>
+                      </div>
+                    </div>
+                  </div>
+                  <p className="text-[11px] text-slate-400 mt-2">Readers click through to your article page — use the Article URL above.</p>
                 </div>
               )}
             </CardContent>

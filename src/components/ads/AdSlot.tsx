@@ -41,6 +41,7 @@ export function AdSlot({ positionKey, className, preview }: AdSlotProps) {
   useEffect(() => {
     const supabase = createClient()
     let cancelled = false
+    const today = new Date().toISOString().slice(0, 10)
 
     async function load() {
       const [slotRes, campaignsRes, settingsRes] = await Promise.all([
@@ -56,7 +57,8 @@ export function AdSlot({ positionKey, className, preview }: AdSlotProps) {
           .select("id, advertiser_name, ad_image_url, destination_url, ad_code, media_type, video_url, poster_url")
           .contains("positions", [positionKey])
           .eq("is_active", true)
-          .in("status", ["approved", "live"]),
+          .in("status", ["approved", "live"])
+          .gte("end_date", today),
         supabase
           .from("site_settings")
           .select("key, value")
@@ -260,9 +262,6 @@ export function AdSlot({ positionKey, className, preview }: AdSlotProps) {
     )
   }
 
-  return (
-    <div className={cn("flex items-center justify-center min-h-[90px] bg-muted/30 rounded-md border border-dashed", className)}>
-      <span className="text-[10px] uppercase tracking-widest text-muted-foreground/40">Advertisement</span>
-    </div>
-  )
+  // Nothing to render — hide the slot entirely (no placeholder box)
+  return null
 }

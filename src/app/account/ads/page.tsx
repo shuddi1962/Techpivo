@@ -9,7 +9,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
-  Megaphone, Plus, Eye, MousePointerClick, Wallet, Pause, Play, AlertCircle, TrendingUp
+  Megaphone, Plus, Eye, MousePointerClick, Wallet, Pause, Play, AlertCircle, TrendingUp, RefreshCw
 } from 'lucide-react';
 import { useFx } from '@/lib/use-fx';
 import { formatMoney, ADS_BILLING_LABELS, ADS_GOAL_LABELS, computeCampaignSpend } from '@/lib/ads';
@@ -46,6 +46,7 @@ const STATUS_STYLES: Record<string, { label: string; cls: string }> = {
   paused: { label: 'Paused', cls: 'bg-yellow-100 text-yellow-700' },
   completed: { label: 'Completed', cls: 'bg-slate-100 text-slate-600' },
   cancelled: { label: 'Cancelled', cls: 'bg-slate-100 text-slate-600' },
+  expired: { label: 'Expired', cls: 'bg-rose-100 text-rose-700' },
 };
 
 export default function MyAdsPage() {
@@ -246,9 +247,14 @@ export default function MyAdsPage() {
                           <Play className="h-3.5 w-3.5 mr-1" /> Resume
                         </Button>
                       )}
-                      {(c.status === 'draft' || c.status === 'rejected' || c.status === 'cancelled') && (
+                      {(c.status === 'draft' || c.status === 'rejected' || c.status === 'cancelled' || c.status === 'expired') && (
                         <Button variant="ghost" size="sm" className="text-destructive" disabled={busyId === c.id} onClick={() => remove(c)}>
                           Delete
+                        </Button>
+                      )}
+                      {(c.status === 'expired' || c.status === 'completed') && (
+                        <Button variant="outline" size="sm" disabled={busyId === c.id} onClick={() => router.push(`/account/ads/${c.id}?renew=1`)}>
+                          <RefreshCw className="h-3.5 w-3.5 mr-1" /> Renew
                         </Button>
                       )}
                       <Button size="sm" asChild>

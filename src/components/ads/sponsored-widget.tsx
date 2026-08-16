@@ -23,6 +23,7 @@ export function SponsoredWidget() {
   useEffect(() => {
     const supabase = createClient()
     let cancelled = false
+    const today = new Date().toISOString().slice(0, 10)
 
     supabase
       .from("ad_campaigns")
@@ -30,6 +31,7 @@ export function SponsoredWidget() {
       .contains("positions", ["sponsored_article"])
       .eq("is_active", true)
       .in("status", ["approved", "live"])
+      .gte("end_date", today)
       .order("created_at", { ascending: false })
       .limit(1)
       .maybeSingle()

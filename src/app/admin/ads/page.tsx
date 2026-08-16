@@ -57,6 +57,7 @@ const STATUS_META: Record<string, { label: string; color: string; bg: string }> 
   paused: { label: "Paused", color: S.yellow, bg: "#FEF9C3" },
   completed: { label: "Completed", color: S.slate, bg: "#F1F5F9" },
   cancelled: { label: "Cancelled", color: S.slate, bg: "#F1F5F9" },
+  expired: { label: "Expired", color: S.red, bg: "#FFE4E6" },
 }
 
 const NGN = (n: number | string | null | undefined) =>
@@ -781,7 +782,7 @@ function CampaignsTab({
   isAdmin: boolean
   onAction: (action: string, campaign: Campaign) => void
 }) {
-  const filters = ["all", "pending", "live", "approved", "paused", "rejected", "completed", "cancelled"]
+  const filters = ["all", "pending", "live", "approved", "paused", "expired", "rejected", "completed", "cancelled"]
 
   const handleReject = (c: Campaign) => {
     const note = window.prompt("Reason for rejection (shown to the advertiser):", "Creative does not meet our ad guidelines")
@@ -790,6 +791,20 @@ function CampaignsTab({
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ action: "reject", campaign_id: c.id, note }),
+    }).then((r) => r.json()).then((d) => {
+      window.location.reload()
+    })
+  }
+
+  const handleRenew = (c: Campaign) => {
+    const days = window.prompt("Renew this campaign for how many days? (1-90)", "7")
+    if (days === null) return
+    const n = Math.max(1, Math.min(90, Math.floor(Number(days) || 0)))
+    if (!n) return
+    fetch("/admin/ads/api", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "renew", campaign_id: c.id, extra_days: n }),
     }).then((r) => r.json()).then((d) => {
       window.location.reload()
     })
@@ -919,6 +934,11 @@ function CampaignsTab({
                 {isAdmin && c.status === "paused" && (
                   <button onClick={() => onAction("resume", c)} style={{ ...btnPrimary, flex: 1, padding: "8px 14px", display: "flex", alignItems: "center", justifyContent: "center", gap: 5 }}>
                     <PlayCircle size={14} /> Resume
+                  </button>
+                )}
+                {isAdmin && (c.status === "expired" || c.status === "completed" || c.status === "paused") && (
+                  <button onClick={() => handleRenew(c)} style={{ ...btnSecondary, flex: 1, color: S.primary, borderColor: "#BFDBFE", display: "flex", alignItems: "center", justifyContent: "center", gap: 5 }}>
+                    <RefreshCw size={14} /> Renew
                   </button>
                 )}
                 {c.status === "draft" && (

@@ -479,6 +479,155 @@ export async function POST(request: Request) {
       })
     }
 
+    // ---- Update campaign (owner or admin) — creative / audience changes ----
+    if (action === "update") {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("role")
+        .eq("id", user.id)
+        .maybeSingle()
+      const isAdmin = profile?.role === "admin" || profile?.role === "editor"
+      const { data: target } = await supabase
+        .from("ad_campaigns")
+        .select("id, user_id, placement_id, status")
+        .eq("id", body.campaign_id)
+        .maybeSingle()
+      if (!target) return NextResponse.json({ error: "Campaign not found" }, { status: 404 })
+      if (!isAdmin && target.user_id !== user.id) {
+        return NextResponse.json({ error: "Forbidden" }, { status: 403 })
+      }
+      if (target.status === "expired" || target.status === "cancelled" || target.status === "completed") {
+        return NextResponse.json({ error: "This campaign is finished — renew it to bring it back" }, { status: 400 })
+      }
+
+      const updater = isAdmin ? createAdminClient() : supabase
+      const patch: Record<string, any> = { updated_at: new Date().toISOString() }
+      const validUrl = (v: any) => (v && /^https?:\/\/.+/i.test(String(v).trim()) ? String(v).trim() : null)
+      if (body.headline !== undefined) patch.headline = String(body.headline).slice(0, 120)
+      if (body.description !== undefined) patch.description = String(body.description).slice(0, 300)
+      if (body.cta_text !== undefined) patch.cta_text = String(body.cta_text).slice(0, 30) || "Learn More"
+      if (body.goal !== undefined) patch.goal = body.goal
+      if (body.cta_type !== undefined) patch.cta_type = body.cta_type
+      if (body.destination_url !== undefined) {
+        const u = validUrl(body.destination_url)
+        if (!u) return NextResponse.json({ error: "Destination URL must be a valid http(s) link" }, { status: 400 })
+        patch.destination_url = u
+      }
+      if (body.ad_image_url !== undefined) patch.ad_image_url = validUrl(body.ad_image_url)
+      if (body.video_url !== undefined) patch.video_url = validUrl(body.video_url)
+      if (body.poster_url !== undefined) patch.poster_url = validUrl(body.poster_url)
+      if (body.content_url !== undefined) {
+        const u = validUrl(body.content_url)
+        if (target.placement_id) {
+          const { data: placement } = await supabase.from("ad_placements").select("ad_type").eq("id", target.placement_id).maybeSingle()
+          if (placement?.ad_type === "sponsored_article" && !u) {
+            return NextResponse.json({ error: "A valid article URL is required for sponsored article placements" }, { status: 400 })
+          }
+        }
+        patch.content_url = u
+      }
+      if (body.target_audience !== undefined && body.target_audience && typeof body.target_audience === "object") {
+        patch.target_audience = {
+          countries: Array.isArray(body.target_audience.countries) ? body.target_audience.countries : [],
+          devices: Array.isArray(body.target_audience.devices) ? body.target_audience.devices : [],
+          interests: Array.isArray(body.target_audience.interests) ? body.target_audience.interests : [],
+        }
+      }
+
+      const { error } = await updater.from("ad_campaigns").update(patch).eq("id", target.id)
+      if (error) throw error
+      return NextResponse.json({ success: true, message: "Campaign updated" })
+    }
+
+    // ---- Renew campaign (owner or admin) — extend end_date, optionally bump budget/bid ----
+    if (action === "renew") {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("role")
+        .eq("id", user.id)
+        .maybeSingle()
+      const isAdmin = profile?.role === "admin" || profile?.role === "editor"
+      const { data: target } = await supabase
+        .from("ad_campaigns")
+        .select("id, user_id, placement_id, status, end_date, currency, fx_rate, daily_budget, bid_amount, total_price, billing_model")
+        .eq("id", body.campaign_id)
+        .maybeSingle()
+      if (!target) return NextResponse.json({ error: "Campaign not found" }, { status: 404 })
+      if (!isAdmin && target.user_id !== user.id) {
+        return NextResponse.json({ error: "Forbidden" }, { status: 403 })
+      }
+      if (!["expired", "live", "approved", "paused", "completed"].includes(target.status)) {
+        return NextResponse.json({ error: "This campaign is not in a renewable state" }, { status: 400 })
+      }
+
+      const extraDays = Math.min(90, Math.max(1, Math.floor(Number(body.extra_days) || 0)))
+      if (!extraDays) return NextResponse.json({ error: "Choose how many days to renew for" }, { status: 400 })
+
+      const cur = String(target.currency || "NGN").toUpperCase()
+      const fx = await getFxRates(supabase)
+      const fxRate = Number(fx[cur] || 1) || 1
+      let budgetNGN = Number(target.daily_budget || 0)
+      let bidNGN = Number(target.bid_amount || 0)
+
+      if (body.daily_budget !== undefined || body.bid_amount !== undefined) {
+        if (body.bid_amount !== undefined) {
+          const bid = Math.max(0, Number(body.bid_amount || 0))
+          const { data: placement } = await supabase
+            .from("ad_placements")
+            .select("min_bid_cpm, min_bid_cpc")
+            .eq("id", target.placement_id)
+            .maybeSingle()
+          const floorNGN = placement
+            ? (target.billing_model === "cpc" ? Number(placement.min_bid_cpc || 50) : Number(placement.min_bid_cpm || 500))
+            : (target.billing_model === "cpc" ? 50 : 500)
+          if (bid * fxRate < floorNGN) {
+            return NextResponse.json({ error: `Minimum ${target.billing_model.toUpperCase()} bid is ${formatNGN(floorNGN)}` }, { status: 400 })
+          }
+          bidNGN = Math.round(bid * fxRate * 100) / 100
+        }
+        if (body.daily_budget !== undefined) {
+          const budget = Math.max(0, Number(body.daily_budget || 0))
+          const minBudget = bidNGN / fxRate
+          if (budget < minBudget) {
+            return NextResponse.json({ error: "Daily budget must be at least your bid" }, { status: 400 })
+          }
+          if (budget * fxRate > 500000) {
+            return NextResponse.json({ error: "Daily budget looks too high — contact support" }, { status: 400 })
+          }
+          budgetNGN = Math.round(budget * fxRate * 100) / 100
+        }
+      }
+
+      const today = new Date().toISOString().slice(0, 10)
+      const baseDate = target.end_date && String(target.end_date).slice(0, 10) > today ? String(target.end_date).slice(0, 10) : today
+      const endDate = new Date(new Date(baseDate).getTime() + extraDays * 86400000).toISOString().slice(0, 10)
+      const totalPrice = Number(target.total_price || 0) + Math.round(budgetNGN * extraDays * 100) / 100
+
+      const updater = isAdmin ? createAdminClient() : supabase
+      const { error } = await updater
+        .from("ad_campaigns")
+        .update({
+          end_date: endDate,
+          total_price: totalPrice,
+          daily_budget: budgetNGN,
+          bid_amount: bidNGN,
+          status: "live",
+          is_active: true,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", target.id)
+      if (error) throw error
+      return NextResponse.json({
+        success: true,
+        message: `Campaign renewed through ${endDate}`,
+        campaign: { id: target.id, end_date: endDate, total_price: totalPrice, status: "live" },
+      })
+    }
+
     return NextResponse.json({ error: "Invalid action" }, { status: 400 })
   } catch (error: any) {
     console.error("Ads API POST error:", error)

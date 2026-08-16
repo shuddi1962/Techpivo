@@ -29,6 +29,7 @@ export function PopupAd() {
   useEffect(() => {
     const supabase = createClient()
     let cancelled = false
+    const today = new Date().toISOString().slice(0, 10)
 
     supabase
       .from("ad_campaigns")
@@ -36,6 +37,7 @@ export function PopupAd() {
       .contains("positions", ["popup_toast"])
       .eq("is_active", true)
       .in("status", ["approved", "live"])
+      .gte("end_date", today)
       .order("created_at", { ascending: false })
       .limit(1)
       .maybeSingle()

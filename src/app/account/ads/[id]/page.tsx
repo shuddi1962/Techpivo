@@ -9,7 +9,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
-  ArrowLeft, AlertCircle, Eye, MousePointerClick, Pause, Play, Trash2, Wallet, BarChart3, Target, Globe, Monitor, Tag
+  ArrowLeft, AlertCircle, Eye, MousePointerClick, Pause, Play, Trash2, Wallet, BarChart3, Target, Globe, Monitor, Tag, Pencil, RefreshCw, X
 } from 'lucide-react';
 import { formatMoney, ADS_BILLING_LABELS, ADS_GOAL_LABELS, ADS_CTA_LABELS, computeCampaignSpend } from '@/lib/ads';
 
@@ -60,6 +60,7 @@ const STATUS_STYLES: Record<string, { label: string; cls: string }> = {
   paused: { label: 'Paused', cls: 'bg-yellow-100 text-yellow-700' },
   completed: { label: 'Completed', cls: 'bg-slate-100 text-slate-600' },
   cancelled: { label: 'Cancelled', cls: 'bg-slate-100 text-slate-600' },
+  expired: { label: 'Expired', cls: 'bg-rose-100 text-rose-700' },
 };
 
 export default function CampaignDetailPage() {
@@ -70,6 +71,13 @@ export default function CampaignDetailPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [showEdit, setShowEdit] = useState(false);
+  const [showRenew, setShowRenew] = useState(false);
+  const [renewDays, setRenewDays] = useState(7);
+  const [renewBudget, setRenewBudget] = useState('');
+  const [renewBid, setRenewBid] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [editForm, setEditForm] = useState<Record<string, string>>({});
 
   const load = useCallback(async () => {
     const supabase = createClient();
@@ -108,6 +116,13 @@ export default function CampaignDetailPage() {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'ad_campaign_daily_stats', filter: `campaign_id=eq.${params.id}` }, () => load())
       .subscribe();
     const poll = setInterval(load, 30000);
+    if (window.location.search.includes('renew=1')) {
+      setRenewDays(7);
+      setRenewBudget('');
+      setRenewBid('');
+      setShowRenew(true);
+      window.history.replaceState(null, '', window.location.pathname);
+    }
     return () => {
       channel.unsubscribe().then(() => supabase.removeChannel(channel));
       clearInterval(poll);
@@ -145,6 +160,66 @@ export default function CampaignDetailPage() {
       router.push('/account/ads');
     } finally {
       setBusy(false);
+    }
+  };
+
+  const openEdit = () => {
+    if (!campaign) return;
+    setEditForm({
+      headline: campaign.headline || '',
+      description: campaign.description || '',
+      cta_text: campaign.cta_text || '',
+      destination_url: campaign.destination_url || '',
+      ad_image_url: campaign.ad_image_url || '',
+      video_url: campaign.video_url || '',
+      poster_url: campaign.poster_url || '',
+      content_url: campaign.content_url || '',
+      goal: campaign.goal || 'clicks',
+      cta_type: campaign.cta_type || 'learn_more',
+    });
+    setShowEdit(true);
+  };
+
+  const saveEdit = async () => {
+    setSaving(true);
+    try {
+      const res = await fetch('/admin/ads/api', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'update', campaign_id: params.id, ...editForm }),
+      });
+      const d = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setError(d.error || 'Update failed');
+      } else {
+        setShowEdit(false);
+        load();
+      }
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const renewCampaign = async () => {
+    setSaving(true);
+    try {
+      const payload: Record<string, any> = { action: 'renew', campaign_id: params.id, extra_days: Number(renewDays) || 7 };
+      if (renewBudget.trim()) payload.daily_budget = Number(renewBudget);
+      if (renewBid.trim()) payload.bid_amount = Number(renewBid);
+      const res = await fetch('/admin/ads/api', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      const d = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setError(d.error || 'Renew failed');
+      } else {
+        setShowRenew(false);
+        load();
+      }
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -209,13 +284,19 @@ export default function CampaignDetailPage() {
             <p className="text-muted-foreground mt-1 text-sm">{campaign.advertiser_name}{campaign.placements?.name ? ` · ${campaign.placements.name}` : ''}</p>
           </div>
           <div className="flex gap-2">
+            {!['expired', 'cancelled', 'completed'].includes(campaign.status) && (
+              <Button variant="outline" disabled={busy} onClick={openEdit}><Pencil className="h-4 w-4 mr-1.5" /> Edit</Button>
+            )}
+            {['live', 'approved', 'paused', 'expired', 'completed'].includes(campaign.status) && (
+              <Button variant="outline" disabled={busy} onClick={() => { setRenewDays(7); setRenewBudget(''); setRenewBid(''); setShowRenew(true); }}><RefreshCw className="h-4 w-4 mr-1.5" /> Renew</Button>
+            )}
             {(campaign.status === 'live' || campaign.status === 'approved') && (
               <Button variant="outline" disabled={busy} onClick={() => act('pause')}><Pause className="h-4 w-4 mr-1.5" /> Pause</Button>
             )}
             {campaign.status === 'paused' && (
               <Button variant="outline" disabled={busy} onClick={() => act('resume')}><Play className="h-4 w-4 mr-1.5" /> Resume</Button>
             )}
-            {(campaign.status === 'draft' || campaign.status === 'rejected' || campaign.status === 'cancelled') && (
+            {(campaign.status === 'draft' || campaign.status === 'rejected' || campaign.status === 'cancelled' || campaign.status === 'expired') && (
               <Button variant="ghost" className="text-destructive" disabled={busy} onClick={remove}><Trash2 className="h-4 w-4 mr-1.5" /> Delete</Button>
             )}
           </div>
@@ -353,6 +434,91 @@ export default function CampaignDetailPage() {
         Created {new Date(campaign.created_at).toLocaleDateString()} ·{' '}
         <Link href="/account/ads/new" className="text-blue-600 hover:underline">Create another campaign</Link>
       </p>
+
+      {showEdit && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={() => setShowEdit(false)}>
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[85vh] overflow-y-auto p-6" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-bold">Edit campaign</h3>
+              <button onClick={() => setShowEdit(false)} className="text-slate-400 hover:text-slate-600"><X className="h-5 w-5" /></button>
+            </div>
+            <div className="space-y-3">
+              {[
+                { key: 'headline', label: 'Headline' },
+                { key: 'description', label: 'Description' },
+                { key: 'cta_text', label: 'Button text' },
+                { key: 'destination_url', label: 'Destination URL' },
+                { key: 'ad_image_url', label: 'Image URL' },
+                { key: 'video_url', label: 'Video URL' },
+                { key: 'poster_url', label: 'Poster URL' },
+                { key: 'content_url', label: 'Article URL' },
+              ].map((f) => (
+                <div key={f.key}>
+                  <label className="text-xs font-medium text-slate-500">{f.label}</label>
+                  <input
+                    type="text"
+                    value={editForm[f.key] || ''}
+                    onChange={(e) => setEditForm((p) => ({ ...p, [f.key]: e.target.value }))}
+                    className="mt-1 w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/30"
+                  />
+                </div>
+              ))}
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs font-medium text-slate-500">Goal</label>
+                  <select value={editForm.goal} onChange={(e) => setEditForm((p) => ({ ...p, goal: e.target.value }))} className="mt-1 w-full border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white">
+                    {Object.entries(ADS_GOAL_LABELS).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-slate-500">CTA type</label>
+                  <select value={editForm.cta_type} onChange={(e) => setEditForm((p) => ({ ...p, cta_type: e.target.value }))} className="mt-1 w-full border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white">
+                    {Object.entries(ADS_CTA_LABELS).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+                  </select>
+                </div>
+              </div>
+            </div>
+            <div className="flex gap-2 justify-end mt-5">
+              <Button variant="outline" onClick={() => setShowEdit(false)}>Cancel</Button>
+              <Button disabled={saving} onClick={saveEdit}>{saving ? 'Saving…' : 'Save changes'}</Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showRenew && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={() => setShowRenew(false)}>
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-bold">Renew campaign</h3>
+              <button onClick={() => setShowRenew(false)} className="text-slate-400 hover:text-slate-600"><X className="h-5 w-5" /></button>
+            </div>
+            <div className="space-y-3">
+              <div>
+                <label className="text-xs font-medium text-slate-500">Renew for (days)</label>
+                <input type="number" min={1} max={90} value={renewDays} onChange={(e) => setRenewDays(Number(e.target.value))} className="mt-1 w-full border border-slate-200 rounded-lg px-3 py-2 text-sm" />
+              </div>
+              <div>
+                <label className="text-xs font-medium text-slate-500">New daily budget ({campaign.currency || 'NGN'}) — optional</label>
+                <input type="number" min={0} value={renewBudget} onChange={(e) => setRenewBudget(e.target.value)} placeholder={`Current: ${formatMoney(campaign.daily_budget || 0, campaign.currency || 'NGN')}`} className="mt-1 w-full border border-slate-200 rounded-lg px-3 py-2 text-sm" />
+              </div>
+              <div>
+                <label className="text-xs font-medium text-slate-500">New {campaign.billing_model === 'cpc' ? 'CPC' : 'CPM'} bid ({campaign.currency || 'NGN'}) — optional</label>
+                <input type="number" min={0} value={renewBid} onChange={(e) => setRenewBid(e.target.value)} placeholder={`Current: ${formatMoney(campaign.bid_amount || 0, campaign.currency || 'NGN')}`} className="mt-1 w-full border border-slate-200 rounded-lg px-3 py-2 text-sm" />
+              </div>
+              <p className="text-xs text-slate-500 bg-slate-50 rounded-lg p-3">
+                Extends the run through{' '}
+                {new Date(new Date((campaign.end_date && String(campaign.end_date).slice(0, 10) > new Date().toISOString().slice(0, 10) ? String(campaign.end_date).slice(0, 10) : new Date().toISOString().slice(0, 10))).getTime() + (Number(renewDays) || 7) * 86400000).toISOString().slice(0, 10)}.
+                Additional cost ≈ {formatMoney((Number(renewBudget) || Number(campaign.daily_budget || 0)) * (Number(renewDays) || 7), campaign.currency || 'NGN')}.
+              </p>
+            </div>
+            <div className="flex gap-2 justify-end mt-5">
+              <Button variant="outline" onClick={() => setShowRenew(false)}>Cancel</Button>
+              <Button disabled={saving} onClick={renewCampaign}>{saving ? 'Renewing…' : 'Renew campaign'}</Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

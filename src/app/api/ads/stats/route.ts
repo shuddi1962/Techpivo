@@ -9,7 +9,7 @@ export async function GET() {
     const [placements, campaigns, revenue] = await Promise.all([
       supabase
         .from("ad_placements")
-        .select("id, name, position, min_bid_cpm, min_bid_cpc, supports_video, est_impressions, is_active")
+        .select("id, name, position, ad_type, sizes, min_bid_cpm, min_bid_cpc, supports_video, est_impressions, is_active")
         .eq("is_active", true)
         .order("min_bid_cpm", { ascending: false }),
       supabase
@@ -35,6 +35,8 @@ export async function GET() {
         id: p.id,
         name: p.name,
         position: p.position,
+        ad_type: p.ad_type,
+        sizes: Array.isArray(p.sizes) ? p.sizes : [],
         min_bid_cpm: p.min_bid_cpm,
         min_bid_cpc: p.min_bid_cpc,
         supports_video: !!p.supports_video,

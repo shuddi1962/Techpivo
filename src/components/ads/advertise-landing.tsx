@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import { useFx } from "@/lib/use-fx";
 import { FX_POPULAR } from "@/lib/fx-shared";
+import { ChevronDown, ChevronUp } from "lucide-react";
 
 const PRIMARY = "#2563EB";
 const PRIMARY_DARK = "#1D4ED8";
@@ -19,6 +20,8 @@ interface Placement {
   id: string;
   name: string;
   position: string;
+  ad_type: string;
+  sizes: string[];
   min_bid_cpm: number;
   min_bid_cpc: number;
   supports_video: boolean;
@@ -40,6 +43,18 @@ const POSITION_ICONS: Record<string, string> = {
   native: "💬",
 };
 
+const AD_TYPE_BADGES: Record<string, { label: string; cls: string }> = {
+  popup_toast: { label: "POPUP", cls: "bg-purple-100 text-purple-700" },
+  sponsored_article: { label: "SPONSORED", cls: "bg-amber-100 text-amber-700" },
+  video: { label: "VIDEO", cls: "bg-blue-100 text-blue-700" },
+  banner: { label: "BANNER", cls: "bg-slate-100 text-slate-600" },
+  infeed: { label: "IN-FEED", cls: "bg-slate-100 text-slate-600" },
+  native: { label: "NATIVE", cls: "bg-slate-100 text-slate-600" },
+  sticky: { label: "STICKY", cls: "bg-slate-100 text-slate-600" },
+  display: { label: "DISPLAY", cls: "bg-slate-100 text-slate-600" },
+  interstitial: { label: "INTERSTITIAL", cls: "bg-slate-100 text-slate-600" },
+};
+
 const FORMAT_EXAMPLES = [
   { title: "Leaderboard Banner", size: "728 × 90", video: false, hint: "High-visibility banner above article content", img: "https://images.pexels.com/photos/3184291/pexels-photo-3184291.jpeg", h: "h-24" },
   { title: "Rectangle / Sidebar", size: "300 × 250", video: false, hint: "Mid-page rectangle on articles & categories", img: "https://images.pexels.com/photos/1181671/pexels-photo-1181671.jpeg", h: "h-44" },
@@ -49,6 +64,7 @@ const FORMAT_EXAMPLES = [
 
 export function AdvertiseLanding() {
   const [placements, setPlacements] = useState<Placement[]>([]);
+  const [openPricing, setOpenPricing] = useState<string | null>(null);
   const fx = useFx();
   const currency = fx.displayCurrency;
 
@@ -194,30 +210,58 @@ export function AdvertiseLanding() {
           </div>
         </div>
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {(placements.length > 0 ? placements : []).map((p) => (
-            <div key={p.id} className="bg-white border border-slate-200 rounded-2xl p-5 flex flex-col shadow-sm">
-              <div className="flex items-center justify-between mb-3">
-                <span className="text-2xl">{POSITION_ICONS[p.position] || "📢"}</span>
-                {p.supports_video && (
-                  <span className="inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide text-blue-600 bg-blue-50 rounded-full px-2 py-0.5">
-                    <PlayCircle className="h-3 w-3" /> Video
-                  </span>
+          {(placements.length > 0 ? placements : []).map((p) => {
+            const badge = AD_TYPE_BADGES[p.ad_type] || (p.supports_video ? AD_TYPE_BADGES.video : AD_TYPE_BADGES.banner);
+            const sizeLabel = (p.sizes || []).slice(0, 2).join(" · ") || badge.label;
+            const open = openPricing === p.id;
+            return (
+              <div key={p.id} className="bg-white border border-slate-200 rounded-2xl p-5 flex flex-col shadow-sm">
+                <div className="flex items-center justify-between mb-3">
+                  <span className="text-2xl">{POSITION_ICONS[p.position] || "📢"}</span>
+                  <div className="flex items-center gap-1.5">
+                    {p.supports_video && (
+                      <span className="inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide text-blue-600 bg-blue-50 rounded-full px-2 py-0.5">
+                        <PlayCircle className="h-3 w-3" /> Video
+                      </span>
+                    )}
+                    <span className={`text-[10px] font-semibold uppercase tracking-wide rounded-full px-2 py-0.5 ${badge.cls}`}>{badge.label}</span>
+                  </div>
+                </div>
+                <h3 className="font-bold text-slate-900">{p.name}</h3>
+                <div className="mt-1.5 text-xs text-slate-500">
+                  <span className="font-mono bg-slate-50 border border-slate-200 rounded px-1.5 py-0.5">{sizeLabel}</span>
+                  {p.est_impressions ? <span className="ml-2">~{Number(p.est_impressions).toLocaleString()} monthly impressions</span> : null}
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => setOpenPricing(open ? null : p.id)}
+                  className="mt-3 inline-flex items-center gap-1 text-xs font-semibold transition-colors"
+                  style={{ color: PRIMARY_DARK }}
+                  aria-expanded={open}
+                >
+                  {open ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
+                  {open ? "Hide pricing" : "Show pricing"}
+                </button>
+
+                {open && (
+                  <div className="mt-2 space-y-1.5 text-xs text-slate-600 bg-blue-50/60 border border-blue-100 rounded-lg px-3 py-2.5">
+                    <p className="flex justify-between gap-2"><span className="text-slate-500">CPM floor (per 1,000 imps)</span><span className="font-semibold text-slate-900">{price(p.min_bid_cpm)}</span></p>
+                    <p className="flex justify-between gap-2"><span className="text-slate-500">CPC floor (per click)</span><span className="font-semibold text-slate-900">{price(p.min_bid_cpc)}</span></p>
+                    <p className="text-[11px] text-slate-400 pt-0.5 border-t border-blue-100">Shown in {currency} at today&apos;s live rate. You set your own bid at or above these floors.</p>
+                  </div>
                 )}
+
+                <Link
+                  href={`/account/ads/new?placement=${p.id}&currency=${currency}`}
+                  className="mt-auto pt-4 inline-flex items-center justify-center gap-1.5 rounded-lg border px-3 py-2 text-sm font-semibold transition-colors"
+                  style={{ borderColor: `${PRIMARY}40`, background: PRIMARY_SOFT, color: PRIMARY_DARK }}
+                >
+                  <LayoutGrid size={14} /> Book this space
+                </Link>
               </div>
-              <h3 className="font-bold text-slate-900">{p.name}</h3>
-              <div className="mt-2 space-y-1 text-xs text-slate-500">
-                <p>CPM from <span className="font-semibold text-slate-900">{price(p.min_bid_cpm)}</span> · CPC from <span className="font-semibold text-slate-900">{price(p.min_bid_cpc)}</span></p>
-                {p.est_impressions ? <p>~{Number(p.est_impressions).toLocaleString()} monthly impressions</p> : null}
-              </div>
-              <Link
-                href={`/account/ads/new?placement=${p.id}&currency=${currency}`}
-                className="mt-4 inline-flex items-center justify-center gap-1.5 rounded-lg border px-3 py-2 text-sm font-semibold transition-colors"
-                style={{ borderColor: `${PRIMARY}40`, background: PRIMARY_SOFT, color: PRIMARY_DARK }}
-              >
-                <LayoutGrid size={14} /> Book this space
-              </Link>
-            </div>
-          ))}
+            );
+          })}
         </div>
         {placements.length === 0 && (
           <p className="text-sm text-slate-400 text-center py-8">
