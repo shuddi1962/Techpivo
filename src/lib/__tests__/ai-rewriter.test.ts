@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest"
-import { escapeInnerQuotes, repairJson } from "@/lib/ai-rewriter"
+import { escapeInnerQuotes, repairJson, validate } from "@/lib/ai-rewriter"
 
 describe("escapeInnerQuotes", () => {
   it("escapes unescaped HTML attribute quotes inside string values", () => {
@@ -28,6 +28,44 @@ describe("escapeInnerQuotes", () => {
     const fixed = escapeInnerQuotes(input)
     const parsed = JSON.parse(fixed)
     expect(parsed.content).toBe('<a href="/x">link</a>')
+  })
+
+  it("keeps prose quote-followed-by-comma intact (the \"AI\", model)", () => {
+    const input = '{"content":"the "AI", model is great"}'
+    const fixed = escapeInnerQuotes(input)
+    expect(() => JSON.parse(fixed)).not.toThrow()
+    expect(JSON.parse(fixed).content).toBe('the "AI", model is great')
+  })
+
+  it("keeps prose quote-followed-by-colon intact (the \"term\": is used)", () => {
+    const input = '{"content":"the "term": is used"}'
+    const fixed = escapeInnerQuotes(input)
+    expect(() => JSON.parse(fixed)).not.toThrow()
+    expect(JSON.parse(fixed).content).toBe('the "term": is used')
+  })
+
+  it("keeps a top-level JSON array untouched (spaces preserved)", () => {
+    const input = '["hi", "bye"]'
+    expect(escapeInnerQuotes(input)).toBe(input)
+    expect(JSON.parse(escapeInnerQuotes(input))).toEqual(["hi", "bye"])
+  })
+})
+
+describe("validate", () => {
+  it("recovers a full article blob whose prose contains unescaped quotes (the \"AI\", model / the \"term\": is used)", () => {
+    const content = `<p>When I tested the "AI", model the results surprised me. The "term": is used loosely, and the "AI" kept hallucinating, so I switched it off.</p><h2>How it works</h2><p>This section explains the model. The "AI", model is great, and the "term": is used often.</p>`
+    const raw = `{"headline":"Gemini JSON repair regression test","content":"${content}","answerCapsule":"A regression test article.","seoTitle":"Gemini JSON Repair Regression Test","seoDescription":"Testing the JSON repair pipeline end to end.","seoKeywords":["gemini","json"],"secondaryKeywords":["repair"],"tags":["ai"],"keyPoints":["This is a longer key point about the repair pipeline","This is another key point that must exceed ten characters"],"quickBrief":["The pipeline repairs broken JSON"],"namedEntities":["Gemini"],"faq":[{"question":"Why does this matter?","answer":"Because unescaped quotes used to break article generation."}],"sources":[{"url":"https://example.com/doc","title":"Example","type":"official"}],"qualityScore":85,"isBreaking":false,"suggestedCategory":"tech-news"}`
+    const result = validate(raw, "gemini-grounded")
+    expect(result.reason).toBe("ok")
+    expect(result.article?.content).toContain('the "AI", model')
+    expect(result.article?.content).toContain('the "term": is used')
+  })
+
+  it("reports the enriched reason when even quote-escape cannot repair the blob", () => {
+    const raw = '{"content":"' + "x".repeat(150) + '" broken}'
+    const result = validate(raw, "gemini-grounded")
+    expect(result.article).toBeNull()
+    expect(result.reason.startsWith("json_parse_fail_after_object_extract:")).toBe(true)
   })
 })
 

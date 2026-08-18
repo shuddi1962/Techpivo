@@ -355,11 +355,40 @@ export function escapeInnerQuotes(str: string): string {
       if (ch === '\\') { escaped = true; out += ch; i++; continue }
       if (ch === '"') {
         let j = i + 1
-        while (j < str.length && (str[j] === ' ' || str[j] === '\t')) j++
-        const next = str[j]
-        if (j >= str.length || next === ',' || next === '}' || next === ']' || next === ':') {
+        // skip JSON whitespace (space/tab/newline/CR) — Gemini often
+        // pretty-prints, so a closing quote may be followed by ",\n  \"key\""
+        while (j < str.length && ' \t\r\n'.includes(str[j])) j++
+        const next = j >= str.length ? '' : str[j]
+        // A string only legitimately ends when the closing quote is followed
+        // by a structural char that starts a NEW JSON value. `,` and `:` also
+        // appear in plain prose ("AI", model / "term": is used) so we look one
+        // token further: after `,` the quote closes only when the next token is
+        // a quote/brace/bracket; after `:` only when it is any JSON value start
+        // (quote/brace/bracket/digit/-/true/false/null).
+        if (next === '' || next === '}' || next === ']') {
           inString = false
           out += ch
+        } else if (next === ',') {
+          let k = j + 1
+          while (k < str.length && ' \t\r\n'.includes(str[k])) k++
+          const after = k >= str.length ? '' : str[k]
+          if (after === '"' || after === '{' || after === '[') {
+            inString = false
+            out += ch
+          } else {
+            out += '\\"'
+          }
+        } else if (next === ':') {
+          let k = j + 1
+          while (k < str.length && ' \t\r\n'.includes(str[k])) k++
+          const after = k >= str.length ? '' : str[k]
+          if (after === '"' || after === '{' || after === '[' || after === '-' ||
+              (after >= '0' && after <= '9') || after === 't' || after === 'f' || after === 'n') {
+            inString = false
+            out += ch
+          } else {
+            out += '\\"'
+          }
         } else {
           out += '\\"'
         }
@@ -412,7 +441,7 @@ function extractJsonObject(text: string): string | null {
   return null
 }
 
-function validate(raw: string, model: AIArticle['modelUsed']): { article: AIArticle | null; reason: string } {
+export function validate(raw: string, model: AIArticle['modelUsed']): { article: AIArticle | null; reason: string } {
   if (!raw || raw.length < 100) { return { article: null, reason: `raw_too_short:${raw?.length || 0}` } }
 
   const clean = raw
@@ -437,7 +466,10 @@ function validate(raw: string, model: AIArticle['modelUsed']): { article: AIArti
         // 2) unescaped inner quotes (HTML like <img src="x"> inside strings)
         const quotesFixed = escapeInnerQuotes(repaired)
         try { p = JSON.parse(quotesFixed) }
-        catch { return { article: null, reason: 'json_parse_fail_after_object_extract' } }
+        catch {
+          const sample = quotesFixed.replace(/\s+/g, ' ').slice(0, 120)
+          return { article: null, reason: `json_parse_fail_after_object_extract:${quotesFixed.length}:${sample}` }
+        }
       }
     }
   }
@@ -589,6 +621,33 @@ async function logGeminiUsage(headline: string, usedFor: string): Promise<void> 
 
 let lastGeminiCallTime = 0
 
+// OpenAPI-style JSON schema for gemini-2.5-flash structured output. When the
+// model honors responseSchema (alongside responseMimeType application/json) it
+// MUST emit well-formed JSON matching this shape — which prevents the
+// unescaped-quote corruption escapeInnerQuotes() repairs as a fallback.
+const ARTICLE_RESPONSE_SCHEMA = {
+  type: 'object',
+  properties: {
+    headline:           { type: 'string' },
+    content:            { type: 'string', description: 'Full HTML article body, 800+ words, with <h2> section headings' },
+    answerCapsule:      { type: 'string' },
+    seoTitle:           { type: 'string' },
+    seoDescription:     { type: 'string' },
+    suggestedCategory:  { type: 'string' },
+    seoKeywords:        { type: 'array', items: { type: 'string' } },
+    secondaryKeywords:  { type: 'array', items: { type: 'string' } },
+    tags:               { type: 'array', items: { type: 'string' } },
+    keyPoints:          { type: 'array', items: { type: 'string' } },
+    quickBrief:         { type: 'array', items: { type: 'string' } },
+    namedEntities:      { type: 'array', items: { type: 'string' } },
+    faq:                { type: 'array', items: { type: 'object', properties: { question: { type: 'string' }, answer: { type: 'string' } }, required: ['question', 'answer'] } },
+    sources:            { type: 'array', items: { type: 'object', properties: { url: { type: 'string' }, title: { type: 'string' }, type: { type: 'string', enum: ['official', 'news', 'documentation', 'other'] } }, required: ['url', 'type'] } },
+    qualityScore:       { type: 'integer' },
+    isBreaking:         { type: 'boolean' },
+  },
+  required: ['headline', 'content'],
+} as const
+
 async function geminiGrounded(
   prompt:  string,
   usedFor: string,
@@ -625,7 +684,9 @@ async function geminiGrounded(
         generationConfig: {
           temperature:       0.45,
           maxOutputTokens:   8192,
-          ...(useJsonMime ? { responseMimeType: 'application/json' } : {}),
+          ...(useJsonMime
+            ? { responseMimeType: 'application/json', responseSchema: ARTICLE_RESPONSE_SCHEMA }
+            : {}),
         },
         tools: [
           { googleSearch: {} },
@@ -643,7 +704,7 @@ async function geminiGrounded(
         const errText = await res.text().catch(() => '')
         // Some Gemini builds reject JSON mime together with googleSearch —
         // retry once without the mime type instead of failing hard.
-        if (useJsonMime && /response[_ ]?mime|mime[_ ]?type|application\/json/i.test(errText) && attempt < maxRetries) {
+        if (useJsonMime && /response[_ ]?mime|mime[_ ]?type|application\/json|schema/i.test(errText) && attempt < maxRetries) {
           console.warn('[Gemini] JSON mime rejected with googleSearch — retrying without responseMimeType')
           useJsonMime = false
           continue
