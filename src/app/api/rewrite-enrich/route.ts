@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server"
 import { createClient as createSupabaseClient } from "@supabase/supabase-js"
+import { requireAdminRole } from "@/lib/admin-auth"
 
 export const dynamic = "force-dynamic"
 
@@ -29,7 +30,9 @@ async function callOpenRouter(prompt: string, apiKey: string): Promise<string> {
   return data.choices?.[0]?.message?.content?.trim() || ""
 }
 
-export async function GET() {
+export async function GET(req: Request) {
+  const auth = await requireAdminRole(["admin", "editor"], req as any)
+  if (!auth.ok) return auth.response
   try {
     const openRouterKey = process.env.OPENROUTER_API_KEY || ""
 

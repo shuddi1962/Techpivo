@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { createClient as createSupabaseClient } from "@supabase/supabase-js"
 import { geminiRewriteContent } from "@/lib/ai-rewriter"
+import { requireAdminRole } from "@/lib/admin-auth"
 
 function getSupabase() {
   return createSupabaseClient(
@@ -85,6 +86,8 @@ async function fetchOriginalContent(url: string): Promise<string> {
 }
 
 export async function POST(req: Request) {
+  const auth = await requireAdminRole(["admin", "editor"], req as any)
+  if (!auth.ok) return auth.response
   try {
     const { post_id } = await req.json()
     if (!post_id) {

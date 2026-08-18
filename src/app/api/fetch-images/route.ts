@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { createClient as createSupabaseClient } from "@supabase/supabase-js"
 import { searchFeaturedImage } from "@/lib/web-images"
+import { requireAdminRole } from "@/lib/admin-auth"
 
 export const dynamic = "force-dynamic"
 
@@ -46,7 +47,9 @@ async function searchPexels(query: string): Promise<string | null> {
   return searchFeaturedImage(query)
 }
 
-export async function GET() {
+export async function GET(req: Request) {
+  const auth = await requireAdminRole(["admin", "editor"], req as any)
+  if (!auth.ok) return auth.response
   const { data: posts, error } = await getSupabase()
     .from("posts")
     .select("id, title, featured_image, original_source_url, category:categories(name)")

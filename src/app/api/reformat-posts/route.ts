@@ -1,10 +1,13 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/admin'
 import { rewriteArticle } from '@/lib/ai-rewriter'
+import { requireAdminRole } from '@/lib/admin-auth'
 
 export const dynamic = 'force-dynamic'
 
-export async function GET() {
+export async function GET(req: Request) {
+  const auth = await requireAdminRole(["admin", "editor"], req as any)
+  if (!auth.ok) return auth.response
   try {
     const supabase = createClient()
 

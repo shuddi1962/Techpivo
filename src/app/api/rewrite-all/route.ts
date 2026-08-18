@@ -3,6 +3,7 @@ import { createClient as createSupabaseClient } from "@supabase/supabase-js"
 import { geminiRewriteContent } from "@/lib/ai-rewriter"
 import { SITE_URL } from "@/lib/constants"
 import { searchFeaturedImage } from "@/lib/web-images"
+import { requireAdminRole } from "@/lib/admin-auth"
 
 export const dynamic = "force-dynamic"
 
@@ -63,7 +64,9 @@ function stripHtml(html: string): string {
   return html.replace(/<[^>]*>/g, "").trim()
 }
 
-export async function GET() {
+export async function GET(req: Request) {
+  const auth = await requireAdminRole(["admin", "editor"], req as any)
+  if (!auth.ok) return auth.response
   try {
     const openRouterKey = process.env.OPENROUTER_API_KEY || ""
     if (!openRouterKey) {

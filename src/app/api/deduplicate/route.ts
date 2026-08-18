@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server"
 import { createClient as createSupabaseClient } from "@supabase/supabase-js"
+import { requireAdminRole } from "@/lib/admin-auth"
 
 export const dynamic = "force-dynamic"
 
@@ -10,7 +11,9 @@ function getSupabase() {
   )
 }
 
-export async function GET() {
+export async function GET(req: Request) {
+  const auth = await requireAdminRole(["admin", "editor"], req as any)
+  if (!auth.ok) return auth.response
   const { data: posts, error } = await getSupabase()
     .from("posts")
     .select("id, title, original_source_url, source_url, content")
