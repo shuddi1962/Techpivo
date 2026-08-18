@@ -1,7 +1,6 @@
 "use client"
 
 import { useEffect, useState, useRef, useCallback } from "react"
-import Image from "next/image"
 import { createClient } from "@/lib/supabase/client"
 import { cn } from "@/lib/utils"
 import { AD_POSITIONS } from "@/lib/constants"
@@ -62,6 +61,7 @@ export function AdSlot({ positionKey, className, preview }: AdSlotProps) {
   const [settings, setSettings] = useState<{ enable_auto_ads?: boolean; adsense_publisher_id?: string }>({})
   const [loading, setLoading] = useState(true)
   const [currentCampaignIndex, setCurrentCampaignIndex] = useState(0)
+  const [isMobile, setIsMobile] = useState(false)
   const recordedRef = useRef(false)
   const intervalRef = useRef<NodeJS.Timeout | null>(null)
   const lastTrackedCampaignRef = useRef<string | null>(null)
@@ -72,6 +72,14 @@ export function AdSlot({ positionKey, className, preview }: AdSlotProps) {
     return () => {
       mountedRef.current = false
     }
+  }, [])
+
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 767px)")
+    const update = () => setIsMobile(mq.matches)
+    update()
+    mq.addEventListener("change", update)
+    return () => mq.removeEventListener("change", update)
   }, [])
 
   const refresh = useCallback(async () => {
@@ -209,10 +217,12 @@ export function AdSlot({ positionKey, className, preview }: AdSlotProps) {
 
   if (loading) return null
 
-  // Follow the placement's declared size (first entry, e.g. "728x90") — creatives
-  // are width-capped at the placement width and height-capped so they never blow out of their space.
+  // Follow the placement's declared size — mobile picks the second (smaller)
+  // size when one is declared (e.g. "728x90" desktop → "468x60" mobile).
   const designSize = (() => {
-    const raw = Array.isArray(placementSizes) ? placementSizes[0] : undefined
+    const raw = Array.isArray(placementSizes)
+      ? placementSizes[isMobile && placementSizes.length > 1 ? 1 : 0]
+      : undefined
     if (!raw) return null
     const [w, h] = String(raw).toLowerCase().split("x").map((n) => parseInt(n, 10))
     if (!w || !h || w <= 0 || h <= 0) return null
@@ -268,12 +278,14 @@ export function AdSlot({ positionKey, className, preview }: AdSlotProps) {
           {campaign.destination_url ? (
             <a href={preview ? "#" : campaign.destination_url} target="_blank" rel="noopener" onClick={() => trackCampaignClick(campaign.id)}>
               <span className="block mx-auto" style={sizeBox}>
-                <Image src={campaign.ad_image_url} alt={campaign.advertiser_name} width={designSize?.w || 800} height={designSize?.h || 450} className="w-full h-full object-cover" />
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={campaign.ad_image_url} alt={campaign.advertiser_name} width={designSize?.w || 800} height={designSize?.h || 450} loading="lazy" className="w-full h-full object-cover" />
               </span>
             </a>
           ) : (
             <span className="block mx-auto" style={sizeBox}>
-              <Image src={campaign.ad_image_url} alt={campaign.advertiser_name} width={designSize?.w || 800} height={designSize?.h || 450} className="w-full h-full object-cover" />
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={campaign.ad_image_url} alt={campaign.advertiser_name} width={designSize?.w || 800} height={designSize?.h || 450} loading="lazy" className="w-full h-full object-cover" />
             </span>
           )}
         </div>
@@ -384,8 +396,8 @@ export function AdSlot({ positionKey, className, preview }: AdSlotProps) {
   // same fixed-size box — no dots, no size change, no layout shift.
   if (campaign) {
     return (
-      <div className={cn("ad-slot", className)}>
-        {renderCampaign()}
+      <div key={campaign.id} className={cn("ad-slot", className)}>
+        <div className="animate-[fadeIn_0.3s_ease-in]">{renderCampaign()}</div>
       </div>
     )
   }

@@ -1,7 +1,6 @@
 "use client"
 
 import { useEffect, useState, useRef, useCallback } from "react"
-import Image from "next/image"
 import { createClient } from "@/lib/supabase/client"
 import { X } from "lucide-react"
 
@@ -103,7 +102,7 @@ export function PopupAd() {
   }
 
   return (
-    <div className="fixed bottom-4 right-4 z-[60] w-[300px] max-w-[calc(100vw-2rem)] overflow-hidden rounded-xl border border-border bg-card shadow-2xl">
+    <div key={campaign.id} className="fixed bottom-4 right-4 z-[60] w-[300px] max-w-[calc(100vw-2rem)] overflow-hidden rounded-xl border border-border bg-card shadow-2xl animate-[fadeIn_0.3s_ease-in]">
       <button
         onClick={dismiss}
         aria-label="Dismiss advertisement"
@@ -125,7 +124,8 @@ export function PopupAd() {
         />
       ) : campaign.ad_image_url ? (
         <div className="relative h-40 w-full">
-          <Image src={campaign.ad_image_url} alt={campaign.headline || campaign.advertiser_name || "Advertisement"} fill className="object-cover" />
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={campaign.ad_image_url} alt={campaign.headline || campaign.advertiser_name || "Advertisement"} className="h-40 w-full object-cover" loading="lazy" />
         </div>
       ) : null}
 

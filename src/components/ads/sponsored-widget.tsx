@@ -1,7 +1,6 @@
 "use client"
 
 import { useEffect, useState, useRef, useCallback } from "react"
-import Image from "next/image"
 import { createClient } from "@/lib/supabase/client"
 import { Star } from "lucide-react"
 
@@ -17,8 +16,11 @@ interface SponsoredCampaign {
   media_type: string | null
 }
 
+const ROTATE_MS = 20000
+
 export function SponsoredWidget() {
-  const [campaign, setCampaign] = useState<SponsoredCampaign | null>(null)
+  const [campaigns, setCampaigns] = useState<SponsoredCampaign[]>([])
+  const [index, setIndex] = useState(0)
   const lastTrackedRef = useRef<string | null>(null)
 
   const load = useCallback(async () => {
@@ -33,15 +35,12 @@ export function SponsoredWidget() {
       .in("status", ["approved", "live"])
       .gte("end_date", today)
       .order("created_at", { ascending: false })
-      .limit(1)
-      .maybeSingle()
+      .limit(20)
 
-    if (!data || data.media_type === "video") {
-      setCampaign(null)
-      return
-    }
-    setCampaign(data)
-  }, [])
+    const list = (data || []).filter((c) => c.media_type !== "video" && (c.destination_url || c.content_url))
+    setCampaigns(list)
+    if (index >= list.length) setIndex(0)
+  }, [index])
 
   useEffect(() => {
     load()
@@ -56,6 +55,16 @@ export function SponsoredWidget() {
       supabase.removeChannel(channel)
     }
   }, [load])
+
+  useEffect(() => {
+    if (campaigns.length < 2) return
+    const t = setInterval(() => {
+      setIndex((prev) => (prev + 1) % campaigns.length)
+    }, ROTATE_MS)
+    return () => clearInterval(t)
+  }, [campaigns.length])
+
+  const campaign = campaigns[index] || null
 
   useEffect(() => {
     if (!campaign || lastTrackedRef.current === campaign.id) return
@@ -77,14 +86,15 @@ export function SponsoredWidget() {
   }
 
   return (
-    <div className="mb-4 rounded-xl border border-border bg-card p-4">
+    <div key={campaign.id} className="mb-4 rounded-xl border border-border bg-card p-4 animate-[fadeIn_0.3s_ease-in]">
       <h3 className="mb-3 flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-muted-foreground">
         <Star className="h-3.5 w-3.5 text-amber-500" aria-hidden />
         Sponsored
       </h3>
       {campaign.ad_image_url && (
         <div className="relative mb-3 h-36 w-full overflow-hidden rounded-lg">
-          <Image src={campaign.ad_image_url} alt={campaign.headline || campaign.advertiser_name || "Sponsored article"} fill className="object-cover" />
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={campaign.ad_image_url} alt={campaign.headline || campaign.advertiser_name || "Sponsored article"} className="h-36 w-full object-cover" loading="lazy" />
         </div>
       )}
       <p className="text-sm font-semibold leading-snug">{campaign.headline || campaign.advertiser_name}</p>
