@@ -11,6 +11,7 @@ import { sendPushNotification }     from '@/lib/web-push'
 import { buildAffiliateBlock }      from '@/lib/affiliate-inject'
 import { submitToGoogleIndexing }   from '@/lib/google-indexing'
 import { getCronSecret, isCronAuthorized } from '@/lib/cron-auth'
+import { isSafeUrl } from '@/lib/ssrf'
 
 const DEFAULT_DAILY_CAP = 15
 const ITEMS_PER_FEED = 10
@@ -23,6 +24,7 @@ function isAuthorised(req: NextRequest): Promise<boolean> {
 
 async function validateImageUrl(url: string | null | undefined): Promise<string | null> {
   if (!url || !url.startsWith('http')) return null
+  if (!isSafeUrl(url)) return null
 
   const lower = url.toLowerCase()
   const REJECT_PATTERNS = [
@@ -81,6 +83,7 @@ function extractRawImage(itemXml: string): string | null {
 }
 
 async function fetchOgImage(url: string): Promise<string | null> {
+  if (!isSafeUrl(url)) return null
   for (let attempt = 1; attempt <= 2; attempt++) {
     try {
       const res = await fetch(url, {
@@ -102,6 +105,7 @@ async function fetchOgImage(url: string): Promise<string | null> {
 }
 
 async function fetchArticleContent(url: string): Promise<string | null> {
+  if (!isSafeUrl(url)) return null
   for (let attempt = 1; attempt <= 2; attempt++) {
     try {
       const res = await fetch(url, {
@@ -158,6 +162,7 @@ interface RawItem {
 }
 
 async function parseFeed(url: string): Promise<RawItem[]> {
+  if (!isSafeUrl(url)) return []
   for (let attempt = 1; attempt <= 2; attempt++) {
     try {
       const res = await fetch(url, {
