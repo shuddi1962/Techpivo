@@ -81,7 +81,11 @@ export default function CampaignDetailPage() {
 
   const load = useCallback(async () => {
     const supabase = createClient();
-    const { data: { user } } = await supabase.auth.getUser();
+    let user = (await supabase.auth.getUser()).data.user;
+    if (!user) {
+      const { data: { session } } = await supabase.auth.getSession();
+      user = session?.user ?? null;
+    }
     if (!user) { setError('signin'); setLoading(false); return }
     const { data, error: err } = await supabase
       .from('ad_campaigns')
@@ -109,8 +113,7 @@ export default function CampaignDetailPage() {
   useEffect(() => {
     load();
     const supabase = createClient();
-    let counter = 0;
-    const channel = supabase.channel(`campaign_detail_${++counter}`);
+    const channel = supabase.channel(`campaign_detail_${Date.now()}_${Math.random().toString(36).slice(2)}`);
     channel
       .on('postgres_changes', { event: '*', schema: 'public', table: 'ad_campaigns', filter: `id=eq.${params.id}` }, () => load())
       .on('postgres_changes', { event: '*', schema: 'public', table: 'ad_campaign_daily_stats', filter: `campaign_id=eq.${params.id}` }, () => load())

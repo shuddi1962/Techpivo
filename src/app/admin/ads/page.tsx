@@ -208,8 +208,6 @@ interface PlacementStat {
   clicks: number
 }
 
-let channelCounter = 0
-
 export default function AdminAdsPage() {
   const router = useRouter()
   const supabaseRef = useRef(createClient())
@@ -328,7 +326,7 @@ export default function AdminAdsPage() {
       }
     })
 
-    const channel = supabase.channel(`ads_center_${++channelCounter}`)
+    const channel = supabase.channel(`ads_center_${Date.now()}_${Math.random().toString(36).slice(2)}`)
     channel
       .on(
         "postgres_changes",

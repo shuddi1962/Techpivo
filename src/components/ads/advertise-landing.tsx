@@ -5,10 +5,8 @@ import { useCallback, useEffect, useState } from "react";
 import {
   Code2, Network, Smartphone, GraduationCap, BarChart3, Wallet, BadgeCheck,
   PauseCircle, Globe2, Sparkles, Megaphone, Eye, MousePointerClick, ShieldCheck,
-  ArrowRight, TrendingUp, PlayCircle, LayoutGrid, Send, MapPin,
+  ArrowRight, TrendingUp, PlayCircle, LayoutGrid, Send,
 } from "lucide-react";
-import { useFx } from "@/lib/use-fx";
-import { FX_POPULAR } from "@/lib/fx-shared";
 import { createClient } from "@/lib/supabase/client";
 
 const PRIMARY = "#2563EB";
@@ -65,8 +63,7 @@ const FORMAT_EXAMPLES = [
 
 export function AdvertiseLanding() {
   const [placements, setPlacements] = useState<Placement[]>([]);
-  const fx = useFx();
-  const currency = fx.displayCurrency;
+  const currency = "USD";
 
   const load = useCallback(async () => {
     try {
@@ -199,25 +196,10 @@ export function AdvertiseLanding() {
         <div className="max-w-2xl mb-10">
           <h2 className="text-3xl font-bold mb-3 text-slate-900">Choose Your Ad Space</h2>
           <p className="text-slate-500 text-[15px] leading-relaxed">
-            No fixed rate cards. Every space has a transparent minimum bid — see it in{" "}
-            <span className="font-semibold" style={{ color: PRIMARY_DARK }}>{currency}</span> when
-            you start booking, and you can pay in your local currency.
+            No fixed rate cards. Every space has a transparent minimum bid in{" "}
+            <span className="font-semibold" style={{ color: PRIMARY_DARK }}>USD</span> — see it when
+            you start booking.
           </p>
-          <div className="mt-4 flex items-center gap-2">
-            <MapPin size={15} className="text-slate-400" />
-            <label htmlFor="landing-currency" className="text-sm text-slate-600 font-medium">Show prices in</label>
-            <select
-              id="landing-currency"
-              value={currency}
-              onChange={(e) => fx.setDisplayCurrency(e.target.value)}
-              className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              {FX_POPULAR.map((c) => (
-                <option key={c} value={c}>{c}</option>
-              ))}
-            </select>
-            {fx.loading && <span className="text-xs text-slate-400">loading rates…</span>}
-          </div>
         </div>
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {(placements.length > 0 ? placements : []).map((p) => {
@@ -273,7 +255,7 @@ export function AdvertiseLanding() {
         </div>
         <div className="grid grid-cols-1 md:grid-cols-4 gap-5">
           {[
-            { step: "1", icon: Megaphone, title: "Create your campaign", desc: "Sign in, open My Ads and pick an ad space — every placement shows its minimum bid in your currency." },
+            { step: "1", icon: Megaphone, title: "Create your campaign", desc: "Sign in, open My Ads and pick an ad space — every placement shows its minimum bid in USD." },
             { step: "2", icon: Wallet, title: "Set budget & bid", desc: "Choose CPM or CPC, set your own bid and daily budget, pick your audience and duration." },
             { step: "3", icon: Sparkles, title: "Upload or AI-generate creative", desc: "Upload a banner or video — or let our AI write your headline and copy in one click." },
             { step: "4", icon: BadgeCheck, title: "Approved, live & tracked", desc: "We approve within 24 hours. Watch impressions, clicks, CTR and spend update in real time." },
@@ -436,7 +418,7 @@ export function AdvertiseLanding() {
               { q: "Where do I create a campaign?", a: "Sign in and go to your account — My Ads. There you'll find the full inventory of ad spaces with their minimum bids, plus the campaign builder. It only takes a few minutes." },
               { q: "How does bidding work?", a: "Each ad space has a minimum bid (CPM — per 1,000 impressions — or CPC — per click). You set a bid at or above that floor, plus a daily budget that covers it. Higher bids win more delivery; you only pay for what actually serves, up to your daily cap." },
               { q: "When do I pay?", a: "No payment is collected when you submit. Our team reviews your campaign and confirms it before we arrange payment — usually within 24 hours." },
-              { q: "Which currencies do you support?", a: "We're global. Prices are shown in your local currency automatically based on where you are — NGN, USD, EUR, GBP, GHS, KES, ZAR, CAD, AUD, INR and more — converted live at published rates, and you can pay in your own currency." },
+              { q: "What currency are prices in?", a: "All prices and minimum bids are in US Dollars (USD) — simple and predictable, everywhere." },
               { q: "Can I run video ads?", a: "Yes. Ad spaces marked VIDEO support video creatives (MP4/WebM, max 30s recommended). Upload the video URL and an optional poster image." },
               { q: "What targeting options are available?", a: "You can target by country, device and interest (category). We apply it best-effort when your campaign goes live." },
               { q: "Can I see my campaign performance?", a: "Every campaign tracks impressions, clicks, CTR and spend in real time — with a 14-day performance chart in your account, plus Pause/Resume whenever you like." },

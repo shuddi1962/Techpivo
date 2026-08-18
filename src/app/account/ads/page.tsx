@@ -58,7 +58,11 @@ export default function MyAdsPage() {
 
   const load = useCallback(async () => {
     const supabase = createClient();
-    const { data: { user } } = await supabase.auth.getUser();
+    let user = (await supabase.auth.getUser()).data.user;
+    if (!user) {
+      const { data: { session } } = await supabase.auth.getSession();
+      user = session?.user ?? null;
+    }
     if (!user) {
       setError('signin');
       setLoading(false);
@@ -81,8 +85,7 @@ export default function MyAdsPage() {
   useEffect(() => {
     load();
     const supabase = createClient();
-    let counter = 0;
-    const channel = supabase.channel(`my_ads_${++counter}`);
+    const channel = supabase.channel(`my_ads_${Date.now()}_${Math.random().toString(36).slice(2)}`);
     channel
       .on('postgres_changes', { event: '*', schema: 'public', table: 'ad_campaigns' }, () => load())
       .on('postgres_changes', { event: '*', schema: 'public', table: 'ad_campaign_daily_stats' }, () => load())
