@@ -37,18 +37,14 @@ export const metadata: Metadata = {
     type: "website",
     siteName: SITE_NAME,
     title: `${SITE_NAME} — ${SITE_TAGLINE}`,
-  description: "Techpivo delivers expert tech news, programming tutorials, cybersecurity guides, AI insights, gadget reviews, and developer tools. Stay ahead with in-depth tech coverage.",
+    description: "Techpivo delivers expert tech news, programming tutorials, cybersecurity guides, AI insights, gadget reviews, and developer tools. Stay ahead with in-depth tech coverage.",
     url: SITE_URL,
     locale: "en_US",
-    images: [
-      { url: `${SITE_URL}/favicon.svg`, width: 1200, height: 630, alt: SITE_NAME },
-    ],
   },
   twitter: {
     card: "summary_large_image",
     title: `${SITE_NAME} — ${SITE_TAGLINE}`,
     description: "Techpivo - Tech, decoded. Fast.",
-    images: `${SITE_URL}/favicon.svg`,
   },
   robots: {
     index: true,
@@ -71,6 +67,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link rel="dns-prefetch" href="https://www.googletagmanager.com" />
         <link rel="dns-prefetch" href="https://www.google-analytics.com" />
+        <link rel="preconnect" href="https://pagead2.googlesyndication.com" />
         <script
           dangerouslySetInnerHTML={{
             __html: `

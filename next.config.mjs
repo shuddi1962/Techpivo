@@ -1,6 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   images: {
+    unoptimized: true,
     dangerouslyAllowSVG: true,
     remotePatterns: [
       { protocol: 'https', hostname: '**.theverge.com' },
@@ -62,12 +63,12 @@ const nextConfig = {
             key: 'Content-Security-Policy',
             value: [
               "default-src 'self'",
-              "script-src 'self' 'unsafe-inline' https://*.googletagmanager.com https://va.vercel-scripts.com https://*.posthog.com",
-              "connect-src 'self' https://*.google-analytics.com https://*.analytics.google.com https://*.googletagmanager.com https://*.posthog.com https://*.supabase.co https://vitals.vercel-insights.com",
+              "script-src 'self' 'unsafe-inline' https://*.googletagmanager.com https://va.vercel-scripts.com https://*.posthog.com https://pagead2.googlesyndication.com https://*.google.com",
+              "connect-src 'self' https://*.google-analytics.com https://*.analytics.google.com https://*.googletagmanager.com https://*.posthog.com https://*.supabase.co https://vitals.vercel-insights.com https://pagead2.googlesyndication.com",
               "img-src 'self' data: https: blob:",
               "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
               "font-src 'self' data: https://fonts.gstatic.com",
-              "frame-src 'self' https://*.googletagmanager.com",
+              "frame-src 'self' https://*.googletagmanager.com https://googleads.g.doubleclick.net https://*.google.com",
               "upgrade-insecure-requests",
             ].join('; '),
           },
