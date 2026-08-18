@@ -356,7 +356,7 @@ export default function CampaignDetailPage() {
                   <div className="relative w-full flex flex-col items-center">
                     <div
                       className="w-full max-w-[26px] rounded-t bg-blue-500 group-hover:bg-blue-600 transition-colors"
-                      style={{ height: `${Math.max(2, (b.impressions / maxImps) * 100)}%`, minHeight: 2 }}
+                      style={{ height: `${Math.max(3, Math.round((b.impressions / maxImps) * 120))}px`, minHeight: 3 }}
                     />
                     <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 hidden group-hover:block bg-slate-800 text-white text-[10px] rounded px-1.5 py-0.5 whitespace-nowrap z-10">
                       {b.impressions.toLocaleString()} imps · {b.clicks} clicks
