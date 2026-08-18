@@ -173,7 +173,7 @@ export function AdSlot({ positionKey, className, preview }: AdSlotProps) {
     }
     intervalRef.current = setInterval(() => {
       setCurrentCampaignIndex((prev) => (prev + 1) % campaignAds.length)
-    }, 8000)
+    }, 20000)
     return () => {
       if (intervalRef.current) clearInterval(intervalRef.current)
     }
@@ -251,7 +251,6 @@ export function AdSlot({ positionKey, className, preview }: AdSlotProps) {
               preload="metadata"
               className="w-full h-full rounded-md object-cover"
               onClick={() => trackCampaignClick(campaign.id)}
-              onPlay={() => trackCampaignClick(campaign.id)}
             />
           </div>
         </div>
@@ -294,7 +293,36 @@ export function AdSlot({ positionKey, className, preview }: AdSlotProps) {
       )
     }
 
-    return null
+    // No creative yet (e.g. missing image): render a clean text ad in the same
+    // fixed box so the slot never collapses or looks broken during rotation.
+    return (
+      <div className="ad-campaign">
+        {preview && (
+          <span className="text-[9px] uppercase tracking-wider text-primary block mb-0.5">
+            Campaign: {campaign.advertiser_name}
+          </span>
+        )}
+        {campaign.destination_url ? (
+          <a
+            href={preview ? "#" : campaign.destination_url}
+            target="_blank"
+            rel="noopener"
+            onClick={() => trackCampaignClick(campaign.id)}
+            className="block mx-auto flex items-center justify-center rounded-md bg-muted text-center text-sm font-medium text-foreground hover:bg-muted/80"
+            style={sizeBox}
+          >
+            {campaign.advertiser_name}
+          </a>
+        ) : (
+          <div
+            className="block mx-auto flex items-center justify-center rounded-md bg-muted text-center text-sm font-medium text-foreground"
+            style={sizeBox}
+          >
+            {campaign.advertiser_name}
+          </div>
+        )}
+      </div>
+    )
   }
 
   const renderAdSense = () => (
@@ -352,17 +380,12 @@ export function AdSlot({ positionKey, className, preview }: AdSlotProps) {
 
   // Public: approved/live campaigns win their slot; AdSense auto-ads fill slots
   // with no eligible campaign (only when enabled + publisher id + consent).
+  // Rotation is invisible by design (Google-style): ads swap in place in the
+  // same fixed-size box — no dots, no size change, no layout shift.
   if (campaign) {
     return (
       <div className={cn("ad-slot", className)}>
         {renderCampaign()}
-        {campaignAds.length > 1 && (
-          <div className="flex justify-center gap-1 mt-1">
-            {campaignAds.map((_, i) => (
-              <span key={i} className={`w-1.5 h-1.5 rounded-full ${i === currentCampaignIndex ? "bg-primary" : "bg-muted-foreground/30"}`} />
-            ))}
-          </div>
-        )}
       </div>
     )
   }

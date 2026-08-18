@@ -166,7 +166,6 @@ export default function NewCampaignPage() {
 
   const [submitting, setSubmitting] = useState(false);
   const [uploading, setUploading] = useState(false);
-  const [generating, setGenerating] = useState(false);
   const [notice, setNotice] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
@@ -243,35 +242,6 @@ export default function NewCampaignPage() {
       showNotice('error', e.message || 'Upload failed');
     } finally {
       setUploading(false);
-    }
-  };
-
-  const generateCreative = async () => {
-    if (!brand.trim()) { showNotice('error', 'Enter your brand name first so the AI can write for it'); return }
-    setGenerating(true);
-    try {
-      const res = await fetch('/admin/ads/api', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          action: 'generate-creative',
-          placement_id: placement?.id || null,
-          brand: brand.trim(),
-          goal,
-          audience_hint: [countries.join(', '), devices.join(', '), interests.join(', ')].filter(Boolean).join(' · ') || 'tech enthusiasts',
-        }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Generation failed');
-      setHeadline(data.creative.headline);
-      setDescription(data.creative.description);
-      setCtaType(data.creative.cta_type);
-      setCtaText(ADS_CTA_LABELS[data.creative.cta_type] || 'Learn More');
-      showNotice('success', 'AI creative generated — review and tweak below');
-    } catch (e: any) {
-      showNotice('error', e.message || 'AI generation failed');
-    } finally {
-      setGenerating(false);
     }
   };
 
@@ -543,13 +513,6 @@ export default function NewCampaignPage() {
               <div className="flex items-center gap-2.5 mb-4">
                 <span className="w-6 h-6 rounded-full bg-blue-600 text-white text-xs font-bold flex items-center justify-center">3</span>
                 <h3 className="font-semibold">Your ad creative</h3>
-                <button
-                  onClick={generateCreative}
-                  disabled={generating}
-                  className="ml-auto flex items-center gap-1.5 text-xs font-semibold text-purple-700 border border-purple-200 bg-purple-50 rounded-lg px-3 py-2 hover:bg-purple-100 disabled:opacity-60"
-                >
-                  <Sparkles className="h-3.5 w-3.5" /> {generating ? 'Writing...' : 'AI Generate'}
-                </button>
               </div>
 
               <div className="grid sm:grid-cols-2 gap-4">

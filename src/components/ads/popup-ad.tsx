@@ -19,7 +19,7 @@ interface PopupCampaign {
 }
 
 const DISMISS_PREFIX = "tp_popup_dismiss_"
-const ROTATE_MS = 8000
+const ROTATE_MS = 20000
 
 export function PopupAd() {
   const [campaigns, setCampaigns] = useState<PopupCampaign[]>([])
@@ -129,23 +129,11 @@ export function PopupAd() {
         </div>
       ) : null}
 
-      <div className="p-4">
+      <div className="flex flex-col p-4">
         <p className="mb-1 text-[10px] uppercase tracking-widest text-muted-foreground">Sponsored</p>
-        <p className="text-sm font-semibold leading-snug">{campaign.headline || campaign.advertiser_name}</p>
-        {campaign.description && (
-          <p className="mt-1 text-xs text-muted-foreground line-clamp-2">{campaign.description}</p>
-        )}
-        {campaigns.length > 1 && (
-          <div className="mt-2 flex items-center justify-center gap-1">
-            {campaigns.map((c, i) => (
-              <span
-                key={c.id}
-                className={`h-1.5 rounded-full transition-all ${i === currentIndex % campaigns.length ? "w-4 bg-primary" : "w-1.5 bg-muted-foreground/30"}`}
-              />
-            ))}
-          </div>
-        )}
-        {campaign.destination_url && (
+        <p className="text-sm font-semibold leading-snug line-clamp-2">{campaign.headline || campaign.advertiser_name}</p>
+        <p className="mt-1 text-xs text-muted-foreground line-clamp-2">{campaign.description || ""}</p>
+        {campaign.destination_url ? (
           <a
             href={campaign.destination_url}
             target="_blank"
@@ -155,6 +143,10 @@ export function PopupAd() {
           >
             {campaign.cta_text || "Learn More"}
           </a>
+        ) : (
+          <div className="mt-3 rounded-lg bg-primary py-2 text-center text-sm font-medium text-white">
+            {campaign.cta_text || "Learn More"}
+          </div>
         )}
       </div>
     </div>
