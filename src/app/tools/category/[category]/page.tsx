@@ -8,6 +8,7 @@ import { TOOL_META, TOOL_SLUGS, ToolCategory } from "@/lib/tools-metadata"
 import { TOOL_CATEGORY_DETAILS, CATEGORY_SLUGS, getCategoryDetail, CATEGORY_ROUTE, categoryRouteSlug } from "@/lib/tools-categories"
 import { ActiveToolGroup } from "@/components/tools/tool-status"
 import { NewsletterStrip } from "@/components/home/NewsletterStrip"
+import { AdSlot } from "@/components/ads/AdSlot"
 
 export const dynamicParams = false
 
@@ -144,6 +145,10 @@ export default async function ToolCategoryPage({ params }: { params: { category:
               <div style={{ fontSize: 12, color: "var(--muted)" }}>free tools</div>
             </div>
           </div>
+        </div>
+
+        <div style={{ marginBottom: 36 }}>
+          <AdSlot positionKey="category_top_banner" />
         </div>
 
         <section>

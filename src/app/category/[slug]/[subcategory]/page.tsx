@@ -3,6 +3,7 @@ import { notFound } from "next/navigation"
 import Link from "next/link"
 import { Badge } from "@/components/ui/badge"
 import { Sidebar } from "@/components/layout/Sidebar"
+import { AdSlot } from "@/components/ads/AdSlot"
 import { formatDate } from "@/lib/utils"
 import { SITE_NAME, SITE_URL } from "@/lib/constants"
 import type { Metadata } from "next"
@@ -79,6 +80,7 @@ export default async function SubcategoryPage({ params }: Props) {
 
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
         <div className="lg:col-span-3 space-y-8">
+          <AdSlot positionKey="category_top_banner" />
           {posts && posts.length > 0 ? posts.map((post) => (
             <Link key={post.id} href={`/${post.slug}`} className="flex gap-5 group">
               <div className="w-48 h-32 shrink-0 rounded-lg bg-cover bg-center"

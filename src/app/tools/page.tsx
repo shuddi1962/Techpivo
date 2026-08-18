@@ -7,6 +7,7 @@ import { TOOL_SLUGS, TOOL_META, TOOL_CATEGORY_LABEL, ToolCategory } from "@/lib/
 import { TOOL_CATEGORY_DETAILS, CATEGORY_SLUGS, getCategoryDetail, CATEGORY_ROUTE } from "@/lib/tools-categories"
 import { ActiveToolGroup } from "@/components/tools/tool-status"
 import PageIntro from "@/components/pages/page-intro"
+import { AdSlot } from "@/components/ads/AdSlot"
 
 const CATEGORY_ORDER: ToolCategory[] = ["developer", "security", "network", "seo", "image", "pdf", "calculator", "ai"]
 
@@ -62,6 +63,10 @@ export default function PublicToolsPage() {
               </Link>
             )
           })}
+        </div>
+
+        <div style={{ marginBottom: 36 }}>
+          <AdSlot positionKey="category_top_banner" />
         </div>
 
         <section style={{ marginBottom: 44 }}>

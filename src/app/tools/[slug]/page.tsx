@@ -8,6 +8,7 @@ import { TOOL_SLUGS, TOOL_META, TOOL_CATEGORY_LABEL } from "@/lib/tools-metadata
 import { CATEGORY_ROUTE } from "@/lib/tools-categories"
 import { ToolView } from "@/lib/tools"
 import { ToolStatusGate } from "@/components/tools/tool-status"
+import { AdSlot } from "@/components/ads/AdSlot"
 
 export const dynamicParams = false
 
@@ -94,6 +95,10 @@ export default async function ToolPage({ params }: { params: { slug: string } })
             <h1 style={{ fontFamily: "'Syne', sans-serif", fontSize: 30, fontWeight: 800, margin: 0 }}>{meta.name}</h1>
             <p style={{ fontSize: 15, color: "var(--muted)", margin: "8px 0 24px", lineHeight: 1.6 }}>{meta.longDescription || meta.description}</p>
 
+            <div style={{ margin: "0 0 24px" }}>
+              <AdSlot positionKey="category_top_banner" />
+            </div>
+
             <div style={{ border: "1px solid var(--border)", borderRadius: 14, background: "var(--card)", padding: 24 }}>
               <ToolStatusGate slug={meta.slug}>
                 <ToolView slug={meta.slug} />
@@ -104,6 +109,7 @@ export default async function ToolPage({ params }: { params: { slug: string } })
           </main>
 
           <aside style={{ display: "flex", flexDirection: "column", gap: 12, position: "sticky", top: 24 }}>
+<AdSlot positionKey="post_sidebar_top" />
 <div style={{ border: "1px solid var(--border)", borderRadius: 12, background: "var(--card)", padding: 18 }}>
                   <h3 style={{ fontSize: 14, fontWeight: 700, margin: "0 0 12", color: "var(--text)" }}>More {TOOL_CATEGORY_LABEL[meta.category]} Tools</h3>
               <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>

@@ -4,6 +4,7 @@ import Link from "next/link"
 import { Badge } from "@/components/ui/badge"
 import { PostCard } from "@/components/post/post-card"
 import { Sidebar } from "@/components/layout/Sidebar"
+import { AdSlot } from "@/components/ads/AdSlot"
 import { formatDate } from "@/lib/utils"
 import { SITE_NAME, SITE_URL } from "@/lib/constants"
 import { JsonLd } from "@/components/ui/jsonld"
@@ -100,6 +101,7 @@ export default async function CategoryPage({ params }: Props) {
 
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
         <div className="lg:col-span-3">
+          <AdSlot positionKey="category_top_banner" className="mb-8" />
           {posts && posts.length > 0 ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
               {posts.map((post) => (
