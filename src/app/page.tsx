@@ -270,6 +270,7 @@ export default async function HomePage() {
         <div className="main-layout">
           <div className="content-col">
             <AdSlot positionKey="home_top_banner" />
+            <AdSlot positionKey="home_sticky_top" />
 
             <HeroSection
               featured={featuredPost}
@@ -381,6 +382,8 @@ export default async function HomePage() {
                 Explore All Tools
               </a>
             </div>
+
+            <AdSlot positionKey="home_bottom_banner" />
           </div>
 
           <Sidebar

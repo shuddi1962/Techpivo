@@ -220,6 +220,9 @@ export function AdSlot({ positionKey, className, preview }: AdSlotProps) {
   })()
 
   const sizeBox = designSize
+    ? { maxWidth: designSize.w, height: designSize.h, width: "100%" as const }
+    : { width: "100%" as const }
+  const adCodeBox = designSize
     ? { maxWidth: designSize.w, maxHeight: designSize.h, width: "100%" as const }
     : { width: "100%" as const }
 
@@ -246,8 +249,7 @@ export function AdSlot({ positionKey, className, preview }: AdSlotProps) {
               loop
               playsInline
               preload="metadata"
-              className="w-full h-auto rounded-md"
-              style={designSize ? { maxHeight: designSize.h } : undefined}
+              className="w-full h-full rounded-md object-cover"
               onClick={() => trackCampaignClick(campaign.id)}
               onPlay={() => trackCampaignClick(campaign.id)}
             />
@@ -267,12 +269,12 @@ export function AdSlot({ positionKey, className, preview }: AdSlotProps) {
           {campaign.destination_url ? (
             <a href={preview ? "#" : campaign.destination_url} target="_blank" rel="noopener" onClick={() => trackCampaignClick(campaign.id)}>
               <span className="block mx-auto" style={sizeBox}>
-                <Image src={campaign.ad_image_url} alt={campaign.advertiser_name} width={designSize?.w || 800} height={designSize?.h || 450} className="w-full h-auto object-contain" style={designSize ? { maxHeight: designSize.h } : undefined} />
+                <Image src={campaign.ad_image_url} alt={campaign.advertiser_name} width={designSize?.w || 800} height={designSize?.h || 450} className="w-full h-full object-cover" />
               </span>
             </a>
           ) : (
             <span className="block mx-auto" style={sizeBox}>
-              <Image src={campaign.ad_image_url} alt={campaign.advertiser_name} width={designSize?.w || 800} height={designSize?.h || 450} className="w-full h-auto object-contain" style={designSize ? { maxHeight: designSize.h } : undefined} />
+              <Image src={campaign.ad_image_url} alt={campaign.advertiser_name} width={designSize?.w || 800} height={designSize?.h || 450} className="w-full h-full object-cover" />
             </span>
           )}
         </div>
@@ -287,7 +289,7 @@ export function AdSlot({ positionKey, className, preview }: AdSlotProps) {
               Campaign: {campaign.advertiser_name}
             </span>
           )}
-          <div className="mx-auto" style={sizeBox} dangerouslySetInnerHTML={{ __html: campaign.ad_code }} />
+          <div className="mx-auto" style={adCodeBox} dangerouslySetInnerHTML={{ __html: campaign.ad_code }} />
         </div>
       )
     }
@@ -324,7 +326,7 @@ export function AdSlot({ positionKey, className, preview }: AdSlotProps) {
           Slot: {AD_POSITIONS[positionKey]}
         </span>
         {slotAd?.ad_code && (
-          <div className="mx-auto" style={sizeBox} dangerouslySetInnerHTML={{ __html: slotAd.ad_code }} />
+          <div className="mx-auto" style={adCodeBox} dangerouslySetInnerHTML={{ __html: slotAd.ad_code }} />
         )}
         {campaign ? (
           <div className={slotAd?.ad_code ? "mt-2 border-t pt-2" : "mt-1"}>
