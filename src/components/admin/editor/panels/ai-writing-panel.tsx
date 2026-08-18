@@ -130,8 +130,8 @@ export function AiWritingPanel() {
         twitter_image:      featured,
         quality_score:      a.qualityScore,
         is_breaking:        a.isBreaking,
-        source_name:        source?.name || post.source_name,
-        original_source_url: source?.url || post.original_source_url,
+        source_name:        source?.name || (Array.isArray(a.sources) && a.sources[0]?.title ? a.sources[0].title : post.source_name),
+        original_source_url: source?.url || (Array.isArray(a.sources) && a.sources[0]?.url ? a.sources[0].url : post.original_source_url),
       })
 
       // Automatic polish so the SEO checklist passes from the start:

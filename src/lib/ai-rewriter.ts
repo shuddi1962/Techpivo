@@ -5,6 +5,12 @@ const GEMINI_DAILY_CAP = 100
 const MANUAL_GEMINI_DAILY_CAP = 50
 const GEMINI_RATE_MS = 1000
 
+export interface AISource {
+  url:   string
+  title: string
+  type:  'official' | 'news' | 'documentation' | 'other'
+}
+
 export interface AIArticle {
   headline:          string
   content:           string
@@ -19,6 +25,7 @@ export interface AIArticle {
   quickBrief:        string[]
   faq:               Array<{ question: string; answer: string }>
   namedEntities:     string[]
+  sources:           AISource[]
   qualityScore:      number
   isBreaking:        boolean
   suggestedCategory: string
@@ -166,11 +173,17 @@ WRITING STYLE:
 - Reference specific product names, version numbers, prices, dates
 - Include one comparison or contrast paragraph showing how this differs from alternatives
 
-FAQ — generate exactly 5 questions:
+FAQ — generate exactly 3 questions:
 - Phrased as a real person would type into Google or ask ChatGPT
 - Start with What, How, Why, When, Is, Does, or Can
 - Each answer: 3-4 sentences packed with specific facts, prices, dates
 - Questions must be specific to THIS story, never generic
+
+§25 MASTER CONTENT RULES (MANDATORY):
+- Rule 2 — Search-intent headings: at least 2 H2/H3 headings must be phrased as genuine questions or intent statements (e.g. "How does X work?" not just "X").
+- Rule 3 — Problem solving: if the topic is a trend or product, transform it into practical guidance — a mini-tutorial, troubleshooting tip, configuration note, or technical explainer within the article.
+- Rule 4 — Original value: do not merely summarize the source. Add technical context, implementation details, limitations, tradeoffs, and practical recommendations that a reader cannot get from the source alone.
+- Rule 5 — Source transparency: record every source URL you used in the "sources" JSON field. Distinguish source facts from AI synthesis in the article body (e.g. "According to [Source]..." for facts vs your own analysis).
 
 OUTPUT — valid JSON only. No markdown. No code fences. No preamble.
 {
@@ -198,11 +211,13 @@ OUTPUT — valid JSON only. No markdown. No code fences. No preamble.
   "faq": [
     {"question": "Specific question 1?", "answer": "3-4 sentence factual answer with specifics."},
     {"question": "Specific question 2?", "answer": "3-4 sentence factual answer with specifics."},
-    {"question": "Specific question 3?", "answer": "3-4 sentence factual answer with specifics."},
-    {"question": "Specific question 4?", "answer": "3-4 sentence factual answer with specifics."},
-    {"question": "Specific question 5?", "answer": "3-4 sentence factual answer with specifics."}
+    {"question": "Specific question 3?", "answer": "3-4 sentence factual answer with specifics."}
   ],
   "namedEntities": ["Entity1", "Entity2", "Entity3", "Entity4", "Entity5", "Entity6", "Entity7", "Entity8"],
+  "sources": [
+    {"url": "https://...", "title": "Source title", "type": "official"},
+    {"url": "https://...", "title": "Source title", "type": "news"}
+  ],
   "qualityScore": 85,
   "isBreaking": false,
   "suggestedCategory": "${category}"
@@ -247,6 +262,13 @@ const BANNED_PHRASES = [
   "in the realm of",
   "it is worth noting",
   "this article aims to",
+  "tapestry",
+  "revolutionize",
+  "revolutionary",
+  "navigate the landscape",
+  "in the ever-evolving",
+  "ever-changing landscape",
+  "realm of possibilities",
 ]
 
 const CORRECTIVE_PROMPTS: Record<string, string> = {
@@ -270,6 +292,8 @@ const CORRECTIVE_PROMPTS: Record<string, string> = {
     "Your previous response was rejected because the 'headline' field was missing. Please include a headline.",
   missing_content:
     "Your previous response was rejected because the 'content' field was missing. Please include article content.",
+  headline_too_long:
+    "Your previous response was rejected because the headline was too long (over 20 words). Write a concise headline of 50-70 characters (under 12 words). Return ONLY the corrected full JSON object.",
 }
 
 export function repairJson(str: string): string {
@@ -458,7 +482,7 @@ function validate(raw: string, model: AIArticle['modelUsed']): { article: AIArti
   const rawFaq = p.faq ?? p.questions ?? p.FAQ ?? []
   const faq = Array.isArray(rawFaq)
     ? (rawFaq as Array<any>)
-        .slice(0, 5)
+        .slice(0, 3)
         .map((f: any) => ({
           question: String(f?.question || f?.q || '').trim(),
           answer:   String(f?.answer   || f?.a || '').trim(),
@@ -473,11 +497,28 @@ function validate(raw: string, model: AIArticle['modelUsed']): { article: AIArti
     ? (rawKeyPoints as string[]).slice(0, 5).map(String).filter(k => k.length > 10)
     : []
 
-  if (keyPoints.length < 1) { return { article: null, reason: `keyPoints_too_few:${keyPoints.length}` } }
+  if (keyPoints.length < 2) { return { article: null, reason: `keyPoints_too_few:${keyPoints.length}` } }
 
   const rawQuickBrief = p.quickBrief ?? p.quick_brief ?? []
   const quickBrief = Array.isArray(rawQuickBrief)
     ? (rawQuickBrief as string[]).slice(0, 3).map(String)
+    : []
+
+  // §25 Rule 1 — headline word count cap (reject bloated headlines)
+  const headlineWords = headline.split(/\s+/).filter(Boolean).length
+  if (headlineWords > 20) { return { article: null, reason: `headline_too_long:${headlineWords}` } }
+
+  // §25 Rule 5 — parse sources array
+  const rawSources = p.sources ?? []
+  const sources = Array.isArray(rawSources)
+    ? (rawSources as Array<any>)
+        .slice(0, 10)
+        .map((s: any) => ({
+          url:   String(s?.url || '').trim(),
+          title: String(s?.title || s?.name || '').trim(),
+          type:  (['official','news','documentation','other'].includes(String(s?.type || '')) ? String(s.type) : 'other') as AISource['type'],
+        }))
+        .filter((s: any) => s.url.length > 5 && s.url.startsWith('http'))
     : []
 
   return {
@@ -495,6 +536,7 @@ function validate(raw: string, model: AIArticle['modelUsed']): { article: AIArti
       quickBrief,
       faq,
       namedEntities:     Array.isArray(p.namedEntities) ? (p.namedEntities as string[]).slice(0, 8).map(String) : [],
+      sources,
       qualityScore:      Math.min(100, Math.max(1, Number(p.qualityScore) || 70)),
       isBreaking:        Boolean(p.isBreaking),
       suggestedCategory: String(p.suggestedCategory || 'tech-news'),
@@ -759,6 +801,14 @@ INSTRUCTIONS:
 14. Be specific — avoid vague generalisations
 15. You MUST include at least one heading (<h2> or <h3>) in the content field
 
+§25 MASTER CONTENT RULES (MANDATORY):
+- Rule 1 — Lead with the answer: the first sentence must directly answer the primary user intent. NO fluff. NO generic introductions. Banned phrases: "Delve", "Tapestry", "Revolutionize", "In conclusion", "Furthermore", "Moreover", "Additionally".
+- Rule 2 — Search-intent headings: at least 2 H2/H3 headings must be phrased as genuine questions or intent statements (e.g. "How does X work?" not just "X").
+- Rule 3 — Problem solving: if the topic is a trend or product, transform it into practical guidance — a mini-tutorial, troubleshooting tip, configuration note, or technical explainer within the article.
+- Rule 4 — Original value (Information Gain): do not merely summarize or spin source articles. Add technical context, implementation details, limitations, tradeoffs, and practical recommendations. It must be unique enough for Google to index.
+- Rule 5 — Source transparency: record every source URL you used in the "sources" JSON field. Distinguish source facts vs AI-generated synthesis in the body (e.g. "According to [Source]..." for facts vs your own analysis). Never fabricate citations.
+- Rule 6 — FAQ: end with exactly 3 useful conversational questions and concise answers.
+
 KEY POINTS (separate JSON field):
 - 3 to 5 short strings, each under 25 words, one verified fact each
 
@@ -801,6 +851,10 @@ Return ONLY valid JSON — no markdown, no code blocks, no explanation:
     {"question": "Third question?", "answer": "Direct factual answer."}
   ],
   "namedEntities": ["Entity1", "Entity2", "Entity3"],
+  "sources": [
+    {"url": "https://...", "title": "Source title", "type": "official"},
+    {"url": "https://...", "title": "Source title", "type": "news"}
+  ],
   "qualityScore": 85,
   "isBreaking": false,
   "suggestedCategory": "tech-news"
