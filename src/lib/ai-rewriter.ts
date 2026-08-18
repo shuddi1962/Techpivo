@@ -395,6 +395,17 @@ export function escapeInnerQuotes(str: string): string {
         i++
         continue
       }
+      // Raw control chars inside a string are invalid JSON — escape them
+      // (defense-in-depth: repairJson already handles \n \r \t; this covers
+      // the remaining < 0x20 chars and any that slip past the repair pass).
+      if (ch === '\n') { out += '\\n'; i++; continue }
+      if (ch === '\r') { out += '\\r'; i++; continue }
+      if (ch === '\t') { out += '\\t'; i++; continue }
+      if (ch.charCodeAt(0) < 0x20) {
+        out += '\\u' + ch.charCodeAt(0).toString(16).padStart(4, '0')
+        i++
+        continue
+      }
       out += ch
       i++
       continue
@@ -466,9 +477,13 @@ export function validate(raw: string, model: AIArticle['modelUsed']): { article:
         // 2) unescaped inner quotes (HTML like <img src="x"> inside strings)
         const quotesFixed = escapeInnerQuotes(repaired)
         try { p = JSON.parse(quotesFixed) }
-        catch {
+        catch (e3) {
           const sample = quotesFixed.replace(/\s+/g, ' ').slice(0, 120)
-          return { article: null, reason: `json_parse_fail_after_object_extract:${quotesFixed.length}:${sample}` }
+          // Enrich the reason with the ACTUAL JSON.parse error message so the
+          // user's debug string shows WHY the parse failed (safe: corrective
+          // lookup is CORRECTIVE_PROMPTS[reason] ? reason : reason.split(':')[0]).
+          const errMsg = String((e3 as Error)?.message ?? e3 ?? 'unknown').replace(/[\s:]+/g, ' ').trim().slice(0, 60)
+          return { article: null, reason: `json_parse_fail_after_object_extract:${quotesFixed.length}:${errMsg}:${sample}` }
         }
       }
     }
@@ -683,7 +698,11 @@ async function geminiGrounded(
         contents: [{ role: 'user', parts: [{ text: prompt }] }],
         generationConfig: {
           temperature:       0.45,
-          maxOutputTokens:   8192,
+          // 8192 tokens (~36k chars) truncated long articles mid-JSON — the
+          // corrective retry then regenerated the SAME length and failed 3/3
+          // with json_parse_fail_after_object_extract. 32768 covers the longest
+          // articles with margin (a ~37.5k-char blob is ~9k tokens).
+          maxOutputTokens:   32768,
           ...(useJsonMime
             ? { responseMimeType: 'application/json', responseSchema: ARTICLE_RESPONSE_SCHEMA }
             : {}),
@@ -697,7 +716,7 @@ async function geminiGrounded(
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
-        signal: AbortSignal.timeout(60000),
+        signal: AbortSignal.timeout(120000),
       })
 
       if (!res.ok) {
@@ -739,8 +758,13 @@ async function geminiGrounded(
       // Corrective retry: if validate had a fixable issue, give Gemini a second chance
       lastDebug = `validate:${reason}`
       const finishReason = String(data?.candidates?.[0]?.finishReason || '')
+      // MAX_TOKENS stop (or a raw blob that never closes its final }) means the
+      // article was TRUNCATED mid-generation — retry with the truncation
+      // corrective instead of "fixing" a non-existent content issue (e.g.
+      // faq_too_few reported on half a JSON object).
+      const looksTruncated = !String(raw).trim().endsWith('}')
       const correctiveKey =
-        finishReason === 'MAX_TOKENS'
+        finishReason === 'MAX_TOKENS' || looksTruncated
           ? 'truncated'
           : CORRECTIVE_PROMPTS[reason]
           ? reason
@@ -1152,9 +1176,12 @@ export async function geminiRewriteContent(title: string, content: string): Prom
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           contents: [{ role: "user", parts: [{ text: rewritePrompt }] }],
-          generationConfig: { temperature: 0.5, maxOutputTokens: 4096 },
+          // 4096 tokens + 15s aborted long rewrites mid-generation (same
+          // truncation class as the JSON parse failures) — 16384/120s matches
+          // the main generation path.
+          generationConfig: { temperature: 0.5, maxOutputTokens: 16384 },
         }),
-        signal: AbortSignal.timeout(15000),
+        signal: AbortSignal.timeout(120000),
       })
       if (!res.ok) { console.warn('[Techpivo] Gemini rewrite HTTP', res.status); return content }
       const data = await res.json()

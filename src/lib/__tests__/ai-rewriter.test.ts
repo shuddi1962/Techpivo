@@ -49,6 +49,13 @@ describe("escapeInnerQuotes", () => {
     expect(escapeInnerQuotes(input)).toBe(input)
     expect(JSON.parse(escapeInnerQuotes(input))).toEqual(["hi", "bye"])
   })
+
+  it("escapes raw control characters inside strings (newlines, tabs, low bytes)", () => {
+    const input = '{"content":"line1\nline2\tend\u0001"}'
+    const fixed = escapeInnerQuotes(input)
+    expect(() => JSON.parse(fixed)).not.toThrow()
+    expect(JSON.parse(fixed).content).toBe("line1\nline2\tend\u0001")
+  })
 })
 
 describe("validate", () => {
@@ -66,6 +73,20 @@ describe("validate", () => {
     const result = validate(raw, "gemini-grounded")
     expect(result.article).toBeNull()
     expect(result.reason.startsWith("json_parse_fail_after_object_extract:")).toBe(true)
+  })
+
+  it("enriches the parse-fail reason with the underlying JSON error message", () => {
+    const raw = '{"content":"' + "z".repeat(150) + '" broken}'
+    const result = validate(raw, "gemini-grounded")
+    expect(result.article).toBeNull()
+    expect(result.reason).toMatch(/^json_parse_fail_after_object_extract:\d+:.+:.+$/)
+    expect(result.reason).toContain("JSON at position")
+  })
+
+  it("returns no_json_object_found when the blob never closes", () => {
+    const raw = '{"content":"' + "w".repeat(150)
+    const result = validate(raw, "gemini-grounded")
+    expect(result.reason).toBe("no_json_object_found")
   })
 })
 
