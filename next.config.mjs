@@ -55,6 +55,16 @@ const nextConfig = {
     ],
   },
   async headers() {
+    const securityHeaders = [
+      { key: 'Strict-Transport-Security', value: 'max-age=63072000; includeSubDomains; preload' },
+      { key: 'X-Content-Type-Options', value: 'nosniff' },
+      { key: 'X-Frame-Options', value: 'SAMEORIGIN' },
+      { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
+      { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=(), browsing-topics=(), interest-cohort=()' },
+      { key: 'Cross-Origin-Opener-Policy', value: 'same-origin' },
+      { key: 'Cross-Origin-Resource-Policy', value: 'same-origin' },
+      { key: 'X-DNS-Prefetch-Control', value: 'on' },
+    ]
     return [
       {
         source: '/(.*)',
@@ -68,10 +78,11 @@ const nextConfig = {
               "img-src 'self' data: https: blob:",
               "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
               "font-src 'self' data: https://fonts.gstatic.com",
-              "frame-src 'self' https://*.googletagmanager.com https://googleads.g.doubleclick.net https://*.google.com",
+              "frame-src 'self' https://*.googletagmanager.com https://googleads.g.doubleclick.net https://*.google.com https://www.youtube.com https://www.youtube-nocookie.com",
               "upgrade-insecure-requests",
             ].join('; '),
           },
+          ...securityHeaders,
         ],
       },
     ]

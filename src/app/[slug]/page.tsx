@@ -13,6 +13,7 @@ import { ReadingProgress } from "@/components/post/reading-progress"
 import { ShareButtons } from "@/components/social/share-buttons"
 import { PostComments } from "@/components/post/post-comments"
 import { ViewTracker } from "@/components/post/view-tracker"
+import { sanitizeHtml } from "@/lib/sanitize"
 import { LiveViewCount } from "@/components/post/live-view-count"
 import { SITE_NAME, SITE_URL } from "@/lib/constants"
 import { JsonLd } from "@/components/ui/jsonld"
@@ -287,7 +288,7 @@ export default async function PostPage({ params }: Props) {
                       prose-img:rounded-xl prose-img:shadow-lg
                       prose-li:text-[17px] prose-li:leading-[1.8] prose-li:text-black dark:prose-li:text-[#D1D5DB]
                       prose-hr:border-gray-300 dark:prose-hr:border-gray-700"
-                    dangerouslySetInnerHTML={{ __html: contentParts.before }}
+                    dangerouslySetInnerHTML={{ __html: sanitizeHtml(contentParts.before) }}
                   />
                   <AdSlot positionKey="post_in_content_1" className="my-8" />
                   <div
@@ -304,7 +305,7 @@ export default async function PostPage({ params }: Props) {
                       prose-img:rounded-xl prose-img:shadow-lg
                       prose-li:text-[17px] prose-li:leading-[1.8] prose-li:text-black dark:prose-li:text-[#D1D5DB]
                       prose-hr:border-gray-300 dark:prose-hr:border-gray-700"
-                    dangerouslySetInnerHTML={{ __html: contentParts.after }}
+                    dangerouslySetInnerHTML={{ __html: sanitizeHtml(contentParts.after) }}
                   />
                 </>
               ) : (
@@ -322,7 +323,7 @@ export default async function PostPage({ params }: Props) {
                     prose-img:rounded-xl prose-img:shadow-lg
                     prose-li:text-[17px] prose-li:leading-[1.8] prose-li:text-black dark:prose-li:text-[#D1D5DB]
                     prose-hr:border-gray-300 dark:prose-hr:border-gray-700"
-                  dangerouslySetInnerHTML={{ __html: post.content }}
+                  dangerouslySetInnerHTML={{ __html: sanitizeHtml(post.content) }}
                 />
               )}
             </div>

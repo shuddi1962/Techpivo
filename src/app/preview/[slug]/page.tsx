@@ -2,6 +2,7 @@ import Image from "next/image"
 import { createClient } from "@/lib/supabase/server"
 import { notFound } from "next/navigation"
 import Link from "next/link"
+import { sanitizeHtml } from "@/lib/sanitize"
 
 type Props = { params: { slug: string } }
 
@@ -36,7 +37,7 @@ export default async function PreviewPage({ params }: Props) {
               {draft.featured_image && (
                 <Image src={draft.featured_image} alt="" width={1200} height={675} className="w-full rounded-lg" />
               )}
-              <div dangerouslySetInnerHTML={{ __html: draft.content || "" }} />
+              <div dangerouslySetInnerHTML={{ __html: sanitizeHtml(draft.content || "") }} />
             </article>
           </div>
         </div>
@@ -61,7 +62,7 @@ export default async function PreviewPage({ params }: Props) {
             {post.category?.name && <span>{post.category.name} • </span>}
             {post.reading_time} min read
           </div>
-          <div dangerouslySetInnerHTML={{ __html: post.content || "" }} />
+          <div dangerouslySetInnerHTML={{ __html: sanitizeHtml(post.content || "") }} />
         </article>
       </div>
     </div>
