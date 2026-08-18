@@ -19,12 +19,15 @@ interface PopupCampaign {
 }
 
 const DISMISS_PREFIX = "tp_popup_dismiss_"
+const ROTATE_MS = 8000
 
 export function PopupAd() {
-  const [campaign, setCampaign] = useState<PopupCampaign | null>(null)
+  const [campaigns, setCampaigns] = useState<PopupCampaign[]>([])
+  const [currentIndex, setCurrentIndex] = useState(0)
   const [visible, setVisible] = useState(false)
-  const [dismissed, setDismissed] = useState(false)
   const lastTrackedRef = useRef<string | null>(null)
+
+  const campaign = campaigns.length > 0 ? campaigns[currentIndex % campaigns.length] : null
 
   const load = useCallback(async () => {
     const supabase = createClient()
@@ -38,20 +41,13 @@ export function PopupAd() {
       .in("status", ["approved", "live"])
       .gte("end_date", today)
       .order("created_at", { ascending: false })
-      .limit(1)
-      .maybeSingle()
+      .limit(20)
 
-    if (!data || data.media_type === "video") {
-      setCampaign(null)
-      setVisible(false)
-      return
-    }
-    if (localStorage.getItem(DISMISS_PREFIX + data.id)) {
-      setDismissed(true)
-      return
-    }
-    setDismissed(false)
-    setCampaign(data)
+    const eligible = (data || []).filter((c) => c.media_type !== "video")
+    const notDismissed = eligible.filter((c) => !localStorage.getItem(DISMISS_PREFIX + c.id))
+    setCampaigns(notDismissed)
+    setCurrentIndex(0)
+    if (notDismissed.length === 0) setVisible(false)
   }, [])
 
   useEffect(() => {
@@ -69,10 +65,18 @@ export function PopupAd() {
   }, [load])
 
   useEffect(() => {
-    if (!campaign || dismissed || visible) return
+    if (!campaign || visible) return
     const t = window.setTimeout(() => setVisible(true), 6000)
     return () => window.clearTimeout(t)
-  }, [campaign, dismissed, visible])
+  }, [campaign, visible])
+
+  useEffect(() => {
+    if (campaigns.length <= 1) return
+    const t = window.setInterval(() => {
+      setCurrentIndex((prev) => (prev + 1) % campaigns.length)
+    }, ROTATE_MS)
+    return () => window.clearInterval(t)
+  }, [campaigns.length])
 
   useEffect(() => {
     if (!visible || !campaign || lastTrackedRef.current === campaign.id) return
@@ -82,11 +86,14 @@ export function PopupAd() {
     supabase.rpc("increment_campaign_daily_stats", { p_campaign_id: campaign.id, p_kind: "impressions" }).then()
   }, [visible, campaign])
 
-  if (!campaign || !visible || dismissed) return null
+  if (!campaign || !visible) return null
 
   const dismiss = () => {
     localStorage.setItem(DISMISS_PREFIX + campaign.id, new Date().toISOString())
-    setDismissed(true)
+    const remaining = campaigns.filter((c) => c.id !== campaign.id)
+    setCampaigns(remaining)
+    setCurrentIndex(0)
+    if (remaining.length === 0) setVisible(false)
   }
 
   const trackClick = () => {
@@ -127,6 +134,16 @@ export function PopupAd() {
         <p className="text-sm font-semibold leading-snug">{campaign.headline || campaign.advertiser_name}</p>
         {campaign.description && (
           <p className="mt-1 text-xs text-muted-foreground line-clamp-2">{campaign.description}</p>
+        )}
+        {campaigns.length > 1 && (
+          <div className="mt-2 flex items-center justify-center gap-1">
+            {campaigns.map((c, i) => (
+              <span
+                key={c.id}
+                className={`h-1.5 rounded-full transition-all ${i === currentIndex % campaigns.length ? "w-4 bg-primary" : "w-1.5 bg-muted-foreground/30"}`}
+              />
+            ))}
+          </div>
         )}
         {campaign.destination_url && (
           <a
