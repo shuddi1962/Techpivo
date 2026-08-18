@@ -360,6 +360,164 @@ Please reach out to us with any questions or concerns.
     metaDescription: "Techpivo's Disclaimer covering affiliate relationships, advertising, paid content, and professional advice.",
   },
   {
+    slug: "editorial-policy",
+    label: "Editorial Policy",
+    path: "/editorial-policy",
+    icon: "📋",
+    hero: {
+      title: "Editorial Policy",
+      subtitle: "How Techpivo sources, writes, verifies, and publishes content — including our use of AI assistance.",
+    },
+    contentMd: `## Our Editorial Mission
+
+Techpivo is committed to publishing accurate, useful, and original technology content. Our editorial process is designed to serve readers first — not search engines, advertisers, or algorithms.
+
+## Content Standards
+
+### Accuracy
+
+Every factual claim is verified against authoritative sources before publication. We prioritize official announcements, product documentation, and primary sources over secondary summaries.
+
+### Originality
+
+We do not rephrase or spin existing articles. Every piece must add informational value — technical context, analysis, implementation details, or practical guidance that readers cannot find elsewhere.
+
+### Transparency
+
+Sponsored content is clearly labelled. Affiliate relationships are disclosed. When we use AI tools to assist with research or drafting, the final published content reflects human editorial judgment.
+
+## Use of AI Assistance
+
+Techpivo uses AI tools (including Google Gemini) to assist with:
+
+- **Research**: gathering and organizing information from multiple sources
+- **Drafting**: generating initial content structures and drafts
+- **SEO optimization**: suggesting keywords, meta descriptions, and structural improvements
+
+### What AI Does Not Do
+
+- AI does not decide what to publish. Human editors make all publication decisions.
+- AI does not verify facts. Human editors confirm all claims against primary sources.
+- AI does not replace editorial judgment. Every article is reviewed, edited, and approved by a human editor before publication.
+
+### Quality Gate
+
+AI-generated drafts must pass the following checks before they can be published:
+
+1. **Minimum useful length** — content must be substantive, not padded
+2. **Duplicate detection** — articles too similar to existing content are rejected
+3. **Source verification** — cited sources must be real and accessible
+4. **Readability** — content must be clear and well-structured
+5. **Original analysis** — content must contribute information gain, not merely summarize
+
+Articles that fail these checks remain as drafts and are not published.
+
+## Content Types
+
+| Type | Description | Review Level |
+|------|-------------|--------------|
+| Breaking News | Fast, factual reporting of current events | Editor review |
+| Tutorials | Step-by-step educational guides | Editor + technical review |
+| Reviews | Hands-on product or software evaluations | Editor review |
+| Comparisons | Side-by-side analysis of products or technologies | Editor review |
+| Opinion | Clearly labeled editorial perspectives | Editor-in-Chief review |
+
+## Sourcing
+
+We attribute information to its original source whenever possible. When we reference official documentation, company blogs, or press releases, we link directly to them.
+
+We do not fabricate citations, sources, or quotes.
+
+## Corrections
+
+When we identify an error in a published article, we correct it promptly and transparently. See our [Corrections Policy](/corrections-policy) for details.
+
+## Independence
+
+Our editorial team operates independently of our advertising and sponsorship teams. Advertisers and sponsors have no influence over editorial content, reviews, or ratings.
+
+## Contact
+
+Questions about our editorial standards? [Contact us](/contact).`,
+    metaTitle: "Editorial Policy – Techpivo",
+    metaDescription: "Techpivo's Editorial Policy covering content standards, AI assistance disclosure, sourcing, fact-checking, and editorial independence.",
+  },
+  {
+    slug: "corrections-policy",
+    label: "Corrections Policy",
+    path: "/corrections-policy",
+    icon: "✏️",
+    hero: {
+      title: "Corrections Policy",
+      subtitle: "How Techpivo handles errors, updates, and corrections in published content.",
+    },
+    contentMd: `## Our Commitment to Accuracy
+
+Techpivo is committed to publishing accurate information. When we make a mistake, we correct it promptly and transparently.
+
+## How to Report an Error
+
+If you spot an error in any of our articles, please let us know:
+
+- **Email**: [ corrections@techpivo.com ](mailto:corrections@techpivo.com)
+- **Contact form**: [Contact Us](/contact)
+
+Please include the article URL, the specific error, and a source confirming the correct information if available.
+
+## Correction Process
+
+### Step 1: Verification
+
+When an error is reported (or discovered internally), our editorial team verifies the claim against authoritative sources before making any change.
+
+### Step 2: Correction
+
+Once confirmed, the article is updated with the correct information. The correction is noted at the bottom of the article.
+
+### Step 3: Transparency
+
+For significant factual errors (not typos or minor formatting), we add a correction note with:
+
+- The date of the correction
+- A brief description of what was changed
+- The reason for the change
+
+### Example Correction Note
+
+> **Correction (January 15, 2026)**: An earlier version of this article incorrectly stated that the phone supports 8K video recording. It supports 4K recording. We have updated the article accordingly.
+
+## Types of Changes
+
+| Change Type | How We Handle It |
+|-------------|-----------------|
+| Factual error | Corrected immediately + correction note added |
+| Outdated information | Updated + dateModified refreshed |
+| Typo or formatting | Fixed silently (no correction note) |
+| New information available | Article updated + dateModified refreshed |
+| Article retraction | Article removed + retraction notice published |
+
+## Update vs Correction
+
+- **Update**: Adding new information to keep an article current. The dateModified timestamp is refreshed. No correction note is needed.
+- **Correction**: Fixing a factual error. A correction note is added at the bottom of the article.
+
+We do not update the dateModified timestamp for minor edits (typos, formatting) that do not change the substance of the article.
+
+## Retractions
+
+In rare cases where an article is fundamentally inaccurate or was based on false information, we may retract it entirely. A retraction notice replaces the original article content, explaining why the article was removed.
+
+## Editorial Accountability
+
+All corrections are logged internally. Editors who repeatedly publish inaccurate content are subject to additional review and training.
+
+## Contact
+
+Questions about our corrections process? [Contact us](/contact).`,
+    metaTitle: "Corrections Policy – Techpivo",
+    metaDescription: "Techpivo's Corrections Policy explaining how we handle errors, updates, and corrections in published content with transparency.",
+  },
+  {
     slug: "advertise",
     label: "Advertise",
     path: "/advertise",
