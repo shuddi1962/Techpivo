@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { revalidatePath } from "next/cache"
 import { createClient } from "@/lib/supabase/admin"
 import { requireAdminRole } from "@/lib/admin-auth"
+import { auditLog } from "@/lib/audit-log"
 
 export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
@@ -17,6 +18,8 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
+
+  void auditLog({ user_id: auth.user.id, action: "post_delete", entity_type: "post", entity_id: id, details: { slug: post?.slug, status: post?.status } })
 
   if (post?.slug) {
     revalidatePath("/")

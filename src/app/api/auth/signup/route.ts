@@ -3,11 +3,14 @@ import { createServerClient } from "@supabase/ssr"
 import { SITE_URL } from "@/lib/constants"
 import { sendBrandedEmail } from "@/lib/email"
 import { isSameOrigin } from "@/lib/csrf"
+import { auditLog } from "@/lib/audit-log"
 
 export async function POST(request: NextRequest) {
   if (!isSameOrigin(request)) {
     return NextResponse.json({ error: "Cross-origin request blocked" }, { status: 403 })
   }
+  const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || null
+  const ua = request.headers.get("user-agent") || null
   const body = await request.json().catch(() => null)
   if (!body || typeof body.email !== "string" || typeof body.password !== "string") {
     return NextResponse.json({ error: "Email and password are required" }, { status: 400 })
@@ -39,6 +42,7 @@ export async function POST(request: NextRequest) {
   }
 
   if (data.user) {
+    void auditLog({ user_id: data.user.id, action: "signup", entity_type: "auth", details: { email }, ip_address: ip, user_agent: ua })
     const { error: profileError } = await supabase.from("profiles").insert({
       id: data.user.id,
       full_name: fullName,

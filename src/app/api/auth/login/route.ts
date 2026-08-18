@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { createServerClient } from "@supabase/ssr"
 import { checkRateLimit, resetRateLimit } from "@/lib/rate-limiter"
 import { isSameOrigin } from "@/lib/csrf"
+import { auditLog } from "@/lib/audit-log"
 
 export async function POST(request: NextRequest) {
   if (!isSameOrigin(request)) {
@@ -9,6 +10,7 @@ export async function POST(request: NextRequest) {
   }
   const forwarded = request.headers.get("x-forwarded-for")
   const ip = forwarded?.split(",")[0]?.trim() || "127.0.0.1"
+  const ua = request.headers.get("user-agent") || null
   const key = `login:${ip}`
 
   const { allowed, cooldown } = checkRateLimit(key)
@@ -35,11 +37,13 @@ export async function POST(request: NextRequest) {
     }
   )
 
-  const { error } = await supabase.auth.signInWithPassword({ email, password })
+  const { data, error } = await supabase.auth.signInWithPassword({ email, password })
   if (error) {
+    void auditLog({ action: "login_failed", entity_type: "auth", details: { email, reason: error.message }, ip_address: ip, user_agent: ua })
     return NextResponse.json({ error: error.message }, { status: 401 })
   }
 
   resetRateLimit(key)
+  void auditLog({ user_id: data.user?.id, action: "login", entity_type: "auth", ip_address: ip, user_agent: ua })
   return response
 }

@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/admin"
 import { createClient as createSessionClient } from "@/lib/supabase/server"
 import { checkRateLimit, clientIp, RATE_LIMITS } from "@/lib/rate-limiter"
 import { isSameOrigin } from "@/lib/csrf"
+import { auditLog } from "@/lib/audit-log"
 
 const ALLOWED_MIME = new Set([
   "image/jpeg",
@@ -106,6 +107,8 @@ export async function POST(req: NextRequest) {
       mimetype: mime,
       size: file.size,
     })
+
+    void auditLog({ user_id: user.id, action: "file_upload", entity_type: "media", details: { name: file.name, path: fileName, size: file.size, mime }, ip_address: ip })
 
     return NextResponse.json({ url: publicUrl })
   } catch (error) {
