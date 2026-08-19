@@ -729,8 +729,16 @@ async function geminiGrounded(
           continue
         }
         if (attempt < maxRetries && (res.status === 429 || res.status === 503)) {
-          console.warn(`[Gemini retry ${attempt + 1}] HTTP ${res.status}`)
-          await new Promise(r => setTimeout(r, 2000))
+          // Honor Google's Retry-After when present (free tier 429s usually
+          // carry one); fall back to exponential backoff (2s, 4s) otherwise.
+          const rawRetryAfter = res.headers.get('retry-after')
+          let waitMs = 2000 * Math.pow(2, attempt)
+          if (rawRetryAfter) {
+            const secs = parseInt(rawRetryAfter, 10)
+            if (!Number.isNaN(secs)) waitMs = Math.max(1000, Math.min(secs * 1000, 60000))
+          }
+          console.warn(`[Gemini retry ${attempt + 1}] HTTP ${res.status} — waiting ${waitMs}ms${rawRetryAfter ? ` (Retry-After: ${rawRetryAfter}s)` : ''}`)
+          await new Promise(r => setTimeout(r, waitMs))
           continue
         }
         return { article: null, debug: `http_${res.status}:${errText.slice(0, 150)}` }
