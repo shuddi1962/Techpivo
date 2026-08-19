@@ -2,14 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { checkRateLimit, clientIp, RATE_LIMITS } from '@/lib/rate-limiter';
 import { isSameOrigin } from '@/lib/csrf';
-
-const PROVIDERS = [
-  { id: 'google', name: 'Google', icon: '🔵' },
-  { id: 'github', name: 'GitHub', icon: '⚫' },
-  { id: 'twitter', name: 'X (Twitter)', icon: '🐦' },
-];
-
-const VALID_PROVIDER_IDS = new Set(PROVIDERS.map(p => p.id));
+import { SOCIAL_PROVIDERS, VALID_PROVIDER_IDS } from '@/lib/social-providers';
 
 export async function GET() {
   const supabase = await createClient();
@@ -23,8 +16,9 @@ export async function GET() {
     .single();
 
   const socialLinks = (profile?.social_links || {}) as Record<string, string>;
-  const accounts = PROVIDERS.map(p => ({
-    ...p,
+  const accounts = SOCIAL_PROVIDERS.map(p => ({
+    id: p.id,
+    name: p.name,
     connected: !!socialLinks[p.id],
     url: socialLinks[p.id] || null,
   }));

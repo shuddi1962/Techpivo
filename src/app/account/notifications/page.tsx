@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Bell, Mail, MessageSquare, Heart, UserPlus, Trophy, BookOpen, Settings, Check } from 'lucide-react';
+import { createClient } from '@/lib/supabase/client';
 
 export default function NotificationsPage() {
   const [notifications, setNotifications] = useState<any[]>([]);
@@ -11,19 +12,35 @@ export default function NotificationsPage() {
   const [preferences, setPreferences] = useState<Record<string, boolean>>({});
   const [saving, setSaving] = useState<string | null>(null);
 
-  const load = () => {
-    setLoading(true);
+  const load = (quiet = false) => {
+    if (!quiet) setLoading(true);
     fetch('/api/community/notifications')
       .then(r => r.json())
       .then(d => {
         setNotifications(d.notifications || []);
         if (d.preferences) setPreferences(d.preferences);
-        setLoading(false);
+        if (!quiet) setLoading(false);
       })
-      .catch(() => setLoading(false));
+      .catch(() => { if (!quiet) setLoading(false); });
   };
 
-  useEffect(() => { load() }, []);
+  useEffect(() => { load(); }, []);
+
+  useEffect(() => {
+    const client = createClient();
+    const channel = client
+      .channel(`account_notifications_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'user_notifications' }, () => load(true))
+      .subscribe();
+    const interval = setInterval(() => load(true), 30000);
+    const onFocus = () => load(true);
+    window.addEventListener('focus', onFocus);
+    return () => {
+      client.removeChannel(channel);
+      clearInterval(interval);
+      window.removeEventListener('focus', onFocus);
+    };
+  }, []);
 
   const togglePref = async (key: string) => {
     const next = { ...preferences, [key]: !preferences[key] };

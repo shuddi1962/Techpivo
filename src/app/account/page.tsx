@@ -7,13 +7,18 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import Image from 'next/image';
-import { User, Save, Camera, MapPin, Globe, Calendar, Flame, Star, Trophy, Target } from 'lucide-react';
+import Link from 'next/link';
+import { User, Save, Camera, MapPin, Globe, Link2, CheckCircle2 } from 'lucide-react';
+import { SOCIAL_PROVIDERS } from '@/lib/social-providers';
+import BrandIcon from '@/lib/social-icons';
 
 export default function AccountPage() {
   const [profile, setProfile] = useState<any>(null);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [avatarEditing, setAvatarEditing] = useState(false);
+  const [avatarDraft, setAvatarDraft] = useState('');
 
   useEffect(() => {
     fetch('/api/community/profile')
@@ -111,19 +116,39 @@ export default function AccountPage() {
               <p className="text-sm text-muted-foreground mb-2">
                 Upload a profile photo to personalize your account. Click the button to change.
               </p>
-              <div className="flex gap-2">
-                <Button variant="outline" size="sm" onClick={() => {
-                  const url = prompt('Enter image URL for your avatar:');
-                  if (url) setProfile({ ...profile, avatar_url: url });
-                }}>
-                  <Camera className="h-4 w-4 mr-1" /> Upload Photo
-                </Button>
-                {profile?.avatar_url && (
-                  <Button variant="ghost" size="sm" onClick={() => setProfile({ ...profile, avatar_url: null })}>
-                    Remove
+              {avatarEditing ? (
+                <div className="space-y-2">
+                  <div className="flex gap-2">
+                    <Input
+                      value={avatarDraft}
+                      onChange={e => setAvatarDraft(e.target.value)}
+                      placeholder="https://example.com/avatar.jpg"
+                      className="max-w-sm"
+                    />
+                    <Button size="sm" onClick={() => {
+                      if (avatarDraft.trim()) setProfile({ ...profile, avatar_url: avatarDraft.trim() });
+                      setAvatarEditing(false);
+                    }}>
+                      Apply
+                    </Button>
+                    <Button variant="ghost" size="sm" onClick={() => { setAvatarEditing(false); setAvatarDraft(''); }}>
+                      Cancel
+                    </Button>
+                  </div>
+                  <p className="text-xs text-muted-foreground">Paste a direct image URL, or pick one from the media library.</p>
+                </div>
+              ) : (
+                <div className="flex gap-2">
+                  <Button variant="outline" size="sm" onClick={() => { setAvatarDraft(profile?.avatar_url || ''); setAvatarEditing(true); }}>
+                    <Camera className="h-4 w-4 mr-1" /> Upload Photo
                   </Button>
-                )}
-              </div>
+                  {profile?.avatar_url && (
+                    <Button variant="ghost" size="sm" onClick={() => setProfile({ ...profile, avatar_url: null })}>
+                      Remove
+                    </Button>
+                  )}
+                </div>
+              )}
             </div>
           </div>
         </CardContent>
@@ -202,26 +227,56 @@ export default function AccountPage() {
         </CardContent>
       </Card>
 
-      {/* Social Links */}
+      {/* Social Profiles */}
       <Card>
         <CardHeader>
-          <CardTitle>Social Links</CardTitle>
-          <CardDescription>Connect your social profiles</CardDescription>
+          <CardTitle className="flex items-center gap-2">
+            <Link2 className="h-5 w-5" /> Social Profiles
+          </CardTitle>
+          <CardDescription>Your linked social profiles appear on your public profile</CardDescription>
         </CardHeader>
-        <CardContent className="space-y-3">
-          {['twitter', 'github', 'linkedin', 'youtube', 'facebook', 'instagram'].map(platform => (
-            <div key={platform}>
-              <label className="text-sm font-medium mb-1.5 block capitalize">{platform}</label>
-              <Input
-                value={profile?.social_links?.[platform] || ''}
-                onChange={e => setProfile({
-                  ...profile,
-                  social_links: { ...(profile?.social_links || {}), [platform]: e.target.value }
-                })}
-                placeholder={`https://${platform}.com/yourusername`}
-              />
-            </div>
-          ))}
+        <CardContent>
+          <div className="space-y-2">
+            {SOCIAL_PROVIDERS.map(provider => {
+              const url = profile?.social_links?.[provider.id];
+              return (
+                <div key={provider.id} className="flex items-center justify-between p-3 rounded-lg bg-muted/30">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <span
+                      className="flex items-center justify-center h-8 w-8 rounded-lg text-white shrink-0"
+                      style={{ backgroundColor: provider.brand || '#333' }}
+                    >
+                      <BrandIcon id={provider.id} className="h-4 w-4" />
+                    </span>
+                    <div className="min-w-0">
+                      <div className="text-sm font-medium">{provider.name}</div>
+                      {url ? (
+                        <a href={url} target="_blank" rel="noopener noreferrer" className="text-xs text-muted-foreground hover:text-primary truncate block max-w-[240px]">
+                          {url.replace(/^https?:\/\//, '')}
+                        </a>
+                      ) : (
+                        <div className="text-xs text-muted-foreground">Not connected</div>
+                      )}
+                    </div>
+                  </div>
+                  {url ? (
+                    <Badge variant="outline" className="text-green-600 border-green-500/30 bg-green-500/10 shrink-0">
+                      <CheckCircle2 className="h-3 w-3 mr-1" /> Connected
+                    </Badge>
+                  ) : (
+                    <Badge variant="outline" className="text-muted-foreground shrink-0">Not connected</Badge>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+          <div className="mt-4">
+            <Link href="/account/connected-accounts">
+              <Button variant="outline" size="sm">
+                <Link2 className="h-4 w-4 mr-1" /> Manage social profiles
+              </Button>
+            </Link>
+          </div>
         </CardContent>
       </Card>
 

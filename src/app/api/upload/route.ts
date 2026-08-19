@@ -46,19 +46,11 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Too many uploads. Try again later." }, { status: 429 })
   }
 
-  // Authenticated uploads only (post editor + media library are admin/author tools)
+  // Any signed-in user may upload (avatars, forum covers, ad creatives, editor media)
   const session = await createSessionClient()
   const { data: { user } } = await session.auth.getUser()
   if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-  }
-  const { data: profile } = await session
-    .from("profiles")
-    .select("role")
-    .eq("id", user.id)
-    .single()
-  if (!profile || !["admin", "editor", "author"].includes(profile.role)) {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 })
   }
 
   try {
@@ -84,7 +76,7 @@ export async function POST(req: NextRequest) {
     const supabase = createClient()
     const ext =
       mime === "image/jpeg" ? "jpg" : mime === "image/png" ? "png" : mime === "image/gif" ? "gif" : mime === "image/webp" ? "webp" : "avif"
-    const fileName = `uploads/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`
+    const fileName = `uploads/${user.id}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`
 
     const { error } = await supabase.storage
       .from("media")

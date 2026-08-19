@@ -8,6 +8,8 @@ import FollowButton from '@/components/follow-button';
 import { getLevelForXP, getRankTitle, BADGES } from '@/lib/community-utils';
 import { createClient } from '@/lib/supabase/server';
 import { MapPin, Globe, Calendar, Star, Users, BookOpen, MessageSquare, Trophy, Target, ArrowLeft } from 'lucide-react';
+import { SOCIAL_PROVIDERS } from '@/lib/social-providers';
+import BrandIcon from '@/lib/social-icons';
 import type { Metadata } from 'next/types';
 import { SITE_URL } from '@/lib/constants';
 
@@ -81,6 +83,11 @@ export default async function PublicProfilePage({ params }: { params: Promise<{ 
     );
   }
 
+  const socialLinks = (profile.social_links || {}) as Record<string, string>;
+  const connectedSocials = SOCIAL_PROVIDERS
+    .filter(p => !!socialLinks[p.id])
+    .map(p => ({ id: p.id, name: p.name, url: socialLinks[p.id] as string, brand: p.brand }));
+
   const levelInfo = getLevelForXP(profile.xp || 0);
   interface BadgeInfo { id: string; name: string; icon: string; description: string }
   const earnedBadges: BadgeInfo[] = ((profile.badges || [])
@@ -119,6 +126,20 @@ export default async function PublicProfilePage({ params }: { params: Promise<{ 
                 <a href={profile.website} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 hover:text-primary">
                   <Globe className="h-3 w-3" /> {profile.website.replace(/^https?:\/\//, '')}
                 </a>
+              )}
+              {connectedSocials.length > 0 && (
+                <span className="flex items-center gap-1.5">
+                  {connectedSocials.map(s => (
+                    <a key={s.id} href={s.url} target="_blank" rel="noopener noreferrer" title={s.name} aria-label={s.name}>
+                      <span
+                        className="flex items-center justify-center h-6 w-6 rounded-md text-white transition-transform hover:scale-110"
+                        style={{ backgroundColor: s.brand || '#333' }}
+                      >
+                        <BrandIcon id={s.id} className="h-3.5 w-3.5" />
+                      </span>
+                    </a>
+                  ))}
+                </span>
               )}
               <span className="flex items-center gap-1"><Calendar className="h-3 w-3" /> Joined {new Date(profile.created_at).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}</span>
             </div>
