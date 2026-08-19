@@ -1,6 +1,6 @@
 import { createClient } from '@/lib/supabase/admin'
 import { findDuplicatePost, type DuplicatePost } from '@/lib/duplicate-check'
-import { GEMINI_MODEL_DEFAULT, getGeminiModel, normalizeGeminiModel } from '@/lib/gemini-model'
+import { GEMINI_MODEL_DEFAULT, getGeminiModel, geminiModelOrder, normalizeGeminiModel } from '@/lib/gemini-model'
 
 const GEMINI_DAILY_CAP = 100
 const MANUAL_GEMINI_DAILY_CAP = 50
@@ -732,120 +732,137 @@ async function geminiGrounded(
 
   const maxRetries = 2
   let lastDebug = ''
-  let useJsonMime = true
-  const geminiModel = await resolveGeminiModel()
-  for (let attempt = 0; attempt <= maxRetries; attempt++) {
-    try {
-      const url = `https://generativelanguage.googleapis.com/v1beta/models/${geminiModel}:generateContent?key=${process.env.GEMINI_API_KEY}`
-      const body: Record<string, unknown> = {
-        contents: [{ role: 'user', parts: [{ text: prompt }] }],
-        generationConfig: {
-          temperature:       0.45,
-          // 8192 tokens (~36k chars) truncated long articles mid-JSON — the
-          // corrective retry then regenerated the SAME length and failed 3/3
-          // with json_parse_fail_after_object_extract. 16384 (~65k chars)
-          // covers any article with large margin while halving the per-minute
-          // output-token burn that trips Google's free-tier TPM limit on
-          // back-to-back writes (was 32768).
-          maxOutputTokens:   16384,
-          ...(useJsonMime
-            ? { responseMimeType: 'application/json', responseSchema: ARTICLE_RESPONSE_SCHEMA }
-            : {}),
-        },
-        tools: [
-          { googleSearch: {} },
-        ],
-      }
-
-      const res = await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-        signal: AbortSignal.timeout(120000),
-      })
-
-      if (!res.ok) {
-        const errText = await res.text().catch(() => '')
-        // Some Gemini builds reject JSON mime together with googleSearch —
-        // retry once without the mime type instead of failing hard.
-        if (useJsonMime && /response[_ ]?mime|mime[_ ]?type|application\/json|schema/i.test(errText) && attempt < maxRetries) {
-          console.warn('[Gemini] JSON mime rejected with googleSearch — retrying without responseMimeType')
-          useJsonMime = false
-          continue
+  // Automatic model rotation: if the primary model 404s (not available to this
+  // key) or 429s (free-tier daily quota exhausted), fall through the chain
+  // (flash → flash-lite → 2.0-flash → pro) instead of failing the write.
+  const models = geminiModelOrder(await resolveGeminiModel())
+  for (let mi = 0; mi < models.length; mi++) {
+    const geminiModel = models[mi]
+    let useJsonMime = true
+    for (let attempt = 0; attempt <= maxRetries; attempt++) {
+      try {
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/${geminiModel}:generateContent?key=${process.env.GEMINI_API_KEY}`
+        const body: Record<string, unknown> = {
+          contents: [{ role: 'user', parts: [{ text: prompt }] }],
+          generationConfig: {
+            temperature:       0.45,
+            // 8192 tokens (~36k chars) truncated long articles mid-JSON — the
+            // corrective retry then regenerated the SAME length and failed 3/3
+            // with json_parse_fail_after_object_extract. 16384 (~65k chars)
+            // covers any article with large margin while halving the per-minute
+            // output-token burn that trips Google's free-tier TPM limit on
+            // back-to-back writes (was 32768).
+            maxOutputTokens:   16384,
+            ...(useJsonMime
+              ? { responseMimeType: 'application/json', responseSchema: ARTICLE_RESPONSE_SCHEMA }
+              : {}),
+          },
+          tools: [
+            { googleSearch: {} },
+          ],
         }
-        if (attempt < maxRetries && (res.status === 429 || res.status === 503)) {
-          // Honor Google's Retry-After when present (free tier 429s usually
-          // carry one); fall back to exponential backoff (2s, 4s) otherwise.
-          const rawRetryAfter = res.headers.get('retry-after')
-          let waitMs = 2000 * Math.pow(2, attempt)
-          if (rawRetryAfter) {
-            const secs = parseInt(rawRetryAfter, 10)
-            if (!Number.isNaN(secs)) waitMs = Math.max(1000, Math.min(secs * 1000, 60000))
+
+        const res = await fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+          signal: AbortSignal.timeout(120000),
+        })
+
+        if (!res.ok) {
+          const errText = await res.text().catch(() => '')
+          // Model no longer available to this key (404) or free-tier quota
+          // exhausted (429) — rotate to the next model in the chain.
+          const modelUnavailable = res.status === 404 && /no longer available|not found|does not exist|not accessible|not supported/i.test(errText)
+          if (mi < models.length - 1 && (modelUnavailable || res.status === 429)) {
+            console.warn(`[Gemini model ${mi + 1}/${models.length}] ${geminiModel} HTTP ${res.status} — switching to ${models[mi + 1]}`)
+            lastDebug = `http_${res.status}:model_switch:${geminiModel}`
+            break
           }
-          console.warn(`[Gemini retry ${attempt + 1}] HTTP ${res.status} — waiting ${waitMs}ms${rawRetryAfter ? ` (Retry-After: ${rawRetryAfter}s)` : ''}`)
-          await new Promise(r => setTimeout(r, waitMs))
+          // Some Gemini builds reject JSON mime together with googleSearch —
+          // retry once without the mime type instead of failing hard.
+          if (useJsonMime && /response[_ ]?mime|mime[_ ]?type|application\/json|schema/i.test(errText) && attempt < maxRetries) {
+            console.warn('[Gemini] JSON mime rejected with googleSearch — retrying without responseMimeType')
+            useJsonMime = false
+            continue
+          }
+          if (attempt < maxRetries && (res.status === 429 || res.status === 503)) {
+            // Honor Google's Retry-After when present (free tier 429s usually
+            // carry one); fall back to exponential backoff (2s, 4s) otherwise.
+            const rawRetryAfter = res.headers.get('retry-after')
+            let waitMs = 2000 * Math.pow(2, attempt)
+            if (rawRetryAfter) {
+              const secs = parseInt(rawRetryAfter, 10)
+              if (!Number.isNaN(secs)) waitMs = Math.max(1000, Math.min(secs * 1000, 60000))
+            }
+            console.warn(`[Gemini retry ${attempt + 1}] HTTP ${res.status} — waiting ${waitMs}ms${rawRetryAfter ? ` (Retry-After: ${rawRetryAfter}s)` : ''}`)
+            await new Promise(r => setTimeout(r, waitMs))
+            continue
+          }
+          if (res.status === 429) {
+            // Free-tier per-minute window exhausted — open the 60s cooldown so
+            // the NEXT write skips immediately instead of failing again.
+            lastGemini429At = Date.now()
+            return { article: null, debug: `http_429:${errText.slice(0, 150)}` }
+          }
+          if (res.status === 404 && mi === models.length - 1) {
+            return { article: null, debug: `http_404:${errText.slice(0, 150)}` }
+          }
+          return { article: null, debug: `http_${res.status}:${errText.slice(0, 150)}` }
+        }
+
+        const data = await res.json()
+        // With googleSearch grounding the model can emit multiple parts —
+        // join ALL text parts so we never lose half the article.
+        const raw = (data?.candidates?.[0]?.content?.parts || [])
+          .map((p: any) => p?.text || '')
+          .join('')
+        if (!raw || raw.length < 100) {
+          const reason = data?.candidates?.[0]?.finishReason || 'NO_CANDIDATE'
+          return { article: null, debug: `empty:${reason}/len=${raw.length}` }
+        }
+
+        const { article, reason } = validate(raw, 'gemini-grounded')
+
+        if (article) {
+          await logGeminiUsage(article.headline, usedFor)
+          console.log(`[✓ Gemini+Search ${todayCount + 1}/${cap}] ${article.headline.slice(0, 60)} (${usedFor})`)
+          return { article, debug: 'ok' }
+        }
+
+        // Corrective retry: if validate had a fixable issue, give Gemini a second chance
+        lastDebug = `validate:${reason}`
+        const finishReason = String(data?.candidates?.[0]?.finishReason || '')
+        // MAX_TOKENS stop (or a raw blob that never closes its final }) means the
+        // article was TRUNCATED mid-generation — retry with the truncation
+        // corrective instead of "fixing" a non-existent content issue (e.g.
+        // faq_too_few reported on half a JSON object).
+        const looksTruncated = !String(raw).trim().endsWith('}')
+        const correctiveKey =
+          finishReason === 'MAX_TOKENS' || looksTruncated
+            ? 'truncated'
+            : CORRECTIVE_PROMPTS[reason]
+            ? reason
+            : String(reason).split(':')[0]
+        const corrective = CORRECTIVE_PROMPTS[correctiveKey]
+        if (corrective && attempt < maxRetries) {
+          console.warn(`[Gemini corrective ${attempt + 1}/${maxRetries}] ${correctiveKey} (${reason}) — retrying`)
+          prompt = prompt + '\n\n⚠️ CORRECTION: ' + corrective
+          await new Promise(r => setTimeout(r, 1500))
           continue
         }
-        if (res.status === 429) {
-          // Free-tier per-minute window exhausted — open the 60s cooldown so
-          // the NEXT write skips immediately instead of failing again.
-          lastGemini429At = Date.now()
-          return { article: null, debug: `http_429:${errText.slice(0, 150)}` }
+
+        return { article: null, debug: lastDebug }
+
+      } catch (e: any) {
+        const msg = String(e)
+        if (attempt < maxRetries && (msg.includes('Timeout') || msg.includes('timeout') || msg.includes('aborted') || msg.includes('FETCH_ERROR'))) {
+          console.warn(`[Gemini retry ${attempt + 1}] ${msg.slice(0, 80)}`)
+          await new Promise(r => setTimeout(r, 1000))
+          continue
         }
-        return { article: null, debug: `http_${res.status}:${errText.slice(0, 150)}` }
+        return { article: null, debug: `error:${msg.slice(0, 150)}` }
       }
-
-      const data = await res.json()
-      // With googleSearch grounding the model can emit multiple parts —
-      // join ALL text parts so we never lose half the article.
-      const raw = (data?.candidates?.[0]?.content?.parts || [])
-        .map((p: any) => p?.text || '')
-        .join('')
-      if (!raw || raw.length < 100) {
-        const reason = data?.candidates?.[0]?.finishReason || 'NO_CANDIDATE'
-        return { article: null, debug: `empty:${reason}/len=${raw.length}` }
-      }
-
-      const { article, reason } = validate(raw, 'gemini-grounded')
-
-      if (article) {
-        await logGeminiUsage(article.headline, usedFor)
-        console.log(`[✓ Gemini+Search ${todayCount + 1}/${cap}] ${article.headline.slice(0, 60)} (${usedFor})`)
-        return { article, debug: 'ok' }
-      }
-
-      // Corrective retry: if validate had a fixable issue, give Gemini a second chance
-      lastDebug = `validate:${reason}`
-      const finishReason = String(data?.candidates?.[0]?.finishReason || '')
-      // MAX_TOKENS stop (or a raw blob that never closes its final }) means the
-      // article was TRUNCATED mid-generation — retry with the truncation
-      // corrective instead of "fixing" a non-existent content issue (e.g.
-      // faq_too_few reported on half a JSON object).
-      const looksTruncated = !String(raw).trim().endsWith('}')
-      const correctiveKey =
-        finishReason === 'MAX_TOKENS' || looksTruncated
-          ? 'truncated'
-          : CORRECTIVE_PROMPTS[reason]
-          ? reason
-          : String(reason).split(':')[0]
-      const corrective = CORRECTIVE_PROMPTS[correctiveKey]
-      if (corrective && attempt < maxRetries) {
-        console.warn(`[Gemini corrective ${attempt + 1}/${maxRetries}] ${correctiveKey} (${reason}) — retrying`)
-        prompt = prompt + '\n\n⚠️ CORRECTION: ' + corrective
-        await new Promise(r => setTimeout(r, 1500))
-        continue
-      }
-
-      return { article: null, debug: lastDebug }
-
-    } catch (e: any) {
-      const msg = String(e)
-      if (attempt < maxRetries && (msg.includes('Timeout') || msg.includes('timeout') || msg.includes('aborted') || msg.includes('FETCH_ERROR'))) {
-        console.warn(`[Gemini retry ${attempt + 1}] ${msg.slice(0, 80)}`)
-        await new Promise(r => setTimeout(r, 1000))
-        continue
-      }
-      return { article: null, debug: `error:${msg.slice(0, 150)}` }
     }
   }
 
@@ -1229,30 +1246,47 @@ export async function geminiRewriteContent(title: string, content: string): Prom
     "Article title: " + title + "\n\nOriginal content:\n" + textContent
 
   if (process.env.GEMINI_API_KEY) {
-    try {
-      const url = `https://generativelanguage.googleapis.com/v1beta/models/${await resolveGeminiModel()}:generateContent?key=${process.env.GEMINI_API_KEY}`
-      const res = await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [{ role: "user", parts: [{ text: rewritePrompt }] }],
-          // 4096 tokens + 15s aborted long rewrites mid-generation (same
-          // truncation class as the JSON parse failures) — 16384/120s matches
-          // the main generation path.
-          generationConfig: { temperature: 0.5, maxOutputTokens: 16384 },
-        }),
-        signal: AbortSignal.timeout(120000),
-      })
-      if (!res.ok) { console.warn('[Techpivo] Gemini rewrite HTTP', res.status); return content }
-      const data = await res.json()
-      const text = data?.candidates?.[0]?.content?.parts?.[0]?.text || ""
-      if (text.length > 300) {
-        await logGeminiUsage(title, 'rewrite')
-        console.log(`[✓ Gemini Rewrite] ${title.slice(0, 40)}`)
-        return text
+    // Same auto-rotation as geminiGrounded: a 404 (model not available to the
+    // key) or 429 (free-tier daily quota exhausted) falls through the chain
+    // instead of silently returning the original content.
+    const models = geminiModelOrder(await resolveGeminiModel())
+    for (const geminiModel of models) {
+      try {
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/${geminiModel}:generateContent?key=${process.env.GEMINI_API_KEY}`
+        const res = await fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [{ role: "user", parts: [{ text: rewritePrompt }] }],
+            // 4096 tokens + 15s aborted long rewrites mid-generation (same
+            // truncation class as the JSON parse failures) — 16384/120s matches
+            // the main generation path.
+            generationConfig: { temperature: 0.5, maxOutputTokens: 16384 },
+          }),
+          signal: AbortSignal.timeout(120000),
+        })
+        if (!res.ok) {
+          const errText = await res.text().catch(() => '')
+          const modelUnavailable = res.status === 404 && /no longer available|not found|does not exist|not accessible|not supported/i.test(errText)
+          if (modelUnavailable || res.status === 429) {
+            console.warn(`[Gemini rewrite] ${geminiModel} HTTP ${res.status} — switching model`)
+            continue
+          }
+          console.warn('[Techpivo] Gemini rewrite HTTP', res.status)
+          break
+        }
+        const data = await res.json()
+        const text = (data?.candidates?.[0]?.content?.parts || [])
+          .map((p: any) => p?.text || '')
+          .join('')
+        if (text.length > 300) {
+          await logGeminiUsage(title, 'rewrite')
+          console.log(`[✓ Gemini Rewrite] ${title.slice(0, 40)}`)
+          return text
+        }
+      } catch (e) {
+        console.warn("[Techpivo] Gemini rewrite failed:", e)
       }
-    } catch (e) {
-      console.warn("[Techpivo] Gemini rewrite failed:", e)
     }
   }
 

@@ -49,30 +49,64 @@ interface OpenRouterResponse {
   }[]
 }
 
+// Automatic fallback chain for the edge fn: same logic as src/lib/ai-rewriter.ts.
+// If the resolved model 404s (not available to the key) or 429s (free-tier daily
+// quota exhausted), rotate to the next entry instead of failing the write.
+const GEMINI_MODEL_ORDER = [
+  "gemini-2.5-flash",
+  "gemini-2.5-flash-lite",
+  "gemini-2.0-flash",
+  "gemini-2.5-pro",
+]
+
 async function callGemini(prompt: string, model: string): Promise<string> {
   const key = Deno.env.get("GEMINI_API_KEY")
   if (!key) throw new Error("GEMINI_API_KEY not set")
 
-  const res = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${key}`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        contents: [{ parts: [{ text: prompt }] }],
-        generationConfig: { maxOutputTokens: 4096, temperature: 0.8 },
-      }),
-      signal: AbortSignal.timeout(120000),
-    }
+  const models = Array.from(
+    new Set([normalizeModel(model), ...GEMINI_MODEL_ORDER].filter((m): m is string => !!m))
   )
+  let lastErr: Error | null = null
+  for (const m of models) {
+    try {
+      const res = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent?key=${key}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: prompt }] }],
+            generationConfig: { maxOutputTokens: 4096, temperature: 0.8 },
+          }),
+          signal: AbortSignal.timeout(120000),
+        }
+      )
 
-  if (!res.ok) {
-    const err = await res.text()
-    throw new Error(`Gemini API error (${res.status}): ${err}`)
+      if (!res.ok) {
+        const err = await res.text()
+        const modelUnavailable = res.status === 404 && /no longer available|not found|does not exist|not accessible|not supported/i.test(err)
+        if (modelUnavailable || res.status === 429) {
+          console.warn(`[Gemini] ${m} HTTP ${res.status} — switching model`)
+          lastErr = new Error(`Gemini API error (${res.status}): ${err}`)
+          continue
+        }
+        throw new Error(`Gemini API error (${res.status}): ${err}`)
+      }
+
+      const data: GeminiResponse = await res.json()
+      const text = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || ""
+      if (text) return text
+      lastErr = new Error("Gemini returned empty output")
+    } catch (e) {
+      const msg = String(e)
+      if (msg.includes("Timeout") || msg.includes("timeout") || msg.includes("aborted")) {
+        lastErr = e instanceof Error ? e : new Error(msg)
+        continue
+      }
+      throw e
+    }
   }
-
-  const data: GeminiResponse = await res.json()
-  return data.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || ""
+  throw lastErr || new Error("All Gemini models failed")
 }
 
 async function callOpenRouter(prompt: string): Promise<string> {
