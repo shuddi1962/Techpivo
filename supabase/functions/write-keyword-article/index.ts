@@ -6,6 +6,33 @@ const supabase = createClient(
   Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
 )
 
+// Model override chain: site_settings.gemini_model (realtime-flippable from
+// Admin → Settings) → GEMINI_MODEL env → gemini-2.5-flash. Switching the
+// model string on the same key bypasses an exhausted free-tier daily quota.
+const SAFE_MODEL_RE = /^[a-z0-9][a-z0-9._-]{0,63}$/
+
+function normalizeModel(raw: unknown): string | null {
+  if (typeof raw !== "string") return null
+  const trimmed = raw.trim()
+  if (!trimmed || trimmed.length > 64 || !SAFE_MODEL_RE.test(trimmed)) return null
+  return trimmed
+}
+
+async function getGeminiModelName(): Promise<string> {
+  try {
+    const { data } = await supabase
+      .from("site_settings")
+      .select("value")
+      .eq("key", "gemini_model")
+      .maybeSingle()
+    const dbModel = normalizeModel(data?.value)
+    if (dbModel) return dbModel
+  } catch {
+    // fall through to env/default
+  }
+  return normalizeModel(Deno.env.get("GEMINI_MODEL")) || "gemini-2.5-flash"
+}
+
 interface GeminiResponse {
   candidates?: {
     content?: {
@@ -22,12 +49,12 @@ interface OpenRouterResponse {
   }[]
 }
 
-async function callGemini(prompt: string): Promise<string> {
+async function callGemini(prompt: string, model: string): Promise<string> {
   const key = Deno.env.get("GEMINI_API_KEY")
   if (!key) throw new Error("GEMINI_API_KEY not set")
 
   const res = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${key}`,
+    `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${key}`,
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -75,7 +102,7 @@ async function callOpenRouter(prompt: string): Promise<string> {
   return data.choices?.[0]?.message?.content?.trim() || ""
 }
 
-async function logGeminiCall(): Promise<boolean> {
+async function logGeminiCall(model: string): Promise<boolean> {
   const todayStart = new Date()
   todayStart.setUTCHours(0, 0, 0, 0)
 
@@ -91,7 +118,7 @@ async function logGeminiCall(): Promise<boolean> {
 
   await supabase.from("gemini_usage_log").insert({
     used_for: "write-keyword-article",
-    model: "gemini-2.5-flash",
+    model,
   })
 
   return true
@@ -176,7 +203,7 @@ async function findDuplicate(topic: string): Promise<string | null> {
 // title check misses, ask Gemini to compare the keyword against the most
 // recent existing posts' titles AND content snippets. Never blocks a write on
 // LLM failure — returns null on any error.
-async function semanticDuplicate(keyword: string): Promise<string | null> {
+async function semanticDuplicate(keyword: string, model: string): Promise<string | null> {
   const key = Deno.env.get("GEMINI_API_KEY")
   if (!key) return null
 
@@ -204,7 +231,7 @@ async function semanticDuplicate(keyword: string): Promise<string | null> {
 
   try {
     const res = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${key}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${key}`,
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -229,6 +256,8 @@ async function semanticDuplicate(keyword: string): Promise<string | null> {
 
 serve(async (req) => {
   try {
+    const geminiModel = await getGeminiModelName()
+
     const { data: kwArticles } = await supabase
       .from("keyword_articles")
       .select("*")
@@ -259,15 +288,15 @@ serve(async (req) => {
 
     for (const article of kwArticles) {
       try {
-        const dup = (await findDuplicate(article.keyword)) || (await semanticDuplicate(article.keyword))
+        const dup = (await findDuplicate(article.keyword)) || (await semanticDuplicate(article.keyword, geminiModel))
         if (dup) {
           results.push({ keyword: article.keyword, success: false, error: `duplicate: already covered by "${dup}"` })
           continue
         }
 
-        const useGemini = await logGeminiCall()
-        const aiCaller = useGemini ? callGemini : callOpenRouter
-        const modelUsed = useGemini ? "gemini-2.5-flash" : "openrouter-meta-llama-3.3-70b"
+        const useGemini = await logGeminiCall(geminiModel)
+        const aiCaller = useGemini ? (p: string) => callGemini(p, geminiModel) : callOpenRouter
+        const modelUsed = useGemini ? geminiModel : "openrouter-meta-llama-3.3-70b"
 
         const articlePrompt =
           `You are a professional tech journalist writing for "Techpivo" (https://techpivo.com). ` +

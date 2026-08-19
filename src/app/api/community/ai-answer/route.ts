@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server';
 import { createClient as createServiceClient } from '@/lib/supabase/admin';
 import { checkRateLimit, clientIp, RATE_LIMITS } from '@/lib/rate-limiter';
 import { isSameOrigin } from '@/lib/csrf';
+import { resolveGeminiModel } from '@/lib/ai-rewriter';
 
 export const dynamic = 'force-dynamic';
 
@@ -89,7 +90,7 @@ ${replies.length ? replies.map(r => `- ANSWER by ${nameOf(r.author_id)}${r.is_ac
     let answerMd: string;
     if (process.env.GEMINI_API_KEY) {
       const res = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`,
+        `https://generativelanguage.googleapis.com/v1beta/models/${await resolveGeminiModel()}:generateContent?key=${process.env.GEMINI_API_KEY}`,
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },

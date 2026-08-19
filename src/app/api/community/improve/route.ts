@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server';
 import { checkRateLimit, clientIp, RATE_LIMITS } from '@/lib/rate-limiter';
 import { isSameOrigin } from '@/lib/csrf';
 import { CONTENT_TYPE_META } from '@/lib/community-types';
+import { resolveGeminiModel } from '@/lib/ai-rewriter';
 
 const MAX_INPUT = 3000;
 
@@ -42,7 +43,7 @@ Title: ${title || '(none)'}
 Body: ${content || '(none)'}`;
 
   try {
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`;
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${await resolveGeminiModel()}:generateContent?key=${process.env.GEMINI_API_KEY}`;
     const res = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },

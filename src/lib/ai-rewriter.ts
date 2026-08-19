@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/admin'
 import { findDuplicatePost, type DuplicatePost } from '@/lib/duplicate-check'
+import { GEMINI_MODEL_DEFAULT, getGeminiModel, normalizeGeminiModel } from '@/lib/gemini-model'
 
 const GEMINI_DAILY_CAP = 100
 const MANUAL_GEMINI_DAILY_CAP = 50
@@ -8,6 +9,35 @@ const GEMINI_RATE_MS = 1000
 // hot for a while — reject further manual writes for 60s with a clear debug
 // instead of hammering Google with doomed requests.
 const GEMINI_429_COOLDOWN_MS = 60000
+
+// Model override chain: site_settings.gemini_model (realtime-flippable from
+// Admin → Settings) → GEMINI_MODEL env → gemini-2.5-flash. Cached 30s so a
+// settings flip takes effect on the next write without hammering the DB.
+const GEMINI_MODEL_CACHE_MS = 30000
+let geminiModelCache: { model: string; at: number } | null = null
+
+export async function resolveGeminiModel(): Promise<string> {
+  const envModel = getGeminiModel(process.env)
+  if (envModel !== GEMINI_MODEL_DEFAULT) return envModel
+  if (geminiModelCache && Date.now() - geminiModelCache.at < GEMINI_MODEL_CACHE_MS) {
+    return geminiModelCache.model
+  }
+  try {
+    const supabase = createClient()
+    const { data } = await supabase
+      .from('site_settings')
+      .select('value')
+      .eq('key', 'gemini_model')
+      .maybeSingle()
+    const dbModel = normalizeGeminiModel(data?.value)
+    const model = dbModel || envModel
+    geminiModelCache = { model, at: Date.now() }
+    return model
+  } catch (e) {
+    console.warn('[Techpivo AI] Could not read gemini_model setting — using env/default:', e)
+    return envModel
+  }
+}
 
 export interface AISource {
   url:   string
@@ -628,7 +658,7 @@ async function logGeminiUsage(headline: string, usedFor: string): Promise<void> 
     await supabase.from('gemini_usage_log').insert({
       used_for:   usedFor,
       headline:   headline.slice(0, 150),
-      model:      'gemini-2.5-flash-grounded',
+      model:      `${await resolveGeminiModel()}-grounded`,
       created_at: new Date().toISOString(),
     })
   } catch (e) {
@@ -703,9 +733,10 @@ async function geminiGrounded(
   const maxRetries = 2
   let lastDebug = ''
   let useJsonMime = true
+  const geminiModel = await resolveGeminiModel()
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
     try {
-      const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/${geminiModel}:generateContent?key=${process.env.GEMINI_API_KEY}`
       const body: Record<string, unknown> = {
         contents: [{ role: 'user', parts: [{ text: prompt }] }],
         generationConfig: {
@@ -1049,8 +1080,9 @@ async function semanticDuplicateCheck(
   const prompt = buildSemanticPrompt(topic, sourceContent, candidates)
 
   try {
+    const geminiModel = await resolveGeminiModel()
     const res = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${key}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/${geminiModel}:generateContent?key=${key}`,
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -1198,7 +1230,7 @@ export async function geminiRewriteContent(title: string, content: string): Prom
 
   if (process.env.GEMINI_API_KEY) {
     try {
-      const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/${await resolveGeminiModel()}:generateContent?key=${process.env.GEMINI_API_KEY}`
       const res = await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

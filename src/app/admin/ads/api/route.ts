@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server"
 import { createClient as createAdminClient } from "@/lib/supabase/admin"
 import { DEFAULT_FX_RATES, computeCampaignSpend, formatMoney } from "@/lib/ads"
 import { getFxRatesPerNgn } from "@/lib/fx"
+import { resolveGeminiModel } from "@/lib/ai-rewriter"
 
 async function requireRole(allowed: string[] = ["admin", "editor"]) {
   const supabase = createClient()
@@ -53,7 +54,7 @@ async function generateCreative(
 > {
   const apiKey = process.env.GEMINI_API_KEY
   if (!apiKey) return { ok: false, reason: "not_configured" }
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${await resolveGeminiModel()}:generateContent?key=${apiKey}`
   const prompt = [
     "You are an expert digital ad copywriter for a technology news website called Techpivo.",
     "Create ONE high-performing display ad creative. Respond with STRICT JSON only, no markdown:",

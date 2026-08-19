@@ -7,6 +7,8 @@ import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Switch } from "@/components/ui/switch"
 import { Label } from "@/components/ui/label"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { GEMINI_MODEL_OPTIONS, GEMINI_MODEL_DEFAULT } from "@/lib/gemini-model"
 
 export default function AdminSettingsPage() {
   const [settings, setSettings] = useState<Record<string, any>>({})
@@ -117,6 +119,31 @@ export default function AdminSettingsPage() {
                 </div>
               </div>
             ))}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader><CardTitle className="text-lg">AI Writing Model</CardTitle></CardHeader>
+          <CardContent className="space-y-4">
+            <div>
+              <Label className="text-sm mb-1 block">Gemini model</Label>
+              <Select
+                value={typeof settings.gemini_model === "string" ? settings.gemini_model : GEMINI_MODEL_DEFAULT}
+                onValueChange={(v) => handleInputChange("gemini_model", v)}
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {GEMINI_MODEL_OPTIONS.map((o) => (
+                    <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground mt-2">
+                Applied in realtime to the next AI research / article write — no redeploy needed. Switch to a different model when Google&apos;s free daily quota for one model is exhausted (resets ~8 AM WAT / midnight Pacific).
+              </p>
+            </div>
           </CardContent>
         </Card>
 
