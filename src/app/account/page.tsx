@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -17,8 +17,9 @@ export default function AccountPage() {
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [avatarEditing, setAvatarEditing] = useState(false);
-  const [avatarDraft, setAvatarDraft] = useState('');
+  const [uploading, setUploading] = useState<'avatar' | 'cover' | null>(null);
+  const avatarInputRef = useRef<HTMLInputElement>(null);
+  const coverInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     fetch('/api/community/profile')
@@ -47,6 +48,25 @@ export default function AccountPage() {
       console.error('Failed to save profile', e);
     }
     setSaving(false);
+  };
+
+  const uploadImage = async (field: 'avatar_url' | 'cover_url', file: File) => {
+    setUploading(field === 'avatar_url' ? 'avatar' : 'cover');
+    try {
+      const fd = new FormData();
+      fd.append('file', file);
+      const res = await fetch('/api/upload', { method: 'POST', body: fd });
+      const data = await res.json();
+      if (res.ok && data?.url) {
+        setProfile({ ...profile, [field]: data.url });
+      } else {
+        alert(data?.error || 'Upload failed. Please try a different image.');
+      }
+    } catch (e) {
+      console.error('Upload failed', e);
+      alert('Upload failed. Please try again.');
+    }
+    setUploading(null);
   };
 
   if (loading) {
@@ -116,39 +136,29 @@ export default function AccountPage() {
               <p className="text-sm text-muted-foreground mb-2">
                 Upload a profile photo to personalize your account. Click the button to change.
               </p>
-              {avatarEditing ? (
-                <div className="space-y-2">
-                  <div className="flex gap-2">
-                    <Input
-                      value={avatarDraft}
-                      onChange={e => setAvatarDraft(e.target.value)}
-                      placeholder="https://example.com/avatar.jpg"
-                      className="max-w-sm"
-                    />
-                    <Button size="sm" onClick={() => {
-                      if (avatarDraft.trim()) setProfile({ ...profile, avatar_url: avatarDraft.trim() });
-                      setAvatarEditing(false);
-                    }}>
-                      Apply
-                    </Button>
-                    <Button variant="ghost" size="sm" onClick={() => { setAvatarEditing(false); setAvatarDraft(''); }}>
-                      Cancel
-                    </Button>
-                  </div>
-                  <p className="text-xs text-muted-foreground">Paste a direct image URL, or pick one from the media library.</p>
-                </div>
-              ) : (
-                <div className="flex gap-2">
-                  <Button variant="outline" size="sm" onClick={() => { setAvatarDraft(profile?.avatar_url || ''); setAvatarEditing(true); }}>
-                    <Camera className="h-4 w-4 mr-1" /> Upload Photo
+              <input
+                ref={avatarInputRef}
+                type="file"
+                accept="image/jpeg,image/png,image/gif,image/webp,image/avif"
+                className="hidden"
+                onChange={e => {
+                  const file = e.target.files?.[0];
+                  if (file) uploadImage('avatar_url', file);
+                  e.target.value = '';
+                }}
+              />
+              <div className="flex gap-2">
+                <Button variant="outline" size="sm" onClick={() => avatarInputRef.current?.click()} disabled={uploading === 'avatar'}>
+                  <Camera className="h-4 w-4 mr-1" />
+                  {uploading === 'avatar' ? 'Uploading...' : 'Upload Photo'}
+                </Button>
+                {profile?.avatar_url && (
+                  <Button variant="ghost" size="sm" onClick={() => setProfile({ ...profile, avatar_url: null })}>
+                    Remove
                   </Button>
-                  {profile?.avatar_url && (
-                    <Button variant="ghost" size="sm" onClick={() => setProfile({ ...profile, avatar_url: null })}>
-                      Remove
-                    </Button>
-                  )}
-                </div>
-              )}
+                )}
+              </div>
+              <p className="text-xs text-muted-foreground mt-2">JPG, PNG, GIF, WEBP or AVIF — up to 8 MB.</p>
             </div>
           </div>
         </CardContent>
@@ -217,12 +227,40 @@ export default function AccountPage() {
             </div>
           </div>
           <div>
-            <label className="text-sm font-medium mb-1.5 block">Cover Photo URL</label>
-            <Input
-              value={profile?.cover_url || ''}
-              onChange={e => setProfile({ ...profile, cover_url: e.target.value })}
-              placeholder="https://example.com/cover.jpg"
+            <label className="text-sm font-medium mb-1.5 block">Cover Photo</label>
+            <div className="relative aspect-[21/9] rounded-lg overflow-hidden border border-border bg-muted/40 mb-2">
+              {profile?.cover_url ? (
+                <Image src={profile.cover_url} alt="Cover" fill unoptimized className="object-cover" />
+              ) : (
+                <div className="flex items-center justify-center h-full text-sm text-muted-foreground">
+                  No cover photo
+                </div>
+              )}
+              {profile?.cover_url && (
+                <button
+                  type="button"
+                  onClick={() => setProfile({ ...profile, cover_url: null })}
+                  className="absolute top-2 right-2 bg-slate-900/70 text-white text-xs px-2 py-1 rounded-md hover:bg-slate-900"
+                >
+                  Remove
+                </button>
+              )}
+            </div>
+            <input
+              ref={coverInputRef}
+              type="file"
+              accept="image/jpeg,image/png,image/gif,image/webp,image/avif"
+              className="hidden"
+              onChange={e => {
+                const file = e.target.files?.[0];
+                if (file) uploadImage('cover_url', file);
+                e.target.value = '';
+              }}
             />
+            <Button variant="outline" size="sm" onClick={() => coverInputRef.current?.click()} disabled={uploading === 'cover'}>
+              <Camera className="h-4 w-4 mr-1" />
+              {uploading === 'cover' ? 'Uploading...' : 'Upload Cover'}
+            </Button>
           </div>
         </CardContent>
       </Card>

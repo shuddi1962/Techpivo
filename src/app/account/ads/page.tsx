@@ -39,7 +39,7 @@ interface Campaign {
 
 const STATUS_STYLES: Record<string, { label: string; cls: string }> = {
   draft: { label: 'Draft', cls: 'bg-slate-100 text-slate-600' },
-  pending: { label: 'Pending Review', cls: 'bg-amber-100 text-amber-700' },
+  pending: { label: 'Pending Review', cls: 'bg-slate-200 text-slate-700' },
   approved: { label: 'Approved', cls: 'bg-blue-100 text-blue-700' },
   live: { label: 'Live', cls: 'bg-green-100 text-green-700' },
   rejected: { label: 'Rejected', cls: 'bg-red-100 text-red-600' },
@@ -187,7 +187,7 @@ export default function MyAdsPage() {
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         {[
           { label: 'Active Campaigns', value: String(live.length), icon: TrendingUp, cls: 'text-blue-600 bg-blue-50' },
-          { label: 'Pending Review', value: String(pending.length), icon: Megaphone, cls: 'text-amber-600 bg-amber-50' },
+          { label: 'Pending Review', value: String(pending.length), icon: Megaphone, cls: 'text-slate-600 bg-slate-100' },
           { label: 'Total Spend', value: fx.format(totalSpend, fx.displayCurrency), icon: Wallet, cls: 'text-green-600 bg-green-50' },
           { label: 'Clicks', value: totalClicks.toLocaleString(), icon: MousePointerClick, cls: 'text-purple-600 bg-purple-50' },
         ].map((k) => (
@@ -267,7 +267,7 @@ export default function MyAdsPage() {
                   </div>
 
                   {c.review_note && (
-                    <div className="mt-3 flex items-start gap-2 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+                    <div className="mt-3 flex items-start gap-2 text-xs text-slate-700 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2">
                       <AlertCircle className="h-3.5 w-3.5 mt-0.5 shrink-0" />
                       {c.review_note}
                     </div>

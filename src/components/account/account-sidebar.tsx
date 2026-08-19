@@ -23,12 +23,12 @@ interface AccountSidebarProps {
   };
 }
 
-const NAV_ITEMS = [
+export const NAV_ITEMS = [
+  { href: '/account/activity', label: 'Activity', icon: Activity, description: 'XP log & achievements' },
   { href: '/account', label: 'Profile', icon: User, description: 'Edit your profile' },
   { href: '/account/security', label: 'Security', icon: Shield, description: 'Password & 2FA' },
   { href: '/account/notifications', label: 'Notifications', icon: Bell, description: 'Notification preferences' },
   { href: '/account/connected-accounts', label: 'Connected Accounts', icon: Link2, description: 'OAuth providers' },
-  { href: '/account/activity', label: 'Activity', icon: Activity, description: 'XP log & achievements' },
   { href: '/account/bookmarks', label: 'Bookmarks', icon: BookMarked, description: 'Saved articles' },
   { href: '/account/history', label: 'Reading History', icon: History, description: 'Articles you read' },
   { href: '/account/ads', label: 'My Ads', icon: Megaphone, description: 'Run & track campaigns' },

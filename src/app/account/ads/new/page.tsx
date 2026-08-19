@@ -365,7 +365,7 @@ export default function NewCampaignPage() {
                             <span className="flex items-center gap-0.5 text-[10px] font-bold text-purple-600 bg-purple-100 rounded px-1.5 py-0.5 whitespace-nowrap">POPUP</span>
                           )}
                           {p.ad_type === 'sponsored_article' && (
-                            <span className="flex items-center gap-0.5 text-[10px] font-bold text-amber-600 bg-amber-100 rounded px-1.5 py-0.5 whitespace-nowrap">SPONSORED</span>
+                            <span className="flex items-center gap-0.5 text-[10px] font-bold text-slate-700 bg-slate-200 rounded px-1.5 py-0.5 whitespace-nowrap">SPONSORED</span>
                           )}
                           {p.supports_video && (
                             <span className="flex items-center gap-0.5 text-[10px] font-bold text-purple-600 bg-purple-100 rounded px-1.5 py-0.5 whitespace-nowrap"><Video className="h-2.5 w-2.5" />VIDEO</span>
@@ -644,9 +644,9 @@ export default function NewCampaignPage() {
                 <div className="mt-4">
                   <label className={labelCls}>Sponsored Article preview — how it looks in the sidebar</label>
                   <div className="border border-slate-200 rounded-xl max-w-sm overflow-hidden bg-white shadow-sm">
-                    <div className="bg-amber-50 border-b border-amber-100 px-3 py-1.5 flex items-center gap-1.5">
-                      <Star className="h-3 w-3 text-amber-500" />
-                      <span className="text-[10px] font-bold uppercase tracking-wide text-amber-700">Sponsored</span>
+                    <div className="bg-slate-50 border-b border-slate-100 px-3 py-1.5 flex items-center gap-1.5">
+                      <Star className="h-3 w-3 text-slate-500" />
+                      <span className="text-[10px] font-bold uppercase tracking-wide text-slate-700">Sponsored</span>
                     </div>
                     {imageUrl && (
                       <div className="bg-slate-50">

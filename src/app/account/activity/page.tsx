@@ -108,8 +108,8 @@ export default function ActivityPage() {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {[
           { label: 'Total XP', value: totalXp.toLocaleString(), icon: Star, color: 'text-primary', bg: 'bg-primary/10' },
-          { label: 'Day Streak', value: `${streak} days`, icon: Flame, color: 'text-orange-500', bg: 'bg-orange-500/10' },
-          { label: 'Badges', value: badges.length.toString(), icon: Trophy, color: 'text-yellow-500', bg: 'bg-yellow-500/10' },
+          { label: 'Day Streak', value: `${streak} days`, icon: Flame, color: 'text-slate-600', bg: 'bg-slate-100' },
+          { label: 'Badges', value: badges.length.toString(), icon: Trophy, color: 'text-slate-600', bg: 'bg-slate-100' },
           { label: 'Today XP', value: `+${todayXp}`, icon: Activity, color: 'text-green-500', bg: 'bg-green-500/10' },
         ].map(stat => (
           <Card key={stat.label}>

@@ -2,6 +2,12 @@
 // Chain: Google Custom Search (needs GOOGLE_API_KEY + GOOGLE_CX) → Bing live scrape → Wikimedia Commons.
 // Pexels stays available ONLY as an explicit fallback (searchFeaturedImage) for server flows
 // that must always find an image — the web is the general-purpose source site-wide.
+//
+// Brand safety: every web result is filtered through src/lib/image-brand-check
+// (outlet/logo/watermark host + metadata signals), and searchWebImage runs a
+// best-effort Gemini vision check on the winner so articles never ship an
+// image carrying another brand/company/outlet name or logo. Vision is
+// best-effort only — it never blocks a write.
 
 export interface StockImageItem {
   src: string
@@ -9,6 +15,8 @@ export interface StockImageItem {
   link: string
   license: string
 }
+
+import { filterBrandUnsafe, pickBrandSafeImage } from '@/lib/image-brand-check'
 
 export async function searchGoogle(query: string): Promise<StockImageItem[]> {
   const apiKey = process.env.GOOGLE_API_KEY
@@ -112,25 +120,29 @@ export async function searchWebImages(
 ): Promise<{ items: StockImageItem[]; source: "google" | "bing" | "wikimedia" | "none" }> {
   if (!query || !query.trim()) return { items: [], source: "none" }
 
+  // Every engine's results are filtered for brand-safety (outlet/logo/watermark)
+  // before being accepted — if a source only returned branded material we fall
+  // through to the next engine so articles never get a logo-laden image.
   if (engine === "google" || engine === "auto") {
-    const googleItems = await searchGoogle(query)
+    const googleItems = filterBrandUnsafe(await searchGoogle(query))
     if (googleItems.length > 0) return { items: googleItems, source: "google" }
   }
   if (engine === "bing" || engine === "auto") {
-    const bingItems = await searchBing(query)
+    const bingItems = filterBrandUnsafe(await searchBing(query))
     if (bingItems.length > 0) return { items: bingItems, source: "bing" }
   }
   if (engine === "wikimedia" || engine === "auto") {
-    const wikimediaItems = await searchWikimedia(query)
+    const wikimediaItems = filterBrandUnsafe(await searchWikimedia(query))
     if (wikimediaItems.length > 0) return { items: wikimediaItems, source: "wikimedia" }
   }
   return { items: [], source: "none" }
 }
 
-/** First usable web image URL for a query (or null). */
+/** First usable web image URL for a query (or null). Runs the brand-safety
+ *  picker so the winner is checked for logos/watermarks (vision, best-effort). */
 export async function searchWebImage(query: string): Promise<string | null> {
   const { items } = await searchWebImages(query, "auto")
-  return items.find((i) => i.src.startsWith("http"))?.src || null
+  return pickBrandSafeImage(items)
 }
 
 /** Web-first image with a Pexels fallback so server flows never end up imageless. */

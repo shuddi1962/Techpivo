@@ -94,7 +94,7 @@ export function PushSubscribeButton() {
 
   return (
     <button
-      className="icon-btn push-sub-btn"
+      className={`icon-btn push-sub-btn${state === "subscribed" ? " push-sub-btn--active" : ""}`}
       onClick={() => (state === "subscribed" ? unsubscribe() : subscribe())}
       disabled={busy || state === "denied"}
       title={
@@ -105,7 +105,6 @@ export function PushSubscribeButton() {
             : "Enable push notifications"
       }
       aria-label="Push notifications"
-      style={state === "subscribed" ? { color: "var(--primary)" } : undefined}
     >
       {state === "subscribed" ? (
         <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M12 22a2.5 2.5 0 0 0 2.45-2h-4.9A2.5 2.5 0 0 0 12 22zm6-6v-5a6 6 0 0 0-4.5-5.82V4.5a1.5 1.5 0 0 0-3 0v.68A6 6 0 0 0 6 11v5l-2 2v1h16v-1z"/></svg>

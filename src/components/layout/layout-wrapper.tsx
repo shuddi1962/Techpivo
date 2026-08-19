@@ -13,7 +13,8 @@ export function LayoutWrapper({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
   const isAdmin = pathname?.startsWith("/admin")
   const isHome = pathname === "/"
-  const noLayout = isAdmin || isHome || pathname === "/login" || pathname === "/signup" || pathname === "/account" || pathname?.startsWith("/auth/")
+  const noLayout = isAdmin || isHome || pathname === "/login" || pathname === "/signup" || pathname?.startsWith("/auth/")
+  const isAccount = pathname === "/account" || pathname?.startsWith("/account/")
   const [categories, setCategories] = useState<any[]>([])
   const [socialUrls, setSocialUrls] = useState<Record<string, string>>({})
   const [recentPosts, setRecentPosts] = useState<any[]>([])
@@ -59,7 +60,7 @@ export function LayoutWrapper({ children }: { children: React.ReactNode }) {
       <Header />
       <MainNav categories={categories} />
       <main>{children}</main>
-      <Footer categories={categories} recentPosts={recentPosts} socialUrls={socialUrls} />
+      {!isAccount && <Footer categories={categories} recentPosts={recentPosts} socialUrls={socialUrls} />}
       <BackToTop />
     </>
   )

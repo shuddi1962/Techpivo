@@ -53,7 +53,7 @@ interface DailyStat {
 
 const STATUS_STYLES: Record<string, { label: string; cls: string }> = {
   draft: { label: 'Draft', cls: 'bg-slate-100 text-slate-600' },
-  pending: { label: 'Pending Review', cls: 'bg-amber-100 text-amber-700' },
+  pending: { label: 'Pending Review', cls: 'bg-slate-200 text-slate-700' },
   approved: { label: 'Approved', cls: 'bg-blue-100 text-blue-700' },
   live: { label: 'Live', cls: 'bg-green-100 text-green-700' },
   rejected: { label: 'Rejected', cls: 'bg-red-100 text-red-600' },
@@ -314,7 +314,7 @@ export default function CampaignDetailPage() {
       )}
 
       {campaign.review_note && (
-        <div className="flex items-start gap-2 text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+        <div className="flex items-start gap-2 text-sm text-slate-700 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2">
           <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" /> {campaign.review_note}
         </div>
       )}
@@ -323,7 +323,7 @@ export default function CampaignDetailPage() {
         {[
           { label: 'Impressions', value: campaign.impressions.toLocaleString(), icon: Eye, cls: 'text-blue-600 bg-blue-50' },
           { label: 'Clicks', value: campaign.clicks.toLocaleString(), icon: MousePointerClick, cls: 'text-purple-600 bg-purple-50' },
-          { label: 'CTR', value: `${ctr}%`, icon: BarChart3, cls: 'text-amber-600 bg-amber-50' },
+          { label: 'CTR', value: `${ctr}%`, icon: BarChart3, cls: 'text-slate-600 bg-slate-100' },
           { label: 'Spend', value: formatMoney(spend, campaign.currency || 'NGN'), icon: Wallet, cls: 'text-green-600 bg-green-50' },
         ].map((k) => (
           <Card key={k.label}>
