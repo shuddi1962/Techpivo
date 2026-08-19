@@ -1,7 +1,10 @@
-import { NextResponse } from "next/server"
+import { NextRequest, NextResponse } from "next/server"
+import { requireAdminRole } from "@/lib/admin-auth"
 import { createClient } from "@/lib/supabase/server"
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
+  const auth = await requireAdminRole(["admin", "editor"], request)
+  if (!auth.ok) return auth.response
   try {
     const supabase = await createClient()
     const { urls } = await request.json()

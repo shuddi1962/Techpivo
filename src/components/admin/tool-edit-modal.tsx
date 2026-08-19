@@ -60,7 +60,7 @@ export default function ToolEditModal({
           api_endpoint: apiEndpoint,
         }),
       })
-      const data = await res.json()
+      const data = await res.json().catch(() => ({}))
       if (!res.ok) {
         setError(data?.error || "Save failed")
         return

@@ -40,7 +40,7 @@ export function PostEditorLayout() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
       })
-      const data = await res.json()
+      const data = await res.json().catch(() => ({}))
       if (res.ok && data.url) {
         window.open(data.url, "_blank")
       } else {

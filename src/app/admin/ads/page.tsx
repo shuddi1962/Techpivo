@@ -291,10 +291,10 @@ export default function AdminAdsPage() {
   const loadAll = useCallback(async () => {
     try {
       const [pl, cm, rv, an] = await Promise.all([
-        fetch("/admin/ads/api?section=placements").then((r) => r.json()),
-        fetch("/admin/ads/api?section=campaigns").then((r) => r.json()),
-        fetch("/admin/ads/api?section=revenue").then((r) => r.json()),
-        fetch("/admin/ads/api?section=analytics").then((r) => r.json()),
+        fetch("/admin/ads/api?section=placements").then((r) => r.json().catch(() => ({}))),
+        fetch("/admin/ads/api?section=campaigns").then((r) => r.json().catch(() => ({}))),
+        fetch("/admin/ads/api?section=revenue").then((r) => r.json().catch(() => ({}))),
+        fetch("/admin/ads/api?section=analytics").then((r) => r.json().catch(() => ({}))),
       ])
       if (pl.placements) setPlacements(pl.placements)
       if (cm.campaigns) setCampaigns(cm.campaigns)

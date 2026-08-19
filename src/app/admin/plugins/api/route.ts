@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { requireAdminRole } from "@/lib/admin-auth";
 import { createClient } from "@/lib/supabase/server";
 
 const MARKETPLACE_PLUGINS = [
@@ -17,6 +18,8 @@ const MARKETPLACE_PLUGINS = [
 ];
 
 export async function GET(request: NextRequest) {
+  const auth = await requireAdminRole(["admin", "editor"], request)
+  if (!auth.ok) return auth.response
   try {
     const supabase = await createClient();
     const section = request.nextUrl.searchParams.get("section") || "marketplace";
@@ -76,6 +79,8 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
+  const auth = await requireAdminRole(["admin", "editor"], request)
+  if (!auth.ok) return auth.response
   try {
     const supabase = await createClient();
     const body = await request.json();
@@ -144,6 +149,8 @@ export async function POST(request: NextRequest) {
 }
 
 export async function PUT(request: NextRequest) {
+  const auth = await requireAdminRole(["admin", "editor"], request)
+  if (!auth.ok) return auth.response
   try {
     const supabase = await createClient();
     const body = await request.json();

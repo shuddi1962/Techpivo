@@ -68,8 +68,7 @@ export function AiWritingPanel() {
         body: JSON.stringify({ mode, input: input.trim() }),
       })
 
-      const data = await res.json()
-
+      const data = await res.json().catch(() => ({}))
       if (!res.ok) {
         if (res.status === 429) {
           setError(data.error || `Monthly quota reached (${data.quota?.used}/${data.quota?.cap}). Resets on the 1st.`)

@@ -1,8 +1,11 @@
-import { NextResponse } from "next/server"
+import { NextRequest, NextResponse } from "next/server"
+import { requireAdminRole } from "@/lib/admin-auth"
 import { createClient } from "@/lib/supabase/server"
 import { sendNewsletterCampaign } from "@/lib/newsletter"
 
-export async function GET(request: Request) {
+export async function GET(request: NextRequest) {
+  const auth = await requireAdminRole(["admin", "editor"], request)
+  if (!auth.ok) return auth.response
   const { searchParams } = new URL(request.url)
   const section = searchParams.get("section") || "overview"
 
@@ -250,7 +253,9 @@ export async function GET(request: Request) {
   }
 }
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
+  const auth = await requireAdminRole(["admin", "editor"], request)
+  if (!auth.ok) return auth.response
   try {
     const body = await request.json()
     const supabase = await createClient()
@@ -436,7 +441,9 @@ export async function POST(request: Request) {
   }
 }
 
-export async function PUT(request: Request) {
+export async function PUT(request: NextRequest) {
+  const auth = await requireAdminRole(["admin", "editor"], request)
+  if (!auth.ok) return auth.response
   try {
     const body = await request.json()
     const supabase = await createClient()
@@ -459,7 +466,9 @@ export async function PUT(request: Request) {
   }
 }
 
-export async function DELETE(request: Request) {
+export async function DELETE(request: NextRequest) {
+  const auth = await requireAdminRole(["admin", "editor"], request)
+  if (!auth.ok) return auth.response
   try {
     const { searchParams } = new URL(request.url)
     let id = searchParams.get("id")

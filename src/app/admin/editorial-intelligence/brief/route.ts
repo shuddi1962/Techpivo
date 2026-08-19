@@ -1,7 +1,10 @@
-import { NextResponse } from "next/server"
+import { NextRequest, NextResponse } from "next/server"
+import { requireAdminRole } from "@/lib/admin-auth"
 import { generateArticlePlan, generateResearchResults } from "@/lib/editorial-intelligence"
 
-export async function GET(request: Request) {
+export async function GET(request: NextRequest) {
+  const auth = await requireAdminRole(["admin", "editor"], request)
+  if (!auth.ok) return auth.response
   try {
     const { searchParams } = new URL(request.url)
     const topic = searchParams.get("topic")
@@ -15,7 +18,9 @@ export async function GET(request: Request) {
   }
 }
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
+  const auth = await requireAdminRole(["admin", "editor"], request)
+  if (!auth.ok) return auth.response
   try {
     const body = await request.json()
     const { topic, category } = body

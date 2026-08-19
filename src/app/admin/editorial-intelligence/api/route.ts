@@ -1,4 +1,5 @@
-import { NextResponse } from "next/server"
+import { NextRequest, NextResponse } from "next/server"
+import { requireAdminRole } from "@/lib/admin-auth"
 import {
   generateTodayOpportunities,
   generateCategoryIntelligence,
@@ -15,7 +16,10 @@ import {
 
 export const maxDuration = 60
 
-export async function GET(request: Request) {
+export async function GET(request: NextRequest) {
+  const auth = await requireAdminRole(["admin", "editor"], request)
+  if (!auth.ok) return auth.response
+
   const { searchParams } = new URL(request.url)
   const section = searchParams.get("section") || "all"
 

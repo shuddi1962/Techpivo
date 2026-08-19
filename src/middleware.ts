@@ -7,6 +7,16 @@ export async function middleware(request: NextRequest) {
   }
   const response = NextResponse.next({ request })
 
+  // API/XHR requests (client fetch calls) must never be redirected to the HTML
+  // login page: admin route handlers self-guard with requireAdminRole and return
+  // JSON 401s. Redirecting them turns every response into HTML, which breaks
+  // res.json() client-side ("Unexpected token '<', \"<!DOCTYPE...\" is not valid
+  // JSON") whenever the session lookup below transiently fails (cold start,
+  // network hiccup) or the cookie session has expired.
+  const isRsc = request.headers.get("rsc") === "1"
+  const accept = request.headers.get("accept") || ""
+  if (!isRsc && !accept.includes("text/html")) return response
+
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,

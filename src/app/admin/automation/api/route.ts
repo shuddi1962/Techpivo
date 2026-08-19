@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { requireAdminRole } from "@/lib/admin-auth";
 import { createClient } from "@/lib/supabase/server";
 
 interface WorkflowNode {
@@ -19,6 +20,8 @@ function logError(context: string, err: unknown) {
 }
 
 export async function GET(request: NextRequest) {
+  const auth = await requireAdminRole(["admin", "editor"], request)
+  if (!auth.ok) return auth.response
   try {
     const supabase = await createClient();
     const section = request.nextUrl.searchParams.get("section") || "workflows";
@@ -132,6 +135,8 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
+  const auth = await requireAdminRole(["admin", "editor"], request)
+  if (!auth.ok) return auth.response
   try {
     const supabase = await createClient();
     const body = await request.json();
@@ -218,6 +223,8 @@ export async function POST(request: NextRequest) {
 }
 
 export async function PUT(request: NextRequest) {
+  const auth = await requireAdminRole(["admin", "editor"], request)
+  if (!auth.ok) return auth.response
   try {
     const supabase = await createClient();
     const body = await request.json();
@@ -265,6 +272,8 @@ export async function PUT(request: NextRequest) {
 }
 
 export async function DELETE(request: NextRequest) {
+  const auth = await requireAdminRole(["admin", "editor"], request)
+  if (!auth.ok) return auth.response
   try {
     const supabase = await createClient();
     const body = await request.json();

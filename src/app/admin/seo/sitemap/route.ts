@@ -1,7 +1,10 @@
-import { NextResponse } from "next/server"
+import { NextRequest, NextResponse } from "next/server"
+import { requireAdminRole } from "@/lib/admin-auth"
 import { createClient } from "@/lib/supabase/server"
 
 export async function GET() {
+  const auth = await requireAdminRole(["admin", "editor"])
+  if (!auth.ok) return auth.response
   const supabase = createClient()
 
   const [{ data: posts }, { data: categories }] = await Promise.all([

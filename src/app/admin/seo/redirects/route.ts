@@ -1,7 +1,10 @@
 import { NextRequest, NextResponse } from "next/server"
+import { requireAdminRole } from "@/lib/admin-auth"
 import { createClient } from "@/lib/supabase/server"
 
 export async function GET(req: NextRequest) {
+  const auth = await requireAdminRole(["admin", "editor"], req)
+  if (!auth.ok) return auth.response
   const supabase = createClient()
   const { searchParams } = new URL(req.url)
   const page = parseInt(searchParams.get("page") || "1")
@@ -20,6 +23,8 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
+  const auth = await requireAdminRole(["admin", "editor"], req)
+  if (!auth.ok) return auth.response
   const supabase = createClient()
   const body = await req.json()
   const { from_path, to_path, status_code = 301 } = body
@@ -39,6 +44,8 @@ export async function POST(req: NextRequest) {
 }
 
 export async function DELETE(req: NextRequest) {
+  const auth = await requireAdminRole(["admin", "editor"], req)
+  if (!auth.ok) return auth.response
   const supabase = createClient()
   const { searchParams } = new URL(req.url)
   const id = searchParams.get("id")

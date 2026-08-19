@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
+import { requireAdminRole } from "@/lib/admin-auth"
 import { createClient } from "@/lib/supabase/server"
 
 function similarity(a: string, b: string): number {
@@ -12,6 +13,8 @@ function similarity(a: string, b: string): number {
 }
 
 export async function GET(req: NextRequest) {
+  const auth = await requireAdminRole(["admin", "editor"], req)
+  if (!auth.ok) return auth.response
   const supabase = createClient()
   const { searchParams } = new URL(req.url)
   const threshold = parseFloat(searchParams.get("threshold") || "0.6")
