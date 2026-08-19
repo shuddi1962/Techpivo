@@ -104,6 +104,12 @@ export async function POST(req: NextRequest) {
           duplicate: { title, slug, status },
         }, { status: 409 })
       }
+      if (result.debug.startsWith("http_429")) {
+        return NextResponse.json({
+          error: "Google's free-tier Gemini rate limit was hit (429). Wait about 60 seconds, then try again — the limit resets automatically. (Tip: enabling billing in Google AI Studio sharply raises these limits.)",
+          debug: result.debug,
+        }, { status: 429 })
+      }
       return NextResponse.json({
         error: `AI writing failed. Debug: ${result.debug}. Suggestions: try a more specific topic, check API keys, or check server logs.`,
         debug: result.debug,

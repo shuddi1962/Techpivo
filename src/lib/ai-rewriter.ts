@@ -4,6 +4,10 @@ import { findDuplicatePost, type DuplicatePost } from '@/lib/duplicate-check'
 const GEMINI_DAILY_CAP = 100
 const MANUAL_GEMINI_DAILY_CAP = 50
 const GEMINI_RATE_MS = 1000
+// After a final 429 (Google free-tier rate limit) the per-minute window stays
+// hot for a while — reject further manual writes for 60s with a clear debug
+// instead of hammering Google with doomed requests.
+const GEMINI_429_COOLDOWN_MS = 60000
 
 export interface AISource {
   url:   string
@@ -635,6 +639,7 @@ async function logGeminiUsage(headline: string, usedFor: string): Promise<void> 
 // ── GEMINI 2.5 FLASH + GOOGLE SEARCH GROUNDING ───────────────────────────
 
 let lastGeminiCallTime = 0
+let lastGemini429At = 0
 
 // OpenAPI-style JSON schema for gemini-2.5-flash structured output. When the
 // model honors responseSchema (alongside responseMimeType application/json) it
@@ -681,6 +686,13 @@ async function geminiGrounded(
     return { article: null, debug: 'cap_reached' }
   }
 
+  const cooldownLeft = GEMINI_429_COOLDOWN_MS - (Date.now() - lastGemini429At)
+  if (cooldownLeft > 0) {
+    const secs = Math.ceil(cooldownLeft / 1000)
+    console.log(`[Techpivo AI] Google free-tier cooldown active (${secs}s left) — skipping`)
+    return { article: null, debug: `http_429:cooldown:${secs}s left` }
+  }
+
   const now = Date.now()
   const elapsed = now - lastGeminiCallTime
   if (elapsed < GEMINI_RATE_MS) {
@@ -700,9 +712,11 @@ async function geminiGrounded(
           temperature:       0.45,
           // 8192 tokens (~36k chars) truncated long articles mid-JSON — the
           // corrective retry then regenerated the SAME length and failed 3/3
-          // with json_parse_fail_after_object_extract. 32768 covers the longest
-          // articles with margin (a ~37.5k-char blob is ~9k tokens).
-          maxOutputTokens:   32768,
+          // with json_parse_fail_after_object_extract. 16384 (~65k chars)
+          // covers any article with large margin while halving the per-minute
+          // output-token burn that trips Google's free-tier TPM limit on
+          // back-to-back writes (was 32768).
+          maxOutputTokens:   16384,
           ...(useJsonMime
             ? { responseMimeType: 'application/json', responseSchema: ARTICLE_RESPONSE_SCHEMA }
             : {}),
@@ -740,6 +754,12 @@ async function geminiGrounded(
           console.warn(`[Gemini retry ${attempt + 1}] HTTP ${res.status} — waiting ${waitMs}ms${rawRetryAfter ? ` (Retry-After: ${rawRetryAfter}s)` : ''}`)
           await new Promise(r => setTimeout(r, waitMs))
           continue
+        }
+        if (res.status === 429) {
+          // Free-tier per-minute window exhausted — open the 60s cooldown so
+          // the NEXT write skips immediately instead of failing again.
+          lastGemini429At = Date.now()
+          return { article: null, debug: `http_429:${errText.slice(0, 150)}` }
         }
         return { article: null, debug: `http_${res.status}:${errText.slice(0, 150)}` }
       }

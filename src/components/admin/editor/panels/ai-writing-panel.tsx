@@ -72,7 +72,7 @@ export function AiWritingPanel() {
 
       if (!res.ok) {
         if (res.status === 429) {
-          setError(`Monthly quota reached (${data.quota?.used}/${data.quota?.cap}). Resets on the 1st.`)
+          setError(data.error || `Monthly quota reached (${data.quota?.used}/${data.quota?.cap}). Resets on the 1st.`)
         } else {
           setError(data.error || "AI writing failed. Try again.")
         }
