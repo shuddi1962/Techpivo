@@ -48,7 +48,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const ogImage =
     toAbsoluteImageUrl(post.og_image) ||
     toAbsoluteImageUrl(post.featured_image) ||
-    `${SITE_URL}/opengraph-image`
+    `${SITE_URL}/og-home.png`
 
   return {
     title: post.seo_title || post.title,
