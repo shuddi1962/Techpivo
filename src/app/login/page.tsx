@@ -25,7 +25,7 @@ export default function LoginPage() {
     if (!res.ok) {
       setError(data.error || "Login failed")
     } else {
-      window.location.assign("/account")
+      window.location.assign("/account/activity")
     }
     setLoading(false)
   }

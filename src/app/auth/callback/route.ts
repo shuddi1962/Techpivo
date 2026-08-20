@@ -11,7 +11,7 @@ export async function GET(request: NextRequest) {
 
   const isAuthPath = (path: string) => path.startsWith("/auth/") || path.startsWith("/admin/login")
   const hasExplicitNext = !!requestedNext && !isAuthPath(requestedNext)
-  const next = hasExplicitNext ? requestedNext : "/account"
+  const next = hasExplicitNext ? requestedNext : "/account/activity"
 
   const response = NextResponse.redirect(`${origin}${next}`)
   const supabase = createServerClient(

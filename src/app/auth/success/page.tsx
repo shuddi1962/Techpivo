@@ -19,7 +19,7 @@ export default function AuthSuccessPage() {
   }, [supabase])
 
   const goToAccount = () => {
-    router.push("/account")
+    router.push("/account/activity")
     router.refresh()
   }
 
