@@ -3,6 +3,7 @@
 import { useState } from "react"
 import Link from "next/link"
 import { createClient } from "@/lib/supabase/client"
+import TurnstileWidget, { TURNSTILE_SITE_KEY } from "@/components/auth/turnstile-widget"
 
 export default function LoginPage() {
   const [email, setEmail] = useState("")
@@ -10,6 +11,8 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
+  const [turnstileToken, setTurnstileToken] = useState("")
+  const [captchaResetKey, setCaptchaResetKey] = useState(0)
   const supabase = createClient()
 
   const handleEmailLogin = async (e: React.FormEvent) => {
@@ -19,11 +22,13 @@ export default function LoginPage() {
     const res = await fetch("/api/auth/login", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, password }),
+      body: JSON.stringify({ email, password, turnstileToken }),
     })
     const data = await res.json()
     if (!res.ok) {
       setError(data.error || "Login failed")
+      setTurnstileToken("")
+      setCaptchaResetKey((k) => k + 1)
     } else {
       window.location.assign("/account/activity")
     }
@@ -88,7 +93,8 @@ export default function LoginPage() {
               )}
             </button>
           </div>
-          <button type="submit" disabled={loading} className="w-full text-white font-semibold py-2.5 rounded-lg text-sm transition-opacity hover:opacity-90" style={{ background: "hsl(var(--accent))" }}>
+          {TURNSTILE_SITE_KEY && <TurnstileWidget onToken={(t) => setTurnstileToken(t ?? "")} resetKey={captchaResetKey} />}
+          <button type="submit" disabled={loading || (!!TURNSTILE_SITE_KEY && !turnstileToken)} className="w-full text-white font-semibold py-2.5 rounded-lg text-sm transition-opacity hover:opacity-90" style={{ background: "hsl(var(--accent))" }}>
             {loading ? "Signing in..." : "Sign In"}
           </button>
         </form>

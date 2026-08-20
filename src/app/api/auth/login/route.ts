@@ -3,6 +3,7 @@ import { createServerClient } from "@supabase/ssr"
 import { checkRateLimit, resetRateLimit } from "@/lib/rate-limiter"
 import { isSameOrigin } from "@/lib/csrf"
 import { auditLog } from "@/lib/audit-log"
+import { verifyTurnstile } from "@/lib/turnstile"
 
 export async function POST(request: NextRequest) {
   if (!isSameOrigin(request)) {
@@ -21,8 +22,17 @@ export async function POST(request: NextRequest) {
     )
   }
 
+  const body = await request.json().catch(() => null)
+  if (!body || typeof body.email !== "string" || typeof body.password !== "string") {
+    return NextResponse.json({ error: "Email and password are required" }, { status: 400 })
+  }
+  const { email, password } = body
+
+  if (!(await verifyTurnstile(typeof body.turnstileToken === "string" ? body.turnstileToken : null))) {
+    return NextResponse.json({ error: "Security check failed. Please try again." }, { status: 400 })
+  }
+
   const response = NextResponse.json({ success: true })
-  const { email, password } = await request.json()
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,

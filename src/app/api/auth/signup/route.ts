@@ -5,6 +5,8 @@ import { sendBrandedEmail } from "@/lib/email"
 import { isSameOrigin } from "@/lib/csrf"
 import { auditLog } from "@/lib/audit-log"
 import { checkRateLimit, clientIp, RATE_LIMITS } from "@/lib/rate-limiter"
+import { verifyTurnstile } from "@/lib/turnstile"
+import { isPasswordBreached } from "@/lib/hibp"
 
 const ALLOWED_SIGNUP_DOMAINS = ["gmail.com", "googlemail.com", "techpivo.com"]
 
@@ -28,10 +30,22 @@ export async function POST(request: NextRequest) {
     )
   }
 
+  if (!(await verifyTurnstile(typeof body.turnstileToken === "string" ? body.turnstileToken : null))) {
+    return NextResponse.json({ error: "Security check failed. Please try again." }, { status: 400 })
+  }
+
   const normalizedEmail = email.trim().toLowerCase()
   const domain = normalizedEmail.split("@")[1] ?? ""
   if (!ALLOWED_SIGNUP_DOMAINS.includes(domain)) {
     return NextResponse.json({ error: "Signup is limited to Gmail accounts only." }, { status: 400 })
+  }
+
+  if (password.length < 8 || password.length > 200) {
+    return NextResponse.json({ error: "Password must be at least 8 characters." }, { status: 400 })
+  }
+
+  if (await isPasswordBreached(password)) {
+    return NextResponse.json({ error: "This password has appeared in a data breach. Please choose a stronger one." }, { status: 400 })
   }
 
   const supabase = createServerClient(

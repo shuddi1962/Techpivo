@@ -12,6 +12,7 @@ import { PushSubscribeButton } from "@/components/push-subscribe-button"
 import SiteBlock from "@/components/layout/site-block"
 import { usePublishedPages } from "@/lib/use-site-pages"
 import { STATIC_PAGE_SLUGS } from "@/lib/pages"
+import TurnstileWidget, { TURNSTILE_SITE_KEY } from "@/components/auth/turnstile-widget"
 
 export function Header() {
   const [searchQ, setSearchQ] = useState("")
@@ -23,6 +24,9 @@ export function Header() {
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [mobileSearch, setMobileSearch] = useState("")
   const [socialUrls, setSocialUrls] = useState<Record<string, string>>({})
+  const [turnstileToken, setTurnstileToken] = useState("")
+  const [captchaResetKey, setCaptchaResetKey] = useState(0)
+  const [modalLoading, setModalLoading] = useState(false)
   const router = useRouter()
   const { theme, setTheme } = useTheme()
   const supabase = createClient()
@@ -290,10 +294,15 @@ export function Header() {
               Continue with GitHub
             </a>
           <div className="modal-or">or</div>
-            <form onSubmit={async (e) => { e.preventDefault(); const form = e.currentTarget; const email = (form.querySelector('[name="email"]') as HTMLInputElement).value; const password = (form.querySelector('[name="password"]') as HTMLInputElement).value; const { error } = await supabase.auth.signInWithPassword({ email, password }); if (error) { alert(error.message) } else { setLoginOpen(false); window.location.assign("/account/activity") } }}>
+            <form onSubmit={async (e) => { e.preventDefault(); const form = e.currentTarget; const email = (form.querySelector('[name="email"]') as HTMLInputElement).value; const password = (form.querySelector('[name="password"]') as HTMLInputElement).value; setModalLoading(true); try { const res = await fetch("/api/auth/login", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email, password, turnstileToken }) }); const data = await res.json().catch(() => ({})); if (!res.ok) { setTurnstileToken(""); setCaptchaResetKey((k) => k + 1); alert(data.error || "Login failed. Please try again."); return } setLoginOpen(false); window.location.assign("/account/activity") } catch { setTurnstileToken(""); setCaptchaResetKey((k) => k + 1); alert("Login failed. Please try again.") } finally { setModalLoading(false) } }}>
               <input name="email" type="email" placeholder="Email address" className="modal-input" required />
               <input name="password" type="password" placeholder="Password" className="modal-input" required />
-              <button type="submit" className="modal-submit">Sign In</button>
+              {TURNSTILE_SITE_KEY && (
+                <div style={{ marginBottom: 12 }}>
+                  <TurnstileWidget onToken={(t) => setTurnstileToken(t ?? "")} resetKey={captchaResetKey} />
+                </div>
+              )}
+              <button type="submit" className="modal-submit" disabled={modalLoading || (!!TURNSTILE_SITE_KEY && !turnstileToken)}>{modalLoading ? "Signing in…" : "Sign In"}</button>
             </form>
             <p className="modal-footer-text">
               Don&apos;t have an account? <a href="/signup" onClick={(e) => { e.preventDefault(); setLoginOpen(false); router.push("/signup") }}>Sign up free</a>
