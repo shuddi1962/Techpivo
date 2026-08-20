@@ -13,6 +13,8 @@ import type { Metadata } from "next"
 
 type Props = { params: { slug: string } }
 
+export const revalidate = 60
+
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const supabase = createPublicClient()
   const { data: cat } = await supabase.from("categories").select("*").eq("slug", params.slug).single()
