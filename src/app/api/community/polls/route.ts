@@ -35,17 +35,6 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'poll_id and option_id are required' }, { status: 400 });
   }
 
-  // Friendly duplicate check (unique constraint poll_votes_poll_id_user_id_key)
-  const { data: existing } = await supabase
-    .from('poll_votes')
-    .select('id')
-    .eq('poll_id', poll_id)
-    .eq('user_id', user.id)
-    .maybeSingle();
-  if (existing) {
-    return NextResponse.json({ error: 'You have already voted in this poll.' }, { status: 400 });
-  }
-
   // Option must belong to the poll
   const { data: opt } = await supabase
     .from('poll_options')
@@ -57,10 +46,17 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'That option does not exist in this poll.' }, { status: 400 });
   }
 
-  const { error } = await supabase
+  // Upsert is race-safe: poll_votes is UNIQUE (poll_id, user_id). When the
+  // user already voted, ignoreDuplicates returns no row -> 400 and the
+  // increment RPC is skipped so counts can never double.
+  const { data: inserted, error } = await supabase
     .from('poll_votes')
-    .insert({ poll_id, option_id, user_id: user.id });
+    .upsert({ poll_id, option_id, user_id: user.id }, { onConflict: 'poll_id,user_id', ignoreDuplicates: true })
+    .select('id');
   if (error) return NextResponse.json({ error: error.message }, { status: 400 });
+  if (!inserted || inserted.length === 0) {
+    return NextResponse.json({ error: 'You have already voted in this poll.' }, { status: 400 });
+  }
 
   const { error: rpcError } = await supabase.rpc('increment_poll_votes', { poll_id, option_id });
   if (rpcError) {

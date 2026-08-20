@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { checkRateLimit, clientIp, RATE_LIMITS } from '@/lib/rate-limiter';
+import { isSameOrigin } from '@/lib/csrf';
 
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
@@ -88,12 +89,15 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
+  if (!isSameOrigin(request)) {
+    return NextResponse.json({ error: 'Cross-origin request blocked' }, { status: 403 });
+  }
   const rl = checkRateLimit(`community-hub:${clientIp(request)}`, RATE_LIMITS.communityHub);
   if (!rl.allowed) {
     return NextResponse.json({ error: 'Too many requests. Try again later.' }, { status: 429 });
   }
 
-  const body = await request.json();
+  const body = await request.json().catch(() => ({}));
   const { action } = body;
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -103,11 +107,31 @@ export async function POST(request: NextRequest) {
   switch (action) {
     case 'vote': {
       const { poll_id, option_id } = body;
-      const { error } = await supabase
+      // Option must belong to the poll
+      const { data: opt } = await supabase
+        .from('poll_options')
+        .select('id')
+        .eq('id', option_id)
+        .eq('poll_id', poll_id)
+        .maybeSingle();
+      if (!opt) {
+        return NextResponse.json({ error: 'That option does not exist in this poll.' }, { status: 400 });
+      }
+      // Upsert is race-safe: poll_votes is UNIQUE (poll_id, user_id); an
+      // existing vote returns no row -> 400 and counts can never double.
+      const { data: inserted, error } = await supabase
         .from('poll_votes')
-        .insert({ poll_id, option_id, user_id: user.id });
+        .upsert({ poll_id, option_id, user_id: user.id }, { onConflict: 'poll_id,user_id', ignoreDuplicates: true })
+        .select('id');
       if (error) return NextResponse.json({ error: error.message }, { status: 400 });
-      await supabase.rpc('increment_poll_votes', { poll_id, option_id });
+      if (!inserted || inserted.length === 0) {
+        return NextResponse.json({ error: 'You have already voted in this poll.' }, { status: 400 });
+      }
+      const { error: rpcError } = await supabase.rpc('increment_poll_votes', { poll_id, option_id });
+      if (rpcError) {
+        await supabase.from('poll_votes').delete().eq('poll_id', poll_id).eq('user_id', user.id).eq('option_id', option_id);
+        return NextResponse.json({ error: rpcError.message }, { status: 400 });
+      }
       return NextResponse.json({ success: true });
     }
 

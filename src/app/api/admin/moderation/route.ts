@@ -139,6 +139,13 @@ export async function POST(request: NextRequest) {
       .update({ status: 'dismissed', resolved_by: auth.user.id, resolved_at: new Date().toISOString() })
       .eq('id', id);
     if (error) return NextResponse.json({ error: error.message }, { status: 400 });
+    await service.from('moderation_actions').insert({
+      actor_id: auth.user.id,
+      action_type: 'dismiss',
+      target_type: 'report',
+      target_id: id,
+      reason: 'Report dismissed',
+    });
     await logAudit(service, auth.user.id, `Dismissed report ${id}`);
     return NextResponse.json({ ok: true });
   }
@@ -170,6 +177,13 @@ export async function POST(request: NextRequest) {
       .update({ status: 'resolved', resolved_by: auth.user.id, resolved_at: new Date().toISOString() })
       .eq('id', id);
     if (error) return NextResponse.json({ error: error.message }, { status: 400 });
+    await service.from('moderation_actions').insert({
+      actor_id: auth.user.id,
+      action_type: 'remove',
+      target_type: targetType,
+      target_id: targetId,
+      reason: `Removed ${targetType} ${targetId}`,
+    });
     await logAudit(service, auth.user.id, `Removed ${targetType} ${targetId} (report ${id})`);
     return NextResponse.json({ ok: true });
   }
@@ -192,6 +206,13 @@ export async function POST(request: NextRequest) {
       .update({ status: 'resolved', resolved_by: auth.user.id, resolved_at: new Date().toISOString() })
       .eq('id', id);
     if (error) return NextResponse.json({ error: error.message }, { status: 400 });
+    await service.from('moderation_actions').insert({
+      actor_id: auth.user.id,
+      action_type: 'warn',
+      target_type: 'user',
+      target_id: userId,
+      reason: note || 'Content warning',
+    });
     await logAudit(service, auth.user.id, `Warned user ${userId} (report ${id})`);
     return NextResponse.json({ ok: true });
   }

@@ -119,6 +119,22 @@ export default function ForumPostPage({ params }: { params: { category: string; 
     };
   }, [postId, load]);
 
+  // Canonical URL: this page can be reached via /community/forum/<cat>/<id> or
+  // (for questions) /answers/<slug>; always point search engines at one URL.
+  useEffect(() => {
+    const canonical = `${window.location.origin}/community/forum/${params.category}/${postId}`;
+    let link = document.querySelector('link[rel="canonical"]') as HTMLLinkElement | null;
+    if (!link) {
+      link = document.createElement('link');
+      link.rel = 'canonical';
+      document.head.appendChild(link);
+    }
+    link.href = canonical;
+    return () => {
+      link?.remove();
+    };
+  }, [params.category, postId]);
+
   // Quiz linked to this post (created via composer with community_post_id)
   useEffect(() => {
     if (!post || post.content_type !== 'quiz') return;

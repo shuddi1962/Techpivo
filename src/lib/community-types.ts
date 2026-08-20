@@ -1,8 +1,8 @@
 import {
-  HelpCircle, MessageSquare, BarChart3, GraduationCap, Mic, Rocket, Scale, BookOpen, CircleDot, type LucideIcon
+  HelpCircle, MessageSquare, BarChart3, GraduationCap, Mic, Rocket, Scale, CircleDot, type LucideIcon
 } from 'lucide-react';
 
-export type CommunityContentType = 'question' | 'discussion' | 'poll' | 'quiz' | 'ama' | 'showcase' | 'debate' | 'tutorial_discussion';
+export type CommunityContentType = 'question' | 'discussion' | 'poll' | 'quiz' | 'ama' | 'showcase' | 'debate';
 
 export type QuestionStatus = 'new' | 'needs_context' | 'unanswered' | 'active' | 'answered' | 'solved' | 'stale' | 'archived';
 
@@ -80,7 +80,6 @@ export const CONTENT_TYPE_META: Record<CommunityContentType, { label: string; sh
   ama: { label: 'AMA', short: 'AMA', icon: Mic, description: 'Ask Me Anything session' },
   showcase: { label: 'Showcase', short: 'Showcase', icon: Rocket, description: 'Project or tool presentation' },
   debate: { label: 'Debate', short: 'Debate', icon: Scale, description: 'Structured opposing viewpoints' },
-  tutorial_discussion: { label: 'Tutorial Discussion', short: 'Tutorial', icon: BookOpen, description: 'Discussion around an article' },
 };
 
 export const QUESTION_STATUS_META: Record<QuestionStatus, { label: string; tone: 'muted' | 'info' | 'warning' | 'success' | 'danger' | 'verified' }> = {

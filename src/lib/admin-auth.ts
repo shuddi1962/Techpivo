@@ -55,6 +55,4 @@ export async function requireAdminRole(
   return { ok: true, user: authData.user, role: profile.role }
 }
 
-export function createServiceClient() {
-  return createSupabaseClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
-}
+export { createClient as createServiceClient } from "@/lib/supabase/admin"

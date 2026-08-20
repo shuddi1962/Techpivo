@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { checkRateLimit, clientIp, RATE_LIMITS } from '@/lib/rate-limiter';
 import { isSameOrigin } from '@/lib/csrf';
+import { createServiceClient } from '@/lib/admin-auth';
 
 const XP_VALUES: Record<string, number> = {
   read_article: 5,
@@ -52,6 +53,30 @@ export async function POST(request: NextRequest) {
   if (xp === 0) return NextResponse.json({ error: 'Unknown action' }, { status: 400 });
   if (!CLIENT_ACTIONS.has(action)) {
     return NextResponse.json({ error: 'Action is awarded by the server' }, { status: 403 });
+  }
+
+  // Validate target_id per action: item actions require an existing target,
+  // generic actions must NOT carry one. Prevents XP farming on fake targets.
+  const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+  const itemActions: Record<string, string> = {
+    read_article: 'posts',
+    share_article: 'posts',
+    bookmark: 'posts',
+    follow_user: 'user_profiles',
+  };
+  const genericActions = new Set(['daily_login', 'complete_profile', 'newsletter_subscribe']);
+  if (itemActions[action]) {
+    if (typeof target_id !== 'string' || !UUID_RE.test(target_id)) {
+      return NextResponse.json({ error: 'A valid target is required for this action' }, { status: 400 });
+    }
+    const { data: target } = await createServiceClient()
+      .from(itemActions[action])
+      .select('id')
+      .eq('id', target_id)
+      .maybeSingle();
+    if (!target) return NextResponse.json({ error: 'Target does not exist' }, { status: 400 });
+  } else if (genericActions.has(action) && target_id != null && target_id !== '') {
+    return NextResponse.json({ error: 'This action does not take a target' }, { status: 400 });
   }
 
   // Dedupe: any client action can only be earned once per day (per target for
