@@ -290,7 +290,7 @@ export function Header() {
               Continue with GitHub
             </a>
           <div className="modal-or">or</div>
-            <form onSubmit={async (e) => { e.preventDefault(); const form = e.currentTarget; const email = (form.querySelector('[name="email"]') as HTMLInputElement).value; const password = (form.querySelector('[name="password"]') as HTMLInputElement).value; const { error } = await supabase.auth.signInWithPassword({ email, password }); if (error) { alert(error.message) } else { setLoginOpen(false); router.refresh() } }}>
+            <form onSubmit={async (e) => { e.preventDefault(); const form = e.currentTarget; const email = (form.querySelector('[name="email"]') as HTMLInputElement).value; const password = (form.querySelector('[name="password"]') as HTMLInputElement).value; const { error } = await supabase.auth.signInWithPassword({ email, password }); if (error) { alert(error.message) } else { setLoginOpen(false); window.location.assign("/account/activity") } }}>
               <input name="email" type="email" placeholder="Email address" className="modal-input" required />
               <input name="password" type="password" placeholder="Password" className="modal-input" required />
               <button type="submit" className="modal-submit">Sign In</button>
