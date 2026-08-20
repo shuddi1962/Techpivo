@@ -15,7 +15,7 @@ export function CategoryTabs() {
 
   useEffect(() => {
     const supabase = createClient()
-    supabase.from("categories").select("*").order("name").then(({ data }) => {
+    supabase.from("categories").select("*").eq("is_active", true).order("name").then(({ data }) => {
       if (data && data.length > 0) {
         setCategories(data)
         setActive(data[0].id)

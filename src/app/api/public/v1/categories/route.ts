@@ -30,7 +30,8 @@ export async function GET(request: NextRequest) {
 
     const { data: categories, error } = await supabase
       .from("categories")
-      .select("id, name, slug, description, icon, color, post_count")
+      .select("id, name, slug, description, icon, color")
+      .eq("is_active", true)
       .order("name", { ascending: true });
 
     if (error) {

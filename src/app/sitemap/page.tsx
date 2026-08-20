@@ -30,7 +30,7 @@ export default async function SitemapPage() {
   const supabase = createPublicClient()
 
   const [catsRes, postsRes, seriesRes, profilesRes] = await Promise.all([
-    supabase.from("categories").select("*, subcategories(*)").order("name"),
+    supabase.from("categories").select("*, subcategories(*)").eq("is_active", true).order("name"),
     supabase.from("posts").select("slug, title, published_at, category_id").eq("status", "published").order("published_at", { ascending: false }).limit(50),
     supabase.from("series").select("slug, name").order("name"),
     supabase.from("profiles").select("username, full_name, avatar_url").order("full_name"),
@@ -89,7 +89,7 @@ export default async function SitemapPage() {
                   </Link>
                   {cat.subcategories && cat.subcategories.length > 0 && (
                     <div className="mt-3 flex flex-wrap gap-1.5">
-                      {cat.subcategories.map((sub: any) => (
+                      {cat.subcategories.filter((sub: any) => sub.is_active !== false).map((sub: any) => (
                         <Link key={sub.id} href={`/category/${cat.slug}/${sub.slug}`} className="inline-block rounded-md bg-muted px-2.5 py-1 text-xs text-muted-foreground hover:text-accent hover:bg-accent/10 transition-colors">
                           {sub.name}
                         </Link>

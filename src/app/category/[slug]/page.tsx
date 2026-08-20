@@ -17,7 +17,7 @@ export const revalidate = 60
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const supabase = createPublicClient()
-  const { data: cat } = await supabase.from("categories").select("*").eq("slug", params.slug).single()
+  const { data: cat } = await supabase.from("categories").select("*").eq("is_active", true).eq("slug", params.slug).single()
   if (!cat) return { title: "Category Not Found" }
 
   const { count } = await supabase
@@ -42,6 +42,7 @@ export default async function CategoryPage({ params }: Props) {
   const { data: category } = await supabase
     .from("categories")
     .select("*, subcategories(*)")
+    .eq("is_active", true)
     .eq("slug", params.slug)
     .single()
 
@@ -59,7 +60,7 @@ export default async function CategoryPage({ params }: Props) {
 
   const [popularRes, allCategoriesRes, recentRes, trendingRes, tagsRes] = await Promise.all([
     supabase.from("posts").select("*").eq("status", "published").order("views", { ascending: false }).limit(5),
-    supabase.from("categories").select("*").order("name"),
+    supabase.from("categories").select("*").eq("is_active", true).order("name"),
     supabase.from("posts").select("*").eq("status", "published").order("published_at", { ascending: false }).limit(5),
     supabase.from("posts").select("id,title,slug,views,category:categories!inner(name,slug,color)").eq("status", "published").gte("published_at", sevenDaysAgo).order("views", { ascending: false }).limit(5),
     supabase.from("posts").select("seo_keywords").eq("status", "published").limit(100),
@@ -90,7 +91,7 @@ export default async function CategoryPage({ params }: Props) {
         )}
         {category.subcategories && category.subcategories.length > 0 && (
           <div className="flex flex-wrap gap-2 mt-4">
-            {category.subcategories.map((sub: any) => (
+            {category.subcategories.filter((sub: any) => sub.is_active !== false).map((sub: any) => (
               <Link key={sub.id} href={`/category/${category.slug}/${sub.slug}`}>
                 <Badge variant="secondary" className="cursor-pointer hover:bg-primary hover:text-primary-foreground">
                   {sub.name}

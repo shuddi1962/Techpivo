@@ -23,7 +23,7 @@ export function LayoutWrapper({ children }: { children: React.ReactNode }) {
     const supabase = createClient()
     Promise.all([
       supabase.from("posts").select("category_id, subcategory_id").eq("status", "published"),
-      supabase.from("categories").select("*, subcategories(*)").order("name"),
+      supabase.from("categories").select("*, subcategories(*)").eq("is_active", true).order("name"),
       supabase.from("posts").select("id,title,slug,featured_image").eq("status","published").order("published_at",{ascending:false}).limit(6),
       supabase.from("social_accounts").select("platform, credentials"),
     ]).then(([postsRes, catsRes, recentRes, socialRes]) => {
@@ -34,7 +34,7 @@ export function LayoutWrapper({ children }: { children: React.ReactNode }) {
           .filter((cat: any) => catIds.has(cat.id))
           .map((cat: any) => ({
             ...cat,
-            subcategories: (cat.subcategories || []).filter((sub: any) => subcatIds.has(sub.id)),
+            subcategories: (cat.subcategories || []).filter((sub: any) => subcatIds.has(sub.id) && sub.is_active !== false),
           }))
         setCategories(filtered)
       }

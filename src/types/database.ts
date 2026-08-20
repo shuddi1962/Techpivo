@@ -91,7 +91,9 @@ export interface Category {
   color: string | null
   meta_title: string | null
   meta_description: string | null
+  is_active: boolean
   created_at: string
+  updated_at: string
 }
 
 export interface Subcategory {
@@ -100,7 +102,9 @@ export interface Subcategory {
   name: string
   slug: string
   description: string | null
+  is_active: boolean
   created_at: string
+  updated_at: string
 }
 
 export interface RssFeed {

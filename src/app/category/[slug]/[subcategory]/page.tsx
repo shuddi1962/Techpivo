@@ -14,8 +14,8 @@ export const revalidate = 60
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const supabase = createPublicClient()
-  const { data: cat } = await supabase.from("categories").select("*").eq("slug", params.slug).single()
-  const { data: sub } = await supabase.from("subcategories").select("*").eq("slug", params.subcategory).eq("category_id", cat?.id || 0).single()
+  const { data: cat } = await supabase.from("categories").select("*").eq("is_active", true).eq("slug", params.slug).single()
+  const { data: sub } = await supabase.from("subcategories").select("*").eq("is_active", true).eq("slug", params.subcategory).eq("category_id", cat?.id || 0).single()
   if (!sub) return { title: "Subcategory Not Found" }
   return {
     title: sub.name,
@@ -29,6 +29,7 @@ export default async function SubcategoryPage({ params }: Props) {
   const { data: category } = await supabase
     .from("categories")
     .select("*")
+    .eq("is_active", true)
     .eq("slug", params.slug)
     .single()
 
@@ -37,6 +38,7 @@ export default async function SubcategoryPage({ params }: Props) {
   const { data: subcategory } = await supabase
     .from("subcategories")
     .select("*")
+    .eq("is_active", true)
     .eq("slug", params.subcategory)
     .eq("category_id", category.id)
     .single()
@@ -55,7 +57,7 @@ export default async function SubcategoryPage({ params }: Props) {
 
   const [popularRes, categoriesRes, recentRes, trendingRes, tagsRes] = await Promise.all([
     supabase.from("posts").select("*").eq("status", "published").order("views", { ascending: false }).limit(5),
-    supabase.from("categories").select("*").order("name"),
+    supabase.from("categories").select("*").eq("is_active", true).order("name"),
     supabase.from("posts").select("*").eq("status", "published").order("published_at", { ascending: false }).limit(5),
     supabase.from("posts").select("id,title,slug,views,categories(name,slug,color)").eq("status", "published").gte("published_at", sevenDaysAgo).order("views", { ascending: false }).limit(5),
     supabase.from("posts").select("seo_keywords").eq("status", "published").limit(100),

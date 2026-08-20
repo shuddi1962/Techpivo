@@ -24,7 +24,7 @@ export function HeroSection() {
         .eq("is_featured", true)
         .order("published_at", { ascending: false })
         .limit(3),
-      supabase.from("categories").select("*"),
+      supabase.from("categories").select("*").eq("is_active", true),
     ]).then(async ([postsRes, catsRes]) => {
       let data = postsRes.data as any[]
       if (!data || data.length === 0) {

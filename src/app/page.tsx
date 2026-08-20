@@ -98,7 +98,7 @@ export default async function HomePage() {
           .not("featured_image", "is", null)
           .order("views", { ascending: false }).limit(5),
 
-        supabase.from("categories").select("id,name,slug,color,icon").order("name"),
+        supabase.from("categories").select("id,name,slug,color,icon").eq("is_active", true).order("name"),
 
         supabase.from("posts").select("*, categories!inner(name,slug,color)")
           .eq("status", "published").eq("categories.slug", "ai-automation")
@@ -156,6 +156,7 @@ export default async function HomePage() {
           .order("published_at", { ascending: false }).limit(10),
 
         supabase.from("subcategories").select("*, categories(name,slug,color)")
+          .eq("is_active", true)
           .order("name"),
 
         supabase.from("posts").select("seo_keywords")

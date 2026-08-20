@@ -99,7 +99,7 @@ export default async function PostPage({ params }: Props) {
 
   const [popularRes, categoriesRes, recentRes, trendingRes, tagsRes] = await Promise.all([
     supabase.from("posts").select("*").eq("status", "published").order("views", { ascending: false }).limit(5),
-    supabase.from("categories").select("*").order("name"),
+    supabase.from("categories").select("*").eq("is_active", true).order("name"),
     supabase.from("posts").select("*").eq("status", "published").order("published_at", { ascending: false }).limit(5),
     supabase.from("posts").select("id,title,slug,views,categories(name,slug,color)").eq("status", "published").gte("published_at", sevenDaysAgo).order("views", { ascending: false }).limit(5),
     supabase.from("posts").select("seo_keywords").eq("status", "published").limit(100),

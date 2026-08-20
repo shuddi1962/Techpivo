@@ -17,8 +17,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   try {
     const [postsRes, catsRes, subsRes, profilesRes, seriesRes, kwArticlesRes, pagesRes] = await Promise.all([
       supabase.from("posts").select("slug, updated_at, published_at, robots_noindex, author_id, category_id").eq("status", "published").order("published_at", { ascending: false }).limit(500),
-      supabase.from("categories").select("id, slug"),
-      supabase.from("subcategories").select("slug, category_id"),
+      supabase.from("categories").select("id, slug").eq("is_active", true),
+      supabase.from("subcategories").select("slug, category_id").eq("is_active", true),
       supabase.from("profiles").select("username, id"),
       supabase.from("series").select("slug"),
       supabase.from("keyword_articles").select("slug, updated_at").eq("status", "published").order("published_at", { ascending: false }).limit(500),

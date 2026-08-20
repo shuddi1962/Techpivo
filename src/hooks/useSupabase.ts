@@ -11,6 +11,7 @@ export function useCategories() {
     supabase
       .from("categories")
       .select("*")
+      .eq("is_active", true)
       .order("name")
       .then(({ data }) => {
         if (data) setCategories(data)
