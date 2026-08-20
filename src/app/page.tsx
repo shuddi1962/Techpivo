@@ -13,7 +13,7 @@ import { Sidebar } from "@/components/layout/Sidebar"
 import { Footer } from "@/components/layout/Footer"
 import SiteBlock from "@/components/layout/site-block"
 import { AdSlot } from "@/components/ads/AdSlot"
-import { SITE_NAME } from "@/lib/constants"
+import { SITE_NAME, SITE_URL, SITE_TAGLINE } from "@/lib/constants"
 
 export const revalidate = 60
 
@@ -23,10 +23,12 @@ export const metadata: Metadata = {
   openGraph: {
     title: `${SITE_NAME} — Tech News, Tutorials & AI-Powered Insights`,
     description: "Techpivo delivers expert tech news, programming tutorials, cybersecurity guides, AI insights, gadget reviews, and developer tools. Stay ahead with in-depth coverage of the technologies shaping our world.",
+    images: [{ url: `${SITE_URL}/og-home.png`, width: 1200, height: 630, alt: `${SITE_NAME} — ${SITE_TAGLINE}` }],
   },
   twitter: {
     title: `${SITE_NAME} — Tech News, Tutorials & AI-Powered Insights`,
     description: "Techpivo delivers expert tech news, programming tutorials, cybersecurity guides, AI insights, gadget reviews, and developer tools.",
+    images: [`${SITE_URL}/og-home.png`],
   },
 }
 
