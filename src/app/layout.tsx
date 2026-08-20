@@ -50,11 +50,13 @@ export const metadata: Metadata = {
     description: "Techpivo delivers expert tech news, programming tutorials, cybersecurity guides, AI insights, gadget reviews, and developer tools. Stay ahead with in-depth tech coverage.",
     url: SITE_URL,
     locale: "en_US",
+    images: [{ url: `${SITE_URL}/og-home.png`, width: 1200, height: 630, alt: `${SITE_NAME} — ${SITE_TAGLINE}` }],
   },
   twitter: {
     card: "summary_large_image",
     title: `${SITE_NAME} — ${SITE_TAGLINE}`,
     description: "Techpivo - Tech, decoded. Fast.",
+    images: [`${SITE_URL}/og-home.png`],
   },
   robots: {
     index: true,
