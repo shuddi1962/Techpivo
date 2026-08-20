@@ -3,7 +3,6 @@ import { createClient } from "@/lib/supabase/server"
 import { createClient as createAdminClient } from "@/lib/supabase/admin"
 import { DEFAULT_FX_RATES, computeCampaignSpend, formatMoney } from "@/lib/ads"
 import { getFxRatesPerNgn } from "@/lib/fx"
-import { resolveGeminiModel } from "@/lib/ai-rewriter"
 
 async function requireRole(allowed: string[] = ["admin", "editor"]) {
   const supabase = createClient()
@@ -42,58 +41,6 @@ async function getFxRates(supabase: any): Promise<Record<string, number>> {
 }
 
 const formatNGN = (n: number) => "₦" + Math.round(Number(n || 0)).toLocaleString()
-
-async function generateCreative(
-  placementName: string,
-  brand: string,
-  goal: string,
-  audienceHint: string
-): Promise<
-  | { ok: true; creative: { headline: string; description: string; cta_type: string } }
-  | { ok: false; reason: "not_configured" | "empty" | "parse" | `http_${number}` }
-> {
-  const apiKey = process.env.GEMINI_API_KEY
-  if (!apiKey) return { ok: false, reason: "not_configured" }
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${await resolveGeminiModel()}:generateContent?key=${apiKey}`
-  const prompt = [
-    "You are an expert digital ad copywriter for a technology news website called Techpivo.",
-    "Create ONE high-performing display ad creative. Respond with STRICT JSON only, no markdown:",
-    '{"headline":"...max 40 chars...","description":"...one punchy sentence, max 90 chars...","cta_type":"learn_more|buy_now|get_started|sign_up|subscribe|download|book_now|contact_us|try_free|shop_now|watch_video|read_more|apply_now|call_now"}',
-    `Ad placement: ${placementName}`,
-    `Advertiser: ${brand || "the advertiser"}`,
-    `Campaign goal: ${goal || "more clicks"}`,
-    `Audience: ${audienceHint || "tech enthusiasts"}`,
-    "Rules: natural, benefit-led, no hype, no emojis in headline, CTA must match the goal.",
-  ].join("\n")
-
-  const res = await fetch(url, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      contents: [{ parts: [{ text: prompt }] }],
-      generationConfig: { temperature: 0.8, maxOutputTokens: 200 },
-    }),
-  })
-  if (!res.ok) return { ok: false, reason: `http_${res.status}` }
-  const json = await res.json()
-  const text: string | undefined = json?.candidates?.[0]?.content?.parts?.[0]?.text
-  if (!text) return { ok: false, reason: "empty" }
-  try {
-    const match = text.match(/\{[\s\S]*\}/)
-    const parsed = JSON.parse(match ? match[0] : text)
-    const validCtas = ["learn_more", "buy_now", "get_started", "sign_up", "subscribe", "download", "book_now", "contact_us", "try_free", "shop_now", "watch_video", "read_more", "apply_now", "call_now"]
-    return {
-      ok: true,
-      creative: {
-        headline: String(parsed.headline || "").slice(0, 60),
-        description: String(parsed.description || "").slice(0, 160),
-        cta_type: validCtas.includes(parsed.cta_type) ? parsed.cta_type : "learn_more",
-      },
-    }
-  } catch (e) {
-    return { ok: false, reason: "parse" }
-  }
-}
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url)
@@ -381,35 +328,6 @@ export async function POST(request: Request) {
         campaign,
         message: "Campaign submitted! It will go live once our team approves it.",
       })
-    }
-
-    // ---- AI creative generator (any authenticated user) ----
-    if (action === "generate-creative") {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) return NextResponse.json({ error: "Please sign in to use the AI creative generator" }, { status: 401 })
-
-      const { placement_id, brand, goal, audience_hint } = body
-      let placementName = "Website banner"
-      if (placement_id) {
-        const { data: p } = await supabase.from("ad_placements").select("name").eq("id", placement_id).maybeSingle()
-        if (p) placementName = p.name
-      }
-      const creative = await generateCreative(placementName, brand, goal, audience_hint)
-      if (!creative.ok) {
-        const reason = creative.reason
-        const error =
-          reason === "not_configured"
-            ? "AI creative generation is not configured yet — upload your own image or video instead"
-            : reason === "empty"
-              ? "The AI returned no creative — try again in a moment"
-              : reason === "parse"
-                ? "The AI returned an unreadable creative — try again in a moment"
-                : reason.startsWith("http_")
-                  ? `AI generation failed (Gemini ${reason.slice(5)}) — try again in a moment`
-                  : "AI creative generation failed — try again in a moment"
-        return NextResponse.json({ error }, { status: 502 })
-      }
-      return NextResponse.json({ creative: creative.creative })
     }
 
     // ---- Admin/editor actions ----
