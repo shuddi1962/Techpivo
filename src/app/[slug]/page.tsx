@@ -24,6 +24,15 @@ export const revalidate = 60
 
 type Props = { params: { slug: string } }
 
+function toAbsoluteImageUrl(url?: string | null): string | null {
+  if (!url) return null
+  const u = url.trim()
+  if (/^https?:\/\//i.test(u)) return u
+  if (u.startsWith("//")) return `https:${u}`
+  if (u.startsWith("/")) return `${SITE_URL}${u}`
+  return `${SITE_URL}/${u}`
+}
+
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const supabase = createPublicClient()
   const { data: post } = await supabase
@@ -36,6 +45,10 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   if (!post) return { title: "Post Not Found" }
 
   const canonical = (post as any).canonical_url || `${SITE_URL}/${post.slug}`
+  const ogImage =
+    toAbsoluteImageUrl(post.og_image) ||
+    toAbsoluteImageUrl(post.featured_image) ||
+    `${SITE_URL}/opengraph-image`
 
   return {
     title: post.seo_title || post.title,
@@ -48,13 +61,16 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     openGraph: {
       title: post.title,
       description: post.seo_description || post.content?.replace(/<[^>]+>/g,'').slice(0,155),
-      images: post.og_image || post.featured_image ? [{ url: post.og_image || post.featured_image || "" }] : [],
+      url: canonical,
+      siteName: SITE_NAME,
+      type: "article",
+      images: [{ url: ogImage, width: 1200, height: 630, alt: post.title }],
     },
     twitter: {
       card: "summary_large_image",
       title: post.title,
       description: post.seo_description || post.content?.replace(/<[^>]+>/g,'').slice(0,155),
-      images: post.og_image || post.featured_image || undefined,
+      images: [ogImage],
     },
   }
 }
