@@ -68,6 +68,7 @@ export const RATE_LIMITS = {
   reportCreate: { limit: 10, windowMs: 60 * 60 * 1000 },
   acceptAnswer: { limit: 30, windowMs: 60 * 60 * 1000 },
   aiAnswer: { limit: 10, windowMs: 60 * 60 * 1000 },
+  signup: { limit: 10, windowMs: 60 * 60 * 1000 }, // 10 signups/IP/hour
 } as const
 
 /** Extract client IP from request headers (x-forwarded-for from proxies). */

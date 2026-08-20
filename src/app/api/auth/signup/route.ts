@@ -4,6 +4,9 @@ import { SITE_URL } from "@/lib/constants"
 import { sendBrandedEmail } from "@/lib/email"
 import { isSameOrigin } from "@/lib/csrf"
 import { auditLog } from "@/lib/audit-log"
+import { checkRateLimit, clientIp, RATE_LIMITS } from "@/lib/rate-limiter"
+
+const ALLOWED_SIGNUP_DOMAINS = ["gmail.com", "googlemail.com", "techpivo.com"]
 
 export async function POST(request: NextRequest) {
   if (!isSameOrigin(request)) {
@@ -17,6 +20,20 @@ export async function POST(request: NextRequest) {
   }
   const { email, password, fullName } = body
 
+  const limit = checkRateLimit(`signup:${clientIp(request)}`, RATE_LIMITS.signup)
+  if (!limit.allowed) {
+    return NextResponse.json(
+      { error: `Too many signup attempts from this IP. Please try again in ${limit.cooldown}s.` },
+      { status: 429 }
+    )
+  }
+
+  const normalizedEmail = email.trim().toLowerCase()
+  const domain = normalizedEmail.split("@")[1] ?? ""
+  if (!ALLOWED_SIGNUP_DOMAINS.includes(domain)) {
+    return NextResponse.json({ error: "Signup is limited to Gmail accounts only." }, { status: 400 })
+  }
+
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -29,7 +46,7 @@ export async function POST(request: NextRequest) {
   )
 
   const { data, error: signUpError } = await supabase.auth.signUp({
-    email,
+    email: normalizedEmail,
     password,
     options: {
       data: { full_name: fullName },
@@ -42,20 +59,20 @@ export async function POST(request: NextRequest) {
   }
 
   if (data.user) {
-    void auditLog({ user_id: data.user.id, action: "signup", entity_type: "auth", details: { email }, ip_address: ip, user_agent: ua })
+    void auditLog({ user_id: data.user.id, action: "signup", entity_type: "auth", details: { email: normalizedEmail }, ip_address: ip, user_agent: ua })
     const { error: profileError } = await supabase.from("profiles").insert({
       id: data.user.id,
       full_name: fullName,
-      username: email.split("@")[0],
+      username: normalizedEmail.split("@")[0],
       role: "contributor",
     })
     if (profileError) {
       console.error("Profile creation error:", profileError)
     }
 
-    const name = (fullName as string) || email.split("@")[0]
+    const name = (fullName as string) || normalizedEmail.split("@")[0]
     sendBrandedEmail({
-      to: email,
+      to: normalizedEmail,
       subject: `Welcome to Techpivo, ${name}! 🚀`,
       title: `Welcome aboard, ${name}!`,
       bodyHtml: `<p style="margin:0 0 12px;">Your Techpivo account has been created. You can now:</p>
@@ -71,5 +88,5 @@ export async function POST(request: NextRequest) {
     }).catch((err) => console.error("Welcome email error:", err))
   }
 
-  return NextResponse.json({ success: true, email })
+  return NextResponse.json({ success: true, email: normalizedEmail })
 }
