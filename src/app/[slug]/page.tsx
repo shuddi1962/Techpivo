@@ -19,10 +19,28 @@ import { SITE_NAME, SITE_URL } from "@/lib/constants"
 import { JsonLd } from "@/components/ui/jsonld"
 import { articleSchema, breadcrumbSchema, faqPageSchema, collectionPageSchema } from "@/lib/jsonld"
 import { AdSlot } from "@/components/ads/AdSlot"
+import PageShell from "@/components/pages/page-shell"
+import { getSitePage } from "@/lib/pages"
 
 export const revalidate = 60
 
 type Props = { params: { slug: string } }
+
+async function findSitePage(slug: string) {
+  const def = getSitePage(slug)
+  if (def) return def
+  try {
+    const supabase = createPublicClient()
+    const { data } = await supabase
+      .from("site_pages")
+      .select("slug, title, is_published")
+      .eq("slug", slug)
+      .eq("is_published", true)
+      .maybeSingle()
+    if (data) return { slug: data.slug, label: data.title || data.slug, path: `/${data.slug}`, icon: "", hero: { title: data.title || data.slug, subtitle: "" }, contentMd: "", metaTitle: "", metaDescription: "" } as any
+  } catch {}
+  return null
+}
 
 function toAbsoluteImageUrl(url?: string | null): string | null {
   if (!url) return null
@@ -42,7 +60,17 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     .eq("status", "published")
     .single()
 
-  if (!post) return { title: "Post Not Found" }
+  if (!post) {
+    const sitePage = await findSitePage(params.slug)
+    if (sitePage) {
+      return {
+        title: sitePage.metaTitle || sitePage.hero?.title || params.slug,
+        description: sitePage.metaDescription || sitePage.hero?.subtitle || "",
+        openGraph: { title: sitePage.hero?.title || params.slug, type: "website" },
+      }
+    }
+    return { title: "Post Not Found" }
+  }
 
   const canonical = (post as any).canonical_url || `${SITE_URL}/${post.slug}`
   const ogImage =
@@ -84,7 +112,13 @@ export default async function PostPage({ params }: Props) {
     .eq("status", "published")
     .single()
 
-  if (!post) notFound()
+  if (!post) {
+    const sitePage = await findSitePage(params.slug)
+    if (sitePage) {
+      return <PageShell slug={params.slug} />
+    }
+    notFound()
+  }
 
   const { data: relatedPosts } = await supabase
     .from("posts")
