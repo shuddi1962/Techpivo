@@ -12,6 +12,7 @@ interface SitePageRow {
   content_md: string | null;
   hero_image: string | null;
   is_published: boolean | null;
+  placement: string | null;
   design_settings: { hero_bg?: string; text_color?: string; content_width?: string; hero_alignment?: string; hero_height?: string } | null;
   updated_at: string | null;
 }
@@ -35,18 +36,21 @@ export default async function PageShell({
   children?: React.ReactNode;
 }) {
   const def = getSitePage(slug);
-  if (!def) notFound();
-
   const row = await fetchPageData(slug);
+
+  if (!def && !row) notFound();
+
   if (row && !row.is_published) notFound();
+
   const customized = !!row && !!row.is_published;
 
-  const title = customized && row!.title ? row!.title : def.hero.title;
-  const subtitle = customized && row!.subtitle != null && row!.subtitle !== "" ? row!.subtitle : def.hero.subtitle;
-  const content = customized && row!.content_md != null && row!.content_md !== "" ? row!.content_md : def.contentMd;
-  const heroImage = customized && row!.hero_image != null && row!.hero_image !== "" ? row!.hero_image : def.hero.heroImage;
+  const title = customized && row!.title ? row!.title : def?.hero.title || row!.title || slug;
+  const subtitle = customized && row!.subtitle != null && row!.subtitle !== "" ? row!.subtitle : def?.hero.subtitle || "";
+  const content = customized && row!.content_md != null && row!.content_md !== "" ? row!.content_md : def?.contentMd || "";
+  const heroImage = customized && row!.hero_image != null && row!.hero_image !== "" ? row!.hero_image : def?.hero.heroImage || null;
   const updatedAt = customized ? row!.updated_at : null;
   const ds = row?.design_settings || {};
+  const pageLabel = def?.label || title;
 
   const html = renderMarkdown(content);
 
@@ -58,7 +62,7 @@ export default async function PageShell({
     <div className="text-sm mb-4">
       <Link href="/" className="hover:underline" style={{ color: ds.text_color ? "rgba(255,255,255,0.8)" : undefined }}>Home</Link>
       <span className="mx-2" style={{ color: ds.text_color ? "rgba(255,255,255,0.6)" : undefined }}>→</span>
-      <span className="font-medium" style={{ color: ds.text_color || undefined }}>{def.label}</span>
+      <span className="font-medium" style={{ color: ds.text_color || undefined }}>{pageLabel}</span>
     </div>
   );
 
@@ -70,14 +74,16 @@ export default async function PageShell({
           <div className="absolute inset-0 bg-gradient-to-r from-black/80 via-black/60 to-black/40" />
           <div className={`relative z-10 px-4 md:px-12 lg:px-16 py-16 ${heroAlign} ${heroMaxW} mx-auto w-full`}>
             {breadcrumb}
-            <div className="inline-flex items-center justify-center h-14 w-14 rounded-2xl bg-amber-400/20 border border-amber-300/30 text-3xl mb-5 shadow-lg shadow-black/20 backdrop-blur-sm">
-              {def.icon}
-            </div>
+            {def?.icon && (
+              <div className="inline-flex items-center justify-center h-14 w-14 rounded-2xl bg-amber-400/20 border border-amber-300/30 text-3xl mb-5 shadow-lg shadow-black/20 backdrop-blur-sm">
+                {def.icon}
+              </div>
+            )}
             <h1 className="text-4xl md:text-5xl font-bold mb-4 font-[family-name:var(--font-syne)]" style={{ color: ds.text_color || undefined }}>{title}</h1>
-            <p className="text-lg max-w-2xl leading-relaxed" style={{ color: ds.text_color ? "rgba(255,255,255,0.8)" : undefined }}>{subtitle}</p>
-            {(def.hero.updatedLine || updatedAt) && (
+            {subtitle && <p className="text-lg max-w-2xl leading-relaxed" style={{ color: ds.text_color ? "rgba(255,255,255,0.8)" : undefined }}>{subtitle}</p>}
+            {(def?.hero.updatedLine || updatedAt) && (
               <p className="text-sm mt-4" style={{ color: ds.text_color ? "rgba(255,255,255,0.6)" : undefined }}>
-                {def.hero.updatedLine || `Last updated: ${new Date(updatedAt!).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })}`}
+                {def?.hero.updatedLine || (updatedAt ? `Last updated: ${new Date(updatedAt).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })}` : "")}
               </p>
             )}
           </div>
@@ -97,14 +103,16 @@ export default async function PageShell({
           <div className={`relative px-4 md:px-12 lg:px-16 py-16 md:py-20 ${heroAlign}`}>
             <div className={heroMaxW}>
               <div className="mb-6">{breadcrumb}</div>
-              <div className="inline-flex items-center justify-center h-14 w-14 rounded-2xl bg-amber-400/20 border border-amber-300/30 text-3xl mb-5 shadow-lg shadow-black/20">
-                {def.icon}
-              </div>
+              {def?.icon && (
+                <div className="inline-flex items-center justify-center h-14 w-14 rounded-2xl bg-amber-400/20 border border-amber-300/30 text-3xl mb-5 shadow-lg shadow-black/20">
+                  {def.icon}
+                </div>
+              )}
               <h1 className="text-4xl md:text-5xl font-bold mb-4 text-white font-[family-name:var(--font-syne)]">{title}</h1>
-              <p className="text-lg text-white/75 max-w-2xl leading-relaxed">{subtitle}</p>
-              {(def.hero.updatedLine || updatedAt) && (
+              {subtitle && <p className="text-lg text-white/75 max-w-2xl leading-relaxed">{subtitle}</p>}
+              {(def?.hero.updatedLine || updatedAt) && (
                 <p className="text-sm text-white/60 mt-4">
-                  {def.hero.updatedLine || `Last updated: ${new Date(updatedAt!).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })}`}
+                  {def?.hero.updatedLine || (updatedAt ? `Last updated: ${new Date(updatedAt).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })}` : "")}
                 </p>
               )}
             </div>

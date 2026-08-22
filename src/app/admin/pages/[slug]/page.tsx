@@ -588,23 +588,49 @@ export default function PageEditor() {
           </div>
           <div className="border rounded-xl bg-background overflow-hidden">
             {heroImage ? (
-              <div className="relative h-44 md:h-52 overflow-hidden">
+              <div
+                className="relative overflow-hidden"
+                style={{
+                  height: designSettings.hero_height || undefined,
+                  minHeight: designSettings.hero_height ? undefined : undefined,
+                }}
+              >
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={heroImage} alt="" className="absolute inset-0 w-full h-full object-cover" />
+                <img src={heroImage} alt="" className="absolute inset-0 w-full h-full object-cover" style={{ height: "100%" }} />
                 <div className="absolute inset-0 bg-gradient-to-r from-black/80 via-black/60 to-black/40" />
-                <div className="relative z-10 p-6 h-full flex flex-col justify-end text-white">
+                <div
+                  className="relative z-10 p-6 h-full flex flex-col justify-end"
+                  style={{
+                    color: designSettings.text_color || "#ffffff",
+                    textAlign: (designSettings.hero_alignment as "left" | "center" | "right") || "left",
+                  }}
+                >
                   <div className="text-2xl mb-1">{def?.icon ?? "📄"}</div>
                   <div className="text-lg font-bold leading-tight">{title || def?.hero?.title || slug}</div>
-                  <p className="text-xs text-white/75 mt-1 line-clamp-2">{subtitle || def?.hero?.subtitle || ""}</p>
+                  <p className="text-xs mt-1 line-clamp-2 opacity-75">{subtitle || def?.hero?.subtitle || ""}</p>
                 </div>
               </div>
             ) : (
-              <div className="bg-gradient-to-br from-slate-950 via-[#0b1035] to-[#1b1b4b] px-6 py-8 relative overflow-hidden">
+              <div
+                className="px-6 py-8 relative overflow-hidden"
+                style={{
+                  background: designSettings.hero_bg
+                    ? `linear-gradient(135deg, ${designSettings.hero_bg}, ${designSettings.hero_bg}dd)`
+                    : "linear-gradient(135deg, #0f172a, #0b1035, #1b1b4b)",
+                  height: designSettings.hero_height || undefined,
+                }}
+              >
                 <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,rgba(245,158,11,0.16),transparent_55%)]" />
-                <div className="relative">
+                <div
+                  className="relative"
+                  style={{
+                    color: designSettings.text_color || "#ffffff",
+                    textAlign: (designSettings.hero_alignment as "left" | "center" | "right") || "left",
+                  }}
+                >
                   <div className="text-2xl mb-2">{def?.icon ?? "📄"}</div>
-                  <div className="text-xl font-bold text-white mb-1.5">{title || def?.hero?.title || slug}</div>
-                  <p className="text-xs text-white/70 max-w-md leading-relaxed">{subtitle || def?.hero?.subtitle || ""}</p>
+                  <div className="text-xl font-bold mb-1.5">{title || def?.hero?.title || slug}</div>
+                  <p className="text-xs opacity-70 max-w-md leading-relaxed">{subtitle || def?.hero?.subtitle || ""}</p>
                 </div>
               </div>
             )}
@@ -612,8 +638,13 @@ export default function PageEditor() {
               className="px-6 py-6 prose prose-slate dark:prose-invert max-w-none prose-headings:font-bold prose-p:leading-relaxed prose-p:text-muted-foreground prose-a:text-accent prose-strong:text-foreground prose-blockquote:border-accent prose-li:text-muted-foreground"
               dangerouslySetInnerHTML={{ __html: previewHtml }}
             />
-            <div className="border-t px-6 py-3 flex items-center gap-2 text-[11px] text-muted-foreground bg-muted/20">
-              <Search className="w-3.5 h-3.5" /> This preview mirrors the exact public rendering on /{def?.path || slug}
+            <div className="border-t px-6 py-3 flex items-center justify-between text-[11px] text-muted-foreground bg-muted/20">
+              <span className="flex items-center gap-2">
+                <Search className="w-3.5 h-3.5" /> This preview mirrors the exact public rendering on /{def?.path || slug}
+              </span>
+              <span className="capitalize px-2 py-0.5 rounded-full bg-muted text-muted-foreground text-[10px] font-medium">
+                {placement || "both"}
+              </span>
             </div>
           </div>
         </div>

@@ -102,7 +102,6 @@ export default function PagesAdminPage() {
   const customized = SITE_PAGES.filter((p) => dbPages[p.slug])
   const liveCount = customized.filter((p) => dbPages[p.slug].is_published).length
   const hiddenCount = customized.filter((p) => !dbPages[p.slug].is_published).length
-  const usingDefaults = SITE_PAGES.length - customized.length
 
   const customSlugs = Object.keys(dbPages).filter((s) => !SITE_PAGES.find((p) => p.slug === s))
 
@@ -121,6 +120,8 @@ export default function PagesAdminPage() {
     })),
   ]
 
+  const usingDefaults = allPages.length - customized.length
+
   const filtered = allPages.filter((p) => {
     const db = dbPages[p.slug]
     const matchesQuery =
@@ -133,7 +134,8 @@ export default function PagesAdminPage() {
     return matchesQuery && matchesFilter
   })
 
-  const progress = Math.round((customized.length / SITE_PAGES.length) * 100)
+  const totalPageCount = allPages.length
+  const progress = Math.round((customized.length / totalPageCount) * 100)
 
   return (
     <div className="space-y-6">
@@ -177,7 +179,7 @@ export default function PagesAdminPage() {
           <div className="grid grid-cols-2 gap-3 min-w-[240px]">
             <div className="rounded-xl bg-white/5 border border-white/10 px-4 py-3 backdrop-blur-sm">
               <p className="text-[11px] text-white/60 uppercase tracking-wide mb-0.5">Total pages</p>
-              <p className="text-2xl font-bold tabular-nums">{SITE_PAGES.length}</p>
+              <p className="text-2xl font-bold tabular-nums">{totalPageCount}</p>
               <div className="mt-2 h-1.5 rounded-full bg-white/10 overflow-hidden">
                 <div className="h-full rounded-full bg-gradient-to-r from-amber-400 to-amber-300" style={{ width: `${progress}%` }} />
               </div>

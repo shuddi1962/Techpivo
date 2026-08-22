@@ -6,8 +6,7 @@ import { useTheme } from "next-themes"
 import { useState, useEffect } from "react"
 import { defaultSocialUrls } from "@/components/layout/social-icons"
 import SiteBlock from "@/components/layout/site-block"
-import { usePublishedPages } from "@/lib/use-site-pages"
-import { STATIC_PAGE_SLUGS } from "@/lib/pages"
+
 
 const footerPlatforms = [
   {
@@ -32,42 +31,11 @@ const footerPlatforms = [
   },
 ]
 
-const quickLinksLeft = [
-  { label: "About Us", href: "/about" },
-  { label: "Contact Us", href: "/contact" },
-  { label: "Advertise With Us", href: "/advertise" },
-  { label: "Editorial Policy", href: "/editorial-policy" },
-  { label: "Corrections Policy", href: "/corrections-policy" },
-  { label: "Disclaimer", href: "/disclaimer" },
-  { label: "Privacy Policy", href: "/privacy-policy" },
-  { label: "Cookies Policy", href: "/cookies-policy" },
-  { label: "Terms of Use", href: "/terms-of-use" },
-  { label: "Sitemap", href: "/sitemap" },
-  { label: "RSS Feed", href: "/rss.xml" },
-]
-
-const quickLinksRight = [
-  { label: "Tools", href: "/tools" },
-  { label: "Community", href: "/community" },
-  { label: "Forum", href: "/community/forum" },
-  { label: "Quizzes", href: "/community/quiz" },
-  { label: "Polls", href: "/community/polls" },
-  { label: "Leaderboard", href: "/community/leaderboard" },
-  { label: "My Account", href: "/account" },
-  { label: "Newsletter", href: "/newsletter" },
-  { label: "Marketplace", href: "/marketplace" },
-]
 
 export function Footer({ categories, recentPosts, socialUrls = {} }: { categories: any[]; recentPosts: any[]; socialUrls?: Record<string, string> }) {
   const { resolvedTheme } = useTheme()
   const [mounted, setMounted] = useState(false)
-  const { isPublic, isInFooter } = usePublishedPages()
   useEffect(() => { setMounted(true) }, [])
-  const pageVisible = (href: string) => {
-    const slug = href.replace(/^\//, "")
-    if (!/^[a-z0-9-]+$/.test(slug) || !STATIC_PAGE_SLUGS.has(slug)) return true
-    return isPublic(slug) && isInFooter(slug)
-  }
   const logoSrc = !mounted ? '/logo.svg' : (resolvedTheme === 'dark' ? '/logo.svg' : '/logo-light.svg')
   return (
     <footer className="site-footer">
@@ -121,28 +89,7 @@ export function Footer({ categories, recentPosts, socialUrls = {} }: { categorie
           ))}
         </div>
 
-        {/* Quick Links & Community */}
-        <div className="footer-quicklinks-col">
-          <div className="footer-quicklinks-grid">
-            <div>
-              <h3 className="footer-col-title">Quick Links</h3>
-              {quickLinksLeft.filter((l) => pageVisible(l.href)).map((l) => (
-                <Link key={l.label} href={l.href} className="footer-col-link">
-                  <span>{l.label}</span>
-                </Link>
-              ))}
-            </div>
-            <div>
-              <h3 className="footer-col-title">Community</h3>
-              {quickLinksRight.filter((l) => pageVisible(l.href)).map((l) => (
-                <Link key={l.label} href={l.href} className="footer-col-link">
-                  <span>{l.label}</span>
-                </Link>
-              ))}
-            </div>
-          </div>
-          <SiteBlock blockKey="footer-links" />
-        </div>
+        <SiteBlock blockKey="footer-links" />
       </div>
 
       <div className="footer-bottom">
