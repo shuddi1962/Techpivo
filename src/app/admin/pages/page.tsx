@@ -4,9 +4,9 @@ import { useState, useEffect, useCallback, useRef } from "react"
 import Link from "next/link"
 import { createClient } from "@/lib/supabase/client"
 import {
-  ArrowUpRight, CheckCircle2, Globe, LayoutTemplate, Loader2, Lock, Pencil, RotateCcw, Search, Sparkles,
+  ArrowUpRight, CheckCircle2, Globe, LayoutTemplate, Loader2, Lock, Pencil, Plus, RotateCcw, Search, Sparkles,
 } from "lucide-react"
-import { SITE_PAGES } from "@/lib/pages"
+import { SITE_PAGES, type SitePageDef } from "@/lib/pages"
 
 interface DbPage {
   slug: string
@@ -26,6 +26,10 @@ export default function PagesAdminPage() {
   const [busySlug, setBusySlug] = useState("")
   const [query, setQuery] = useState("")
   const [onlyCustom, setOnlyCustom] = useState<"all" | "custom" | "defaults">("all")
+  const [showCreate, setShowCreate] = useState(false)
+  const [newSlug, setNewSlug] = useState("")
+  const [newTitle, setNewTitle] = useState("")
+  const [creating, setCreating] = useState(false)
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null)
 
   const fetchPages = useCallback(async () => {
@@ -83,12 +87,41 @@ export default function PagesAdminPage() {
     setBusySlug("")
   }
 
+  const createPage = async () => {
+    const slug = newSlug.trim().toLowerCase().replace(/[^a-z0-9-]/g, "-").replace(/-+/g, "-").replace(/^-|-$/g, "")
+    if (!slug || slug.length < 2) { setError("Slug must be at least 2 characters."); return }
+    if (!newTitle.trim()) { setError("Title is required."); return }
+    setCreating(true)
+    setError("")
+    const res = await postAction({ action: "upsert", slug, title: newTitle.trim(), content_md: "", is_published: false, placement: "none" })
+    setCreating(false)
+    if (!res.ok) setError(`Failed to create page: ${res.error}`)
+    else { setShowCreate(false); setNewSlug(""); setNewTitle(""); window.location.href = `/admin/pages/${slug}` }
+  }
+
   const customized = SITE_PAGES.filter((p) => dbPages[p.slug])
   const liveCount = customized.filter((p) => dbPages[p.slug].is_published).length
   const hiddenCount = customized.filter((p) => !dbPages[p.slug].is_published).length
   const usingDefaults = SITE_PAGES.length - customized.length
 
-  const filtered = SITE_PAGES.filter((p) => {
+  const customSlugs = Object.keys(dbPages).filter((s) => !SITE_PAGES.find((p) => p.slug === s))
+
+  const allPages: (SitePageDef & { isCustom: boolean })[] = [
+    ...SITE_PAGES.map((p) => ({ ...p, isCustom: !!dbPages[p.slug] })),
+    ...customSlugs.map((s) => ({
+      slug: s,
+      path: s,
+      label: dbPages[s].title || s,
+      icon: "📄",
+      hero: { title: dbPages[s].title || s, subtitle: "", heroImage: undefined as string | undefined },
+      contentMd: "",
+      metaTitle: "",
+      metaDescription: "",
+      isCustom: true,
+    })),
+  ]
+
+  const filtered = allPages.filter((p) => {
     const db = dbPages[p.slug]
     const matchesQuery =
       query.trim() === "" ||
@@ -167,9 +200,15 @@ export default function PagesAdminPage() {
           </div>
         </div>
         <div className="relative mt-6 pt-5 border-t border-white/10 flex flex-wrap items-center gap-3">
+          <button
+            onClick={() => setShowCreate(true)}
+            className="inline-flex items-center gap-2 rounded-lg bg-white text-slate-950 text-sm font-semibold px-4 py-2 shadow-lg shadow-black/20 hover:bg-amber-50 transition-colors"
+          >
+            <Plus className="w-4 h-4" /> Create Page
+          </button>
           <Link
             href="/admin/pages/blocks"
-            className="inline-flex items-center gap-2 rounded-lg bg-white text-slate-950 text-sm font-semibold px-4 py-2 shadow-lg shadow-black/20 hover:bg-amber-50 transition-colors"
+            className="inline-flex items-center gap-2 rounded-lg bg-white/10 border border-white/15 text-white text-sm font-medium px-4 py-2 hover:bg-white/20 transition-colors"
           >
             <LayoutTemplate className="w-4 h-4" /> Manage Site Blocks
           </Link>
@@ -310,6 +349,45 @@ export default function PagesAdminPage() {
             or use <Link href="/admin/pages/blocks" className="text-accent hover:underline">Site Blocks</Link> for the
             homepage, header and footer.
           </p>
+        </div>
+      )}
+
+      {showCreate && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={() => setShowCreate(false)}>
+          <div className="bg-card border rounded-2xl shadow-2xl p-6 w-full max-w-md" onClick={(e) => e.stopPropagation()}>
+            <h2 className="text-lg font-semibold mb-4">Create New Page</h2>
+            <div className="space-y-3">
+              <div>
+                <label className="text-xs font-medium text-muted-foreground">Slug (URL path)</label>
+                <input
+                  value={newSlug}
+                  onChange={(e) => setNewSlug(e.target.value)}
+                  placeholder="my-new-page"
+                  className="w-full bg-background border rounded-lg px-3 py-2 text-sm focus:border-accent outline-none mt-1"
+                />
+                <p className="text-[11px] text-muted-foreground mt-1">URL will be /{newSlug || "..."}</p>
+              </div>
+              <div>
+                <label className="text-xs font-medium text-muted-foreground">Page Title</label>
+                <input
+                  value={newTitle}
+                  onChange={(e) => setNewTitle(e.target.value)}
+                  placeholder="My New Page"
+                  className="w-full bg-background border rounded-lg px-3 py-2 text-sm focus:border-accent outline-none mt-1"
+                />
+              </div>
+            </div>
+            <div className="flex justify-end gap-2 mt-5">
+              <button onClick={() => setShowCreate(false)} className="px-4 py-2 text-sm rounded-lg border hover:bg-muted">Cancel</button>
+              <button
+                onClick={createPage}
+                disabled={creating || !newSlug.trim() || !newTitle.trim()}
+                className="px-4 py-2 text-sm rounded-lg bg-accent text-accent-foreground font-medium hover:opacity-90 disabled:opacity-50 inline-flex items-center gap-2"
+              >
+                {creating && <Loader2 className="w-3.5 h-3.5 animate-spin" />} Create Page
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

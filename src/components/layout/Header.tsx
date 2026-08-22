@@ -30,10 +30,10 @@ export function Header() {
   const router = useRouter()
   const { theme, setTheme } = useTheme()
   const supabase = createClient()
-  const { isPublic, isInHeader } = usePublishedPages()
+  const { isPublic, isInHeader, isInMenu } = usePublishedPages()
   const pageVisible = (slug: string) => {
     if (!STATIC_PAGE_SLUGS.has(slug)) return true
-    return isPublic(slug) && isInHeader(slug)
+    return isPublic(slug) && (isInHeader(slug) || isInMenu(slug))
   }
 
   const loadProfile = async (userId: string) => {
@@ -136,7 +136,7 @@ export function Header() {
             {/* Desktop nav links — text only */}
             <Link href="/tools" className="header-nav-link"><span>Tools</span></Link>
             <Link href="/community" className="header-nav-link"><span>Community</span></Link>
-            <Link href="/marketplace" className="header-nav-link"><span>Shop</span></Link>
+            <Link href="/marketplace" className="header-nav-link"><span>Marketplace</span></Link>
             {pageVisible("advertise") && <Link href="/advertise" className="header-nav-link"><span>Advertise</span></Link>}
 
             {/* Account / Sign In — always visible */}
@@ -191,7 +191,7 @@ export function Header() {
               </Link>
               <Link href="/marketplace" className="mobile-drawer-link" onClick={() => setDrawerOpen(false)}>
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"/><path d="M3 6h18"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
-              Shop
+              Marketplace
             </Link>
             {pageVisible("advertise") && (
               <Link href="/advertise" className="mobile-drawer-link" onClick={() => setDrawerOpen(false)}>

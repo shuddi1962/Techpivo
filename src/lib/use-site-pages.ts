@@ -74,5 +74,16 @@ export function usePublishedPages() {
     [pages]
   )
 
-  return { isPublic, isInHeader, isInFooter, ready: pages !== null }
+  const isInMenu = useCallback(
+    (slug: string): boolean => {
+      if (!pages) return true
+      const v = pages[slug]
+      if (!v) return true
+      const p = v.placement
+      return p === "menu" || p === "both"
+    },
+    [pages]
+  )
+
+  return { isPublic, isInHeader, isInFooter, isInMenu, ready: pages !== null }
 }

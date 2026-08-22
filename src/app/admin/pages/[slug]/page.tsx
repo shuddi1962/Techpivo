@@ -144,8 +144,34 @@ export default function PageEditor() {
     setUploading(true)
     setError("")
     try {
+      let uploadFile = file
+      if (file.type.startsWith("image/")) {
+        uploadFile = await new Promise<File>((resolve) => {
+          const img = new window.Image()
+          img.onload = () => {
+            const MAX_W = 1920
+            const MAX_H = 810
+            let w = img.naturalWidth
+            let h = img.naturalHeight
+            if (w > MAX_W || h > MAX_H) {
+              const ratio = Math.min(MAX_W / w, MAX_H / h)
+              w = Math.round(w * ratio)
+              h = Math.round(h * ratio)
+            }
+            const canvas = document.createElement("canvas")
+            canvas.width = w
+            canvas.height = h
+            const ctx = canvas.getContext("2d")!
+            ctx.drawImage(img, 0, 0, w, h)
+            canvas.toBlob((blob) => {
+              resolve(new File([blob!], file.name.replace(/\.[^.]+$/, ".webp"), { type: "image/webp" }))
+            }, "image/webp", 0.9)
+          }
+          img.src = URL.createObjectURL(file)
+        })
+      }
       const fd = new FormData()
-      fd.append("file", file)
+      fd.append("file", uploadFile)
       const res = await fetch("/api/upload", { method: "POST", body: fd })
       const data = await res.json()
       if (!res.ok) throw new Error(data?.error || "Upload failed")
@@ -331,6 +357,7 @@ export default function PageEditor() {
               { value: "both", label: "Header + Footer", desc: "Shown everywhere" },
               { value: "header", label: "Header only", desc: "Top navigation bar" },
               { value: "footer", label: "Footer only", desc: "Bottom links" },
+              { value: "menu", label: "Menu", desc: "Main site menu" },
               { value: "none", label: "Hidden", desc: "Not in any nav" },
             ].map((opt) => (
               <button
@@ -359,21 +386,37 @@ export default function PageEditor() {
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="text-[11px] font-medium text-muted-foreground">Hero Background</label>
-              <input
-                value={designSettings.hero_bg ?? ""}
-                onChange={(e) => { setDesignSettings((s) => ({ ...s, hero_bg: e.target.value || undefined })); markDirty() }}
-                placeholder="#192537"
-                className="w-full bg-background border rounded-lg px-3 py-1.5 text-xs focus:border-accent outline-none mt-1"
-              />
+              <div className="flex items-center gap-2 mt-1">
+                <input
+                  type="color"
+                  value={designSettings.hero_bg ?? "#192537"}
+                  onChange={(e) => { setDesignSettings((s) => ({ ...s, hero_bg: e.target.value })); markDirty() }}
+                  className="w-8 h-8 rounded-lg border cursor-pointer"
+                />
+                <input
+                  value={designSettings.hero_bg ?? ""}
+                  onChange={(e) => { setDesignSettings((s) => ({ ...s, hero_bg: e.target.value || undefined })); markDirty() }}
+                  placeholder="#192537"
+                  className="flex-1 bg-background border rounded-lg px-3 py-1.5 text-xs focus:border-accent outline-none"
+                />
+              </div>
             </div>
             <div>
               <label className="text-[11px] font-medium text-muted-foreground">Text Color</label>
-              <input
-                value={designSettings.text_color ?? ""}
-                onChange={(e) => { setDesignSettings((s) => ({ ...s, text_color: e.target.value || undefined })); markDirty() }}
-                placeholder="#ffffff"
-                className="w-full bg-background border rounded-lg px-3 py-1.5 text-xs focus:border-accent outline-none mt-1"
-              />
+              <div className="flex items-center gap-2 mt-1">
+                <input
+                  type="color"
+                  value={designSettings.text_color ?? "#ffffff"}
+                  onChange={(e) => { setDesignSettings((s) => ({ ...s, text_color: e.target.value })); markDirty() }}
+                  className="w-8 h-8 rounded-lg border cursor-pointer"
+                />
+                <input
+                  value={designSettings.text_color ?? ""}
+                  onChange={(e) => { setDesignSettings((s) => ({ ...s, text_color: e.target.value || undefined })); markDirty() }}
+                  placeholder="#ffffff"
+                  className="flex-1 bg-background border rounded-lg px-3 py-1.5 text-xs focus:border-accent outline-none"
+                />
+              </div>
             </div>
             <div>
               <label className="text-[11px] font-medium text-muted-foreground">Content Max Width</label>

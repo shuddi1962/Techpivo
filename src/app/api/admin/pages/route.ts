@@ -83,7 +83,7 @@ export async function POST(req: NextRequest) {
   const meta_description = str(body.meta_description, 320);
   const is_published = typeof body.is_published === "boolean" ? body.is_published : true;
 
-  const validPlacements = ["header", "footer", "both", "none"];
+  const validPlacements = ["header", "footer", "both", "menu", "none"];
   const placement = validPlacements.includes(body.placement) ? body.placement : "both";
 
   let design_settings: Record<string, string | number> | null = null;

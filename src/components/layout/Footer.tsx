@@ -36,6 +36,8 @@ const quickLinksLeft = [
   { label: "About Us", href: "/about" },
   { label: "Contact Us", href: "/contact" },
   { label: "Advertise With Us", href: "/advertise" },
+  { label: "Editorial Policy", href: "/editorial-policy" },
+  { label: "Corrections Policy", href: "/corrections-policy" },
   { label: "Disclaimer", href: "/disclaimer" },
   { label: "Privacy Policy", href: "/privacy-policy" },
   { label: "Cookies Policy", href: "/cookies-policy" },
@@ -145,8 +147,6 @@ export function Footer({ categories, recentPosts, socialUrls = {} }: { categorie
 
       <div className="footer-bottom">
         <span>&copy; {new Date().getFullYear()} Techpivo. All rights reserved.</span>
-        <span>Built with passion for the tech community</span>
-        <span>Est. 2024 &middot; Tech, decoded. Fast.</span>
       </div>
     </footer>
   )
