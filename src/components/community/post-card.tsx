@@ -7,6 +7,8 @@ import { CONTENT_TYPE_META, QUESTION_STATUS_META, questionHealthFor, type Commun
 import { timeAgo, formatNumber } from '@/lib/community-utils';
 import { cn } from '@/lib/utils';
 import { MessageSquare, Eye, CircleCheck, Gift, Lock, Pin } from 'lucide-react';
+import { ExpertBadge } from '@/components/community/expert-badge';
+import { expertTierFromAccepted } from '@/lib/community-types';
 
 interface Props {
   post: CommunityPost;
@@ -103,6 +105,7 @@ export function PostCard({ post, showBody = false, className, myVote = null }: P
                 {post.author.full_name || post.author.username || 'Anonymous'}
               </Link>
             )}
+            <ExpertBadge tier={expertTierFromAccepted(post.author?.accepted_count ?? 0)} acceptedCount={post.author?.accepted_count ?? 0} className="shrink-0" />
           </div>
 
           {(post.topics && post.topics.length > 0) && (

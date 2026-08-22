@@ -31,7 +31,23 @@ export async function enrichAuthors<T extends RowWithAuthor>(
       .in('id', ids);
     for (const p of (data ?? []) as AuthorShape[]) map.set(p.id, p);
   }
-  return items.map(i => ({ ...i, author: i.author_id ? map.get(i.author_id) ?? null : null }));
+  // Batch-fetch accepted answer counts for expert badge display
+  const acceptedCounts: Record<string, number> = {};
+  if (ids.length > 0) {
+    const { data: acceptedRows } = await supabase
+      .from('forum_replies')
+      .select('author_id')
+      .in('author_id', ids)
+      .eq('is_accepted', true);
+    for (const row of (acceptedRows ?? []) as { author_id: string }[]) {
+      acceptedCounts[row.author_id] = (acceptedCounts[row.author_id] || 0) + 1;
+    }
+  }
+  return items.map(i => {
+    const base = i.author_id ? map.get(i.author_id) ?? null : null;
+    const author = base ? { ...base, accepted_count: acceptedCounts[base.id] || 0 } : null;
+    return { ...i, author } as T & { author: AuthorShape | null };
+  });
 }
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;

@@ -7,7 +7,9 @@ import { Progress } from '@/components/ui/progress';
 import FollowButton from '@/components/follow-button';
 import { getLevelForXP, getRankTitle, BADGES } from '@/lib/community-utils';
 import { createClient } from '@/lib/supabase/server';
-import { MapPin, Globe, Calendar, Star, Users, BookOpen, MessageSquare, Trophy, Target, ArrowLeft } from 'lucide-react';
+import { MapPin, Globe, Calendar, Star, Users, BookOpen, MessageSquare, Trophy, Target, ArrowLeft, CheckCircle } from 'lucide-react';
+import { ExpertBadge } from '@/components/community/expert-badge';
+import { expertTierFromAccepted } from '@/lib/community-types';
 import { SOCIAL_PROVIDERS } from '@/lib/social-providers';
 import BrandIcon from '@/lib/social-icons';
 import type { Metadata } from 'next/types';
@@ -62,6 +64,12 @@ export default async function PublicProfilePage({ params }: { params: Promise<{ 
     .select('*', { count: 'exact', head: true })
     .eq('author_id', profile?.id);
 
+  const { count: acceptedCount } = await supabase
+    .from('forum_replies')
+    .select('*', { count: 'exact', head: true })
+    .eq('author_id', profile?.id)
+    .eq('is_accepted', true);
+
   const { data: recentPosts } = await supabase
     .from('forum_posts')
     .select('id, title, created_at, category:forum_categories(name, icon)')
@@ -115,6 +123,7 @@ export default async function PublicProfilePage({ params }: { params: Promise<{ 
             <div className="flex items-center gap-3 mb-1">
               <h1 className="text-2xl font-bold">{profile.full_name || username}</h1>
               <Badge variant="secondary">Level {levelInfo.level}</Badge>
+              <ExpertBadge tier={expertTierFromAccepted(acceptedCount ?? 0)} acceptedCount={acceptedCount ?? 0} />
             </div>
             <p className="text-lg text-muted-foreground mb-2">{levelInfo.title}</p>
             {profile.bio && <p className="text-muted-foreground mb-3 max-w-lg">{profile.bio}</p>}
@@ -147,13 +156,14 @@ export default async function PublicProfilePage({ params }: { params: Promise<{ 
           </div>
         </div>
 
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-8">
+        <div className="grid grid-cols-2 md:grid-cols-6 gap-4 mb-8">
           {[
             { label: 'XP', value: (profile.xp || 0).toLocaleString(), icon: Star },
             { label: 'Followers', value: followerCount || 0, icon: Users },
             { label: 'Following', value: followingCount || 0, icon: Users },
             { label: 'Forum Posts', value: postCount || 0, icon: MessageSquare },
             { label: 'Comments', value: discussionCount || 0, icon: MessageSquare },
+            { label: 'Accepted Answers', value: acceptedCount || 0, icon: CheckCircle },
           ].map((stat) => (
             <Card key={stat.label}>
               <CardContent className="p-4 text-center">

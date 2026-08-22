@@ -14,6 +14,7 @@ export interface CommunityAuthor {
   level: number;
   reputation: number;
   role?: string | null;
+  accepted_count?: number;
 }
 
 export interface CommunityTopic {
@@ -106,6 +107,12 @@ export function slugify(value: string): string {
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-+|-+$/g, '')
     .slice(0, 120);
+}
+
+export function expertTierFromAccepted(acceptedCount: number): 'none' | 'contributor' | 'specialist' {
+  if (acceptedCount >= 20) return 'specialist';
+  if (acceptedCount >= 5) return 'contributor';
+  return 'none';
 }
 
 export function questionHealthFor(post: Pick<CommunityPost, 'content_type' | 'question_status' | 'reply_count' | 'is_solved'>): QuestionStatus {

@@ -9,7 +9,8 @@ import { TopicChip } from '@/components/community/topic-chip';
 import { CommunityMarkdown } from '@/components/community/community-markdown';
 import { PollWidget } from '@/components/community/poll-widget';
 import { ShareMenu } from '@/components/community/share-menu';
-import { CONTENT_TYPE_META, QUESTION_STATUS_META, questionHealthFor, type CommunityPost, type CommunityReply } from '@/lib/community-types';
+import { ExpertBadge } from '@/components/community/expert-badge';
+import { CONTENT_TYPE_META, QUESTION_STATUS_META, questionHealthFor, expertTierFromAccepted, type CommunityPost, type CommunityReply } from '@/lib/community-types';
 import { timeAgo, formatNumber, shouldCountView, parseTags } from '@/lib/community-utils';
 import { cn } from '@/lib/utils';
 import {
@@ -298,6 +299,7 @@ export default function ForumPostPage({ params }: { params: { category: string; 
                   <span className="truncate font-medium text-textPrimary hover:text-brand">{post.author?.full_name || post.author?.username || 'Member'}</span>
                 </Link>
                 <span className="text-xs">Lv.{post.author?.level ?? 1}</span>
+                <ExpertBadge tier={expertTierFromAccepted(post.author?.accepted_count ?? 0)} acceptedCount={post.author?.accepted_count ?? 0} className="shrink-0" />
                 <span aria-hidden>·</span>
                 <span className="text-xs">{timeAgo(post.created_at)}</span>
               </div>
@@ -480,6 +482,7 @@ export default function ForumPostPage({ params }: { params: { category: string; 
                         <span className="truncate text-sm font-medium text-textPrimary hover:text-brand">{r.author?.full_name || r.author?.username || 'Member'}</span>
                       </Link>
                       <span className="text-xs text-textSecondary">Lv.{r.author?.level ?? 1}</span>
+                      <ExpertBadge tier={expertTierFromAccepted(r.author?.accepted_count ?? 0)} acceptedCount={r.author?.accepted_count ?? 0} className="shrink-0" />
                       <span className="text-xs text-textSecondary">{timeAgo(r.created_at)}</span>
                       {r.is_accepted && (
                         <span className="inline-flex items-center gap-1 rounded-full bg-success/10 px-2 py-0.5 text-[11px] font-semibold text-success">
