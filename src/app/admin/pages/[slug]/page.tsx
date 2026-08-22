@@ -54,19 +54,18 @@ export default function PageEditor() {
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null)
 
   const resetFrom = useCallback((row: DbPage | null) => {
-    if (!def) return
     setDb(row)
-    setTitle(row?.title ?? def.hero.title)
-    setSubtitle(row?.subtitle != null && row.subtitle !== "" ? row.subtitle : def.hero.subtitle)
-    setHeroImage(row?.hero_image ?? def.hero.heroImage ?? "")
-    setMetaTitle(row?.meta_title ?? def.metaTitle)
-    setMetaDescription(row?.meta_description ?? def.metaDescription)
-    setContent(row?.content_md ?? def.contentMd)
+    setTitle(row?.title ?? def?.hero.title ?? slug)
+    setSubtitle(row?.subtitle != null && row.subtitle !== "" ? row.subtitle : def?.hero.subtitle ?? "")
+    setHeroImage(row?.hero_image ?? def?.hero.heroImage ?? "")
+    setMetaTitle(row?.meta_title ?? def?.metaTitle ?? "")
+    setMetaDescription(row?.meta_description ?? def?.metaDescription ?? "")
+    setContent(row?.content_md ?? def?.contentMd ?? "")
     setPublished(row ? row.is_published : true)
     setPlacement(row?.placement ?? "both")
     setDesignSettings(row?.design_settings ?? {})
     setLoaded(true)
-  }, [def])
+  }, [def, slug])
 
   const fetchPage = useCallback(async () => {
     const { data } = await supabase.from("site_pages").select("*").eq("slug", slug).maybeSingle()
@@ -234,13 +233,23 @@ export default function PageEditor() {
     }
   }
 
-  if (!def) {
+  if (!def && !db && loaded) {
     return (
       <div className="space-y-4">
         <Link href="/admin/pages" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground">
           <ArrowLeft className="w-4 h-4" /> Back to Pages
         </Link>
-        <div className="text-red-600">Unknown page slug: {slug}</div>
+        <div className="text-red-600">Page not found: {slug}</div>
+      </div>
+    )
+  }
+  if (!loaded) {
+    return (
+      <div className="space-y-4">
+        <Link href="/admin/pages" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground">
+          <ArrowLeft className="w-4 h-4" /> Pages
+        </Link>
+        <div className="flex items-center gap-2 text-muted-foreground"><Loader2 className="w-4 h-4 animate-spin" /> Loading page…</div>
       </div>
     )
   }
@@ -261,11 +270,11 @@ export default function PageEditor() {
         <span className="h-4 w-px bg-border" />
         <div className="flex items-center gap-2 min-w-0">
           <span className="inline-flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-to-br from-slate-950 via-[#0b1035] to-[#1b1b4b] text-lg border border-white/10 shrink-0">
-            {def.icon}
+            {def?.icon ?? "📄"}
           </span>
           <div className="min-w-0">
-            <h1 className="text-sm font-bold truncate">{def.label}</h1>
-            <p className="text-[11px] text-muted-foreground truncate">/{def.path}</p>
+            <h1 className="text-sm font-bold truncate">{def?.label ?? (title || slug)}</h1>
+            <p className="text-[11px] text-muted-foreground truncate">/{def?.path ?? slug}</p>
           </div>
         </div>
         <div className="ml-auto flex items-center gap-2.5">
@@ -278,7 +287,7 @@ export default function PageEditor() {
           )}
           {saveState === "error" && <span className="text-xs text-red-600">Save failed</span>}
           <Link
-            href={def.path}
+            href={`/${def?.path || slug}`}
             target="_blank"
             className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground border rounded-lg px-3 py-2 hover:border-accent transition-colors"
           >
@@ -584,18 +593,18 @@ export default function PageEditor() {
                 <img src={heroImage} alt="" className="absolute inset-0 w-full h-full object-cover" />
                 <div className="absolute inset-0 bg-gradient-to-r from-black/80 via-black/60 to-black/40" />
                 <div className="relative z-10 p-6 h-full flex flex-col justify-end text-white">
-                  <div className="text-2xl mb-1">{def.icon}</div>
-                  <div className="text-lg font-bold leading-tight">{title || def.hero.title}</div>
-                  <p className="text-xs text-white/75 mt-1 line-clamp-2">{subtitle || def.hero.subtitle}</p>
+                  <div className="text-2xl mb-1">{def?.icon ?? "📄"}</div>
+                  <div className="text-lg font-bold leading-tight">{title || def?.hero?.title || slug}</div>
+                  <p className="text-xs text-white/75 mt-1 line-clamp-2">{subtitle || def?.hero?.subtitle || ""}</p>
                 </div>
               </div>
             ) : (
               <div className="bg-gradient-to-br from-slate-950 via-[#0b1035] to-[#1b1b4b] px-6 py-8 relative overflow-hidden">
                 <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,rgba(245,158,11,0.16),transparent_55%)]" />
                 <div className="relative">
-                  <div className="text-2xl mb-2">{def.icon}</div>
-                  <div className="text-xl font-bold text-white mb-1.5">{title || def.hero.title}</div>
-                  <p className="text-xs text-white/70 max-w-md leading-relaxed">{subtitle || def.hero.subtitle}</p>
+                  <div className="text-2xl mb-2">{def?.icon ?? "📄"}</div>
+                  <div className="text-xl font-bold text-white mb-1.5">{title || def?.hero?.title || slug}</div>
+                  <p className="text-xs text-white/70 max-w-md leading-relaxed">{subtitle || def?.hero?.subtitle || ""}</p>
                 </div>
               </div>
             )}
@@ -604,7 +613,7 @@ export default function PageEditor() {
               dangerouslySetInnerHTML={{ __html: previewHtml }}
             />
             <div className="border-t px-6 py-3 flex items-center gap-2 text-[11px] text-muted-foreground bg-muted/20">
-              <Search className="w-3.5 h-3.5" /> This preview mirrors the exact public rendering on /{def.path}
+              <Search className="w-3.5 h-3.5" /> This preview mirrors the exact public rendering on /{def?.path || slug}
             </div>
           </div>
         </div>

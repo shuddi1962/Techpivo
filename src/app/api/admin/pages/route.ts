@@ -73,7 +73,6 @@ export async function POST(req: NextRequest) {
 
   // upsert: create or fully replace the stored content for this slug
   const def = getSitePage(slug);
-  if (!def) return NextResponse.json({ error: "Unknown page slug" }, { status: 400 });
 
   const title = str(body.title, 200);
   const subtitle = str(body.subtitle, 500);
@@ -110,12 +109,12 @@ export async function POST(req: NextRequest) {
     .upsert(
       {
         slug,
-        title: title !== undefined && title !== "" ? title : def.hero.title,
-        subtitle: subtitle !== undefined && subtitle !== "" ? subtitle : def.hero.subtitle,
-        content_md: content_md !== undefined ? content_md : def.contentMd,
-        hero_image: hero_image !== undefined ? (hero_image === "" ? null : hero_image) : def.hero.heroImage || null,
-        meta_title: meta_title || def.metaTitle,
-        meta_description: meta_description || def.metaDescription,
+        title: title || (def ? def.hero.title : slug),
+        subtitle: subtitle || (def ? def.hero.subtitle : ""),
+        content_md: content_md !== undefined ? content_md : (def ? def.contentMd : ""),
+        hero_image: hero_image !== undefined ? (hero_image === "" ? null : hero_image) : (def?.hero.heroImage || null),
+        meta_title: meta_title || (def ? def.metaTitle : title || slug),
+        meta_description: meta_description || (def ? def.metaDescription : ""),
         is_published,
         placement,
         design_settings,
