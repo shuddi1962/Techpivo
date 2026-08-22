@@ -3,24 +3,32 @@
 import { useCallback, useEffect, useState } from "react"
 import { createClient } from "@/lib/supabase/client"
 
+type PageInfo = { is_published: boolean; placement: string }
+
 /**
- * Realtime-aware site_pages publish state for navigation components.
- * A slug is public when: no DB row exists (registry defaults) OR the row is
- * published. Subscribes to site_pages changes so header/footer links hide and
- * reappear live when an admin toggles a page's Published switch.
+ * Realtime-aware site_pages publish + placement state for navigation components.
+ * A slug is public when: no DB row exists (registry defaults) OR the row is published.
+ * A slug appears in header when placement is 'header' or 'both' (or no DB row).
+ * A slug appears in footer when placement is 'footer' or 'both' (or no DB row).
+ * Subscribes to site_pages changes so nav links hide/reappear live.
  */
 export function usePublishedPages() {
-  const [pages, setPages] = useState<Record<string, boolean> | null>(null)
+  const [pages, setPages] = useState<Record<string, PageInfo> | null>(null)
 
   useEffect(() => {
     let mounted = true
     const supabase = createClient()
     const load = async () => {
-      const { data } = await supabase.from("site_pages").select("slug, is_published")
+      const { data } = await supabase.from("site_pages").select("slug, is_published, placement")
       if (!mounted) return
-      const map: Record<string, boolean> = {}
+      const map: Record<string, PageInfo> = {}
       if (data) {
-        for (const r of data as { slug: string; is_published: boolean | null }[]) map[r.slug] = !!r.is_published
+        for (const r of data as { slug: string; is_published: boolean | null; placement: string | null }[]) {
+          map[r.slug] = {
+            is_published: !!r.is_published,
+            placement: r.placement || "both",
+          }
+        }
       }
       setPages(map)
     }
@@ -39,10 +47,32 @@ export function usePublishedPages() {
     (slug: string): boolean => {
       if (!pages) return true
       const v = pages[slug]
-      return v === undefined ? true : v
+      return v === undefined ? true : v.is_published
     },
     [pages]
   )
 
-  return { isPublic, ready: pages !== null }
+  const isInHeader = useCallback(
+    (slug: string): boolean => {
+      if (!pages) return true
+      const v = pages[slug]
+      if (!v) return true
+      const p = v.placement
+      return p === "header" || p === "both"
+    },
+    [pages]
+  )
+
+  const isInFooter = useCallback(
+    (slug: string): boolean => {
+      if (!pages) return true
+      const v = pages[slug]
+      if (!v) return true
+      const p = v.placement
+      return p === "footer" || p === "both"
+    },
+    [pages]
+  )
+
+  return { isPublic, isInHeader, isInFooter, ready: pages !== null }
 }

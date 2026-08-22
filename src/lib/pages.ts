@@ -1,3 +1,11 @@
+export interface DesignSettings {
+  hero_bg?: string;
+  text_color?: string;
+  content_width?: string;
+  hero_alignment?: string;
+  hero_height?: string;
+}
+
 export interface SitePageDef {
   slug: string;
   label: string;
@@ -641,6 +649,27 @@ Events are hand-curated by the Techpivo team. RSVP in one click and we will keep
 - **Launches** — product reveals from the world's biggest brands`,
     metaTitle: "Tech Events & Meetups — Conferences, Workshops, Hackathons | Techpivo",
     metaDescription: "Upcoming technology events, conferences, workshops, webinars and hackathons for the Techpivo community.",
+  },
+  {
+    slug: "marketplace",
+    label: "Marketplace",
+    path: "/marketplace",
+    icon: "🛒",
+    hero: {
+      title: "TechPivo Marketplace",
+      subtitle: "Discover curated tech products, tools and services — reviewed and recommended by the Techpivo team.",
+      heroImage: "https://images.pexels.com/photos/3184291/pexels-photo-3184291.jpeg",
+    },
+    contentMd: `## Curated Tech Products
+
+Browse our hand-picked collection of tech products, tools and services — each reviewed for quality and value by the Techpivo editorial team.
+
+- **Featured Products** — Editor's picks for the best tools and gadgets
+- **Categories** — Browse by programming, cybersecurity, AI, gadgets and more
+- **Deals** — Exclusive discounts and offers from our partners
+- **Reviews** — In-depth product reviews from real testing`,
+    metaTitle: "Tech Marketplace — Curated Tech Products & Tools | TechPivo",
+    metaDescription: "Discover curated tech products, tools and services reviewed and recommended by the TechPivo editorial team.",
   },
 ];
 

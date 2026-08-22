@@ -33,7 +33,7 @@ export async function POST(req: NextRequest) {
   }
 
   const action = body.action || "upsert";
-  if (!["upsert", "reset", "toggle"].includes(action)) {
+  if (!["upsert", "reset", "toggle", "delete"].includes(action)) {
     return NextResponse.json({ error: "Unknown action" }, { status: 400 });
   }
 
@@ -65,6 +65,12 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: true, page: data });
   }
 
+  if (action === "delete") {
+    const { error } = await service.from("site_pages").delete().eq("slug", slug);
+    if (error) return NextResponse.json({ error: `Failed to delete page: ${error.message}` }, { status: 500 });
+    return NextResponse.json({ ok: true, deleted: slug });
+  }
+
   // upsert: create or fully replace the stored content for this slug
   const def = getSitePage(slug);
   if (!def) return NextResponse.json({ error: "Unknown page slug" }, { status: 400 });
@@ -76,6 +82,24 @@ export async function POST(req: NextRequest) {
   const meta_title = str(body.meta_title, 160);
   const meta_description = str(body.meta_description, 320);
   const is_published = typeof body.is_published === "boolean" ? body.is_published : true;
+
+  const validPlacements = ["header", "footer", "both", "none"];
+  const placement = validPlacements.includes(body.placement) ? body.placement : "both";
+
+  let design_settings: Record<string, string | number> | null = null;
+  if (body.design_settings && typeof body.design_settings === "object" && !Array.isArray(body.design_settings)) {
+    const allowed = ["hero_bg", "text_color", "content_width", "hero_alignment", "hero_height"];
+    const filtered: Record<string, string | number> = {};
+    for (const k of allowed) {
+      const v = (body.design_settings as Record<string, unknown>)[k];
+      if (typeof v === "string" && v.trim().length > 0 && v.length <= 100) {
+        filtered[k] = v.trim();
+      } else if (typeof v === "number" && v >= 0 && v <= 2000) {
+        filtered[k] = v;
+      }
+    }
+    if (Object.keys(filtered).length > 0) design_settings = filtered;
+  }
 
   if (title === undefined || content_md === undefined) {
     return NextResponse.json({ error: "title and content_md are required" }, { status: 400 });
@@ -93,6 +117,8 @@ export async function POST(req: NextRequest) {
         meta_title: meta_title || def.metaTitle,
         meta_description: meta_description || def.metaDescription,
         is_published,
+        placement,
+        design_settings,
         updated_by: auth.user.id,
         updated_at: new Date().toISOString(),
       },

@@ -59,12 +59,12 @@ const quickLinksRight = [
 export function Footer({ categories, recentPosts, socialUrls = {} }: { categories: any[]; recentPosts: any[]; socialUrls?: Record<string, string> }) {
   const { resolvedTheme } = useTheme()
   const [mounted, setMounted] = useState(false)
-  const { isPublic } = usePublishedPages()
+  const { isPublic, isInFooter } = usePublishedPages()
   useEffect(() => { setMounted(true) }, [])
   const pageVisible = (href: string) => {
     const slug = href.replace(/^\//, "")
     if (!/^[a-z0-9-]+$/.test(slug) || !STATIC_PAGE_SLUGS.has(slug)) return true
-    return isPublic(slug)
+    return isPublic(slug) && isInFooter(slug)
   }
   const logoSrc = !mounted ? '/logo.svg' : (resolvedTheme === 'dark' ? '/logo.svg' : '/logo-light.svg')
   return (

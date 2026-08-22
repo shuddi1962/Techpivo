@@ -30,10 +30,10 @@ export function Header() {
   const router = useRouter()
   const { theme, setTheme } = useTheme()
   const supabase = createClient()
-  const { isPublic } = usePublishedPages()
+  const { isPublic, isInHeader } = usePublishedPages()
   const pageVisible = (slug: string) => {
     if (!STATIC_PAGE_SLUGS.has(slug)) return true
-    return isPublic(slug)
+    return isPublic(slug) && isInHeader(slug)
   }
 
   const loadProfile = async (userId: string) => {

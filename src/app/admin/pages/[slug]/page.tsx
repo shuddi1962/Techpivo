@@ -7,8 +7,9 @@ import { createClient } from "@/lib/supabase/client"
 import { getSitePage } from "@/lib/pages"
 import { renderMarkdown } from "@/lib/markdown"
 import {
-  ArrowLeft, Check, ExternalLink, Eye, ImagePlus, Loader2, RotateCcw, Save, Search, Trash2, Wand2,
+  ArrowLeft, Check, ExternalLink, Eye, ImagePlus, LayoutPanelLeft, Loader2, Palette, RotateCcw, Save, Search, Trash2, Wand2,
 } from "lucide-react"
+import type { DesignSettings } from "@/lib/pages"
 
 interface DbPage {
   slug: string
@@ -19,6 +20,8 @@ interface DbPage {
   meta_title: string | null
   meta_description: string | null
   is_published: boolean
+  placement: string | null
+  design_settings: DesignSettings | null
   updated_at: string | null
 }
 
@@ -39,6 +42,8 @@ export default function PageEditor() {
   const [metaDescription, setMetaDescription] = useState("")
   const [content, setContent] = useState("")
   const [published, setPublished] = useState(true)
+  const [placement, setPlacement] = useState("both")
+  const [designSettings, setDesignSettings] = useState<DesignSettings>({})
   const [loaded, setLoaded] = useState(false)
   const [saveState, setSaveState] = useState<"" | "saving" | "saved" | "error">("")
   const [uploading, setUploading] = useState(false)
@@ -58,6 +63,8 @@ export default function PageEditor() {
     setMetaDescription(row?.meta_description ?? def.metaDescription)
     setContent(row?.content_md ?? def.contentMd)
     setPublished(row ? row.is_published : true)
+    setPlacement(row?.placement ?? "both")
+    setDesignSettings(row?.design_settings ?? {})
     setLoaded(true)
   }, [def])
 
@@ -102,17 +109,19 @@ export default function PageEditor() {
           "Content-Type": "application/json",
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
-        body: JSON.stringify({
-          action: "upsert",
-          slug,
-          title,
-          subtitle,
-          hero_image: heroImage,
-          content_md: content,
-          meta_title: metaTitle,
-          meta_description: metaDescription,
-          is_published: published,
-        }),
+          body: JSON.stringify({
+            action: "upsert",
+            slug,
+            title,
+            subtitle,
+            hero_image: heroImage,
+            content_md: content,
+            meta_title: metaTitle,
+            meta_description: metaDescription,
+            is_published: published,
+            placement,
+            design_settings: Object.keys(designSettings).length ? designSettings : null,
+          }),
       })
       const data = await res.json()
       if (!res.ok) {
@@ -170,6 +179,33 @@ export default function PageEditor() {
     setDirtyRef(false)
     await fetchPage()
     setSaveState("")
+  }
+
+  const deletePage = async () => {
+    if (!window.confirm(`Delete "${title || def?.label || slug}" permanently? This cannot be undone.`)) return
+    setSaveState("saving")
+    try {
+      const { data: sess } = await supabase.auth.getSession()
+      const token = sess?.session?.access_token
+      const res = await fetch("/api/admin/pages", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({ action: "delete", slug }),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        setSaveState("error")
+        setError(data?.error || res.statusText)
+        return
+      }
+      window.location.href = "/admin/pages"
+    } catch (e: any) {
+      setSaveState("error")
+      setError(e?.message || "Network error")
+    }
   }
 
   if (!def) {
@@ -272,6 +308,118 @@ export default function PageEditor() {
           >
             <RotateCcw className="w-4 h-4" /> Reset to default
           </button>
+          <button
+            onClick={deletePage}
+            className="inline-flex items-center gap-1.5 text-sm text-red-600 hover:text-white hover:bg-red-600 border border-red-200 rounded-lg px-3 py-2 transition-colors"
+          >
+            <Trash2 className="w-4 h-4" /> Delete
+          </button>
+        </div>
+      </div>
+
+      {/* Placement + Design Settings */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {/* Placement selector */}
+        <div className="bg-card border rounded-xl px-5 py-4 space-y-3">
+          <div className="flex items-center gap-2">
+            <LayoutPanelLeft className="w-4 h-4 text-accent" />
+            <h3 className="text-sm font-semibold">Page Placement</h3>
+          </div>
+          <p className="text-[11px] text-muted-foreground">Choose where this page appears in the site navigation.</p>
+          <div className="grid grid-cols-2 gap-2">
+            {[
+              { value: "both", label: "Header + Footer", desc: "Shown everywhere" },
+              { value: "header", label: "Header only", desc: "Top navigation bar" },
+              { value: "footer", label: "Footer only", desc: "Bottom links" },
+              { value: "none", label: "Hidden", desc: "Not in any nav" },
+            ].map((opt) => (
+              <button
+                key={opt.value}
+                onClick={() => { setPlacement(opt.value); markDirty() }}
+                className={`rounded-lg border px-3 py-2.5 text-left transition-colors ${
+                  placement === opt.value
+                    ? "border-accent bg-accent/5 ring-1 ring-accent"
+                    : "border-border hover:border-muted-foreground/30"
+                }`}
+              >
+                <p className="text-xs font-semibold">{opt.label}</p>
+                <p className="text-[10px] text-muted-foreground mt-0.5">{opt.desc}</p>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Design settings */}
+        <div className="bg-card border rounded-xl px-5 py-4 space-y-3">
+          <div className="flex items-center gap-2">
+            <Palette className="w-4 h-4 text-accent" />
+            <h3 className="text-sm font-semibold">Design Settings</h3>
+          </div>
+          <p className="text-[11px] text-muted-foreground">Customize the page appearance. Leave empty for defaults.</p>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-[11px] font-medium text-muted-foreground">Hero Background</label>
+              <input
+                value={designSettings.hero_bg ?? ""}
+                onChange={(e) => { setDesignSettings((s) => ({ ...s, hero_bg: e.target.value || undefined })); markDirty() }}
+                placeholder="#192537"
+                className="w-full bg-background border rounded-lg px-3 py-1.5 text-xs focus:border-accent outline-none mt-1"
+              />
+            </div>
+            <div>
+              <label className="text-[11px] font-medium text-muted-foreground">Text Color</label>
+              <input
+                value={designSettings.text_color ?? ""}
+                onChange={(e) => { setDesignSettings((s) => ({ ...s, text_color: e.target.value || undefined })); markDirty() }}
+                placeholder="#ffffff"
+                className="w-full bg-background border rounded-lg px-3 py-1.5 text-xs focus:border-accent outline-none mt-1"
+              />
+            </div>
+            <div>
+              <label className="text-[11px] font-medium text-muted-foreground">Content Max Width</label>
+              <input
+                value={designSettings.content_width ?? ""}
+                onChange={(e) => { setDesignSettings((s) => ({ ...s, content_width: e.target.value || undefined })); markDirty() }}
+                placeholder="800px"
+                className="w-full bg-background border rounded-lg px-3 py-1.5 text-xs focus:border-accent outline-none mt-1"
+              />
+            </div>
+            <div>
+              <label className="text-[11px] font-medium text-muted-foreground">Hero Height</label>
+              <input
+                value={designSettings.hero_height ?? ""}
+                onChange={(e) => { setDesignSettings((s) => ({ ...s, hero_height: e.target.value || undefined })); markDirty() }}
+                placeholder="320px"
+                className="w-full bg-background border rounded-lg px-3 py-1.5 text-xs focus:border-accent outline-none mt-1"
+              />
+            </div>
+            <div className="col-span-2">
+              <label className="text-[11px] font-medium text-muted-foreground">Hero Alignment</label>
+              <div className="flex gap-1.5 mt-1">
+                {["left", "center", "right"].map((align) => (
+                  <button
+                    key={align}
+                    onClick={() => { setDesignSettings((s) => ({ ...s, hero_alignment: align })); markDirty() }}
+                    className={`flex-1 rounded-lg border px-2 py-1.5 text-[11px] font-medium capitalize transition-colors ${
+                      designSettings.hero_alignment === align
+                        ? "border-accent bg-accent/5 text-accent"
+                        : "border-border hover:border-muted-foreground/30 text-muted-foreground"
+                    }`}
+                  >
+                    {align}
+                  </button>
+                ))}
+                {designSettings.hero_alignment && (
+                  <button
+                    onClick={() => { setDesignSettings((s) => ({ ...s, hero_alignment: undefined })); markDirty() }}
+                    className="rounded-lg border border-border px-2 py-1.5 text-[11px] font-medium text-muted-foreground hover:text-red-600"
+                  >
+                    Clear
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
