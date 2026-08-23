@@ -20,7 +20,7 @@ export default function AdminIndexingPage() {
 
   const loadQueue = useCallback(async () => {
     const supabase = createClient()
-    const { data } = await supabase.from("google_indexing_queue").select("*").order("created_at", { ascending: false }).limit(50)
+    const { data } = await supabase.from("google_indexing_queue").select("*").order("created_at", { ascending: false }).limit(200)
     if (data) setQueue(data)
   }, [])
 
@@ -47,37 +47,73 @@ export default function AdminIndexingPage() {
   const syncQueue = useCallback(async () => {
     setSyncing(true)
     setSyncMsg("")
+    let added = 0
+    let reset = 0
     try {
       const supabase = createClient()
+
       const { data: posts, error } = await supabase
         .from("posts")
-        .select("slug")
+        .select("slug, google_indexed")
         .eq("status", "published")
-        .or("google_indexed.is.null,google_indexed.eq.false")
-        .limit(300)
+        .limit(500)
       if (error) throw error
 
-      const { data: existing } = await supabase.from("google_indexing_queue").select("url")
-      const existingUrls = new Set((existing || []).map((q) => q.url))
+      const { data: existing } = await supabase.from("google_indexing_queue").select("url, status")
+      const existingMap = new Map((existing || []).map((q) => [q.url, q.status]))
+
+      const postUrls = (posts || []).map((p) => `${siteUrl}/${p.slug}`)
+
+      const { data: forumCats } = await supabase.from("forum_categories").select("slug")
+      const { data: blogCats } = await supabase.from("categories").select("slug")
+
+      const forumCategoryUrls = (forumCats || []).map((c) => `${siteUrl}/community/forum/${c.slug}`)
+      const blogCategoryUrls = (blogCats || []).map((c) => `${siteUrl}/category/${c.slug}`)
 
       const staticUrls = [
+        `${siteUrl}`,
         ...SITE_PAGES.map((p) => `${siteUrl}${p.path}`),
         ...TOOL_SLUGS.map((slug) => `${siteUrl}/tools/${slug}`),
         `${siteUrl}/tools`,
+        ...["developer","security","network","seo","image","pdf","calculators","ai-writers"].map((c) => `${siteUrl}/tools/category/${c}`),
         `${siteUrl}/community`,
         `${siteUrl}/community/events`,
         `${siteUrl}/community/forum`,
         `${siteUrl}/community/quiz`,
+        `${siteUrl}/community/polls`,
+        `${siteUrl}/community/topics`,
+        `${siteUrl}/community/leaderboard`,
+        `${siteUrl}/community/create`,
+        `${siteUrl}/newsletter`,
+        `${siteUrl}/advertise`,
+        ...forumCategoryUrls,
+        ...blogCategoryUrls,
       ]
 
-      const urls = [...new Set([
-        ...(posts || []).map((p) => `${siteUrl}/${p.slug}`),
-        ...staticUrls,
-      ].filter((u) => !existingUrls.has(u)))]
-      if (urls.length > 0) {
-        await supabase.from("google_indexing_queue").insert(urls.map((url) => ({ url, status: "pending" })))
+      const allUrls = [...new Set([...postUrls, ...staticUrls])]
+
+      const newUrls = allUrls.filter((u) => !existingMap.has(u))
+      if (newUrls.length > 0) {
+        await supabase.from("google_indexing_queue").insert(newUrls.map((url) => ({ url, status: "pending" })))
+        added = newUrls.length
       }
-      setSyncMsg(urls.length > 0 ? `Queue synced — added ${urls.length} unindexed URL(s)` : "Queue is already up to date")
+
+      const unindexedPostUrls = (posts || [])
+        .filter((p) => !p.google_indexed)
+        .map((p) => `${siteUrl}/${p.slug}`)
+      const staleSubmitted = unindexedPostUrls.filter((u) => existingMap.get(u) === "submitted")
+      if (staleSubmitted.length > 0) {
+        await supabase
+          .from("google_indexing_queue")
+          .update({ status: "pending", submitted_at: null })
+          .in("url", staleSubmitted)
+        reset = staleSubmitted.length
+      }
+
+      const parts = []
+      if (added > 0) parts.push(`added ${added} new URL(s)`)
+      if (reset > 0) parts.push(`reset ${reset} submitted URL(s) back to pending`)
+      setSyncMsg(parts.length > 0 ? `Queue synced — ${parts.join(", ")}` : "Queue is already up to date")
       await loadQueue()
     } catch (e) {
       setSyncMsg(`Sync failed: ${String(e)}`)
