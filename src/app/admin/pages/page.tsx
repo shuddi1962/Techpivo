@@ -27,7 +27,6 @@ export default function PagesAdminPage() {
   const [query, setQuery] = useState("")
   const [onlyCustom, setOnlyCustom] = useState<"all" | "custom" | "defaults">("all")
   const [showCreate, setShowCreate] = useState(false)
-  const [newSlug, setNewSlug] = useState("")
   const [newTitle, setNewTitle] = useState("")
   const [creating, setCreating] = useState(false)
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null)
@@ -88,15 +87,16 @@ export default function PagesAdminPage() {
   }
 
   const createPage = async () => {
-    const slug = newSlug.trim().toLowerCase().replace(/[^a-z0-9-]/g, "-").replace(/-+/g, "-").replace(/^-|-$/g, "")
-    if (!slug || slug.length < 2) { setError("Slug must be at least 2 characters."); return }
-    if (!newTitle.trim()) { setError("Title is required."); return }
+    const title = newTitle.trim()
+    if (!title) { setError("Title is required."); return }
+    const slug = title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "")
+    if (slug.length < 2) { setError("Slug must be at least 2 characters."); return }
     setCreating(true)
     setError("")
-    const res = await postAction({ action: "upsert", slug, title: newTitle.trim(), content_md: "", is_published: false, placement: "none" })
+    const res = await postAction({ action: "upsert", slug, title, content_md: "", is_published: false, placement: "none" })
     setCreating(false)
     if (!res.ok) setError(`Failed to create page: ${res.error}`)
-    else { setShowCreate(false); setNewSlug(""); setNewTitle(""); window.location.href = `/admin/pages/${slug}` }
+    else { setShowCreate(false); setNewTitle(""); window.location.href = `/admin/pages/${slug}` }
   }
 
   const customized = SITE_PAGES.filter((p) => dbPages[p.slug])
@@ -360,30 +360,26 @@ export default function PagesAdminPage() {
             <h2 className="text-lg font-semibold mb-4">Create New Page</h2>
             <div className="space-y-3">
               <div>
-                <label className="text-xs font-medium text-muted-foreground">Slug (URL path)</label>
-                <input
-                  value={newSlug}
-                  onChange={(e) => setNewSlug(e.target.value)}
-                  placeholder="my-new-page"
-                  className="w-full bg-background border rounded-lg px-3 py-2 text-sm focus:border-accent outline-none mt-1"
-                />
-                <p className="text-[11px] text-muted-foreground mt-1">URL will be /{newSlug || "..."}</p>
-              </div>
-              <div>
-                <label className="text-xs font-medium text-muted-foreground">Page Title</label>
+                <label className="text-xs font-medium text-muted-foreground">Page Name</label>
                 <input
                   value={newTitle}
                   onChange={(e) => setNewTitle(e.target.value)}
                   placeholder="My New Page"
                   className="w-full bg-background border rounded-lg px-3 py-2 text-sm focus:border-accent outline-none mt-1"
+                  autoFocus
                 />
+                {newTitle.trim() && (
+                  <p className="text-[11px] text-muted-foreground mt-1">
+                    URL will be /{newTitle.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "")}
+                  </p>
+                )}
               </div>
             </div>
             <div className="flex justify-end gap-2 mt-5">
               <button onClick={() => setShowCreate(false)} className="px-4 py-2 text-sm rounded-lg border hover:bg-muted">Cancel</button>
               <button
                 onClick={createPage}
-                disabled={creating || !newSlug.trim() || !newTitle.trim()}
+                disabled={creating || !newTitle.trim()}
                 className="px-4 py-2 text-sm rounded-lg bg-accent text-accent-foreground font-medium hover:opacity-90 disabled:opacity-50 inline-flex items-center gap-2"
               >
                 {creating && <Loader2 className="w-3.5 h-3.5 animate-spin" />} Create Page

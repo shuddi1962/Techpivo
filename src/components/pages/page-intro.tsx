@@ -13,6 +13,7 @@ interface IntroRow {
   hero_image: string | null;
   is_published: boolean | null;
   updated_at: string | null;
+  design_settings: { hero_bg?: string; text_color?: string; content_width?: string; hero_alignment?: string; hero_height?: string } | null;
 }
 
 export default function PageIntro({ slug }: { slug: string }) {
@@ -58,18 +59,21 @@ export default function PageIntro({ slug }: { slug: string }) {
   const heroImage = (published && row.hero_image) || def.hero.heroImage;
   const body = hasCustom && row.content_md && row.content_md.trim() !== "" ? row.content_md : def.contentMd;
   const html = renderMarkdown(body);
+  const ds = row?.design_settings || {};
+  const heroHeight = ds.hero_height || "220px";
+  const heroAlign = ds.hero_alignment === "center" ? "items-center text-center" : ds.hero_alignment === "right" ? "items-end text-right" : "items-start";
 
   return (
     <div className="mb-10">
-      <div className="relative overflow-hidden rounded-2xl border min-h-[160px]">
+      <div className="relative overflow-hidden rounded-2xl border" style={{ minHeight: heroHeight }}>
         {heroImage && (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={heroImage} alt={title || def.label} className="absolute inset-0 w-full h-full object-cover" loading="lazy" />
         )}
         <div className="absolute inset-0 bg-black/40" />
-        <div className="relative z-10 px-6 py-8 text-white">
-          {title && <h1 className="text-3xl font-bold mb-2">{title}</h1>}
-          {subtitle && <p className="text-white/85 text-base max-w-2xl">{subtitle}</p>}
+        <div className={`relative z-10 px-6 py-8 text-white flex flex-col justify-end ${heroAlign}`}>
+          {title && <h1 className="text-3xl font-bold mb-2" style={{ color: ds.text_color || undefined }}>{title}</h1>}
+          {subtitle && <p className="text-white/85 text-base max-w-2xl" style={{ color: ds.text_color ? "rgba(255,255,255,0.85)" : undefined }}>{subtitle}</p>}
         </div>
       </div>
       {body.trim() !== "" && (

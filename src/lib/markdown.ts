@@ -7,7 +7,13 @@ export function escapeHtml(value: string): string {
 }
 
 export function renderMarkdown(md: string): string {
-  const lines = md.split("\n");
+  const rawBlocks: string[] = [];
+  const extracted = md.replace(/\{html\}([\s\S]*?)\{\/html\}/gi, (_, content) => {
+    rawBlocks.push(content);
+    return `\x00RAWBLOCK${rawBlocks.length - 1}\x00`;
+  });
+
+  const lines = extracted.split("\n");
   let html = "";
   let inCode = false;
   let codeBuf: string[] = [];
@@ -79,5 +85,7 @@ export function renderMarkdown(md: string): string {
     }
   }
   closeList();
+
+  html = html.replace(/\x00RAWBLOCK(\d+)\x00/g, (_, idx) => rawBlocks[Number(idx)]);
   return html;
 }

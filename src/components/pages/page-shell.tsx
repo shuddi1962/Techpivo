@@ -1,5 +1,4 @@
 import Link from "next/link";
-import Image from "next/image";
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { renderMarkdown } from "@/lib/markdown";
@@ -70,7 +69,7 @@ export default async function PageShell({
     <div className="w-full">
       {heroImage ? (
         <div className="relative overflow-hidden mb-0 flex" style={{ minHeight: heroHeight }}>
-          <Image src={heroImage} alt={title} width={1200} height={675} className="absolute inset-0 w-full h-full object-cover" />
+          <img src={heroImage} alt={title} className="absolute inset-0 w-full h-full object-cover" loading="lazy" />
           <div className="absolute inset-0 bg-gradient-to-r from-black/80 via-black/60 to-black/40" />
           <div className={`relative z-10 px-4 md:px-12 lg:px-16 py-16 ${heroAlign} ${heroMaxW} mx-auto w-full`}>
             {breadcrumb}
@@ -108,10 +107,10 @@ export default async function PageShell({
                   {def.icon}
                 </div>
               )}
-              <h1 className="text-4xl md:text-5xl font-bold mb-4 text-white font-[family-name:var(--font-syne)]">{title}</h1>
-              {subtitle && <p className="text-lg text-white/75 max-w-2xl leading-relaxed">{subtitle}</p>}
+              <h1 className="text-4xl md:text-5xl font-bold mb-4 text-white font-[family-name:var(--font-syne)]" style={{ color: ds.text_color || undefined }}>{title}</h1>
+              {subtitle && <p className="text-lg text-white/75 max-w-2xl leading-relaxed" style={{ color: ds.text_color ? "rgba(255,255,255,0.8)" : undefined }}>{subtitle}</p>}
               {(def?.hero.updatedLine || updatedAt) && (
-                <p className="text-sm text-white/60 mt-4">
+                <p className="text-sm text-white/60 mt-4" style={{ color: ds.text_color ? "rgba(255,255,255,0.6)" : undefined }}>
                   {def?.hero.updatedLine || (updatedAt ? `Last updated: ${new Date(updatedAt).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })}` : "")}
                 </p>
               )}

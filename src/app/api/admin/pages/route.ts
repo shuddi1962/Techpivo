@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 import { requireAdminRole, createServiceClient } from "@/lib/admin-auth";
 import { PAGE_SLUGS, getSitePage } from "@/lib/pages";
 
@@ -47,6 +48,8 @@ export async function POST(req: NextRequest) {
   if (action === "reset") {
     const { error } = await service.from("site_pages").delete().eq("slug", slug);
     if (error) return NextResponse.json({ error: `Failed to reset page: ${error.message}` }, { status: 500 });
+    revalidatePath(`/${slug}`);
+    revalidatePath("/");
     return NextResponse.json({ ok: true, reset: slug });
   }
 
@@ -62,12 +65,16 @@ export async function POST(req: NextRequest) {
       .single();
     if (error) return NextResponse.json({ error: `Failed to update page: ${error.message}` }, { status: 500 });
     if (!data) return NextResponse.json({ error: "Page not found — save it first" }, { status: 404 });
+    revalidatePath(`/${slug}`);
+    revalidatePath("/");
     return NextResponse.json({ ok: true, page: data });
   }
 
   if (action === "delete") {
     const { error } = await service.from("site_pages").delete().eq("slug", slug);
     if (error) return NextResponse.json({ error: `Failed to delete page: ${error.message}` }, { status: 500 });
+    revalidatePath(`/${slug}`);
+    revalidatePath("/");
     return NextResponse.json({ ok: true, deleted: slug });
   }
 
@@ -126,5 +133,8 @@ export async function POST(req: NextRequest) {
     .select("*")
     .single();
   if (error) return NextResponse.json({ error: `Failed to save page: ${error.message}` }, { status: 500 });
+  revalidatePath(`/${slug}`);
+  revalidatePath("/sitemap.xml");
+  revalidatePath("/");
   return NextResponse.json({ ok: true, page: data });
 }
