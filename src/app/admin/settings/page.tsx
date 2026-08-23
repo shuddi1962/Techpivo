@@ -141,7 +141,7 @@ export default function AdminSettingsPage() {
                 </SelectContent>
               </Select>
               <p className="text-xs text-muted-foreground mt-2">
-                Applied in realtime to the next AI research / article write — no redeploy needed. If the selected model 404s or hits Google&apos;s free daily quota (429, resets ~8 AM WAT / midnight Pacific), the system now auto-falls through Flash → Flash-Lite → 2.0 Flash automatically. Gemini 2.5 Pro is not available to new API keys and is kept as a last-resort fallback only.
+                Applied in realtime to the next AI research / article write — no redeploy needed. If the selected model hits Google&apos;s free daily quota (429, resets ~8 AM WAT / midnight Pacific), the system auto-falls through Flash → Flash-Lite → 2.0 Flash automatically.
               </p>
             </div>
           </CardContent>

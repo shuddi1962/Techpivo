@@ -25,8 +25,11 @@ async function getGeminiModelName(): Promise<string> {
       .select("value")
       .eq("key", "gemini_model")
       .maybeSingle()
-    const dbModel = normalizeModel(data?.value)
-    if (dbModel) return dbModel
+    const rawDbModel = normalizeModel(data?.value)
+    // Reject models no longer available (e.g. gemini-2.5-pro) — fall back to
+    // env/default so a stale DB setting never causes 404s.
+    if (rawDbModel && ALLOWED_MODELS.has(rawDbModel)) return rawDbModel
+    if (rawDbModel) console.warn(`[Gemini] Rejected unavailable model "${rawDbModel}" from site_settings`)
   } catch {
     // fall through to env/default
   }
@@ -56,8 +59,9 @@ const GEMINI_MODEL_ORDER = [
   "gemini-2.5-flash",
   "gemini-2.5-flash-lite",
   "gemini-2.0-flash",
-  "gemini-2.5-pro",
 ]
+
+const ALLOWED_MODELS = new Set(GEMINI_MODEL_ORDER)
 
 async function callGemini(prompt: string, model: string): Promise<string> {
   const key = Deno.env.get("GEMINI_API_KEY")

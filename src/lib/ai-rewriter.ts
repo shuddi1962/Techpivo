@@ -1,6 +1,6 @@
 import { createClient } from '@/lib/supabase/admin'
 import { findDuplicatePost, type DuplicatePost } from '@/lib/duplicate-check'
-import { GEMINI_MODEL_DEFAULT, getGeminiModel, geminiModelOrder, normalizeGeminiModel } from '@/lib/gemini-model'
+import { GEMINI_MODEL_DEFAULT, getGeminiModel, geminiModelOrder, normalizeGeminiModel, isAllowedGeminiModel } from '@/lib/gemini-model'
 
 const GEMINI_DAILY_CAP = 100
 const MANUAL_GEMINI_DAILY_CAP = 50
@@ -29,8 +29,14 @@ export async function resolveGeminiModel(): Promise<string> {
       .select('value')
       .eq('key', 'gemini_model')
       .maybeSingle()
-    const dbModel = normalizeGeminiModel(data?.value)
+    const rawDbModel = normalizeGeminiModel(data?.value)
+    // Reject models that are no longer available (e.g. gemini-2.5-pro) —
+    // fall back to the default so a stale DB setting never causes 404s.
+    const dbModel = rawDbModel && isAllowedGeminiModel(rawDbModel) ? rawDbModel : null
     const model = dbModel || envModel
+    if (rawDbModel && !isAllowedGeminiModel(rawDbModel)) {
+      console.warn(`[Techpivo AI] Rejected unavailable model "${rawDbModel}" from site_settings — using ${model}`)
+    }
     geminiModelCache = { model, at: Date.now() }
     return model
   } catch (e) {
@@ -734,7 +740,7 @@ async function geminiGrounded(
   let lastDebug = ''
   // Automatic model rotation: if the primary model 404s (not available to this
   // key) or 429s (free-tier daily quota exhausted), fall through the chain
-  // (flash → flash-lite → 2.0-flash → pro) instead of failing the write.
+  // (flash → flash-lite → 2.0-flash) instead of failing the write.
   const models = geminiModelOrder(await resolveGeminiModel())
   for (let mi = 0; mi < models.length; mi++) {
     const geminiModel = models[mi]

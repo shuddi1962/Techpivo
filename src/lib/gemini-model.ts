@@ -9,13 +9,12 @@ export const GEMINI_MODEL_DEFAULT = 'gemini-2.5-flash'
 // Order matters: it is the automatic fallback chain. Free-tier daily quotas are
 // per model, so when one model returns 429 (quota exhausted) or 404 (not
 // available to the key), callers rotate to the next entry instead of failing.
-// gemini-2.5-pro is NOT available to new API keys (returns 404 "no longer
-// available to new users") — kept last so it can never be the primary.
+// gemini-2.5-pro was removed — it is NOT available to new API keys (returns
+// 404 "no longer available to new users") and just produces confusing errors.
 export const GEMINI_MODEL_OPTIONS = [
   { value: 'gemini-2.5-flash', label: 'Gemini 2.5 Flash (default)' },
   { value: 'gemini-2.5-flash-lite', label: 'Gemini 2.5 Flash-Lite' },
   { value: 'gemini-2.0-flash', label: 'Gemini 2.0 Flash' },
-  { value: 'gemini-2.5-pro', label: 'Gemini 2.5 Pro (not available on new keys)' },
 ] as const
 
 export function geminiModelOrder(primary: string): string[] {
@@ -41,4 +40,12 @@ export function normalizeGeminiModel(raw: unknown): string | null {
 
 export function getGeminiModel(env: Record<string, string | undefined> = {}): string {
   return normalizeGeminiModel(env.GEMINI_MODEL) || GEMINI_MODEL_DEFAULT
+}
+
+// Only allow models we know are available — reject anything else (e.g. the
+// removed gemini-2.5-pro) so a stale DB setting can never cause 404s.
+const ALLOWED_MODELS: Set<string> = new Set(GEMINI_MODEL_OPTIONS.map((o) => o.value))
+
+export function isAllowedGeminiModel(model: string): boolean {
+  return ALLOWED_MODELS.has(model)
 }
