@@ -80,7 +80,7 @@ Have a tip, question, or feedback? We would love to hear from you.
     hero: {
       title: "Contact Us",
       subtitle: "We value your feedback and inquiries. Here is how you can reach the right team.",
-      heroImage: "https://images.pexels.com/photos/8204327/pexels-photo-8204327.jpeg",
+      heroImage: "https://images.pexels.com/photos/3184465/pexels-photo-3184465.jpeg",
     },
     contentMd: `## Reach the Right Team
 
@@ -124,7 +124,7 @@ You can also write to us at: **Techpivo Media, 123 Innovation Drive, San Francis
     hero: {
 title: "Privacy Policy",
       subtitle: "How Techpivo collects, uses, and protects your personal information.",
-      heroImage: "https://images.pexels.com/photos/60504/security-protection-anti-virus-software-60504.jpeg",
+      heroImage: "https://images.pexels.com/photos/4427430/pexels-photo-4427430.jpeg",
     },
     contentMd: `## 1. Introduction
 

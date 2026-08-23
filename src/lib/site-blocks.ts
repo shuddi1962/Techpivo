@@ -88,7 +88,7 @@ export const SITE_BLOCKS: SiteBlockDef[] = [
   },
   {
     blockKey: "footer-links",
-    label: "Footer Quick Links",
+    label: "Quick Links",
     description: "A list of links shown in the footer. One link per line: [Label](https://example.com)",
     mode: "links",
     contentMd:

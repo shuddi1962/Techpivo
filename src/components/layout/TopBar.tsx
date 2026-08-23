@@ -7,10 +7,10 @@ import { STATIC_PAGE_SLUGS } from "@/lib/pages"
 
 export function TopBar({ socialUrls = {} }: { socialUrls?: Record<string, string> }) {
   const now = new Date().toLocaleDateString("en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric" })
-  const { isPublic } = usePublishedPages()
+  const { isPublic, isInHeader, isInMenu } = usePublishedPages()
   const pageVisible = (slug: string) => {
     if (!STATIC_PAGE_SLUGS.has(slug)) return true
-    return isPublic(slug)
+    return isPublic(slug) && (isInHeader(slug) || isInMenu(slug))
   }
   return (
     <div className="top-bar">

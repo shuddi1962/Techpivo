@@ -59,9 +59,9 @@ export default async function PageShell({
 
   const breadcrumb = (
     <div className="text-sm mb-4">
-      <Link href="/" className="hover:underline" style={{ color: ds.text_color ? "rgba(255,255,255,0.8)" : undefined }}>Home</Link>
-      <span className="mx-2" style={{ color: ds.text_color ? "rgba(255,255,255,0.6)" : undefined }}>→</span>
-      <span className="font-medium" style={{ color: ds.text_color || undefined }}>{pageLabel}</span>
+      <Link href="/" className="hover:underline text-white/80" style={{ color: ds.text_color ? "rgba(255,255,255,0.8)" : undefined }}>Home</Link>
+      <span className="mx-2 text-white/60" style={{ color: ds.text_color ? "rgba(255,255,255,0.6)" : undefined }}>→</span>
+      <span className="font-medium text-white" style={{ color: ds.text_color || undefined }}>{pageLabel}</span>
     </div>
   );
 
@@ -78,10 +78,10 @@ export default async function PageShell({
                 {def.icon}
               </div>
             )}
-            <h1 className="text-4xl md:text-5xl font-bold mb-4 font-[family-name:var(--font-syne)]" style={{ color: ds.text_color || undefined }}>{title}</h1>
-            {subtitle && <p className="text-lg max-w-2xl leading-relaxed" style={{ color: ds.text_color ? "rgba(255,255,255,0.8)" : undefined }}>{subtitle}</p>}
+            <h1 className="text-4xl md:text-5xl font-bold mb-4 text-white font-[family-name:var(--font-syne)]" style={{ color: ds.text_color || undefined }}>{title}</h1>
+            {subtitle && <p className="text-lg max-w-2xl leading-relaxed text-white/75" style={{ color: ds.text_color ? "rgba(255,255,255,0.8)" : undefined }}>{subtitle}</p>}
             {(def?.hero.updatedLine || updatedAt) && (
-              <p className="text-sm mt-4" style={{ color: ds.text_color ? "rgba(255,255,255,0.6)" : undefined }}>
+              <p className="text-sm mt-4 text-white/60" style={{ color: ds.text_color ? "rgba(255,255,255,0.6)" : undefined }}>
                 {def?.hero.updatedLine || (updatedAt ? `Last updated: ${new Date(updatedAt).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })}` : "")}
               </p>
             )}

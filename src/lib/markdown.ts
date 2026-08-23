@@ -1,3 +1,5 @@
+import xss from 'xss'
+
 export function escapeHtml(value: string): string {
   return value
     .replace(/&/g, "&amp;")
@@ -9,7 +11,26 @@ export function escapeHtml(value: string): string {
 export function renderMarkdown(md: string): string {
   const rawBlocks: string[] = [];
   const extracted = md.replace(/\{html\}([\s\S]*?)\{\/html\}/gi, (_, content) => {
-    rawBlocks.push(content);
+    rawBlocks.push(xss(content, {
+      whiteList: {
+        p: [], br: [], hr: [], h1: [], h2: [], h3: [], h4: [], h5: [], h6: [],
+        strong: [], b: [], em: [], i: [], u: [], s: [], del: [],
+        a: ['href', 'target', 'rel', 'title'],
+        img: ['src', 'alt', 'width', 'height', 'loading', 'class', 'style'],
+        ul: [], ol: [], li: [],
+        blockquote: [], pre: [], code: [],
+        table: ['class', 'style'], thead: [], tbody: [], tfoot: [],
+        tr: ['class', 'style'], td: ['class', 'style', 'colspan', 'rowspan'],
+        th: ['class', 'style', 'colspan', 'rowspan'],
+        div: ['class', 'style', 'id'], span: ['class', 'style'],
+        figure: ['class'], figcaption: [],
+        iframe: ['src', 'width', 'height', 'frameborder', 'allow', 'allowfullscreen', 'title'],
+        video: ['src', 'controls', 'width', 'height'],
+        source: ['src', 'type'],
+      },
+      stripIgnoreTag: true,
+      stripIgnoreTagBody: ['script', 'style'],
+    }));
     return `\x00RAWBLOCK${rawBlocks.length - 1}\x00`;
   });
 
