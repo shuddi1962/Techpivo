@@ -30,7 +30,8 @@ class QuotaError extends Error {
 }
 
 async function callGemini(prompt: string, apiKey: string): Promise<string> {
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`
+  const model = Deno.env.get("GEMINI_MODEL") || "gemini-3.6-flash"
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`
   const body = {
     contents: [{ role: "user", parts: [{ text: prompt }] }],
     generationConfig: { temperature: 0.45, maxOutputTokens: 16384 },

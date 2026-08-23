@@ -4,15 +4,17 @@
 // exhausted (429s), switching the model string on the same key bypasses it —
 // no code change or redeploy needed.
 
-export const GEMINI_MODEL_DEFAULT = 'gemini-2.5-flash'
+export const GEMINI_MODEL_DEFAULT = 'gemini-3.6-flash'
 
 // Order matters: it is the automatic fallback chain. Free-tier daily quotas are
 // per model, so when one model returns 429 (quota exhausted) or 404 (not
 // available to the key), callers rotate to the next entry instead of failing.
-// gemini-2.5-pro was removed — it is NOT available to new API keys (returns
-// 404 "no longer available to new users") and just produces confusing errors.
+// Newer keys (2026+) only support gemini-3.x models — 2.5-flash and older
+// return 404 for them, so they're kept as last-resort fallbacks.
 export const GEMINI_MODEL_OPTIONS = [
-  { value: 'gemini-2.5-flash', label: 'Gemini 2.5 Flash (default)' },
+  { value: 'gemini-3.6-flash', label: 'Gemini 3.6 Flash (default)' },
+  { value: 'gemini-3.5-flash-lite', label: 'Gemini 3.5 Flash-Lite' },
+  { value: 'gemini-2.5-flash', label: 'Gemini 2.5 Flash' },
   { value: 'gemini-2.5-flash-lite', label: 'Gemini 2.5 Flash-Lite' },
   { value: 'gemini-2.0-flash', label: 'Gemini 2.0 Flash' },
 ] as const

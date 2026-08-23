@@ -137,7 +137,7 @@ export async function POST(req: NextRequest) {
       mode,
       input,
       article.headline,
-      "gemini-2.5-flash",
+      "gemini-3.6-flash",
     )
 
     return NextResponse.json({
@@ -149,7 +149,7 @@ export async function POST(req: NextRequest) {
         quota_cap:         MONTHLY_MANUAL_CAP,
         quota_remaining:   remaining - 1,
         quota_resets:      "First of next month",
-        model_used:        "Gemini 2.5 Flash + Google Search Grounding",
+        model_used:        "Gemini 3.6 Flash + Google Search Grounding",
         source,
       },
     })
