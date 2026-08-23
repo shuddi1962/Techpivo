@@ -10,7 +10,7 @@
 //      treated as clean).
 
 import type { StockImageItem } from '@/lib/web-images'
-import { getGeminiModel } from '@/lib/gemini-model'
+import { resolveGeminiModel } from '@/lib/ai-rewriter'
 
 // Layer 1 — hosts whose images/screenshots routinely carry outlet branding.
 const NEWS_HOST_BLOCKLIST: string[] = [
@@ -116,7 +116,7 @@ export async function imageHasBrandMark(url: string): Promise<boolean | null> {
     }
     const mime = (res.headers.get("content-type") || "image/jpeg").split(";")[0].trim()
 
-    const model = getGeminiModel(process.env)
+    const model = await resolveGeminiModel()
     const gres = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${key}`,
       {

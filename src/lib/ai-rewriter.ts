@@ -18,7 +18,13 @@ let geminiModelCache: { model: string; at: number } | null = null
 
 export async function resolveGeminiModel(): Promise<string> {
   const envModel = getGeminiModel(process.env)
-  if (envModel !== GEMINI_MODEL_DEFAULT) return envModel
+  // If the env model is set and still available, use it directly (env beats DB).
+  if (envModel !== GEMINI_MODEL_DEFAULT && isAllowedGeminiModel(envModel)) return envModel
+  // If env model is set but discontinued (e.g. gemini-2.0-flash), warn and
+  // fall through to DB/default so it never causes a 404.
+  if (envModel !== GEMINI_MODEL_DEFAULT && !isAllowedGeminiModel(envModel)) {
+    console.warn(`[Techpivo AI] GEMINI_MODEL env "${envModel}" is no longer available — using DB setting or default`)
+  }
   if (geminiModelCache && Date.now() - geminiModelCache.at < GEMINI_MODEL_CACHE_MS) {
     return geminiModelCache.model
   }

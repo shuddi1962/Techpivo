@@ -141,7 +141,7 @@ export default function AdminSettingsPage() {
                 </SelectContent>
               </Select>
               <p className="text-xs text-muted-foreground mt-2">
-                Applied in realtime to the next AI research / article write — no redeploy needed. If the selected model hits Google&apos;s free daily quota (429, resets ~8 AM WAT / midnight Pacific), the system auto-falls through Flash → Flash-Lite → 2.0 Flash automatically.
+                Applied in realtime to the next AI research / article write — no redeploy needed. If the selected model hits Google&apos;s free daily quota (429, resets ~8 AM WAT / midnight Pacific), the system auto-falls through Flash → Flash-Lite automatically.
               </p>
             </div>
           </CardContent>

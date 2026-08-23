@@ -19,6 +19,11 @@ function normalizeModel(raw: unknown): string | null {
 }
 
 async function getGeminiModelName(): Promise<string> {
+  // Check if the env model is set and still available — if so use it.
+  const envModel = normalizeModel(Deno.env.get("GEMINI_MODEL"))
+  if (envModel && ALLOWED_MODELS.has(envModel)) return envModel
+  if (envModel) console.warn(`[Gemini] GEMINI_MODEL env "${envModel}" is no longer available — using DB or default`)
+
   try {
     const { data } = await supabase
       .from("site_settings")
@@ -27,13 +32,13 @@ async function getGeminiModelName(): Promise<string> {
       .maybeSingle()
     const rawDbModel = normalizeModel(data?.value)
     // Reject models no longer available (e.g. gemini-2.5-pro) — fall back to
-    // env/default so a stale DB setting never causes 404s.
+    // default so a stale DB setting never causes 404s.
     if (rawDbModel && ALLOWED_MODELS.has(rawDbModel)) return rawDbModel
     if (rawDbModel) console.warn(`[Gemini] Rejected unavailable model "${rawDbModel}" from site_settings`)
   } catch {
-    // fall through to env/default
+    // fall through to default
   }
-  return normalizeModel(Deno.env.get("GEMINI_MODEL")) || "gemini-3.6-flash"
+  return "gemini-3.6-flash"
 }
 
 interface GeminiResponse {
@@ -58,9 +63,6 @@ interface OpenRouterResponse {
 const GEMINI_MODEL_ORDER = [
   "gemini-3.6-flash",
   "gemini-3.5-flash-lite",
-  "gemini-2.5-flash",
-  "gemini-2.5-flash-lite",
-  "gemini-2.0-flash",
 ]
 
 const ALLOWED_MODELS = new Set(GEMINI_MODEL_ORDER)
