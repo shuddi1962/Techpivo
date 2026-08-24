@@ -6,6 +6,7 @@ import { useTheme } from "next-themes"
 import { useState, useEffect } from "react"
 import { defaultSocialUrls } from "@/components/layout/social-icons"
 import SiteBlock from "@/components/layout/site-block"
+import { usePublishedPages } from "@/lib/use-site-pages"
 
 
 const footerPlatforms = [
@@ -35,6 +36,7 @@ const footerPlatforms = [
 export function Footer({ categories, recentPosts, socialUrls = {} }: { categories: any[]; recentPosts: any[]; socialUrls?: Record<string, string> }) {
   const { resolvedTheme } = useTheme()
   const [mounted, setMounted] = useState(false)
+  const { isInFooter } = usePublishedPages()
   useEffect(() => { setMounted(true) }, [])
   const logoSrc = !mounted ? '/logo.svg' : (resolvedTheme === 'dark' ? '/logo.svg' : '/logo-light.svg')
   return (
@@ -89,7 +91,8 @@ export function Footer({ categories, recentPosts, socialUrls = {} }: { categorie
           ))}
         </div>
 
-        <SiteBlock blockKey="footer-links" />
+        {/* Quick Links — placement-gated via site_pages */}
+        {isInFooter("editorial-policy") && <SiteBlock blockKey="footer-links" />}
       </div>
 
       <div className="footer-bottom">
