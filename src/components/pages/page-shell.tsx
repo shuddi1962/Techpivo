@@ -13,7 +13,7 @@ interface SitePageRow {
   hero_image: string | null;
   is_published: boolean | null;
   placement: string | null;
-  design_settings: { hero_bg?: string; text_color?: string; content_width?: string; hero_alignment?: string; hero_height?: string; content_mode?: string; show_breadcrumb?: boolean } | null;
+  design_settings: { hero_bg?: string; text_color?: string; content_width?: string; hero_alignment?: string; hero_height?: string; content_mode?: string; show_breadcrumb?: boolean; full_width?: boolean } | null;
   updated_at: string | null;
 }
 
@@ -65,6 +65,7 @@ export default async function PageShell({
     return `rgba(${r},${g},${b},${alpha})`;
   }
   const tc = ds.text_color;
+  const fullWidth = ds.full_width === true;
   const showBc = ds.show_breadcrumb !== false; // default true
   const breadcrumb = (
     <div className="text-sm mb-4">
@@ -129,13 +130,20 @@ export default async function PageShell({
       )}
 
       <div className="px-4 md:px-12 lg:px-16 py-10">
-        <div className="mx-auto rounded-2xl border border-borderSoft bg-surface shadow-sm p-6 md:p-10" style={{ maxWidth: ds.content_width === "max-w-6xl" ? "72rem" : ds.content_width === "max-w-3xl" ? "48rem" : undefined }}>
+        {fullWidth ? (
           <article
-            className="prose prose-slate dark:prose-invert prose-headings:font-bold prose-h2:text-2xl prose-h3:text-xl prose-p:leading-relaxed prose-p:text-muted-foreground prose-a:text-accent prose-a:font-medium prose-strong:text-foreground prose-li:text-muted-foreground prose-blockquote:border-accent prose-blockquote:text-muted-foreground"
+            className="prose prose-slate dark:prose-invert prose-headings:font-bold prose-h2:text-2xl prose-h3:text-xl prose-p:leading-relaxed prose-p:text-muted-foreground prose-a:text-accent prose-a:font-medium prose-strong:text-foreground prose-li:text-muted-foreground prose-blockquote:border-accent prose-blockquote:text-muted-foreground max-w-6xl mx-auto"
             dangerouslySetInnerHTML={{ __html: html }}
           />
-          {children}
-        </div>
+        ) : (
+          <div className="mx-auto rounded-2xl border border-borderSoft bg-surface shadow-sm p-6 md:p-10" style={{ maxWidth: ds.content_width === "max-w-6xl" ? "72rem" : ds.content_width === "max-w-3xl" ? "48rem" : undefined }}>
+            <article
+              className="prose prose-slate dark:prose-invert prose-headings:font-bold prose-h2:text-2xl prose-h3:text-xl prose-p:leading-relaxed prose-p:text-muted-foreground prose-a:text-accent prose-a:font-medium prose-strong:text-foreground prose-li:text-muted-foreground prose-blockquote:border-accent prose-blockquote:text-muted-foreground"
+              dangerouslySetInnerHTML={{ __html: html }}
+            />
+          </div>
+        )}
+        {children}
       </div>
     </div>
   );

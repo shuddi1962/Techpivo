@@ -484,7 +484,19 @@ export default function PageEditor() {
                 />
                 <span className="text-[11px] font-medium text-muted-foreground">Show breadcrumb navigation</span>
               </label>
-              <p className="text-[10px] text-muted-foreground mt-1 ml-5">Unhide to hide the breadcrumb trail on this page.</p>
+              <p className="text-[10px] text-muted-foreground mt-1 ml-5">Uncheck to hide the breadcrumb trail on this page.</p>
+            </div>
+            <div className="col-span-2">
+              <label className="flex items-center gap-2 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={designSettings.full_width === true}
+                  onChange={(e) => { setDesignSettings((s) => ({ ...s, full_width: e.target.checked || undefined })); markDirty() }}
+                  className="rounded border-border"
+                />
+                <span className="text-[11px] font-medium text-muted-foreground">Full-width layout</span>
+              </label>
+              <p className="text-[10px] text-muted-foreground mt-1 ml-5">Remove the container box so the page content spans the full width.</p>
             </div>
           </div>
         </div>
