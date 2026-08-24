@@ -137,7 +137,7 @@ export async function POST(req: NextRequest) {
       mode,
       input,
       article.headline,
-      "gemini-3.6-flash",
+      article.modelUsed,
     )
 
     return NextResponse.json({

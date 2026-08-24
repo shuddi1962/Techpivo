@@ -7,7 +7,7 @@ const supabase = createClient(
 )
 
 // Model override chain: site_settings.gemini_model (realtime-flippable from
-// Admin → Settings) → GEMINI_MODEL env → gemini-3.6-flash. Switching the
+// Admin → Settings) → GEMINI_MODEL env → gemini-2.5-flash. Switching the
 // model string on the same key bypasses an exhausted free-tier daily quota.
 const SAFE_MODEL_RE = /^[a-z0-9][a-z0-9._-]{0,63}$/
 
@@ -38,7 +38,7 @@ async function getGeminiModelName(): Promise<string> {
   } catch {
     // fall through to default
   }
-  return "gemini-3.6-flash"
+  return "gemini-2.5-flash"
 }
 
 interface GeminiResponse {
@@ -61,6 +61,7 @@ interface OpenRouterResponse {
 // If the resolved model 404s (not available to the key) or 429s (free-tier daily
 // quota exhausted), rotate to the next entry instead of failing the write.
 const GEMINI_MODEL_ORDER = [
+  "gemini-2.5-flash",
   "gemini-3.6-flash",
   "gemini-3.5-flash-lite",
 ]
