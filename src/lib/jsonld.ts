@@ -9,11 +9,11 @@ export function organizationSchema() {
     url: SITE_URL,
     logo: {
       "@type": "ImageObject",
-      url: `${SITE_URL}/favicon.svg`,
-      width: 120,
-      height: 120,
+      url: `${SITE_URL}/icon.png`,
+      width: 512,
+      height: 512,
     },
-    image: `${SITE_URL}/favicon.svg`,
+    image: `${SITE_URL}/icon.png`,
     description: SITE_TAGLINE,
     sameAs: [
       "https://x.com/Techpivo",

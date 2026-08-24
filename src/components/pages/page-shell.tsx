@@ -13,7 +13,7 @@ interface SitePageRow {
   hero_image: string | null;
   is_published: boolean | null;
   placement: string | null;
-  design_settings: { hero_bg?: string; text_color?: string; content_width?: string; hero_alignment?: string; hero_height?: string; content_mode?: string } | null;
+  design_settings: { hero_bg?: string; text_color?: string; content_width?: string; hero_alignment?: string; hero_height?: string; content_mode?: string; show_breadcrumb?: boolean } | null;
   updated_at: string | null;
 }
 
@@ -65,6 +65,7 @@ export default async function PageShell({
     return `rgba(${r},${g},${b},${alpha})`;
   }
   const tc = ds.text_color;
+  const showBc = ds.show_breadcrumb !== false; // default true
   const breadcrumb = (
     <div className="text-sm mb-4">
       <Link href="/" className="hover:underline text-white/80" style={{ color: tc ? withAlpha(tc, 0.8) : undefined }}>Home</Link>
@@ -80,7 +81,7 @@ export default async function PageShell({
           <img src={heroImage} alt={title} className="absolute inset-0 w-full h-full object-cover" loading="lazy" />
           <div className="absolute inset-0 bg-gradient-to-r from-black/80 via-black/60 to-black/40" />
           <div className={`relative z-10 px-4 md:px-12 lg:px-16 py-16 ${heroAlign} ${heroMaxW} mx-auto w-full`}>
-            {breadcrumb}
+            {showBc && breadcrumb}
             {def?.icon && (
               <div className="inline-flex items-center justify-center h-14 w-14 rounded-2xl bg-amber-400/20 border border-amber-300/30 text-3xl mb-5 shadow-lg shadow-black/20 backdrop-blur-sm">
                 {def.icon}
@@ -109,7 +110,7 @@ export default async function PageShell({
           />
           <div className={`relative px-4 md:px-12 lg:px-16 py-16 md:py-20 ${heroAlign}`}>
             <div className={heroMaxW}>
-              <div className="mb-6">{breadcrumb}</div>
+              {showBc && <div className="mb-6">{breadcrumb}</div>}
               {def?.icon && (
                 <div className="inline-flex items-center justify-center h-14 w-14 rounded-2xl bg-amber-400/20 border border-amber-300/30 text-3xl mb-5 shadow-lg shadow-black/20">
                   {def.icon}

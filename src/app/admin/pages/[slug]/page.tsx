@@ -474,6 +474,18 @@ export default function PageEditor() {
                 )}
               </div>
             </div>
+            <div className="col-span-2">
+              <label className="flex items-center gap-2 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={designSettings.show_breadcrumb !== false}
+                  onChange={(e) => { setDesignSettings((s) => ({ ...s, show_breadcrumb: e.target.checked ? undefined : false })); markDirty() }}
+                  className="rounded border-border"
+                />
+                <span className="text-[11px] font-medium text-muted-foreground">Show breadcrumb navigation</span>
+              </label>
+              <p className="text-[10px] text-muted-foreground mt-1 ml-5">Unhide to hide the breadcrumb trail on this page.</p>
+            </div>
           </div>
         </div>
       </div>

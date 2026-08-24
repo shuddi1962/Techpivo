@@ -4,6 +4,7 @@ export interface DesignSettings {
   content_width?: string;
   hero_alignment?: string;
   hero_height?: string;
+  show_breadcrumb?: boolean;
 }
 
 export interface SitePageDef {
