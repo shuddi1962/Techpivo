@@ -94,10 +94,14 @@ export async function POST(req: NextRequest) {
 
   let design_settings: Record<string, string | number> | null = null;
   if (body.design_settings && typeof body.design_settings === "object" && !Array.isArray(body.design_settings)) {
-    const allowed = ["hero_bg", "text_color", "content_width", "hero_alignment", "hero_height"];
+    const allowed = ["hero_bg", "text_color", "content_width", "hero_alignment", "hero_height", "content_mode"];
     const filtered: Record<string, string | number> = {};
     for (const k of allowed) {
       const v = (body.design_settings as Record<string, unknown>)[k];
+      if (k === "content_mode") {
+        if (v === "html" || v === "markdown") filtered[k] = v;
+        continue;
+      }
       if (typeof v === "string" && v.trim().length > 0 && v.length <= 100) {
         filtered[k] = v.trim();
       } else if (typeof v === "number" && v >= 0 && v <= 2000) {

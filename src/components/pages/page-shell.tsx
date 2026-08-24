@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { renderMarkdown } from "@/lib/markdown";
+import { sanitizeHtml } from "@/lib/sanitize";
 import { getSitePage } from "@/lib/pages";
 
 interface SitePageRow {
@@ -12,7 +13,7 @@ interface SitePageRow {
   hero_image: string | null;
   is_published: boolean | null;
   placement: string | null;
-  design_settings: { hero_bg?: string; text_color?: string; content_width?: string; hero_alignment?: string; hero_height?: string } | null;
+  design_settings: { hero_bg?: string; text_color?: string; content_width?: string; hero_alignment?: string; hero_height?: string; content_mode?: string } | null;
   updated_at: string | null;
 }
 
@@ -51,17 +52,24 @@ export default async function PageShell({
   const ds = row?.design_settings || {};
   const pageLabel = def?.label || title;
 
-  const html = renderMarkdown(content);
+  const html = ds.content_mode === "html" ? sanitizeHtml(content) : renderMarkdown(content);
 
   const heroHeight = ds.hero_height || "340px";
   const heroAlign = ds.hero_alignment === "center" ? "items-center text-center" : ds.hero_alignment === "right" ? "items-end text-right" : "items-start";
   const heroMaxW = ds.content_width || "max-w-4xl";
 
+  function withAlpha(hex: string, alpha: number) {
+    const r = parseInt(hex.slice(1, 3), 16);
+    const g = parseInt(hex.slice(3, 5), 16);
+    const b = parseInt(hex.slice(5, 7), 16);
+    return `rgba(${r},${g},${b},${alpha})`;
+  }
+  const tc = ds.text_color;
   const breadcrumb = (
     <div className="text-sm mb-4">
-      <Link href="/" className="hover:underline text-white/80" style={{ color: ds.text_color ? "rgba(255,255,255,0.8)" : undefined }}>Home</Link>
-      <span className="mx-2 text-white/60" style={{ color: ds.text_color ? "rgba(255,255,255,0.6)" : undefined }}>→</span>
-      <span className="font-medium text-white" style={{ color: ds.text_color || undefined }}>{pageLabel}</span>
+      <Link href="/" className="hover:underline text-white/80" style={{ color: tc ? withAlpha(tc, 0.8) : undefined }}>Home</Link>
+      <span className="mx-2 text-white/60" style={{ color: tc ? withAlpha(tc, 0.6) : undefined }}>→</span>
+      <span className="font-medium text-white" style={{ color: tc || undefined }}>{pageLabel}</span>
     </div>
   );
 
@@ -79,9 +87,9 @@ export default async function PageShell({
               </div>
             )}
             <h1 className="text-4xl md:text-5xl font-bold mb-4 text-white font-[family-name:var(--font-syne)]" style={{ color: ds.text_color || undefined }}>{title}</h1>
-            {subtitle && <p className="text-lg max-w-2xl leading-relaxed text-white/75" style={{ color: ds.text_color ? "rgba(255,255,255,0.8)" : undefined }}>{subtitle}</p>}
+            {subtitle && <p className="text-lg max-w-2xl leading-relaxed text-white/75" style={{ color: tc ? withAlpha(tc, 0.8) : undefined }}>{subtitle}</p>}
             {(def?.hero.updatedLine || updatedAt) && (
-              <p className="text-sm mt-4 text-white/60" style={{ color: ds.text_color ? "rgba(255,255,255,0.6)" : undefined }}>
+              <p className="text-sm mt-4 text-white/60" style={{ color: tc ? withAlpha(tc, 0.6) : undefined }}>
                 {def?.hero.updatedLine || (updatedAt ? `Last updated: ${new Date(updatedAt).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })}` : "")}
               </p>
             )}
@@ -108,9 +116,9 @@ export default async function PageShell({
                 </div>
               )}
               <h1 className="text-4xl md:text-5xl font-bold mb-4 text-white font-[family-name:var(--font-syne)]" style={{ color: ds.text_color || undefined }}>{title}</h1>
-              {subtitle && <p className="text-lg text-white/75 max-w-2xl leading-relaxed" style={{ color: ds.text_color ? "rgba(255,255,255,0.8)" : undefined }}>{subtitle}</p>}
+              {subtitle && <p className="text-lg text-white/75 max-w-2xl leading-relaxed" style={{ color: tc ? withAlpha(tc, 0.8) : undefined }}>{subtitle}</p>}
               {(def?.hero.updatedLine || updatedAt) && (
-                <p className="text-sm text-white/60 mt-4" style={{ color: ds.text_color ? "rgba(255,255,255,0.6)" : undefined }}>
+                <p className="text-sm text-white/60 mt-4" style={{ color: tc ? withAlpha(tc, 0.6) : undefined }}>
                   {def?.hero.updatedLine || (updatedAt ? `Last updated: ${new Date(updatedAt).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })}` : "")}
                 </p>
               )}

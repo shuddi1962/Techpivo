@@ -6,6 +6,7 @@ import { useParams } from "next/navigation"
 import { createClient } from "@/lib/supabase/client"
 import { getSitePage } from "@/lib/pages"
 import { renderMarkdown } from "@/lib/markdown"
+import { sanitizeHtml } from "@/lib/sanitize"
 import {
   ArrowLeft, Check, ExternalLink, Eye, ImagePlus, LayoutPanelLeft, Loader2, Palette, RotateCcw, Save, Search, Trash2, Wand2,
 } from "lucide-react"
@@ -44,6 +45,7 @@ export default function PageEditor() {
   const [published, setPublished] = useState(true)
   const [placement, setPlacement] = useState("both")
   const [designSettings, setDesignSettings] = useState<DesignSettings>({})
+  const [contentMode, setContentMode] = useState<"markdown" | "html">("markdown")
   const [loaded, setLoaded] = useState(false)
   const [saveState, setSaveState] = useState<"" | "saving" | "saved" | "error">("")
   const [uploading, setUploading] = useState(false)
@@ -64,6 +66,7 @@ export default function PageEditor() {
     setPublished(row ? row.is_published : true)
     setPlacement(row?.placement ?? "both")
     setDesignSettings(row?.design_settings ?? {})
+    setContentMode((row?.design_settings as Record<string, unknown>)?.content_mode === "html" ? "html" : "markdown")
     setLoaded(true)
   }, [def, slug])
 
@@ -119,7 +122,7 @@ export default function PageEditor() {
             meta_description: metaDescription,
             is_published: published,
             placement,
-            design_settings: Object.keys(designSettings).length ? designSettings : null,
+            design_settings: Object.keys(designSettings).length ? { ...designSettings, content_mode: contentMode } : { content_mode: contentMode },
           }),
       })
       const data = await res.json()
@@ -254,7 +257,7 @@ export default function PageEditor() {
     )
   }
 
-  const previewHtml = renderMarkdown(content)
+  const previewHtml = contentMode === "html" ? sanitizeHtml(content) : renderMarkdown(content)
   const titleRemaining = TITLE_MAX - metaTitle.length
   const descRemaining = DESC_MAX - metaDescription.length
   const counterColor = (remaining: number) =>
@@ -568,22 +571,56 @@ export default function PageEditor() {
             </div>
           </div>
           <div>
-            <label className="block text-sm font-semibold mb-1.5">
-              Content <span className="text-muted-foreground font-normal">(Markdown — supports images, links, tables)</span>
-            </label>
-            <textarea
-              value={content}
-              onChange={(e) => { setContent(e.target.value); markDirty() }}
-              rows={26}
-              className="w-full bg-card border rounded-lg px-4 py-3 text-sm font-mono leading-relaxed focus:border-accent focus:ring-1 focus:ring-accent outline-none resize-y"
-            />
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="text-sm font-semibold">
+                Content
+              </label>
+              <div className="flex items-center gap-1 p-0.5 bg-muted rounded-lg border">
+                <button
+                  type="button"
+                  onClick={() => { setContentMode("markdown"); markDirty() }}
+                  className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${contentMode === "markdown" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
+                >
+                  Markdown
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setContentMode("html"); markDirty() }}
+                  className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${contentMode === "html" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
+                >
+                  HTML
+                </button>
+              </div>
+            </div>
+            {contentMode === "markdown" ? (
+              <textarea
+                value={content}
+                onChange={(e) => { setContent(e.target.value); markDirty() }}
+                rows={26}
+                className="w-full bg-card border rounded-lg px-4 py-3 text-sm font-mono leading-relaxed focus:border-accent focus:ring-1 focus:ring-accent outline-none resize-y"
+                placeholder="Write your page content in Markdown…"
+              />
+            ) : (
+              <textarea
+                value={content}
+                onChange={(e) => { setContent(e.target.value); markDirty() }}
+                rows={26}
+                className="w-full bg-card border rounded-lg px-4 py-3 text-sm font-mono leading-relaxed focus:border-accent focus:ring-1 focus:ring-accent outline-none resize-y"
+                placeholder="<h2>Title</h2>&#10;<p>Your HTML content here…</p>"
+              />
+            )}
+            <p className="text-[11px] mt-1 text-muted-foreground">
+              {contentMode === "markdown"
+                ? "Supports images, links, tables, headings, and {html}…{/html} raw blocks."
+                : "Raw HTML — wrap content in standard tags. The {html}…{/html} wrapper is not needed."}
+            </p>
           </div>
         </div>
 
         <div className="lg:sticky lg:top-16 self-start">
           <div className="flex items-center gap-2 mb-2 text-sm font-semibold">
             <Eye className="w-4 h-4 text-accent" /> Live preview
-            <span className="text-xs text-muted-foreground font-normal">(rendered from current markdown)</span>
+            <span className="text-xs text-muted-foreground font-normal">(rendered from {contentMode} content)</span>
             {dirtyRef && <span className="text-xs text-amber-600 font-normal">· unsaved changes</span>}
           </div>
           <div className="border rounded-xl bg-background overflow-hidden">

@@ -5,18 +5,18 @@
 // no code change or redeploy needed.
 //
 // IMPORTANT: The GEMINI_MODEL env var is validated against ALLOWED_MODELS.
-// If it contains a discontinued model (e.g. gemini-2.0-flash), it is rejected
+// If it contains an unknown model not in GEMINI_MODEL_OPTIONS, it is rejected
 // and the system falls back to the DB setting or default — never a 404.
 
-export const GEMINI_MODEL_DEFAULT = 'gemini-2.5-flash'
+export const GEMINI_MODEL_DEFAULT = 'gemini-3.6-flash'
 
 // Order matters: it is the automatic fallback chain. Free-tier daily quotas are
 // per model, so when one model returns 429 (quota exhausted) or 404 (not
 // available to the key), callers rotate to the next entry instead of failing.
 export const GEMINI_MODEL_OPTIONS = [
-  { value: 'gemini-2.5-flash', label: 'Gemini 2.5 Flash (default)' },
-  { value: 'gemini-3.6-flash', label: 'Gemini 3.6 Flash' },
+  { value: 'gemini-3.6-flash', label: 'Gemini 3.6 Flash (default)' },
   { value: 'gemini-3.5-flash-lite', label: 'Gemini 3.5 Flash-Lite' },
+  { value: 'gemini-2.5-flash', label: 'Gemini 2.5 Flash (legacy)' },
 ] as const
 
 export function geminiModelOrder(primary: string): string[] {
