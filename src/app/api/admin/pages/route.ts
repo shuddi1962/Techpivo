@@ -92,7 +92,7 @@ export async function POST(req: NextRequest) {
   const validPlacements = ["header", "footer", "both", "menu", "none"];
   const placement = validPlacements.includes(body.placement) ? body.placement : "both";
 
-  let design_settings: Record<string, string | number> | null = null;
+  let design_settings: Record<string, string | number | boolean> | null = null;
   if (body.design_settings && typeof body.design_settings === "object" && !Array.isArray(body.design_settings)) {
     const allowed = ["hero_bg", "text_color", "content_width", "hero_alignment", "hero_height", "content_mode", "show_breadcrumb"];
     const filtered: Record<string, string | number | boolean> = {};
