@@ -498,6 +498,64 @@ export default function PageEditor() {
               </label>
               <p className="text-[10px] text-muted-foreground mt-1 ml-5">Remove the container box so the page content spans the full width.</p>
             </div>
+            <div>
+              <label className="text-[11px] font-medium text-muted-foreground">Page Icon</label>
+              <input
+                value={designSettings.icon ?? ""}
+                onChange={(e) => { setDesignSettings((s) => ({ ...s, icon: e.target.value || undefined })); markDirty() }}
+                placeholder="e.g. 📧 or ✏️"
+                className="w-full bg-background border rounded-lg px-3 py-1.5 text-xs focus:border-accent outline-none mt-1"
+              />
+              <p className="text-[10px] text-muted-foreground mt-1">An emoji or short text shown in the hero banner above the title.</p>
+            </div>
+            <div className="col-span-2">
+              <label className="flex items-center gap-2 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={designSettings.show_updated !== false}
+                  onChange={(e) => { setDesignSettings((s) => ({ ...s, show_updated: e.target.checked ? undefined : false })); markDirty() }}
+                  className="rounded border-border"
+                />
+                <span className="text-[11px] font-medium text-muted-foreground">Show "last updated" date</span>
+              </label>
+              <p className="text-[10px] text-muted-foreground mt-1 ml-5">Display the page's last-updated date in the hero banner.</p>
+            </div>
+            <div className="col-span-2">
+              <label className="text-[11px] font-medium text-muted-foreground">
+                Image Temperature <span className="text-muted-foreground/60">(warm ↔ cool)</span>
+              </label>
+              <div className="flex items-center gap-3 mt-1">
+                <span className="text-[10px] text-muted-foreground">Cool</span>
+                <input
+                  type="range"
+                  min={-50}
+                  max={50}
+                  value={designSettings.hero_temperature ?? 0}
+                  onChange={(e) => { setDesignSettings((s) => ({ ...s, hero_temperature: Number(e.target.value) || undefined })); markDirty() }}
+                  className="flex-1 accent-accent"
+                />
+                <span className="text-[10px] text-muted-foreground">Warm</span>
+                <span className="text-[10px] font-mono text-muted-foreground w-8 text-right">{designSettings.hero_temperature ?? 0}%</span>
+              </div>
+            </div>
+            <div className="col-span-2">
+              <label className="text-[11px] font-medium text-muted-foreground">
+                Image Brightness
+              </label>
+              <div className="flex items-center gap-3 mt-1">
+                <span className="text-[10px] text-muted-foreground">Dark</span>
+                <input
+                  type="range"
+                  min={50}
+                  max={150}
+                  value={designSettings.hero_brightness ?? 100}
+                  onChange={(e) => { setDesignSettings((s) => ({ ...s, hero_brightness: Number(e.target.value) || undefined })); markDirty() }}
+                  className="flex-1 accent-accent"
+                />
+                <span className="text-[10px] text-muted-foreground">Bright</span>
+                <span className="text-[10px] font-mono text-muted-foreground w-8 text-right">{designSettings.hero_brightness ?? 100}%</span>
+              </div>
+            </div>
           </div>
         </div>
       </div>

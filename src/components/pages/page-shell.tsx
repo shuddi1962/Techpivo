@@ -13,7 +13,7 @@ interface SitePageRow {
   hero_image: string | null;
   is_published: boolean | null;
   placement: string | null;
-  design_settings: { hero_bg?: string; text_color?: string; content_width?: string; hero_alignment?: string; hero_height?: string; content_mode?: string; show_breadcrumb?: boolean; full_width?: boolean } | null;
+  design_settings: { hero_bg?: string; text_color?: string; content_width?: string; hero_alignment?: string; hero_height?: string; content_mode?: string; show_breadcrumb?: boolean; full_width?: boolean; icon?: string; show_updated?: boolean; hero_temperature?: number; hero_brightness?: number } | null;
   updated_at: string | null;
 }
 
@@ -57,6 +57,11 @@ export default async function PageShell({
   const heroHeight = ds.hero_height || "340px";
   const heroAlign = ds.hero_alignment === "center" ? "items-center text-center" : ds.hero_alignment === "right" ? "items-end text-right" : "items-start";
   const heroMaxW = ds.content_width || "max-w-4xl";
+  const pageIcon = ds.icon || def?.icon || "";
+  const showUpdated = ds.show_updated !== false;
+  const temperature = ds.hero_temperature ?? 0;
+  const brightness = ds.hero_brightness ?? 100;
+  const heroFilter = `temperature(${temperature}%) brightness(${brightness}%)`;
 
   function withAlpha(hex: string, alpha: number) {
     const r = parseInt(hex.slice(1, 3), 16);
@@ -79,19 +84,18 @@ export default async function PageShell({
     <div className="w-full">
       {heroImage ? (
         <div className="relative overflow-hidden mb-0 flex" style={{ minHeight: heroHeight }}>
-          <img src={heroImage} alt={title} className="absolute inset-0 w-full h-full object-cover" loading="lazy" />
-          <div className="absolute inset-0 bg-gradient-to-r from-black/80 via-black/60 to-black/40" />
+          <img src={heroImage} alt={title} className="absolute inset-0 w-full h-full object-contain" style={{ filter: heroFilter }} loading="lazy" />
           <div className={`relative z-10 px-4 md:px-12 lg:px-16 py-16 ${heroAlign} ${heroMaxW} mx-auto w-full`}>
             {showBc && breadcrumb}
-            {def?.icon && (
+            {pageIcon && (
               <div className="inline-flex items-center justify-center h-14 w-14 rounded-2xl bg-amber-400/20 border border-amber-300/30 text-3xl mb-5 shadow-lg shadow-black/20 backdrop-blur-sm">
-                {def.icon}
+                {pageIcon}
               </div>
             )}
             <h1 className="text-4xl md:text-5xl font-bold mb-4 text-white font-[family-name:var(--font-syne)]" style={{ color: ds.text_color || undefined }}>{title}</h1>
             {subtitle && <p className="text-lg max-w-2xl leading-relaxed text-white/75" style={{ color: tc ? withAlpha(tc, 0.8) : undefined }}>{subtitle}</p>}
-            {(def?.hero.updatedLine || updatedAt) && (
-              <p className="text-sm mt-4 text-white/60" style={{ color: tc ? withAlpha(tc, 0.6) : undefined }}>
+            {showUpdated && (def?.hero.updatedLine || updatedAt) && (
+              <p className="text-sm text-white/60 mt-4" style={{ color: tc ? withAlpha(tc, 0.6) : undefined }}>
                 {def?.hero.updatedLine || (updatedAt ? `Last updated: ${new Date(updatedAt).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })}` : "")}
               </p>
             )}
@@ -112,14 +116,14 @@ export default async function PageShell({
           <div className={`relative px-4 md:px-12 lg:px-16 py-16 md:py-20 ${heroAlign}`}>
             <div className={heroMaxW}>
               {showBc && <div className="mb-6">{breadcrumb}</div>}
-              {def?.icon && (
+              {pageIcon && (
                 <div className="inline-flex items-center justify-center h-14 w-14 rounded-2xl bg-amber-400/20 border border-amber-300/30 text-3xl mb-5 shadow-lg shadow-black/20">
-                  {def.icon}
+                  {pageIcon}
                 </div>
               )}
               <h1 className="text-4xl md:text-5xl font-bold mb-4 text-white font-[family-name:var(--font-syne)]" style={{ color: ds.text_color || undefined }}>{title}</h1>
               {subtitle && <p className="text-lg text-white/75 max-w-2xl leading-relaxed" style={{ color: tc ? withAlpha(tc, 0.8) : undefined }}>{subtitle}</p>}
-              {(def?.hero.updatedLine || updatedAt) && (
+              {showUpdated && (def?.hero.updatedLine || updatedAt) && (
                 <p className="text-sm text-white/60 mt-4" style={{ color: tc ? withAlpha(tc, 0.6) : undefined }}>
                   {def?.hero.updatedLine || (updatedAt ? `Last updated: ${new Date(updatedAt).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })}` : "")}
                 </p>

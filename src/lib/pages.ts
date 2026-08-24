@@ -6,6 +6,10 @@ export interface DesignSettings {
   hero_height?: string;
   show_breadcrumb?: boolean;
   full_width?: boolean;
+  icon?: string;
+  show_updated?: boolean;
+  hero_temperature?: number;
+  hero_brightness?: number;
 }
 
 export interface SitePageDef {

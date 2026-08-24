@@ -7,6 +7,7 @@ import { useState, useEffect } from "react"
 import { defaultSocialUrls } from "@/components/layout/social-icons"
 import SiteBlock from "@/components/layout/site-block"
 import { usePublishedPages } from "@/lib/use-site-pages"
+import { SITE_PAGES } from "@/lib/pages"
 
 
 const footerPlatforms = [
@@ -91,8 +92,18 @@ export function Footer({ categories, recentPosts, socialUrls = {} }: { categorie
           ))}
         </div>
 
-        {/* Quick Links — placement-gated via site_pages */}
-        {isInFooter("editorial-policy") && <SiteBlock blockKey="footer-links" />}
+        {/* Quick Links — dynamic pages with footer placement */}
+        <div>
+          <h3 className="footer-col-title">Quick Links</h3>
+          {Object.entries(SITE_PAGES)
+            .filter(([slug]) => isInFooter(slug))
+            .map(([slug, def]) => (
+              <Link key={slug} href={def.path} className="footer-col-link">
+                {def.label}
+              </Link>
+            ))}
+          <SiteBlock blockKey="footer-links" />
+        </div>
       </div>
 
       <div className="footer-bottom">
