@@ -269,18 +269,18 @@ export default async function HomePage() {
       <MainNav categories={cats} />
       <BreakingTicker posts={tickerPosts || []} />
 
+      <AdSlot positionKey="home_top_banner" />
+
+      <HeroSection
+        featured={featuredPost}
+        secondary={heroSecondary}
+      />
+
+      <SiteBlock blockKey="home-intro" />
+
       <div className="site-main">
         <div className="main-layout">
           <div className="content-col">
-            <AdSlot positionKey="home_top_banner" />
-
-            <HeroSection
-              featured={featuredPost}
-              secondary={heroSecondary}
-            />
-
-            <SiteBlock blockKey="home-intro" />
-
             <CategoryTabSection categories={cats} posts={latestPosts || []} />
 
             <LatestGrid posts={latestPosts || []} />

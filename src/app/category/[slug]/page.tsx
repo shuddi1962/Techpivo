@@ -82,15 +82,15 @@ export default async function CategoryPage({ params }: Props) {
         { name: category.name },
       ])} />
       <JsonLd data={collectionPageSchema(category.meta_title || category.name, category.meta_description || `${category.name} articles on ${SITE_NAME}`, catUrl)} />
-      <div className="container py-6">
-      {/* Header */}
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold mb-2">{category.name}</h1>
+      <div className="py-6">
+      {/* Category Header — full-bleed breakout */}
+      <div className="full-bleed mb-8 py-12 text-center">
+        <h1 className="text-3xl md:text-4xl font-bold mb-3 text-foreground">{category.name}</h1>
         {category.description && (
-          <p className="text-muted-foreground">{category.description}</p>
+          <p className="text-muted-foreground max-w-2xl mx-auto">{category.description}</p>
         )}
         {category.subcategories && category.subcategories.length > 0 && (
-          <div className="flex flex-wrap gap-2 mt-4">
+          <div className="flex flex-wrap gap-2 mt-4 justify-center">
             {category.subcategories.filter((sub: any) => sub.is_active !== false).map((sub: any) => (
               <Link key={sub.id} href={`/category/${category.slug}/${sub.slug}`}>
                 <Badge variant="secondary" className="cursor-pointer hover:bg-primary hover:text-primary-foreground">

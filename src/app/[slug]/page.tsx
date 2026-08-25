@@ -190,7 +190,22 @@ export default async function PostPage({ params }: Props) {
       <JsonLd data={articleSchema(post)} />
       <JsonLd data={faqPageSchema(faqData || [])} />
 
-      <article className="container py-8">
+      <article className="py-8">
+        {/* Featured Image — full-bleed breakout */}
+        {post.featured_image && (
+          <div className="full-bleed mb-8">
+            <div className="relative w-full h-72 md:h-96 lg:h-[28rem] bg-muted overflow-hidden">
+              <SafeImage
+                src={post.featured_image}
+                alt={post.title}
+                className="object-cover"
+                fill
+                priority
+              />
+            </div>
+          </div>
+        )}
+
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-10">
           <div className="lg:col-span-3">
             {/* Back link */}
@@ -202,19 +217,8 @@ export default async function PostPage({ params }: Props) {
               Back to Home
             </Link>
 
-            {/* Featured Image Card */}
-            <div className="bg-card border rounded-2xl overflow-hidden mb-8 shadow-sm">
-              <div className="relative w-full h-72 md:h-96 bg-muted overflow-hidden">
-                <SafeImage
-                  src={post.featured_image}
-                  alt={post.title}
-                  className="object-cover"
-                  fill
-                  priority
-                />
-              </div>
-
-              <div className="p-5 md:p-6">
+            {/* Article Header Card (no image) */}
+            <div className="bg-card border rounded-2xl overflow-hidden mb-8 shadow-sm p-5 md:p-6">
                 <div className="flex items-center gap-2 mb-4">
                   <Link href={`/category/${(post as any).category?.slug}`}>
                     <Badge variant="indigo" className="px-3 py-1 text-xs uppercase tracking-wider font-semibold">
@@ -275,7 +279,6 @@ export default async function PostPage({ params }: Props) {
                   </div>
                 </div>
               </div>
-            </div>
 
             <AdSlot positionKey="post_top_banner" className="mb-8" />
 

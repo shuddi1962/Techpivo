@@ -448,15 +448,18 @@ body { position: relative; }
 @media(max-width:480px) { .cat-strip-grid { grid-template-columns: 1fr; } }
 
 /* Main Layout */
-.site-main { max-width: 1400px; margin: 0 auto; padding: 24px; }
-.main-layout { display: grid; grid-template-columns: 1fr 300px; gap: 32px; align-items: start; }
+.site-main { padding: 24px; }
+.main-layout { max-width: 1400px; margin: 0 auto; display: grid; grid-template-columns: 1fr 300px; gap: 32px; align-items: start; }
 .content-col { min-width: 0; }
 .sidebar { position: sticky; top: 110px; display: flex; flex-direction: column; gap: 0; }
+
+/* Full-bleed breakout: pulls an element outside its max-width parent */
+.full-bleed { width: 100vw; margin-left: calc(-50vw + 50%); }
 .sidebar-card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 16px; margin-bottom: 16px; overflow: hidden; }
 .sidebar-card-header { display: flex; align-items: center; gap: 8px; margin-bottom: 14px; padding-bottom: 10px; border-bottom: 1px solid var(--border); }
 .sidebar-card-icon { font-size: 16px; }
 .sidebar-card-title { font-family: 'Syne', sans-serif; font-size: 14px; font-weight: 700; }
-@media(max-width:1024px) { .main-layout { grid-template-columns: 1fr; } .sidebar { position: static; display: grid; grid-template-columns: 1fr 1fr; gap: 16px; } }
+@media(max-width:1024px) { .main-layout { grid-template-columns: 1fr; } .sidebar { position: static; display: grid; grid-template-columns: 1fr 1fr; gap: 16px; } .site-main { padding: 16px; } }
 @media(max-width:640px) { .sidebar { grid-template-columns: 1fr; } }
 
 /* ── Unified Button System ── */
