@@ -561,9 +561,9 @@ export default function PageEditor() {
                   onChange={(e) => { setDesignSettings((s) => ({ ...s, show_updated: e.target.checked ? undefined : false })); markDirty() }}
                   className="rounded border-border"
                 />
-                <span className="text-[11px] font-medium text-muted-foreground">Show "last updated" date</span>
+                <span className="text-[11px] font-medium text-muted-foreground">Show &quot;last updated&quot; date</span>
               </label>
-              <p className="text-[10px] text-muted-foreground mt-1 ml-5">Display the page's last-updated date in the hero banner.</p>
+              <p className="text-[10px] text-muted-foreground mt-1 ml-5">Display the page&apos;s last-updated date in the hero banner.</p>
             </div>
             <div className="col-span-2">
               <label className="text-[11px] font-medium text-muted-foreground">
