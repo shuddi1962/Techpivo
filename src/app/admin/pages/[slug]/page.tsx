@@ -540,6 +540,30 @@ export default function PageEditor() {
               <label className="flex items-center gap-2 cursor-pointer select-none">
                 <input
                   type="checkbox"
+                  checked={designSettings.show_title !== false}
+                  onChange={(e) => { setDesignSettings((s) => ({ ...s, show_title: e.target.checked ? undefined : false })); markDirty() }}
+                  className="rounded border-border"
+                />
+                <span className="text-[11px] font-medium text-muted-foreground">Show page title in hero</span>
+              </label>
+              <p className="text-[10px] text-muted-foreground mt-1 ml-5">Uncheck to hide the h1 title in the hero section.</p>
+            </div>
+            <div className="col-span-2">
+              <label className="flex items-center gap-2 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={designSettings.show_hero !== false}
+                  onChange={(e) => { setDesignSettings((s) => ({ ...s, show_hero: e.target.checked ? undefined : false })); markDirty() }}
+                  className="rounded border-border"
+                />
+                <span className="text-[11px] font-medium text-muted-foreground">Show hero section</span>
+              </label>
+              <p className="text-[10px] text-muted-foreground mt-1 ml-5">Uncheck to hide the hero banner entirely (title, subtitle, image).</p>
+            </div>
+            <div className="col-span-2">
+              <label className="flex items-center gap-2 cursor-pointer select-none">
+                <input
+                  type="checkbox"
                   checked={designSettings.full_width === true}
                   onChange={(e) => { setDesignSettings((s) => ({ ...s, full_width: e.target.checked || undefined })); markDirty() }}
                   className="rounded border-border"

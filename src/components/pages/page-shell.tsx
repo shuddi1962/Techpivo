@@ -13,7 +13,7 @@ interface SitePageRow {
   hero_image: string | null;
   is_published: boolean | null;
   placement: string | null;
-  design_settings: { hero_bg?: string; text_color?: string; content_width?: string; hero_alignment?: string; hero_height?: string; content_mode?: string; show_breadcrumb?: boolean; full_width?: boolean; icon?: string; show_icon?: boolean; show_updated?: boolean; hero_temperature?: number; hero_brightness?: number } | null;
+  design_settings: { hero_bg?: string; text_color?: string; content_width?: string; hero_alignment?: string; hero_height?: string; content_mode?: string; show_breadcrumb?: boolean; show_title?: boolean; show_hero?: boolean; full_width?: boolean; icon?: string; show_icon?: boolean; show_updated?: boolean; hero_temperature?: number; hero_brightness?: number } | null;
   updated_at: string | null;
 }
 
@@ -59,6 +59,8 @@ export default async function PageShell({
   const heroMaxW = ds.content_width || "max-w-4xl";
   const pageIcon = ds.show_icon !== false && (ds.icon || def?.icon) ? (ds.icon || def?.icon || "") : "";
   const showUpdated = ds.show_updated !== false;
+  const showTitle = ds.show_title !== false;
+  const showHero = ds.show_hero !== false;
   const temperature = ds.hero_temperature ?? 0;
   const brightness = ds.hero_brightness ?? 100;
   const heroFilter = temperature > 0
@@ -86,7 +88,7 @@ export default async function PageShell({
 
   return (
     <div className="w-full">
-      {heroImage ? (
+      {showHero && (heroImage ? (
         <div className="relative overflow-hidden mb-0 flex flex-col justify-center" style={{ minHeight: heroHeight }}>
           <img src={heroImage} alt={title} className="absolute inset-0 w-full h-full object-cover" style={{ filter: heroFilter }} loading="lazy" />
           <div className={`relative z-10 py-16 ${heroAlign} ${heroContainerClass}`}>
@@ -96,7 +98,7 @@ export default async function PageShell({
                 {pageIcon}
               </div>
             )}
-            <h1 className="text-4xl md:text-5xl font-bold mb-4 text-white font-[family-name:var(--font-syne)]" style={{ color: ds.text_color || undefined }}>{title}</h1>
+            {showTitle && <h1 className="text-4xl md:text-5xl font-bold mb-4 text-white font-[family-name:var(--font-syne)]" style={{ color: ds.text_color || undefined }}>{title}</h1>}
             {subtitle && <p className="text-lg max-w-2xl leading-relaxed text-white/75" style={{ color: tc ? withAlpha(tc, 0.8) : undefined }}>{subtitle}</p>}
             {showUpdated && (def?.hero.updatedLine || updatedAt) && (
               <p className="text-sm text-white/60 mt-4" style={{ color: tc ? withAlpha(tc, 0.6) : undefined }}>
@@ -125,7 +127,7 @@ export default async function PageShell({
                   {pageIcon}
                 </div>
               )}
-              <h1 className="text-4xl md:text-5xl font-bold mb-4 text-white font-[family-name:var(--font-syne)]" style={{ color: ds.text_color || undefined }}>{title}</h1>
+              {showTitle && <h1 className="text-4xl md:text-5xl font-bold mb-4 text-white font-[family-name:var(--font-syne)]" style={{ color: ds.text_color || undefined }}>{title}</h1>}
               {subtitle && <p className="text-lg text-white/75 max-w-2xl leading-relaxed" style={{ color: tc ? withAlpha(tc, 0.8) : undefined }}>{subtitle}</p>}
               {showUpdated && (def?.hero.updatedLine || updatedAt) && (
                 <p className="text-sm text-white/60 mt-4" style={{ color: tc ? withAlpha(tc, 0.6) : undefined }}>
@@ -135,17 +137,17 @@ export default async function PageShell({
             </div>
           </div>
         </div>
-      )}
+      ))}
 
       <div className="w-full py-10">
         {fullWidth ? (
           <article
-            className="prose prose-slate dark:prose-invert prose-headings:font-bold prose-h2:text-2xl prose-h3:text-xl prose-p:leading-relaxed prose-p:text-muted-foreground prose-a:text-accent prose-a:font-medium prose-strong:text-foreground prose-li:text-muted-foreground prose-blockquote:border-accent prose-blockquote:text-muted-foreground max-w-none w-full"
+            className="prose prose-slate dark:prose-invert prose-headings:font-bold prose-h2:text-2xl prose-h3:text-xl prose-p:leading-relaxed prose-p:text-foreground prose-a:text-accent prose-a:font-medium prose-strong:text-foreground prose-li:text-foreground prose-blockquote:border-accent prose-blockquote:text-foreground max-w-none w-full"
             dangerouslySetInnerHTML={{ __html: html }}
           />
         ) : (
           <article
-            className="prose prose-slate dark:prose-invert prose-headings:font-bold prose-h2:text-2xl prose-h3:text-xl prose-p:leading-relaxed prose-p:text-muted-foreground prose-a:text-accent prose-a:font-medium prose-strong:text-foreground prose-li:text-muted-foreground prose-blockquote:border-accent prose-blockquote:text-muted-foreground max-w-none w-full px-4 md:px-12 lg:px-16"
+            className="prose prose-slate dark:prose-invert prose-headings:font-bold prose-h2:text-2xl prose-h3:text-xl prose-p:leading-relaxed prose-p:text-foreground prose-a:text-accent prose-a:font-medium prose-strong:text-foreground prose-li:text-foreground prose-blockquote:border-accent prose-blockquote:text-foreground max-w-none w-full px-4 md:px-12 lg:px-16"
             dangerouslySetInnerHTML={{ __html: html }}
           />
         )}

@@ -109,7 +109,7 @@ export default function PagesAdminPage() {
     ...SITE_PAGES.map((p) => ({ ...p, isCustom: !!dbPages[p.slug] })),
     ...customSlugs.map((s) => ({
       slug: s,
-      path: s,
+      path: `/${s}`,
       label: dbPages[s].title || s,
       icon: "📄",
       hero: { title: dbPages[s].title || s, subtitle: "", heroImage: undefined as string | undefined },
