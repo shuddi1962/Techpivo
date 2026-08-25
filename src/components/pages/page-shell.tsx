@@ -88,7 +88,7 @@ export default async function PageShell({
     <div className="w-full">
       {heroImage ? (
         <div className="relative overflow-hidden mb-0 flex flex-col justify-center" style={{ minHeight: heroHeight }}>
-          <img src={heroImage} alt={title} className="absolute inset-0 w-full h-full object-contain" style={{ filter: heroFilter }} loading="lazy" />
+          <img src={heroImage} alt={title} className="absolute inset-0 w-full h-full object-cover" style={{ filter: heroFilter }} loading="lazy" />
           <div className={`relative z-10 py-16 ${heroAlign} ${heroContainerClass}`}>
             {showBc && breadcrumb}
             {pageIcon && (
@@ -137,19 +137,17 @@ export default async function PageShell({
         </div>
       )}
 
-      <div className="px-4 md:px-12 lg:px-16 py-10">
+      <div className="w-full py-10">
         {fullWidth ? (
           <article
             className="prose prose-slate dark:prose-invert prose-headings:font-bold prose-h2:text-2xl prose-h3:text-xl prose-p:leading-relaxed prose-p:text-muted-foreground prose-a:text-accent prose-a:font-medium prose-strong:text-foreground prose-li:text-muted-foreground prose-blockquote:border-accent prose-blockquote:text-muted-foreground max-w-none w-full"
             dangerouslySetInnerHTML={{ __html: html }}
           />
         ) : (
-          <div className="mx-auto rounded-2xl border border-borderSoft bg-surface shadow-sm p-6 md:p-10" style={{ maxWidth: ds.content_width === "max-w-6xl" ? "72rem" : ds.content_width === "max-w-3xl" ? "48rem" : undefined }}>
-            <article
-              className="prose prose-slate dark:prose-invert prose-headings:font-bold prose-h2:text-2xl prose-h3:text-xl prose-p:leading-relaxed prose-p:text-muted-foreground prose-a:text-accent prose-a:font-medium prose-strong:text-foreground prose-li:text-muted-foreground prose-blockquote:border-accent prose-blockquote:text-muted-foreground"
-              dangerouslySetInnerHTML={{ __html: html }}
-            />
-          </div>
+          <article
+            className="prose prose-slate dark:prose-invert prose-headings:font-bold prose-h2:text-2xl prose-h3:text-xl prose-p:leading-relaxed prose-p:text-muted-foreground prose-a:text-accent prose-a:font-medium prose-strong:text-foreground prose-li:text-muted-foreground prose-blockquote:border-accent prose-blockquote:text-muted-foreground max-w-none w-full px-4 md:px-12 lg:px-16"
+            dangerouslySetInnerHTML={{ __html: html }}
+          />
         )}
         {children}
       </div>
