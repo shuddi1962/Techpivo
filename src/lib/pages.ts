@@ -86,7 +86,7 @@ Have a tip, question, or feedback? We would love to hear from you.
     hero: {
       title: "Contact Us",
       subtitle: "We value your feedback and inquiries. Here is how you can reach the right team.",
-      heroImage: "https://images.pexels.com/photos/3184465/pexels-photo-3184465.jpeg",
+      heroImage: "https://images.pexels.com/photos/3186586/pexels-photo-3186586.jpeg",
     },
     contentMd: `## Reach the Right Team
 

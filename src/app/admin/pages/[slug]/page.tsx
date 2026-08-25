@@ -6,7 +6,7 @@ import { useParams } from "next/navigation"
 import { createClient } from "@/lib/supabase/client"
 import { getSitePage } from "@/lib/pages"
 import { renderMarkdown } from "@/lib/markdown"
-import { sanitizeHtml } from "@/lib/sanitize"
+import { sanitizeHtml, preserveHtml } from "@/lib/sanitize"
 import {
   ArrowLeft, Check, ExternalLink, Eye, ImagePlus, LayoutPanelLeft, Loader2, Palette, RotateCcw, Save, Search, Trash2, Wand2,
 } from "lucide-react"
@@ -29,6 +29,15 @@ interface DbPage {
 const TITLE_MAX = 60
 const DESC_MAX = 160
 
+const EMOJI_OPTIONS = [
+  "📄", "📝", "📰", "📋", "📌", "📎", "🔔", "💡",
+  "🔍", "🛠️", "⚙️", "🔧", "💻", "🖥️", "📱", "🌐",
+  "🛡️", "🔒", "📊", "📈", "🎯", "🚀", "🤖", "🧠",
+  "📚", "🎓", "🏆", "⚡", "🔥", "💰", "📣", "🎉",
+  "🏠", "👤", "👥", "💬", "✉️", "📩", "📅", "⏰",
+  "✅", "❌", "⚠️", "❗", "❓", "🔗", "📁", "🗂️",
+]
+
 export default function PageEditor() {
   const params = useParams<{ slug: string }>()
   const slug = params.slug
@@ -50,6 +59,7 @@ export default function PageEditor() {
   const [saveState, setSaveState] = useState<"" | "saving" | "saved" | "error">("")
   const [uploading, setUploading] = useState(false)
   const [error, setError] = useState("")
+  const [emojiPickerOpen, setEmojiPickerOpen] = useState(false)
   const [dirtyRef, setDirtyRef] = useState(false)
   const dirtyFlag = useRef(false)
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -257,7 +267,7 @@ export default function PageEditor() {
     )
   }
 
-  const previewHtml = contentMode === "html" ? sanitizeHtml(content) : renderMarkdown(content)
+  const previewHtml = contentMode === "html" ? preserveHtml(content) : renderMarkdown(content)
   const titleRemaining = TITLE_MAX - metaTitle.length
   const descRemaining = DESC_MAX - metaDescription.length
   const counterColor = (remaining: number) =>
@@ -498,15 +508,50 @@ export default function PageEditor() {
               </label>
               <p className="text-[10px] text-muted-foreground mt-1 ml-5">Remove the container box so the page content spans the full width.</p>
             </div>
-            <div>
+            <div className="relative">
               <label className="text-[11px] font-medium text-muted-foreground">Page Icon</label>
-              <input
-                value={designSettings.icon ?? ""}
-                onChange={(e) => { setDesignSettings((s) => ({ ...s, icon: e.target.value || undefined })); markDirty() }}
-                placeholder="e.g. 📧 or ✏️"
-                className="w-full bg-background border rounded-lg px-3 py-1.5 text-xs focus:border-accent outline-none mt-1"
-              />
-              <p className="text-[10px] text-muted-foreground mt-1">An emoji or short text shown in the hero banner above the title.</p>
+              <div className="flex items-center gap-1 mt-1">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEmojiPickerOpen((v) => !v)
+                  }}
+                  className="w-full bg-background border rounded-lg px-3 py-1.5 text-xs text-left focus:border-accent outline-none flex items-center gap-2"
+                >
+                  <span className="text-base">{designSettings.icon || ""}</span>
+                  <span className="text-muted-foreground">{designSettings.icon ? "Change emoji" : "Pick an emoji"}</span>
+                </button>
+                {designSettings.icon && (
+                  <button
+                    type="button"
+                    onClick={() => { setDesignSettings((s) => ({ ...s, icon: undefined })); markDirty() }}
+                    className="text-xs text-muted-foreground hover:text-destructive px-1"
+                  >
+                    ✕
+                  </button>
+                )}
+              </div>
+              {emojiPickerOpen && (
+                <div className="absolute z-50 mt-1 w-64 bg-background border border-border rounded-lg shadow-lg p-2 max-h-52 overflow-y-auto">
+                  <div className="grid grid-cols-8 gap-0.5">
+                    {EMOJI_OPTIONS.map((em) => (
+                      <button
+                        key={em}
+                        type="button"
+                        onClick={() => {
+                          setDesignSettings((s) => ({ ...s, icon: em }))
+                          setEmojiPickerOpen(false)
+                          markDirty()
+                        }}
+                        className={`text-lg p-1 rounded hover:bg-muted transition-colors ${designSettings.icon === em ? "bg-accent/20 ring-1 ring-accent" : ""}`}
+                      >
+                        {em}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+              <p className="text-[10px] text-muted-foreground mt-1">An emoji shown in the hero banner above the title.</p>
             </div>
             <div className="col-span-2">
               <label className="flex items-center gap-2 cursor-pointer select-none">
@@ -716,7 +761,7 @@ export default function PageEditor() {
               >
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src={heroImage} alt="" className="absolute inset-0 w-full h-full object-cover" style={{ height: "100%" }} />
-                <div className="absolute inset-0 bg-gradient-to-r from-black/80 via-black/60 to-black/40" />
+                <div className="absolute inset-0 bg-black/30" />
                 <div
                   className="relative z-10 p-6 h-full flex flex-col justify-end"
                   style={{

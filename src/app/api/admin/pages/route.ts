@@ -94,21 +94,27 @@ export async function POST(req: NextRequest) {
 
   let design_settings: Record<string, string | number | boolean> | null = null;
   if (body.design_settings && typeof body.design_settings === "object" && !Array.isArray(body.design_settings)) {
-    const allowed = ["hero_bg", "text_color", "content_width", "hero_alignment", "hero_height", "content_mode", "show_breadcrumb"];
+    const allowedBools = ["show_breadcrumb", "show_updated", "full_width"];
+    const allowedStrings = ["hero_bg", "text_color", "content_width", "hero_alignment", "hero_height", "content_mode", "icon"];
+    const allowedNums = ["hero_temperature", "hero_brightness"];
     const filtered: Record<string, string | number | boolean> = {};
-    for (const k of allowed) {
-      const v = (body.design_settings as Record<string, unknown>)[k];
+    const raw = body.design_settings as Record<string, unknown>;
+    for (const k of allowedBools) {
+      if (typeof raw[k] === "boolean") filtered[k] = raw[k];
+    }
+    for (const k of allowedStrings) {
+      const v = raw[k];
       if (k === "content_mode") {
         if (v === "html" || v === "markdown") filtered[k] = v;
         continue;
       }
-      if (k === "show_breadcrumb") {
-        if (typeof v === "boolean") filtered[k] = v;
-        continue;
-      }
       if (typeof v === "string" && v.trim().length > 0 && v.length <= 100) {
         filtered[k] = v.trim();
-      } else if (typeof v === "number" && v >= 0 && v <= 2000) {
+      }
+    }
+    for (const k of allowedNums) {
+      const v = raw[k];
+      if (typeof v === "number" && v >= 0 && v <= 1000) {
         filtered[k] = v;
       }
     }
@@ -124,7 +130,7 @@ export async function POST(req: NextRequest) {
     .upsert(
       {
         slug,
-        title: title || (def ? def.hero.title : slug),
+        title: title !== undefined ? title : (def ? def.hero.title : slug),
         subtitle: subtitle || (def ? def.hero.subtitle : ""),
         content_md: content_md !== undefined ? content_md : (def ? def.contentMd : ""),
         hero_image: hero_image !== undefined ? (hero_image === "" ? null : hero_image) : (def?.hero.heroImage || null),

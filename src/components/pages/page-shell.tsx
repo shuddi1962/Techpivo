@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { renderMarkdown } from "@/lib/markdown";
-import { sanitizeHtml } from "@/lib/sanitize";
+import { sanitizeHtml, preserveHtml } from "@/lib/sanitize";
 import { getSitePage } from "@/lib/pages";
 
 interface SitePageRow {
@@ -52,7 +52,7 @@ export default async function PageShell({
   const ds = row?.design_settings || {};
   const pageLabel = def?.label || title;
 
-  const html = ds.content_mode === "html" ? sanitizeHtml(content) : renderMarkdown(content);
+  const html = ds.content_mode === "html" ? preserveHtml(content) : renderMarkdown(content);
 
   const heroHeight = ds.hero_height || "340px";
   const heroAlign = ds.hero_alignment === "center" ? "items-center text-center" : ds.hero_alignment === "right" ? "items-end text-right" : "items-start";
@@ -61,7 +61,9 @@ export default async function PageShell({
   const showUpdated = ds.show_updated !== false;
   const temperature = ds.hero_temperature ?? 0;
   const brightness = ds.hero_brightness ?? 100;
-  const heroFilter = `temperature(${temperature}%) brightness(${brightness}%)`;
+  const heroFilter = temperature > 0
+    ? `sepia(${Math.min(temperature, 100)}%) hue-rotate(${Math.round(temperature * 1.5)}deg) brightness(${brightness}%)`
+    : `brightness(${brightness}%)`;
 
   function withAlpha(hex: string, alpha: number) {
     const r = parseInt(hex.slice(1, 3), 16);
@@ -83,7 +85,7 @@ export default async function PageShell({
   return (
     <div className="w-full">
       {heroImage ? (
-        <div className="relative overflow-hidden mb-0 flex" style={{ minHeight: heroHeight }}>
+        <div className="relative overflow-hidden mb-0 flex flex-col justify-center" style={{ minHeight: heroHeight }}>
           <img src={heroImage} alt={title} className="absolute inset-0 w-full h-full object-contain" style={{ filter: heroFilter }} loading="lazy" />
           <div className={`relative z-10 px-4 md:px-12 lg:px-16 py-16 ${heroAlign} ${heroMaxW} mx-auto w-full`}>
             {showBc && breadcrumb}

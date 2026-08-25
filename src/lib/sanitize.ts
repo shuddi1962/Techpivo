@@ -81,3 +81,30 @@ export function sanitizeHtml(html: string): string {
   if (!html || typeof html !== "string") return ""
   return xss(html, richOptions)
 }
+
+/**
+ * Minimal sanitizer for admin-authored HTML content (e.g. entertainment pages
+ * with embedded <style> blocks and complex inline markup).
+ *
+ * Only strips truly dangerous patterns — preserves all tags, classes, styles,
+ * and attribute values so authored HTML renders exactly as written.
+ */
+export function preserveHtml(html: string): string {
+  if (!html || typeof html !== "string") return ""
+
+  let result = html
+
+  // 1. Strip <script> tags and their content (covers multiline, attributes)
+  result = result.replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, "")
+
+  // 2. Strip on* event handlers from all tags (onclick, onload, onerror, etc.)
+  result = result.replace(/\s+on\w+\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]+)/gi, "")
+
+  // 3. Strip javascript: and vbscript: URLs in href/src attributes
+  result = result.replace(
+    /(href|src)\s*=\s*(?:(?:"\s*(?:javascript|vbscript)\s*:[^"]*")|(?:'\s*(?:javascript|vbscript)\s*:[^']*')|(?:\s*(?:javascript|vbscript)\s*:[^\s>]*))/gi,
+    '$1=""'
+  )
+
+  return result
+}
