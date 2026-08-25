@@ -71,16 +71,15 @@ export default async function SubcategoryPage({ params }: Props) {
   const sidebarTags = Array.from(new Set(allTags.flatMap((p: any) => p.seo_keywords || []))).slice(0, 20) as string[]
 
   return (
-    <div className="py-6">
-      {/* Subcategory Header — full-bleed breakout */}
-      <div className="full-bleed mb-8 py-12 text-center">
-        <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground mb-2">
+    <div className="container py-6">
+      <div className="mb-8">
+        <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
           <Link href={`/category/${category.slug}`} className="hover:text-brand-amber">{category.name}</Link>
           <span>/</span>
           <span className="text-foreground font-medium">{subcategory.name}</span>
         </div>
-        <h1 className="text-3xl md:text-4xl font-bold text-foreground">{subcategory.name}</h1>
-        {subcategory.description && <p className="text-muted-foreground mt-2 max-w-2xl mx-auto">{subcategory.description}</p>}
+        <h1 className="text-3xl font-bold">{subcategory.name}</h1>
+        {subcategory.description && <p className="text-muted-foreground mt-2">{subcategory.description}</p>}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
