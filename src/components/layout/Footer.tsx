@@ -92,25 +92,31 @@ export function Footer({ categories, recentPosts, socialUrls = {} }: { categorie
           ))}
         </div>
 
-        {/* Quick Links — dynamic pages with footer placement, split into 2 columns */}
+        {/* Quick Links — dynamic pages with footer placement, split into Pages + Legal */}
         <div>
           <h3 className="footer-col-title">Quick Links</h3>
           {(() => {
+            const LEGAL_SLUGS = new Set(["privacy-policy", "terms-of-use", "cookies-policy", "disclaimer", "editorial-policy", "corrections-policy"])
             const footerPages = SITE_PAGES.filter((def) => isInFooter(def.slug))
-            const mid = Math.ceil(footerPages.length / 2)
-            const col1 = footerPages.slice(0, mid)
-            const col2 = footerPages.slice(mid)
+            const pages = footerPages.filter((def) => !LEGAL_SLUGS.has(def.slug))
+            const legal = footerPages.filter((def) => LEGAL_SLUGS.has(def.slug))
             return (
               <div className="grid grid-cols-2 gap-x-6">
                 <div>
-                  {col1.map((def) => (
+                  {pages.length > 0 && (
+                    <span className="text-xs font-semibold uppercase tracking-wider text-white/50 mb-2 block">Pages</span>
+                  )}
+                  {pages.map((def) => (
                     <Link key={def.slug} href={def.path} className="footer-col-link">
                       {def.label}
                     </Link>
                   ))}
                 </div>
                 <div>
-                  {col2.map((def) => (
+                  {legal.length > 0 && (
+                    <span className="text-xs font-semibold uppercase tracking-wider text-white/50 mb-2 block">Legal</span>
+                  )}
+                  {legal.map((def) => (
                     <Link key={def.slug} href={def.path} className="footer-col-link">
                       {def.label}
                     </Link>
