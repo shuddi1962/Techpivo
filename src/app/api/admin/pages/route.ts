@@ -94,7 +94,7 @@ export async function POST(req: NextRequest) {
 
   let design_settings: Record<string, string | number | boolean> | null = null;
   if (body.design_settings && typeof body.design_settings === "object" && !Array.isArray(body.design_settings)) {
-    const allowedBools = ["show_breadcrumb", "show_updated", "full_width"];
+    const allowedBools = ["show_breadcrumb", "show_updated", "full_width", "show_icon"];
     const allowedStrings = ["hero_bg", "text_color", "content_width", "hero_alignment", "hero_height", "content_mode", "icon"];
     const allowedNums = ["hero_temperature", "hero_brightness"];
     const filtered: Record<string, string | number | boolean> = {};
@@ -114,7 +114,7 @@ export async function POST(req: NextRequest) {
     }
     for (const k of allowedNums) {
       const v = raw[k];
-      if (typeof v === "number" && v >= 0 && v <= 1000) {
+      if (typeof v === "number" && v >= -100 && v <= 200) {
         filtered[k] = v;
       }
     }

@@ -509,49 +509,65 @@ export default function PageEditor() {
               <p className="text-[10px] text-muted-foreground mt-1 ml-5">Remove the container box so the page content spans the full width.</p>
             </div>
             <div className="relative">
-              <label className="text-[11px] font-medium text-muted-foreground">Page Icon</label>
-              <div className="flex items-center gap-1 mt-1">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setEmojiPickerOpen((v) => !v)
-                  }}
-                  className="w-full bg-background border rounded-lg px-3 py-1.5 text-xs text-left focus:border-accent outline-none flex items-center gap-2"
-                >
-                  <span className="text-base">{designSettings.icon || ""}</span>
-                  <span className="text-muted-foreground">{designSettings.icon ? "Change emoji" : "Pick an emoji"}</span>
-                </button>
-                {designSettings.icon && (
-                  <button
-                    type="button"
-                    onClick={() => { setDesignSettings((s) => ({ ...s, icon: undefined })); markDirty() }}
-                    className="text-xs text-muted-foreground hover:text-destructive px-1"
-                  >
-                    ✕
-                  </button>
-                )}
+              <div className="flex items-center gap-3 mb-2">
+                <label className="flex items-center gap-2 cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={designSettings.show_icon !== false}
+                    onChange={(e) => { setDesignSettings((s) => ({ ...s, show_icon: e.target.checked ? undefined : false })); markDirty() }}
+                    className="rounded border-border"
+                  />
+                  <span className="text-[11px] font-medium text-muted-foreground">Show page icon</span>
+                </label>
+                <span className="text-[10px] text-muted-foreground">Toggle to show/hide the icon in hero</span>
               </div>
-              {emojiPickerOpen && (
-                <div className="absolute z-50 mt-1 w-64 bg-background border border-border rounded-lg shadow-lg p-2 max-h-52 overflow-y-auto">
-                  <div className="grid grid-cols-8 gap-0.5">
-                    {EMOJI_OPTIONS.map((em) => (
+              {designSettings.show_icon !== false && (
+                <div>
+                  <label className="text-[11px] font-medium text-muted-foreground">Page Icon</label>
+                  <div className="flex items-center gap-1 mt-1">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setEmojiPickerOpen((v) => !v)
+                      }}
+                      className="w-full bg-background border rounded-lg px-3 py-1.5 text-xs text-left focus:border-accent outline-none flex items-center gap-2"
+                    >
+                      <span className="text-base">{designSettings.icon || ""}</span>
+                      <span className="text-muted-foreground">{designSettings.icon ? "Change emoji" : "Pick an emoji"}</span>
+                    </button>
+                    {designSettings.icon && (
                       <button
-                        key={em}
                         type="button"
-                        onClick={() => {
-                          setDesignSettings((s) => ({ ...s, icon: em }))
-                          setEmojiPickerOpen(false)
-                          markDirty()
-                        }}
-                        className={`text-lg p-1 rounded hover:bg-muted transition-colors ${designSettings.icon === em ? "bg-accent/20 ring-1 ring-accent" : ""}`}
+                        onClick={() => { setDesignSettings((s) => ({ ...s, icon: undefined })); markDirty() }}
+                        className="text-xs text-muted-foreground hover:text-destructive px-1"
                       >
-                        {em}
+                        ✕
                       </button>
-                    ))}
+                    )}
                   </div>
+                  {emojiPickerOpen && (
+                    <div className="absolute z-50 mt-1 w-64 bg-background border border-border rounded-lg shadow-lg p-2 max-h-52 overflow-y-auto">
+                      <div className="grid grid-cols-8 gap-0.5">
+                        {EMOJI_OPTIONS.map((em) => (
+                          <button
+                            key={em}
+                            type="button"
+                            onClick={() => {
+                              setDesignSettings((s) => ({ ...s, icon: em }))
+                              setEmojiPickerOpen(false)
+                              markDirty()
+                            }}
+                            className={`text-lg p-1 rounded hover:bg-muted transition-colors ${designSettings.icon === em ? "bg-accent/20 ring-1 ring-accent" : ""}`}
+                          >
+                            {em}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  <p className="text-[10px] text-muted-foreground mt-1">An emoji shown in the hero banner above the title.</p>
                 </div>
               )}
-              <p className="text-[10px] text-muted-foreground mt-1">An emoji shown in the hero banner above the title.</p>
             </div>
             <div className="col-span-2">
               <label className="flex items-center gap-2 cursor-pointer select-none">

@@ -7,6 +7,7 @@ export interface DesignSettings {
   show_breadcrumb?: boolean;
   full_width?: boolean;
   icon?: string;
+  show_icon?: boolean;
   show_updated?: boolean;
   hero_temperature?: number;
   hero_brightness?: number;

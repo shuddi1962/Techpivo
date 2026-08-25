@@ -96,23 +96,22 @@ export function Footer({ categories, recentPosts, socialUrls = {} }: { categorie
         <div>
           <h3 className="footer-col-title">Quick Links</h3>
           {(() => {
-            const footerPages = Object.entries(SITE_PAGES)
-              .filter(([slug]) => isInFooter(slug))
+            const footerPages = SITE_PAGES.filter((def) => isInFooter(def.slug))
             const mid = Math.ceil(footerPages.length / 2)
             const col1 = footerPages.slice(0, mid)
             const col2 = footerPages.slice(mid)
             return (
               <div className="grid grid-cols-2 gap-x-6">
                 <div>
-                  {col1.map(([slug, def]) => (
-                    <Link key={slug} href={def.path} className="footer-col-link">
+                  {col1.map((def) => (
+                    <Link key={def.slug} href={def.path} className="footer-col-link">
                       {def.label}
                     </Link>
                   ))}
                 </div>
                 <div>
-                  {col2.map(([slug, def]) => (
-                    <Link key={slug} href={def.path} className="footer-col-link">
+                  {col2.map((def) => (
+                    <Link key={def.slug} href={def.path} className="footer-col-link">
                       {def.label}
                     </Link>
                   ))}
