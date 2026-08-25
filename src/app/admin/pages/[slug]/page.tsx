@@ -60,6 +60,12 @@ export default function PageEditor() {
   const [uploading, setUploading] = useState(false)
   const [error, setError] = useState("")
   const [emojiPickerOpen, setEmojiPickerOpen] = useState(false)
+  const [heroSearchQuery, setHeroSearchQuery] = useState("")
+  const [heroSearchResults, setHeroSearchResults] = useState<{ src: string; alt: string; link?: string; license?: string }[]>([])
+  const [heroSearching, setHeroSearching] = useState(false)
+  const [heroSearchError, setHeroSearchError] = useState("")
+  const [heroSearchSource, setHeroSearchSource] = useState<"web" | "pexels">("web")
+  const [heroActiveSource, setHeroActiveSource] = useState<"google" | "bing" | "wikimedia" | "pexels" | null>(null)
   const [dirtyRef, setDirtyRef] = useState(false)
   const dirtyFlag = useRef(false)
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -194,6 +200,40 @@ export default function PageEditor() {
     } finally {
       setUploading(false)
     }
+  }
+
+  const searchHeroImages = async () => {
+    if (!heroSearchQuery) return
+    setHeroSearching(true)
+    setHeroSearchError("")
+    setHeroActiveSource(null)
+    try {
+      if (heroSearchSource === "pexels") {
+        const res = await fetch(`/api/pexels?query=${encodeURIComponent(heroSearchQuery)}`)
+        const data = await res.json()
+        if (data.photos) {
+          setHeroSearchResults(data.photos.map((p: any) => ({ src: p.src.large2x || p.src.large, alt: p.alt, link: p.url, license: "Free (Pexels)" })))
+          setHeroActiveSource("pexels")
+        } else {
+          setHeroSearchResults([])
+          setHeroSearchError("No Pexels results. Try different keywords.")
+        }
+      } else {
+        const res = await fetch(`/api/google-images?query=${encodeURIComponent(heroSearchQuery)}&engine=auto`)
+        const data = await res.json()
+        if (data.items?.length) {
+          setHeroSearchResults(data.items.map((p: any) => ({ src: p.src, alt: p.alt, link: p.link, license: p.license })))
+          setHeroActiveSource(data.source === "bing" ? "bing" : data.source === "google" ? "google" : data.source === "wikimedia" ? "wikimedia" : null)
+        } else {
+          setHeroSearchResults([])
+          setHeroSearchError("No image results. Try different keywords.")
+        }
+      }
+    } catch {
+      setHeroSearchResults([])
+      setHeroSearchError("Search failed. Please try again.")
+    }
+    setHeroSearching(false)
   }
 
   const resetToDefault = async () => {
@@ -684,6 +724,77 @@ export default function PageEditor() {
                 No hero image — the page will use the gradient banner.
               </div>
             )}
+            {/* Web Image Search */}
+            <div className="mt-3 border rounded-xl p-3 bg-muted/20">
+              <div className="flex items-center gap-2 mb-2">
+                <Search className="w-3.5 h-3.5 text-muted-foreground" />
+                <span className="text-xs font-medium text-muted-foreground">Search for an image</span>
+                <div className="flex gap-1 ml-auto">
+                  <button
+                    onClick={() => { setHeroSearchSource("web"); setHeroSearchResults([]); setHeroSearchError(""); setHeroActiveSource(null) }}
+                    className={`text-[11px] px-2 py-0.5 rounded-md font-medium transition-colors ${heroSearchSource === "web" ? "bg-accent text-accent-foreground" : "bg-background text-muted-foreground hover:bg-muted"}`}
+                  >
+                    Web
+                  </button>
+                  <button
+                    onClick={() => { setHeroSearchSource("pexels"); setHeroSearchResults([]); setHeroSearchError(""); setHeroActiveSource(null) }}
+                    className={`text-[11px] px-2 py-0.5 rounded-md font-medium transition-colors ${heroSearchSource === "pexels" ? "bg-accent text-accent-foreground" : "bg-background text-muted-foreground hover:bg-muted"}`}
+                  >
+                    Pexels
+                  </button>
+                </div>
+              </div>
+              <div className="flex gap-2">
+                <input
+                  value={heroSearchQuery}
+                  onChange={(e) => setHeroSearchQuery(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); searchHeroImages() } }}
+                  placeholder={heroSearchSource === "pexels" ? "Search Pexels for free photos…" : "Search the live web for any image…"}
+                  className="flex-1 bg-card border rounded-lg px-3 py-2 text-sm focus:border-accent focus:ring-1 focus:ring-accent outline-none"
+                />
+                <button
+                  onClick={searchHeroImages}
+                  disabled={heroSearching || !heroSearchQuery}
+                  className="inline-flex items-center gap-1.5 bg-accent text-accent-foreground rounded-lg px-3 py-2 text-sm font-medium hover:opacity-90 disabled:opacity-50 shrink-0"
+                >
+                  {heroSearching ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Search className="w-3.5 h-3.5" />}
+                  Search
+                </button>
+              </div>
+              {heroSearchError && (
+                <p className="text-xs text-red-500 mt-2">{heroSearchError}</p>
+              )}
+              {heroActiveSource && (
+                <p className="text-[11px] text-muted-foreground mt-1.5">
+                  {heroActiveSource === "bing" && "Live web search (Bing)"}
+                  {heroActiveSource === "google" && "Google Custom Search"}
+                  {heroActiveSource === "wikimedia" && "Wikimedia Commons (free license)"}
+                  {heroActiveSource === "pexels" && "Pexels (free license)"}
+                  {" — hover for details"}
+                </p>
+              )}
+              {heroSearchResults.length > 0 && (
+                <div className="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-4 gap-2 mt-3 max-h-56 overflow-y-auto">
+                  {heroSearchResults.map((img, i) => (
+                    <button
+                      key={i}
+                      type="button"
+                      onClick={() => { setHeroImage(img.src); markDirty() }}
+                      className={`relative rounded-lg overflow-hidden border-2 aspect-square group transition-all ${heroImage === img.src ? "border-accent ring-2 ring-accent/30" : "border-transparent hover:border-accent/50"}`}
+                      title={img.alt || "Image"}
+                    >
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={img.src} alt={img.alt || ""} className="w-full h-full object-cover" loading="lazy" />
+                      {img.license && (
+                        <span className="absolute bottom-0 left-0 right-0 text-[9px] bg-black/70 text-white px-1 py-0.5 truncate text-center">
+                          {img.license}
+                        </span>
+                      )}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
