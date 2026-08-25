@@ -94,7 +94,7 @@ export async function POST(req: NextRequest) {
 
   let design_settings: Record<string, string | number | boolean> | null = null;
   if (body.design_settings && typeof body.design_settings === "object" && !Array.isArray(body.design_settings)) {
-    const allowedBools = ["show_breadcrumb", "show_updated", "full_width", "show_icon"];
+    const allowedBools = ["show_breadcrumb", "show_updated", "full_width", "show_icon", "show_title", "show_hero"];
     const allowedStrings = ["hero_bg", "text_color", "content_width", "hero_alignment", "hero_height", "content_mode", "icon"];
     const allowedNums = ["hero_temperature", "hero_brightness"];
     const filtered: Record<string, string | number | boolean> = {};
