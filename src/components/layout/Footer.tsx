@@ -92,39 +92,14 @@ export function Footer({ categories, recentPosts, socialUrls = {} }: { categorie
           ))}
         </div>
 
-        {/* Quick Links — dynamic pages with footer placement, split into Pages + Legal */}
+        {/* Quick Links — all pages with footer placement */}
         <div>
           <h3 className="footer-col-title">Quick Links</h3>
-          {(() => {
-            const LEGAL_SLUGS = new Set(["privacy-policy", "terms-of-use", "cookies-policy", "disclaimer", "editorial-policy", "corrections-policy"])
-            const footerPages = SITE_PAGES.filter((def) => isInFooter(def.slug))
-            const pages = footerPages.filter((def) => !LEGAL_SLUGS.has(def.slug))
-            const legal = footerPages.filter((def) => LEGAL_SLUGS.has(def.slug))
-            return (
-              <div className="grid grid-cols-2 gap-x-6">
-                <div>
-                  {pages.length > 0 && (
-                    <span className="text-xs font-semibold uppercase tracking-wider text-white/50 mb-2 block">Pages</span>
-                  )}
-                  {pages.map((def) => (
-                    <Link key={def.slug} href={def.path} className="footer-col-link">
-                      {def.label}
-                    </Link>
-                  ))}
-                </div>
-                <div>
-                  {legal.length > 0 && (
-                    <span className="text-xs font-semibold uppercase tracking-wider text-white/50 mb-2 block">Legal</span>
-                  )}
-                  {legal.map((def) => (
-                    <Link key={def.slug} href={def.path} className="footer-col-link">
-                      {def.label}
-                    </Link>
-                  ))}
-                </div>
-              </div>
-            )
-          })()}
+          {SITE_PAGES.filter((def) => isInFooter(def.slug)).map((def) => (
+            <Link key={def.slug} href={def.path} className="footer-col-link">
+              {def.label}
+            </Link>
+          ))}
           <SiteBlock blockKey="footer-links" />
         </div>
       </div>
