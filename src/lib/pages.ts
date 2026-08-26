@@ -6,6 +6,7 @@ export interface DesignSettings {
   hero_height?: string;
   show_breadcrumb?: boolean;
   show_title?: boolean;
+  show_subtitle?: boolean;
   show_hero?: boolean;
   full_width?: boolean;
   icon?: string;

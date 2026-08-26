@@ -308,6 +308,14 @@ export default function PageEditor() {
   }
 
   const previewHtml = contentMode === "html" ? preserveHtml(content) : renderMarkdown(content)
+  const previewAlign = designSettings.hero_alignment || "left"
+  const previewAlignClass =
+    previewAlign === "center" ? "flex flex-col items-center text-center" :
+    previewAlign === "right"  ? "flex flex-col items-end text-right"  : "items-start text-left"
+  const previewSubtitleClass =
+    previewAlign === "center" ? "mx-auto" :
+    previewAlign === "right"  ? "ml-auto" : ""
+  const previewShowSubtitle = designSettings.show_subtitle !== false
   const titleRemaining = TITLE_MAX - metaTitle.length
   const descRemaining = DESC_MAX - metaDescription.length
   const counterColor = (remaining: number) =>
@@ -561,6 +569,18 @@ export default function PageEditor() {
                 <span className="text-[11px] font-medium text-muted-foreground">Show page title in hero</span>
               </label>
               <p className="text-[10px] text-muted-foreground mt-1 ml-5">Uncheck to hide the h1 title in the hero section.</p>
+            </div>
+            <div className="col-span-2">
+              <label className="flex items-center gap-2 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={designSettings.show_subtitle !== false}
+                  onChange={(e) => { setDesignSettings((s) => ({ ...s, show_subtitle: e.target.checked ? undefined : false })); markDirty() }}
+                  className="rounded border-border"
+                />
+                <span className="text-[11px] font-medium text-muted-foreground">Show subtitle in hero</span>
+              </label>
+              <p className="text-[10px] text-muted-foreground mt-1 ml-5">Uncheck to hide the subtitle/description text in the hero banner.</p>
             </div>
             <div className="col-span-2">
               <label className="flex items-center gap-2 cursor-pointer select-none">
@@ -928,15 +948,12 @@ export default function PageEditor() {
                 <img src={heroImage} alt="" className="absolute inset-0 w-full h-full object-cover" style={{ height: "100%" }} />
                 <div className="absolute inset-0 bg-black/30" />
                 <div
-                  className="relative z-10 p-6 h-full flex flex-col justify-end"
-                  style={{
-                    color: designSettings.text_color || "#ffffff",
-                    textAlign: (designSettings.hero_alignment as "left" | "center" | "right") || "left",
-                  }}
+                  className={`relative z-10 p-6 h-full flex flex-col justify-end ${previewAlignClass}`}
+                  style={{ color: designSettings.text_color || "#ffffff" }}
                 >
-                  <div className="text-2xl mb-1">{def?.icon ?? "📄"}</div>
-                  <div className="text-lg font-bold leading-tight">{title || def?.hero?.title || slug}</div>
-                  <p className="text-xs mt-1 line-clamp-2 opacity-75">{subtitle || def?.hero?.subtitle || ""}</p>
+                  {designSettings.show_icon !== false && <div className="text-2xl mb-1">{def?.icon ?? "📄"}</div>}
+                  {designSettings.show_title !== false && <div className="text-lg font-bold leading-tight">{title || def?.hero?.title || slug}</div>}
+                  {previewShowSubtitle && <p className={`text-xs mt-1 line-clamp-2 opacity-75 ${previewSubtitleClass}`}>{subtitle || def?.hero?.subtitle || ""}</p>}
                 </div>
               </div>
             ) : (
@@ -951,15 +968,12 @@ export default function PageEditor() {
               >
                 <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,rgba(245,158,11,0.16),transparent_55%)]" />
                 <div
-                  className="relative"
-                  style={{
-                    color: designSettings.text_color || "#ffffff",
-                    textAlign: (designSettings.hero_alignment as "left" | "center" | "right") || "left",
-                  }}
+                  className={`relative ${previewAlignClass}`}
+                  style={{ color: designSettings.text_color || "#ffffff" }}
                 >
-                  <div className="text-2xl mb-2">{def?.icon ?? "📄"}</div>
-                  <div className="text-xl font-bold mb-1.5">{title || def?.hero?.title || slug}</div>
-                  <p className="text-xs opacity-70 max-w-md leading-relaxed">{subtitle || def?.hero?.subtitle || ""}</p>
+                  {designSettings.show_icon !== false && <div className="text-2xl mb-2">{def?.icon ?? "📄"}</div>}
+                  {designSettings.show_title !== false && <div className="text-xl font-bold mb-1.5">{title || def?.hero?.title || slug}</div>}
+                  {previewShowSubtitle && <p className={`text-xs opacity-70 max-w-md leading-relaxed ${previewSubtitleClass}`}>{subtitle || def?.hero?.subtitle || ""}</p>}
                 </div>
               </div>
             )}

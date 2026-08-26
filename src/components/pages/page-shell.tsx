@@ -13,7 +13,7 @@ interface SitePageRow {
   hero_image: string | null;
   is_published: boolean | null;
   placement: string | null;
-  design_settings: { hero_bg?: string; text_color?: string; content_width?: string; hero_alignment?: string; hero_height?: string; content_mode?: string; show_breadcrumb?: boolean; show_title?: boolean; show_hero?: boolean; full_width?: boolean; icon?: string; show_icon?: boolean; show_updated?: boolean; hero_temperature?: number; hero_brightness?: number } | null;
+  design_settings: { hero_bg?: string; text_color?: string; content_width?: string; hero_alignment?: string; hero_height?: string; content_mode?: string; show_breadcrumb?: boolean; show_title?: boolean; show_subtitle?: boolean; show_hero?: boolean; full_width?: boolean; icon?: string; show_icon?: boolean; show_updated?: boolean; hero_temperature?: number; hero_brightness?: number } | null;
   updated_at: string | null;
 }
 
@@ -55,11 +55,13 @@ export default async function PageShell({
   const html = ds.content_mode === "html" ? preserveHtml(content) : renderMarkdown(content);
 
   const heroHeight = ds.hero_height || "340px";
-  const heroAlign = ds.hero_alignment === "center" ? "items-center text-center" : ds.hero_alignment === "right" ? "items-end text-right" : "items-start";
+  const heroAlign = ds.hero_alignment === "center" ? "flex flex-col items-center text-center" : ds.hero_alignment === "right" ? "flex flex-col items-end text-right" : "items-start";
+  const subtitleAlign = ds.hero_alignment === "center" ? "mx-auto" : ds.hero_alignment === "right" ? "ml-auto" : "";
   const heroMaxW = ds.content_width || "max-w-4xl";
   const pageIcon = ds.show_icon !== false && (ds.icon || def?.icon) ? (ds.icon || def?.icon || "") : "";
   const showUpdated = ds.show_updated !== false;
   const showTitle = ds.show_title !== false;
+  const showSubtitle = ds.show_subtitle !== false;
   const showHero = ds.show_hero !== false;
   const temperature = ds.hero_temperature ?? 0;
   const brightness = ds.hero_brightness ?? 100;
@@ -99,7 +101,7 @@ export default async function PageShell({
               </div>
             )}
             {showTitle && <h1 className="text-4xl md:text-5xl font-bold mb-4 text-white font-[family-name:var(--font-syne)]" style={{ color: ds.text_color || undefined }}>{title}</h1>}
-            {subtitle && <p className="text-lg max-w-2xl leading-relaxed text-white/75" style={{ color: tc ? withAlpha(tc, 0.8) : undefined }}>{subtitle}</p>}
+            {showSubtitle && subtitle && <p className={`text-lg max-w-2xl leading-relaxed text-white/75 ${subtitleAlign}`} style={{ color: tc ? withAlpha(tc, 0.8) : undefined }}>{subtitle}</p>}
             {showUpdated && (def?.hero.updatedLine || updatedAt) && (
               <p className="text-sm text-white/60 mt-4" style={{ color: tc ? withAlpha(tc, 0.6) : undefined }}>
                 {def?.hero.updatedLine || (updatedAt ? `Last updated: ${new Date(updatedAt).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })}` : "")}
@@ -128,7 +130,7 @@ export default async function PageShell({
                 </div>
               )}
               {showTitle && <h1 className="text-4xl md:text-5xl font-bold mb-4 text-white font-[family-name:var(--font-syne)]" style={{ color: ds.text_color || undefined }}>{title}</h1>}
-              {subtitle && <p className="text-lg text-white/75 max-w-2xl leading-relaxed" style={{ color: tc ? withAlpha(tc, 0.8) : undefined }}>{subtitle}</p>}
+              {showSubtitle && subtitle && <p className={`text-lg text-white/75 max-w-2xl leading-relaxed ${subtitleAlign}`} style={{ color: tc ? withAlpha(tc, 0.8) : undefined }}>{subtitle}</p>}
               {showUpdated && (def?.hero.updatedLine || updatedAt) && (
                 <p className="text-sm text-white/60 mt-4" style={{ color: tc ? withAlpha(tc, 0.6) : undefined }}>
                   {def?.hero.updatedLine || (updatedAt ? `Last updated: ${new Date(updatedAt).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })}` : "")}
