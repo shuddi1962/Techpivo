@@ -13,7 +13,7 @@ export function TopBar({ socialUrls = {} }: { socialUrls?: Record<string, string
     return isPublic(slug) && (isInHeader(slug) || isInMenu(slug))
   }
   const hardcodedSlugs = new Set(["about", "contact", "disclaimer", "advertise", "newsletter"])
-  const dynamicTopPages = getPagesForPlacement(["header", "menu", "both"]).filter((p) => !hardcodedSlugs.has(p.slug))
+  const dynamicTopPages = getPagesForPlacement(["header", "both"]).filter((p) => !hardcodedSlugs.has(p.slug))
   return (
     <div className="top-bar">
       <div className="container">
