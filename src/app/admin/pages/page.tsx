@@ -100,8 +100,8 @@ export default function PagesAdminPage() {
   }
 
   const customized = SITE_PAGES.filter((p) => dbPages[p.slug])
-  const liveCount = customized.filter((p) => dbPages[p.slug].is_published).length
-  const hiddenCount = customized.filter((p) => !dbPages[p.slug].is_published).length
+  const liveCount = Object.values(dbPages).filter((p) => p.is_published).length
+  const hiddenCount = Object.values(dbPages).filter((p) => !p.is_published).length
 
   const customSlugs = Object.keys(dbPages).filter((s) => !SITE_PAGES.find((p) => p.slug === s))
 
@@ -120,7 +120,7 @@ export default function PagesAdminPage() {
     })),
   ]
 
-  const usingDefaults = allPages.length - customized.length
+  const usingDefaults = SITE_PAGES.filter((p) => !dbPages[p.slug]).length
 
   const filtered = allPages.filter((p) => {
     const db = dbPages[p.slug]
