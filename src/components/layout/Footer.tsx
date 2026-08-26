@@ -10,6 +10,7 @@ import { usePublishedPages } from "@/lib/use-site-pages"
 import { SITE_PAGES } from "@/lib/pages"
 
 
+
 const footerPlatforms = [
   {
     id: "twitter", label: "Twitter / X",
@@ -37,11 +38,11 @@ const footerPlatforms = [
 export function Footer({ categories, recentPosts, socialUrls = {} }: { categories: any[]; recentPosts: any[]; socialUrls?: Record<string, string> }) {
   const { resolvedTheme } = useTheme()
   const [mounted, setMounted] = useState(false)
-  const { isInFooter, getPagesForPlacement } = usePublishedPages()
+  const { isPublic, isInFooter, getPagesForPlacement } = usePublishedPages()
   useEffect(() => { setMounted(true) }, [])
   const logoSrc = !mounted ? '/logo.svg' : (resolvedTheme === 'dark' ? '/logo.svg' : '/logo-light.svg')
   const registrySlugs = new Set(SITE_PAGES.map((p) => p.slug))
-  const customFooterPages = getPagesForPlacement(["footer", "both"]).filter((p) => !registrySlugs.has(p.slug))
+  const customFooterPages = getPagesForPlacement(["footer"]).filter((p) => !registrySlugs.has(p.slug))
   const hasExplore = customFooterPages.length > 0
   return (
     <footer className="site-footer">
@@ -98,7 +99,7 @@ export function Footer({ categories, recentPosts, socialUrls = {} }: { categorie
         {/* Quick Links — registry pages */}
         <div>
           <h3 className="footer-col-title">Quick Links</h3>
-          {SITE_PAGES.filter((def) => isInFooter(def.slug)).map((def) => (
+          {SITE_PAGES.filter((def) => isPublic(def.slug) && isInFooter(def.slug)).map((def) => (
             <Link key={def.slug} href={def.path} className="footer-col-link">
               {def.label}
             </Link>

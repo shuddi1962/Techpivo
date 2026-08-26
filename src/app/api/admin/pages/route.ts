@@ -89,8 +89,10 @@ export async function POST(req: NextRequest) {
   const meta_description = str(body.meta_description, 320);
   const is_published = typeof body.is_published === "boolean" ? body.is_published : true;
 
-  const validPlacements = ["header", "footer", "both", "menu", "none"];
-  const placement = validPlacements.includes(body.placement) ? body.placement : "both";
+  const PLACEMENT_TAGS = new Set(["topbar", "header", "footer", "menu"]);
+  const placement = typeof body.placement === "string"
+    ? body.placement.split(",").map((s: string) => s.trim()).filter((s: string) => PLACEMENT_TAGS.has(s)).join(",")
+    : "";
 
   let design_settings: Record<string, string | number | boolean> | null = null;
   if (body.design_settings && typeof body.design_settings === "object" && !Array.isArray(body.design_settings)) {

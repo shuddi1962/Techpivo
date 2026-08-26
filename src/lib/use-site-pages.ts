@@ -5,11 +5,19 @@ import { createClient } from "@/lib/supabase/client"
 
 type PageInfo = { is_published: boolean; placement: string; title: string }
 
+function parsePlacement(raw: string): string[] {
+  if (!raw) return []
+  return raw.split(",").map((s) => s.trim()).filter(Boolean)
+}
+
 /**
  * Realtime-aware site_pages publish + placement state for navigation components.
  * A slug is public when: no DB row exists (registry defaults) OR the row is published.
- * A slug appears in header when placement is 'header' or 'both' (or no DB row).
- * A slug appears in footer when placement is 'footer' or 'both' (or no DB row).
+ * Placement is now comma-separated (e.g. "topbar,header,footer").
+ * A slug appears in header when its placement list includes "header".
+ * A slug appears in footer when its placement list includes "footer".
+ * A slug appears in topbar when its placement list includes "topbar".
+ * A slug appears in menu when its placement list includes "menu".
  * Subscribes to site_pages changes so nav links hide/reappear live.
  */
 export function usePublishedPages() {
@@ -26,7 +34,7 @@ export function usePublishedPages() {
         for (const r of data as { slug: string; is_published: boolean | null; placement: string | null; title: string | null }[]) {
           map[r.slug] = {
             is_published: !!r.is_published,
-            placement: r.placement || "both",
+            placement: r.placement || "",
             title: r.title || r.slug,
           }
         }
@@ -53,13 +61,22 @@ export function usePublishedPages() {
     [pages]
   )
 
+  const isInTopbar = useCallback(
+    (slug: string): boolean => {
+      if (!pages) return true
+      const v = pages[slug]
+      if (!v) return true
+      return parsePlacement(v.placement).includes("topbar")
+    },
+    [pages]
+  )
+
   const isInHeader = useCallback(
     (slug: string): boolean => {
       if (!pages) return true
       const v = pages[slug]
       if (!v) return true
-      const p = v.placement
-      return p === "header" || p === "both"
+      return parsePlacement(v.placement).includes("header")
     },
     [pages]
   )
@@ -69,8 +86,7 @@ export function usePublishedPages() {
       if (!pages) return true
       const v = pages[slug]
       if (!v) return true
-      const p = v.placement
-      return p === "footer" || p === "both"
+      return parsePlacement(v.placement).includes("footer")
     },
     [pages]
   )
@@ -80,20 +96,20 @@ export function usePublishedPages() {
       if (!pages) return true
       const v = pages[slug]
       if (!v) return true
-      const p = v.placement
-      return p === "menu" || p === "both"
+      return parsePlacement(v.placement).includes("menu")
     },
     [pages]
   )
 
-  /** Return all published pages whose placement matches the given set (e.g. "header"|"both"). */
+  /** Return all published pages whose placement list includes ANY of the given values. */
   const getPagesForPlacement = useCallback(
     (placements: string[]): { slug: string; label: string; path: string }[] => {
       if (!pages) return []
       const results: { slug: string; label: string; path: string }[] = []
       for (const [slug, info] of Object.entries(pages)) {
         if (!info.is_published) continue
-        if (!placements.includes(info.placement)) continue
+        const tags = parsePlacement(info.placement)
+        if (!tags.some((t) => placements.includes(t))) continue
         results.push({ slug, label: info.title || slug, path: `/${slug}` })
       }
       return results
@@ -101,5 +117,5 @@ export function usePublishedPages() {
     [pages]
   )
 
-  return { isPublic, isInHeader, isInFooter, isInMenu, getPagesForPlacement, pages, ready: pages !== null }
+  return { isPublic, isInTopbar, isInHeader, isInFooter, isInMenu, getPagesForPlacement, pages, ready: pages !== null }
 }

@@ -36,8 +36,8 @@ export function Header() {
     return isPublic(slug) && (isInHeader(slug) || isInMenu(slug))
   }
   const hardcodedSlugs = new Set(["tools", "community", "marketplace", "advertise", "newsletter", "about", "contact", "disclaimer"])
-  const dynamicHeaderPages = getPagesForPlacement(["header", "both"]).filter((p) => !hardcodedSlugs.has(p.slug))
-  const dynamicMenuPages = getPagesForPlacement(["menu", "both"]).filter((p) => !hardcodedSlugs.has(p.slug))
+  const dynamicHeaderPages = getPagesForPlacement(["header"]).filter((p) => !hardcodedSlugs.has(p.slug))
+  const dynamicMenuPages = getPagesForPlacement(["menu"]).filter((p) => !hardcodedSlugs.has(p.slug))
 
   const loadProfile = async (userId: string) => {
     const { data } = await supabase.from("profiles").select("full_name").eq("id", userId).single()

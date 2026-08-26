@@ -52,7 +52,7 @@ export default function PageEditor() {
   const [metaDescription, setMetaDescription] = useState("")
   const [content, setContent] = useState("")
   const [published, setPublished] = useState(true)
-  const [placement, setPlacement] = useState("both")
+  const [placement, setPlacement] = useState("")
   const [designSettings, setDesignSettings] = useState<DesignSettings>({})
   const [contentMode, setContentMode] = useState<"markdown" | "html">("markdown")
   const [loaded, setLoaded] = useState(false)
@@ -80,7 +80,7 @@ export default function PageEditor() {
     setMetaDescription(row?.meta_description ?? def?.metaDescription ?? "")
     setContent(row?.content_md ?? def?.contentMd ?? "")
     setPublished(row ? row.is_published : true)
-    setPlacement(row?.placement ?? "both")
+    setPlacement(row?.placement ?? "")
     setDesignSettings(row?.design_settings ?? {})
     setContentMode((row?.design_settings as Record<string, unknown>)?.content_mode === "html" ? "html" : "markdown")
     setLoaded(true)
@@ -413,29 +413,43 @@ export default function PageEditor() {
             <LayoutPanelLeft className="w-4 h-4 text-accent" />
             <h3 className="text-sm font-semibold">Page Placement</h3>
           </div>
-          <p className="text-[11px] text-muted-foreground">Choose where this page appears in the site navigation.</p>
+          <p className="text-[11px] text-muted-foreground">Choose where this page appears in the site navigation. Select all that apply.</p>
           <div className="grid grid-cols-2 gap-2">
             {[
-              { value: "both", label: "Header + Footer", desc: "Shown everywhere" },
-              { value: "header", label: "Header only", desc: "Top navigation bar" },
-              { value: "footer", label: "Footer only", desc: "Bottom links" },
-              { value: "menu", label: "Menu", desc: "Main site menu" },
-              { value: "none", label: "Hidden", desc: "Not in any nav" },
-            ].map((opt) => (
-              <button
-                key={opt.value}
-                onClick={() => { setPlacement(opt.value); markDirty() }}
-                className={`rounded-lg border px-3 py-2.5 text-left transition-colors ${
-                  placement === opt.value
-                    ? "border-accent bg-accent/5 ring-1 ring-accent"
-                    : "border-border hover:border-muted-foreground/30"
-                }`}
-              >
-                <p className="text-xs font-semibold">{opt.label}</p>
-                <p className="text-[10px] text-muted-foreground mt-0.5">{opt.desc}</p>
-              </button>
-            ))}
+              { tag: "topbar", label: "Top Bar", desc: "Top utility bar (About, Contact, etc.)" },
+              { tag: "header", label: "Header", desc: "Desktop navigation bar" },
+              { tag: "footer", label: "Footer", desc: "Footer quick links column" },
+              { tag: "menu", label: "Mobile Menu", desc: "Mobile hamburger drawer" },
+            ].map((opt) => {
+              const active = placement.split(",").includes(opt.tag)
+              return (
+                <button
+                  key={opt.tag}
+                  onClick={() => {
+                    const parts = placement.split(",").filter(Boolean)
+                    setPlacement(active ? parts.filter((p) => p !== opt.tag).join(",") : [...parts, opt.tag].join(","))
+                    markDirty()
+                  }}
+                  className={`rounded-lg border px-3 py-2.5 text-left transition-colors ${
+                    active
+                      ? "border-accent bg-accent/5 ring-1 ring-accent"
+                      : "border-border hover:border-muted-foreground/30"
+                  }`}
+                >
+                  <div className="flex items-center gap-2">
+                    <span className={`inline-flex h-4 w-4 items-center justify-center rounded border transition-colors ${active ? "bg-accent border-accent" : "border-border bg-background"}`}>
+                      {active && <Check className="w-3 h-3 text-white" />}
+                    </span>
+                    <p className="text-xs font-semibold">{opt.label}</p>
+                  </div>
+                  <p className="text-[10px] text-muted-foreground mt-1 ml-6">{opt.desc}</p>
+                </button>
+              )
+            })}
           </div>
+          {placement && (
+            <p className="text-[10px] text-muted-foreground">Active: <span className="font-medium text-foreground">{placement.split(",").filter(Boolean).join(", ")}</span></p>
+          )}
         </div>
 
         {/* Design settings */}
@@ -958,7 +972,7 @@ export default function PageEditor() {
                 <Search className="w-3.5 h-3.5" /> This preview mirrors the exact public rendering on /{def?.path || slug}
               </span>
               <span className="capitalize px-2 py-0.5 rounded-full bg-muted text-muted-foreground text-[10px] font-medium">
-                {placement || "both"}
+                {placement.split(",").filter(Boolean).join(", ") || "no nav"}
               </span>
             </div>
           </div>
