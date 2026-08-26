@@ -54,7 +54,7 @@ export function usePublishedPages() {
 
   const isPublic = useCallback(
     (slug: string): boolean => {
-      if (!pages) return true
+      if (!pages) return false
       const v = pages[slug]
       return v === undefined ? true : v.is_published
     },
@@ -63,7 +63,7 @@ export function usePublishedPages() {
 
   const isInTopbar = useCallback(
     (slug: string): boolean => {
-      if (!pages) return true
+      if (!pages) return false
       const v = pages[slug]
       if (!v) return false
       return parsePlacement(v.placement).includes("topbar")
@@ -73,7 +73,7 @@ export function usePublishedPages() {
 
   const isInHeader = useCallback(
     (slug: string): boolean => {
-      if (!pages) return true
+      if (!pages) return false
       const v = pages[slug]
       if (!v) return false
       return parsePlacement(v.placement).includes("header")
@@ -83,7 +83,7 @@ export function usePublishedPages() {
 
   const isInFooter = useCallback(
     (slug: string): boolean => {
-      if (!pages) return true
+      if (!pages) return false
       const v = pages[slug]
       if (!v) return false
       return parsePlacement(v.placement).includes("footer")
@@ -93,7 +93,7 @@ export function usePublishedPages() {
 
   const isInMenu = useCallback(
     (slug: string): boolean => {
-      if (!pages) return true
+      if (!pages) return false
       const v = pages[slug]
       if (!v) return false
       return parsePlacement(v.placement).includes("menu")
