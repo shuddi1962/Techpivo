@@ -31,6 +31,8 @@ export interface SitePageDef {
   contentMd: string;
   metaTitle: string;
   metaDescription: string;
+  /** Comma-separated default placements used when no DB row exists (e.g. "header,footer"). */
+  defaultPlacement?: string;
 }
 
 export const HUB_SLUGS: string[] = ["tools", "community", "community-events"];
@@ -1136,6 +1138,7 @@ Fifty-plus free utilities for developers, SEO specialists, designers and everyda
 No sign-ups. No uploads. Most tools work offline and nothing you process leaves your device.`,
     metaTitle: "Free Tech Tools & Utilities — Developer, SEO & Image Tools | Techpivo",
     metaDescription: "50+ free online tools for developers, SEO professionals, designers and everyday users. JSON, regex, converters, calculators and more — all in your browser.",
+    defaultPlacement: "header,footer",
   },
   {
     slug: "community",
@@ -1160,6 +1163,7 @@ The Techpivo community is where readers become members — share knowledge, test
 Everyone starts as a New Member. Post, answer and complete quizzes to earn XP, level up and unlock badges.`,
     metaTitle: "TechPivo Community — Forums, Quizzes, Polls & Events",
     metaDescription: "Join the TechPivo community. Discuss tech, take quizzes, earn rewards, and connect with fellow technology enthusiasts.",
+    defaultPlacement: "header,footer",
   },
   {
     slug: "community-events",
@@ -1184,6 +1188,7 @@ Events are hand-curated by the Techpivo team. RSVP in one click and we will keep
 - **Launches** — product reveals from the world's biggest brands`,
     metaTitle: "Tech Events & Meetups — Conferences, Workshops, Hackathons | Techpivo",
     metaDescription: "Upcoming technology events, conferences, workshops, webinars and hackathons for the Techpivo community.",
+    defaultPlacement: "footer",
   },
   {
     slug: "marketplace",
@@ -1213,7 +1218,7 @@ export const PAGE_SLUGS = SITE_PAGES.map((p) => p.slug);
 export const HUB_PATHS: Set<string> = new Set(["/tools", "/community", "/community/events"]);
 
 export const STATIC_PAGE_SLUGS: Set<string> = new Set(
-  SITE_PAGES.filter((p) => !HUB_PATHS.has(p.path)).map((p) => p.slug)
+  SITE_PAGES.map((p) => p.slug)
 );
 
 export function getSitePage(slug: string): SitePageDef | undefined {

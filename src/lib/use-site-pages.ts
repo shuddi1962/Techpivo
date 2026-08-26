@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react"
 import { createClient } from "@/lib/supabase/client"
+import { SITE_PAGES } from "@/lib/pages"
 
 type PageInfo = { is_published: boolean; placement: string; title: string }
 
@@ -10,10 +11,17 @@ function parsePlacement(raw: string): string[] {
   return raw.split(",").map((s) => s.trim()).filter(Boolean)
 }
 
+/** Lookup default placement from the SITE_PAGES registry. */
+function getDefaultPlacement(slug: string): string[] {
+  const def = SITE_PAGES.find((p) => p.slug === slug)
+  return def?.defaultPlacement ? parsePlacement(def.defaultPlacement) : []
+}
+
 /**
  * Realtime-aware site_pages publish + placement state for navigation components.
  * A slug is public when: no DB row exists (registry defaults) OR the row is published.
  * Placement is now comma-separated (e.g. "topbar,header,footer").
+ * When no DB row exists, falls back to the defaultPlacement from SITE_PAGES registry.
  * A slug appears in header when its placement list includes "header".
  * A slug appears in footer when its placement list includes "footer".
  * A slug appears in topbar when its placement list includes "topbar".
@@ -65,7 +73,7 @@ export function usePublishedPages() {
     (slug: string): boolean => {
       if (!pages) return false
       const v = pages[slug]
-      if (!v) return false
+      if (!v) return getDefaultPlacement(slug).includes("topbar")
       return parsePlacement(v.placement).includes("topbar")
     },
     [pages]
@@ -75,7 +83,7 @@ export function usePublishedPages() {
     (slug: string): boolean => {
       if (!pages) return false
       const v = pages[slug]
-      if (!v) return false
+      if (!v) return getDefaultPlacement(slug).includes("header")
       return parsePlacement(v.placement).includes("header")
     },
     [pages]
@@ -85,7 +93,7 @@ export function usePublishedPages() {
     (slug: string): boolean => {
       if (!pages) return false
       const v = pages[slug]
-      if (!v) return false
+      if (!v) return getDefaultPlacement(slug).includes("footer")
       return parsePlacement(v.placement).includes("footer")
     },
     [pages]
@@ -95,7 +103,7 @@ export function usePublishedPages() {
     (slug: string): boolean => {
       if (!pages) return false
       const v = pages[slug]
-      if (!v) return false
+      if (!v) return getDefaultPlacement(slug).includes("menu")
       return parsePlacement(v.placement).includes("menu")
     },
     [pages]

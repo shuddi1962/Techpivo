@@ -137,8 +137,8 @@ export function Header() {
             <PushSubscribeButton />
 
             {/* Desktop nav links — text only */}
-            <Link href="/tools" className="header-nav-link"><span>Tools</span></Link>
-            <Link href="/community" className="header-nav-link"><span>Community</span></Link>
+            {pageVisible("tools") && <Link href="/tools" className="header-nav-link"><span>Tools</span></Link>}
+            {pageVisible("community") && <Link href="/community" className="header-nav-link"><span>Community</span></Link>}
             {pageVisible("marketplace") && <Link href="/marketplace" className="header-nav-link"><span>Marketplace</span></Link>}
             {pageVisible("advertise") && <Link href="/advertise" className="header-nav-link"><span>Advertise</span></Link>}
             {dynamicHeaderPages.map((p) => (
@@ -187,14 +187,18 @@ export function Header() {
                 Home
               </Link>
 
+              {pageVisible("tools") && (
               <Link href="/tools" className="mobile-drawer-link" onClick={() => setDrawerOpen(false)}>
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>
                 Tools
               </Link>
+              )}
+              {pageVisible("community") && (
               <Link href="/community" className="mobile-drawer-link" onClick={() => setDrawerOpen(false)}>
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
                 Community
               </Link>
+              )}
               {pageVisible("marketplace") && (
                 <Link href="/marketplace" className="mobile-drawer-link" onClick={() => setDrawerOpen(false)}>
                   <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"/><path d="M3 6h18"/><path d="M16 10a4 4 0 1 1-8 0"/></svg>
