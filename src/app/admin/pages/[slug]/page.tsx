@@ -348,7 +348,7 @@ export default function PageEditor() {
           )}
           {saveState === "error" && <span className="text-xs text-red-600">Save failed</span>}
           <Link
-            href={`/${def?.path || slug}`}
+            href={def?.path ? def.path : `/${slug}`}
             target="_blank"
             className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground border rounded-lg px-3 py-2 hover:border-accent transition-colors"
           >
