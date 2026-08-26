@@ -7,11 +7,13 @@ import { STATIC_PAGE_SLUGS } from "@/lib/pages"
 
 export function TopBar({ socialUrls = {} }: { socialUrls?: Record<string, string> }) {
   const now = new Date().toLocaleDateString("en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric" })
-  const { isPublic, isInHeader, isInMenu } = usePublishedPages()
+  const { isPublic, isInHeader, isInMenu, getPagesForPlacement } = usePublishedPages()
   const pageVisible = (slug: string) => {
     if (!STATIC_PAGE_SLUGS.has(slug)) return true
     return isPublic(slug) && (isInHeader(slug) || isInMenu(slug))
   }
+  const hardcodedSlugs = new Set(["about", "contact", "disclaimer", "advertise", "newsletter"])
+  const dynamicTopPages = getPagesForPlacement(["header", "menu", "both"]).filter((p) => !hardcodedSlugs.has(p.slug))
   return (
     <div className="top-bar">
       <div className="container">
@@ -24,6 +26,9 @@ export function TopBar({ socialUrls = {} }: { socialUrls?: Record<string, string
           {pageVisible("disclaimer") && <Link href="/disclaimer">Disclaimer</Link>}
           {pageVisible("advertise") && <Link href="/advertise">Advertise</Link>}
           {pageVisible("newsletter") && <Link href="/newsletter">Newsletter</Link>}
+          {dynamicTopPages.map((p) => (
+            <Link key={p.slug} href={p.path}>{p.label}</Link>
+          ))}
           <span className="top-divider" />
         </div>
         <div className="top-bar-right">

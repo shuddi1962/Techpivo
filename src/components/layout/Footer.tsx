@@ -37,9 +37,11 @@ const footerPlatforms = [
 export function Footer({ categories, recentPosts, socialUrls = {} }: { categories: any[]; recentPosts: any[]; socialUrls?: Record<string, string> }) {
   const { resolvedTheme } = useTheme()
   const [mounted, setMounted] = useState(false)
-  const { isInFooter } = usePublishedPages()
+  const { isInFooter, getPagesForPlacement } = usePublishedPages()
   useEffect(() => { setMounted(true) }, [])
   const logoSrc = !mounted ? '/logo.svg' : (resolvedTheme === 'dark' ? '/logo.svg' : '/logo-light.svg')
+  const registrySlugs = new Set(SITE_PAGES.map((p) => p.slug))
+  const customFooterPages = getPagesForPlacement(["footer", "both"]).filter((p) => !registrySlugs.has(p.slug))
   return (
     <footer className="site-footer">
       <div className="footer-inner">
@@ -98,6 +100,11 @@ export function Footer({ categories, recentPosts, socialUrls = {} }: { categorie
           {SITE_PAGES.filter((def) => isInFooter(def.slug)).map((def) => (
             <Link key={def.slug} href={def.path} className="footer-col-link">
               {def.label}
+            </Link>
+          ))}
+          {customFooterPages.map((p) => (
+            <Link key={p.slug} href={p.path} className="footer-col-link">
+              {p.label}
             </Link>
           ))}
           <SiteBlock blockKey="footer-links" />

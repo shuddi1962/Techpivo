@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react"
 import { createClient } from "@/lib/supabase/client"
 
-type PageInfo = { is_published: boolean; placement: string }
+type PageInfo = { is_published: boolean; placement: string; title: string }
 
 /**
  * Realtime-aware site_pages publish + placement state for navigation components.
@@ -19,14 +19,15 @@ export function usePublishedPages() {
     let mounted = true
     const supabase = createClient()
     const load = async () => {
-      const { data } = await supabase.from("site_pages").select("slug, is_published, placement")
+      const { data } = await supabase.from("site_pages").select("slug, is_published, placement, title")
       if (!mounted) return
       const map: Record<string, PageInfo> = {}
       if (data) {
-        for (const r of data as { slug: string; is_published: boolean | null; placement: string | null }[]) {
+        for (const r of data as { slug: string; is_published: boolean | null; placement: string | null; title: string | null }[]) {
           map[r.slug] = {
             is_published: !!r.is_published,
             placement: r.placement || "both",
+            title: r.title || r.slug,
           }
         }
       }
@@ -85,5 +86,20 @@ export function usePublishedPages() {
     [pages]
   )
 
-  return { isPublic, isInHeader, isInFooter, isInMenu, ready: pages !== null }
+  /** Return all published pages whose placement matches the given set (e.g. "header"|"both"). */
+  const getPagesForPlacement = useCallback(
+    (placements: string[]): { slug: string; label: string; path: string }[] => {
+      if (!pages) return []
+      const results: { slug: string; label: string; path: string }[] = []
+      for (const [slug, info] of Object.entries(pages)) {
+        if (!info.is_published) continue
+        if (!placements.includes(info.placement)) continue
+        results.push({ slug, label: info.title || slug, path: `/${slug}` })
+      }
+      return results
+    },
+    [pages]
+  )
+
+  return { isPublic, isInHeader, isInFooter, isInMenu, getPagesForPlacement, pages, ready: pages !== null }
 }
