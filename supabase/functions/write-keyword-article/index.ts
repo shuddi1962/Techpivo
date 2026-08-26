@@ -38,7 +38,7 @@ async function getGeminiModelName(): Promise<string> {
   } catch {
     // fall through to default
   }
-  return "gemini-3.5-flash"
+  return "gemini-3.7-flash"
 }
 
 interface GeminiResponse {
@@ -61,8 +61,8 @@ interface OpenRouterResponse {
 // If the resolved model 404s (not available to the key) or 429s (free-tier daily
 // quota exhausted), rotate to the next entry instead of failing the write.
 const GEMINI_MODEL_ORDER = [
+  "gemini-3.7-flash",
   "gemini-3.5-flash",
-  "gemini-3.5-flash-lite",
   "gemini-3.6-flash",
 ]
 

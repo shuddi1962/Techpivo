@@ -8,14 +8,14 @@
 // If it contains an unknown model not in GEMINI_MODEL_OPTIONS, it is rejected
 // and the system falls back to the DB setting or default — never a 404.
 
-export const GEMINI_MODEL_DEFAULT = 'gemini-3.5-flash'
+export const GEMINI_MODEL_DEFAULT = 'gemini-3.7-flash'
 
 // Order matters: it is the automatic fallback chain. Free-tier daily quotas are
 // per model, so when one model returns 429 (quota exhausted) or 404 (not
 // available to the key), callers rotate to the next entry instead of failing.
 export const GEMINI_MODEL_OPTIONS = [
-  { value: 'gemini-3.5-flash', label: 'Gemini 3.5 Flash (default)' },
-  { value: 'gemini-3.5-flash-lite', label: 'Gemini 3.5 Flash-Lite' },
+  { value: 'gemini-3.7-flash', label: 'Gemini 3.7 Flash (default)' },
+  { value: 'gemini-3.5-flash', label: 'Gemini 3.5 Flash' },
   { value: 'gemini-3.6-flash', label: 'Gemini 3.6 Flash' },
 ] as const
 

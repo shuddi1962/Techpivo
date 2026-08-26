@@ -11,7 +11,7 @@ const GEMINI_RATE_MS = 1000
 const GEMINI_429_COOLDOWN_MS = 60000
 
 // Model override chain: site_settings.gemini_model (realtime-flippable from
-// Admin → Settings) → GEMINI_MODEL env → gemini-3.5-flash. Cached 30s so a
+// Admin → Settings) → GEMINI_MODEL env → gemini-3.7-flash. Cached 30s so a
 // settings flip takes effect on the next write without hammering the DB.
 const GEMINI_MODEL_CACHE_MS = 30000
 let geminiModelCache: { model: string; at: number } | null = null

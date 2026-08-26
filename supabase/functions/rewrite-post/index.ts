@@ -30,9 +30,9 @@ class QuotaError extends Error {
 }
 
 async function callGemini(prompt: string, apiKey: string): Promise<string> {
-  const ALLOWED_MODELS = new Set(["gemini-3.5-flash", "gemini-3.5-flash-lite", "gemini-3.6-flash"])
+  const ALLOWED_MODELS = new Set(["gemini-3.7-flash", "gemini-3.5-flash", "gemini-3.6-flash"])
   const rawModel = Deno.env.get("GEMINI_MODEL") || ""
-  const model = ALLOWED_MODELS.has(rawModel) ? rawModel : "gemini-3.5-flash"
+  const model = ALLOWED_MODELS.has(rawModel) ? rawModel : "gemini-3.7-flash"
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`
   const body = {
     contents: [{ role: "user", parts: [{ text: prompt }] }],
