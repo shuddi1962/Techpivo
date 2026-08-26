@@ -15,8 +15,8 @@ export const GEMINI_MODEL_DEFAULT = 'gemini-3.6-flash'
 // available to the key), callers rotate to the next entry instead of failing.
 export const GEMINI_MODEL_OPTIONS = [
   { value: 'gemini-3.6-flash', label: 'Gemini 3.6 Flash (default)' },
+  { value: 'gemini-3.5-flash', label: 'Gemini 3.5 Flash' },
   { value: 'gemini-3.5-flash-lite', label: 'Gemini 3.5 Flash-Lite' },
-  { value: 'gemini-2.5-flash', label: 'Gemini 2.5 Flash (legacy)' },
 ] as const
 
 export function geminiModelOrder(primary: string): string[] {
@@ -44,8 +44,9 @@ export function getGeminiModel(env: Record<string, string | undefined> = {}): st
   return normalizeGeminiModel(env.GEMINI_MODEL) || GEMINI_MODEL_DEFAULT
 }
 
-// Only allow models we know are available — reject anything else (e.g. the
-// removed gemini-2.5-pro) so a stale DB setting can never cause 404s.
+// Only allow models we know are available — reject anything else (e.g.
+// gemini-2.5-flash which is blocked for new keys) so a stale DB setting can
+// never cause 404s.
 const ALLOWED_MODELS: Set<string> = new Set(GEMINI_MODEL_OPTIONS.map((o) => o.value))
 
 export function isAllowedGeminiModel(model: string): boolean {

@@ -1,8 +1,10 @@
 import { describe, it, expect } from "vitest"
 import {
   GEMINI_MODEL_DEFAULT,
+  GEMINI_MODEL_OPTIONS,
   normalizeGeminiModel,
   getGeminiModel,
+  isAllowedGeminiModel,
 } from "@/lib/gemini-model"
 
 describe("normalizeGeminiModel", () => {
@@ -41,5 +43,19 @@ describe("getGeminiModel", () => {
   it("falls back to the default when env is missing or invalid", () => {
     expect(getGeminiModel({})).toBe(GEMINI_MODEL_DEFAULT)
     expect(getGeminiModel({ GEMINI_MODEL: "not a valid id" })).toBe(GEMINI_MODEL_DEFAULT)
+  })
+})
+
+describe("isAllowedGeminiModel", () => {
+  it("allows models in the options list", () => {
+    for (const opt of GEMINI_MODEL_OPTIONS) {
+      expect(isAllowedGeminiModel(opt.value)).toBe(true)
+    }
+  })
+
+  it("rejects models not in the options list", () => {
+    expect(isAllowedGeminiModel("gemini-2.5-flash")).toBe(false)
+    expect(isAllowedGeminiModel("gemini-2.5-pro")).toBe(false)
+    expect(isAllowedGeminiModel("gpt-4o")).toBe(false)
   })
 })
