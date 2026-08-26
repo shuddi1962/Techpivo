@@ -48,6 +48,7 @@ const breadcrumbMap: Record<string, string> = {
   "revenue-intelligence": "Revenue Intelligence",
   "analytics": "Analytics",
   "reports": "Reports",
+  "contact": "Contact Messages",
   "comments": "Comments",
   "users": "Users",
   "roles": "Roles",
@@ -83,6 +84,7 @@ const searchItems = [
   { href: "/admin/ads", label: "Ads", icon: FileText, category: "Monetization" },
   { href: "/admin/newsletter", label: "Newsletter", icon: FileText, category: "Distribution" },
   { href: "/admin/reports", label: "Reports", icon: FileText, category: "Analytics" },
+  { href: "/admin/contact", label: "Contact Messages", icon: Users, category: "Administration" },
   { href: "/admin/comments", label: "Comments", icon: Users, category: "Administration" },
 ]
 

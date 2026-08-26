@@ -65,7 +65,7 @@ export function usePublishedPages() {
     (slug: string): boolean => {
       if (!pages) return true
       const v = pages[slug]
-      if (!v) return true
+      if (!v) return false
       return parsePlacement(v.placement).includes("topbar")
     },
     [pages]
@@ -75,7 +75,7 @@ export function usePublishedPages() {
     (slug: string): boolean => {
       if (!pages) return true
       const v = pages[slug]
-      if (!v) return true
+      if (!v) return false
       return parsePlacement(v.placement).includes("header")
     },
     [pages]
@@ -85,7 +85,7 @@ export function usePublishedPages() {
     (slug: string): boolean => {
       if (!pages) return true
       const v = pages[slug]
-      if (!v) return true
+      if (!v) return false
       return parsePlacement(v.placement).includes("footer")
     },
     [pages]
@@ -95,7 +95,7 @@ export function usePublishedPages() {
     (slug: string): boolean => {
       if (!pages) return true
       const v = pages[slug]
-      if (!v) return true
+      if (!v) return false
       return parsePlacement(v.placement).includes("menu")
     },
     [pages]

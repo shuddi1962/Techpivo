@@ -3,8 +3,8 @@ import { contactFormSchema, getFieldErrors } from '@/lib/validation'
 import { sanitize, sanitizeEmail } from '@/lib/sanitize'
 import { escapeHtml } from '@/lib/markdown'
 import { sendBrandedEmail } from '@/lib/email'
+import { createClient } from '@/lib/supabase/admin'
 
-const RESEND_API_KEY = process.env.RESEND_API_KEY
 const CONTACT_TO = process.env.CONTACT_TO_EMAIL || 'hello@techpivo.com'
 
 const ALLOWED_ORIGINS = [
@@ -18,10 +18,6 @@ export async function POST(req: NextRequest) {
 
   if (origin && !ALLOWED_ORIGINS.includes(origin)) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
-  }
-
-  if (!RESEND_API_KEY) {
-    return NextResponse.json({ error: 'Contact form not configured' }, { status: 500 })
   }
 
   try {
@@ -64,7 +60,18 @@ export async function POST(req: NextRequest) {
 
     if (!result.ok) {
       console.error('Resend error:', result.error)
-      return NextResponse.json({ error: 'Failed to send message. Please try again.' }, { status: 500 })
+    }
+
+    try {
+      const db = createClient()
+      await db.from('contact_messages').insert({
+        name: formData.name,
+        email: formData.email,
+        subject: formData.subject,
+        message: formData.message,
+      })
+    } catch (dbErr) {
+      console.error('Failed to save contact message to DB:', dbErr)
     }
 
     return NextResponse.json(

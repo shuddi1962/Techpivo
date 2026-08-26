@@ -84,6 +84,7 @@ const navGroups: NavGroup[] = [
   {
     label: "Administration",
     links: [
+      { href: "/admin/contact", label: "Contact Messages", icon: Mail },
       { href: "/admin/comments", label: "Comments", icon: MessageSquare },
       { href: "/admin/users", label: "Users", icon: Users },
       { href: "/admin/roles", label: "Roles", icon: Shield },
