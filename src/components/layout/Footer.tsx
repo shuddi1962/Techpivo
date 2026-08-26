@@ -42,11 +42,12 @@ export function Footer({ categories, recentPosts, socialUrls = {} }: { categorie
   const logoSrc = !mounted ? '/logo.svg' : (resolvedTheme === 'dark' ? '/logo.svg' : '/logo-light.svg')
   const registrySlugs = new Set(SITE_PAGES.map((p) => p.slug))
   const customFooterPages = getPagesForPlacement(["footer", "both"]).filter((p) => !registrySlugs.has(p.slug))
+  const hasExplore = customFooterPages.length > 0
   return (
     <footer className="site-footer">
       <div className="footer-inner">
         {/* Brand column */}
-        <div className="footer-brand-col">
+        <div className="footer-brand-col" style={hasExplore ? undefined : { gridColumn: "span 2" }}>
           <div className="footer-logo">
             <Image src={logoSrc} alt="Techpivo" width={260} height={52} />
           </div>
@@ -94,7 +95,7 @@ export function Footer({ categories, recentPosts, socialUrls = {} }: { categorie
           ))}
         </div>
 
-        {/* Quick Links — all pages with footer placement */}
+        {/* Quick Links — registry pages */}
         <div>
           <h3 className="footer-col-title">Quick Links</h3>
           {SITE_PAGES.filter((def) => isInFooter(def.slug)).map((def) => (
@@ -102,13 +103,19 @@ export function Footer({ categories, recentPosts, socialUrls = {} }: { categorie
               {def.label}
             </Link>
           ))}
-          {customFooterPages.map((p) => (
-            <Link key={p.slug} href={p.path} className="footer-col-link">
-              {p.label}
-            </Link>
-          ))}
-          <SiteBlock blockKey="footer-links" />
         </div>
+
+        {/* Custom pages — DB-driven */}
+        {customFooterPages.length > 0 && (
+          <div>
+            <h3 className="footer-col-title">Explore</h3>
+            {customFooterPages.map((p) => (
+              <Link key={p.slug} href={p.path} className="footer-col-link">
+                {p.label}
+              </Link>
+            ))}
+          </div>
+        )}
       </div>
 
       <div className="footer-bottom">
