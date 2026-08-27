@@ -150,7 +150,6 @@ async function callOpenRouter(prompt: string): Promise<string> {
           ],
           max_tokens: 16384,
           temperature: 0.45,
-          response_format: { type: "json_object" },
         }),
         signal: AbortSignal.timeout(120000),
       })
@@ -159,8 +158,9 @@ async function callOpenRouter(prompt: string): Promise<string> {
         const err = await res.text()
         const rateLimited = res.status === 429
         const modelUnavailable = /not found|not available|does not exist/i.test(err)
-        if (rateLimited || modelUnavailable) {
-          console.warn(`[OpenRouter] ${model} HTTP ${res.status} — trying next`)
+        const badRequest = res.status === 400
+        if (rateLimited || modelUnavailable || badRequest) {
+          console.warn(`[OpenRouter] ${model} HTTP ${res.status} — ${badRequest ? "bad request" : "trying next"}`)
           lastErr = new Error(`OpenRouter ${res.status}: ${err}`)
           continue
         }

@@ -1211,7 +1211,6 @@ async function callOpenRouterArticle(
             ],
             max_tokens: 16384,
             temperature: 0.45,
-            response_format: { type: "json_object" },
           }),
           signal: AbortSignal.timeout(120000),
         })
@@ -1220,8 +1219,9 @@ async function callOpenRouterArticle(
           const errText = await res.text().catch(() => "")
           const rateLimited = res.status === 429
           const modelUnavailable = res.status === 404 || /not found|not available|does not exist/i.test(errText)
-          if (rateLimited || modelUnavailable) {
-            console.warn(`[OpenRouter] ${m} HTTP ${res.status} — ${rateLimited ? "rate limited" : "unavailable"}, trying next model`)
+          const badRequest = res.status === 400
+          if (rateLimited || modelUnavailable || badRequest) {
+            console.warn(`[OpenRouter] ${m} HTTP ${res.status} — ${rateLimited ? "rate limited" : badRequest ? "bad request (unsupported param)" : "unavailable"}, trying next model`)
             break // try next model
           }
           console.warn(`[OpenRouter] ${m} HTTP ${res.status}: ${errText.slice(0, 200)}`)
