@@ -7,9 +7,8 @@ import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Switch } from "@/components/ui/switch"
 import { Label } from "@/components/ui/label"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { OPENROUTER_MODEL_DEFAULT } from "@/lib/openrouter-model"
-import { Cpu, Loader2, RefreshCw } from "lucide-react"
+import { OPENROUTER_MODEL_DEFAULT, OPENROUTER_MODEL_OPTIONS } from "@/lib/openrouter-model"
+import { Cpu, Loader2, RefreshCw, Search, Check } from "lucide-react"
 
 interface LiveModel {
   id: string
@@ -33,6 +32,9 @@ export default function AdminSettingsPage() {
   const [liveModels, setLiveModels] = useState<LiveModel[]>([])
   const [modelsLoading, setModelsLoading] = useState(true)
   const [modelsError, setModelsError] = useState("")
+  const [modelSearch, setModelSearch] = useState("")
+  const [modelDropdownOpen, setModelDropdownOpen] = useState(false)
+  const modelDropdownRef = useRef<HTMLDivElement>(null)
 
   const fetchSettings = useCallback(async () => {
     const { data } = await supabase.from("site_settings").select("*")
@@ -79,6 +81,16 @@ export default function AdminSettingsPage() {
   }, [])
 
   useEffect(() => { fetchLiveModels() }, [fetchLiveModels])
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (modelDropdownRef.current && !modelDropdownRef.current.contains(e.target as Node)) {
+        setModelDropdownOpen(false)
+      }
+    }
+    document.addEventListener("mousedown", handler)
+    return () => document.removeEventListener("mousedown", handler)
+  }, [])
 
   const saveSetting = useCallback(async (key: string, value: any) => {
     if (key === "site_url" && typeof value === "string" && value && !/^https?:\/\//.test(value)) {
@@ -164,34 +176,74 @@ export default function AdminSettingsPage() {
           </CardHeader>
           <CardContent className="space-y-4">
             {modelsError && <p className="text-xs text-amber-600">{modelsError}</p>}
-            <div>
+            <div className="relative" ref={modelDropdownRef}>
               <Label className="text-sm mb-1 block">OpenRouter model</Label>
-              <Select
-                value={typeof settings.openrouter_model === "string" ? settings.openrouter_model : OPENROUTER_MODEL_DEFAULT}
-                onValueChange={(v) => handleInputChange("openrouter_model", v)}
+              <button
+                type="button"
+                onClick={() => setModelDropdownOpen(!modelDropdownOpen)}
+                className="w-full flex items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 text-left"
               >
-                <SelectTrigger className="w-full">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent className="max-h-[400px]">
-                  {liveModels.length > 0 ? (
-                    liveModels.map((m) => {
-                      const isFree = m.pricing?.prompt === "0" && m.pricing?.completion === "0"
-                      return (
-                        <SelectItem key={m.id} value={m.id}>
-                          <div className="flex items-center gap-2 w-full">
-                            <span className="truncate">{m.name || m.id}</span>
-                            {isFree && <span className="shrink-0 text-[10px] bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 px-1.5 py-0.5 rounded font-medium">FREE</span>}
-                            {m.reasoning && <span className="shrink-0 text-[10px] bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400 px-1.5 py-0.5 rounded font-medium">REASONING</span>}
-                          </div>
-                        </SelectItem>
-                      )
-                    })
-                  ) : (
-                    <SelectItem value={OPENROUTER_MODEL_DEFAULT}>{OPENROUTER_MODEL_DEFAULT}</SelectItem>
-                  )}
-                </SelectContent>
-              </Select>
+                <span className="truncate">
+                  {(() => {
+                    const currentId = typeof settings.openrouter_model === "string" ? settings.openrouter_model : OPENROUTER_MODEL_DEFAULT
+                    const found = liveModels.find(m => m.id === currentId)
+                    return found ? (found.name || found.id) : currentId
+                  })()}
+                </span>
+                <svg className="h-4 w-4 shrink-0 opacity-50" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+              </button>
+              {modelDropdownOpen && (
+                <div className="absolute z-50 mt-1 w-full rounded-md border bg-popover text-popover-foreground shadow-md">
+                  <div className="flex items-center border-b px-3 py-2">
+                    <Search className="h-4 w-4 shrink-0 opacity-50 mr-2" />
+                    <input
+                      autoFocus
+                      placeholder="Search models..."
+                      className="flex h-8 w-full rounded-md bg-transparent text-sm outline-none placeholder:text-muted-foreground"
+                      value={modelSearch}
+                      onChange={(e) => setModelSearch(e.target.value)}
+                    />
+                  </div>
+                  <div className="max-h-[320px] overflow-y-auto p-1">
+                    {(() => {
+                      const currentId = typeof settings.openrouter_model === "string" ? settings.openrouter_model : OPENROUTER_MODEL_DEFAULT
+                      const q = modelSearch.toLowerCase()
+                      const models = liveModels.length > 0 ? liveModels : [{ id: OPENROUTER_MODEL_DEFAULT, name: OPENROUTER_MODEL_DEFAULT, description: "", pricing: { prompt: "0", completion: "0" }, context_length: 0, top_provider: { max_completion_tokens: null }, architecture: { modality: "text" }, reasoning: false }]
+                      const filtered = q ? models.filter(m => (m.name || m.id).toLowerCase().includes(q) || m.id.toLowerCase().includes(q) || (m.description || "").toLowerCase().includes(q)) : models
+                      if (filtered.length === 0) return <p className="py-2 px-3 text-sm text-muted-foreground">No models match &ldquo;{modelSearch}&rdquo;</p>
+                      return filtered.map((m) => {
+                        const isFree = m.pricing?.prompt === "0" && m.pricing?.completion === "0"
+                        const isSelected = m.id === currentId
+                        const curated = OPENROUTER_MODEL_OPTIONS.find(o => o.id === m.id)
+                        const tier = curated?.tier
+                        const tag = tier === "best" ? { label: "Best for writing", cls: "bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400" }
+                          : tier === "great" ? { label: "Great quality", cls: "bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400" }
+                          : tier === "free" && !m.reasoning ? { label: "Free + research", cls: "bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400" }
+                          : null
+                        return (
+                          <button
+                            key={m.id}
+                            type="button"
+                            onClick={() => {
+                              handleInputChange("openrouter_model", m.id)
+                              setModelDropdownOpen(false)
+                              setModelSearch("")
+                            }}
+                            className={`w-full flex items-center gap-2 rounded-sm px-2 py-1.5 text-sm cursor-pointer hover:bg-accent hover:text-accent-foreground ${isSelected ? "bg-accent" : ""}`}
+                          >
+                            <Check className={`h-4 w-4 shrink-0 ${isSelected ? "opacity-100" : "opacity-0"}`} />
+                            <span className="truncate flex-1 text-left">{m.name || m.id}</span>
+                            {tag && <span className={`shrink-0 text-[10px] px-1.5 py-0.5 rounded font-medium ${tag.cls}`}>{tag.label}</span>}
+                            {isFree && !tag && <span className="shrink-0 text-[10px] bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 px-1.5 py-0.5 rounded font-medium">FREE</span>}
+                            {m.reasoning && <span className="shrink-0 text-[10px] bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400 px-1.5 py-0.5 rounded font-medium">THINK</span>}
+                          </button>
+                        )
+                      })
+                    })()}
+                  </div>
+                </div>
+              )}
+            </div>
               {/* Show selected model details */}
               {liveModels.length > 0 && (() => {
                 const selected = liveModels.find(m => m.id === (typeof settings.openrouter_model === "string" ? settings.openrouter_model : OPENROUTER_MODEL_DEFAULT))
@@ -215,9 +267,8 @@ export default function AdminSettingsPage() {
                 )
               })()}
               <p className="text-xs text-muted-foreground mt-2">
-                Applied in realtime to the next AI research / article write — no redeploy needed. Gemini runs first as the primary engine; if it fails (429/500), this OpenRouter model is used as fallback.
+                Applied in realtime to the next AI research / article write — no redeploy needed. OpenRouter runs first as the primary engine; if it fails, Gemini is tried as fallback.
               </p>
-            </div>
           </CardContent>
         </Card>
 

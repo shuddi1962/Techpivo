@@ -176,6 +176,7 @@ async function callOpenRouter(prompt: string, modelOverride?: string): Promise<s
             },
             { role: "user", content: prompt },
           ],
+          tools: [{ webSearch: {} }],
           max_tokens: 16384,
           temperature: 0.45,
         }),

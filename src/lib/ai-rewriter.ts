@@ -1179,6 +1179,7 @@ async function callOpenRouterArticle(
               },
               { role: "user", content: prompt },
             ],
+            tools: [{ webSearch: {} }],
             max_tokens: 16384,
             temperature: 0.45,
           }),
@@ -1239,20 +1240,20 @@ export async function manualWriteFromTopic(topic: string): Promise<{ article: AI
 
   const prompt = buildManualPrompt(topic, "topic")
 
-  // Try Gemini first (with Google Search grounding)
-  const geminiResult = await geminiGrounded(prompt, 'manual', MANUAL_GEMINI_DAILY_CAP)
-  if (geminiResult.article) {
-    console.log(`[✓ Gemini+Search] ${geminiResult.article.headline.slice(0, 55)}`)
-    return geminiResult
+  // OpenRouter first (free models with web search)
+  const orResult = await callOpenRouterArticle(prompt, 'manual')
+  if (orResult.article) {
+    console.log(`[✓ OpenRouter] ${orResult.article.headline.slice(0, 55)}`)
+    return orResult
   }
 
-  // Gemini failed — fall back to OpenRouter free models
-  console.warn(`[Gemini failed: ${geminiResult.debug}] Falling back to OpenRouter...`)
-  const orResult = await callOpenRouterArticle(prompt, 'manual')
-  if (orResult.article) return orResult
+  // OpenRouter failed — try Gemini as fallback
+  console.warn(`[OpenRouter failed: ${orResult.debug}] Trying Gemini fallback...`)
+  const geminiResult = await geminiGrounded(prompt, 'manual', MANUAL_GEMINI_DAILY_CAP)
+  if (geminiResult.article) return geminiResult
 
-  console.error(`[✗ ALL FAILED] Topic: ${topic.slice(0, 50)} — Gemini: ${geminiResult.debug} | OpenRouter: ${orResult.debug}`)
-  return { article: null, debug: `${geminiResult.debug} / ${orResult.debug}` }
+  console.error(`[✗ ALL FAILED] Topic: ${topic.slice(0, 50)} — OpenRouter: ${orResult.debug} | Gemini: ${geminiResult.debug}`)
+  return { article: null, debug: `${orResult.debug} / ${geminiResult.debug}` }
 }
 
 export async function manualWriteFromUrl(url: string): Promise<{ article: AIArticle | null; debug: string }> {
@@ -1317,20 +1318,20 @@ export async function manualWriteFromUrl(url: string): Promise<{ article: AIArti
 
   const prompt = buildManualPrompt(input, "url", sourceName)
 
-  // Try Gemini first (with Google Search grounding)
-  const geminiResult = await geminiGrounded(prompt, 'manual', MANUAL_GEMINI_DAILY_CAP)
-  if (geminiResult.article) {
-    console.log(`[✓ Gemini+Search] ${geminiResult.article.headline.slice(0, 55)}`)
-    return geminiResult
+  // OpenRouter first (free models with web search)
+  const orResult = await callOpenRouterArticle(prompt, 'manual')
+  if (orResult.article) {
+    console.log(`[✓ OpenRouter] ${orResult.article.headline.slice(0, 55)}`)
+    return orResult
   }
 
-  // Gemini failed — fall back to OpenRouter free models
-  console.warn(`[Gemini failed: ${geminiResult.debug}] Falling back to OpenRouter...`)
-  const orResult = await callOpenRouterArticle(prompt, 'manual')
-  if (orResult.article) return orResult
+  // OpenRouter failed — try Gemini as fallback
+  console.warn(`[OpenRouter failed: ${orResult.debug}] Trying Gemini fallback...`)
+  const geminiResult = await geminiGrounded(prompt, 'manual', MANUAL_GEMINI_DAILY_CAP)
+  if (geminiResult.article) return geminiResult
 
-  console.error(`[✗ ALL FAILED] URL: ${url.slice(0, 60)} — Gemini: ${geminiResult.debug} | OpenRouter: ${orResult.debug}`)
-  return { article: null, debug: `${geminiResult.debug} / ${orResult.debug}` }
+  console.error(`[✗ ALL FAILED] URL: ${url.slice(0, 60)} — OpenRouter: ${orResult.debug} | Gemini: ${geminiResult.debug}`)
+  return { article: null, debug: `${orResult.debug} / ${geminiResult.debug}` }
 }
 
 export async function geminiRewriteContent(title: string, content: string): Promise<string> {
