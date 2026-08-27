@@ -1149,6 +1149,72 @@ async function semanticDuplicateCheck(
 // and resolveOpenRouterKey() from @/lib/openrouter-model. The ordered fallback
 // list is built at call time by openRouterModelOrder(primary).
 
+// Known-working free non-reasoning models (skip paid models entirely when no credits)
+const FREE_MODEL_FALLBACKS = [
+  "minimax/minimax-m3:free",
+  "google/gemma-4-31b-it:free",
+  "nvidia/nemotron-3.5-lightning:free",
+]
+
+async function tryOpenRouterModel(
+  model: string,
+  apiKey: string,
+  prompt: string,
+): Promise<{ ok: true; article: AIArticle; debug: string } | { ok: false; debug: string; retriable: boolean }> {
+  try {
+    const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${apiKey}`,
+        "HTTP-Referer": SITE_URL,
+        "X-Title": "Techpivo",
+      },
+      body: JSON.stringify({
+        model,
+        messages: [
+          {
+            role: "system",
+            content: "You are a senior technology journalist at Techpivo. Output ONLY valid JSON matching the schema the user provides. No markdown, no code blocks, no explanation.",
+          },
+          { role: "user", content: prompt },
+        ],
+        tools: [{ webSearch: {} }],
+        max_tokens: 16384,
+        temperature: 0.45,
+      }),
+      signal: AbortSignal.timeout(120000),
+    })
+
+    if (!res.ok) {
+      const errText = await res.text().catch(() => "")
+      const retriable = [400, 402, 403, 404, 429].includes(res.status)
+      console.warn(`[OpenRouter] ${model} HTTP ${res.status}: ${errText.slice(0, 120)}`)
+      return { ok: false, debug: `openrouter_http_${res.status}:${errText.slice(0, 60)}`, retriable }
+    }
+
+    const data = await res.json()
+    const msg = data?.choices?.[0]?.message
+    const raw = (msg?.content || msg?.reasoning || "").trim()
+    if (!raw) {
+      console.warn(`[OpenRouter] ${model} returned empty content`)
+      return { ok: false, debug: `openrouter_empty:${model}`, retriable: true }
+    }
+
+    const { article, reason } = validate(raw, `openrouter`)
+    if (article) {
+      console.log(`[✓ OpenRouter ${model}] ${article.headline.slice(0, 55)}`)
+      return { ok: true, article, debug: `openrouter:${model}` }
+    }
+    console.warn(`[OpenRouter] ${model} validate failed (${reason})`)
+    return { ok: false, debug: `openrouter_validate:${reason}`, retriable: true }
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e)
+    console.warn(`[OpenRouter] ${model} error: ${msg}`)
+    return { ok: false, debug: `openrouter_error:${msg.slice(0, 60)}`, retriable: false }
+  }
+}
+
 async function callOpenRouterArticle(
   prompt: string,
   usedFor: string
@@ -1157,75 +1223,23 @@ async function callOpenRouterArticle(
   if (!apiKey) return { article: null, debug: "openrouter_no_key" }
 
   const primary = await resolveOpenRouterModel()
-  const models = openRouterModelOrder(primary)
 
-  for (const m of models) {
-    for (let attempt = 0; attempt <= 1; attempt++) {
-      try {
-        const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${apiKey}`,
-            "HTTP-Referer": SITE_URL,
-            "X-Title": "Techpivo",
-          },
-          body: JSON.stringify({
-            model: m,
-            messages: [
-              {
-                role: "system",
-                content: "You are a senior technology journalist at Techpivo. Output ONLY valid JSON matching the schema the user provides. No markdown, no code blocks, no explanation.",
-              },
-              { role: "user", content: prompt },
-            ],
-            tools: [{ webSearch: {} }],
-            max_tokens: 16384,
-            temperature: 0.45,
-          }),
-          signal: AbortSignal.timeout(120000),
-        })
-
-        if (!res.ok) {
-          const errText = await res.text().catch(() => "")
-          const rateLimited = res.status === 429
-          const noCredits = res.status === 402
-          const modelUnavailable = res.status === 404 || /not found|not available|does not exist/i.test(errText)
-          const badRequest = res.status === 400
-          if (rateLimited || noCredits || modelUnavailable || badRequest) {
-            console.warn(`[OpenRouter] ${m} HTTP ${res.status} — ${noCredits ? "no credits (trying free models)" : rateLimited ? "rate limited" : badRequest ? "bad request (unsupported param)" : "unavailable"}, trying next model`)
-            break // try next model
-          }
-          console.warn(`[OpenRouter] ${m} HTTP ${res.status}: ${errText.slice(0, 200)}`)
-          return { article: null, debug: `openrouter_http_${res.status}:${errText.slice(0, 60)}` }
-        }
-
-        const data = await res.json()
-        // Reasoning models (nemotron etc.) may put output in reasoning field
-        const msg = data?.choices?.[0]?.message
-        const raw = (msg?.content || msg?.reasoning || "").trim()
-        if (!raw) {
-          console.warn(`[OpenRouter] ${m} returned empty content — trying next model`)
-          break // try next model instead of giving up
-        }
-
-        const { article, reason } = validate(raw, `openrouter`)
-        if (article) {
-          console.log(`[✓ OpenRouter ${m}] ${article.headline.slice(0, 55)}`)
-          return { article, debug: `openrouter:${m}` }
-        }
-        console.warn(`[OpenRouter] ${m} validate failed (${reason}) — ${attempt < 1 ? "retrying" : "next model"}`)
-        if (attempt < 1) continue // retry same model once
-        break // move to next model
-      } catch (e) {
-        const msg = e instanceof Error ? e.message : String(e)
-        console.warn(`[OpenRouter] ${m} error: ${msg}`)
-        return { article: null, debug: `openrouter_error:${msg.slice(0, 60)}` }
-      }
-    }
+  // Try selected model (up to 2 attempts)
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const result = await tryOpenRouterModel(primary, apiKey, prompt)
+    if (result.ok) return { article: result.article, debug: result.debug }
+    if (!result.retriable) break
   }
 
-  return { article: null, debug: "openrouter_all_failed" }
+  // Selected model failed — try known-working free fallbacks (skip paid models)
+  const freeFallbacks = FREE_MODEL_FALLBACKS.filter(m => m !== primary)
+  for (const m of freeFallbacks) {
+    const result = await tryOpenRouterModel(m, apiKey, prompt)
+    if (result.ok) return { article: result.article, debug: result.debug }
+    // Skip to next free model on any failure
+  }
+
+  return { article: null, debug: `openrouter_all_failed:${primary}` }
 }
 
 export async function manualWriteFromTopic(topic: string): Promise<{ article: AIArticle | null; debug: string }> {
@@ -1241,20 +1255,14 @@ export async function manualWriteFromTopic(topic: string): Promise<{ article: AI
 
   const prompt = buildManualPrompt(topic, "topic")
 
-  // OpenRouter first (free models with web search)
   const orResult = await callOpenRouterArticle(prompt, 'manual')
   if (orResult.article) {
     console.log(`[✓ OpenRouter] ${orResult.article.headline.slice(0, 55)}`)
     return orResult
   }
 
-  // OpenRouter failed — try Gemini as fallback
-  console.warn(`[OpenRouter failed: ${orResult.debug}] Trying Gemini fallback...`)
-  const geminiResult = await geminiGrounded(prompt, 'manual', MANUAL_GEMINI_DAILY_CAP)
-  if (geminiResult.article) return geminiResult
-
-  console.error(`[✗ ALL FAILED] Topic: ${topic.slice(0, 50)} — OpenRouter: ${orResult.debug} | Gemini: ${geminiResult.debug}`)
-  return { article: null, debug: `${orResult.debug} / ${geminiResult.debug}` }
+  console.error(`[✗ OpenRouter failed] Topic: ${topic.slice(0, 50)} — ${orResult.debug}`)
+  return orResult
 }
 
 export async function manualWriteFromUrl(url: string): Promise<{ article: AIArticle | null; debug: string }> {
@@ -1319,20 +1327,15 @@ export async function manualWriteFromUrl(url: string): Promise<{ article: AIArti
 
   const prompt = buildManualPrompt(input, "url", sourceName)
 
-  // OpenRouter first (free models with web search)
+  // OpenRouter only — no Gemini fallback
   const orResult = await callOpenRouterArticle(prompt, 'manual')
   if (orResult.article) {
     console.log(`[✓ OpenRouter] ${orResult.article.headline.slice(0, 55)}`)
     return orResult
   }
 
-  // OpenRouter failed — try Gemini as fallback
-  console.warn(`[OpenRouter failed: ${orResult.debug}] Trying Gemini fallback...`)
-  const geminiResult = await geminiGrounded(prompt, 'manual', MANUAL_GEMINI_DAILY_CAP)
-  if (geminiResult.article) return geminiResult
-
-  console.error(`[✗ ALL FAILED] URL: ${url.slice(0, 60)} — OpenRouter: ${orResult.debug} | Gemini: ${geminiResult.debug}`)
-  return { article: null, debug: `${orResult.debug} / ${geminiResult.debug}` }
+  console.error(`[✗ OpenRouter failed] URL: ${url.slice(0, 60)} — ${orResult.debug}`)
+  return orResult
 }
 
 export async function geminiRewriteContent(title: string, content: string): Promise<string> {
