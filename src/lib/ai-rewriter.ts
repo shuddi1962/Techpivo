@@ -1189,10 +1189,11 @@ async function callOpenRouterArticle(
         if (!res.ok) {
           const errText = await res.text().catch(() => "")
           const rateLimited = res.status === 429
+          const noCredits = res.status === 402
           const modelUnavailable = res.status === 404 || /not found|not available|does not exist/i.test(errText)
           const badRequest = res.status === 400
-          if (rateLimited || modelUnavailable || badRequest) {
-            console.warn(`[OpenRouter] ${m} HTTP ${res.status} — ${rateLimited ? "rate limited" : badRequest ? "bad request (unsupported param)" : "unavailable"}, trying next model`)
+          if (rateLimited || noCredits || modelUnavailable || badRequest) {
+            console.warn(`[OpenRouter] ${m} HTTP ${res.status} — ${noCredits ? "no credits (trying free models)" : rateLimited ? "rate limited" : badRequest ? "bad request (unsupported param)" : "unavailable"}, trying next model`)
             break // try next model
           }
           console.warn(`[OpenRouter] ${m} HTTP ${res.status}: ${errText.slice(0, 200)}`)
