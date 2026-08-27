@@ -53,6 +53,7 @@ interface OpenRouterResponse {
   choices?: {
     message?: {
       content?: string
+      reasoning?: string
     }
   }[]
 }
@@ -170,7 +171,9 @@ async function callOpenRouter(prompt: string): Promise<string> {
       }
 
       const data: OpenRouterResponse = await res.json()
-      const text = data.choices?.[0]?.message?.content?.trim() || ""
+      // Reasoning models (nemotron etc.) may put output in reasoning field
+      const msg = data.choices?.[0]?.message
+      const text = (msg?.content || (msg as any)?.reasoning || "").trim()
       if (text) return text
       lastErr = new Error("OpenRouter returned empty output")
     } catch (e) {

@@ -1231,10 +1231,12 @@ async function callOpenRouterArticle(
         }
 
         const data = await res.json()
-        const raw = (data?.choices?.[0]?.message?.content || "").trim()
+        // Reasoning models (nemotron etc.) may put output in reasoning field
+        const msg = data?.choices?.[0]?.message
+        const raw = (msg?.content || msg?.reasoning || "").trim()
         if (!raw) {
-          console.warn(`[OpenRouter] ${m} returned empty content`)
-          return { article: null, debug: "openrouter_empty" }
+          console.warn(`[OpenRouter] ${m} returned empty content — trying next model`)
+          break // try next model instead of giving up
         }
 
         const { article, reason } = validate(raw, `openrouter`)
