@@ -267,7 +267,7 @@ export default function AdminSettingsPage() {
                 )
               })()}
               <p className="text-xs text-muted-foreground mt-2">
-                Applied in realtime to the next AI research / article write — no redeploy needed. OpenRouter runs first as the primary engine; if it fails, Gemini is tried as fallback.
+                Applied in realtime to the next AI research / article write — no redeploy needed. Free models work instantly. Paid models require OpenRouter credits.
               </p>
           </CardContent>
         </Card>

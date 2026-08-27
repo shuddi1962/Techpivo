@@ -1149,28 +1149,18 @@ async function semanticDuplicateCheck(
 // and resolveOpenRouterKey() from @/lib/openrouter-model. The ordered fallback
 // list is built at call time by openRouterModelOrder(primary).
 
-// Known-working free non-reasoning models (skip paid models entirely when no credits)
-const FREE_MODEL_FALLBACKS = [
-  "minimax/minimax-m3:free",
-  "google/gemma-4-31b-it:free",
-  "nvidia/nemotron-3.5-lightning:free",
-]
-
-async function tryOpenRouterModel(
-  model: string,
-  apiKey: string,
+async function callOpenRouterArticle(
   prompt: string,
-): Promise<{ ok: true; article: AIArticle; debug: string } | { ok: false; debug: string; retriable: boolean }> {
-  try {
-    const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${apiKey}`,
-        "HTTP-Referer": SITE_URL,
-        "X-Title": "Techpivo",
-      },
-      body: JSON.stringify({
+  usedFor: string
+): Promise<{ article: AIArticle | null; debug: string }> {
+  const apiKey = await resolveOpenRouterKey()
+  if (!apiKey) return { article: null, debug: "openrouter_no_key" }
+
+  const model = await resolveOpenRouterModel()
+
+  async function tryRequest(withTools: boolean): Promise<{ ok: boolean; article: AIArticle | null; debug: string; httpStatus?: number }> {
+    try {
+      const body: Record<string, unknown> = {
         model,
         messages: [
           {
@@ -1179,67 +1169,63 @@ async function tryOpenRouterModel(
           },
           { role: "user", content: prompt },
         ],
-        tools: [{ webSearch: {} }],
         max_tokens: 16384,
         temperature: 0.45,
-      }),
-      signal: AbortSignal.timeout(120000),
-    })
+      }
+      if (withTools) body.tools = [{ webSearch: {} }]
 
-    if (!res.ok) {
-      const errText = await res.text().catch(() => "")
-      const retriable = [400, 402, 403, 404, 429].includes(res.status)
-      console.warn(`[OpenRouter] ${model} HTTP ${res.status}: ${errText.slice(0, 120)}`)
-      return { ok: false, debug: `openrouter_http_${res.status}:${errText.slice(0, 60)}`, retriable }
+      const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${apiKey}`,
+          "HTTP-Referer": SITE_URL,
+          "X-Title": "Techpivo",
+        },
+        body: JSON.stringify(body),
+        signal: AbortSignal.timeout(120000),
+      })
+
+      if (!res.ok) {
+        const errText = await res.text().catch(() => "")
+        console.warn(`[OpenRouter] ${model} HTTP ${res.status}${withTools ? " (with tools)" : ""}: ${errText.slice(0, 120)}`)
+        return { ok: false, article: null, debug: `openrouter_http_${res.status}:${errText.slice(0, 60)}`, httpStatus: res.status }
+      }
+
+      const data = await res.json()
+      const msg = data?.choices?.[0]?.message
+      const raw = (msg?.content || msg?.reasoning || "").trim()
+      if (!raw) {
+        console.warn(`[OpenRouter] ${model} returned empty content${withTools ? " (with tools)" : ""}`)
+        return { ok: false, article: null, debug: `openrouter_empty:${model}` }
+      }
+
+      const { article, reason } = validate(raw, `openrouter`)
+      if (article) {
+        console.log(`[✓ OpenRouter ${model}] ${article.headline.slice(0, 55)}${withTools ? "" : " (no tools)"}`)
+        return { ok: true, article, debug: `openrouter:${model}${withTools ? "" : "_no_tools"}` }
+      }
+      console.warn(`[OpenRouter] ${model} validate failed (${reason})`)
+      return { ok: false, article: null, debug: `openrouter_validate:${reason}` }
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e)
+      console.warn(`[OpenRouter] ${model} error: ${msg}`)
+      return { ok: false, article: null, debug: `openrouter_error:${msg.slice(0, 60)}` }
     }
-
-    const data = await res.json()
-    const msg = data?.choices?.[0]?.message
-    const raw = (msg?.content || msg?.reasoning || "").trim()
-    if (!raw) {
-      console.warn(`[OpenRouter] ${model} returned empty content`)
-      return { ok: false, debug: `openrouter_empty:${model}`, retriable: true }
-    }
-
-    const { article, reason } = validate(raw, `openrouter`)
-    if (article) {
-      console.log(`[✓ OpenRouter ${model}] ${article.headline.slice(0, 55)}`)
-      return { ok: true, article, debug: `openrouter:${model}` }
-    }
-    console.warn(`[OpenRouter] ${model} validate failed (${reason})`)
-    return { ok: false, debug: `openrouter_validate:${reason}`, retriable: true }
-  } catch (e) {
-    const msg = e instanceof Error ? e.message : String(e)
-    console.warn(`[OpenRouter] ${model} error: ${msg}`)
-    return { ok: false, debug: `openrouter_error:${msg.slice(0, 60)}`, retriable: false }
-  }
-}
-
-async function callOpenRouterArticle(
-  prompt: string,
-  usedFor: string
-): Promise<{ article: AIArticle | null; debug: string }> {
-  const apiKey = await resolveOpenRouterKey()
-  if (!apiKey) return { article: null, debug: "openrouter_no_key" }
-
-  const primary = await resolveOpenRouterModel()
-
-  // Try selected model (up to 2 attempts)
-  for (let attempt = 0; attempt < 2; attempt++) {
-    const result = await tryOpenRouterModel(primary, apiKey, prompt)
-    if (result.ok) return { article: result.article, debug: result.debug }
-    if (!result.retriable) break
   }
 
-  // Selected model failed — try known-working free fallbacks (skip paid models)
-  const freeFallbacks = FREE_MODEL_FALLBACKS.filter(m => m !== primary)
-  for (const m of freeFallbacks) {
-    const result = await tryOpenRouterModel(m, apiKey, prompt)
-    if (result.ok) return { article: result.article, debug: result.debug }
-    // Skip to next free model on any failure
+  // Attempt 1: with web search tools
+  const r1 = await tryRequest(true)
+  if (r1.ok && r1.article) return { article: r1.article, debug: r1.debug }
+
+  // Attempt 2: retry once on retriable errors (400/402/403/404/429), without tools
+  if (r1.httpStatus && [400, 402, 403, 404, 429].includes(r1.httpStatus)) {
+    console.warn(`[OpenRouter] ${model} HTTP ${r1.httpStatus} — retrying without web search tools`)
+    const r2 = await tryRequest(false)
+    if (r2.ok && r2.article) return { article: r2.article, debug: r2.debug }
   }
 
-  return { article: null, debug: `openrouter_all_failed:${primary}` }
+  return { article: null, debug: r1.debug }
 }
 
 export async function manualWriteFromTopic(topic: string): Promise<{ article: AIArticle | null; debug: string }> {
