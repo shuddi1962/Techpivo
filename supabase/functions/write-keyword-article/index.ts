@@ -119,17 +119,42 @@ async function callGemini(prompt: string, model: string): Promise<string> {
   throw lastErr || new Error("All Gemini models failed")
 }
 
-async function callOpenRouter(prompt: string): Promise<string> {
+// OpenRouter model override chain: site_settings.openrouter_model (realtime-
+// flippable from Admin → Settings) → OPENROUTER_MODEL env → default.
+const OPENROUTER_MODEL_DEFAULT = "minimax/minimax-m3:free"
+
+const OPENROUTER_MODEL_ORDER = [
+  "minimax/minimax-m3:free",
+  "nvidia/nemotron-3.5-lightning:free",
+  "thinkingmachines/inkling:free",
+  "google/gemma-4-31b-it:free",
+  "nvidia/nemotron-3-ultra-550b-a55b:free",
+]
+
+async function getOpenRouterModelName(): Promise<string> {
+  const envModel = normalizeModel(Deno.env.get("OPENROUTER_MODEL"))
+  if (envModel && OPENROUTER_MODEL_ORDER.includes(envModel)) return envModel
+
+  try {
+    const { data } = await supabase
+      .from("site_settings")
+      .select("value")
+      .eq("key", "openrouter_model")
+      .maybeSingle()
+    const dbModel = normalizeModel(data?.value)
+    if (dbModel && OPENROUTER_MODEL_ORDER.includes(dbModel)) return dbModel
+  } catch {
+    // fall through to default
+  }
+  return OPENROUTER_MODEL_DEFAULT
+}
+
+async function callOpenRouter(prompt: string, modelOverride?: string): Promise<string> {
   const key = Deno.env.get("OPENROUTER_API_KEY")
   if (!key) throw new Error("OPENROUTER_API_KEY not set")
 
-  const models = [
-    "minimax/minimax-m3:free",
-    "nvidia/nemotron-3.5-lightning:free",
-    "thinkingmachines/inkling:free",
-    "google/gemma-4-31b-it:free",
-    "nvidia/nemotron-3-ultra-550b-a55b:free",
-  ]
+  const primary = modelOverride || await getOpenRouterModelName()
+  const models = [primary, ...OPENROUTER_MODEL_ORDER.filter(m => m !== primary)]
 
   let lastErr: Error | null = null
   for (const model of models) {
@@ -340,6 +365,7 @@ async function semanticDuplicate(keyword: string, model: string): Promise<string
 serve(async (req) => {
   try {
     const geminiModel = await getGeminiModelName()
+    const openrouterModel = await getOpenRouterModelName()
 
     const { data: kwArticles } = await supabase
       .from("keyword_articles")
@@ -378,8 +404,8 @@ serve(async (req) => {
         }
 
         const useGemini = await logGeminiCall(geminiModel)
-        const aiCaller = useGemini ? (p: string) => callGemini(p, geminiModel) : callOpenRouter
-        const modelUsed = useGemini ? geminiModel : "openrouter-meta-llama-3.3-70b"
+        const aiCaller = useGemini ? (p: string) => callGemini(p, geminiModel) : (p: string) => callOpenRouter(p, openrouterModel)
+        const modelUsed = useGemini ? geminiModel : openrouterModel
 
         const articlePrompt =
           `You are a professional tech journalist writing for "Techpivo" (https://techpivo.com). ` +

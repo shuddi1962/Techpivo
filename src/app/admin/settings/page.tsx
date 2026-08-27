@@ -8,7 +8,19 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Switch } from "@/components/ui/switch"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { GEMINI_MODEL_OPTIONS, GEMINI_MODEL_DEFAULT } from "@/lib/gemini-model"
+import { OPENROUTER_MODEL_DEFAULT } from "@/lib/openrouter-model"
+import { Cpu, Loader2, RefreshCw } from "lucide-react"
+
+interface LiveModel {
+  id: string
+  name: string
+  description: string
+  pricing: { prompt: string; completion: string }
+  context_length: number
+  top_provider: { max_completion_tokens: number | null }
+  architecture: { modality: string }
+  reasoning: boolean
+}
 
 export default function AdminSettingsPage() {
   const [settings, setSettings] = useState<Record<string, any>>({})
@@ -18,6 +30,9 @@ export default function AdminSettingsPage() {
   const timers = useRef<Record<string, NodeJS.Timeout>>({})
   const dirtyRef = useRef<Set<string>>(new Set())
   const supabase = createClient()
+  const [liveModels, setLiveModels] = useState<LiveModel[]>([])
+  const [modelsLoading, setModelsLoading] = useState(true)
+  const [modelsError, setModelsError] = useState("")
 
   const fetchSettings = useCallback(async () => {
     const { data } = await supabase.from("site_settings").select("*")
@@ -46,6 +61,24 @@ export default function AdminSettingsPage() {
       window.removeEventListener("focus", onFocus)
     }
   }, [supabase, fetchSettings])
+
+  const fetchLiveModels = useCallback(async () => {
+    setModelsLoading(true)
+    setModelsError("")
+    try {
+      const res = await fetch("/api/admin/openrouter-models")
+      if (!res.ok) throw new Error(`HTTP ${res.status}`)
+      const data = await res.json()
+      setLiveModels(data.models || [])
+    } catch (e) {
+      console.error("Failed to fetch OpenRouter models:", e)
+      setModelsError("Could not load live models — using fallback list")
+    } finally {
+      setModelsLoading(false)
+    }
+  }, [])
+
+  useEffect(() => { fetchLiveModels() }, [fetchLiveModels])
 
   const saveSetting = useCallback(async (key: string, value: any) => {
     if (key === "site_url" && typeof value === "string" && value && !/^https?:\/\//.test(value)) {
@@ -123,25 +156,66 @@ export default function AdminSettingsPage() {
         </Card>
 
         <Card>
-          <CardHeader><CardTitle className="text-lg">AI Writing Model</CardTitle></CardHeader>
+          <CardHeader className="flex flex-row items-center gap-2">
+            <Cpu className="h-5 w-5 text-blue-500" />
+            <CardTitle className="text-lg">AI Writing Model</CardTitle>
+            {modelsLoading && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground ml-auto" />}
+            {!modelsLoading && <Button variant="ghost" size="sm" className="ml-auto h-7 px-2" onClick={fetchLiveModels}><RefreshCw className="h-3 w-3" /></Button>}
+          </CardHeader>
           <CardContent className="space-y-4">
+            {modelsError && <p className="text-xs text-amber-600">{modelsError}</p>}
             <div>
-              <Label className="text-sm mb-1 block">Gemini model</Label>
+              <Label className="text-sm mb-1 block">OpenRouter model</Label>
               <Select
-                value={typeof settings.gemini_model === "string" ? settings.gemini_model : GEMINI_MODEL_DEFAULT}
-                onValueChange={(v) => handleInputChange("gemini_model", v)}
+                value={typeof settings.openrouter_model === "string" ? settings.openrouter_model : OPENROUTER_MODEL_DEFAULT}
+                onValueChange={(v) => handleInputChange("openrouter_model", v)}
               >
                 <SelectTrigger className="w-full">
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent>
-                  {GEMINI_MODEL_OPTIONS.map((o) => (
-                    <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
-                  ))}
+                <SelectContent className="max-h-[400px]">
+                  {liveModels.length > 0 ? (
+                    liveModels.map((m) => {
+                      const isFree = m.pricing?.prompt === "0" && m.pricing?.completion === "0"
+                      return (
+                        <SelectItem key={m.id} value={m.id}>
+                          <div className="flex items-center gap-2 w-full">
+                            <span className="truncate">{m.name || m.id}</span>
+                            {isFree && <span className="shrink-0 text-[10px] bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 px-1.5 py-0.5 rounded font-medium">FREE</span>}
+                            {m.reasoning && <span className="shrink-0 text-[10px] bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400 px-1.5 py-0.5 rounded font-medium">REASONING</span>}
+                          </div>
+                        </SelectItem>
+                      )
+                    })
+                  ) : (
+                    <SelectItem value={OPENROUTER_MODEL_DEFAULT}>{OPENROUTER_MODEL_DEFAULT}</SelectItem>
+                  )}
                 </SelectContent>
               </Select>
+              {/* Show selected model details */}
+              {liveModels.length > 0 && (() => {
+                const selected = liveModels.find(m => m.id === (typeof settings.openrouter_model === "string" ? settings.openrouter_model : OPENROUTER_MODEL_DEFAULT))
+                if (!selected) return null
+                const isFree = selected.pricing?.prompt === "0" && selected.pricing?.completion === "0"
+                return (
+                  <div className="mt-3 rounded-lg border border-border/60 bg-surface p-3 space-y-1.5">
+                    <p className="text-xs text-muted-foreground leading-relaxed line-clamp-2">{selected.description || "No description available"}</p>
+                    <div className="flex flex-wrap gap-2 text-[11px]">
+                      <span className="text-muted-foreground">{selected.context_length?.toLocaleString() || "?"} context</span>
+                      {selected.top_provider?.max_completion_tokens && <span className="text-muted-foreground">· max {selected.top_provider.max_completion_tokens.toLocaleString()} tokens</span>}
+                      {selected.architecture?.modality && <span className="text-muted-foreground">· {selected.architecture.modality}</span>}
+                    </div>
+                    {!isFree && (
+                      <div className="flex gap-3 text-[11px] text-muted-foreground">
+                        <span>Input: ${(parseFloat(selected.pricing?.prompt || "0") * 1_000_000).toFixed(2)}/M</span>
+                        <span>Output: ${(parseFloat(selected.pricing?.completion || "0") * 1_000_000).toFixed(2)}/M</span>
+                      </div>
+                    )}
+                  </div>
+                )
+              })()}
               <p className="text-xs text-muted-foreground mt-2">
-                Applied in realtime to the next AI research / article write — no redeploy needed. If the selected model hits Google&apos;s free daily quota (429, resets ~8 AM WAT / midnight Pacific), the system auto-falls through Flash → Flash-Lite automatically.
+                Applied in realtime to the next AI research / article write — no redeploy needed. Gemini runs first as the primary engine; if it fails (429/500), this OpenRouter model is used as fallback.
               </p>
             </div>
           </CardContent>
