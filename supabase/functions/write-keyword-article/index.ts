@@ -123,9 +123,11 @@ async function callOpenRouter(prompt: string): Promise<string> {
   if (!key) throw new Error("OPENROUTER_API_KEY not set")
 
   const models = [
-    "google/gemini-2.5-flash-preview-05-20:free",
-    "meta-llama/llama-4-maverick:free",
-    "deepseek/deepseek-chat-v3-0324:free",
+    "nvidia/nemotron-3-ultra-550b-a55b:free",
+    "minimax/minimax-m3:free",
+    "nvidia/nemotron-3.5-lightning:free",
+    "thinkingmachines/inkling:free",
+    "google/gemma-4-31b-it:free",
   ]
 
   let lastErr: Error | null = null
