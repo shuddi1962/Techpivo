@@ -7,7 +7,7 @@ const CACHE_TTL = 6 * 60 * 60 * 1000 // 6 hours
 
 export async function GET(req: NextRequest) {
   const guard = await requireAdminRole(["admin", "editor"], req)
-  if (guard) return guard
+  if (!guard.ok) return guard.response
 
   const now = Date.now()
   if (_cache && now - _cache.ts < CACHE_TTL) {
