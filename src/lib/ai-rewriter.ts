@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/admin'
 import { findDuplicatePost, type DuplicatePost } from '@/lib/duplicate-check'
 import { GEMINI_MODEL_DEFAULT, getGeminiModel, geminiModelOrder, normalizeGeminiModel, isAllowedGeminiModel } from '@/lib/gemini-model'
+import { SITE_URL } from '@/lib/constants'
 
 const GEMINI_DAILY_CAP = 100
 const MANUAL_GEMINI_DAILY_CAP = 50
@@ -75,7 +76,7 @@ export interface AIArticle {
   qualityScore:      number
   isBreaking:        boolean
   suggestedCategory: string
-  modelUsed:         'gemini-grounded'
+  modelUsed:         'gemini-grounded' | 'openrouter'
 }
 
 function buildPrompt(
@@ -1138,6 +1139,121 @@ async function semanticDuplicateCheck(
   }
 }
 
+// ── OPENROUTER FALLBACK ───────────────────────────────────────────────────
+// When Gemini is exhausted (429 / cap / validate-fail), fall back to
+// OpenRouter free-tier models. Same prompt, same JSON schema, same
+// validate() — just a different transport layer.
+
+const OPENROUTER_MODELS = [
+  "google/gemini-2.5-flash-preview-05-20:free",
+  "meta-llama/llama-4-maverick:free",
+  "deepseek/deepseek-chat-v3-0324:free",
+]
+
+async function getOpenRouterKey(): Promise<string | null> {
+  try {
+    const supabase = createClient()
+    const { data } = await supabase
+      .from("site_settings")
+      .select("value")
+      .eq("key", "openrouter_api_key")
+      .maybeSingle()
+    const key = (typeof data?.value === "string" ? data.value : "") || process.env.OPENROUTER_API_KEY || ""
+    return key || null
+  } catch {
+    return process.env.OPENROUTER_API_KEY || null
+  }
+}
+
+async function getOpenRouterModel(): Promise<string> {
+  try {
+    const supabase = createClient()
+    const { data } = await supabase
+      .from("site_settings")
+      .select("value")
+      .eq("key", "openrouter_model")
+      .maybeSingle()
+    const model = typeof data?.value === "string" ? data.value.trim() : ""
+    if (model && model.includes("/")) return model
+  } catch { /* fall through */ }
+  return OPENROUTER_MODELS[0]
+}
+
+async function callOpenRouterArticle(
+  prompt: string,
+  usedFor: string
+): Promise<{ article: AIArticle | null; debug: string }> {
+  const apiKey = await getOpenRouterKey()
+  if (!apiKey) return { article: null, debug: "openrouter_no_key" }
+
+  const model = await getOpenRouterModel()
+  const models = [model, ...OPENROUTER_MODELS.filter(m => m !== model)]
+
+  for (const m of models) {
+    for (let attempt = 0; attempt <= 1; attempt++) {
+      try {
+        const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${apiKey}`,
+            "HTTP-Referer": SITE_URL,
+            "X-Title": "Techpivo",
+          },
+          body: JSON.stringify({
+            model: m,
+            messages: [
+              {
+                role: "system",
+                content: "You are a senior technology journalist at Techpivo. Output ONLY valid JSON matching the schema the user provides. No markdown, no code blocks, no explanation.",
+              },
+              { role: "user", content: prompt },
+            ],
+            max_tokens: 16384,
+            temperature: 0.45,
+            response_format: { type: "json_object" },
+          }),
+          signal: AbortSignal.timeout(120000),
+        })
+
+        if (!res.ok) {
+          const errText = await res.text().catch(() => "")
+          const rateLimited = res.status === 429
+          const modelUnavailable = res.status === 404 || /not found|not available|does not exist/i.test(errText)
+          if (rateLimited || modelUnavailable) {
+            console.warn(`[OpenRouter] ${m} HTTP ${res.status} — ${rateLimited ? "rate limited" : "unavailable"}, trying next model`)
+            break // try next model
+          }
+          console.warn(`[OpenRouter] ${m} HTTP ${res.status}: ${errText.slice(0, 200)}`)
+          return { article: null, debug: `openrouter_http_${res.status}:${errText.slice(0, 60)}` }
+        }
+
+        const data = await res.json()
+        const raw = (data?.choices?.[0]?.message?.content || "").trim()
+        if (!raw) {
+          console.warn(`[OpenRouter] ${m} returned empty content`)
+          return { article: null, debug: "openrouter_empty" }
+        }
+
+        const { article, reason } = validate(raw, `openrouter`)
+        if (article) {
+          console.log(`[✓ OpenRouter ${m}] ${article.headline.slice(0, 55)}`)
+          return { article, debug: `openrouter:${m}` }
+        }
+        console.warn(`[OpenRouter] ${m} validate failed (${reason}) — ${attempt < 1 ? "retrying" : "next model"}`)
+        if (attempt < 1) continue // retry same model once
+        break // move to next model
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : String(e)
+        console.warn(`[OpenRouter] ${m} error: ${msg}`)
+        return { article: null, debug: `openrouter_error:${msg.slice(0, 60)}` }
+      }
+    }
+  }
+
+  return { article: null, debug: "openrouter_all_failed" }
+}
+
 export async function manualWriteFromTopic(topic: string): Promise<{ article: AIArticle | null; debug: string }> {
   if (!topic || topic.length < 5) return { article: null, debug: 'topic_too_short' }
 
@@ -1150,14 +1266,21 @@ export async function manualWriteFromTopic(topic: string): Promise<{ article: AI
   console.log(`[Techpivo Manual] Writing from topic: ${topic.slice(0, 60)}`)
 
   const prompt = buildManualPrompt(topic, "topic")
-  const result = await geminiGrounded(prompt, 'manual', MANUAL_GEMINI_DAILY_CAP)
-  if (result.article) {
-    console.log(`[✓ Gemini+Search] ${result.article.headline.slice(0, 55)}`)
-    return result
+
+  // Try Gemini first (with Google Search grounding)
+  const geminiResult = await geminiGrounded(prompt, 'manual', MANUAL_GEMINI_DAILY_CAP)
+  if (geminiResult.article) {
+    console.log(`[✓ Gemini+Search] ${geminiResult.article.headline.slice(0, 55)}`)
+    return geminiResult
   }
 
-  console.error(`[✗ ALL FAILED] Topic: ${topic.slice(0, 50)} — ${result.debug}`)
-  return result
+  // Gemini failed — fall back to OpenRouter free models
+  console.warn(`[Gemini failed: ${geminiResult.debug}] Falling back to OpenRouter...`)
+  const orResult = await callOpenRouterArticle(prompt, 'manual')
+  if (orResult.article) return orResult
+
+  console.error(`[✗ ALL FAILED] Topic: ${topic.slice(0, 50)} — Gemini: ${geminiResult.debug} | OpenRouter: ${orResult.debug}`)
+  return { article: null, debug: `${geminiResult.debug} / ${orResult.debug}` }
 }
 
 export async function manualWriteFromUrl(url: string): Promise<{ article: AIArticle | null; debug: string }> {
@@ -1221,14 +1344,21 @@ export async function manualWriteFromUrl(url: string): Promise<{ article: AIArti
     : url
 
   const prompt = buildManualPrompt(input, "url", sourceName)
-  const result = await geminiGrounded(prompt, 'manual', MANUAL_GEMINI_DAILY_CAP)
-  if (result.article) {
-    console.log(`[✓ Gemini+Search] ${result.article.headline.slice(0, 55)}`)
-    return result
+
+  // Try Gemini first (with Google Search grounding)
+  const geminiResult = await geminiGrounded(prompt, 'manual', MANUAL_GEMINI_DAILY_CAP)
+  if (geminiResult.article) {
+    console.log(`[✓ Gemini+Search] ${geminiResult.article.headline.slice(0, 55)}`)
+    return geminiResult
   }
 
-  console.error(`[✗ ALL FAILED] URL: ${url.slice(0, 60)} — ${result.debug}`)
-  return result
+  // Gemini failed — fall back to OpenRouter free models
+  console.warn(`[Gemini failed: ${geminiResult.debug}] Falling back to OpenRouter...`)
+  const orResult = await callOpenRouterArticle(prompt, 'manual')
+  if (orResult.article) return orResult
+
+  console.error(`[✗ ALL FAILED] URL: ${url.slice(0, 60)} — Gemini: ${geminiResult.debug} | OpenRouter: ${orResult.debug}`)
+  return { article: null, debug: `${geminiResult.debug} / ${orResult.debug}` }
 }
 
 export async function geminiRewriteContent(title: string, content: string): Promise<string> {

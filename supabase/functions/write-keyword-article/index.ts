@@ -122,27 +122,62 @@ async function callOpenRouter(prompt: string): Promise<string> {
   const key = Deno.env.get("OPENROUTER_API_KEY")
   if (!key) throw new Error("OPENROUTER_API_KEY not set")
 
-  const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${key}`,
-    },
-    body: JSON.stringify({
-      model: "meta-llama/llama-3.3-70b-instruct:free",
-      messages: [{ role: "user", content: prompt }],
-      max_tokens: 4096,
-    }),
-    signal: AbortSignal.timeout(120000),
-  })
+  const models = [
+    "google/gemini-2.5-flash-preview-05-20:free",
+    "meta-llama/llama-4-maverick:free",
+    "deepseek/deepseek-chat-v3-0324:free",
+  ]
 
-  if (!res.ok) {
-    const err = await res.text()
-    throw new Error(`OpenRouter API error (${res.status}): ${err}`)
+  let lastErr: Error | null = null
+  for (const model of models) {
+    try {
+      const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${key}`,
+          "HTTP-Referer": "https://techpivo.com",
+          "X-Title": "Techpivo",
+        },
+        body: JSON.stringify({
+          model,
+          messages: [
+            {
+              role: "system",
+              content: "You are a senior technology journalist at Techpivo. Output ONLY valid JSON matching the schema the user provides. No markdown, no code blocks, no explanation.",
+            },
+            { role: "user", content: prompt },
+          ],
+          max_tokens: 16384,
+          temperature: 0.45,
+          response_format: { type: "json_object" },
+        }),
+        signal: AbortSignal.timeout(120000),
+      })
+
+      if (!res.ok) {
+        const err = await res.text()
+        const rateLimited = res.status === 429
+        const modelUnavailable = /not found|not available|does not exist/i.test(err)
+        if (rateLimited || modelUnavailable) {
+          console.warn(`[OpenRouter] ${model} HTTP ${res.status} — trying next`)
+          lastErr = new Error(`OpenRouter ${res.status}: ${err}`)
+          continue
+        }
+        throw new Error(`OpenRouter API error (${res.status}): ${err}`)
+      }
+
+      const data: OpenRouterResponse = await res.json()
+      const text = data.choices?.[0]?.message?.content?.trim() || ""
+      if (text) return text
+      lastErr = new Error("OpenRouter returned empty output")
+    } catch (e) {
+      lastErr = e instanceof Error ? e : new Error(String(e))
+      // Non-retryable errors (network, timeout) break immediately
+      break
+    }
   }
-
-  const data: OpenRouterResponse = await res.json()
-  return data.choices?.[0]?.message?.content?.trim() || ""
+  throw lastErr || new Error("All OpenRouter models failed")
 }
 
 async function logGeminiCall(model: string): Promise<boolean> {
