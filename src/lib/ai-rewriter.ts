@@ -810,9 +810,10 @@ async function callOpenRouterArticle(
   const apiKey = await resolveOpenRouterKey()
   if (!apiKey) return { article: null, debug: "openrouter_no_key" }
 
-  const model = await resolveOpenRouterModel()
+  const primaryModel = await resolveOpenRouterModel()
 
-  async function tryRequest(withTools: boolean): Promise<{ ok: boolean; article: AIArticle | null; debug: string; httpStatus?: number }> {
+  async function tryRequest(withTools: boolean, modelOverride?: string): Promise<{ ok: boolean; article: AIArticle | null; debug: string; httpStatus?: number }> {
+    const model = modelOverride || primaryModel
     try {
       const body: Record<string, unknown> = {
         model,
@@ -843,15 +844,32 @@ async function callOpenRouterArticle(
       if (!res.ok) {
         const errText = await res.text().catch(() => "")
         console.warn(`[OpenRouter] ${model} HTTP ${res.status}${withTools ? " (with tools)" : ""}: ${errText.slice(0, 120)}`)
+        // Friendly messages for common errors
+        if (res.status === 402) return { ok: false, article: null, debug: `Model "${model}" requires credits or is unavailable on OpenRouter. Add funds or choose a free model.`, httpStatus: 402 }
+        if (res.status === 404) return { ok: false, article: null, debug: `Model "${model}" not found on OpenRouter. Check the model ID in Settings.`, httpStatus: 404 }
         return { ok: false, article: null, debug: `openrouter_http_${res.status}:${errText.slice(0, 60)}`, httpStatus: res.status }
       }
 
-      const data = await res.json()
-      const msg = data?.choices?.[0]?.message
+      // Read as text first — some error pages return HTML instead of JSON
+      const textBody = await res.text().catch(() => "")
+      if (textBody.startsWith("<!") || textBody.startsWith("<html")) {
+        console.warn(`[OpenRouter] ${model} returned HTML instead of JSON: ${textBody.slice(0, 100)}`)
+        return { ok: false, article: null, debug: `Model "${model}" is unavailable or returned an error page. Try a different model.` }
+      }
+
+      let data: Record<string, unknown>
+      try {
+        data = JSON.parse(textBody)
+      } catch {
+        console.warn(`[OpenRouter] ${model} returned invalid JSON: ${textBody.slice(0, 100)}`)
+        return { ok: false, article: null, debug: `Model "${model}" returned an invalid response. Try a different model.` }
+      }
+
+      const msg = (data as any)?.choices?.[0]?.message
       const raw = (msg?.content || msg?.reasoning || "").trim()
       if (!raw) {
         console.warn(`[OpenRouter] ${model} returned empty content${withTools ? " (with tools)" : ""}`)
-        return { ok: false, article: null, debug: `openrouter_empty:${model}` }
+        return { ok: false, article: null, debug: `Model "${model}" returned empty content. Try a different model.` }
       }
 
       const { article, reason } = validate(raw, model)
@@ -874,9 +892,26 @@ async function callOpenRouterArticle(
 
   // Attempt 2: retry once on retriable errors (400/402/403/404/429), without tools
   if (r1.httpStatus && [400, 402, 403, 404, 429].includes(r1.httpStatus)) {
-    console.warn(`[OpenRouter] ${model} HTTP ${r1.httpStatus} — retrying without web search tools`)
+    console.warn(`[OpenRouter] ${primaryModel} HTTP ${r1.httpStatus} — retrying without web search tools`)
     const r2 = await tryRequest(false)
     if (r2.ok && r2.article) return { article: r2.article, debug: r2.debug }
+  }
+
+  // Attempt 3: fallback to a working free model if selected model failed
+  console.warn(`[OpenRouter] ${primaryModel} failed (${r1.debug.slice(0, 80)}) — trying fallback free models`)
+  const fallbackModels = [
+    "minimax/minimax-m3:free",
+    "nvidia/nemotron-3.5-lightning:free",
+    "thinkingmachines/inkling:free",
+    "google/gemma-4-31b-it:free",
+  ].filter((m) => m !== primaryModel) // don't retry the same model
+
+  for (const fb of fallbackModels) {
+    console.log(`[OpenRouter] Trying fallback: ${fb}`)
+    const fb1 = await tryRequest(true, fb)
+    if (fb1.ok && fb1.article) return { article: fb1.article, debug: `${fb1.debug} (fallback from ${primaryModel})` }
+    const fb2 = await tryRequest(false, fb)
+    if (fb2.ok && fb2.article) return { article: fb2.article, debug: `${fb2.debug} (fallback from ${primaryModel})` }
   }
 
   return { article: null, debug: r1.debug }
