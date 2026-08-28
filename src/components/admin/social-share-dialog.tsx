@@ -172,6 +172,7 @@ export function SocialShareDialog({ open, onClose, post, socialUrls = {} }: Soci
   const [imageBlob, setImageBlob] = useState<Blob | null>(null)
   const [imageLoading, setImageLoading] = useState(false)
   const [shortUrl, setShortUrl] = useState("")
+  const [shortUrlError, setShortUrlError] = useState(false)
 
   const postUrl = `${SITE_URL}/${post.slug}`
   const excerpt = post.excerpt || ""
@@ -182,12 +183,26 @@ export function SocialShareDialog({ open, onClose, post, socialUrls = {} }: Soci
   useEffect(() => {
     if (!open) return
     setShortUrl("")
-    // Fetch short URL via TinyURL (no DNS/domain config required)
+    setShortUrlError(false)
     const ctrl = new AbortController()
-    fetch(`https://tinyurl.com/api-create.php?url=${encodeURIComponent(postUrl)}`, { signal: ctrl.signal })
+    const timeout = setTimeout(() => ctrl.abort(), 8000)
+    const encodedUrl = encodeURIComponent(postUrl)
+    // Try TinyURL first
+    fetch(`https://tinyurl.com/api-create.php?url=${encodedUrl}`, { signal: ctrl.signal })
       .then(r => r.text())
-      .then(u => { if (u.startsWith("http")) setShortUrl(u.trim()) })
-      .catch(() => {})
+      .then(u => {
+        clearTimeout(timeout)
+        if (u.startsWith("http")) {
+          setShortUrl(u.trim())
+          setShortUrlError(false)
+        } else {
+          setShortUrlError(true)
+        }
+      })
+      .catch(() => {
+        clearTimeout(timeout)
+        setShortUrlError(true)
+      })
     // Pre-fetch image blob
     if (image) {
       setImageBlob(null)
@@ -201,9 +216,28 @@ export function SocialShareDialog({ open, onClose, post, socialUrls = {} }: Soci
     return () => ctrl.abort()
   }, [open, image, postUrl])
 
-  const copyToClipboard = async (key: string, text: string) => {
+  const copyToClipboard = async (key: string, platform: string, text: string) => {
     try {
-      await navigator.clipboard.writeText(text)
+      // Ensure we have a short URL — if not yet, fetch synchronously now
+      let finalText = text
+      if (!shortUrl && !shortUrlError) {
+        try {
+          const ctrl = new AbortController()
+          const t = setTimeout(() => ctrl.abort(), 6000)
+          const r = await fetch(`https://tinyurl.com/api-create.php?url=${encodeURIComponent(postUrl)}`, { signal: ctrl.signal })
+          clearTimeout(t)
+          const u = await r.text()
+          if (u.startsWith("http")) {
+            setShortUrl(u.trim())
+            finalText = text.replace(postUrl, u.trim())
+          }
+        } catch {
+          setShortUrlError(true)
+        }
+      } else if (shortUrl) {
+        finalText = text.replace(postUrl, shortUrl)
+      }
+      await navigator.clipboard.writeText(finalText)
       setCopied(key)
       setTimeout(() => setCopied(null), 2000)
     } catch {}
@@ -273,7 +307,8 @@ export function SocialShareDialog({ open, onClose, post, socialUrls = {} }: Soci
 
         <div className="overflow-y-auto px-5 py-4 flex-1 space-y-3">
           {platforms.map((platform) => {
-            const caption = captionFor(platform.id, post.title, excerpt, postUrl, tags, shortUrl)
+            const displayUrl = shortUrl || postUrl
+            const caption = captionFor(platform.id, post.title, excerpt, postUrl, tags, displayUrl)
             const captionShort = caption.length > 180 ? caption.slice(0, 177) + "..." : caption
 
             return (
@@ -309,6 +344,11 @@ export function SocialShareDialog({ open, onClose, post, socialUrls = {} }: Soci
                     <p className="text-xs text-gray-700 dark:text-gray-300 leading-relaxed whitespace-pre-wrap line-clamp-3">
                       {captionShort}
                     </p>
+                    {shortUrlError ? (
+                      <p className="text-[10px] text-amber-600 dark:text-amber-400 mt-1.5">URL shortener unavailable — using full link.</p>
+                    ) : !shortUrl ? (
+                      <p className="text-[10px] text-gray-400 dark:text-gray-500 mt-1.5 flex items-center gap-1"><Loader2 className="h-2.5 w-2.5 animate-spin" /> Shortening link…</p>
+                    ) : null}
                   </div>
                 </div>
 
@@ -316,7 +356,7 @@ export function SocialShareDialog({ open, onClose, post, socialUrls = {} }: Soci
                 <div className="px-4 pb-3 flex gap-2">
                   {/* Copy caption */}
                   <button
-                    onClick={() => copyToClipboard(`cap_${platform.id}`, caption)}
+                    onClick={() => copyToClipboard(`cap_${platform.id}`, platform.id, caption)}
                     className="flex-1 inline-flex items-center justify-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg text-white transition-opacity hover:opacity-90"
                     style={{ backgroundColor: platform.color }}
                   >
