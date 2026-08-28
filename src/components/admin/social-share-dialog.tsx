@@ -187,14 +187,14 @@ export function SocialShareDialog({ open, onClose, post, socialUrls = {} }: Soci
     const ctrl = new AbortController()
     const timeout = setTimeout(() => ctrl.abort(), 8000)
     const encodedUrl = encodeURIComponent(postUrl)
-    // Try TinyURL first
-    fetch(`https://tinyurl.com/api-create.php?url=${encodedUrl}`, { signal: ctrl.signal })
-      .then(r => r.text())
-      .then(u => {
+    // Shorten via our server API (avoids CORS + works from Vercel)
+    fetch(`/api/shorten?url=${encodedUrl}`, { signal: ctrl.signal })
+      .then(r => r.json())
+      .then(data => {
         clearTimeout(timeout)
-        if (u.startsWith("http")) {
-          setShortUrl(u.trim())
-          setShortUrlError(false)
+        if (data && data.shortUrl && data.shortUrl.startsWith("http")) {
+          setShortUrl(data.shortUrl)
+          setShortUrlError(!!data.fallback)
         } else {
           setShortUrlError(true)
         }
@@ -224,12 +224,13 @@ export function SocialShareDialog({ open, onClose, post, socialUrls = {} }: Soci
         try {
           const ctrl = new AbortController()
           const t = setTimeout(() => ctrl.abort(), 6000)
-          const r = await fetch(`https://tinyurl.com/api-create.php?url=${encodeURIComponent(postUrl)}`, { signal: ctrl.signal })
+          const r = await fetch(`/api/shorten?url=${encodeURIComponent(postUrl)}`, { signal: ctrl.signal })
           clearTimeout(t)
-          const u = await r.text()
-          if (u.startsWith("http")) {
-            setShortUrl(u.trim())
-            finalText = text.replace(postUrl, u.trim())
+          const data = await r.json()
+          if (data && data.shortUrl && data.shortUrl.startsWith("http")) {
+            setShortUrl(data.shortUrl)
+            setShortUrlError(!!data.fallback)
+            finalText = text.replace(postUrl, data.shortUrl)
           }
         } catch {
           setShortUrlError(true)

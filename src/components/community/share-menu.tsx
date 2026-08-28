@@ -111,14 +111,14 @@ export function ShareMenu({
     if (!href) setHref(url ?? window.location.href);
   }, [href, url]);
 
-  // Shorten share URL via TinyURL (no DNS/domain config required)
+  // Shorten share URL via server API (avoids CORS, works from any network)
   useEffect(() => {
     const raw = href ?? (typeof window !== 'undefined' ? window.location.href : '');
     if (!raw) return;
     const ctrl = new AbortController();
-    fetch(`https://tinyurl.com/api-create.php?url=${encodeURIComponent(raw)}`, { signal: ctrl.signal })
-      .then(r => r.ok ? r.text() : null)
-      .then(t => { if (t && t.startsWith('http')) setShortUrl(t.trim()); })
+    fetch(`/api/shorten?url=${encodeURIComponent(raw)}`, { signal: ctrl.signal })
+      .then(r => r.ok ? r.json() : null)
+      .then(data => { if (data && data.shortUrl && data.shortUrl.startsWith('http')) setShortUrl(data.shortUrl); })
       .catch(() => {});
     return () => ctrl.abort();
   }, [href]);

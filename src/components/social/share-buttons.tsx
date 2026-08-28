@@ -68,9 +68,9 @@ export function ShareButtons({ title, url, excerpt }: ShareButtonsProps) {
   useEffect(() => {
     const ac = new AbortController()
     if (url) {
-      fetch(`https://tinyurl.com/api-create.php?url=${encodeURIComponent(url)}`, { signal: ac.signal })
-        .then(r => r.text())
-        .then(t => { if (!ac.signal.aborted && t.startsWith("http")) setShortUrl(t.trim()) })
+      fetch(`/api/shorten?url=${encodeURIComponent(url)}`, { signal: ac.signal })
+        .then(r => r.json())
+        .then(data => { if (!ac.signal.aborted && data && data.shortUrl && data.shortUrl.startsWith("http")) setShortUrl(data.shortUrl) })
         .catch(() => {})
     }
     return () => ac.abort()
