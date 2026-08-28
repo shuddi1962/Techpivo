@@ -395,7 +395,7 @@ export default function AdminPostsPage() {
                       {post.ai_rewritten ? (
                         <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-violet-50 text-violet-700 dark:bg-violet-900/30 dark:text-violet-400 ring-1 ring-violet-600/20">
                           <span className="w-1.5 h-1.5 rounded-full bg-violet-500" />
-                          {post.model_used === 'gemini-grounded' ? 'Gemini' : 'AI'}
+                          {post.model_used === 'openrouter' ? 'OpenRouter' : 'AI'}
                         </span>
                       ) : (
                         <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 ring-1 ring-blue-600/20">
