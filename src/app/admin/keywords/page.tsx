@@ -342,7 +342,7 @@ function KeywordsTab({ articles, stats, loading, researchResult, researching, se
             {showSuggestions && suggestions.length > 0 && (
               <div className="absolute top-full left-0 right-0 mt-1 bg-background border rounded-lg shadow-lg z-50 max-h-60 overflow-y-auto">
                 {suggestions.map((s, i) => (
-                  <button key={i} onClick={() => { setSearchInput(s); setSuggestions([]); setShowSuggestions(false) }}
+                  <button key={i} onClick={() => { setSearchInput(s); setShowSuggestions(false) }}
                     className="w-full text-left px-4 py-2.5 text-sm hover:bg-muted flex items-center gap-2 transition-colors">
                     <Search className="h-3.5 w-3.5 text-muted-foreground shrink-0" /> {s}
                   </button>

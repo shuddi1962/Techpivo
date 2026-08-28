@@ -58,6 +58,7 @@ const navGroups: NavGroup[] = [
     label: "Research & SEO",
     links: [
       { href: "/admin/seo", label: "SEO Center", icon: SearchCheck },
+      { href: "/admin/keywords", label: "Keywords", icon: Hash },
       { href: "/admin/indexing", label: "Indexing", icon: Globe },
     ],
   },
