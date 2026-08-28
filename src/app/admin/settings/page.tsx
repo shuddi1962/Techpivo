@@ -296,7 +296,18 @@ export default function AdminSettingsPage() {
             <p className="text-xs text-muted-foreground mb-4">
               Add your social media profile URLs. These are used in the site header, footer, and share buttons.
             </p>
-            {["social_twitter", "social_facebook", "social_instagram", "social_youtube", "social_linkedin", "social_github", "social_telegram", "social_tiktok", "social_discord", "social_reddit"].map(({ key, label, placeholder }) => (
+            {[
+              { key: "social_twitter", label: "X (Twitter) URL", placeholder: "https://x.com/your-handle" },
+              { key: "social_facebook", label: "Facebook URL", placeholder: "https://facebook.com/your-page" },
+              { key: "social_instagram", label: "Instagram URL", placeholder: "https://instagram.com/your-handle" },
+              { key: "social_youtube", label: "YouTube URL", placeholder: "https://youtube.com/@your-channel" },
+              { key: "social_linkedin", label: "LinkedIn URL", placeholder: "https://linkedin.com/company/your-page" },
+              { key: "social_github", label: "GitHub URL", placeholder: "https://github.com/your-org" },
+              { key: "social_telegram", label: "Telegram URL", placeholder: "https://t.me/your-channel" },
+              { key: "social_tiktok", label: "TikTok URL", placeholder: "https://tiktok.com/@your-handle" },
+              { key: "social_discord", label: "Discord URL", placeholder: "https://discord.gg/your-invite" },
+              { key: "social_reddit", label: "Reddit URL", placeholder: "https://reddit.com/r/your-sub" },
+            ].map(({ key, label, placeholder }) => (
               <div key={key}>
                 <Label className="text-sm mb-1 block">{label}</Label>
                 <div className="relative">
