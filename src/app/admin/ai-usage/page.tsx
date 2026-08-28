@@ -3,13 +3,14 @@
 import { useState, useEffect, useCallback, useRef } from "react"
 import { createClient } from "@/lib/supabase/client"
 import {
-  Cpu, DollarSign, Activity, CheckCircle, Clock,
-  RefreshCw, Zap, TrendingUp, Radio
+  Cpu, Activity, CheckCircle, Clock,
+  RefreshCw, Zap, Radio, Wallet
 } from "lucide-react"
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer
 } from "recharts"
+import { getModelFriendlyName } from "@/lib/openrouter-model"
 
 const FEATURE_LABELS: Record<string, string> = {
   manual: "Manual Write",
@@ -32,23 +33,6 @@ const featureLabel = (key: string) =>
   FEATURE_LABELS[key] ||
   key.replace(/_/g, " ").replace(/\b\w/g, (l) => l.toUpperCase())
 
-const MODEL_LABELS: Record<string, string> = {
-  "openrouter/google/gemini-2.5-flash": "Gemini 2.5 Flash (Free)",
-  "openrouter/google/gemini-2.5-flash-preview": "Gemini 2.5 Flash Preview",
-  "openrouter/google/gemini-2.5-pro": "Gemini 2.5 Pro (Paid)",
-  "openrouter/openai/gpt-4o": "GPT-4o (Paid)",
-  "openrouter/openai/gpt-4o-mini": "GPT-4o Mini (Free)",
-  "openrouter/anthropic/claude-sonnet-4": "Claude Sonnet 4 (Paid)",
-  "openrouter/deepseek/deepseek-chat": "DeepSeek Chat (Free)",
-  "openrouter/meta-llama/llama-4-maverick": "Llama 4 Maverick (Free)",
-  "openrouter/qwen/qwen3-235b-a22b": "Qwen 3 235B (Free)",
-  "openrouter/moonshotai/kimi-k2": "Kimi K2 (Free)",
-  "openrouter/nvidia/llama-3.1-nemotron-ultra-253b-v1": "Nemotron Ultra (Free)",
-}
-
-const modelLabel = (slug: string) =>
-  MODEL_LABELS[slug] || slug.split("/").pop()?.replace(/-/g, " ") || slug
-
 export default function AIUsageCenterPage() {
   const supabase = createClient()
   const [loading, setLoading] = useState(true)
@@ -63,18 +47,35 @@ export default function AIUsageCenterPage() {
   const [dailyUsage, setDailyUsage] = useState<{ date: string; requests: number }[]>([])
   const [modelUsage, setModelUsage] = useState<{ name: string; requests: number }[]>([])
   const [recentLogs, setRecentLogs] = useState<any[]>([])
+  const [creditBalance, setCreditBalance] = useState<{ label: string; usage: number; limit: number } | null>(null)
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null)
+  const channel2Ref = useRef<ReturnType<typeof supabase.channel> | null>(null)
 
   const fetchData = useCallback(async () => {
     const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()
     const todayStart = new Date()
     todayStart.setUTCHours(0, 0, 0, 0)
 
-    const [usageRes] = await Promise.all([
+    const [usageRes, featureRes, creditRes] = await Promise.all([
       supabase.from("ai_usage_log").select("*").gte("created_at", thirtyDaysAgo).order("created_at", { ascending: false }).limit(1000),
+      supabase.from("ai_feature_usage").select("*").gte("created_at", thirtyDaysAgo).order("created_at", { ascending: false }).limit(1000),
+      fetch("/api/openrouter").then((r) => r.json()).catch(() => null),
     ])
 
-    const logs = (usageRes.data || []) as any[]
+    // Merge both tables into a unified log shape
+    const manualLogs = (usageRes.data || []).map((l: any) => ({
+      ...l,
+      _source: "ai_usage_log",
+      used_for: l.type || l.used_for || "manual",
+    }))
+    const featureLogs = (featureRes.data || []).map((l: any) => ({
+      ...l,
+      _source: "ai_feature_usage",
+      used_for: l.feature || l.used_for || "unknown",
+    }))
+    const logs = [...manualLogs, ...featureLogs].sort(
+      (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+    )
 
     const todayLogs = logs.filter((l) => new Date(l.created_at) >= todayStart)
     const successLogs = logs.filter((l) => l.status !== "error")
@@ -116,7 +117,7 @@ export default function AIUsageCenterPage() {
     const modelMap: Record<string, number> = {}
     logs.forEach((log) => {
       if (log.model) {
-        const label = modelLabel(log.model)
+        const label = getModelFriendlyName(log.model) || "Unknown"
         modelMap[label] = (modelMap[label] || 0) + 1
       }
     })
@@ -148,21 +149,22 @@ export default function AIUsageCenterPage() {
 
   useEffect(() => { fetchData() }, [fetchData])
 
-  // Realtime subscription
+  // Realtime subscriptions — both tables
   useEffect(() => {
-    const channelName = `ai_usage_realtime_${Date.now()}`
-    const channel = supabase
-      .channel(channelName)
-      .on("postgres_changes", { event: "INSERT", schema: "public", table: "ai_usage_log" }, () => {
-        fetchData()
-      })
+    const ts = Date.now()
+    const ch1 = supabase
+      .channel(`ai_usage_log_rt_${ts}`)
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "ai_usage_log" }, () => fetchData())
       .subscribe()
-    channelRef.current = channel
+    const ch2 = supabase
+      .channel(`ai_feature_usage_rt_${ts}`)
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "ai_feature_usage" }, () => fetchData())
+      .subscribe()
+    channelRef.current = ch1
+    channel2Ref.current = ch2
     return () => {
-      if (channelRef.current) {
-        supabase.removeChannel(channelRef.current)
-        channelRef.current = null
-      }
+      if (channelRef.current) { supabase.removeChannel(channelRef.current); channelRef.current = null }
+      if (channel2Ref.current) { supabase.removeChannel(channel2Ref.current); channel2Ref.current = null }
     }
   }, [supabase, fetchData])
 
@@ -199,13 +201,21 @@ export default function AIUsageCenterPage() {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
         {[
           { label: "Total Requests (30d)", value: stats.totalRequests, icon: Activity, color: "text-blue-500" },
           { label: "Today's Requests", value: stats.todayRequests, icon: Zap, color: "text-purple-500" },
           { label: "Avg Response Time", value: stats.avgResponseTime > 0 ? `${stats.avgResponseTime}ms` : "—", icon: Clock, color: "text-amber-500" },
           { label: "Success Rate", value: stats.successRate > 0 ? `${stats.successRate}%` : "—", icon: CheckCircle, color: "text-green-500" },
           { label: "Models Used", value: stats.uniqueModels, icon: Cpu, color: "text-indigo-500" },
+          {
+            label: "OpenRouter Credits",
+            value: creditBalance
+              ? `$${(creditBalance.limit - creditBalance.usage).toFixed(2)}`
+              : "—",
+            icon: Wallet,
+            color: "text-emerald-500",
+          },
         ].map((stat) => (
           <div key={stat.label} className="bg-white dark:bg-[#111827] border rounded-xl p-4">
             <div className="flex items-center gap-2 mb-2">
@@ -307,7 +317,7 @@ export default function AIUsageCenterPage() {
                 <div key={log.id || i} className="flex items-center justify-between p-2 border rounded text-sm">
                   <div className="flex-1 min-w-0">
                     <p className="font-medium truncate">{featureLabel(log.used_for || log.type || "unknown")}</p>
-                    <p className="text-xs text-muted-foreground truncate">{modelLabel(log.model || "")}</p>
+                    <p className="text-xs text-muted-foreground truncate">{getModelFriendlyName(log.model) || "Unknown"}</p>
                   </div>
                   <div className="flex items-center gap-2 shrink-0 ml-2">
                     {log.status === "error" ? (

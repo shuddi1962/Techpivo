@@ -14,7 +14,7 @@ import { usePublishedPages } from "@/lib/use-site-pages"
 import { STATIC_PAGE_SLUGS } from "@/lib/pages"
 import TurnstileWidget, { TURNSTILE_SITE_KEY } from "@/components/auth/turnstile-widget"
 
-export function Header() {
+export function Header({ socialUrls: socialUrlsProp = {} }: { socialUrls?: Record<string, string> }) {
   const [searchQ, setSearchQ] = useState("")
   const [loginOpen, setLoginOpen] = useState(false)
   const [scrolled, setScrolled] = useState(false)
@@ -23,7 +23,7 @@ export function Header() {
   const [profileName, setProfileName] = useState<string | null>(null)
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [mobileSearch, setMobileSearch] = useState("")
-  const [socialUrls, setSocialUrls] = useState<Record<string, string>>({})
+  const socialUrls = socialUrlsProp
   const [turnstileToken, setTurnstileToken] = useState("")
   const [captchaResetKey, setCaptchaResetKey] = useState(0)
   const [modalLoading, setModalLoading] = useState(false)
@@ -53,15 +53,6 @@ export function Header() {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user ?? null)
       if (session?.user) loadProfile(session.user.id)
-    })
-    supabase.from("social_accounts").select("platform, credentials").then(({ data }) => {
-      if (data) {
-        const map: Record<string, string> = {}
-        data.forEach((a: any) => {
-          if (a.credentials?.follow_url) map[a.platform] = a.credentials.follow_url
-        })
-        setSocialUrls(map)
-      }
     })
     return () => subscription.unsubscribe()
   // eslint-disable-next-line react-hooks/exhaustive-deps

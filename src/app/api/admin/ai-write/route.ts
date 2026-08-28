@@ -25,6 +25,8 @@ async function logManualUsage(
   inputPreview: string,
   headline: string,
   model: string,
+  status: string = "success",
+  durationMs?: number,
 ) {
   await supabase.from("ai_usage_log").insert({
     type:          "manual",
@@ -32,6 +34,8 @@ async function logManualUsage(
     input_preview: inputPreview.slice(0, 100),
     headline:      headline.slice(0, 150),
     model,
+    status,
+    duration_ms:   durationMs ?? null,
     created_at:    new Date().toISOString(),
   })
 }
@@ -132,12 +136,16 @@ export async function POST(req: NextRequest) {
       twitter_image:  enriched.featuredImage,
     }
 
+    const elapsedMs = Date.now() - startTime
+
     await logManualUsage(
       supabase,
       mode,
       input,
       article.headline,
       article.modelUsed,
+      "success",
+      elapsedMs,
     )
 
     return NextResponse.json({

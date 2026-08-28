@@ -25,8 +25,8 @@ export function LayoutWrapper({ children }: { children: React.ReactNode }) {
       supabase.from("posts").select("category_id, subcategory_id").eq("status", "published"),
       supabase.from("categories").select("*, subcategories(*)").eq("is_active", true).order("name"),
       supabase.from("posts").select("id,title,slug,featured_image").eq("status","published").order("published_at",{ascending:false}).limit(6),
-      supabase.from("social_accounts").select("platform, credentials"),
-    ]).then(([postsRes, catsRes, recentRes, socialRes]) => {
+      supabase.from("site_settings").select("key, value").like("key", "social_%"),
+    ]).then(([postsRes, catsRes, recentRes, settingsRes]) => {
       const catIds = new Set((postsRes.data || []).map((p: any) => p.category_id).filter(Boolean) as string[])
       const subcatIds = new Set((postsRes.data || []).map((p: any) => p.subcategory_id).filter(Boolean) as string[])
       if (catsRes.data) {
@@ -39,11 +39,12 @@ export function LayoutWrapper({ children }: { children: React.ReactNode }) {
         setCategories(filtered)
       }
       if (recentRes.data) setRecentPosts(recentRes.data)
-      if (socialRes.data) {
+      if (settingsRes.data) {
         const map: Record<string, string> = {}
-        socialRes.data.forEach((a: any) => {
-          const creds = a.credentials as Record<string, string> | undefined
-          if (creds?.follow_url) map[a.platform] = creds.follow_url
+        settingsRes.data.forEach((row: any) => {
+          const platform = row.key.replace("social_", "")
+          const val = typeof row.value === "string" ? row.value : (row.value as any)?.toString?.() || ""
+          if (val) map[platform] = val
         })
         setSocialUrls(map)
       }
@@ -57,7 +58,7 @@ export function LayoutWrapper({ children }: { children: React.ReactNode }) {
   return (
     <>
       <TopBar socialUrls={socialUrls} />
-      <Header />
+      <Header socialUrls={socialUrls} />
       <MainNav categories={categories} />
       <main>{children}</main>
       {!isAccount && <Footer categories={categories} recentPosts={recentPosts} socialUrls={socialUrls} />}

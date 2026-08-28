@@ -291,6 +291,40 @@ export default function AdminSettingsPage() {
         </Card>
 
         <Card>
+          <CardHeader><CardTitle className="text-lg">Social Media Links</CardTitle></CardHeader>
+          <CardContent className="space-y-4">
+            <p className="text-xs text-muted-foreground mb-4">
+              Add your social media profile URLs. These are used in the site header, footer, and share buttons.
+            </p>
+            {[
+              { key: "social_twitter", label: "Twitter / X", placeholder: "https://x.com/username" },
+              { key: "social_facebook", label: "Facebook", placeholder: "https://facebook.com/username" },
+              { key: "social_instagram", label: "Instagram", placeholder: "https://instagram.com/username" },
+              { key: "social_youtube", label: "YouTube", placeholder: "https://youtube.com/@username" },
+              { key: "social_linkedin", label: "LinkedIn", placeholder: "https://linkedin.com/in/username" },
+              { key: "social_github", label: "GitHub", placeholder: "https://github.com/username" },
+              { key: "social_telegram", label: "Telegram", placeholder: "https://t.me/username" },
+              { key: "social_tiktok", label: "TikTok", placeholder: "https://tiktok.com/@username" },
+              { key: "social_discord", label: "Discord", placeholder: "https://discord.gg/invite-code" },
+              { key: "social_reddit", label: "Reddit", placeholder: "https://reddit.com/user/username" },
+            ].map(({ key, label, placeholder }) => (
+              <div key={key}>
+                <Label className="text-sm mb-1 block">{label}</Label>
+                <div className="relative">
+                  <Input
+                    value={settings[key] || ""}
+                    placeholder={placeholder}
+                    onChange={(e) => handleInputChange(key, e.target.value)}
+                    onBlur={() => handleBlur(key, settings[key])}
+                  />
+                  {dirty.has(key) && <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] text-amber-500">unsaved</span>}
+                </div>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+
+        <Card>
           <CardContent className="p-6">
             <p className="text-sm text-muted-foreground">
               API keys and secrets (OpenRouter, Resend, VAPID) are managed as environment variables on the hosting platform and are never stored in the database.

@@ -114,26 +114,35 @@ function captionFor(platform: string, title: string, _excerpt: string, url: stri
   const excerpt = cleanExcerpt(_excerpt)
   const fallbackTags = tags.length > 0 ? tags : autoHashtags(title, 3)
   const short = shortUrl.startsWith("http") ? shortUrl : url
+  const hashtags = fallbackTags.slice(0, 3).map(cleanTag).join(" ")
 
+  // Unified caption: title + brief + "read full article here → link"
+  const base = `${title}\n\n${excerpt.slice(0, 250)}${excerpt.length > 250 ? "..." : ""}\n\nRead full article here → ${short}`
+
+  // Platform-specific character limits
   switch (platform) {
-    case "facebook":
-      return `${title}\n\n${excerpt.slice(0, 200)}${excerpt.length > 200 ? "..." : ""}\n\nRead full story in the comments:\n${fallbackTags.slice(0, 3).map(cleanTag).join(" ")}`
-    case "instagram":
-      return `${title}\n\n${excerpt.slice(0, 300)}${excerpt.length > 300 ? "..." : ""}\n\n${fallbackTags.slice(0, 10).map(cleanTag).join(" ")}\n\n${short}`
-    case "threads":
-      return `${excerpt.slice(0, 120)}${excerpt.length > 120 ? "..." : ""}\n\n${title}\n\n${short}`
     case "twitter":
-      return `${title.slice(0, 100)}${title.length > 100 ? "..." : ""}\n\n${excerpt.slice(0, 120)}${excerpt.length > 120 ? "..." : ""}\n\n${fallbackTags.slice(0, 2).map(cleanTag).join(" ")}\n\n${short}`
+      // Twitter: 280 chars, hashtags eat into budget
+      const tagStr = fallbackTags.slice(0, 2).map(cleanTag).join(" ")
+      const twitterMax = 280 - tagStr.length - 2
+      const truncated = base.length > twitterMax ? base.slice(0, twitterMax - 3) + "..." : base
+      return `${truncated}\n\n${tagStr}`
+    case "instagram":
+      return `${base}\n\n${hashtags}`
+    case "threads":
+      return base
     case "linkedin":
-      return `${title}\n\n${excerpt.slice(0, 300)}${excerpt.length > 300 ? "..." : ""}\n\n${fallbackTags.slice(0, 3).map(cleanTag).join(" ")}\n\nRead more: ${short}`
+      return base
     case "telegram":
-      return `${title}\n\n${excerpt.slice(0, 250)}${excerpt.length > 250 ? "..." : ""}\n\n${fallbackTags.slice(0, 3).map(cleanTag).join(" ")}\n\n${short}`
+      return base
+    case "facebook":
+      return base
     case "reddit":
-      return `${title}\n\n${excerpt.slice(0, 300)}${excerpt.length > 300 ? "..." : ""}\n\n${short}`
+      return base
     case "pinterest":
-      return `${title}\n\n${excerpt.slice(0, 200)}${excerpt.length > 200 ? "..." : ""}\n\n${fallbackTags.slice(0, 3).map(cleanTag).join(" ")}\n\n${short}`
+      return base
     default:
-      return `${title}\n\n${excerpt}\n\nRead more: ${short}`
+      return base
   }
 }
 
