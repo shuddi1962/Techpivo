@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { cn } from '@/lib/utils';
 import { Check, Link2, Share2 } from 'lucide-react';
-import { shortenUrl } from '@/lib/short-url';
 
 const XLogo = ({ className }: { className?: string }) => (
   <svg viewBox="0 0 1200 1227" className={className} fill="currentColor" aria-hidden="true">
@@ -112,13 +111,14 @@ export function ShareMenu({
     if (!href) setHref(url ?? window.location.href);
   }, [href, url]);
 
-  // Shorten share URL via short.io
+  // Shorten share URL via TinyURL (no DNS/domain config required)
   useEffect(() => {
     const raw = href ?? (typeof window !== 'undefined' ? window.location.href : '');
     if (!raw) return;
     const ctrl = new AbortController();
-    shortenUrl(raw, ctrl.signal)
-      .then(u => { if (u && u.startsWith('http')) setShortUrl(u); })
+    fetch(`https://tinyurl.com/api-create.php?url=${encodeURIComponent(raw)}`, { signal: ctrl.signal })
+      .then(r => r.ok ? r.text() : null)
+      .then(t => { if (t && t.startsWith('http')) setShortUrl(t.trim()); })
       .catch(() => {});
     return () => ctrl.abort();
   }, [href]);
