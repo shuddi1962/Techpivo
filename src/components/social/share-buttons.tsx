@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import { shortenUrl } from "@/lib/short-url"
 
 interface ShareButtonsProps {
   title: string
@@ -67,14 +68,7 @@ export function ShareButtons({ title, url, excerpt }: ShareButtonsProps) {
 
   useEffect(() => {
     const ac = new AbortController()
-    async function shorten() {
-      try {
-        const r = await fetch(`https://tinyurl.com/api-create.php?url=${encodeURIComponent(url)}`, { signal: ac.signal })
-        const t = await r.text()
-        if (!ac.signal.aborted && t.startsWith("http")) setShortUrl(t)
-      } catch {}
-    }
-    if (url) shorten()
+    if (url) shortenUrl(url, ac.signal).then(u => { if (!ac.signal.aborted && u) setShortUrl(u) })
     return () => ac.abort()
   }, [url])
 

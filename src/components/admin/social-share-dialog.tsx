@@ -4,6 +4,7 @@ import { useState, useEffect } from "react"
 import NextImage from "next/image"
 import { X, Share2, Check, ExternalLink, Copy, Image as ImageIcon, Loader2 } from "lucide-react"
 import { SITE_URL } from "@/lib/constants"
+import { shortenUrl } from "@/lib/short-url"
 
 interface PostData {
   id: string
@@ -182,11 +183,10 @@ export function SocialShareDialog({ open, onClose, post, socialUrls = {} }: Soci
   useEffect(() => {
     if (!open) return
     setShortUrl("")
-    // Fetch short URL
+    // Fetch short URL via short.io
     const ctrl = new AbortController()
-    fetch(`https://tinyurl.com/api-create.php?url=${encodeURIComponent(postUrl)}`, { signal: ctrl.signal })
-      .then(r => r.text())
-      .then(u => { if (u.startsWith("http")) setShortUrl(u.trim()) })
+    shortenUrl(postUrl, ctrl.signal)
+      .then(u => { if (u && u.startsWith("http")) setShortUrl(u) })
       .catch(() => {})
     // Pre-fetch image blob
     if (image) {
