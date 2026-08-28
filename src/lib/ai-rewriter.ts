@@ -269,31 +269,6 @@ const BANNED_PHRASES = [
   "realm of possibilities",
 ]
 
-const CORRECTIVE_PROMPTS: Record<string, string> = {
-  json_parse_fail_after_object_extract:
-    "Your previous response could not be parsed as JSON. You MUST respond with ONLY a single valid raw JSON object — no markdown, no code fences (```), no text before or after the JSON, and no comments or trailing commas inside it. Double-check that every string is properly quoted and escaped (especially the HTML content field — any inner double quotes must be escaped as \\\"). Return ONLY the JSON object.",
-  no_json_object_found:
-    "Your previous response contained no JSON object at all. You MUST respond with ONLY a single valid raw JSON object — no markdown, no code fences, no preamble or explanation. Return ONLY the JSON object.",
-  raw_too_short:
-    "Your previous response was too short to be a complete article. You MUST write the full article (at least 700 words) and return it as a single valid JSON object with all required fields.",
-  truncated:
-    "Your previous response was cut off before it finished. Regenerate the complete article in a more concise form (minimum acceptable word count) and return it as a single valid JSON object with all required fields.",
-  no_h2_in_content:
-    "Your previous response was rejected because there were no <h2> or <h3> section headings in the content. You MUST include at least one heading tag (`<h2>` or `<h3>`) to structure the article. Please regenerate with proper HTML section headings.",
-  faq_too_few:
-    "Your previous response was rejected because there weren't enough FAQ entries. You MUST include at least 2 FAQ items — each with a question longer than 5 characters and an answer longer than 10 characters.",
-  keyPoints_too_few:
-    "Your previous response was rejected because there weren't enough key points. You MUST include at least 2 key points, each longer than 10 characters.",
-  content_too_short:
-    "Your previous response was rejected because the content was too short. Please write a more comprehensive article (at least 300 characters).",
-  missing_headline:
-    "Your previous response was rejected because the 'headline' field was missing. Please include a headline.",
-  missing_content:
-    "Your previous response was rejected because the 'content' field was missing. Please include article content.",
-  headline_too_long:
-    "Your previous response was rejected because the headline was too long (over 20 words). Write a concise headline of 50-70 characters (under 12 words). Return ONLY the corrected full JSON object.",
-}
-
 export function repairJson(str: string): string {
   // String-aware pass: strip comments ONLY outside strings (never touch URLs
   // like https:// inside values) and escape literal newlines inside strings.
@@ -478,8 +453,7 @@ export function validate(raw: string, model: AIArticle['modelUsed']): { article:
         catch (e3) {
           const sample = quotesFixed.replace(/\s+/g, ' ').slice(0, 120)
           // Enrich the reason with the ACTUAL JSON.parse error message so the
-          // user's debug string shows WHY the parse failed (safe: corrective
-          // lookup is CORRECTIVE_PROMPTS[reason] ? reason : reason.split(':')[0]).
+          // user's debug string shows WHY the parse failed.
           const errMsg = String((e3 as Error)?.message ?? e3 ?? 'unknown').replace(/[\s:]+/g, ' ').trim().slice(0, 60)
           return { article: null, reason: `json_parse_fail_after_object_extract:${quotesFixed.length}:${errMsg}:${sample}` }
         }
