@@ -101,6 +101,7 @@ export function ShareMenu({
   const [open, setOpen] = useState(false);
   const [copied, setCopied] = useState(false);
   const [href, setHref] = useState<string | null>(url ?? null);
+  const [shortUrl, setShortUrl] = useState('');
   const rootRef = useRef<HTMLDivElement>(null);
 
   const close = useCallback(() => setOpen(false), []);
@@ -109,6 +110,18 @@ export function ShareMenu({
   useEffect(() => {
     if (!href) setHref(url ?? window.location.href);
   }, [href, url]);
+
+  // Shorten share URL via TinyURL
+  useEffect(() => {
+    const raw = href ?? (typeof window !== 'undefined' ? window.location.href : '');
+    if (!raw) return;
+    const ctrl = new AbortController();
+    fetch(`https://tinyurl.com/api-create.php?url=${encodeURIComponent(raw)}`, { signal: ctrl.signal })
+      .then(r => r.ok ? r.text() : null)
+      .then(t => { if (t && t.startsWith('http')) setShortUrl(t); })
+      .catch(() => {});
+    return () => ctrl.abort();
+  }, [href]);
 
   useEffect(() => {
     if (!open) return;
@@ -127,13 +140,14 @@ export function ShareMenu({
   }, [open, close]);
 
   const shareUrl = href ?? (typeof window !== 'undefined' ? window.location.href : '');
+  const effectiveUrl = shortUrl || shareUrl;
 
   const copyLink = async () => {
     try {
-      await navigator.clipboard.writeText(shareUrl);
+      await navigator.clipboard.writeText(effectiveUrl);
     } catch {
       const ta = document.createElement('textarea');
-      ta.value = shareUrl;
+      ta.value = effectiveUrl;
       ta.style.position = 'fixed';
       ta.style.opacity = '0';
       document.body.appendChild(ta);
@@ -147,7 +161,7 @@ export function ShareMenu({
 
   const webmailOptions = () => {
     const subject = encodeURIComponent(title);
-    const body = encodeURIComponent(`${title}\n${shareUrl}`);
+    const body = encodeURIComponent(`${title}\n${effectiveUrl}`);
     return [
       { key: 'gmail', label: 'Gmail', url: `https://mail.google.com/mail/?view=cm&fs=1&su=${subject}&body=${body}` },
       { key: 'outlook', label: 'Outlook', url: `https://outlook.live.com/mail/0/deeplink/compose?subject=${subject}&body=${body}` },
@@ -163,7 +177,7 @@ export function ShareMenu({
   const nativeShare = async () => {
     if (!navigator.share) return;
     try {
-      await navigator.share({ title, url: shareUrl });
+      await navigator.share({ title, url: effectiveUrl });
       close();
     } catch {
       // user cancelled — keep menu open
@@ -238,7 +252,7 @@ export function ShareMenu({
                 role="menuitem"
                 title={t.label}
                 aria-label={`Share on ${t.label}`}
-                onClick={() => openShare(t.href(shareUrl, title))}
+                onClick={() => openShare(t.href(effectiveUrl, title))}
                 className="flex h-9 items-center justify-center rounded-lg transition-transform hover:scale-105"
                 style={{ background: t.bg, color: t.color }}
               >

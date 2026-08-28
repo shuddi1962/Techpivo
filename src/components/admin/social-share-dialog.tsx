@@ -119,7 +119,7 @@ function captionFor(platform: string, title: string, _excerpt: string, url: stri
   // Unified caption: title + brief + "read full article here → link"
   const base = `${title}\n\n${excerpt.slice(0, 250)}${excerpt.length > 250 ? "..." : ""}\n\nRead full article here → ${short}`
 
-  // Platform-specific character limits
+  // Platform-specific character limits + hashtags
   switch (platform) {
     case "twitter":
       // Twitter: 280 chars, hashtags eat into budget
@@ -128,19 +128,33 @@ function captionFor(platform: string, title: string, _excerpt: string, url: stri
       const truncated = base.length > twitterMax ? base.slice(0, twitterMax - 3) + "..." : base
       return `${truncated}\n\n${tagStr}`
     case "instagram":
+      // Instagram: 2200 chars, up to 15 hashtags
+      const igTags = fallbackTags.slice(0, 15).map(cleanTag).join(" ")
+      return `${base}\n\n${igTags}`
+    case "facebook":
+      // Facebook: no char limit, add hashtags
+      return `${base}\n\n${hashtags}`
+    case "linkedin":
+      // LinkedIn: 3000 chars, add hashtags
+      return `${base}\n\n${hashtags}`
+    case "telegram":
+      // Telegram: 4096 chars, add hashtags
       return `${base}\n\n${hashtags}`
     case "threads":
-      return base
-    case "linkedin":
-      return base
-    case "telegram":
-      return base
-    case "facebook":
-      return base
+      // Threads: 500 chars, add hashtags
+      const threadsTags = fallbackTags.slice(0, 3).map(cleanTag).join(" ")
+      const threadsMax = 500 - threadsTags.length - 2
+      const threadsTruncated = base.length > threadsMax ? base.slice(0, threadsMax - 3) + "..." : base
+      return `${threadsTruncated}\n\n${threadsTags}`
     case "reddit":
-      return base
+      // Reddit: title only (300 chars), link separate — add hashtags to title
+      return `${title} ${hashtags.slice(0, 100)}`
     case "pinterest":
-      return base
+      // Pinterest: 500 chars, add hashtags at end
+      const pinTags = fallbackTags.slice(0, 3).map(cleanTag).join(" ")
+      const pinMax = 500 - pinTags.length - 2
+      const pinTruncated = base.length > pinMax ? base.slice(0, pinMax - 3) + "..." : base
+      return `${pinTruncated}\n\n${pinTags}`
     default:
       return base
   }

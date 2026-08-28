@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 
 interface ShareButtonsProps {
   title: string
@@ -63,12 +63,29 @@ const platforms = [
 
 export function ShareButtons({ title, url, excerpt }: ShareButtonsProps) {
   const [copied, setCopied] = useState("")
+  const [shortUrl, setShortUrl] = useState("")
+
+  useEffect(() => {
+    const ac = new AbortController()
+    async function shorten() {
+      try {
+        const r = await fetch(`https://tinyurl.com/api-create.php?url=${encodeURIComponent(url)}`, { signal: ac.signal })
+        const t = await r.text()
+        if (!ac.signal.aborted && t.startsWith("http")) setShortUrl(t)
+      } catch {}
+    }
+    if (url) shorten()
+    return () => ac.abort()
+  }, [url])
+
+  const effectiveUrl = shortUrl || url
+
   function openShare(shareUrl: string) {
     window.open(shareUrl, "_blank", "noopener,noreferrer,width=600,height=400")
   }
   async function copyLink(platform: string) {
     try {
-      await navigator.clipboard.writeText(url)
+      await navigator.clipboard.writeText(effectiveUrl)
       setCopied(platform)
       setTimeout(() => setCopied(""), 2000)
     } catch { /* fallback */ }
@@ -82,7 +99,7 @@ export function ShareButtons({ title, url, excerpt }: ShareButtonsProps) {
           title={`Share on ${platform.name}`}
           onClick={() => {
             const p = platform as any
-            p.copyLink ? copyLink(p.name) : openShare(p.getUrl(title, url, excerpt))
+            p.copyLink ? copyLink(p.name) : openShare(p.getUrl(title, effectiveUrl, excerpt))
           }}
           className="relative flex items-center justify-center w-8 h-8 rounded-md hover:bg-black/5 dark:hover:bg-white/10 transition-colors"
         >
