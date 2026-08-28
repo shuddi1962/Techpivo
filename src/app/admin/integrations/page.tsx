@@ -298,10 +298,10 @@ const integrations: Integration[] = [
     ],
   },
   {
-    id: "google_ai_studio", name: "Google AI Studio", logo: <GoogleAIStudioLogo size={32} />, category: "developer", timeline: "Week 1", benefit: "Rotate Gemini key",
+    id: "google_ai_studio", name: "Google AI Studio", logo: <GoogleAIStudioLogo size={32} />, category: "developer", timeline: "Week 1", benefit: "Multi-key rotation",
     credsUrl: "https://aistudio.google.com/apikey",
     fields: [
-      { key: "api_key", label: "Gemini API Key", placeholder: "AIza...", type: "password" },
+      { key: "api_key", label: "Google AI API Key", placeholder: "AIza...", type: "password" },
     ], hasAutoPublish: false,
     guide: [
       "Go to Google AI Studio and sign in with your Google account",

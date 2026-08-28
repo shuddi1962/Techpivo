@@ -13,7 +13,6 @@ import {
   RedditLogo, WhatsAppLogo, MediumLogo, DevtoLogo, HashnodeLogo,
   FlipboardLogo, BingLogo, PerplexityLogo, GoogleNewsLogo,
   ResendLogo, IndexNowLogo, PexelsLogo, OpenRouterLogo,
-  GoogleAIStudioLogo,
 } from "@/components/integrations/platform-logos"
 
 interface PlatformDef {
@@ -47,7 +46,6 @@ const platforms: PlatformDef[] = [
   { id: "indexnow", name: "IndexNow", logo: <IndexNowLogo size={28} />, color: "#F57C00", timeline: "Week 1", benefit: "Instant Bing indexing", category: "developer", connectUrl: "https://indexnow.org", description: "Instantly index content on Bing" },
   { id: "pexels", name: "Pexels API", logo: <PexelsLogo size={28} />, color: "#05A081", timeline: "Week 1", benefit: "Article images", category: "developer", connectUrl: "https://www.pexels.com/api", description: "Auto-fetch images for articles" },
   { id: "openrouter", name: "OpenRouter", logo: <OpenRouterLogo size={28} />, color: "#FF6B35", timeline: "Week 1", benefit: "AI fallback model", category: "developer", connectUrl: "https://openrouter.ai", description: "AI model fallback for content generation" },
-  { id: "google_ai_studio", name: "Google AI Studio", logo: <GoogleAIStudioLogo size={28} />, color: "#4285F4", timeline: "Week 1", benefit: "Rotate Gemini key", category: "developer", connectUrl: "https://aistudio.google.com", description: "Multi-key Gemini rotation for reliability" },
 ]
 
 const categoryConfig = {

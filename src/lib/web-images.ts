@@ -5,7 +5,7 @@
 //
 // Brand safety: every web result is filtered through src/lib/image-brand-check
 // (outlet/logo/watermark host + metadata signals), and searchWebImage runs a
-// best-effort Gemini vision check on the winner so articles never ship an
+// best-effort AI vision check on the winner so articles never ship an
 // image carrying another brand/company/outlet name or logo. Vision is
 // best-effort only — it never blocks a write.
 

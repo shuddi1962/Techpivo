@@ -355,7 +355,7 @@ export default function AgentReachPage() {
           <h1 className="text-2xl font-bold">Agent Reach — Research Center</h1>
           <p className="text-sm text-muted-foreground mt-1">
             Live, real-time research channels. Everything you see here is fetched live — no
-            mock data. Writing is handled by Gemini like a human expert reporter.
+            mock data. Writing is handled by AI like a human expert reporter.
           </p>
         </div>
         <div className="flex items-center gap-2">

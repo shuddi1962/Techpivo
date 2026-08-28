@@ -311,7 +311,7 @@ export function repairJson(str: string): string {
     .trim()
 }
 
-// Gemini sometimes writes HTML (e.g. <img src="x">) inside the JSON "content"
+// AI models sometimes write HTML (e.g. <img src="x">) inside the JSON "content"
 // string WITHOUT escaping the inner double quotes — JSON.parse then dies at
 // the first unescaped quote. This pass walks the text and backslash-escapes
 // every quote that sits MID-value inside a string (a string only legitimately
@@ -328,7 +328,7 @@ export function escapeInnerQuotes(str: string): string {
       if (ch === '\\') { escaped = true; out += ch; i++; continue }
       if (ch === '"') {
         let j = i + 1
-        // skip JSON whitespace (space/tab/newline/CR) — Gemini often
+        // skip JSON whitespace (space/tab/newline/CR) — AI models often
         // pretty-prints, so a closing quote may be followed by ",\n  \"key\""
         while (j < str.length && ' \t\r\n'.includes(str[j])) j++
         const next = j >= str.length ? '' : str[j]
@@ -795,7 +795,7 @@ async function semanticDuplicateCheck(
 }
 
 // ── OPENROUTER FALLBACK ───────────────────────────────────────────────────
-// When Gemini is exhausted (429 / cap / validate-fail), fall back to
+// When the primary model is exhausted (429 / cap / validate-fail), fall back to
 // OpenRouter free-tier models. Same prompt, same JSON schema, same
 // validate() — just a different transport layer.
 //
@@ -950,7 +950,7 @@ export async function manualWriteFromUrl(url: string): Promise<{ article: AIArti
       }
     }
   } catch {
-    console.warn(`[Techpivo Manual] Could not pre-fetch ${url}, relying on Gemini grounding`)
+    console.warn(`[Techpivo Manual] Could not pre-fetch ${url}, relying on OpenRouter grounding`)
   }
 
   // Second pass: semantic check against existing post titles AND content —
@@ -967,7 +967,7 @@ export async function manualWriteFromUrl(url: string): Promise<{ article: AIArti
 
   const prompt = buildManualPrompt(input, "url", sourceName)
 
-  // OpenRouter only — no Gemini fallback
+  // OpenRouter only
   const orResult = await callOpenRouterArticle(prompt, 'manual')
   if (orResult.article) {
     console.log(`[✓ OpenRouter] ${orResult.article.headline.slice(0, 55)}`)

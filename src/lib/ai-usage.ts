@@ -102,7 +102,7 @@ export async function getAIUsageStats(days: number = 30): Promise<AIUsageStats> 
     byDayMap[day].requests++
   }
 
-  // Estimate cost (rough: $0.075 per 1M input tokens, $0.30 per 1M output tokens for Gemini Flash)
+  // Estimate cost (rough: $0.075 per 1M input tokens, $0.30 per 1M output tokens)
   const estimatedCostCents = Math.round(totalRequests * 2.5) // ~2.5 cents per request average
 
   const byDay = Object.entries(byDayMap)

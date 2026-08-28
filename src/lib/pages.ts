@@ -933,7 +933,7 @@ Sponsored content is clearly labelled. Affiliate relationships are disclosed. Wh
 
 ## Use of AI Assistance
 
-Techpivo uses AI tools (including Google Gemini) to assist with:
+Techpivo uses AI tools to assist with:
 
 - **Research**: gathering and organizing information from multiple sources
 - **Drafting**: generating initial content structures and drafts

@@ -32,7 +32,7 @@ async function fetchPageSpeed() {
 async function fetchStats(supabase: any) {
   const today = new Date().toISOString().slice(0, 10)
 
-  const [postsRes, draftCountRes, scheduledRes, archivedRes, todayRssPostsRes, todayAllPostsRes, totalFeedRes, geminiRes] = await Promise.allSettled([
+  const [postsRes, draftCountRes, scheduledRes, archivedRes, todayRssPostsRes, todayAllPostsRes, totalFeedRes, aiRes] = await Promise.allSettled([
     supabase.from('posts').select('id, views, title, slug, published_at').eq('status', 'published'),
     supabase.from('posts').select('id', { count: 'exact', head: true }).eq('status', 'draft'),
     supabase.from('posts').select('id', { count: 'exact', head: true }).eq('status', 'scheduled'),
@@ -66,7 +66,7 @@ async function fetchStats(supabase: any) {
     ].filter(s => s.value > 0),
     todayArticles: todayAllPostsRes.status === 'fulfilled' ? todayAllPostsRes.value.count || 0 : 0,
     rssArticlesToday: todayRssPostsRes.status === 'fulfilled' ? todayRssPostsRes.value.count || 0 : 0,
-    geminiToday: geminiRes.status === 'fulfilled' ? geminiRes.value.count || 0 : 0,
+    aiToday: aiRes.status === 'fulfilled' ? aiRes.value.count || 0 : 0,
     totalFeedPosts: totalFeedRes.status === 'fulfilled'
       ? (totalFeedRes.value.data || []).reduce((s: number, f: any) => s + (f.posts_fetched || 0), 0) : 0,
     topPosts: sorted.map((p: any) => ({

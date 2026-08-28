@@ -91,7 +91,7 @@ export async function GET(req: Request) {
           results.push({ title: ai.headline.slice(0, 50), status: 'reformatted' })
         }
 
-        // Rate limit: 1 second between Gemini calls
+        // Rate limit: 1 second between AI calls
         await new Promise(r => setTimeout(r, 1000))
 
       } catch (e) {

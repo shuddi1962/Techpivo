@@ -200,6 +200,15 @@ export function openRouterModelOrder(primary: string): string[] {
     .filter((m) => !seen.has(m) && seen.add(m))
 }
 
+// Look up the friendly display name for a model ID
+export function getModelFriendlyName(modelId: string | null | undefined): string {
+  if (!modelId) return ""
+  const match = OPENROUTER_MODEL_OPTIONS.find((o) => o.id === modelId)
+  if (match) return match.name
+  // Fallback: extract last segment and clean it up
+  return modelId.split("/").pop()?.replace(/[-:]/g, " ") || modelId
+}
+
 // Validate model ID format (provider/model or provider/model:variant)
 const SAFE_MODEL_RE = /^[a-z0-9][a-z0-9._-]{0,63}(\/[a-z0-9][a-z0-9._-]{0,63}){1,2}(:[a-z0-9_-]+)?$/i
 
