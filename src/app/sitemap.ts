@@ -7,6 +7,20 @@ import type { MetadataRoute } from "next"
 
 export const revalidate = 3600
 
+async function fetchWithTimeout<T>(query: any, ms: number): Promise<{ data: T | null } | null> {
+  const controller = new AbortController()
+  const timeout = new Promise<'timeout'>((resolve) => setTimeout(() => resolve('timeout'), ms))
+  const result = await Promise.race([
+    query,
+    timeout,
+  ])
+  if (result === 'timeout') {
+    controller.abort()
+    return null
+  }
+  return result as { data: T | null }
+}
+
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const supabase = createPublicClient()
   const now = new Date().toISOString()
@@ -16,21 +30,21 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   let pagePublishState = new Map<string, boolean>()
   try {
     const [postsRes, catsRes, subsRes, profilesRes, seriesRes, kwArticlesRes, pagesRes] = await Promise.all([
-      supabase.from("posts").select("slug, updated_at, published_at, robots_noindex, author_id, category_id").eq("status", "published").order("published_at", { ascending: false }).limit(500),
-      supabase.from("categories").select("id, slug").eq("is_active", true),
-      supabase.from("subcategories").select("slug, category_id").eq("is_active", true),
-      supabase.from("profiles").select("username, id"),
-      supabase.from("series").select("slug"),
-      supabase.from("keyword_articles").select("slug, updated_at").eq("status", "published").order("published_at", { ascending: false }).limit(500),
-      supabase.from("site_pages").select("slug, is_published"),
+      fetchWithTimeout(supabase.from("posts").select("slug, updated_at, published_at, robots_noindex, author_id, category_id").eq("status", "published").order("published_at", { ascending: false }).limit(500), 15000),
+      fetchWithTimeout(supabase.from("categories").select("id, slug").eq("is_active", true), 15000),
+      fetchWithTimeout(supabase.from("subcategories").select("slug, category_id").eq("is_active", true), 15000),
+      fetchWithTimeout(supabase.from("profiles").select("username, id"), 15000),
+      fetchWithTimeout(supabase.from("series").select("slug"), 15000),
+      fetchWithTimeout(supabase.from("keyword_articles").select("slug, updated_at").eq("status", "published").order("published_at", { ascending: false }).limit(500), 15000),
+      fetchWithTimeout(supabase.from("site_pages").select("slug, is_published"), 15000),
     ])
-    posts = postsRes.data || []
-    categories = catsRes.data || []
-    subcategories = subsRes.data || []
-    profiles = profilesRes.data || []
-    series = seriesRes.data || []
-    kwArticles = kwArticlesRes.data || []
-    pagePublishState = new Map((pagesRes.data || []).map((p: any) => [p.slug, !!p.is_published]))
+    posts = postsRes?.data ?? []
+    categories = catsRes?.data ?? []
+    subcategories = subsRes?.data ?? []
+    profiles = profilesRes?.data ?? []
+    series = seriesRes?.data ?? []
+    kwArticles = kwArticlesRes?.data ?? []
+    pagePublishState = new Map((pagesRes?.data ?? []).map((p: any) => [p.slug, !!p.is_published]))
   } catch (e) {
     console.error("Sitemap data fetch failed, serving static pages only", e)
   }
