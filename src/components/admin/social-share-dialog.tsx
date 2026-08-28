@@ -164,9 +164,10 @@ interface SocialShareDialogProps {
   open: boolean
   onClose: () => void
   post: PostData
+  socialUrls?: Record<string, string>
 }
 
-export function SocialShareDialog({ open, onClose, post }: SocialShareDialogProps) {
+export function SocialShareDialog({ open, onClose, post, socialUrls = {} }: SocialShareDialogProps) {
   const [copied, setCopied] = useState<string | null>(null)
   const [imageBlob, setImageBlob] = useState<Blob | null>(null)
   const [imageLoading, setImageLoading] = useState(false)
@@ -342,9 +343,16 @@ export function SocialShareDialog({ open, onClose, post }: SocialShareDialogProp
                     )}
                   </button>
 
-                  {/* Open platform */}
+                  {/* Open platform - use user's social profile URL from settings */}
                   <button
-                    onClick={() => window.open(platform.url, "_blank", "noopener,noreferrer")}
+                    onClick={() => {
+                      const profileUrl = socialUrls[platform.id]
+                      if (profileUrl) {
+                        window.open(profileUrl, "_blank", "noopener,noreferrer")
+                      } else {
+                        window.open(platform.url, "_blank", "noopener,noreferrer")
+                      }
+                    }}
                     className="flex-1 inline-flex items-center justify-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg text-white transition-opacity hover:opacity-90"
                     style={{ backgroundColor: platform.color }}
                   >

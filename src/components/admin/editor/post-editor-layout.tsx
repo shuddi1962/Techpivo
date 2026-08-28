@@ -16,12 +16,29 @@ import { InternalLinksPanel } from "./panels/internal-links-panel"
 import { QuickBriefPanel } from "./panels/quick-brief-panel"
 import { Save, Send, Eye, ArrowLeft, Loader2, Share2 } from "lucide-react"
 import { SocialShareDialog } from "@/components/admin/social-share-dialog"
+import { createClient } from "@/lib/supabase/client"
 
 export function PostEditorLayout() {
   const router = useRouter()
   const { post, isSaving, loading, dirty, lastSaved, saveDraft, publish } = usePostEditor()
   const [shareOpen, setShareOpen] = useState(false)
   const [previewing, setPreviewing] = useState(false)
+  const [socialUrls, setSocialUrls] = useState<Record<string, string>>({})
+
+  useEffect(() => {
+    const supabase = createClient()
+    supabase.from("site_settings").select("key, value").like("key", "social_%").then(({ data }) => {
+      if (data) {
+        const map: Record<string, string> = {}
+        data.forEach((row: any) => {
+          const platform = row.key.replace("social_", "")
+          const val = typeof row.value === "string" ? row.value : (row.value as any)?.toString?.() || ""
+          if (val) map[platform] = val
+        })
+        setSocialUrls(map)
+      }
+    })
+  }, [])
 
   const handlePreview = useCallback(async () => {
     if (previewing) return
@@ -159,6 +176,7 @@ export function PostEditorLayout() {
           featured_image: post.featured_image || post.og_image || "",
           tags: post.tags || [],
         }}
+        socialUrls={socialUrls}
       />
 
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
