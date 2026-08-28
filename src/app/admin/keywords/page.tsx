@@ -217,7 +217,7 @@ export default function AdminKeywordsPage() {
                   onChange={(e) => { setSearchInput(e.target.value); fetchSuggestions(e.target.value) }}
                   onKeyDown={(e) => { if (e.key === "Enter") { setShowSuggestions(false); doResearch() } }}
                   onFocus={() => suggestions.length > 0 && setShowSuggestions(true)}
-                  placeholder="Search keywords or add a new topic to research with Gemini..."
+                  placeholder="Search keywords or add a new topic to research with AI..."
                   className="w-full h-10 pl-9 pr-3 rounded-lg border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
                 />
               </div>
@@ -246,7 +246,7 @@ export default function AdminKeywordsPage() {
             <div className="mt-4 p-4 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg">
               <div className="flex items-center gap-2 text-amber-700 dark:text-amber-300">
                 <Loader2 className="h-4 w-4 animate-spin" />
-                <span className="text-sm font-medium">Gemini researching &quot;{searchInput.trim()}&quot; with Google Search Grounding...</span>
+                <span className="text-sm font-medium">AI researching &quot;{searchInput.trim()}&quot; with web search...</span>
               </div>
               <p className="text-xs text-amber-600 dark:text-amber-400 mt-1">Writing article, generating SEO metadata, answer capsule, key points, FAQ, sourcing images</p>
             </div>

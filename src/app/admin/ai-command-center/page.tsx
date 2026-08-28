@@ -70,16 +70,16 @@ export default function AICommandCenterPage() {
     try {
       const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()
 
-      const [postsRes, geminiRes, guardrailsRes] = await Promise.all([
+      const [postsRes, aiUsageRes, guardrailsRes] = await Promise.all([
         supabase.from("posts").select("id, title, status, ai_rewritten, published_at, created_at")
           .gte("created_at", thirtyDaysAgo),
-        supabase.from("gemini_usage_log").select("*")
+        supabase.from("ai_usage_log").select("*")
           .gte("created_at", thirtyDaysAgo).limit(5000),
         supabase.from("ai_settings").select("value").eq("key", "guardrails").single(),
       ])
 
       const posts = postsRes.data || []
-      const geminiLogs = geminiRes.data || []
+      const aiLogs = aiUsageRes.data || []
 
       const published = posts.filter(p => p.status === "published")
       const aiGenerated = posts.filter(p => p.ai_rewritten)
@@ -89,8 +89,8 @@ export default function AICommandCenterPage() {
         publishedThisMonth: published.length,
         avgEditsPerDraft: 0,
         factCheckCatchRate: 0,
-        totalCostCents: geminiLogs.length * 250,
-        costPerArticle: aiGenerated.length > 0 ? Math.round((geminiLogs.length * 250) / aiGenerated.length) : 0,
+        totalCostCents: aiLogs.length * 250,
+        costPerArticle: aiGenerated.length > 0 ? Math.round((aiLogs.length * 250) / aiGenerated.length) : 0,
       })
 
       // Derive real tasks from actual posts in the AI pipeline
@@ -99,7 +99,7 @@ export default function AICommandCenterPage() {
         let type = "draft"
         let status = "completed"
         let progress = 100
-        let model = "Gemini 2.5 Flash"
+        let model = "OpenRouter"
 
         if (post.status === "draft" || post.status === "review") {
           status = "running"
@@ -126,15 +126,15 @@ export default function AICommandCenterPage() {
         }
       })
 
-      // Also add recent gemini_usage_log entries as research tasks
-      const researchTasks: AITask[] = (geminiLogs.slice(0, 5) as any[]).map((log, i) => ({
-        id: `gemini-${i}`,
+      // Also add recent ai_usage_log entries as research tasks
+      const researchTasks: AITask[] = (aiLogs.slice(0, 5) as any[]).map((log, i) => ({
+        id: `ai-${i}`,
         type: "research",
         status: "completed",
-        title: `Research: ${log.used_for || "AI Query"} (${new Date(log.created_at || Date.now()).toLocaleDateString()})`,
+        title: `Research: ${log.used_for || log.feature || "AI Query"} (${new Date(log.created_at || Date.now()).toLocaleDateString()})`,
         progress: 100,
         started_at: log.created_at || "",
-        model: log.model || "Gemini 2.5 Flash",
+        model: log.model || "OpenRouter",
       }))
 
       setTasks([...derivedTasks, ...researchTasks])

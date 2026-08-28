@@ -388,7 +388,7 @@ export default function AgentReachPage() {
           <div>
             <p className="font-medium">{error}</p>
             <p className="mt-0.5 text-xs text-red-500/80">
-              Try again — the research engine retries automatically when Gemini rate-limits or the daily quota resets.
+              Try again — the research engine retries automatically when the API rate-limits or the daily quota resets.
             </p>
           </div>
         </div>
@@ -558,7 +558,7 @@ export default function AgentReachPage() {
 
           <p className="text-sm text-muted-foreground">
             Channel health auto-checks every 60 seconds; trending auto-refreshes every minute.
-            Use any tab to research a topic, then hit &quot;Write article with Gemini&quot; to
+            Use any tab to research a topic, then hit &quot;Write article&quot; to
             publish a fully researched, SEO-ready article.
           </p>
         </div>
@@ -1001,7 +1001,7 @@ function WriteBar({
         ) : (
           <Sparkles className="h-3.5 w-3.5" />
         )}
-        {writing ? "Researching & writing…" : "Write article with Gemini"}
+        {writing ? "Researching & writing…" : "Write article"}
       </button>
     </div>
   );

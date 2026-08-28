@@ -27,7 +27,7 @@ export interface AIArticle {
   qualityScore:      number
   isBreaking:        boolean
   suggestedCategory: string
-  modelUsed:         'openrouter'
+  modelUsed:         string
 }
 
 function buildPrompt(
@@ -854,7 +854,7 @@ async function callOpenRouterArticle(
         return { ok: false, article: null, debug: `openrouter_empty:${model}` }
       }
 
-      const { article, reason } = validate(raw, `openrouter`)
+      const { article, reason } = validate(raw, model)
       if (article) {
         console.log(`[✓ OpenRouter ${model}] ${article.headline.slice(0, 55)}${withTools ? "" : " (no tools)"}`)
         return { ok: true, article, debug: `openrouter:${model}${withTools ? "" : "_no_tools"}` }

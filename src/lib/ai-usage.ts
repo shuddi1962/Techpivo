@@ -1,8 +1,8 @@
 import { createClient } from "@/lib/supabase/admin"
 
-// Fire-and-forget usage logging for non-Gemini AI features
+// Fire-and-forget usage logging for AI features
 // (breaking news polling, agent-reach channels, editorial intelligence, etc.)
-// Gemini API calls are logged separately to gemini_usage_log by ai-rewriter.ts.
+// OpenRouter API calls are logged to ai_usage_log by ai-rewriter.ts.
 export async function logAIUsage(
   feature: string,
   headline?: string,
@@ -65,7 +65,7 @@ export async function getAIUsageStats(days: number = 30): Promise<AIUsageStats> 
   const sinceDate = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString()
 
   const { data: logs } = await supabase
-    .from("gemini_usage_log")
+    .from("ai_usage_log")
     .select("*")
     .gte("created_at", sinceDate)
     .order("created_at", { ascending: false })

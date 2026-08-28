@@ -106,7 +106,7 @@ export async function POST(req: NextRequest) {
       }
       if (result.debug.startsWith("http_429")) {
         return NextResponse.json({
-          error: "Google's free-tier Gemini rate limit was hit (429). Wait about 60 seconds, then try again — the limit resets automatically. (Tip: enabling billing in Google AI Studio sharply raises these limits.)",
+          error: "OpenRouter rate limit was hit (429). Wait about 60 seconds, then try again — the limit resets automatically. Free models have separate rate limits from paid models.",
           debug: result.debug,
         }, { status: 429 })
       }
@@ -149,7 +149,7 @@ export async function POST(req: NextRequest) {
         quota_cap:         MONTHLY_MANUAL_CAP,
         quota_remaining:   remaining - 1,
         quota_resets:      "First of next month",
-        model_used:        "Gemini 3.6 Flash + Google Search Grounding",
+        model_used:        article.modelUsed,
         source,
       },
     })

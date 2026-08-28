@@ -29,8 +29,8 @@ export function AiWritingPanel() {
       if (!res.ok) return
       const q = await res.json()
       setQuota({
-        daily: { used: q.manualGemini?.used ?? 0, cap: q.manualGemini?.cap ?? 50 },
-        monthly: { used: q.manual?.used ?? 0, cap: q.manual?.cap ?? 2000 },
+        daily: { used: q.manual?.used ?? 0, cap: q.manual?.cap ?? 50 },
+        monthly: { used: q.manualMonthly?.used ?? 0, cap: q.manualMonthly?.cap ?? 2000 },
       })
     } catch { /* quota display is best-effort */ }
   }, [])
@@ -332,9 +332,9 @@ export function AiWritingPanel() {
         )}
 
         <p className="text-[10px] text-gray-400 dark:text-[#6B7280] text-center leading-relaxed">
-          Powered by <strong>Gemini 2.5 Flash</strong> with Google Search Grounding.
+          Powered by <strong>OpenRouter</strong> with web search grounding.
           <br />
-          Quota refreshes automatically — today&rsquo;s daily manual budget: {quota.daily.used} / {quota.daily.cap} used.
+          Quota refreshes automatically — today&rsquo;s daily budget: {quota.daily.used} / {quota.daily.cap} used.
         </p>
       </div>
     </CollapsibleSection>
