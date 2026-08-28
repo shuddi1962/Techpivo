@@ -7,10 +7,10 @@ import type { MetadataRoute } from "next"
 
 export const revalidate = 3600
 
-async function fetchWithTimeout<T>(query: any, ms: number): Promise<{ data: T | null } | null> {
+async function fetchWithTimeout<T = any>(query: any, ms: number): Promise<{ data: T | null } | null> {
   const controller = new AbortController()
   const timeout = new Promise<'timeout'>((resolve) => setTimeout(() => resolve('timeout'), ms))
-  const result = await Promise.race([
+  const result: { data: T | null } | 'timeout' = await Promise.race([
     query,
     timeout,
   ])
@@ -18,7 +18,7 @@ async function fetchWithTimeout<T>(query: any, ms: number): Promise<{ data: T | 
     controller.abort()
     return null
   }
-  return result as { data: T | null }
+  return result
 }
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
@@ -38,13 +38,13 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       fetchWithTimeout(supabase.from("keyword_articles").select("slug, updated_at").eq("status", "published").order("published_at", { ascending: false }).limit(500), 15000),
       fetchWithTimeout(supabase.from("site_pages").select("slug, is_published"), 15000),
     ])
-    posts = postsRes?.data ?? []
-    categories = catsRes?.data ?? []
-    subcategories = subsRes?.data ?? []
-    profiles = profilesRes?.data ?? []
-    series = seriesRes?.data ?? []
-    kwArticles = kwArticlesRes?.data ?? []
-    pagePublishState = new Map((pagesRes?.data ?? []).map((p: any) => [p.slug, !!p.is_published]))
+    posts = ((postsRes as any)?.data ?? []) as any[]
+    categories = ((catsRes as any)?.data ?? []) as any[]
+    subcategories = ((subsRes as any)?.data ?? []) as any[]
+    profiles = ((profilesRes as any)?.data ?? []) as any[]
+    series = ((seriesRes as any)?.data ?? []) as any[]
+    kwArticles = ((kwArticlesRes as any)?.data ?? []) as any[]
+    pagePublishState = new Map((((pagesRes as any)?.data ?? []) as any[]).map((p: any) => [p.slug, !!p.is_published]))
   } catch (e) {
     console.error("Sitemap data fetch failed, serving static pages only", e)
   }
