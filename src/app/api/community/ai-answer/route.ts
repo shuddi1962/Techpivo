@@ -3,7 +3,7 @@ import { createClient } from '@/lib/supabase/server';
 import { createClient as createServiceClient } from '@/lib/supabase/admin';
 import { checkRateLimit, clientIp, RATE_LIMITS } from '@/lib/rate-limiter';
 import { isSameOrigin } from '@/lib/csrf';
-import { resolveGeminiModel } from '@/lib/ai-rewriter';
+import { resolveOpenRouterKey, resolveOpenRouterModel } from '@/lib/openrouter-model';
 
 export const dynamic = 'force-dynamic';
 
@@ -81,53 +81,35 @@ ${post.content ?? '(no additional detail was provided by the author)'}
 COMMUNITY ANSWERS (supporting material):
 ${replies.length ? replies.map(r => `- ANSWER by ${nameOf(r.author_id)}${r.is_accepted ? ' (accepted)' : ''} [${r.vote_count} votes]: ${r.content}`).join('\n') : '(none yet — answer from your own knowledge)'}`;
 
-  const apiKey = process.env.GEMINI_API_KEY ?? process.env.OPENROUTER_API_KEY;
+  const apiKey = await resolveOpenRouterKey();
   if (!apiKey) {
     return NextResponse.json({ error: 'AI is not configured yet.' }, { status: 503 });
   }
 
   try {
-    let answerMd: string;
-    if (process.env.GEMINI_API_KEY) {
-      const res = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/${await resolveGeminiModel()}:generateContent?key=${process.env.GEMINI_API_KEY}`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            contents: [{ role: 'user', parts: [{ text: prompt }] }],
-            generationConfig: { temperature: 0.3, maxOutputTokens: 1600 },
-          }),
-          signal: AbortSignal.timeout(45000),
-        }
-      );
-      if (!res.ok) {
-        const t = await res.text().catch(() => '');
-        return NextResponse.json({ error: `AI provider error (${res.status}).` }, { status: 502 });
-      }
-      const d = await res.json();
-      answerMd = d?.candidates?.[0]?.content?.parts?.map((p: { text?: string }) => p.text ?? '').join('') ?? '';
-    } else {
-      const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}`,
-        },
-        body: JSON.stringify({
-          model: 'openrouter/auto',
-          messages: [{ role: 'user', content: prompt }],
-          max_tokens: 1600,
-        }),
-        signal: AbortSignal.timeout(45000),
-      });
-      if (!res.ok) {
-        const t = await res.text().catch(() => '');
-        return NextResponse.json({ error: `AI provider error (${res.status}).` }, { status: 502 });
-      }
-      const d = await res.json();
-      answerMd = d?.choices?.[0]?.message?.content ?? '';
+    const model = await resolveOpenRouterModel();
+    const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${apiKey}`,
+        'HTTP-Referer': process.env.NEXT_PUBLIC_SITE_URL || 'https://techpivo.com',
+        'X-Title': 'TechPivo',
+      },
+      body: JSON.stringify({
+        model,
+        messages: [{ role: 'user', content: prompt }],
+        max_tokens: 1600,
+        temperature: 0.3,
+      }),
+      signal: AbortSignal.timeout(45000),
+    });
+    if (!res.ok) {
+      const t = await res.text().catch(() => '');
+      return NextResponse.json({ error: `AI provider error (${res.status}).` }, { status: 502 });
     }
+    const d = await res.json();
+    const answerMd = d?.choices?.[0]?.message?.content ?? '';
 
     if (!answerMd.trim()) {
       return NextResponse.json({ error: 'The AI returned an empty answer. Try again.' }, { status: 502 });

@@ -1,9 +1,10 @@
 import { NextResponse } from "next/server"
 import { createClient as createSupabaseClient } from "@supabase/supabase-js"
-import { geminiRewriteContent } from "@/lib/ai-rewriter"
+import { openRouterRewriteContent } from "@/lib/ai-rewriter"
 import { SITE_URL } from "@/lib/constants"
 import { searchFeaturedImage } from "@/lib/web-images"
 import { requireAdminRole } from "@/lib/admin-auth"
+import { resolveOpenRouterKey, resolveOpenRouterModel } from "@/lib/openrouter-model"
 
 export const dynamic = "force-dynamic"
 
@@ -39,7 +40,10 @@ async function searchPexels(query: string): Promise<string | null> {
   return searchFeaturedImage(query)
 }
 
-async function callOpenRouter(prompt: string, apiKey: string, maxTokens = 4096): Promise<string> {
+async function callOpenRouter(prompt: string, maxTokens = 4096): Promise<string> {
+  const apiKey = await resolveOpenRouterKey()
+  if (!apiKey) throw new Error("OpenRouter API key not configured")
+  const model = await resolveOpenRouterModel()
   const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
     method: "POST",
     headers: {
@@ -49,7 +53,7 @@ async function callOpenRouter(prompt: string, apiKey: string, maxTokens = 4096):
       "X-Title": "Techpivo",
     },
     body: JSON.stringify({
-      model: "openrouter/free",
+      model,
       messages: [{ role: "user", content: prompt }],
       max_tokens: maxTokens,
     }),
@@ -68,11 +72,6 @@ export async function GET(req: Request) {
   const auth = await requireAdminRole(["admin", "editor"], req as any)
   if (!auth.ok) return auth.response
   try {
-    const openRouterKey = process.env.OPENROUTER_API_KEY || ""
-    if (!openRouterKey) {
-      return NextResponse.json({ error: "OPENROUTER_API_KEY not set" }, { status: 500 })
-    }
-
     const { data: posts, error: fetchError } = await getSupabase()
       .from("posts")
       .select("id, title, content, featured_image, original_source_url, category_id")
@@ -92,7 +91,7 @@ export async function GET(req: Request) {
         let quickBrief: { text: string }[] = []
 
         try {
-          const result = await geminiRewriteContent(post.title, post.content || "")
+          const result = await openRouterRewriteContent(post.title, post.content || "")
           if (result && result !== post.content && result.length > 300) {
             await getSupabase().from("posts").update({ content: result, ai_rewritten: true }).eq("id", post.id)
           }
@@ -106,7 +105,7 @@ export async function GET(req: Request) {
             'Example: [{"text": "First key point"}, {"text": "Second key point"}, {"text": "Third key point"}] ' +
             "Article: " + post.title + ". " + textContent.slice(0, 3000)
 
-          const briefResult = await callOpenRouter(briefPrompt, openRouterKey)
+          const briefResult = await callOpenRouter(briefPrompt)
           if (briefResult) {
             const cleaned = briefResult.replace(/```json\s*/gi, "").replace(/```\s*/g, "").trim()
             const parsed = JSON.parse(cleaned)
@@ -120,7 +119,7 @@ export async function GET(req: Request) {
             "Rate the following article's relevance to technology, innovation, and digital culture on a scale of 1 to 100. " +
             "Consider: tech relevance, factual accuracy, timeliness, and reader value. " +
             "Return ONLY a number between 1 and 100. Article: " + post.title + ". " + textContent.slice(0, 1000)
-          const scoreResult = await callOpenRouter(scorePrompt, openRouterKey)
+          const scoreResult = await callOpenRouter(scorePrompt)
           const parsed = parseInt(scoreResult.replace(/\D/g, ""), 10)
           if (!isNaN(parsed) && parsed >= 1 && parsed <= 100) qualityScore = parsed
         } catch { /* skip */ }

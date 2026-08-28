@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server"
 import { createClient as createSupabaseClient } from "@supabase/supabase-js"
-import { geminiRewriteContent } from "@/lib/ai-rewriter"
+import { openRouterRewriteContent } from "@/lib/ai-rewriter"
 import { requireAdminRole } from "@/lib/admin-auth"
+import { resolveOpenRouterKey, resolveOpenRouterModel } from "@/lib/openrouter-model"
 
 function getSupabase() {
   return createSupabaseClient(
@@ -21,19 +22,14 @@ interface SEOData {
   og_image?: string
 }
 
-interface OpenRouterResponse {
-  choices?: {
-    message?: {
-      content?: string
-    }
-  }[]
-}
-
 function stripHtml(html: string): string {
   return html.replace(/<[^>]*>/g, "").trim()
 }
 
-async function callOpenRouter(prompt: string, apiKey: string): Promise<string> {
+async function callOpenRouter(prompt: string): Promise<string> {
+  const apiKey = await resolveOpenRouterKey()
+  if (!apiKey) throw new Error("OpenRouter API key not configured")
+  const model = await resolveOpenRouterModel()
   const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
     method: "POST",
     headers: {
@@ -41,7 +37,7 @@ async function callOpenRouter(prompt: string, apiKey: string): Promise<string> {
       Authorization: "Bearer " + apiKey,
     },
     body: JSON.stringify({
-      model: "deepseek/deepseek-chat",
+      model,
       messages: [{ role: "user", content: prompt }],
       max_tokens: 4096,
     }),
@@ -53,7 +49,7 @@ async function callOpenRouter(prompt: string, apiKey: string): Promise<string> {
     throw new Error("OpenRouter API error (" + response.status + "): " + errorBody)
   }
 
-  const data: OpenRouterResponse = await response.json()
+  const data = await response.json()
   return data.choices?.[0]?.message?.content?.trim() || ""
 }
 
@@ -94,8 +90,6 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "post_id is required" }, { status: 400 })
     }
 
-    const openRouterKey = process.env.OPENROUTER_API_KEY || ""
-
     const { data: post, error: fetchError } = await getSupabase()
       .from("posts")
       .select("*")
@@ -132,10 +126,10 @@ export async function POST(req: Request) {
     if (textContent.length > 50) {
       if (textContent.length < 500) {
         try {
-          const result = await geminiRewriteContent(sourceTitle, sourceContent)
+          const result = await openRouterRewriteContent(sourceTitle, sourceContent)
           if (result) rewrittenContent = result
         } catch (err: any) {
-          console.error("Gemini rewrite failed: " + err.message)
+          console.error("OpenRouter rewrite failed: " + err.message)
         }
       }
 
@@ -146,7 +140,7 @@ export async function POST(req: Request) {
           'Example: [{"text": "First bullet"}, {"text": "Second bullet"}, {"text": "Third bullet"}] ' +
           "Article: " + sourceTitle + ". " + textContent
 
-        const result = await callOpenRouter(briefPrompt, openRouterKey)
+        const result = await callOpenRouter(briefPrompt)
         if (result) {
           const cleaned = result
             .replace(/```json\s*/gi, "")
@@ -165,7 +159,7 @@ export async function POST(req: Request) {
           '"seo_title" (max 60 chars), "seo_description" (max 160 chars), "seo_keywords" (array of 5-10 strings). ' +
           "Article title: " + sourceTitle + ". Content: " + textContent
 
-        const result = await callOpenRouter(seoPrompt, openRouterKey)
+        const result = await callOpenRouter(seoPrompt)
         if (result) {
           const cleaned = result
             .replace(/```json\s*/gi, "")
@@ -183,7 +177,7 @@ export async function POST(req: Request) {
           "(100 being extremely tech-relevant, 1 being not tech-related at all). " +
           "Return ONLY a number, no other text. Article: " + sourceTitle + ". " + textContent
 
-        const result = await callOpenRouter(scorePrompt, openRouterKey)
+        const result = await callOpenRouter(scorePrompt)
         if (result) {
           const parsed = parseInt(result.replace(/\D/g, ""), 10)
           if (!isNaN(parsed) && parsed >= 1 && parsed <= 100) {

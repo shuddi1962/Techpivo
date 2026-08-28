@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/admin"
 import { requireAdminRole } from "@/lib/admin-auth"
-import { manualWriteFromTopic, getGeminiQuotaStatus } from "@/lib/ai-rewriter"
+import { manualWriteFromTopic } from "@/lib/ai-rewriter"
 import { SITE_URL } from "@/lib/constants"
 import { storeRemoteImage } from "@/lib/media"
 import { searchFeaturedImage, enrichArticleWithWebImages } from "@/lib/web-images"
@@ -76,7 +76,6 @@ export async function POST(request: NextRequest) {
 
     const { article, debug } = await manualWriteFromTopic(trimmed)
     if (!article) {
-      const capCheck = await getGeminiQuotaStatus()
       if (debug.startsWith("duplicate:")) {
         const [, title, slug, status] = debug.split("|")
         return NextResponse.json(
@@ -88,11 +87,8 @@ export async function POST(request: NextRequest) {
           { status: 409 }
         )
       }
-      const capMsg = capCheck.canUseManualGemini
-        ? `Manual quota OK (${capCheck.manualUsed}/${capCheck.manualCap}). Gemini debug: ${debug}.`
-        : `Manual Gemini limit reached (${capCheck.manualUsed}/${capCheck.manualCap}). Resets at ${capCheck.resetsAt}.`
       return NextResponse.json(
-        { error: `Gemini research failed. ${capMsg}`, debug, cap: capCheck },
+        { error: `AI research failed. Debug: ${debug}.`, debug },
         { status: 500 }
       )
     }

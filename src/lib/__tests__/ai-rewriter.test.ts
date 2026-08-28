@@ -62,7 +62,7 @@ describe("validate", () => {
   it("recovers a full article blob whose prose contains unescaped quotes (the \"AI\", model / the \"term\": is used)", () => {
     const content = `<p>When I tested the "AI", model the results surprised me. The "term": is used loosely, and the "AI" kept hallucinating, so I switched it off.</p><h2>How it works</h2><p>This section explains the model. The "AI", model is great, and the "term": is used often.</p>`
     const raw = `{"headline":"Gemini JSON repair regression test","content":"${content}","answerCapsule":"A regression test article.","seoTitle":"Gemini JSON Repair Regression Test","seoDescription":"Testing the JSON repair pipeline end to end.","seoKeywords":["gemini","json"],"secondaryKeywords":["repair"],"tags":["ai"],"keyPoints":["This is a longer key point about the repair pipeline","This is another key point that must exceed ten characters"],"quickBrief":["The pipeline repairs broken JSON"],"namedEntities":["Gemini"],"faq":[{"question":"Why does this matter?","answer":"Because unescaped quotes used to break article generation."}],"sources":[{"url":"https://example.com/doc","title":"Example","type":"official"}],"qualityScore":85,"isBreaking":false,"suggestedCategory":"tech-news"}`
-    const result = validate(raw, "gemini-grounded")
+    const result = validate(raw, "openrouter")
     expect(result.reason).toBe("ok")
     expect(result.article?.content).toContain('the "AI", model')
     expect(result.article?.content).toContain('the "term": is used')
@@ -70,14 +70,14 @@ describe("validate", () => {
 
   it("reports the enriched reason when even quote-escape cannot repair the blob", () => {
     const raw = '{"content":"' + "x".repeat(150) + '" broken}'
-    const result = validate(raw, "gemini-grounded")
+    const result = validate(raw, "openrouter")
     expect(result.article).toBeNull()
     expect(result.reason.startsWith("json_parse_fail_after_object_extract:")).toBe(true)
   })
 
   it("enriches the parse-fail reason with the underlying JSON error message", () => {
     const raw = '{"content":"' + "z".repeat(150) + '" broken}'
-    const result = validate(raw, "gemini-grounded")
+    const result = validate(raw, "openrouter")
     expect(result.article).toBeNull()
     expect(result.reason).toMatch(/^json_parse_fail_after_object_extract:\d+:.+:.+$/)
     expect(result.reason).toContain("JSON at position")
@@ -85,7 +85,7 @@ describe("validate", () => {
 
   it("returns no_json_object_found when the blob never closes", () => {
     const raw = '{"content":"' + "w".repeat(150)
-    const result = validate(raw, "gemini-grounded")
+    const result = validate(raw, "openrouter")
     expect(result.reason).toBe("no_json_object_found")
   })
 })

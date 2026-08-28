@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/admin"
-import { manualWriteFromTopic, manualWriteFromUrl, getGeminiQuotaStatus } from "@/lib/ai-rewriter"
+import { manualWriteFromTopic, manualWriteFromUrl } from "@/lib/ai-rewriter"
 import { SITE_URL } from "@/lib/constants"
 import { logAIUsage } from "@/lib/ai-usage"
 import { storeRemoteImage } from "@/lib/media"
@@ -104,13 +104,9 @@ export async function POST(request: Request) {
       : await manualWriteFromTopic(headline)
 
     if (!article) {
-      const capCheck = await getGeminiQuotaStatus()
-      const capMsg = capCheck.canUseManualGemini
-        ? `Manual quota OK (${capCheck.manualUsed}/${capCheck.manualCap}). Gemini debug: ${debug}.`
-        : `Manual Gemini limit reached (${capCheck.manualUsed}/${capCheck.manualCap}). Resets at ${capCheck.resetsAt}.`
       await logAIUsage("breaking-news-rewrite", headline, "error", Date.now() - startTime)
       return NextResponse.json(
-        { error: `Gemini research failed. ${capMsg}`, debug, cap: capCheck },
+        { error: `AI research failed. Debug: ${debug}.`, debug },
         { status: 500 }
       )
     }

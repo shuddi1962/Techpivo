@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/admin"
 import { requireAdminRole } from "@/lib/admin-auth"
-import { manualWriteFromTopic, getGeminiQuotaStatus } from "@/lib/ai-rewriter"
+import { manualWriteFromTopic } from "@/lib/ai-rewriter"
 import { SITE_URL } from "@/lib/constants"
 import { searchFeaturedImage } from "@/lib/web-images"
 
@@ -62,10 +62,9 @@ export async function POST(request: NextRequest) {
     const keyword = kw.keyword.trim()
     const { article, debug } = await manualWriteFromTopic(keyword)
     if (!article) {
-      const capCheck = await getGeminiQuotaStatus()
       return NextResponse.json({
-        error: `Generation failed. ${capCheck.canUseManualGemini ? `Gemini debug: ${debug}.` : `Manual Gemini limit reached (${capCheck.manualUsed}/${capCheck.manualCap}).`}`,
-        cap: capCheck,
+        error: `AI generation failed. Debug: ${debug}.`,
+        debug,
       }, { status: 500 })
     }
 

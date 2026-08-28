@@ -551,7 +551,7 @@ async function run(req: NextRequest) {
     for (const r of results) {
       if (r.status === 'fulfilled' && r.value.ok) {
         ingested++
-        log.push(`[✓ ${ingested}/${canPublish}][gemini-grounded] ${r.value.headline}`)
+        log.push(`[✓ ${ingested}/${canPublish}][openrouter] ${r.value.headline}`)
       }
     }
   }
@@ -609,7 +609,7 @@ async function run(req: NextRequest) {
 
           await supabase.rpc('increment_daily_count')
           ingested++
-          log.push(`[✓ FALLBACK ${ingested}/${canPublish}][gemini-grounded] ${article.headline.slice(0, 60)}`)
+          log.push(`[✓ FALLBACK ${ingested}/${canPublish}][openrouter] ${article.headline.slice(0, 60)}`)
         } catch (err) {
           log.push(`[FALLBACK ERR] ${String(err).slice(0, 60)}`)
         }

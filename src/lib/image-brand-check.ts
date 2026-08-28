@@ -5,12 +5,12 @@
 //   1. Blocklist of news/aggregator/social hosts — their thumbnails and
 //      screenshots routinely ship with the outlet's logo/watermark baked in.
 //   2. Alt/URL/filename watermark signals ("logo", "watermark", "press release"…).
-//   3. Best-effort Gemini vision check on the actual pixels — NEVER blocks the
-//      write pipeline (no key / HTTP error / timeout / oversized image →
-//      treated as clean).
+//   3. Best-effort vision check via OpenRouter on the actual pixels — NEVER
+//      blocks the write pipeline (no key / HTTP error / timeout / oversized
+//      image / unsupported model → treated as clean).
 
 import type { StockImageItem } from '@/lib/web-images'
-import { resolveGeminiModel } from '@/lib/ai-rewriter'
+import { resolveOpenRouterKey, resolveOpenRouterModel } from '@/lib/openrouter-model'
 
 // Layer 1 — hosts whose images/screenshots routinely carry outlet branding.
 const NEWS_HOST_BLOCKLIST: string[] = [
@@ -97,8 +97,8 @@ export function isKnownSafeHost(url: string): boolean {
 }
 
 export async function imageHasBrandMark(url: string): Promise<boolean | null> {
-  const key = process.env.GEMINI_API_KEY
-  if (!key) return null
+  const apiKey = await resolveOpenRouterKey()
+  if (!apiKey) return null
 
   const cached = VISION_CACHE.get(url)
   if (cached && Date.now() - cached.at < VISION_TTL_MS) return cached.result
@@ -115,36 +115,45 @@ export async function imageHasBrandMark(url: string): Promise<boolean | null> {
       return null
     }
     const mime = (res.headers.get("content-type") || "image/jpeg").split(";")[0].trim()
+    const b64 = buf.toString("base64")
 
-    const model = await resolveGeminiModel()
-    const gres = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${key}`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          contents: [
-            {
-              role: "user",
-              parts: [
-                {
-                  text: "Analyze this image. Does it contain a visible watermark, logo, or a brand, company, or news-outlet name or emblem overlaid on or baked into the image? Answer with exactly one word: YES or NO.",
-                },
-                { inlineData: { mimeType: mime, data: buf.toString("base64") } },
-              ],
-            },
-          ],
-          generationConfig: { temperature: 0, maxOutputTokens: 4 },
-        }),
-        signal: AbortSignal.timeout(20000),
-      }
-    )
+    const model = await resolveOpenRouterModel()
+    const gres = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${apiKey}`,
+        "HTTP-Referer": process.env.NEXT_PUBLIC_SITE_URL || "https://techpivo.com",
+        "X-Title": "TechPivo",
+      },
+      body: JSON.stringify({
+        model,
+        messages: [
+          {
+            role: "user",
+            content: [
+              {
+                type: "text",
+                text: "Analyze this image. Does it contain a visible watermark, logo, or a brand, company, or news-outlet name or emblem overlaid on or baked into the image? Answer with exactly one word: YES or NO.",
+              },
+              {
+                type: "image_url",
+                image_url: { url: `data:${mime};base64,${b64}` },
+              },
+            ],
+          },
+        ],
+        max_tokens: 4,
+        temperature: 0,
+      }),
+      signal: AbortSignal.timeout(20000),
+    })
     if (!gres.ok) {
       VISION_CACHE.set(url, { result: null, at: Date.now() })
       return null
     }
     const data = await gres.json()
-    const text = (data?.candidates?.[0]?.content?.parts?.[0]?.text || "").trim().toUpperCase()
+    const text = (data?.choices?.[0]?.message?.content || "").trim().toUpperCase()
     const result = text.startsWith("YES") ? true : text.startsWith("NO") ? false : null
     VISION_CACHE.set(url, { result, at: Date.now() })
     return result

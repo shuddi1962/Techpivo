@@ -3,7 +3,7 @@ import { createClient } from '@/lib/supabase/server';
 import { checkRateLimit, clientIp, RATE_LIMITS } from '@/lib/rate-limiter';
 import { isSameOrigin } from '@/lib/csrf';
 import { CONTENT_TYPE_META } from '@/lib/community-types';
-import { resolveGeminiModel } from '@/lib/ai-rewriter';
+import { resolveOpenRouterKey, resolveOpenRouterModel } from '@/lib/openrouter-model';
 
 const MAX_INPUT = 3000;
 
@@ -26,7 +26,9 @@ export async function POST(request: NextRequest) {
   if (!title && !content) {
     return NextResponse.json({ error: 'Nothing to improve yet — write a title or some details first.' }, { status: 400 });
   }
-  if (!process.env.GEMINI_API_KEY) {
+
+  const apiKey = await resolveOpenRouterKey();
+  if (!apiKey) {
     return NextResponse.json({ error: 'AI suggestions are not configured on this deployment.' }, { status: 503 });
   }
 
@@ -43,21 +45,28 @@ Title: ${title || '(none)'}
 Body: ${content || '(none)'}`;
 
   try {
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/${await resolveGeminiModel()}:generateContent?key=${process.env.GEMINI_API_KEY}`;
-    const res = await fetch(url, {
+    const model = await resolveOpenRouterModel();
+    const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${apiKey}`,
+        'HTTP-Referer': process.env.NEXT_PUBLIC_SITE_URL || 'https://techpivo.com',
+        'X-Title': 'TechPivo',
+      },
       body: JSON.stringify({
-        contents: [{ role: 'user', parts: [{ text: prompt }] }],
-        generationConfig: { temperature: 0.4, maxOutputTokens: 3500 },
+        model,
+        messages: [{ role: 'user', content: prompt }],
+        max_tokens: 3500,
+        temperature: 0.4,
       }),
-      signal: AbortSignal.timeout(20000),
+      signal: AbortSignal.timeout(30000),
     });
     if (!res.ok) {
       return NextResponse.json({ error: `AI service returned ${res.status}. Try again shortly.` }, { status: 502 });
     }
     const data = await res.json();
-    const raw = data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+    const raw = (data?.choices?.[0]?.message?.content || '').trim();
     const json = raw.replace(/```json|```/g, '').trim();
     const start = json.indexOf('{');
     const end = json.lastIndexOf('}');

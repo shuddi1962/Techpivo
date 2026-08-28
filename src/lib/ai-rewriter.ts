@@ -1,57 +1,7 @@
 import { createClient } from '@/lib/supabase/admin'
 import { findDuplicatePost, type DuplicatePost } from '@/lib/duplicate-check'
-import { GEMINI_MODEL_DEFAULT, getGeminiModel, geminiModelOrder, normalizeGeminiModel, isAllowedGeminiModel } from '@/lib/gemini-model'
 import { resolveOpenRouterModel, resolveOpenRouterKey, openRouterModelOrder } from '@/lib/openrouter-model'
-import { SITE_URL } from '@/lib/constants'
-
-const GEMINI_DAILY_CAP = 100
-const MANUAL_GEMINI_DAILY_CAP = 50
-const GEMINI_RATE_MS = 1000
-// After a final 429 (Google free-tier rate limit) the per-minute window stays
-// hot for a while — reject further manual writes for 60s with a clear debug
-// instead of hammering Google with doomed requests.
-const GEMINI_429_COOLDOWN_MS = 60000
-
-// Model override chain: site_settings.gemini_model (realtime-flippable from
-// Admin → Settings) → GEMINI_MODEL env → gemini-3.7-flash. Cached 30s so a
-// settings flip takes effect on the next write without hammering the DB.
-const GEMINI_MODEL_CACHE_MS = 30000
-let geminiModelCache: { model: string; at: number } | null = null
-
-export async function resolveGeminiModel(): Promise<string> {
-  const envModel = getGeminiModel(process.env)
-  // If the env model is set and still available, use it directly (env beats DB).
-  if (envModel !== GEMINI_MODEL_DEFAULT && isAllowedGeminiModel(envModel)) return envModel
-  // If env model is set but discontinued (e.g. gemini-2.0-flash), warn and
-  // fall through to DB/default so it never causes a 404.
-  if (envModel !== GEMINI_MODEL_DEFAULT && !isAllowedGeminiModel(envModel)) {
-    console.warn(`[Techpivo AI] GEMINI_MODEL env "${envModel}" is no longer available — using DB setting or default`)
-  }
-  if (geminiModelCache && Date.now() - geminiModelCache.at < GEMINI_MODEL_CACHE_MS) {
-    return geminiModelCache.model
-  }
-  try {
-    const supabase = createClient()
-    const { data } = await supabase
-      .from('site_settings')
-      .select('value')
-      .eq('key', 'gemini_model')
-      .maybeSingle()
-    const rawDbModel = normalizeGeminiModel(data?.value)
-    // Reject models that are no longer available (e.g. gemini-2.5-pro) —
-    // fall back to the default so a stale DB setting never causes 404s.
-    const dbModel = rawDbModel && isAllowedGeminiModel(rawDbModel) ? rawDbModel : null
-    const model = dbModel || envModel
-    if (rawDbModel && !isAllowedGeminiModel(rawDbModel)) {
-      console.warn(`[Techpivo AI] Rejected unavailable model "${rawDbModel}" from site_settings — using ${model}`)
-    }
-    geminiModelCache = { model, at: Date.now() }
-    return model
-  } catch (e) {
-    console.warn('[Techpivo AI] Could not read gemini_model setting — using env/default:', e)
-    return envModel
-  }
-}
+import { SITE_URL, SITE_NAME } from '@/lib/constants'
 
 export interface AISource {
   url:   string
@@ -77,7 +27,7 @@ export interface AIArticle {
   qualityScore:      number
   isBreaking:        boolean
   suggestedCategory: string
-  modelUsed:         'gemini-grounded' | 'openrouter'
+  modelUsed:         'openrouter'
 }
 
 function buildPrompt(
@@ -641,248 +591,6 @@ export function validate(raw: string, model: AIArticle['modelUsed']): { article:
   }
 }
 
-// ── GEMINI DAILY CAP ──────────────────────────────────────────────────────
-
-async function getGeminiTodayCount(usedFor?: string): Promise<number> {
-  try {
-    const supabase = createClient()
-    const todayStart = new Date()
-    todayStart.setUTCHours(0, 0, 0, 0)
-
-    let query = supabase
-      .from('gemini_usage_log')
-      .select('*', { count: 'exact', head: true })
-      .gte('created_at', todayStart.toISOString())
-
-    if (usedFor) {
-      query = query.eq('used_for', usedFor)
-    }
-
-    const { count } = await query
-    return count || 0
-  } catch {
-    console.warn('[Techpivo AI] Could not check Gemini usage count — defaulting to cap reached')
-    return GEMINI_DAILY_CAP
-  }
-}
-
-async function logGeminiUsage(headline: string, usedFor: string): Promise<void> {
-  try {
-    const supabase = createClient()
-    await supabase.from('gemini_usage_log').insert({
-      used_for:   usedFor,
-      headline:   headline.slice(0, 150),
-      model:      `${await resolveGeminiModel()}-grounded`,
-      created_at: new Date().toISOString(),
-    })
-  } catch (e) {
-    console.warn('[Techpivo AI] Could not log Gemini usage:', e)
-  }
-}
-
-// ── GEMINI 2.5 FLASH + GOOGLE SEARCH GROUNDING ───────────────────────────
-
-let lastGeminiCallTime = 0
-let lastGemini429At = 0
-
-// OpenAPI-style JSON schema for gemini structured output. When the
-// model honors responseSchema (alongside responseMimeType application/json) it
-// MUST emit well-formed JSON matching this shape — which prevents the
-// unescaped-quote corruption escapeInnerQuotes() repairs as a fallback.
-const ARTICLE_RESPONSE_SCHEMA = {
-  type: 'object',
-  properties: {
-    headline:           { type: 'string' },
-    content:            { type: 'string', description: 'Full HTML article body, 800+ words, with <h2> section headings' },
-    answerCapsule:      { type: 'string' },
-    seoTitle:           { type: 'string' },
-    seoDescription:     { type: 'string' },
-    suggestedCategory:  { type: 'string' },
-    seoKeywords:        { type: 'array', items: { type: 'string' } },
-    secondaryKeywords:  { type: 'array', items: { type: 'string' } },
-    tags:               { type: 'array', items: { type: 'string' } },
-    keyPoints:          { type: 'array', items: { type: 'string' } },
-    quickBrief:         { type: 'array', items: { type: 'string' } },
-    namedEntities:      { type: 'array', items: { type: 'string' } },
-    faq:                { type: 'array', items: { type: 'object', properties: { question: { type: 'string' }, answer: { type: 'string' } }, required: ['question', 'answer'] } },
-    sources:            { type: 'array', items: { type: 'object', properties: { url: { type: 'string' }, title: { type: 'string' }, type: { type: 'string', enum: ['official', 'news', 'documentation', 'other'] } }, required: ['url', 'type'] } },
-    qualityScore:       { type: 'integer' },
-    isBreaking:         { type: 'boolean' },
-  },
-  required: ['headline', 'content'],
-} as const
-
-async function geminiGrounded(
-  prompt:  string,
-  usedFor: string,
-  dailyCap?: number
-): Promise<{ article: AIArticle | null; debug: string }> {
-  if (!process.env.GEMINI_API_KEY) {
-    console.log('[Techpivo AI] No GEMINI_API_KEY set')
-    return { article: null, debug: 'no_key' }
-  }
-
-  const cap = dailyCap ?? GEMINI_DAILY_CAP
-  const usedForFilter = dailyCap ? usedFor : undefined
-  const todayCount = await getGeminiTodayCount(usedForFilter)
-  if (todayCount >= cap) {
-    console.log(`[Techpivo AI] Gemini ${usedFor} cap reached (${todayCount}/${cap}) — skipping`)
-    return { article: null, debug: 'cap_reached' }
-  }
-
-  const cooldownLeft = GEMINI_429_COOLDOWN_MS - (Date.now() - lastGemini429At)
-  if (cooldownLeft > 0) {
-    const secs = Math.ceil(cooldownLeft / 1000)
-    console.log(`[Techpivo AI] Google free-tier cooldown active (${secs}s left) — skipping`)
-    return { article: null, debug: `http_429:cooldown:${secs}s left` }
-  }
-
-  const now = Date.now()
-  const elapsed = now - lastGeminiCallTime
-  if (elapsed < GEMINI_RATE_MS) {
-    await new Promise(r => setTimeout(r, GEMINI_RATE_MS - elapsed))
-  }
-  lastGeminiCallTime = Date.now()
-
-  const maxRetries = 2
-  let lastDebug = ''
-  // Automatic model rotation: if the primary model 404s (not available to this
-  // key) or 429s (free-tier daily quota exhausted), fall through the chain
-  // (flash → flash-lite → 2.0-flash) instead of failing the write.
-  const models = geminiModelOrder(await resolveGeminiModel())
-  for (let mi = 0; mi < models.length; mi++) {
-    const geminiModel = models[mi]
-    let useJsonMime = true
-    for (let attempt = 0; attempt <= maxRetries; attempt++) {
-      try {
-        const url = `https://generativelanguage.googleapis.com/v1beta/models/${geminiModel}:generateContent?key=${process.env.GEMINI_API_KEY}`
-        const body: Record<string, unknown> = {
-          contents: [{ role: 'user', parts: [{ text: prompt }] }],
-          generationConfig: {
-            temperature:       0.45,
-            // 8192 tokens (~36k chars) truncated long articles mid-JSON — the
-            // corrective retry then regenerated the SAME length and failed 3/3
-            // with json_parse_fail_after_object_extract. 16384 (~65k chars)
-            // covers any article with large margin while halving the per-minute
-            // output-token burn that trips Google's free-tier TPM limit on
-            // back-to-back writes (was 32768).
-            maxOutputTokens:   16384,
-            ...(useJsonMime
-              ? { responseMimeType: 'application/json', responseSchema: ARTICLE_RESPONSE_SCHEMA }
-              : {}),
-          },
-          tools: [
-            { googleSearch: {} },
-          ],
-        }
-
-        const res = await fetch(url, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(body),
-          signal: AbortSignal.timeout(120000),
-        })
-
-        if (!res.ok) {
-          const errText = await res.text().catch(() => '')
-          // Model no longer available to this key (404) or free-tier quota
-          // exhausted (429) — rotate to the next model in the chain.
-          const modelUnavailable = res.status === 404 && /no longer available|not found|does not exist|not accessible|not supported/i.test(errText)
-          if (mi < models.length - 1 && (modelUnavailable || res.status === 429)) {
-            console.warn(`[Gemini model ${mi + 1}/${models.length}] ${geminiModel} HTTP ${res.status} — switching to ${models[mi + 1]}`)
-            lastDebug = `http_${res.status}:model_switch:${geminiModel}`
-            break
-          }
-          // Some Gemini builds reject JSON mime together with googleSearch —
-          // retry once without the mime type instead of failing hard.
-          if (useJsonMime && /response[_ ]?mime|mime[_ ]?type|application\/json|schema/i.test(errText) && attempt < maxRetries) {
-            console.warn('[Gemini] JSON mime rejected with googleSearch — retrying without responseMimeType')
-            useJsonMime = false
-            continue
-          }
-          if (attempt < maxRetries && (res.status === 429 || res.status === 503)) {
-            // Honor Google's Retry-After when present (free tier 429s usually
-            // carry one); fall back to exponential backoff (2s, 4s) otherwise.
-            const rawRetryAfter = res.headers.get('retry-after')
-            let waitMs = 2000 * Math.pow(2, attempt)
-            if (rawRetryAfter) {
-              const secs = parseInt(rawRetryAfter, 10)
-              if (!Number.isNaN(secs)) waitMs = Math.max(1000, Math.min(secs * 1000, 60000))
-            }
-            console.warn(`[Gemini retry ${attempt + 1}] HTTP ${res.status} — waiting ${waitMs}ms${rawRetryAfter ? ` (Retry-After: ${rawRetryAfter}s)` : ''}`)
-            await new Promise(r => setTimeout(r, waitMs))
-            continue
-          }
-          if (res.status === 429) {
-            // Free-tier per-minute window exhausted — open the 60s cooldown so
-            // the NEXT write skips immediately instead of failing again.
-            lastGemini429At = Date.now()
-            return { article: null, debug: `http_429:${errText.slice(0, 150)}` }
-          }
-          if (res.status === 404 && mi === models.length - 1) {
-            return { article: null, debug: `http_404:${errText.slice(0, 150)}` }
-          }
-          return { article: null, debug: `http_${res.status}:${errText.slice(0, 150)}` }
-        }
-
-        const data = await res.json()
-        // With googleSearch grounding the model can emit multiple parts —
-        // join ALL text parts so we never lose half the article.
-        const raw = (data?.candidates?.[0]?.content?.parts || [])
-          .map((p: any) => p?.text || '')
-          .join('')
-        if (!raw || raw.length < 100) {
-          const reason = data?.candidates?.[0]?.finishReason || 'NO_CANDIDATE'
-          return { article: null, debug: `empty:${reason}/len=${raw.length}` }
-        }
-
-        const { article, reason } = validate(raw, 'gemini-grounded')
-
-        if (article) {
-          await logGeminiUsage(article.headline, usedFor)
-          console.log(`[✓ Gemini+Search ${todayCount + 1}/${cap}] ${article.headline.slice(0, 60)} (${usedFor})`)
-          return { article, debug: 'ok' }
-        }
-
-        // Corrective retry: if validate had a fixable issue, give Gemini a second chance
-        lastDebug = `validate:${reason}`
-        const finishReason = String(data?.candidates?.[0]?.finishReason || '')
-        // MAX_TOKENS stop (or a raw blob that never closes its final }) means the
-        // article was TRUNCATED mid-generation — retry with the truncation
-        // corrective instead of "fixing" a non-existent content issue (e.g.
-        // faq_too_few reported on half a JSON object).
-        const looksTruncated = !String(raw).trim().endsWith('}')
-        const correctiveKey =
-          finishReason === 'MAX_TOKENS' || looksTruncated
-            ? 'truncated'
-            : CORRECTIVE_PROMPTS[reason]
-            ? reason
-            : String(reason).split(':')[0]
-        const corrective = CORRECTIVE_PROMPTS[correctiveKey]
-        if (corrective && attempt < maxRetries) {
-          console.warn(`[Gemini corrective ${attempt + 1}/${maxRetries}] ${correctiveKey} (${reason}) — retrying`)
-          prompt = prompt + '\n\n⚠️ CORRECTION: ' + corrective
-          await new Promise(r => setTimeout(r, 1500))
-          continue
-        }
-
-        return { article: null, debug: lastDebug }
-
-      } catch (e: any) {
-        const msg = String(e)
-        if (attempt < maxRetries && (msg.includes('Timeout') || msg.includes('timeout') || msg.includes('aborted') || msg.includes('FETCH_ERROR'))) {
-          console.warn(`[Gemini retry ${attempt + 1}] ${msg.slice(0, 80)}`)
-          await new Promise(r => setTimeout(r, 1000))
-          continue
-        }
-        return { article: null, debug: `error:${msg.slice(0, 150)}` }
-      }
-    }
-  }
-
-  return { article: null, debug: lastDebug || 'retries_exhausted' }
-}
-
 // ── MAIN EXPORT ───────────────────────────────────────────────────────────
 
 export async function rewriteArticle(
@@ -897,41 +605,7 @@ export async function rewriteArticle(
 
   const prompt = buildPrompt(title, sourceContent, sourceName, category)
 
-  return await geminiGrounded(prompt, usedFor)
-}
-
-// ── QUOTA STATUS ──────────────────────────────────────────────────────────
-
-export async function getGeminiQuotaStatus(): Promise<{
-  used:         number
-  cap:          number
-  remaining:    number
-  manualUsed:   number
-  manualCap:    number
-  manualRemaining: number
-  resetsAt:     string
-  canUseGemini: boolean
-  canUseManualGemini: boolean
-}> {
-  const used          = await getGeminiTodayCount()
-  const manualUsed    = await getGeminiTodayCount('manual')
-  const remaining     = Math.max(0, GEMINI_DAILY_CAP - used)
-  const manualRemaining = Math.max(0, MANUAL_GEMINI_DAILY_CAP - manualUsed)
-  const tomorrow  = new Date()
-  tomorrow.setUTCDate(tomorrow.getUTCDate() + 1)
-  tomorrow.setUTCHours(0, 0, 0, 0)
-
-  return {
-    used,
-    cap:          GEMINI_DAILY_CAP,
-    remaining,
-    manualUsed,
-    manualCap:    MANUAL_GEMINI_DAILY_CAP,
-    manualRemaining,
-    resetsAt:     tomorrow.toUTCString(),
-    canUseGemini: remaining > 0,
-    canUseManualGemini: manualRemaining > 0,
-  }
+  return await callOpenRouterArticle(prompt, usedFor)
 }
 
 // ── ADMIN MANUAL WRITE (topic / URL) ─────────────────────────────────────
@@ -1082,9 +756,6 @@ async function semanticDuplicateCheck(
   topic: string,
   sourceContent?: string
 ): Promise<DuplicatePost | null> {
-  const key = process.env.GEMINI_API_KEY
-  if (!key) return null
-
   const supabase = createClient()
   const { data } = await supabase
     .from("posts")
@@ -1111,25 +782,34 @@ async function semanticDuplicateCheck(
   const prompt = buildSemanticPrompt(topic, sourceContent, candidates)
 
   try {
-    const geminiModel = await resolveGeminiModel()
-    const res = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/${geminiModel}:generateContent?key=${key}`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          contents: [{ role: "user", parts: [{ text: prompt }] }],
-          generationConfig: { temperature: 0, maxOutputTokens: 8 },
-        }),
-        signal: AbortSignal.timeout(30000),
-      }
-    )
+    const apiKey = await resolveOpenRouterKey()
+    if (!apiKey) return null
+    const model = await resolveOpenRouterModel()
+    const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${apiKey}`,
+        "HTTP-Referer": SITE_URL,
+        "X-Title": SITE_NAME,
+      },
+      body: JSON.stringify({
+        model,
+        messages: [
+          { role: "system", content: "Return ONLY the index number." },
+          { role: "user", content: prompt },
+        ],
+        temperature: 0,
+        max_tokens: 8,
+      }),
+      signal: AbortSignal.timeout(30000),
+    })
     if (!res.ok) {
       console.warn(`[Duplicate] semantic check HTTP ${res.status} — skipping`)
       return null
     }
     const data2 = await res.json()
-    const answer = (data2?.candidates?.[0]?.content?.parts?.[0]?.text || "").trim()
+    const answer = (data2?.choices?.[0]?.message?.content || "").trim()
     const idx = parseSemanticAnswer(answer, candidates.length)
     if (idx === null) return null
     const match = candidates[idx]
@@ -1324,13 +1004,13 @@ export async function manualWriteFromUrl(url: string): Promise<{ article: AIArti
   return orResult
 }
 
-export async function geminiRewriteContent(title: string, content: string): Promise<string> {
+export async function openRouterRewriteContent(title: string, content: string): Promise<string> {
   const textContent = stripHtml(content)
   if (!textContent || textContent.length < 50) return content
 
-  const todayCount = await getGeminiTodayCount()
-  if (todayCount >= GEMINI_DAILY_CAP) {
-    console.warn(`[Techpivo AI] Gemini daily cap reached (${todayCount}/${GEMINI_DAILY_CAP}) — skipping rewrite`)
+  const apiKey = await resolveOpenRouterKey()
+  if (!apiKey) {
+    console.warn('[OpenRouter Rewrite] No API key — returning original')
     return content
   }
 
@@ -1350,49 +1030,38 @@ export async function geminiRewriteContent(title: string, content: string): Prom
     "- Do NOT use phrases like 'In conclusion', 'To summarize', or 'In today's fast-paced world'\n\n" +
     "Article title: " + title + "\n\nOriginal content:\n" + textContent
 
-  if (process.env.GEMINI_API_KEY) {
-    // Same auto-rotation as geminiGrounded: a 404 (model not available to the
-    // key) or 429 (free-tier daily quota exhausted) falls through the chain
-    // instead of silently returning the original content.
-    const models = geminiModelOrder(await resolveGeminiModel())
-    for (const geminiModel of models) {
-      try {
-        const url = `https://generativelanguage.googleapis.com/v1beta/models/${geminiModel}:generateContent?key=${process.env.GEMINI_API_KEY}`
-        const res = await fetch(url, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            contents: [{ role: "user", parts: [{ text: rewritePrompt }] }],
-            // 4096 tokens + 15s aborted long rewrites mid-generation (same
-            // truncation class as the JSON parse failures) — 16384/120s matches
-            // the main generation path.
-            generationConfig: { temperature: 0.5, maxOutputTokens: 16384 },
-          }),
-          signal: AbortSignal.timeout(120000),
-        })
-        if (!res.ok) {
-          const errText = await res.text().catch(() => '')
-          const modelUnavailable = res.status === 404 && /no longer available|not found|does not exist|not accessible|not supported/i.test(errText)
-          if (modelUnavailable || res.status === 429) {
-            console.warn(`[Gemini rewrite] ${geminiModel} HTTP ${res.status} — switching model`)
-            continue
-          }
-          console.warn('[Techpivo] Gemini rewrite HTTP', res.status)
-          break
-        }
-        const data = await res.json()
-        const text = (data?.candidates?.[0]?.content?.parts || [])
-          .map((p: any) => p?.text || '')
-          .join('')
-        if (text.length > 300) {
-          await logGeminiUsage(title, 'rewrite')
-          console.log(`[✓ Gemini Rewrite] ${title.slice(0, 40)}`)
-          return text
-        }
-      } catch (e) {
-        console.warn("[Techpivo] Gemini rewrite failed:", e)
-      }
+  try {
+    const model = await resolveOpenRouterModel()
+    const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${apiKey}`,
+        'HTTP-Referer': SITE_URL,
+        'X-Title': 'Techpivo',
+      },
+      body: JSON.stringify({
+        model,
+        messages: [{ role: 'user', content: rewritePrompt }],
+        max_tokens: 16384,
+        temperature: 0.5,
+      }),
+      signal: AbortSignal.timeout(120000),
+    })
+    if (!res.ok) {
+      const errText = await res.text().catch(() => '')
+      console.warn(`[OpenRouter Rewrite] HTTP ${res.status}: ${errText.slice(0, 100)}`)
+      return content
     }
+    const data = await res.json()
+    const text = (data?.choices?.[0]?.message?.content || '').trim()
+    if (text.length > 300) {
+      console.log(`[✓ OpenRouter Rewrite] ${title.slice(0, 40)}`)
+      return text
+    }
+    console.warn(`[OpenRouter Rewrite] Response too short (${text.length} chars) — returning original`)
+  } catch (e) {
+    console.warn('[OpenRouter Rewrite] Failed:', e)
   }
 
   console.warn(`[✗ Rewrite ALL FAILED] ${title.slice(0, 40)} — returning original`)
