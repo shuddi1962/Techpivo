@@ -39,13 +39,17 @@ async function getApiKey(): Promise<string | null> {
 async function dataForSeoFetch(path: string, body: DataForSEOTask | DataForSEOTask[]) {
   const login = process.env.DATAFORSEO_LOGIN
   const password = process.env.DATAFORSEO_PASSWORD
-  const apiKey = (await getApiKey()) || (login && password ? `${login}:${password}` : null)
-  if (!apiKey) {
-    return { ok: false, status: 401, error: "DataForSEO API key not configured. Add it in Admin → Settings → SEO Intelligence, or set DATAFORSEO_LOGIN + DATAFORSEO_PASSWORD in env." }
+  const stored = await getApiKey()
+  let authString: string | null = null
+  if (stored) {
+    authString = stored.includes(":") ? stored : `${stored}:`
+  } else if (login && password) {
+    authString = `${login}:${password}`
   }
-  const auth = apiKey.includes(":") && !apiKey.startsWith("http")
-    ? "Basic " + Buffer.from(apiKey).toString("base64")
-    : "Basic " + Buffer.from(`${apiKey}:`).toString("base64")
+  if (!authString) {
+    return { ok: false, status: 401, error: "DataForSEO credentials not configured. Add them in Admin → Settings → SEO Intelligence (paste as 'login:password' from https://app.dataforseo.com/api-access), or set DATAFORSEO_LOGIN + DATAFORSEO_PASSWORD in env." }
+  }
+  const auth = "Basic " + Buffer.from(authString).toString("base64")
   const url = path.startsWith("http") ? path : `https://api.dataforseo.com${path}`
   const res = await fetch(url, {
     method: "POST",

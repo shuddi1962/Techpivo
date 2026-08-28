@@ -527,6 +527,8 @@ function SEOInsightsTab({ articles, categories }: SEOInsightsTabProps) {
   const [serp, setSerp] = useState<any[]>([])
   const [domain, setDomain] = useState("techpivo.com")
   const [domainResults, setDomainResults] = useState<any>(null)
+  const [locationCode, setLocationCode] = useState(2840) // default: United States
+  const [languageCode, setLanguageCode] = useState("en")
 
   const isContent = (kw: string) => {
     const l = kw.toLowerCase()
@@ -547,7 +549,7 @@ function SEOInsightsTab({ articles, categories }: SEOInsightsTabProps) {
     try {
       const r = await fetch("/api/admin/seo-dataforseo", {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action, keyword: seed.trim(), ...extra }),
+        body: JSON.stringify({ action, keyword: seed.trim(), location_code: locationCode, language_code: languageCode, ...extra }),
       })
       const data = await r.json()
       if (!r.ok || data?.error) { setError(data?.error || data?.raw?.status_message || `HTTP ${r.status}`); return null }
@@ -586,7 +588,7 @@ function SEOInsightsTab({ articles, categories }: SEOInsightsTabProps) {
     try {
       const r = await fetch("/api/admin/seo-dataforseo", {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "domain_keywords", domain: domain.trim() }),
+        body: JSON.stringify({ action: "domain_keywords", domain: domain.trim(), location_code: locationCode, language_code: languageCode }),
       })
       const data = await r.json()
       if (!r.ok || data?.error) setError(data?.error || `HTTP ${r.status}`)
@@ -660,13 +662,57 @@ function SEOInsightsTab({ articles, categories }: SEOInsightsTabProps) {
             </div>
           )}
 
-          {error && (
+            {error && (
             <div className="mt-3 p-3 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 rounded-lg text-sm text-red-700 dark:text-red-300 flex items-center gap-2">
               <AlertCircle className="h-4 w-4 shrink-0" /> {error}
             </div>
           )}
           {!error && loading === false && (subTab !== "domain" && items.length === 0 && intents.length === 0 && serp.length === 0 && trends.length === 0 && !domainResults) && (
             <p className="text-xs text-muted-foreground mt-3">Enter a seed keyword and run. Configure DataForSEO in <Link href="/admin/settings" className="text-primary hover:underline">Settings → SEO Intelligence</Link> if you see a not-configured error.</p>
+          )}
+          {subTab !== "domain" && (
+            <div className="flex gap-3 mt-3">
+              <div className="flex items-center gap-2">
+                <Globe className="h-4 w-4 text-muted-foreground" />
+                <select
+                  value={locationCode}
+                  onChange={(e) => setLocationCode(Number(e.target.value))}
+                  className="h-9 pl-2 pr-6 rounded-md border border-input bg-background text-xs focus:outline-none focus:ring-2 focus:ring-primary/30 appearance-none cursor-pointer"
+                >
+                  <option value={2840}>United States</option>
+                  <option value={2826}>United Kingdom</option>
+                  <option value={2158}>India</option>
+                  <option value={2768}>Canada</option>
+                  <option value={2763}>Australia</option>
+                  <option value={2765}>Germany</option>
+                  <option value={2766}>France</option>
+                  <option value={2717}>Brazil</option>
+                  <option value={2824}>UAE</option>
+                  <option value={2762}>Nigeria</option>
+                  <option value={2827}>Kenya</option>
+                  <option value={2724}>South Africa</option>
+                  <option value={2828}>Global (Worldwide)</option>
+                </select>
+              </div>
+              <div className="flex items-center gap-2">
+                <select
+                  value={languageCode}
+                  onChange={(e) => setLanguageCode(e.target.value)}
+                  className="h-9 pl-2 pr-6 rounded-md border border-input bg-background text-xs focus:outline-none focus:ring-2 focus:ring-primary/30 appearance-none cursor-pointer"
+                >
+                  <option value="en">English</option>
+                  <option value="es">Spanish</option>
+                  <option value="fr">French</option>
+                  <option value="de">German</option>
+                  <option value="pt">Portuguese</option>
+                  <option value="hi">Hindi</option>
+                  <option value="zh">Chinese</option>
+                  <option value="ja">Japanese</option>
+                  <option value="ar">Arabic</option>
+                  <option value="sw">Swahili</option>
+                </select>
+              </div>
+            </div>
           )}
         </CardContent>
       </Card>
@@ -849,14 +895,14 @@ function AIAssistantTab({ articles, categories, stats }: AIAssistantTabProps) {
   useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }) }, [messages])
 
   const QUICK_ACTIONS = [
-    { label: "What to write today?", icon: "🎯", prompt: "You are TechPivo's SEO content strategist. Our audience is Nigerian/African developers, tech enthusiasts, and gadget lovers. Based on our existing published articles and trending search data, tell us: What 5 topics should we cover today that would drive the most organic traffic? Give specific titles and why they matter." },
-    { label: "Content gaps to fill", icon: "🔍", prompt: "You are TechPivo's SEO analyst. We have published articles on these topics: LIST. Compare this against high-search-volume tech keywords trending in Nigeria and globally. Tell us exactly which 5 content gaps are costing us the most traffic." },
-    { label: "How-to keywords", icon: "📚", prompt: "You are TechPivo's keyword research expert. Find 10 'how to...' and 'what is...' keywords in tech, programming, AI, cybersecurity, and gadgets that Nigerian developers and tech enthusiasts search for daily. Include estimated search intent type and article format recommendation." },
-    { label: "Review opportunities", icon: "⭐", prompt: "You are TechPivo's product editor. Based on trending tech products and gadgets in 2026, recommend 5 specific products we should review that Nigerian consumers are actively searching for. Include why each matters to our audience." },
-    { label: "Tutorials needed", icon: "🛠️", prompt: "You are TechPivo's tutorial director. Nigerian developers and tech workers are our core audience. Recommend 5 step-by-step tutorial topics they desperately need. Include the audience pain point and why we're uniquely positioned to rank." },
+    { label: "What to write today?", icon: "🎯", prompt: "You are TechPivo's SEO content strategist. Our audience is global — developers, tech enthusiasts, and gadget buyers worldwide. Based on our existing published articles and trending search data, tell us: What 5 topics should we cover today that would drive the most organic traffic? Give specific titles and why they matter." },
+    { label: "Content gaps to fill", icon: "🔍", prompt: "You are TechPivo's SEO analyst. We have published articles on these topics: LIST. Compare this against high-search-volume tech keywords trending globally. Tell us exactly which 5 content gaps are costing us the most traffic." },
+    { label: "How-to keywords", icon: "📚", prompt: "You are TechPivo's keyword research expert. Find 10 'how to...' and 'what is...' keywords in tech, programming, AI, cybersecurity, and gadgets that developers and tech enthusiasts search for daily worldwide. Include estimated search intent type and article format recommendation." },
+    { label: "Review opportunities", icon: "⭐", prompt: "You are TechPivo's product editor. Based on trending tech products and gadgets in 2026, recommend 5 specific products we should review that consumers are actively searching for. Include why each matters to our global audience." },
+    { label: "Tutorials needed", icon: "🛠️", prompt: "You are TechPivo's tutorial director. Our global audience includes developers and tech workers at every skill level. Recommend 5 step-by-step tutorial topics they desperately need. Include the audience pain point and why we're uniquely positioned to rank." },
     { label: "AI news angles", icon: "🤖", prompt: "You are TechPivo's AI beat reporter. Gemini, ChatGPT, Claude, open-source LLMs — what's happening right now that we should cover urgently? Give 5 story angles with specific headlines and the official sources we should cite." },
-    { label: "Comparison articles", icon: "⚖️", prompt: "You are TechPivo's comparison editor. People search 'X vs Y' constantly. List 5 high-traffic comparison pairs in tech/AI/gadgets that would resonate with Nigerian audiences and rank quickly on Google." },
-    { label: "Seasonal topics now", icon: "📅", prompt: "What tech topics are people in Nigeria/Africa searching for more than usual this season? Include any upcoming events, product launches, or cultural moments relevant to our audience." },
+    { label: "Comparison articles", icon: "⚖️", prompt: "You are TechPivo's comparison editor. People search 'X vs Y' constantly. List 5 high-traffic comparison pairs in tech/AI/gadgets that would resonate with a global audience and rank quickly on Google." },
+    { label: "Seasonal topics now", icon: "📅", prompt: "What tech topics are people searching for more than usual this season worldwide? Include any upcoming events, product launches, or industry moments relevant to our audience." },
   ]
 
   const runQuick = async (prompt: string) => {
@@ -913,6 +959,7 @@ function AIAssistantTab({ articles, categories, stats }: AIAssistantTabProps) {
   }
 
   const runResearch = async (kw: string) => {
+    if (!kw) return
     setGenerating(true)
     try {
       const r = await fetch("/api/admin/research-keyword", {
@@ -921,6 +968,17 @@ function AIAssistantTab({ articles, categories, stats }: AIAssistantTabProps) {
       })
       const d = await r.json()
       setResult({ ok: d.success, msg: d.success ? `Research queued: "${kw}"` : d.error || "Failed" })
+    } catch (e: any) { setResult({ ok: false, msg: e.message }) }
+    setGenerating(false)
+    setTimeout(() => setResult(null), 6000)
+  }
+
+  const writeAllDrafts = async () => {
+    setGenerating(true)
+    try {
+      const r = await fetch("/api/admin/trigger-keyword-write", { method: "GET" })
+      const d = await r.json()
+      setResult({ ok: d.ok !== false, msg: d?.message || `Triggered writing of all drafts` })
     } catch (e: any) { setResult({ ok: false, msg: e.message }) }
     setGenerating(false)
     setTimeout(() => setResult(null), 6000)
@@ -950,7 +1008,7 @@ function AIAssistantTab({ articles, categories, stats }: AIAssistantTabProps) {
               <input type="text" value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={(e) => { if (e.key === "Enter") runCustom() }}
-                placeholder="e.g. what topics should we cover this week for Nigerian developers?"
+                placeholder="e.g. what topics should we cover this week for our global audience?"
                 className="w-full h-10 pl-9 pr-3 rounded-lg border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/30" />
             </div>
             <Button onClick={runCustom} disabled={loading || !input.trim()}>
