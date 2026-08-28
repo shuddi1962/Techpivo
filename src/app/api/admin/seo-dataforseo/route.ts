@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/admin"
+import { resolveOpenRouterKey, resolveOpenRouterModel } from "@/lib/openrouter-model"
+import { SITE_URL } from "@/lib/constants"
 
 export const dynamic = "force-dynamic"
 export const runtime = "nodejs"
@@ -77,10 +79,17 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 })
   }
 
-  const { action, params = {}, tasks = [] } = payload
+  const { action, params: rawParams = {}, tasks = [] } = payload
   if (!action) {
     return NextResponse.json({ error: "action is required" }, { status: 400 })
   }
+
+  // Accept both { params: { keyword } } and flat { keyword } from the client
+  const flat: any = { ...rawParams }
+  for (const k of Object.keys(payload)) {
+    if (k !== "action" && k !== "params" && k !== "tasks" && !(k in flat)) flat[k] = (payload as any)[k]
+  }
+  const params: any = flat
 
   const defaults = {
     location_code: 2840,
@@ -155,7 +164,7 @@ export async function POST(req: NextRequest) {
       }
 
       case "domain_keywords": {
-        const target = (params as any).target
+        const target = (params as any).target || (params as any).domain
         if (!target) return NextResponse.json({ error: "target (domain) required" }, { status: 400 })
         const r = await dataForSeoFetch("/v3/dataforseo_labs/google/domain_keywords/live", [
           { target, location_code: merged.location_code, language_code: merged.language_code, limit: merged.limit },
@@ -164,7 +173,7 @@ export async function POST(req: NextRequest) {
       }
 
       case "ranked_keywords": {
-        const target = (params as any).target
+        const target = (params as any).target || (params as any).domain
         if (!target) return NextResponse.json({ error: "target (domain) required" }, { status: 400 })
         const r = await dataForSeoFetch("/v3/keywords_data/google_ads/ranked_keywords/live", [
           { target, location_code: merged.location_code, language_code: merged.language_code, limit: merged.limit },
@@ -173,7 +182,7 @@ export async function POST(req: NextRequest) {
       }
 
       case "competitors_domain": {
-        const target = (params as any).target
+        const target = (params as any).target || (params as any).domain
         if (!target) return NextResponse.json({ error: "target (domain) required" }, { status: 400 })
         const r = await dataForSeoFetch("/v3/dataforseo_labs/google/competitors_domain/live", [
           { target, location_code: merged.location_code, language_code: merged.language_code, limit: merged.limit },
@@ -182,7 +191,7 @@ export async function POST(req: NextRequest) {
       }
 
       case "content_gap": {
-        const target = (params as any).target
+        const target = (params as any).target || (params as any).domain
         if (!target) return NextResponse.json({ error: "target (your domain) required" }, { status: 400 })
         const r = await dataForSeoFetch("/v3/dataforseo_labs/google/content_gap/live", [
           { target, location_code: merged.location_code, language_code: merged.language_code, limit: merged.limit },
@@ -214,22 +223,27 @@ export async function POST(req: NextRequest) {
         if (!question) return NextResponse.json({ error: "question required" }, { status: 400 })
 
         const seeds = await gatherSeedKeywords()
-        const r = await dataForSeoFetch("/v3/dataforseo_labs/google/keyword_ideas/live", [
-          {
-            keywords: seeds.slice(0, 5),
-            location_code: merged.location_code,
-            language_code: merged.language_code,
-            limit: 20,
-            include_clickstream_data: false,
-          },
+        const [r, trends] = await Promise.all([
+          dataForSeoFetch("/v3/dataforseo_labs/google/keyword_ideas/live", [
+            { keywords: seeds.slice(0, 5), location_code: merged.location_code, language_code: merged.language_code, limit: 30, include_clickstream_data: false },
+          ]),
+          dataForSeoFetch("/v3/keywords_data/google_trends/explore/live", [
+            { keywords: seeds.slice(0, 3), location_code: merged.location_code, language_code: merged.language_code },
+          ]),
         ])
 
-        const trends = await dataForSeoFetch("/v3/keywords_data/google_trends/explore/live", [
-          { keywords: seeds.slice(0, 3), location_code: merged.location_code, language_code: merged.language_code },
-        ])
+        const items = (r as any)?.items || []
+        const trendsItems = (trends as any)?.items || []
 
-        const answer = buildChatAnswer(question, (r as any)?.items || [], (trends as any)?.items || [], context)
-        return NextResponse.json({ answer, items: (r as any)?.items?.slice(0, 10) || [], trends: (trends as any)?.items?.slice(0, 10) || [] })
+        const { answer, debug } = await generateChatAnswerWithAI(
+          question,
+          items,
+          trendsItems,
+          context,
+          merged.location_code,
+          merged.language_code
+        )
+        return NextResponse.json({ answer, items: items.slice(0, 10), trends: trendsItems.slice(0, 10), debug })
       }
 
       default:
@@ -259,38 +273,163 @@ async function gatherSeedKeywords(): Promise<string[]> {
   }
 }
 
-function buildChatAnswer(question: string, items: any[], trends: any[], context: any): string {
-  const q = question.toLowerCase()
-  const topByVol = [...items].sort((a, b) => (b.search_volume || 0) - (a.search_volume || 0)).slice(0, 10)
-  const topByVolText = topByVol.length
-    ? topByVol.map((i, idx) => `${idx + 1}. "${i.keyword}" — ${(i.search_volume || 0).toLocaleString()} searches/mo ($${(i.cpc || 0).toFixed(2)} CPC, comp ${Math.round((i.competition || 0) * 100)}%)`).join("\n")
-    : "No volume data."
+// ── AI-powered chat answer generation ─────────────────────────────────────────
+const LOCATION_NAMES: Record<number, string> = {
+  2840: "United States", 2826: "United Kingdom", 2158: "India", 2768: "Canada",
+  2763: "Australia", 2765: "Germany", 2766: "France", 2717: "Brazil",
+  2824: "UAE", 2762: "Nigeria", 2827: "Kenya", 2724: "South Africa",
+}
+const LANGUAGE_NAMES: Record<string, string> = {
+  en: "English", es: "Spanish", fr: "French", de: "German", pt: "Portuguese",
+  hi: "Hindi", zh: "Chinese", ja: "Japanese", ar: "Arabic", sw: "Swahili",
+}
+
+async function generateChatAnswerWithAI(
+  question: string,
+  items: any[],
+  trends: any[],
+  context: any,
+  locationCode: number,
+  languageCode: string,
+): Promise<{ answer: string; debug: string }> {
+  const apiKey = await resolveOpenRouterKey()
+  if (!apiKey) {
+    return {
+      answer: buildFallbackAnswer(question, items, trends, context, locationCode, languageCode),
+      debug: "no_openrouter_key",
+    }
+  }
+
+  const model = (await resolveOpenRouterModel()) || "minimax/minimax-m3:free"
+  const locationName = LOCATION_NAMES[locationCode] || `Location ${locationCode}`
+  const langName = LANGUAGE_NAMES[languageCode] || languageCode
+
+  const topKeywords = [...items]
+    .sort((a: any, b: any) => (b.search_volume || 0) - (a.search_volume || 0))
+    .slice(0, 15)
+
+  const kwText = topKeywords.length
+    ? topKeywords.map((i: any, idx: number) =>
+      `${idx + 1}. "${i.keyword}" — ${(i.search_volume || 0).toLocaleString()} searches/mo | $${i.cpc || 0} CPC | comp ${Math.round((i.competition || 0) * 100)}%`
+    ).join("\n")
+    : "No keyword data available."
 
   const trendText = trends.length
-    ? trends.slice(0, 5).map((t: any) => `• ${t.keyword || t.topic_title} (${(t.search_volume || 0).toLocaleString()} vol, trend: ${t.trend || "—"})`).join("\n")
-    : "No trends data."
+    ? trends.slice(0, 8).map((t: any) =>
+      `• ${t.keyword || t.topic_title || t.topic || "Trending topic"} | ${(t.search_volume || 0).toLocaleString()} vol`
+    ).join("\n")
+    : "No trend data available."
 
   const ctx = context || {}
-  const topKws = (ctx.topKeywords || []).slice(0, 5).map((k: any) => `• ${k.keyword} (${(k.volume || 0).toLocaleString()})`).join("\n") || "• (no published keywords yet)"
+  const portfolio = `Published: ${ctx.publishedCount || 0} articles | Queue: ${ctx.draftCount || 0} drafts | Total targeted search volume: ${(ctx.totalVolume || 0).toLocaleString()}/mo`
 
+  const systemPrompt = `You are TechPivo's senior SEO content strategist. Your job is to give sharp, specific, actionable recommendations — not generic advice.
+
+CRITICAL RULES:
+- Always respond in the same language as the question (English, Spanish, French, etc.)
+- Never say "I don't have enough data" — work with what you have.
+- Every recommendation must include a specific headline idea or article title.
+- Always reference actual numbers from the data provided (volumes, CPC, competition).
+- Never repeat the same recommendation across different question types.
+- Your audience is global (developers, tech enthusiasts, gadget buyers worldwide).`
+
+  const userPrompt = `QUESTION: ${question}
+
+KEYWORD DATA (${locationName}, ${langName}):
+${kwText}
+
+TREND DATA:
+${trendText}
+
+PORTFOLIO: ${portfolio}
+
+TASK: Answer the question directly using the data above. Be specific — give actual article headline ideas with the numbers that support each recommendation. Format suggestions as a numbered list with titles and the data backing each choice. If no keyword data exists, use your knowledge of the topic to give expert recommendations and say so.`
+
+  try {
+    const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${apiKey}`,
+        "HTTP-Referer": SITE_URL,
+        "X-Title": "Techpivo",
+      },
+      body: JSON.stringify({
+        model,
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: userPrompt },
+        ],
+        max_tokens: 1200,
+        temperature: 0.7,
+      }),
+      signal: AbortSignal.timeout(60000),
+    })
+
+    if (!res.ok) {
+      const err = await res.text().catch(() => "")
+      console.warn(`[ai_chat OpenRouter] HTTP ${res.status}: ${err.slice(0, 100)}`)
+      return { answer: buildFallbackAnswer(question, items, trends, context, locationCode, languageCode), debug: `openrouter_${res.status}` }
+    }
+
+    const data = await res.json().catch(() => null)
+    const reply = data?.choices?.[0]?.message?.content?.trim()
+    if (!reply) throw new Error("empty response")
+
+    return { answer: reply, debug: `openrouter:${model}` }
+  } catch (e: any) {
+    console.warn(`[ai_chat] AI error: ${e.message}`)
+    return { answer: buildFallbackAnswer(question, items, trends, context, locationCode, languageCode), debug: `error:${e.message.slice(0, 40)}` }
+  }
+}
+
+function buildFallbackAnswer(
+  question: string,
+  items: any[],
+  trends: any[],
+  context: any,
+  locationCode: number,
+  languageCode: string,
+): string {
+  const q = question.toLowerCase()
+  const locationName = LOCATION_NAMES[locationCode] || `Location ${locationCode}`
+  const langName = LANGUAGE_NAMES[languageCode] || languageCode
+
+  const top = [...items]
+    .sort((a: any, b: any) => (b.search_volume || 0) - (a.search_volume || 0))
+    .slice(0, 10)
+
+  if (!top.length && !trends.length) {
+    const ctx = context || {}
+    return `I don't have enough keyword data to answer that yet — try running a search volume or keyword ideas query first in the SEO Insights tab.
+
+Your portfolio: ${ctx.publishedCount || 0} published | ${ctx.draftCount || 0} in queue | ${(ctx.totalVolume || 0).toLocaleString()} monthly searches targeted.
+
+Once you gather keywords for "${ctx.topKeywords?.[0]?.keyword || "your topics"}", come back and I'll give you specific recommendations.`
+  }
+
+  const kwLines = top.map((i: any, idx: number) =>
+    `${idx + 1}. "${i.keyword}" — ${(i.search_volume || 0).toLocaleString()} searches/mo`
+  ).join("\n")
+
+  if (q.includes("what to write") || q.includes("today") || q.includes("trending")) {
+    const top3 = top.slice(0, 3).map((i: any, idx: number) =>
+      `${idx + 1}. "${i.keyword}" — ${(i.search_volume || 0).toLocaleString()} searches/mo in ${locationName} (${langName})`
+    ).join("\n")
+    return `Here's what to write today based on real search demand:\n\n${top3}\n\nEach of these targets high-intent searches with real monthly volume. Pick the one closest to your next publishing slot and draft it today.`
+  }
+  if (q.includes("gap") || q.includes("missing")) {
+    return `Content gaps in your portfolio:\n\n${kwLines}\n\nYou have ${(context?.publishedCount || 0)} published articles. These keywords above are opportunities — topics with demand you haven't covered yet. Priority = highest search volume with lowest competition in your keyword data.`
+  }
   if (q.includes("how to") || q.includes("tutorial")) {
-    return `How-to & tutorial opportunities ranked by search demand:\n\n${topByVolText}\n\nSuggested article formats based on intent:\n• "Step-by-step" tutorials (target queries like "how to do X in 2026")\n• "Beginner-friendly" explainers (lower competition, faster rank)\n• "Comparison tutorials" (X vs Y for beginners)\n\nThese would all fit your Tutorials category.`
+    return `How-to keyword opportunities in ${locationName} (${langName}):\n\n${kwLines}\n\nThese are question-format queries — ideal for tutorial articles. Structure each as: problem → step-by-step solution → expected outcome.`
   }
-  if (q.includes("review") || q.includes("best") || q.includes("top")) {
-    return `High-traffic review & recommendation keywords:\n\n${topByVolText}\n\nBest fit for your Reviews category. Aim for:\n• Long-form reviews (1,500+ words, hands-on tone)\n• "Best X for [audience]" articles (e.g. "Best laptops for Nigerian developers")\n• Side-by-side comparison tables\n\nReviews have higher commercial intent and better affiliate potential.`
-  }
-  if (q.includes("compare") || q.includes(" vs ") || q.includes("vs ")) {
-    return `Comparison article opportunities:\n\n${topByVolText}\n\nFor each, build a comparison page with:\n• Side-by-side feature table\n• Price + value verdict\n• "Who should pick which" section\n\nComparison articles rank quickly because searchers have clear intent.`
+  if (q.includes("review") || q.includes("best") || q.includes("top ") || q.includes("comparison")) {
+    return `Commercial-intent keywords for ${locationName} (${langName}):\n\n${kwLines}\n\nHigh CPC means commercial intent — these work for product reviews, comparisons, and affiliate content. Build articles with clear CTAs and price/value tables.`
   }
   if (q.includes("ai") || q.includes("gpt") || q.includes("gemini") || q.includes("claude")) {
-    return `AI search trends right now:\n\n${trendText}\n\nRecommended AI coverage angles:\n• Hands-on tutorials ("How to use Gemini 2.5 Flash for [task]")\n• Comparison pieces ("Gemini vs ChatGPT for [use case]")\n• News on new model releases (track Google / OpenAI / Anthropic blogs)\n• Workflow articles ("Build a [project] with [model]")\n\nAI & Automation is one of your strongest categories.`
-  }
-  if (q.includes("gap") || q.includes("missing") || q.includes("missing")) {
-    return `Content gap analysis:\n\nYour published top keywords by volume:\n${topKws}\n\nDataForSEO keyword ideas show ${items.length} related searches you haven't covered. Highest opportunity gaps (high volume + low competition):\n\n${topByVolText}\n\nThese are the topics your competitors rank for that you don't.`
-  }
-  if (q.includes("today") || q.includes("now") || q.includes("trending")) {
-    return `What to write today, ranked by potential traffic:\n\n${topByVolText}\n\nTrending now:\n${trendText}\n\nYou currently have ${ctx.publishedCount || 0} published articles, ${ctx.draftCount || 0} drafts in queue, and ${(ctx.totalVolume || 0).toLocaleString()} total monthly search volume across your portfolio.\n\nMy top 3 picks for immediate impact:\n1. Highest-volume keyword with low competition — fastest rank\n2. Trending topic with timing advantage — most clicks right now\n3. Question-format query (FAQ-style) — featured snippet opportunity`
+    return `AI & LLMs keywords in ${locationName} (${langName}):\n\n${kwLines}\n\nThese queries cover AI tools, models, and workflows. Combine with hands-on tutorials and comparison pieces for maximum reach.`
   }
 
-  return `Here's what DataForSEO + your site data show:\n\nTOP KEYWORD OPPORTUNITIES (by search volume):\n${topByVolText}\n\nCURRENT TRENDS:\n${trendText}\n\nYOUR PORTFOLIO:\n• ${ctx.publishedCount || 0} published articles\n• ${ctx.draftCount || 0} drafts in queue\n• ${(ctx.totalVolume || 0).toLocaleString()} total monthly searches targeted\n\nAsk me more specifically: "what should I write today", "content gaps", "how-to keywords", "review opportunities", "AI news", "comparison articles", or "tutorials needed".`
+  return `Here's what your keyword data shows for ${locationName} (${langName}):\n\n${kwLines}\n\n${trends.length ? `TRENDING NOW:\n${trends.slice(0, 5).map((t: any) => `• ${t.keyword || t.topic_title || "Trending"}${t.search_volume ? ` — ${t.search_volume.toLocaleString()} vol` : ""}`).join("\n")}` : ""}\n\n${(context?.publishedCount || 0)} articles published | ${(context?.draftCount || 0)} in queue | ${(context?.totalVolume || 0).toLocaleString()} total monthly searches targeted.`
 }
