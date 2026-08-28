@@ -309,12 +309,16 @@ export function AdminSidebar() {
 
       {/* Mobile sidebar */}
       <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
-        <SheetContent side="left" className="w-72 p-0">
-          <div className="flex h-14 items-center border-b px-4">
+        <SheetContent side="left" className="flex w-72 max-w-[85vw] flex-col gap-0 p-0">
+          <div className="flex h-14 shrink-0 items-center border-b px-4">
             <Brand />
           </div>
-          <NavList pathname={pathname} onNavClick={() => setMobileOpen(false)} />
-          <Footer />
+          <div className="min-h-0 flex-1 overflow-y-auto">
+            <NavList pathname={pathname} onNavClick={() => setMobileOpen(false)} />
+          </div>
+          <div className="shrink-0">
+            <Footer />
+          </div>
         </SheetContent>
       </Sheet>
     </>

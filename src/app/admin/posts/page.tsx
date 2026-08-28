@@ -222,8 +222,8 @@ export default function AdminPostsPage() {
       </div>
 
       <div className="bg-white dark:bg-[#111827] border-2 border-gray-200 dark:border-[#374151] rounded-xl shadow-sm overflow-hidden">
-        <div className="flex items-center justify-between px-5 py-4 border-b-2 border-gray-100 dark:border-[#1F2937]">
-          <div className="relative">
+        <div className="flex flex-col gap-3 px-5 py-4 border-b-2 border-gray-100 dark:border-[#1F2937] sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
+          <div className="relative w-full sm:w-64">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
             <input
               value={searchInput}
@@ -233,29 +233,31 @@ export default function AdminPostsPage() {
                 searchTimeout.current = setTimeout(() => setSearch(e.target.value), 300)
               }}
               placeholder="Search posts..."
-              className="pl-9 pr-4 py-2 text-sm border-2 border-gray-200 dark:border-[#374151] rounded-lg bg-gray-50 dark:bg-[#0A0F1E] text-gray-900 dark:text-gray-100 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#F59E0B] focus:border-transparent w-64"
+              className="w-full pl-9 pr-4 py-2 text-sm border-2 border-gray-200 dark:border-[#374151] rounded-lg bg-gray-50 dark:bg-[#0A0F1E] text-gray-900 dark:text-gray-100 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#F59E0B] focus:border-transparent"
             />
           </div>
-          <select
-            value={aiFilter}
-            onChange={(e) => setAiFilter(e.target.value)}
-            className="text-sm border-2 border-gray-200 dark:border-[#374151] rounded-lg bg-gray-50 dark:bg-[#0A0F1E] text-gray-700 dark:text-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#F59E0B]"
-          >
-            <option value="all">All Posts</option>
-            <option value="ai">AI Rewritten</option>
-            <option value="manual">Manual Only</option>
-          </select>
-          <select
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-            className="text-sm border-2 border-gray-200 dark:border-[#374151] rounded-lg bg-gray-50 dark:bg-[#0A0F1E] text-gray-700 dark:text-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#F59E0B]"
-          >
-            <option value="all">All Status</option>
-            <option value="published">Published</option>
-            <option value="draft">Draft</option>
-            <option value="scheduled">Scheduled</option>
-            <option value="archived">Archived</option>
-          </select>
+          <div className="flex flex-wrap items-center gap-2">
+            <select
+              value={aiFilter}
+              onChange={(e) => setAiFilter(e.target.value)}
+              className="text-sm border-2 border-gray-200 dark:border-[#374151] rounded-lg bg-gray-50 dark:bg-[#0A0F1E] text-gray-700 dark:text-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#F59E0B] flex-1 sm:flex-none"
+            >
+              <option value="all">All Posts</option>
+              <option value="ai">AI Rewritten</option>
+              <option value="manual">Manual Only</option>
+            </select>
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              className="text-sm border-2 border-gray-200 dark:border-[#374151] rounded-lg bg-gray-50 dark:bg-[#0A0F1E] text-gray-700 dark:text-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#F59E0B] flex-1 sm:flex-none"
+            >
+              <option value="all">All Status</option>
+              <option value="published">Published</option>
+              <option value="draft">Draft</option>
+              <option value="scheduled">Scheduled</option>
+              <option value="archived">Archived</option>
+            </select>
+          </div>
         </div>
 
         {selected.size > 0 && (
@@ -424,7 +426,7 @@ export default function AdminPostsPage() {
         </div>
 
         {totalPages > 1 && (
-          <div className="flex items-center justify-between px-5 py-4 border-t-2 border-gray-100 dark:border-[#1F2937]">
+          <div className="flex flex-col gap-3 px-5 py-4 border-t-2 border-gray-100 dark:border-[#1F2937] sm:flex-row sm:items-center sm:justify-between">
             <span className="text-sm text-gray-500 dark:text-gray-400">
               Page {page} of {totalPages} ({totalCount} posts)
             </span>

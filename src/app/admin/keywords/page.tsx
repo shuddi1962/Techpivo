@@ -188,15 +188,15 @@ export default function AdminKeywordsPage() {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex flex-col gap-3 mb-6 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-3xl font-bold">Keyword Management</h1>
+          <h1 className="text-2xl font-bold sm:text-3xl">Keyword Management</h1>
           <p className="text-sm text-muted-foreground mt-1">
             {stats.draft} drafts awaiting article generation
           </p>
         </div>
         <div className="flex gap-2">
-          <Button onClick={writeAllDrafts} disabled={generatingAll || stats.draft === 0} variant="outline">
+          <Button onClick={writeAllDrafts} disabled={generatingAll || stats.draft === 0} variant="outline" className="flex-1 sm:flex-none">
             {generatingAll ? (
               <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Writing...</>
             ) : (
