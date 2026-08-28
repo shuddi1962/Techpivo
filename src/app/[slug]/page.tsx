@@ -16,7 +16,6 @@ import { ViewTracker } from "@/components/post/view-tracker"
 import { sanitizeHtml } from "@/lib/sanitize"
 import { LiveViewCount } from "@/components/post/live-view-count"
 import { SITE_NAME, SITE_URL } from "@/lib/constants"
-import { getModelFriendlyName } from "@/lib/openrouter-model"
 import { JsonLd } from "@/components/ui/jsonld"
 import { articleSchema, breadcrumbSchema, faqPageSchema, collectionPageSchema } from "@/lib/jsonld"
 import { AdSlot } from "@/components/ads/AdSlot"
@@ -276,36 +275,6 @@ export default async function PostPage({ params }: Props) {
                 </div>
               </div>
             </div>
-
-            {/* AI Attribution */}
-            {(post as any).ai_rewritten && (
-              <div className="flex items-center gap-2 mb-6 px-4 py-2.5 rounded-xl bg-violet-50 dark:bg-violet-950/30 border border-violet-200 dark:border-violet-800/40 text-sm text-violet-700 dark:text-violet-300">
-                <span className="w-2 h-2 rounded-full bg-violet-500 shrink-0" />
-                <span>
-                  Written by{" "}
-                  <span className="font-semibold">
-                    {getModelFriendlyName((post as any).model_used)}
-                  </span>
-                  {(post as any).source_name && (
-                    <>
-                      {" "}using content from{" "}
-                      {(post as any).original_source_url ? (
-                        <a
-                          href={(post as any).original_source_url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="underline decoration-violet-300 dark:decoration-violet-600 hover:text-violet-900 dark:hover:text-violet-100 font-medium"
-                        >
-                          {(post as any).source_name}
-                        </a>
-                      ) : (
-                        <span className="font-medium">{(post as any).source_name}</span>
-                      )}
-                    </>
-                  )}
-                </span>
-              </div>
-            )}
 
             <AdSlot positionKey="post_top_banner" className="mb-8" />
 

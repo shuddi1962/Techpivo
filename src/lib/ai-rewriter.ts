@@ -874,6 +874,10 @@ async function callOpenRouterArticle(
 
       const { article, reason } = validate(raw, model)
       if (article) {
+        // If this was a fallback attempt, record the original model choice in modelUsed
+        if (modelOverride) {
+          article.modelUsed = `${model}|fallback_from:${primaryModel}`
+        }
         console.log(`[✓ OpenRouter ${model}] ${article.headline.slice(0, 55)}${withTools ? "" : " (no tools)"}`)
         return { ok: true, article, debug: `openrouter:${model}${withTools ? "" : "_no_tools"}` }
       }

@@ -201,8 +201,24 @@ export function openRouterModelOrder(primary: string): string[] {
 }
 
 // Look up the friendly display name for a model ID
+// Handles compound strings like "minimax/minimax-m3:free|fallback_from:thinkingmachines/inkling:free"
 export function getModelFriendlyName(modelId: string | null | undefined): string {
   if (!modelId) return ""
+
+  // Parse compound fallback string: "actual_model|fallback_from:primary_model"
+  const fallbackMatch = modelId.match(/^([^|]+)\|fallback_from:(.+)$/)
+  if (fallbackMatch) {
+    const actualModel = fallbackMatch[1]
+    const primaryModel = fallbackMatch[2]
+    const actualName = resolveModelName(actualModel)
+    const primaryName = resolveModelName(primaryModel)
+    return `${actualName} (fallback from ${primaryName})`
+  }
+
+  return resolveModelName(modelId)
+}
+
+function resolveModelName(modelId: string): string {
   const match = OPENROUTER_MODEL_OPTIONS.find((o) => o.id === modelId)
   if (match) return match.name
   // Fallback: extract last segment and clean it up
