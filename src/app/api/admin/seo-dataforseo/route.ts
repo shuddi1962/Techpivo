@@ -224,8 +224,8 @@ export async function POST(req: NextRequest) {
           { keywords: seeds.slice(0, 3), location_code: merged.location_code, language_code: merged.language_code },
         ])
 
-        const answer = buildChatAnswer(question, r?.items || [], trends?.items || [], context)
-        return NextResponse.json({ answer, items: r?.items?.slice(0, 10) || [], trends: trends?.items?.slice(0, 10) || [] })
+        const answer = buildChatAnswer(question, (r as any)?.items || [], (trends as any)?.items || [], context)
+        return NextResponse.json({ answer, items: (r as any)?.items?.slice(0, 10) || [], trends: (trends as any)?.items?.slice(0, 10) || [] })
       }
 
       default:
