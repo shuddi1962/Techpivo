@@ -218,9 +218,27 @@ export function SocialShareDialog({ open, onClose, post, socialUrls = {} }: Soci
 
   const copyToClipboard = async (key: string, platform: string, text: string) => {
     try {
-      // Ensure we have a short URL — if not yet, fetch synchronously now
+      // Ensure we have a short URL — if not yet, fetch synchronously now (with retry)
       let finalText = text
-      if (!shortUrl && !shortUrlError) {
+      const ensureShort = async (): Promise<string | null> => {
+        if (shortUrl && !shortUrlError) return shortUrl
+        if (shortUrlError) {
+          // Retry the shortener (previous attempt failed)
+          try {
+            const ctrl = new AbortController()
+            const t = setTimeout(() => ctrl.abort(), 6000)
+            const r = await fetch(`/api/shorten?url=${encodeURIComponent(postUrl)}`, { signal: ctrl.signal })
+            clearTimeout(t)
+            const data = await r.json()
+            if (data && data.shortUrl && data.shortUrl.startsWith("http") && !data.fallback) {
+              setShortUrl(data.shortUrl)
+              setShortUrlError(false)
+              return data.shortUrl
+            }
+          } catch { /* ignore */ }
+          return null
+        }
+        // Not yet attempted
         try {
           const ctrl = new AbortController()
           const t = setTimeout(() => ctrl.abort(), 6000)
@@ -230,13 +248,17 @@ export function SocialShareDialog({ open, onClose, post, socialUrls = {} }: Soci
           if (data && data.shortUrl && data.shortUrl.startsWith("http")) {
             setShortUrl(data.shortUrl)
             setShortUrlError(!!data.fallback)
-            finalText = text.replace(postUrl, data.shortUrl)
+            return data.fallback ? null : data.shortUrl
           }
+          setShortUrlError(true)
         } catch {
           setShortUrlError(true)
         }
-      } else if (shortUrl) {
-        finalText = text.replace(postUrl, shortUrl)
+        return null
+      }
+      const ensured = await ensureShort()
+      if (ensured) {
+        finalText = text.replace(postUrl, ensured)
       }
       await navigator.clipboard.writeText(finalText)
       setCopied(key)

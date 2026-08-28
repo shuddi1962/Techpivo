@@ -38,7 +38,7 @@ export function PostCard({ post, showBody = false, className, myVote = null }: P
   const Icon = meta.icon;
 
   return (
-    <article className={cn('group relative border border-borderSoft rounded-xl bg-surface hover:bg-surface-elevated transition-colors overflow-hidden', className)}>
+    <article className={cn('group relative border border-borderSoft rounded-xl bg-surface hover:bg-surface-elevated transition-colors overflow-hidden min-w-0', className)}>
       {post.image_url && (
         <Link href={postHref(post)} className="block relative h-36 sm:h-44 overflow-hidden" tabIndex={-1} aria-hidden>
           {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -81,7 +81,7 @@ export function PostCard({ post, showBody = false, className, myVote = null }: P
             <span className="ml-auto text-[11px] text-textSecondary">{timeAgo(post.created_at)}</span>
           </div>
 
-          <h3 className="text-[15px] leading-snug font-semibold text-textPrimary mb-1.5">
+          <h3 className="text-[14px] leading-snug font-semibold text-textPrimary mb-1 line-clamp-2">
             <Link href={postHref(post)} className="hover:text-brand transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40 rounded-sm">
               {post.title}
             </Link>
@@ -91,17 +91,17 @@ export function PostCard({ post, showBody = false, className, myVote = null }: P
             <p className="text-sm text-textSecondary line-clamp-2 mb-2">{post.excerpt || (post.content || '').replace(/[#*`>\-\[\]()!]/g, '').slice(0, 240)}</p>
           )}
 
-          <div className="flex items-center gap-3 text-[11px] text-textSecondary">
-            <span className="inline-flex items-center gap-1">
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-textSecondary">
+            <span className="inline-flex items-center gap-1 shrink-0">
               <MessageSquare className="h-3 w-3" aria-hidden />
               {formatNumber(post.reply_count)}
             </span>
-            <span className="inline-flex items-center gap-1">
+            <span className="inline-flex items-center gap-1 shrink-0">
               <Eye className="h-3 w-3" aria-hidden />
               {formatNumber(post.view_count)}
             </span>
             {post.author && (
-              <Link href={`/u/${post.author.username ?? post.author.id}`} className="hover:text-textPrimary truncate max-w-[180px]">
+              <Link href={`/u/${post.author.username ?? post.author.id}`} className="hover:text-textPrimary truncate max-w-[80px] sm:max-w-[140px] shrink-0">
                 {post.author.full_name || post.author.username || 'Anonymous'}
               </Link>
             )}

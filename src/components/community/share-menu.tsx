@@ -115,12 +115,23 @@ export function ShareMenu({
   useEffect(() => {
     const raw = href ?? (typeof window !== 'undefined' ? window.location.href : '');
     if (!raw) return;
-    const ctrl = new AbortController();
-    fetch(`/api/shorten?url=${encodeURIComponent(raw)}`, { signal: ctrl.signal })
-      .then(r => r.ok ? r.json() : null)
-      .then(data => { if (data && data.shortUrl && data.shortUrl.startsWith('http')) setShortUrl(data.shortUrl); })
-      .catch(() => {});
-    return () => ctrl.abort();
+    // Try twice (the public TinyURL endpoint is rate-limited / flaky from Vercel IPs)
+    const tryShorten = (signal: AbortSignal) =>
+      fetch(`/api/shorten?url=${encodeURIComponent(raw)}`, { signal })
+        .then(r => r.ok ? r.json() : null)
+        .then(data => { if (data && data.shortUrl && data.shortUrl.startsWith('http') && data.shortUrl !== raw) return data.shortUrl; return null; })
+        .catch(() => null);
+    const ctrl1 = new AbortController();
+    tryShorten(ctrl1.signal).then(url => {
+      if (url) { setShortUrl(url); return; }
+      // Retry once after 500ms (TinyURL rate-limit recovery)
+      setTimeout(() => {
+        const ctrl2 = new AbortController();
+        tryShorten(ctrl2.signal).then(url2 => { if (url2) setShortUrl(url2); }).catch(() => {});
+        // Don't auto-abort ctrl2 — let it finish even on unmount
+      }, 500);
+    }).catch(() => {});
+    return () => ctrl1.abort();
   }, [href]);
 
   useEffect(() => {

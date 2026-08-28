@@ -320,18 +320,18 @@ export default async function CommunityPage() {
                 ? 'Continue earning XP, take quizzes, join events, and climb the leaderboard.'
                 : 'Create your profile, start earning XP, climb the leaderboard, and connect with thousands of tech enthusiasts.'}
             </p>
-            <div className="flex gap-3 justify-center">
+            <div className="flex flex-wrap gap-3 justify-center">
               {user ? (
                 <Link href="/account">
-                  <Button size="lg"><UserCheck className="mr-2 h-4 w-4" /> Go to My Profile</Button>
+                  <Button size="lg" className="text-sm sm:text-base"><UserCheck className="mr-1.5 sm:mr-2 h-4 w-4" /> <span className="hidden sm:inline">Go to My Profile</span><span className="sm:hidden">My Profile</span></Button>
                 </Link>
               ) : (
                 <Link href="/register">
-                  <Button size="lg">Create Account</Button>
+                  <Button size="lg" className="text-sm sm:text-base">Create Account</Button>
                 </Link>
               )}
               <Link href="/community/forum">
-                <Button variant="outline" size="lg">Browse Forum</Button>
+                <Button variant="outline" size="lg" className="text-sm sm:text-base">Browse Forum</Button>
               </Link>
             </div>
           </CardContent>

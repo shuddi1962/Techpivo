@@ -83,12 +83,12 @@ export function ForumListing({ categorySlug }: { categorySlug?: string }) {
   }, [load]);
 
   return (
-    <div className="grid lg:grid-cols-4 gap-6">
-      <div className="lg:col-span-1 space-y-4">
-        <ForumCategoriesSidebar categories={categories} activeSlug={categorySlug} />
-      </div>
+      <div className="grid lg:grid-cols-4 gap-4 lg:gap-6 max-w-[1400px] mx-auto">
+        <div className="lg:col-span-1 space-y-4">
+          <ForumCategoriesSidebar categories={categories} activeSlug={categorySlug} />
+        </div>
 
-      <div className="lg:col-span-3 space-y-3">
+        <div className="lg:col-span-3 space-y-2 sm:space-y-3">
         {loading ? (
           <>
             {Array.from({ length: 5 }).map((_, i) => (
@@ -119,42 +119,42 @@ export function ForumListing({ categorySlug }: { categorySlug?: string }) {
                 href={`/community/forum/${post.category?.slug || 'general'}/${post.id}`}
                 className="group block rounded-2xl border border-borderSoft bg-surface hover:shadow-lg hover:border-brand/30 transition-all duration-300 overflow-hidden"
               >
-                <div className="p-4 md:p-5">
-                  <div className="flex items-start gap-3">
-                    <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${AVATAR_COLORS[colorIndex]} flex items-center justify-center text-sm font-bold text-white shrink-0 shadow-sm`}>
+                <div className="p-3 sm:p-4 md:p-5">
+                  <div className="flex items-start gap-2 sm:gap-3">
+                    <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl bg-gradient-to-br ${AVATAR_COLORS[colorIndex]} flex items-center justify-center text-xs sm:text-sm font-bold text-white shrink-0 shadow-sm`}>
                       {avatarLetter}
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-1">
-                        {post.is_pinned && <Pin className="h-3.5 w-3.5 text-amber-500 shrink-0" />}
-                        {post.is_solved && <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500 shrink-0" />}
-                        <h3 className="font-semibold truncate group-hover:text-brand transition-colors">{post.title}</h3>
+                    <div className="flex-1 min-w-0 overflow-hidden">
+                      <div className="flex items-center gap-1.5 sm:gap-2 mb-1 flex-wrap">
+                        {post.is_pinned && <Pin className="h-3 w-3 text-amber-500 shrink-0" />}
+                        {post.is_solved && <CheckCircle2 className="h-3 w-3 text-emerald-500 shrink-0" />}
+                        <h3 className="text-[13px] sm:text-sm font-semibold line-clamp-2 group-hover:text-brand transition-colors leading-snug">{post.title}</h3>
                       </div>
-                      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-textSecondary">
-                        <span>{post.author?.full_name || post.author?.username || 'Anonymous'}</span>
-                        <span className="text-textSecondary/40">·</span>
-                        <span className="flex items-center gap-1.5">
+                      <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] sm:text-xs text-textSecondary min-w-0 overflow-hidden">
+                        <span className="truncate max-w-[80px] sm:max-w-[120px]">{post.author?.full_name || post.author?.username || 'Anonymous'}</span>
+                        <span className="shrink-0 text-textSecondary/40">·</span>
+                        <span className="flex items-center gap-1 shrink-0 min-w-0 overflow-hidden">
                           {post.category?.image_url ? (
                             // eslint-disable-next-line @next/next/no-img-element
-                            <img src={post.category.image_url} alt="" loading="lazy" className="w-4 h-4 rounded object-cover" />
+                            <img src={post.category.image_url} alt="" loading="lazy" className="w-3 h-3 sm:w-4 sm:h-4 rounded object-cover shrink-0" />
                           ) : (
-                            post.category?.icon
+                            <span className="shrink-0">{post.category?.icon}</span>
                           )}
-                          {post.category?.name}
+                          <span className="truncate max-w-[70px] sm:max-w-[120px]">{post.category?.name}</span>
                         </span>
-                        <span className="text-textSecondary/40">·</span>
-                        <span className="flex items-center gap-1">
-                          <Clock className="h-3 w-3" /> {timeAgo(post.created_at)}
+                        <span className="shrink-0 text-textSecondary/40">·</span>
+                        <span className="flex items-center gap-1 shrink-0">
+                          <Clock className="h-3 w-3 shrink-0" /> {timeAgo(post.created_at)}
                         </span>
                       </div>
-                      <div className="flex items-center gap-4 mt-2.5 text-xs text-textSecondary">
+                      <div className="flex items-center gap-3 sm:gap-4 mt-1.5 sm:mt-2 text-[11px] sm:text-xs text-textSecondary">
                         <span className="flex items-center gap-1"><ThumbsUp className="h-3 w-3" /> {post.vote_count ?? 0}</span>
                         <span className="flex items-center gap-1"><MessageSquare className="h-3 w-3" /> {post.reply_count ?? 0}</span>
                         <span className="flex items-center gap-1"><Eye className="h-3 w-3" /> {post.view_count ?? 0}</span>
                       </div>
                     </div>
                     {post.author?.level ? (
-                      <span className="hidden sm:inline-flex items-center px-2 py-1 rounded-lg text-xs font-medium bg-brand/10 text-brand shrink-0">
+                      <span className="hidden sm:inline-flex items-center px-1.5 sm:px-2 py-0.5 rounded-lg text-[10px] sm:text-xs font-medium bg-brand/10 text-brand shrink-0 whitespace-nowrap">
                         Lv.{post.author.level}
                       </span>
                     ) : null}
