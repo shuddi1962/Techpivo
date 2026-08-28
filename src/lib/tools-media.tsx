@@ -118,7 +118,7 @@ export function ImageCompressorTool() {
             <span style={{ fontSize: 13, color: "var(--muted)" }}>{file.name} · {formatBytes(file.size)}</span>
           )}
         </div>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 14, marginTop: 12 }}>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           <Field label={`Quality: ${Math.round(quality * 100)}%`}>
             <input type="range" min={0.2} max={1} step={0.05} value={quality} onChange={(e) => setQuality(Number(e.target.value))} style={{ width: "100%" }} />
           </Field>
@@ -143,7 +143,7 @@ export function ImageCompressorTool() {
           <OkBox>
             {result.width}×{result.height}px · {formatBytes(result.blob.size)} ({(file && file.size ? (100 - (result.blob.size / file.size) * 100) : 0).toFixed(1)}% smaller)
           </OkBox>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             <div style={{ ...s.card, marginBottom: 0 }}>
               <label style={s.lab}>Compressed preview</label>
               <img src={result.url} alt="Compressed preview" style={{ maxWidth: "100%", maxHeight: 280, borderRadius: 8, display: "block" }} />
@@ -198,7 +198,7 @@ export function ImageResizerTool() {
           <FilePicker label="Choose image" accept="image/*" onPick={reProcess} />
           {file && <span style={{ fontSize: 13, color: "var(--muted)" }}>{file.name}</span>}
         </div>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 14, marginTop: 12 }}>
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
           <Field label="Mode">
             <select value={mode} onChange={(e) => setMode(e.target.value as "percent" | "exact")} style={{ ...s.sel, width: "100%" }}>
               <option value="percent">By percentage</option>
@@ -239,7 +239,7 @@ export function ImageResizerTool() {
       {result && (
         <>
           <OkBox>{result.width}×{result.height}px · {formatBytes(result.blob.size)}</OkBox>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             <div style={{ ...s.card, marginBottom: 0 }}>
               <label style={s.lab}>Preview</label>
               <img src={result.url} alt="Resized preview" style={{ maxWidth: "100%", maxHeight: 280, borderRadius: 8, display: "block" }} />
@@ -285,7 +285,7 @@ export function WebpConverterTool() {
               ? `${formatBytes(result.blob.size)} — ${(100 - (result.blob.size / file.size) * 100).toFixed(1)}% smaller than the original`
               : `${formatBytes(result.blob.size)}`}
           </OkBox>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             <div style={{ ...s.card, marginBottom: 0 }}>
               <label style={s.lab}>WebP preview</label>
               <img src={result.url} alt="WebP preview" style={{ maxWidth: "100%", maxHeight: 280, borderRadius: 8, display: "block" }} />
@@ -368,7 +368,7 @@ export function ColorTool() {
   const textColor = contrastRatio(hex);
   return (
     <>
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <div>
           <ToolCard title="Pick a color">
             <div style={{ display: "flex", gap: 10, alignItems: "center", marginBottom: 12 }}>
@@ -418,7 +418,7 @@ export function ColorTool() {
       </div>
       {rgb && (
         <ToolCard title="Shades & tints">
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 8 }}>
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
             {shades.map((sh, i) => (
               <div key={i} style={{ textAlign: "center" }}>
                 <button
@@ -1113,7 +1113,7 @@ export function ImageUpscalerTool() {
   return (
     <>
       <ToolCard title="Options">
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           <Field label={`Upscale factor: ${factor}x`}>
             <input type="range" min={2} max={8} step={1} value={factor} onChange={(e) => setFactor(Number(e.target.value))} style={{ width: "100%" }} />
           </Field>

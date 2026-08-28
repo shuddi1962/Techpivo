@@ -37,7 +37,7 @@ export function PasswordGenTool() {
   return (
     <>
       <ToolCard title="Options">
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 12 }}>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <Field label={`Length: ${len}`}>
             <input type="range" min={8} max={64} value={len} onChange={(e) => setLen(Number(e.target.value))} style={{ width: "100%" }} />
           </Field>
@@ -141,7 +141,7 @@ export function PasswordStrengthTool() {
               <div style={{ height: "100%", width: `${Math.min(100, analysis.ent)}%`, background: analysis.verdict.color, transition: "width .2s" }} />
             </div>
           </div>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 10 }}>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
             {[
               ["Length", `${analysis.len} characters`, !analysis.warnings.short ? "#047857" : "#DC2626"],
               ["Character sets", `${analysis.poolsUsed}/4 (upper, lower, digits, symbols)`, analysis.poolsUsed >= 3 ? "#047857" : "#D97706"],
@@ -399,7 +399,7 @@ export function CreditCardTool() {
         ))}
       {result && (
         <>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 10 }}>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
             <div style={{ ...s.card, margin: 0 }}>
               <div style={{ fontSize: 12, fontWeight: 700, color: "var(--muted)" }}>Brand</div>
               <div style={{ fontSize: 15, fontWeight: 700, marginTop: 4, color: "var(--text)" }}>{result.brand?.brand || "Unknown"}</div>
@@ -546,7 +546,7 @@ export function IpLookupTool() {
           </OkBox>
         )}
         {geo && (
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginTop: 6 }}>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
             <div style={{ ...s.card, padding: "8px 10px" }}><div style={{ fontSize: 12, color: "var(--muted)" }}>IP</div><div style={{ fontFamily: "monospace", fontSize: 13, color: "var(--text)" }}>{geo.ip}</div></div>
             <div style={{ ...s.card, padding: "8px 10px" }}><div style={{ fontSize: 12, color: "var(--muted)" }}>Timezone</div><div style={{ fontSize: 13, color: "var(--text)" }}>{geo.timezone}</div></div>
             <div style={{ ...s.card, padding: "8px 10px" }}><div style={{ fontSize: 12, color: "var(--muted)" }}>ISP</div><div style={{ fontSize: 13, color: "var(--text)" }}>{geo.isp}</div></div>
@@ -575,7 +575,7 @@ export function IpLookupTool() {
         <>
           <OkBox>Valid IPv4 · {result.kind} · Class {result.cls}</OkBox>
           <div style={{ ...s.card, marginBottom: 12 }}>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
               <div>
                 <label style={s.lab}>Binary</label>
                 <div style={{ fontFamily: "monospace", fontSize: 12, wordBreak: "break-all", color: "var(--text)" }}>{result.binary}</div>

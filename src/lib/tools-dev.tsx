@@ -66,7 +66,7 @@ export function JsonFormatterTool() {
       {parsed.ok && stats && (
         <OkBox>Valid JSON · {stats.type} · {stats.bytes} bytes · {stats.keys} keys</OkBox>
       )}
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <div>
           <label style={s.lab}>Input</label>
           <textarea
@@ -196,7 +196,7 @@ export function CsvJsonTool() {
       {result.ok && result.rows > 0 && (
         <OkBox>{result.rows} rows converted · <CopyButton text={result.output} label="Copy result" /></OkBox>
       )}
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <div>
           <label style={s.lab}>{mode === "csv2json" ? "CSV input" : "JSON input"}</label>
           <textarea
@@ -453,7 +453,7 @@ export function Base64Tool({ mode }: { mode: "encode" | "decode" }) {
           URL-safe alphabet (− _ and no padding)
         </label>
       </ToolCard>
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <div>
           <label style={s.lab}>{mode === "encode" ? "Input text / file" : "Base64 string"}</label>
           <textarea
@@ -526,7 +526,7 @@ export function UrlEncodeTool({ mode }: { mode: "encode" | "decode" }) {
             : "Component mode (decodes %2F etc.)"}
         </label>
       </ToolCard>
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <div>
           <label style={s.lab}>Input</label>
           <textarea
@@ -584,7 +584,7 @@ export function HashTool() {
 
   return (
     <>
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <div>
           <label style={s.lab}>Input text</label>
           <textarea
@@ -724,7 +724,7 @@ export function JwtTool() {
               {parsed.validSignatureShape ? "3 segments (signature present — not verified)" : "2 segments (no signature part)"}
             </div>
           )}
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             <div>
               <label style={s.lab}>Header</label>
               <textarea readOnly value={JSON.stringify(parsed.header, null, 2)} style={{ ...s.ta(180), whiteSpace: "pre" }} />
@@ -781,7 +781,7 @@ export function TimestampTool() {
           <button style={s.btn2} onClick={() => setUnix(String(Date.now()))}>Use now (ms)</button>
         </div>
       </ToolCard>
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <ToolCard title="Unix → Date" style={{ margin: 0 }}>
           <Field label="Unix timestamp (seconds or ms, auto-detected)">
             <input value={unix} onChange={(e) => setUnix(e.target.value)} placeholder="1786261417" style={{ ...s.inp, fontFamily: "monospace" }} />
@@ -860,7 +860,7 @@ export function CronTool() {
         </select>
       </ToolCard>
       <ToolCard title="Custom fields">
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 10 }}>
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
           <Field label="Minute">
             <select value={minute} onChange={custom(setMinute)} style={{ ...s.sel, width: "100%" }}>
               {minuteOptions.map((o) => <option key={o}>{o}</option>)}
@@ -952,7 +952,7 @@ export function MarkdownTool() {
   );
   const html = useMemo(() => renderMarkdown(md), [md]);
   return (
-    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
       <div>
         <label style={s.lab}>Markdown</label>
         <textarea value={md} onChange={(e) => setMd(e.target.value)} style={{ ...s.ta(420), fontFamily: "inherit" }} spellCheck={false} />
@@ -1013,7 +1013,7 @@ export function CaseTool() {
           style={{ ...s.ta(110), fontFamily: "inherit" }}
         />
       </ToolCard>
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
         {CASE_STYLES.map((c) => (
           <ToolCard key={c.key} style={{ margin: 0 }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>

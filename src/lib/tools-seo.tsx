@@ -48,7 +48,7 @@ export function MetaTagTool() {
           {title.length > 0 || desc.length > 0 ? "within recommended limits" : "Fill in the fields to generate tags"}
         </OkBox>
       )}
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <div>
           <ToolCard title="Page details">
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
@@ -176,7 +176,7 @@ export function SchemaTool() {
           ))}
         </select>
       </ToolCard>
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <div>
           <ToolCard title="Fields">
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
@@ -444,7 +444,7 @@ export function SitemapTool() {
           </Field>
         </div>
       </ToolCard>
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <div>
           <label style={s.lab}>URLs (one per line)</label>
           <textarea value={urls} onChange={(e) => setUrls(e.target.value)} placeholder="https://your-site.com/page" style={{ ...s.ta(300), fontFamily: "inherit" }} spellCheck={false} />
@@ -508,7 +508,7 @@ export function KeywordDensityTool() {
       </ToolCard>
       <OkBox>{result.total} words analyzed · showing keywords with 2+ occurrences</OkBox>
       <ToolCard title="Keyword frequency">
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           <div>
             {phrases && <label style={s.lab}>Phrases</label>}
             <table style={{ width: "100%", fontSize: 13 }}>
@@ -613,7 +613,7 @@ export function ReadabilityTool() {
               </div>
             </div>
           </div>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 10 }}>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
             {[
               ["Words", String(result.wordCount)],
               ["Sentences", String(result.sentenceCount)],
@@ -689,7 +689,7 @@ export function WordCounterTool() {
       <ToolCard title="Text">
         <textarea value={text} onChange={(e) => setText(e.target.value)} placeholder="Start typing or paste text…" style={{ ...s.ta(280), fontFamily: "inherit" }} />
       </ToolCard>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 10 }}>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
         {[
           ["Words", String(stats.words)],
           ["Characters", String(stats.chars)],

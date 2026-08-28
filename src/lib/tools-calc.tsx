@@ -64,7 +64,7 @@ export function PercentageCalculatorTool() {
       </ToolCard>
       <ToolCard title="Values">
         {mode === "of" && (
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             <Field label="Percentage (%)">
               <input inputMode="decimal" value={a} onChange={(e) => setA(e.target.value)} style={s.inp} />
             </Field>
@@ -74,7 +74,7 @@ export function PercentageCalculatorTool() {
           </div>
         )}
         {mode === "change" && (
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             <Field label="From">
               <input inputMode="decimal" value={from} onChange={(e) => setFrom(e.target.value)} style={s.inp} />
             </Field>
@@ -84,7 +84,7 @@ export function PercentageCalculatorTool() {
           </div>
         )}
         {mode === "ratio" && (
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             <Field label="X">
               <input inputMode="decimal" value={x} onChange={(e) => setX(e.target.value)} style={s.inp} />
             </Field>
@@ -154,7 +154,7 @@ export function LoanCalculatorTool() {
           {fx.loading ? "Loading live exchange rates…" : fx.rates.source === "live" ? "Live exchange rates" : "Offline — using stored rates"}
         </div>
       </div>
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 14 }}>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         <Field label={`Loan amount (${fx.currency})`}>
           <input inputMode="decimal" value={principal} onChange={(e) => setPrincipal(e.target.value)} style={s.inp} />
         </Field>
@@ -174,7 +174,7 @@ export function LoanCalculatorTool() {
                 ≈ {fxFormat(ngnValue, "NGN", { maxFrac: 0 })} naira at today&apos;s live rate
               </div>
             )}
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12, textAlign: "center" }}>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-center">
               <div>
                 <div style={{ fontSize: 12, color: "var(--muted)" }}>Monthly payment</div>
                 <div style={{ fontSize: 20, fontWeight: 700, color: "var(--text)", marginTop: 4 }}>{fxFormat(monthly, fx.currency)}</div>
@@ -303,7 +303,7 @@ export function CurrencyConverterTool() {
 
       <div style={{ marginTop: 12 }}>
         <label style={s.lab}>Common rates ({FX_POPULAR.length} currencies, live)</label>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(150px, 1fr))", gap: 8, marginTop: 6 }}>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-[repeat(auto-fill,minmax(150px,1fr))] gap-2">
           {FX_POPULAR.map((code) => (
             <div key={code} style={{ ...s.card, padding: "8px 10px" }}>
               <div style={{ fontSize: 12, color: "var(--muted)" }}>{code} — {FX_CURRENCY_LABELS[code]}</div>
@@ -436,7 +436,7 @@ export function UnitConverterTool() {
           ))}
         </div>
       </ToolCard>
-      <div style={{ display: "grid", gridTemplateColumns: "1fr auto 1fr", gap: 14, alignItems: "end" }}>
+      <div className="grid grid-cols-1 lg:grid-cols-[1fr_auto_1fr] gap-4 items-end">
         <Field label="From">
           <div style={{ display: "flex", gap: 8 }}>
             <input inputMode="decimal" value={value} onChange={(e) => setValue(e.target.value)} style={s.inp} />
@@ -504,7 +504,7 @@ export function AgeCalculatorTool() {
       {!info && <ErrorBox>Enter a valid date of birth.</ErrorBox>}
       {info && (
         <>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12, textAlign: "center" }}>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-center">
             <div>
               <div style={{ fontSize: 28, fontWeight: 800, color: "var(--text)" }}>{info.years}</div>
               <div style={{ fontSize: 12, color: "var(--muted)" }}>Years</div>
@@ -580,7 +580,7 @@ export function DateCalculatorTool() {
       </div>
       {mode === "math" ? (
         <>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 14 }}>
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
             <Field label="Start date">
               <input type="date" value={start} onChange={(e) => setStart(e.target.value)} style={{ ...s.inp, width: "100%" }} />
             </Field>
@@ -605,7 +605,7 @@ export function DateCalculatorTool() {
         </>
       ) : (
         <>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             <Field label="First date">
               <input type="date" value={dateA} onChange={(e) => setDateA(e.target.value)} style={{ ...s.inp, width: "100%" }} />
             </Field>
@@ -641,7 +641,7 @@ export function BaseConverterTool() {
 
   return (
     <>
-      <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr 2fr", gap: 14, alignItems: "end" }}>
+      <div className="grid grid-cols-1 lg:grid-cols-[2fr_1fr_2fr] gap-4 items-end">
         <Field label="Number">
           <input value={value} onChange={(e) => setValue(e.target.value.toUpperCase())} style={{ ...s.inp, fontFamily: "monospace" }} />
         </Field>
@@ -676,7 +676,7 @@ export function BaseConverterTool() {
             ))}
           </div>
           <ToolCard title="Quick conversions">
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 8, fontSize: 13 }}>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 text-[13px]">
               {[
                 ["Decimal", decimal.toString(10)],
                 ["Binary", decimal.toString(2)],
@@ -738,7 +738,7 @@ export function BmiCalculatorTool() {
         <button onClick={() => setUnit("imperial")} style={unit === "imperial" ? s.btn : s.btn2}>Imperial (ft / lb)</button>
       </div>
       {unit === "metric" ? (
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           <Field label="Height (cm)">
             <input inputMode="decimal" value={height} onChange={(e) => setHeight(e.target.value)} style={s.inp} />
           </Field>
@@ -747,7 +747,7 @@ export function BmiCalculatorTool() {
           </Field>
         </div>
       ) : (
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 14 }}>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           <Field label="Height (ft)">
             <input inputMode="decimal" value={hFt} onChange={(e) => setHFt(e.target.value)} style={s.inp} />
           </Field>
@@ -826,7 +826,7 @@ export function AiHeadlineGeneratorTool() {
 
   return (
     <>
-      <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr auto", gap: 14, alignItems: "end" }}>
+      <div className="grid grid-cols-1 lg:grid-cols-[2fr_1fr_auto] gap-4 items-end">
         <Field label="Topic">
           <input value={topic} onChange={(e) => setTopic(e.target.value)} style={s.inp} placeholder="AI automation, Rust, VPNs…" />
         </Field>
@@ -886,7 +886,7 @@ export function AiMetaDescriptionTool() {
 
   return (
     <>
-      <div style={{ display: "grid", gridTemplateColumns: "2fr 2fr auto", gap: 14, alignItems: "end" }}>
+      <div className="grid grid-cols-1 lg:grid-cols-[2fr_2fr_auto] gap-4 items-end">
         <Field label="Title">
           <input value={title} onChange={(e) => setTitle(e.target.value)} style={s.inp} placeholder="How to use Next.js in 2026" />
         </Field>
@@ -958,7 +958,7 @@ export function AiFaqGeneratorTool() {
 
   return (
     <>
-      <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr auto", gap: 14, alignItems: "end" }}>
+      <div className="grid grid-cols-1 lg:grid-cols-[2fr_1fr_auto] gap-4 items-end">
         <Field label="Topic">
           <input value={topic} onChange={(e) => setTopic(e.target.value)} style={s.inp} placeholder="password managers" />
         </Field>
@@ -1031,7 +1031,7 @@ export function AiPromptGeneratorTool() {
 
   return (
     <>
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 14 }}>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         <Field label="Your goal">
           <textarea rows={2} value={goal} onChange={(e) => setGoal(e.target.value)} style={s.ta(110)} />
         </Field>
