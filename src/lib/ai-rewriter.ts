@@ -1080,3 +1080,95 @@ export async function openRouterRewriteContent(title: string, content: string): 
   console.warn(`[✗ Rewrite ALL FAILED] ${title.slice(0, 40)} — returning original`)
   return content
 }
+
+// Targeted readability rewrite: keep facts, simplify vocabulary, split long
+// sentences, return original HTML structure (no expansion). Used by the
+// /api/admin/readability bulk pass to lift technical articles to Flesch 50+.
+export async function openRouterSimplifyContent(title: string, content: string): Promise<string> {
+  const textContent = stripHtml(content)
+  if (!textContent || textContent.length < 100) return content
+
+  const apiKey = await resolveOpenRouterKey()
+  if (!apiKey) {
+    console.warn('[OpenRouter Simplify] No API key — returning original')
+    return content
+  }
+
+  const simplifyPrompt =
+    "You are a senior tech editor at Techpivo (techpivo.com) preparing content for AdSense review.\n\n" +
+    "TASK: Rewrite the following HTML article to achieve a Flesch Reading Ease score of 55-65 (Plain English). " +
+    "Keep ALL facts, numbers, dates, names, quotes, and HTML structure. Just make it more readable.\n\n" +
+    "STRICT RULES:\n" +
+    "- Output ONLY the rewritten HTML — no markdown, no code fences, no commentary\n" +
+    "- Keep the same <h2>/<h3>/<p>/<ul>/<li>/<strong> structure as the input\n" +
+    "- Do NOT add new sections, headings, or paragraphs\n" +
+    "- Do NOT remove any facts, names, numbers, dates, or quotes\n" +
+    "- Keep the same approximate length (within ±15%)\n" +
+    "- Replace multi-syllable jargon with plain-English equivalents:\n" +
+    "  • 'utilize' → 'use'\n" +
+    "  • 'facilitate' → 'help'\n" +
+    "  • 'implementation' → 'use' or 'build'\n" +
+    "  • 'leverage' → 'use'\n" +
+    "  • 'subsequently' → 'then'\n" +
+    "  • 'demonstrate' → 'show'\n" +
+    "  • 'approximately' → 'about'\n" +
+    "  • 'numerous' → 'many'\n" +
+    "  • 'endeavor' → 'try'\n" +
+    "  • 'aforementioned' → 'this'\n" +
+    "  • 'commence' → 'start'\n" +
+    "  • 'terminate' → 'end'\n" +
+    "  • 'procure' → 'get'\n" +
+    "  • 'transmit' → 'send'\n" +
+    "  • 'endeavor' → 'try'\n" +
+    "  • 'obtain' → 'get'\n" +
+    "  • 'in order to' → 'to'\n" +
+    "  • 'with regard to' → 'about'\n" +
+    "  • 'due to the fact that' → 'because'\n" +
+    "  • 'in the event that' → 'if'\n" +
+    "  • 'at this point in time' → 'now'\n" +
+    "  • 'cybersecurity' → 'security' (when context allows)\n" +
+    "  • 'legislation' → 'law' (when context allows)\n" +
+    "  • 'transparency' → 'openness' (when context allows)\n" +
+    "- Split sentences longer than 18 words at natural clause boundaries (commas, conjunctions)\n" +
+    "- Replace ellipses (...) with proper periods\n" +
+    "- Use 'we', 'you', 'they' instead of 'one', 'the individual' where natural\n" +
+    "- Use active voice wherever possible\n" +
+    "- Keep technical proper nouns intact (company names, product names, technology names)\n\n" +
+    "Article title: " + title + "\n\nHTML to simplify:\n" + content
+
+  try {
+    const model = await resolveOpenRouterModel()
+    const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${apiKey}`,
+        'HTTP-Referer': SITE_URL,
+        'X-Title': 'Techpivo',
+      },
+      body: JSON.stringify({
+        model,
+        messages: [{ role: 'user', content: simplifyPrompt }],
+        max_tokens: 8192,
+        temperature: 0.3,
+      }),
+      signal: AbortSignal.timeout(90000),
+    })
+    if (!res.ok) {
+      const errText = await res.text().catch(() => '')
+      console.warn(`[OpenRouter Simplify] HTTP ${res.status}: ${errText.slice(0, 200)}`)
+      return content
+    }
+    const data = await res.json()
+    const text = (data?.choices?.[0]?.message?.content || '').trim()
+    if (text.length > 200) {
+      console.log(`[✓ OpenRouter Simplify] ${title.slice(0, 40)}: ${text.length} chars`)
+      return text
+    }
+    console.warn(`[OpenRouter Simplify] Response too short (${text.length} chars) — returning original`)
+  } catch (e) {
+    console.warn('[OpenRouter Simplify] Failed:', e)
+  }
+
+  return content
+}
