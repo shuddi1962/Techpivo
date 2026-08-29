@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Switch } from "@/components/ui/switch"
 import { Label } from "@/components/ui/label"
 import { OPENROUTER_MODEL_DEFAULT, OPENROUTER_MODEL_OPTIONS } from "@/lib/openrouter-model"
-import { Cpu, Loader2, RefreshCw, Search, Check, BarChart3, KeyRound, Eye, EyeOff, ExternalLink } from "lucide-react"
+import { Cpu, Loader2, RefreshCw, Search, Check } from "lucide-react"
 
 interface LiveModel {
   id: string
@@ -325,126 +325,12 @@ export default function AdminSettingsPage() {
         </Card>
 
         <Card>
-          <CardHeader className="flex flex-row items-center gap-2">
-            <BarChart3 className="h-5 w-5 text-emerald-500" />
-            <CardTitle className="text-lg">SEO Intelligence — DataForSEO</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <p className="text-xs text-muted-foreground leading-relaxed">
-              DataForSEO powers the Keyword Management insights: search volume, keyword difficulty, SERP competitors, content gaps, AI ranking data, and the conversational SEO assistant. Set your key once and it applies instantly to the Keywords page — no redeploy needed.
-            </p>
-            <DataForSEOCard
-              settings={settings}
-              dirty={dirty}
-              handleInputChange={handleInputChange}
-              handleBlur={handleBlur}
-            />
-            <div className="rounded-lg border border-border/60 bg-surface p-3 text-[11px] text-muted-foreground space-y-1.5">
-              <p>Need a key? <a href="https://app.dataforseo.com/register" target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline inline-flex items-center gap-1">Create a free account <ExternalLink className="h-3 w-3" /></a> and copy your API token (or <code>login:password</code>) from the dashboard.</p>
-              <p>You can also set <code className="text-[10px]">DATAFORSEO_LOGIN</code> + <code className="text-[10px]">DATAFORSEO_PASSWORD</code> env vars — env is used if no DB key is set.</p>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
           <CardContent className="p-6">
             <p className="text-sm text-muted-foreground">
               Other API keys and secrets (OpenRouter, Resend, VAPID) are managed as environment variables on the hosting platform and are never stored in the database.
             </p>
           </CardContent>
         </Card>
-      </div>
-    </div>
-  )
-}
-
-function DataForSEOCard({
-  settings,
-  dirty,
-  handleInputChange,
-  handleBlur,
-}: {
-  settings: Record<string, any>
-  dirty: Set<string>
-  handleInputChange: (key: string, value: any) => void
-  handleBlur: (key: string, value: any) => void
-}) {
-  const [show, setShow] = useState(false)
-  const [testing, setTesting] = useState(false)
-  const [testResult, setTestResult] = useState<{ ok: boolean; message: string } | null>(null)
-  const raw = settings.dataforseo_api_key
-  const value = typeof raw === "string" ? raw : ""
-  const hasKey = value.length > 0
-
-  const onTest = async () => {
-    setTesting(true)
-    setTestResult(null)
-    try {
-      const r = await fetch("/api/admin/seo-dataforseo", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "test" }),
-      })
-      const data = await r.json()
-      if (data?.ok) {
-        setTestResult({ ok: true, message: "Connected! Search-volume endpoint responded successfully." })
-      } else {
-        setTestResult({ ok: false, message: data?.error || data?.raw?.status_message || `HTTP ${data?.status || r.status}` })
-      }
-    } catch (e: any) {
-      setTestResult({ ok: false, message: e?.message || "Network error" })
-    } finally {
-      setTesting(false)
-    }
-  }
-
-  return (
-    <div className="space-y-3">
-      <div>
-        <Label className="text-sm mb-1 block">DataForSEO API key</Label>
-        <div className="relative">
-          <KeyRound className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
-          <Input
-            type={show ? "text" : "password"}
-            value={value}
-            placeholder="paste your DataForSEO token (or login:password)"
-            className="pl-9 pr-20 font-mono text-xs"
-            onChange={(e) => handleInputChange("dataforseo_api_key", e.target.value)}
-            onBlur={() => handleBlur("dataforseo_api_key", value)}
-          />
-          <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
-            {dirty.has("dataforseo_api_key") && <span className="text-[10px] text-amber-500 mr-1">unsaved</span>}
-            <button
-              type="button"
-              onClick={() => setShow(!show)}
-              className="p-1 text-muted-foreground hover:text-foreground"
-              title={show ? "Hide" : "Show"}
-            >
-              {show ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
-            </button>
-          </div>
-        </div>
-      </div>
-      <div className="flex items-center gap-2">
-        <Button
-          size="sm"
-          variant="outline"
-          onClick={onTest}
-          disabled={testing || !hasKey}
-          className="h-8"
-        >
-          {testing ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <BarChart3 className="h-3 w-3 mr-1" />}
-          Test connection
-        </Button>
-        {hasKey && !testing && testResult === null && (
-          <span className="text-[11px] text-muted-foreground">Click Test to verify the key is working.</span>
-        )}
-        {testResult && (
-          <span className={`text-[11px] font-medium ${testResult.ok ? "text-emerald-600 dark:text-emerald-400" : "text-red-600 dark:text-red-400"}`}>
-            {testResult.ok ? "✓ " : "✗ "}
-            {testResult.message}
-          </span>
-        )}
       </div>
     </div>
   )
