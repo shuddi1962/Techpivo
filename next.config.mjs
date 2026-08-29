@@ -1,5 +1,17 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  experimental: {
+    optimizePackageImports: [
+      "lucide-react",
+      "date-fns",
+      "@tiptap/react",
+      "@tiptap/starter-kit",
+      "@tiptap/extension-link",
+      "@tiptap/extension-image",
+      "recharts",
+      "xlsx",
+    ],
+  },
   images: {
     unoptimized: true,
     dangerouslyAllowSVG: true,

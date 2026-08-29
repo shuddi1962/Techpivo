@@ -101,59 +101,15 @@ export default async function HomePage() {
         supabase.from("categories").select("id,name,slug,color,icon").eq("is_active", true).order("name"),
 
         supabase.from("posts").select("*, categories!inner(name,slug,color)")
-          .eq("status", "published").eq("categories.slug", "ai-automation")
+          .eq("status", "published")
+          .in("categories.slug", [
+            "ai-automation","cybersecurity","gadgets","tech-news",
+            "desktops","programming","reviews","tutorials",
+            "networking-it","digital-business","gaming",
+          ])
           .not("featured_image", "is", null)
-          .order("published_at", { ascending: false }).limit(10),
-
-        supabase.from("posts").select("*, categories!inner(name,slug,color)")
-          .eq("status", "published").eq("categories.slug", "cybersecurity")
-          .not("featured_image", "is", null)
-          .order("published_at", { ascending: false }).limit(10),
-
-        supabase.from("posts").select("*, categories!inner(name,slug,color)")
-          .eq("status", "published").eq("categories.slug", "gadgets")
-          .not("featured_image", "is", null)
-          .order("published_at", { ascending: false }).limit(10),
-
-        supabase.from("posts").select("*, categories!inner(name,slug,color)")
-          .eq("status", "published").eq("categories.slug", "tech-news")
-          .not("featured_image", "is", null)
-          .order("published_at", { ascending: false }).limit(10),
-
-        supabase.from("posts").select("*, categories!inner(name,slug,color)")
-          .eq("status", "published").eq("categories.slug", "desktops")
-          .not("featured_image", "is", null)
-          .order("published_at", { ascending: false }).limit(10),
-
-        supabase.from("posts").select("*, categories!inner(name,slug,color)")
-          .eq("status", "published").eq("categories.slug", "programming")
-          .not("featured_image", "is", null)
-          .order("published_at", { ascending: false }).limit(10),
-
-        supabase.from("posts").select("*, categories!inner(name,slug,color)")
-          .eq("status", "published").eq("categories.slug", "reviews")
-          .not("featured_image", "is", null)
-          .order("published_at", { ascending: false }).limit(10),
-
-        supabase.from("posts").select("*, categories!inner(name,slug,color)")
-          .eq("status", "published").eq("categories.slug", "tutorials")
-          .not("featured_image", "is", null)
-          .order("published_at", { ascending: false }).limit(10),
-
-        supabase.from("posts").select("*, categories!inner(name,slug,color)")
-          .eq("status", "published").eq("categories.slug", "networking-it")
-          .not("featured_image", "is", null)
-          .order("published_at", { ascending: false }).limit(10),
-
-        supabase.from("posts").select("*, categories!inner(name,slug,color)")
-          .eq("status", "published").eq("categories.slug", "digital-business")
-          .not("featured_image", "is", null)
-          .order("published_at", { ascending: false }).limit(10),
-
-        supabase.from("posts").select("*, categories!inner(name,slug,color)")
-          .eq("status", "published").eq("categories.slug", "gaming")
-          .not("featured_image", "is", null)
-          .order("published_at", { ascending: false }).limit(10),
+          .order("published_at", { ascending: false })
+          .limit(200),
 
         supabase.from("subcategories").select("*, categories(name,slug,color)")
           .eq("is_active", true)
@@ -181,22 +137,26 @@ export default async function HomePage() {
       popularPosts = extract(results[4], 4)
       categories = extract(results[5], 5)
 
-      const shuffleCat = (data: any[] | null) => shuffle(data || []).slice(0, 4)
-      aiPosts = shuffleCat(extract(results[6], 6))
-      cyberPosts = shuffleCat(extract(results[7], 7))
-      gadgetPosts = shuffleCat(extract(results[8], 8))
-      techNewsPosts = shuffleCat(extract(results[9], 9))
-      desktopPosts = shuffleCat(extract(results[10], 10))
-      programmingPosts = shuffleCat(extract(results[11], 11))
-      reviewsPosts = shuffleCat(extract(results[12], 12))
-      tutorialsPosts = shuffleCat(extract(results[13], 13))
-      networkingPosts = shuffleCat(extract(results[14], 14))
-      digitalBusinessPosts = shuffleCat(extract(results[15], 15))
-      gamingPosts = shuffleCat(extract(results[16], 16))
+      const catPostsAll = extract(results[6], 6) || []
+      const bucketByCategory = (slug: string) => {
+        const filtered = catPostsAll.filter((p: any) => p.categories?.slug === slug)
+        return shuffle(filtered).slice(0, 4)
+      }
+      aiPosts = bucketByCategory("ai-automation")
+      cyberPosts = bucketByCategory("cybersecurity")
+      gadgetPosts = bucketByCategory("gadgets")
+      techNewsPosts = bucketByCategory("tech-news")
+      desktopPosts = bucketByCategory("desktops")
+      programmingPosts = bucketByCategory("programming")
+      reviewsPosts = bucketByCategory("reviews")
+      tutorialsPosts = bucketByCategory("tutorials")
+      networkingPosts = bucketByCategory("networking-it")
+      digitalBusinessPosts = bucketByCategory("digital-business")
+      gamingPosts = bucketByCategory("gaming")
 
-      subcategories = extract(results[17], 17)
-      allTags = extract(results[18], 18)
-      const socialData = extract(results[19], 19)
+      subcategories = extract(results[7], 7)
+      allTags = extract(results[8], 8)
+      const socialData = extract(results[9], 9)
       if (socialData) {
         const map: Record<string, string> = {}
         socialData.forEach((a: any) => {

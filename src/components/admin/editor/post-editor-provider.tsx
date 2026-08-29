@@ -439,7 +439,8 @@ export function PostEditorProvider({
       const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || window.location.origin
       const postUrl = `${siteUrl}/${payload.slug}`
       void (async () => {
-        const { error } = await supabase.from("google_indexing_queue").insert({ url: postUrl, status: "pending" })
+        const { error } = await supabase.from("google_indexing_queue")
+          .upsert({ url: postUrl, status: "pending" }, { onConflict: "url" })
         if (error) console.warn("Indexing queue insert failed:", error.message)
       })()
       fetch("/admin/indexing/api", {

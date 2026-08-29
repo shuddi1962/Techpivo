@@ -506,7 +506,7 @@ async function run(req: NextRequest) {
       // 3. Queue for Google Indexing batch processor
       Promise.resolve(
         supabase.from('google_indexing_queue')
-          .insert({ url: postUrl, status: 'pending' })
+          .upsert({ url: postUrl, status: 'pending' }, { onConflict: 'url' })
       ).catch(() => {})
 
       // 4. Social publishing — all platforms

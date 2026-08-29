@@ -94,7 +94,8 @@ export default function AdminIndexingPage() {
 
       const newUrls = allUrls.filter((u) => !existingMap.has(u))
       if (newUrls.length > 0) {
-        await supabase.from("google_indexing_queue").insert(newUrls.map((url) => ({ url, status: "pending" })))
+        await supabase.from("google_indexing_queue")
+          .upsert(newUrls.map((url) => ({ url, status: "pending" })), { onConflict: "url" })
         added = newUrls.length
       }
 

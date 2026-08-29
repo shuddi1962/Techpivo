@@ -26,7 +26,7 @@ async function runIndexing(req: NextRequest) {
 
     const { data: existing } = await supabase
       .from('google_indexing_queue')
-      .select('id')
+      .select('status')
       .eq('url', url)
       .in('status', ['submitted', 'indexed'])
       .maybeSingle()
@@ -38,11 +38,11 @@ async function runIndexing(req: NextRequest) {
 
     const ok = await submitToGoogleIndexing(url)
 
-    await supabase.from('google_indexing_queue').insert({
+    await supabase.from('google_indexing_queue').upsert({
       url,
       status: ok ? 'submitted' : 'failed',
       submitted_at: new Date().toISOString(),
-    })
+    }, { onConflict: 'url' })
 
     if (ok) {
       results.submitted++
