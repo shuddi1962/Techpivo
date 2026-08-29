@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
-import { manualWriteFromTopic, manualWriteFromUrl } from "@/lib/ai-rewriter"
+import { manualWriteFromTopic, manualWriteFromUrl, openRouterSimplifyContent } from "@/lib/ai-rewriter"
 import { enrichArticleWithWebImages } from "@/lib/web-images"
 import { createClient } from "@/lib/supabase/server"
 
@@ -128,9 +128,18 @@ export async function POST(req: NextRequest) {
       result.article.headline || input,
       3
     )
+
+    // Auto-simplify pass: lift Flesch 55-65 to satisfy AdSense quality bar.
+    // No-op when content is short or OpenRouter has no key. The simplify call
+    // returns the original string on any failure, so it can never block write.
+    const plainLen = (enriched.content || "").replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim().length
+    const simplifiedContent = plainLen >= 400
+      ? await openRouterSimplifyContent(result.article.headline || input, enriched.content)
+      : enriched.content
+
     const article = {
       ...result.article,
-      content:        enriched.content,
+      content:        simplifiedContent,
       featured_image: enriched.featuredImage,
       og_image:       enriched.featuredImage,
       twitter_image:  enriched.featuredImage,
