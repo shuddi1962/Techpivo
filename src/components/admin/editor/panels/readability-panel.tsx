@@ -4,19 +4,37 @@ import { useMemo, useState } from "react"
 import { usePostEditor } from "../post-editor-provider"
 import { CollapsibleSection } from "../collapsible-section"
 import { improveReadability } from "@/lib/editor-autofix"
+import { calculateReadability } from "@/lib/seo-utils"
 import { BarChart3, Wand2, Loader2 } from "lucide-react"
 
+function stripHtmlForStats(html: string): string {
+  if (!html) return ""
+  let text = html
+  text = text.replace(/<script[^>]*>[\s\S]*?<\/script>/gi, " ")
+  text = text.replace(/<style[^>]*>[\s\S]*?<\/style>/gi, " ")
+  text = text.replace(/<[^>]+>/g, " ")
+  text = text.replace(/https?:\/\/[^\s<>"']+/gi, " ")
+  text = text.replace(/&nbsp;/gi, " ")
+  text = text.replace(/&amp;/gi, "&")
+  text = text.replace(/&lt;/gi, "<")
+  text = text.replace(/&gt;/gi, ">")
+  text = text.replace(/&quot;/gi, '"')
+  text = text.replace(/&#x?[0-9a-fA-F]+;/g, " ")
+  return text.replace(/\s+/g, " ").trim()
+}
+
 export function ReadabilityPanel() {
-  const { post, readability, updatePost } = usePostEditor()
+  const { post, updatePost } = usePostEditor()
   const [fixing, setFixing] = useState(false)
 
   const stats = useMemo(() => {
-    const text = post.content.replace(/<[^>]*>/g, "")
+    const text = stripHtmlForStats(post.content)
     const words = text.split(/\s+/).filter(Boolean).length
-    const sentences = text.split(/[.!?]+/).filter(Boolean).length
+    const sentences = text.split(/[.!?]+/).filter(s => s.trim().length > 0).length
     const longSentences = text.split(/[.!?]+/).filter(s => s.split(/\s+/).filter(Boolean).length > 25).length
     const avgWordsPerSentence = sentences > 0 ? (words / sentences).toFixed(1) : "0"
-    return { words, sentences, longSentences, avgWordsPerSentence }
+    const live = calculateReadability(post.content)
+    return { words, sentences, longSentences, avgWordsPerSentence, live }
   }, [post.content])
 
   const getScoreColor = (score: number) => {
@@ -48,21 +66,21 @@ export function ReadabilityPanel() {
       <div className="space-y-4">
         <div className="flex items-center justify-between">
           <div>
-            <span className={`text-2xl font-bold ${getScoreColor(readability.score)}`}>{readability.score}</span>
+            <span className={`text-2xl font-bold ${getScoreColor(stats.live.score)}`}>{stats.live.score}</span>
             <span className="text-xs text-gray-400 dark:text-[#6B7280] ml-1 font-medium">/100</span>
           </div>
-          <span className="text-xs font-semibold text-gray-500 dark:text-[#9CA3AF] bg-gray-50 dark:bg-[#1F2937] px-2.5 py-1 rounded-lg border-2 border-gray-200 dark:border-[#374151]">{getScoreLabel(readability.flesch)}</span>
+          <span className="text-xs font-semibold text-gray-500 dark:text-[#9CA3AF] bg-gray-50 dark:bg-[#1F2937] px-2.5 py-1 rounded-lg border-2 border-gray-200 dark:border-[#374151]">{getScoreLabel(stats.live.flesch)}</span>
         </div>
 
         <div className="w-full bg-gray-100 dark:bg-[#1F2937] rounded-full h-2.5 overflow-hidden">
           <div
-            className={`h-full rounded-full transition-all ${getScoreBg(readability.score)}`}
-            style={{ width: `${readability.score}%` }}
+            className={`h-full rounded-full transition-all ${getScoreBg(stats.live.score)}`}
+            style={{ width: `${stats.live.score}%` }}
           />
         </div>
 
-        {readability.flesch > 0 && (
-          <p className="text-xs text-gray-400 dark:text-[#6B7280] font-medium">Flesch Reading Ease: {readability.flesch}</p>
+        {stats.live.flesch > 0 && (
+          <p className="text-xs text-gray-400 dark:text-[#6B7280] font-medium">Flesch Reading Ease: {stats.live.flesch}</p>
         )}
 
         <div className="grid grid-cols-2 gap-3 border-t-2 border-gray-100 dark:border-[#1F2937] pt-4">

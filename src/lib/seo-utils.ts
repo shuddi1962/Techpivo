@@ -21,7 +21,25 @@ export function countKeywordOccurrences(keyword: string, text: string): number {
 }
 
 function stripHtml(html: string): string {
-  return html.replace(/<[^>]*>/g, "").replace(/\s+/g, " ").trim()
+  if (!html) return ""
+  let text = html
+  text = text.replace(/<script[^>]*>[\s\S]*?<\/script>/gi, " ")
+  text = text.replace(/<style[^>]*>[\s\S]*?<\/style>/gi, " ")
+  text = text.replace(/<noscript[^>]*>[\s\S]*?<\/noscript>/gi, " ")
+  text = text.replace(/<[^>]+>/g, " ")
+  text = text.replace(/https?:\/\/[^\s<>"']+/gi, " ")
+  text = text.replace(/www\.[^\s<>"']+/gi, " ")
+  text = text.replace(/&nbsp;/gi, " ")
+  text = text.replace(/&amp;/gi, "&")
+  text = text.replace(/&lt;/gi, "<")
+  text = text.replace(/&gt;/gi, ">")
+  text = text.replace(/&quot;/gi, '"')
+  text = text.replace(/&apos;/gi, "'")
+  text = text.replace(/&#39;/gi, "'")
+  text = text.replace(/&#x?[0-9a-fA-F]+;/g, " ")
+  text = text.replace(/[ \t]+/g, " ")
+  text = text.replace(/\s*\n\s*/g, "\n")
+  return text.trim()
 }
 
 export function getSeoChecklist(keyword: string, state: EditorPostState): SeoChecklistItem[] {
