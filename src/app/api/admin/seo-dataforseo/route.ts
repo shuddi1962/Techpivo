@@ -68,7 +68,12 @@ async function dataForSeoFetch(path: string, body: DataForSEOTask | DataForSEOTa
   if (!res.ok) {
     return { ok: false, status: res.status, error: json?.status_message || text || `HTTP ${res.status}`, raw: json || text }
   }
-  return { ok: true, status: res.status, data: json }
+  // Extract items from DataForSEO tasks[0].result into a flat items array
+  const rawTasks = json && json.tasks
+  const firstTask = Array.isArray(rawTasks) ? rawTasks[0] : null
+  const rawResult = firstTask && firstTask.result
+  const items = Array.isArray(rawResult) ? rawResult : []
+  return { ok: true, status: res.status, data: { ...json, items } }
 }
 
 export async function POST(req: NextRequest) {
