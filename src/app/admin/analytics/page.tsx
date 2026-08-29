@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge"
 import { BarChart3, Users, Globe, TrendingUp, Share2, Mail, Brain, Download, Wallet, ReceiptText, Eye, MousePointerClick } from "lucide-react"
 import { AiInsights } from "@/components/admin/ai-insights"
 import { FxApprox } from "@/components/fx-approx"
+import { CountryFlag, resolveCountry } from "../country-data"
 import { ChartLine, ChartBar, ChartArea, ChartPie, ChartLeaderboard } from "@/components/charts"
 import {
   ComposedChart, Bar, Line, XAxis, YAxis, CartesianGrid, Tooltip,
@@ -238,7 +239,7 @@ function RealTimeTab() {
   const supabase = createClient()
   const [stats, setStats] = useState({ activeNow: 0, today: 0, thisHour: 0, sessionsToday: 0 })
   const [pages, setPages] = useState<{ page: string; visitors: number }[]>([])
-  const [countries, setCountries] = useState<{ name: string; count: number }[]>([])
+  const [countries, setCountries] = useState<{ name: string; code: string | null; count: number }[]>([])
   const [loading, setLoading] = useState(true)
 
   const fetchRealtime = useCallback(async () => {
@@ -280,7 +281,10 @@ function RealTimeTab() {
         sessionsToday: countSessions(todayEvents.data || []),
       })
       setPages(Object.entries(pageMap).sort((a, b) => b[1] - a[1]).slice(0, 5).map(([page, visitors]) => ({ page, visitors })))
-      setCountries(Object.entries(countryMap).sort((a, b) => b[1] - a[1]).slice(0, 8).map(([name, count]) => ({ name, count })))
+      setCountries(Object.entries(countryMap).sort((a, b) => b[1] - a[1]).slice(0, 8).map(([name, count]) => {
+        const meta = resolveCountry(name)
+        return { name: meta ? meta.name : name, code: meta?.code ?? null, count }
+      }))
     } catch (err) {
       console.error("Realtime fetch error:", err)
     }
@@ -355,12 +359,15 @@ function RealTimeTab() {
             {countries.length === 0 ? (
               <p className="text-sm text-muted-foreground text-center py-8">No country data yet</p>
             ) : (
-              <ChartLeaderboard
-                data={countries}
-                nameKey="name"
-                valueKey="count"
-                valueLabel="views"
-              />
+              <div className="space-y-2">
+                {countries.map((c, i) => (
+                  <div key={i} className="flex items-center gap-3">
+                    {c.code ? <CountryFlag code={c.code} size="1.2rem" showName={false} /> : <span className="w-5 h-4 inline-block rounded-sm bg-muted" />}
+                    <span className="text-sm truncate flex-1 min-w-0">{c.name}</span>
+                    <span className="text-xs font-semibold tabular-nums text-muted-foreground">{c.count.toLocaleString()}</span>
+                  </div>
+                ))}
+              </div>
             )}
           </CardContent>
         </Card>
@@ -400,7 +407,10 @@ function AudienceTab() {
         devices: toList(deviceMap),
         browsers: toList(browserMap),
         os: toList(osMap),
-        countries: toList(countryMap).slice(0, 8),
+        countries: toList(countryMap).slice(0, 8).map(({ name, value }) => {
+          const meta = resolveCountry(name)
+          return { name: meta ? meta.name : name, code: meta?.code ?? null, value }
+        }),
         pages: toList(postMap).slice(0, 8).map(({ name, value }) => ({
           name,
           title: posts.get(name)?.title || "Unknown post",
@@ -477,7 +487,30 @@ function AudienceTab() {
       <div className="grid md:grid-cols-2 gap-6">
         <Card>
           <CardHeader><CardTitle>Top Countries</CardTitle></CardHeader>
-          <CardContent>{renderBreakdown(data.countries, COLORS[4])}</CardContent>
+          <CardContent>
+            {data.countries.length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-8">No data yet</p>
+            ) : (
+              <div className="space-y-2">
+                {data.countries.map((c: any) => (
+                  <div key={c.name} className="p-2.5 rounded-lg bg-muted/30">
+                    <div className="flex items-center justify-between text-sm">
+                      <div className="flex items-center gap-2 min-w-0">
+                        {c.code ? <CountryFlag code={c.code} size="1rem" showName={false} /> : null}
+                        <span className="font-medium truncate">{c.name}</span>
+                      </div>
+                      <span className="text-xs text-muted-foreground shrink-0">
+                        {c.value.toLocaleString()} · <span className="font-bold text-foreground">{pct(c.value)}%</span>
+                      </span>
+                    </div>
+                    <div className="mt-1.5 h-1.5 rounded-full bg-muted overflow-hidden">
+                      <div className="h-full rounded-full" style={{ width: `${pct(c.value)}%`, backgroundColor: COLORS[4] }} />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
         </Card>
         <Card>
           <CardHeader><CardTitle>Top Pages</CardTitle></CardHeader>
