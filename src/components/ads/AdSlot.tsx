@@ -213,7 +213,11 @@ export function AdSlot({ positionKey, className, preview }: AdSlotProps) {
   }
 
   const marketingConsent = hasConsentFor("marketing")
-  const showAutoAds = settings.enable_auto_ads && settings.adsense_publisher_id && marketingConsent
+  const adsenseClient =
+    (typeof settings.adsense_publisher_id === "string" && settings.adsense_publisher_id) ||
+    process.env.NEXT_PUBLIC_ADSENSE_CLIENT_ID ||
+    ""
+  const showAutoAds = settings.enable_auto_ads && adsenseClient && marketingConsent
 
   if (loading) return null
 
@@ -342,12 +346,12 @@ export function AdSlot({ positionKey, className, preview }: AdSlotProps) {
       dangerouslySetInnerHTML={{
         __html: `
           <script async
-            src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${settings.adsense_publisher_id}"
+            src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${adsenseClient}"
             crossorigin="anonymous"
           ></script>
           <ins class="adsbygoogle"
             style="display:block"
-            data-ad-client="${settings.adsense_publisher_id}"
+            data-ad-client="${adsenseClient}"
             data-ad-format="auto"
             data-full-width-responsive="true"
           ></ins>
