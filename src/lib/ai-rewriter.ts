@@ -1104,6 +1104,8 @@ export async function openRouterSimplifyContent(title: string, content: string):
     "- Do NOT add new sections, headings, or paragraphs\n" +
     "- Do NOT remove any facts, names, numbers, dates, or quotes\n" +
     "- Keep the same approximate length (within ±15%)\n" +
+    "- COMBINE choppy fragment sentences into flowing 12-20 word sentences using 'and', 'because', 'which', 'that' (the input has many short fragments that read as choppy — join them)\n" +
+    "- Split sentences longer than 20 words at natural clause boundaries\n" +
     "- Replace multi-syllable jargon with plain-English equivalents:\n" +
     "  • 'utilize' → 'use'\n" +
     "  • 'facilitate' → 'help'\n" +
@@ -1129,8 +1131,8 @@ export async function openRouterSimplifyContent(title: string, content: string):
     "  • 'cybersecurity' → 'security' (when context allows)\n" +
     "  • 'legislation' → 'law' (when context allows)\n" +
     "  • 'transparency' → 'openness' (when context allows)\n" +
-    "- Split sentences longer than 18 words at natural clause boundaries (commas, conjunctions)\n" +
-    "- Replace ellipses (...) with proper periods\n" +
+    "- COMBINE very short fragment sentences (under 8 words) into flowing 14-20 word sentences using 'and', 'but', 'because', 'which', 'that'\n" +
+    "- Split sentences longer than 20 words at natural clause boundaries (commas, conjunctions)\n" +
     "- Use 'we', 'you', 'they' instead of 'one', 'the individual' where natural\n" +
     "- Use active voice wherever possible\n" +
     "- Keep technical proper nouns intact (company names, product names, technology names)\n\n" +
@@ -1150,7 +1152,7 @@ export async function openRouterSimplifyContent(title: string, content: string):
         model,
         messages: [{ role: 'user', content: simplifyPrompt }],
         max_tokens: 8192,
-        temperature: 0.3,
+        temperature: 0.5,
       }),
       signal: AbortSignal.timeout(90000),
     })
