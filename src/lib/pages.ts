@@ -1236,8 +1236,83 @@ Browse our hand-picked collection of tech products, tools and services — each 
 - **Categories** — Browse by programming, cybersecurity, AI, gadgets and more
 - **Deals** — Exclusive discounts and offers from our partners
 - **Reviews** — In-depth product reviews from real testing`,
-    metaTitle: "Tech Marketplace — Curated Tech Products & Tools | TechPivo",
-    metaDescription: "Discover curated tech products, tools and services reviewed and recommended by the TechPivo editorial team.",
+metaTitle: "Tech Marketplace — Curated Tech Products & Tools | TechPivo",
+    metaDescription: "Discover curated tech products, tools and services reviewed and recommended by the Techpivo editorial team.",
+  },
+  {
+    slug: "faq",
+    label: "FAQ",
+    path: "/faq",
+    icon: "❓",
+    hero: {
+      title: "Frequently Asked Questions",
+      subtitle: "Find answers to common questions about Techpivo, our platform, and how we help technology enthusiasts and professionals.",
+    },
+    contentMd: `## Getting Started
+
+### What is Techpivo?
+Techpivo is an AI-powered technology publishing platform that helps technology enthusiasts, developers, and professionals stay updated with the latest tech news, tutorials, and insights.
+
+### How do I create an account?
+Click the "Sign Up" button in the top navigation, enter your email, and follow the verification process to create your Techpivo account.
+
+### Is Techpivo free to use?
+Yes! Techpivo offers free access to articles, tools, community forums, and basic features. Premium features may be available through subscription plans.
+
+## Content & Features
+
+### What types of content does Techpivo offer?
+Techpivo provides breaking news, in-depth tutorials, product reviews, comparisons, opinion pieces, and evergreen guides across technology categories including AI, cybersecurity, programming, gadgets, and more.
+
+### How often is new content published?
+We publish new content daily, with breaking news updates as they happen and scheduled releases for tutorials and reviews.
+
+### Can I contribute content to Techpivo?
+Currently, content is created by our editorial team. We're working on a contributor program for expert contributors — stay tuned for updates!
+
+## Community & Engagement
+
+### How can I participate in the Techpivo community?
+Join our forums, participate in quizzes and polls, follow topics that interest you, and engage in discussions with fellow technology enthusiasts.
+
+### Do you offer newsletters?
+Yes! Subscribe to our weekly newsletter for curated tech news, exclusive analysis, and subscriber perks delivered to your inbox.
+
+### Are there mobile apps available?
+We're currently developing mobile apps for iOS and Android to enhance your Techpivo experience on the go. Check back for release announcements.
+
+## Support & Feedback
+
+### How do I contact Techpivo support?
+You can reach our support team through the contact form on our Contact Us page or email us directly at support@techpivo.com.
+
+### How do I report an error in an article?
+We appreciate your help maintaining accuracy! Use the "Report Error" link at the bottom of any article or visit our Corrections Policy page to submit feedback.
+
+### What is your privacy policy?
+Your privacy is important to us. Review our complete Privacy Policy to understand how we collect, use, and protect your data.`,
+    metaTitle: "FAQ — Frequently Asked Questions | TechPivo",
+    metaDescription: "Find answers to common questions about Techpivo, our platform, and how we help technology enthusiasts and professionals.",
+  },
+  {
+    slug: "thank-you",
+    label: "Thank You",
+    path: "/thank-you",
+    icon: "🙏",
+    hero: {
+      title: "Thank You",
+      subtitle: "We appreciate your message and will get back to you as soon as possible.",
+    },
+    contentMd: `## Thank You
+
+We've received your message and will get back to you as soon as possible.
+
+What would you like to do next?
+
+- [Return to Home](/)
+- [Send Another Message](/contact)`,
+    metaTitle: "Thank You — TechPivo",
+    metaDescription: "Thank you for reaching out to Techpivo. We've received your message and will respond shortly.",
   },
 ];
 
