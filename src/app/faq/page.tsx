@@ -31,7 +31,7 @@ export default function FAQPage() {
             <div className="space-y-3">
               <p className="font-medium">How do I create an account?</p>
               <p className="text-sm text-muted-foreground">
-                Click the "Sign Up" button in the top navigation, enter your email,
+                Click the &ldquo;Sign Up&rdquo; button in the top navigation, enter your email,
                 and follow the verification process to create your Techpivo account.
               </p>
             </div>
@@ -66,7 +66,7 @@ export default function FAQPage() {
             <div className="space-y-3">
               <p className="font-medium">Can I contribute content to Techpivo?</p>
               <p className="text-sm text-muted-foreground">
-                Currently, content is created by our editorial team. We're working
+                Currently, content is created by our editorial team. We are working
                 on a contributor program for expert contributors - stay tuned for
                 updates!
               </p>
@@ -93,7 +93,7 @@ export default function FAQPage() {
             <div className="space-y-3">
               <p className="font-medium">Are there mobile apps available?</p>
               <p className="text-sm text-muted-foreground">
-                We're currently developing mobile apps for iOS and Android to
+                We are currently developing mobile apps for iOS and Android to
                 enhance your Techpivo experience on the go. Check back for release
                 announcements.
               </p>
@@ -112,8 +112,8 @@ export default function FAQPage() {
             <div className="space-y-3">
               <p className="font-medium">How do I report an error in an article?</p>
               <p className="text-sm text-muted-foreground">
-                We appreciate your help maintaining accuracy! Use the "Report
-                Error" link at the bottom of any article or visit our Corrections
+                We appreciate your help maintaining accuracy! Use the &ldquo;Report
+                Error&rdquo; link at the bottom of any article or visit our Corrections
                 Policy page to submit feedback.
               </p>
             </div>

@@ -16,7 +16,7 @@ export default function ThankYouPage() {
             Message Sent Successfully
           </h1>
           <p className="text-xl text-muted-foreground mb-8">
-            We've received your message and will get back to you as soon as possible.
+            We have received your message and will get back to you as soon as possible.
           </p>
           <div className="space-y-4 max-w-md mx-auto">
             <p className="text-sm text-muted-foreground">
