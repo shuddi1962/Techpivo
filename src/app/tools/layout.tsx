@@ -1,4 +1,5 @@
 import type { Metadata } from "next"
+import { CompareProvider } from "@/lib/compare-tools"
 
 export const metadata: Metadata = {
   title: "Free Tech Tools & Utilities",
@@ -10,5 +11,5 @@ export const metadata: Metadata = {
 }
 
 export default function ToolsLayout({ children }: { children: React.ReactNode }) {
-  return <>{children}</>
+  return <CompareProvider>{children}</CompareProvider>
 }

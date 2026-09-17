@@ -6,11 +6,12 @@ import { breadcrumbSchema, softwareApplicationSchema, faqPageSchema, itemListSch
 import { SITE_URL } from "@/lib/constants";
 import { TOOL_SLUGS, TOOL_META, TOOL_CATEGORY_LABEL } from "@/lib/tools-metadata";
 import type { ToolMeta } from "@/lib/tools-metadata";
-import { CATEGORY_ROUTE } from "@/lib/tools-categories";
+import { CATEGORY_ROUTE, TOOL_CATEGORY_DETAILS } from "@/lib/tools-categories";
 import { ToolView } from "@/lib/tools";
 import { ToolStatusGate } from "@/components/tools/tool-status";
 import { AdSlot } from "@/components/ads/AdSlot";
 import { ShareMenu } from "@/components/community/share-menu";
+import { AddToCompareButton } from "@/components/tools/compare-button";
 
 export const dynamicParams = false;
 
@@ -349,6 +350,25 @@ export default async function ToolPage({ params }: { params: { slug: string } })
     .filter((s) => s !== meta.slug && TOOL_META[s].category === meta.category)
     .slice(0, 6);
 
+  // Cross-category recommendations: find tools from other categories that share keywords
+  const relatedSlugs = new Set(related);
+  const sameCategorySlugs = new Set(sameCategory);
+  const myKeywords = (meta.keywords || []).map((k) => k.toLowerCase());
+  const crossCategory = myKeywords.length > 0
+    ? TOOL_SLUGS
+        .filter((s) => {
+          if (s === meta.slug) return false;
+          if (relatedSlugs.has(s)) return false;
+          if (sameCategorySlugs.has(s)) return false;
+          const otherMeta = TOOL_META[s];
+          if (!otherMeta?.keywords) return false;
+          const otherKeywords = otherMeta.keywords.map((k) => k.toLowerCase());
+          const shared = myKeywords.filter((k) => otherKeywords.includes(k));
+          return shared.length >= 1;
+        })
+        .slice(0, 3)
+    : [];
+
   return (
     <>
       <SchemaJsonLd meta={meta} />
@@ -373,8 +393,9 @@ export default async function ToolPage({ params }: { params: { slug: string } })
                 <span className="text-[color:var(--heading)] font-medium">{meta.name}</span>
               </div>
               
-              {/* Share + privacy badge */}
+              {/* Share + compare + privacy badge */}
               <div className="flex items-center space-x-4 text-sm">
+                <AddToCompareButton slug={meta.slug} name={meta.name} />
                 <ShareMenu
                   url={`${SITE_URL}/tools/${meta.slug}`}
                   title={`${meta.name} — Free Online Tool on TechPivo`}
@@ -505,6 +526,46 @@ export default async function ToolPage({ params }: { params: { slug: string } })
                             <p className="text-[color:var(--muted)] text-[13px] line-clamp-2">
                               {relatedMeta.description}
                             </p>
+                          </div>
+                        </div>
+                      </Link>
+                    );
+                  })}
+                </div>
+              </section>
+            )}
+
+            {/* Cross-category keyword-matched tools */}
+            {crossCategory.length > 0 && (
+              <section className="mb-8">
+                <h2 className="mb-4 text-[color:var(--heading)] font-[family-name:var(--font-syne)] text-[22px] font-bold">
+                  Also Useful
+                </h2>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {crossCategory.map((s) => {
+                    const cm = TOOL_META[s];
+                    if (!cm) return null;
+                    const catLabel = TOOL_CATEGORY_LABEL[cm.category] || cm.category;
+                    return (
+                      <Link
+                        key={s}
+                        href={`/tools/${s}`}
+                        className="group block border border-[color:var(--border)] rounded-lg p-5 hover:bg-[color:var(--accent)]/5 transition-colors hover:border-[color:var(--accent)]"
+                      >
+                        <div className="flex items-start space-x-3">
+                          <div className="flex-shrink-0 mt-1">
+                            <span className="text-[color:var(--accent)] font-bold">→</span>
+                          </div>
+                          <div className="flex-1">
+                            <h3 className="mb-1 text-[color:var(--heading)] font-semibold text-[15px] group-hover:text-[color:var(--accent)]">
+                              {cm.name}
+                            </h3>
+                            <p className="text-[color:var(--muted)] text-[13px] line-clamp-2">
+                              {cm.description}
+                            </p>
+                            <span className="mt-2 inline-block text-[11px] font-semibold uppercase tracking-wide px-2 py-0.5 rounded bg-[color:var(--muted)]/10 text-[color:var(--muted)]">
+                              {catLabel}
+                            </span>
                           </div>
                         </div>
                       </Link>

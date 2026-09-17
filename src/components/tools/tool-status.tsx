@@ -6,6 +6,8 @@ import { createClient } from "@/lib/supabase/client";
 import { getToolDef } from "@/lib/tools";
 import { getCategoryDetail } from "@/lib/tools-categories";
 import { useToolStats, formatUsageCount } from "@/lib/use-tool-stats";
+import { useCompareTools } from "@/lib/compare-tools";
+import { Check, Plus } from "lucide-react";
 
 let activeSlugsPromise: Promise<Set<string>> | null = null;
 
@@ -67,6 +69,7 @@ export function ActiveToolGroup({ tools }: { tools: { slug: string; name: string
   const [activeSlugs, setActiveSlugs] = useState<Set<string> | null>(null);
   const slugs = tools.map((t) => t.slug);
   const { stats } = useToolStats(slugs);
+  const { has, toggle, isFull } = useCompareTools();
 
   useEffect(() => {
     let mounted = true;
@@ -87,57 +90,82 @@ export function ActiveToolGroup({ tools }: { tools: { slug: string; name: string
         const soft = def ? getCategoryDetail(def.category).soft : "#FFFBEB";
         const usageText = formatUsageCount(stats[t.slug]?.usage_count ?? 0);
         const trending = stats[t.slug]?.trending ?? false;
+        const compared = has(t.slug);
         return (
-          <Link
+          <div
             key={t.slug}
-            href={`/tools/${t.slug}`}
             className="tp-tool-card"
             style={{
               display: "flex", flexDirection: "column", gap: 12, padding: 20, borderRadius: 14,
               border: "1.5px solid var(--border)", background: "var(--card)",
-              textDecoration: "none", transition: "all 0.2s",
-              position: "relative",
+              transition: "all 0.2s", position: "relative",
             }}
           >
-            {trending && (
-              <span style={{
-                position: "absolute", top: 12, right: 12, fontSize: 10, fontWeight: 700,
-                textTransform: "uppercase", letterSpacing: 0.5,
-                padding: "3px 8px", borderRadius: 999,
-                background: "#FEF3C7", color: "#92400E", lineHeight: 1,
-              }}>
-                Trending
-              </span>
-            )}
-            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-              {Icon && (
-                <span
-                  style={{
-                    width: 38, height: 38, borderRadius: 10, display: "inline-flex",
-                    alignItems: "center", justifyContent: "center", flexShrink: 0,
-                    background: soft, color: accent,
-                  }}
-                >
-                  <Icon size={19} />
+            {/* Compare checkbox */}
+            <button
+              onClick={(e) => {
+                e.preventDefault();
+                toggle(t.slug);
+              }}
+              disabled={!compared && isFull}
+              title={compared ? "Remove from compare" : isFull ? "Compare is full (max 4)" : "Add to compare"}
+              aria-label={compared ? `Remove ${t.name} from compare` : `Add ${t.name} to compare`}
+              style={{
+                position: "absolute", top: 12, left: 12, zIndex: 10,
+                width: 22, height: 22, borderRadius: 6,
+                display: "inline-flex", alignItems: "center", justifyContent: "center",
+                border: compared ? "1.5px solid var(--accent)" : "1.5px solid var(--border)",
+                background: compared ? "var(--accent)" : "var(--card)",
+                color: compared ? "#fff" : "var(--muted)",
+                cursor: !compared && isFull ? "not-allowed" : "pointer",
+                opacity: !compared && isFull ? 0.4 : 1,
+                transition: "all 0.15s",
+              }}
+            >
+              {compared ? <Check className="w-3 h-3" /> : <Plus className="w-3 h-3" />}
+            </button>
+
+            <Link href={`/tools/${t.slug}`} style={{ textDecoration: "none", display: "contents" }}>
+              {trending && (
+                <span style={{
+                  position: "absolute", top: 12, right: 12, fontSize: 10, fontWeight: 700,
+                  textTransform: "uppercase", letterSpacing: 0.5,
+                  padding: "3px 8px", borderRadius: 999,
+                  background: "#FEF3C7", color: "#92400E", lineHeight: 1,
+                }}>
+                  Trending
                 </span>
               )}
-              <span style={{ fontSize: 15, fontWeight: 700, color: "var(--text)", lineHeight: 1.25 }}>{t.name}</span>
-            </div>
-            <p style={{ fontSize: 13, color: "var(--muted)", margin: 0, lineHeight: 1.55, flexGrow: 1 }}>{t.description}</p>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 4 }}>
-              <span style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.4, color: accent }}>
-                {usageText ? `${usageText} uses` : "Free tool"}
-              </span>
-              <span
-                style={{
-                  display: "inline-flex", alignItems: "center", gap: 5, fontSize: 13, fontWeight: 700,
-                  padding: "6px 14px", borderRadius: 999, background: accent, color: "#ffffff",
-                }}
-              >
-                Use Tool →
-              </span>
-            </div>
-          </Link>
+              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                {Icon && (
+                  <span
+                    style={{
+                      width: 38, height: 38, borderRadius: 10, display: "inline-flex",
+                      alignItems: "center", justifyContent: "center", flexShrink: 0,
+                      background: soft, color: accent,
+                    }}
+                  >
+                    <Icon size={19} />
+                  </span>
+                )}
+                <span style={{ fontSize: 15, fontWeight: 700, color: "var(--text)", lineHeight: 1.25 }}>{t.name}</span>
+              </div>
+              <p style={{ fontSize: 13, color: "var(--muted)", margin: 0, lineHeight: 1.55, flexGrow: 1 }}>{t.description}</p>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 4 }}>
+                <span style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.4, color: accent }}>
+                  {usageText ? `${usageText} uses` : "Free tool"}
+                </span>
+                <span
+                  style={{
+                    display: "inline-flex", alignItems: "center", gap: 5, fontSize: 13, fontWeight: 700,
+                    padding: "6px 14px", borderRadius: 999, background: accent, color: "#ffffff",
+                  }}
+                >
+                  Use Tool →
+                </span>
+              </div>
+            </Link>
+          </div>
         )
       })}
     </>
