@@ -5,6 +5,7 @@ import React, { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { getToolDef } from "@/lib/tools";
 import { getCategoryDetail } from "@/lib/tools-categories";
+import { useToolStats, formatUsageCount } from "@/lib/use-tool-stats";
 
 let activeSlugsPromise: Promise<Set<string>> | null = null;
 
@@ -61,13 +62,16 @@ export function ToolStatusGate({ slug, children, fallback }: { slug: string; chi
 }
 
 // Hub grid: hides tool cards that are inactive in the database.
+// Fetches usage counts + trending status from the tool-stats API.
 export function ActiveToolGroup({ tools }: { tools: { slug: string; name: string; description: string }[] }) {
   const [activeSlugs, setActiveSlugs] = useState<Set<string> | null>(null);
+  const slugs = tools.map((t) => t.slug);
+  const { stats } = useToolStats(slugs);
 
   useEffect(() => {
     let mounted = true;
-    fetchActiveSlugs().then((slugs) => {
-      if (mounted) setActiveSlugs(slugs);
+    fetchActiveSlugs().then((s) => {
+      if (mounted) setActiveSlugs(s);
     });
     return () => { mounted = false };
   }, []);
@@ -81,6 +85,8 @@ export function ActiveToolGroup({ tools }: { tools: { slug: string; name: string
         const Icon = def?.icon;
         const accent = def ? getCategoryDetail(def.category).accent : "#F59E0B";
         const soft = def ? getCategoryDetail(def.category).soft : "#FFFBEB";
+        const usageText = formatUsageCount(stats[t.slug]?.usage_count ?? 0);
+        const trending = stats[t.slug]?.trending ?? false;
         return (
           <Link
             key={t.slug}
@@ -90,8 +96,19 @@ export function ActiveToolGroup({ tools }: { tools: { slug: string; name: string
               display: "flex", flexDirection: "column", gap: 12, padding: 20, borderRadius: 14,
               border: "1.5px solid var(--border)", background: "var(--card)",
               textDecoration: "none", transition: "all 0.2s",
+              position: "relative",
             }}
           >
+            {trending && (
+              <span style={{
+                position: "absolute", top: 12, right: 12, fontSize: 10, fontWeight: 700,
+                textTransform: "uppercase", letterSpacing: 0.5,
+                padding: "3px 8px", borderRadius: 999,
+                background: "#FEF3C7", color: "#92400E", lineHeight: 1,
+              }}>
+                Trending
+              </span>
+            )}
             <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
               {Icon && (
                 <span
@@ -109,7 +126,7 @@ export function ActiveToolGroup({ tools }: { tools: { slug: string; name: string
             <p style={{ fontSize: 13, color: "var(--muted)", margin: 0, lineHeight: 1.55, flexGrow: 1 }}>{t.description}</p>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 4 }}>
               <span style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.4, color: accent }}>
-                Free tool
+                {usageText ? `${usageText} uses` : "Free tool"}
               </span>
               <span
                 style={{
