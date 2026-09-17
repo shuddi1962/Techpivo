@@ -5,7 +5,7 @@ import Link from "next/link";
 import { ArrowLeft, X, Plus, Check } from "lucide-react";
 import { TOOL_META, type ToolMeta } from "@/lib/tools-metadata";
 import { TOOL_CATEGORY_LABEL } from "@/lib/tools-categories";
-import { CompareFloatingBar } from "@/components/tools/compare-bar";
+import { CompareFloatingBar } from "@/lib/compare-tools";
 
 type QueryTool = { slug: string; meta: ToolMeta };
 
