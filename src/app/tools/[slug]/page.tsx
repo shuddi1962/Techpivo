@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { JsonLd } from "@/components/ui/jsonld";
-import { breadcrumbSchema, softwareApplicationSchema, faqPageSchema, itemListSchema } from "@/lib/jsonld";
+import { breadcrumbSchema, softwareApplicationSchema, faqPageSchema, itemListSchema, howToSchema } from "@/lib/jsonld";
 import { SITE_URL } from "@/lib/constants";
 import { TOOL_SLUGS, TOOL_META, TOOL_CATEGORY_LABEL } from "@/lib/tools-metadata";
 import type { ToolMeta } from "@/lib/tools-metadata";
@@ -204,70 +204,6 @@ function UseCasesSection({ meta }: { meta: any }) {
   );
 }
 
-function RelatedArticlesSection({ meta }: { meta: any }) {
-  // Suggest related TechPivo articles that would complement this tool
-  // This would ideally come from a content database, but we'll use category-based suggestions
-  const articleSuggestionsByCategory: Record<string, { title: string; slug: string }[]> = {
-    developer: [
-      { title: "How to Validate JSON in JavaScript", slug: "how-to-validate-json-javascript" },
-      { title: "Regular Expressions Tutorial for Beginners", slug: "regex-tutorial-beginners" },
-      { title: "Base64 Encoding Explained: When and How to Use", slug: "base64-encoding-explained" },
-      { title: "JSON vs XML: Choosing the Right Data Format", slug: "json-vs-xml-data-format" },
-      { title: "How to Generate Secure Tokens for APIs", slug: "generate-secure-api-tokens" },
-    ],
-    security: [
-      { title: "How to Create Strong Passwords", slug: "how-to-create-strong-passwords" },
-      { title: "Understanding IP Addresses and Network Security", slug: "understanding-ip-addresses-security" },
-      { title: "Email Validation Best Practices for Web Forms", slug: "email-validation-best-practices" },
-      { title: "How the Luhn Algorithm Works for Credit Card Validation", slug: "luhn-algorithm-explained" },
-      { title: "Disposable Email Domains: Risks and Detection", slug: "disposable-email-domains-risks" },
-    ],
-    seo: [
-      { title: "How to Write Effective Meta Tags for SEO", slug: "how-to-write-effective-meta-tags" },
-      { title: "Structured Data Guide: JSON-LD for Rich Snippets", slug: "structured-data-jsonld-guide" },
-      { title: "Keyword Density: Myths and Best Practices", slug: "keyword-density-myths-best-practices" },
-      { title: "Improving Readability for Better User Engagement", slug: "improving-readability-user-engagement" },
-      { title: "How to Create XML Sitemaps for Search Engines", slug: "how-to-create-xml-sitemaps" },
-    ],
-    // Add more categories as needed
-  };
-
-  const suggestions = articleSuggestionsByCategory[meta.category] || [
-    { title: "How Browser-Based Tools Protect Your Privacy", slug: "how-browser-tools-protect-privacy" },
-    { title: "Why Client-Side Processing Matters for Security", slug: "why-client-side-processing-matters" },
-    { title: "The Future of Web Tools: Privacy-First Applications", slug: "future-web-tools-privacy-first" },
-  ];
-
-  return (
-    <section className="mb-8">
-      <h2 className="mb-4 text-[color:var(--heading)] font-[family-name:var(--font-syne)] text-[22px] font-bold">
-        Related Resources
-      </h2>
-      <div className="space-y-4">
-        {suggestions.map((article, index) => (
-          <Link
-            key={index}
-            href={`/${article.slug}`}
-            className="block border border-[color:var(--border)] rounded-lg p-4 hover:bg-[color:var(--accent)]/5 transition-colors"
-          >
-            <div className="flex items-start space-x-3">
-              <div className="flex-shrink-0 mt-1">
-                <span className="text-[color:var(--accent)] font-bold">{index + 1}.</span>
-              </div>
-              <div className="flex-1">
-                <h3 className="mb-1 text-[color:var(--heading)] font-semibold text-[15px]">{article.title}</h3>
-                <p className="text-[color:var(--muted)] text-[13px] leading-relaxed">
-                  Learn more about related concepts and best practices
-                </p>
-              </div>
-            </div>
-          </Link>
-        ))}
-      </div>
-    </section>
-  );
-}
-
 function FAQSection({ meta }: { meta: any }) {
   const faqs = meta.faq || [];
   if (faqs.length === 0) return null;
@@ -298,6 +234,17 @@ function FAQSection({ meta }: { meta: any }) {
   );
 }
 
+const CATEGORY_TO_APP_CATEGORY: Record<string, string> = {
+  developer: "DeveloperApplication",
+  security: "SecurityApplication",
+  network: "UtilitiesApplication",
+  seo: "DeveloperApplication",
+  image: "MultimediaApplication",
+  pdf: "DocumentDescriptionApplication",
+  calculator: "UtilitiesApplication",
+  ai: "DeveloperApplication",
+};
+
 function SchemaJsonLd({ meta }: { meta: ToolMeta }) {
   const sameCategory = TOOL_SLUGS
     .filter((s) => s !== meta.slug && TOOL_META[s].category === meta.category)
@@ -307,6 +254,13 @@ function SchemaJsonLd({ meta }: { meta: ToolMeta }) {
       name: TOOL_META[s].name,
       position: i + 1,
     }));
+
+  const howToSteps = [
+    { name: "Open the tool", text: `Open ${meta.name} in your browser. No installation or sign-up required.` },
+    { name: "Enter your data", text: "Input your data or upload a file directly in the browser." },
+    { name: "Get instant results", text: "All processing happens locally in your browser — no waiting for a server." },
+    { name: "Copy or download", text: "Copy your output to the clipboard or download it as a file." },
+  ];
 
   return (
     <>
@@ -323,6 +277,17 @@ function SchemaJsonLd({ meta }: { meta: ToolMeta }) {
         name: meta.name,
         description: meta.description,
         url: `${SITE_URL}/tools/${meta.slug}`,
+        applicationCategory: CATEGORY_TO_APP_CATEGORY[meta.category] || "UtilitiesApplication",
+      })} />
+
+      {/* HowTo */}
+      <JsonLd data={howToSchema({
+        name: `How to Use ${meta.name}`,
+        description: `Step-by-step guide to using ${meta.name} — a free browser-based ${TOOL_CATEGORY_LABEL[meta.category]?.toLowerCase() || "utility"} tool.`,
+        url: `${SITE_URL}/tools/${meta.slug}`,
+        totalTime: "PT2M",
+        estimatedCost: { currency: "USD", value: "0" },
+        steps: howToSteps,
       })} />
 
       {/* FAQ */}
@@ -453,9 +418,6 @@ export default async function ToolPage({ params }: { params: { slug: string } })
 
             {/* FAQ section */}
             <FAQSection meta={meta} />
-
-            {/* Related articles section */}
-            <RelatedArticlesSection meta={meta} />
 
             {/* Related tools section */}
             {sameCategory.length > 0 && (

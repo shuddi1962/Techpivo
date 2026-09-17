@@ -190,7 +190,7 @@ export function profilePageSchema(author: any) {
   }
 }
 
-export function softwareApplicationSchema(tool: { name: string; description: string; url: string; image?: string }) {
+export function softwareApplicationSchema(tool: { name: string; description: string; url: string; image?: string; applicationCategory?: string }) {
   return {
     "@context": "https://schema.org",
     "@type": "SoftwareApplication",
@@ -198,7 +198,7 @@ export function softwareApplicationSchema(tool: { name: string; description: str
     description: tool.description,
     url: tool.url,
     ...(tool.image ? { image: tool.image } : {}),
-    applicationCategory: "UtilitiesApplication",
+    applicationCategory: tool.applicationCategory || "UtilitiesApplication",
     operatingSystem: "Web",
     offers: {
       "@type": "Offer",
@@ -378,5 +378,35 @@ export function videoObjectSchema(video: {
     ...(video.duration ? { duration: video.duration } : {}),
     ...(video.contentUrl ? { contentUrl: video.contentUrl } : {}),
     ...(video.embedUrl ? { embedUrl: video.embedUrl } : {}),
+  }
+}
+
+export function howToSchema(howTo: {
+  name: string
+  description: string
+  url: string
+  totalTime?: string
+  estimatedCost?: { currency: string; value: string }
+  steps: { name: string; text: string; image?: string; url?: string }[]
+}) {
+  if (!howTo.steps?.length) return null
+  return {
+    "@context": "https://schema.org",
+    "@type": "HowTo",
+    name: howTo.name,
+    description: howTo.description,
+    url: howTo.url,
+    ...(howTo.totalTime ? { totalTime: howTo.totalTime } : {}),
+    ...(howTo.estimatedCost
+      ? { estimatedCost: { "@type": "MonetaryAmount", currency: howTo.estimatedCost.currency, value: howTo.estimatedCost.value } }
+      : {}),
+    step: howTo.steps.map((step, i) => ({
+      "@type": "HowToStep",
+      position: i + 1,
+      name: step.name,
+      text: step.text,
+      ...(step.image ? { image: step.image } : {}),
+      ...(step.url ? { url: step.url } : {}),
+    })),
   }
 }
