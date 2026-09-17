@@ -8,6 +8,8 @@ import { TOOL_CATEGORY_DETAILS, CATEGORY_SLUGS, getCategoryDetail, CATEGORY_ROUT
 import { ActiveToolGroup } from "@/components/tools/tool-status"
 import PageIntro from "@/components/pages/page-intro"
 import { AdSlot } from "@/components/ads/AdSlot"
+import { TrendingTools } from "@/components/tools/trending-tools"
+import { ToolSearch } from "@/components/tools/tool-search"
 
 const CATEGORY_ORDER: ToolCategory[] = ["developer", "security", "network", "seo", "image", "pdf", "calculator", "ai"]
 
@@ -45,6 +47,10 @@ export default function PublicToolsPage() {
 
       <div style={{ maxWidth: 1200, margin: "0 auto", padding: "40px 20px" }}>
         <PageIntro slug="tools" />
+
+        <ToolSearch />
+
+        <TrendingTools />
 
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap", justifyContent: "center", marginBottom: 36 }}>
           {grouped.map(g => {
