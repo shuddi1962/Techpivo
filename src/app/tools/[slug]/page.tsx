@@ -10,6 +10,7 @@ import { CATEGORY_ROUTE } from "@/lib/tools-categories";
 import { ToolView } from "@/lib/tools";
 import { ToolStatusGate } from "@/components/tools/tool-status";
 import { AdSlot } from "@/components/ads/AdSlot";
+import { ShareMenu } from "@/components/community/share-menu";
 
 export const dynamicParams = false;
 
@@ -372,8 +373,13 @@ export default async function ToolPage({ params }: { params: { slug: string } })
                 <span className="text-[color:var(--heading)] font-medium">{meta.name}</span>
               </div>
               
-              {/* View count and privacy badge */}
+              {/* Share + privacy badge */}
               <div className="flex items-center space-x-4 text-sm">
+                <ShareMenu
+                  url={`${SITE_URL}/tools/${meta.slug}`}
+                  title={`${meta.name} — Free Online Tool on TechPivo`}
+                  buttonClassName="text-xs"
+                />
                 <span className="flex items-center space-x-2 text-[color:var(--muted)]">
                   <span className="w-3 h-3 flex-shrink-0 bg-[color:var(--accent)]/20 rounded"></span>
                   <span>100% Client-Side</span>
