@@ -94,28 +94,28 @@ export const OPENROUTER_MODEL_OPTIONS: OpenRouterModelOption[] = [
   },
   // ── FREE — No cost ──────────────────────────────────────────────────
   {
-    id: "minimax/minimax-m3:free",
-    name: "MiniMax M3 (free)",
-    description: "Best free model. Multimodal, 1M context, strong for articles. Non-reasoning — produces visible JSON reliably. Recommended free option.",
+    id: "thinkingmachines/inkling:free",
+    name: "Inkling (free)",
+    description: "Best free model. 1M context, strong for articles. Non-reasoning — produces visible JSON reliably. Recommended free option.",
     contextLength: 1_048_576,
     isFree: true,
     costPerArticle: "Free",
-    tier: "free",
+    tier: "best",
   },
   {
     id: "nvidia/nemotron-3.5-lightning:free",
     name: "Nemotron 3.5 Lightning (free)",
-    description: "NVIDIA's fast free model. 3B active params, high throughput. Good for quick drafts.",
+    description: "NVIDIA's fast free model. 1M context, high throughput. Good for quick drafts.",
     contextLength: 1_000_000,
     isFree: true,
     costPerArticle: "Free",
     tier: "free",
   },
   {
-    id: "thinkingmachines/inkling:free",
-    name: "Inkling (free)",
-    description: "Thinking Machines' open model. 41B active params, general-purpose reasoning. Solid free option.",
-    contextLength: 1_048_576,
+    id: "nvidia/nemotron-3-super-120b-a12b:free",
+    name: "Nemotron 3 Super (free)",
+    description: "NVIDIA's 120B active model. 262K context, strong reasoning. Good mid-tier free option.",
+    contextLength: 262_144,
     isFree: true,
     costPerArticle: "Free",
     tier: "free",
@@ -129,18 +129,9 @@ export const OPENROUTER_MODEL_OPTIONS: OpenRouterModelOption[] = [
     costPerArticle: "Free",
     tier: "free",
   },
-  {
-    id: "nvidia/nemotron-3-ultra-550b-a55b:free",
-    name: "Nemotron 3 Ultra (free)",
-    description: "NVIDIA's frontier-reasoning model. 55B active/550B total. WARNING: reasoning model — may consume tokens on internal thinking, leaving empty output. Use as last fallback only.",
-    contextLength: 1_000_000,
-    isFree: true,
-    costPerArticle: "Free",
-    tier: "free",
-  },
 ]
 
-export const OPENROUTER_MODEL_DEFAULT = "minimax/minimax-m3:free"
+export const OPENROUTER_MODEL_DEFAULT = "thinkingmachines/inkling:free"
 
 // ── Resolver — DB → env → default ────────────────────────────────────────
 // Cached for 30s to avoid hammering the DB on every AI call.
@@ -201,7 +192,7 @@ export function openRouterModelOrder(primary: string): string[] {
 }
 
 // Look up the friendly display name for a model ID
-// Handles compound strings like "minimax/minimax-m3:free|fallback_from:thinkingmachines/inkling:free"
+// Handles compound strings like "thinkingmachines/inkling:free|fallback_from:nvidia/nemotron-3.5-lightning:free"
 export function getModelFriendlyName(modelId: string | null | undefined): string {
   if (!modelId) return ""
 

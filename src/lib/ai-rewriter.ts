@@ -904,9 +904,9 @@ async function callOpenRouterArticle(
   // Attempt 3: fallback to a working free model if selected model failed
   console.warn(`[OpenRouter] ${primaryModel} failed (${r1.debug.slice(0, 80)}) — trying fallback free models`)
   const fallbackModels = [
-    "minimax/minimax-m3:free",
-    "nvidia/nemotron-3.5-lightning:free",
     "thinkingmachines/inkling:free",
+    "nvidia/nemotron-3.5-lightning:free",
+    "nvidia/nemotron-3-super-120b-a12b:free",
     "google/gemma-4-31b-it:free",
   ].filter((m) => m !== primaryModel) // don't retry the same model
 
