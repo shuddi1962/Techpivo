@@ -18,6 +18,7 @@ interface PopupCampaign {
 }
 
 const DISMISS_PREFIX = "tp_popup_dismiss_"
+const SESSION_KEY = "tp_popup_session_seen"
 const ROTATE_MS = 20000
 
 export function PopupAd() {
@@ -29,6 +30,10 @@ export function PopupAd() {
   const campaign = campaigns.length > 0 ? campaigns[currentIndex % campaigns.length] : null
 
   const load = useCallback(async () => {
+    // Only show popup once per browser session to avoid intrusiveness on
+    // repeated navigations. sessionStorage clears when the tab/browser closes.
+    if (typeof window !== "undefined" && sessionStorage.getItem(SESSION_KEY)) return
+
     const supabase = createClient()
     const today = new Date().toISOString().slice(0, 10)
 
@@ -65,7 +70,12 @@ export function PopupAd() {
 
   useEffect(() => {
     if (!campaign || visible) return
-    const t = window.setTimeout(() => setVisible(true), 6000)
+    // 10-second delay before showing -- less intrusive than 6s, gives users
+    // time to orient to the page content before an ad appears.
+    const t = window.setTimeout(() => {
+      if (typeof window !== "undefined") sessionStorage.setItem(SESSION_KEY, "1")
+      setVisible(true)
+    }, 10000)
     return () => window.clearTimeout(t)
   }, [campaign, visible])
 

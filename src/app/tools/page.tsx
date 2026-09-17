@@ -129,7 +129,8 @@ export default function PublicToolsPage() {
                   View all {TOOL_CATEGORY_LABEL[g.cat].toLowerCase()} tools →
                 </Link>
               </div>
-              <p style={{ fontSize: 13, color: "var(--muted)", margin: "4px 0 0" }}>{d.description}</p>
+              <p style={{ fontSize: 15, color: "var(--text)", margin: "4px 0 8px", lineHeight: 1.6 }}>{d.hero}</p>
+              <p style={{ fontSize: 13, color: "var(--muted)", margin: "0 0 14px", lineHeight: 1.5 }}>{d.description} Every tool in this category runs entirely in your browser — no uploads, no accounts, no risk to your data. Simply open the tool, enter your input, and get instant results.</p>
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: 20, marginTop: 14 }}>
                 <ActiveToolGroup tools={g.tools.map(slug => ({ slug, name: TOOL_META[slug].name, description: TOOL_META[slug].description }))} />
               </div>
