@@ -1,143 +1,602 @@
-import type { Metadata } from "next"
-import Link from "next/link"
-import { notFound } from "next/navigation"
-import { JsonLd } from "@/components/ui/jsonld"
-import { breadcrumbSchema, softwareApplicationSchema, itemListSchema } from "@/lib/jsonld"
-import { SITE_URL } from "@/lib/constants"
-import { TOOL_SLUGS, TOOL_META, TOOL_CATEGORY_LABEL } from "@/lib/tools-metadata"
-import { CATEGORY_ROUTE } from "@/lib/tools-categories"
-import { ToolView } from "@/lib/tools"
-import { ToolStatusGate } from "@/components/tools/tool-status"
-import { AdSlot } from "@/components/ads/AdSlot"
+import type { Metadata } from "next";
+import Link from "next/link";
+import { notFound } from "next/navigation";
+import { JsonLd } from "@/components/ui/jsonld";
+import { breadcrumbSchema, softwareApplicationSchema, faqPageSchema, itemListSchema } from "@/lib/jsonld";
+import { SITE_URL } from "@/lib/constants";
+import { TOOL_SLUGS, TOOL_META, TOOL_CATEGORY_LABEL } from "@/lib/tools-metadata";
+import type { ToolMeta } from "@/lib/tools-metadata";
+import { CATEGORY_ROUTE } from "@/lib/tools-categories";
+import { ToolView } from "@/lib/tools";
+import { ToolStatusGate } from "@/components/tools/tool-status";
+import { AdSlot } from "@/components/ads/AdSlot";
 
-export const dynamicParams = false
+export const dynamicParams = false;
 
 export function generateStaticParams() {
-  return TOOL_SLUGS.map((slug) => ({ slug }))
+  return TOOL_SLUGS.map((slug) => ({ slug }));
 }
 
 export async function generateMetadata({ params }: { params: { slug: string } }): Promise<Metadata> {
-  const meta = TOOL_META[params.slug]
-  if (!meta) return { title: "Tool not found" }
+  const meta = TOOL_META[params.slug];
+  if (!meta) return { title: "Tool not found" };
+
+  // Enhanced SEO metadata for better search visibility
   return {
-    title: `${meta.name} — Free Online Tool`,
-    description: meta.description,
-    keywords: meta.keywords.join(", "),
+    title: `${meta.name} — Free Online Tool — TechPivo`,
+    description: `${meta.description} — No uploads, 100% client-side, secure and private.`,
+    keywords: [...meta.keywords, "free online tool", "browser-based", "no upload", "techpivo tools"],
     openGraph: {
       title: `${meta.name} — Free Online Tool — TechPivo`,
-      description: meta.description,
+      description: `${meta.description} Use instantly in your browser — no upload required.`,
       url: `${SITE_URL}/tools/${meta.slug}`,
       type: "website",
+      siteName: "TechPivo Tools",
     },
-  }
+    twitter: {
+      card: "summary_large_image",
+      title: `${meta.name} — Free Online Tool`,
+      description: `${meta.description} — 100% client-side, secure, no uploads.`,
+    },
+    // Additional meta tags for better SEO
+    alternates: {
+      canonical: `${SITE_URL}/tools/${meta.slug}`,
+    },
+  };
 }
 
-function FaqSection({ slug }: { slug: string }) {
-  const faqs = TOOL_META[slug]?.faq || []
-  if (faqs.length === 0) return null
+function HowItWorksSection({ meta }: { meta: any }) {
+  if (!meta.longDescription) return null;
+
   return (
-    <section style={{ marginTop: 32 }}>
-      <h2 style={{ fontFamily: "'Syne', sans-serif", fontSize: 20, fontWeight: 700, marginBottom: 14 }}>Frequently Asked Questions</h2>
-      <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-        {faqs.map((f) => (
-          <details key={f.q} style={{ border: "1px solid var(--border)", borderRadius: 10, padding: "14px 16px", background: "var(--card)" }}>
-            <summary style={{ fontSize: 15, fontWeight: 600, color: "var(--text)", cursor: "pointer" }}>{f.q}</summary>
-            <p style={{ fontSize: 14, color: "var(--muted)", margin: "10px 0 0", lineHeight: 1.6 }}>{f.a}</p>
-          </details>
+    <section className="mb-8">
+      <h2 className="mb-4 text-[color:var(--heading)] font-[family-name:var(--font-syne)] text-[22px] font-bold">
+        How It Works
+      </h2>
+      <div className="prose prose-slate text-[color:var(--text)] leading-relaxed">
+        <p>{meta.longDescription}</p>
+        {/* Add structured steps for how-to schema */}
+        <ol className="list-decimal pl-6 space-y-3 mt-4">
+          <li>
+            Open the tool in your browser — nothing to install
+          </li>
+          <li>
+            Enter your data or upload your file directly
+          </li>
+          <li>
+            Get instant results — all processing happens locally
+          </li>
+          <li>
+            Copy or download your output — your data never leaves your device
+          </li>
+        </ol>
+      </div>
+    </section>
+  );
+}
+
+function FeaturesSection({ meta }: { meta: any }) {
+  // Extract features from description or use a default set
+  const features = [
+    "100% client-side — zero uploads, maximum privacy",
+    "Instant results — no waiting for server processing",
+    "Works offline — once loaded, no internet needed",
+    "Secure — your data never leaves your browser",
+    "Free to use — no hidden costs or premium locks",
+  ];
+
+  // Try to extract specific features from longDescription if available
+  if (meta.longDescription) {
+    // You could parse specific features from longDescription here
+    // For now, we'll use the enhanced default features
+  }
+
+  return (
+    <section className="mb-8">
+      <h2 className="mb-4 text-[color:var(--heading)] font-[family-name:var(--font-syne)] text-[22px] font-bold">
+        Key Features
+      </h2>
+      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
+        {features.map((feature, index) => (
+          <div key={index} className="flex items-start space-x-3">
+            <div className="flex-shrink-0 mt-1">
+              <span className="text-[color:var(--accent)] font-bold">•</span>
+            </div>
+            <div className="flex-1">
+              <p className="text-[color:var(--text)] text-[14px] leading-relaxed">{feature}</p>
+            </div>
+          </div>
         ))}
       </div>
     </section>
-  )
+  );
 }
 
-export default async function ToolPage({ params }: { params: { slug: string } }) {
-  const meta = TOOL_META[params.slug]
-  if (!meta) notFound()
+function UseCasesSection({ meta }: { meta: any }) {
+  // Define common use cases based on tool category
+  const useCasesByCategory: Record<string, string[]> = {
+    developer: [
+      "Debug and validate API responses",
+      "Format configuration files (JSON, YAML, XML)",
+      "Test and debug regular expressions",
+      "Encode/decode data for transmission",
+      "Generate unique identifiers and tokens",
+    ],
+    security: [
+      "Generate strong passwords for accounts",
+      "Validate password strength before use",
+      "Check IP addresses for security analysis",
+      "Verify email addresses for form validation",
+      "Encode sensitive data for safe transfer",
+    ],
+    network: [
+      "Analyze IP addresses for troubleshooting",
+      "Lookup DNS records for domain issues",
+      "Check if IP is public or private",
+      "Troubleshoot network connectivity",
+      "Validate subnet masks and CIDR notation",
+    ],
+    seo: [
+      "Generate meta tags for better search visibility",
+      "Create structured data for rich snippets",
+      "Preview how pages appear in search results",
+      "Check keyword density for content optimization",
+      "Test readability scores for audience targeting",
+    ],
+    image: [
+      "Compress images for faster web loading",
+      "Resize images for social media posts",
+      "Convert images to modern WebP format",
+      "Pick colors for design consistency",
+      "Create color palettes for branding",
+    ],
+    pdf: [
+      "Merge multiple PDF documents",
+      "Split large PDFs into smaller files",
+      "Compress PDFs for email attachment",
+      "Convert Excel/CSV to PDF for sharing",
+      "Extract text from PDFs for reuse",
+    ],
+    calculator: [
+      "Calculate loan payments and interest",
+      "Convert between different units",
+      "Calculate body mass index (BMI)",
+      "Determine age from birth date",
+      "Convert between number bases (hex, binary, etc.)",
+    ],
+    ai: [
+      "Generate SEO-optimized headlines",
+      "Write meta descriptions for better CTR",
+      "Create FAQ sections from content",
+      "Build structured prompts for LLMs",
+      "Humanize AI-generated text for natural flow",
+    ],
+  };
 
-  const related = (meta.related || []).filter((s) => TOOL_META[s])
-  const sameCategory = TOOL_SLUGS.filter((s) => s !== meta.slug && TOOL_META[s].category === meta.category).slice(0, 6)
+  const useCases = useCasesByCategory[meta.category] || [
+    "Solve common daily tasks efficiently",
+    "Save time with instant browser-based tools",
+    "Maintain privacy with zero-upload processing",
+    "Get professional results without cost",
+    "Work offline once the tool is loaded",
+  ];
 
-  const faqSchema = meta.faq.length > 0
-    ? {
-        "@context": "https://schema.org",
-        "@type": "FAQPage",
-        mainEntity: meta.faq.map((f) => ({
-          "@type": "Question",
-          name: f.q,
-          acceptedAnswer: { "@type": "Answer", text: f.a },
-        })),
-      }
-    : null
+  return (
+    <section className="mb-8">
+      <h2 className="mb-4 text-[color:var(--heading)] font-[family-name:var(--font-syne)] text-[22px] font-bold">
+        Common Use Cases
+      </h2>
+      <div className="space-y-3">
+        {useCases.map((useCase, index) => (
+          <div key={index} className="flex items-start space-x-3">
+            <div className="flex-shrink-0 mt-1 text-[color:var(--muted)]">
+              {index + 1}.
+            </div>
+            <div className="flex-1">
+              <p className="text-[color:var(--text)] text-[14px] leading-relaxed">{useCase}</p>
+            </div>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function RelatedArticlesSection({ meta }: { meta: any }) {
+  // Suggest related TechPivo articles that would complement this tool
+  // This would ideally come from a content database, but we'll use category-based suggestions
+  const articleSuggestionsByCategory: Record<string, { title: string; slug: string }[]> = {
+    developer: [
+      { title: "How to Validate JSON in JavaScript", slug: "how-to-validate-json-javascript" },
+      { title: "Regular Expressions Tutorial for Beginners", slug: "regex-tutorial-beginners" },
+      { title: "Base64 Encoding Explained: When and How to Use", slug: "base64-encoding-explained" },
+      { title: "JSON vs XML: Choosing the Right Data Format", slug: "json-vs-xml-data-format" },
+      { title: "How to Generate Secure Tokens for APIs", slug: "generate-secure-api-tokens" },
+    ],
+    security: [
+      { title: "How to Create Strong Passwords", slug: "how-to-create-strong-passwords" },
+      { title: "Understanding IP Addresses and Network Security", slug: "understanding-ip-addresses-security" },
+      { title: "Email Validation Best Practices for Web Forms", slug: "email-validation-best-practices" },
+      { title: "How the Luhn Algorithm Works for Credit Card Validation", slug: "luhn-algorithm-explained" },
+      { title: "Disposable Email Domains: Risks and Detection", slug: "disposable-email-domains-risks" },
+    ],
+    seo: [
+      { title: "How to Write Effective Meta Tags for SEO", slug: "how-to-write-effective-meta-tags" },
+      { title: "Structured Data Guide: JSON-LD for Rich Snippets", slug: "structured-data-jsonld-guide" },
+      { title: "Keyword Density: Myths and Best Practices", slug: "keyword-density-myths-best-practices" },
+      { title: "Improving Readability for Better User Engagement", slug: "improving-readability-user-engagement" },
+      { title: "How to Create XML Sitemaps for Search Engines", slug: "how-to-create-xml-sitemaps" },
+    ],
+    // Add more categories as needed
+  };
+
+  const suggestions = articleSuggestionsByCategory[meta.category] || [
+    { title: "How Browser-Based Tools Protect Your Privacy", slug: "how-browser-tools-protect-privacy" },
+    { title: "Why Client-Side Processing Matters for Security", slug: "why-client-side-processing-matters" },
+    { title: "The Future of Web Tools: Privacy-First Applications", slug: "future-web-tools-privacy-first" },
+  ];
+
+  return (
+    <section className="mb-8">
+      <h2 className="mb-4 text-[color:var(--heading)] font-[family-name:var(--font-syne)] text-[22px] font-bold">
+        Related Resources
+      </h2>
+      <div className="space-y-4">
+        {suggestions.map((article, index) => (
+          <Link
+            key={index}
+            href={`/${article.slug}`}
+            className="block border border-[color:var(--border)] rounded-lg p-4 hover:bg-[color:var(--accent)]/5 transition-colors"
+          >
+            <div className="flex items-start space-x-3">
+              <div className="flex-shrink-0 mt-1">
+                <span className="text-[color:var(--accent)] font-bold">{index + 1}.</span>
+              </div>
+              <div className="flex-1">
+                <h3 className="mb-1 text-[color:var(--heading)] font-semibold text-[15px]">{article.title}</h3>
+                <p className="text-[color:var(--muted)] text-[13px] leading-relaxed">
+                  Learn more about related concepts and best practices
+                </p>
+              </div>
+            </div>
+          </Link>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function FAQSection({ meta }: { meta: any }) {
+  const faqs = meta.faq || [];
+  if (faqs.length === 0) return null;
+
+  return (
+    <section className="mb-8">
+      <h2 className="mb-4 text-[color:var(--heading)] font-[family-name:var(--font-syne)] text-[22px] font-bold">
+        Frequently Asked Questions
+      </h2>
+      <div className="space-y-4">
+        {faqs.map((faq: { q: string; a: string }, index: number) => (
+          <div key={index} className="border border-[color:var(--border)] rounded-lg p-5">
+            <div className="flex items-start space-x-3 mb-3">
+              <div className="flex-shrink-0">
+                <span className="text-[color:var(--accent)] font-bold text-[18px]">
+                  Q{index + 1}
+                </span>
+              </div>
+              <div className="flex-1">
+                <h3 className="mb-1 text-[color:var(--heading)] font-semibold text-[16px]">{faq.q}</h3>
+              </div>
+            </div>
+            <p className="text-[color:var(--text)] text-[14px] leading-relaxed">{faq.a}</p>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function SchemaJsonLd({ meta }: { meta: ToolMeta }) {
+  const sameCategory = TOOL_SLUGS
+    .filter((s) => s !== meta.slug && TOOL_META[s].category === meta.category)
+    .slice(0, 8)
+    .map((s, i) => ({
+      url: `${SITE_URL}/tools/${s}`,
+      name: TOOL_META[s].name,
+      position: i + 1,
+    }));
 
   return (
     <>
+{/* Breadcrumb */}
       <JsonLd data={breadcrumbSchema([
         { name: "Home", url: SITE_URL },
         { name: "Free Tech Tools", url: `${SITE_URL}/tools` },
+        { name: TOOL_CATEGORY_LABEL[meta.category], url: `${SITE_URL}/tools/category/${meta.category}` },
         { name: meta.name },
       ])} />
-      <JsonLd data={softwareApplicationSchema({ name: meta.name, description: meta.description, url: `${SITE_URL}/tools/${meta.slug}` })} />
-      {faqSchema && <JsonLd data={faqSchema as any} />}
-      <JsonLd data={itemListSchema(sameCategory.map((s, i) => ({ url: `${SITE_URL}/tools/${s}`, name: TOOL_META[s].name, position: i + 1 })))} />
+
+      {/* SoftwareApplication */}
+      <JsonLd data={softwareApplicationSchema({
+        name: meta.name,
+        description: meta.description,
+        url: `${SITE_URL}/tools/${meta.slug}`,
+      })} />
+
+      {/* FAQ */}
+      {meta.faq.length > 0 && (
+        <JsonLd data={faqPageSchema(meta.faq.map((f: { q: string; a: string }) => ({
+          question: f.q,
+          answer: f.a,
+        })))} />
+      )}
+
+      {/* ItemList for related tools */}
+      {sameCategory.length > 0 && (
+        <JsonLd data={itemListSchema(sameCategory)} />
+      )}
+    </>
+  );
+}
+
+export default async function ToolPage({ params }: { params: { slug: string } }) {
+  const meta = TOOL_META[params.slug];
+  if (!meta) notFound();
+
+  const related = (meta.related || []).filter((s) => TOOL_META[s]);
+  const sameCategory = TOOL_SLUGS
+    .filter((s) => s !== meta.slug && TOOL_META[s].category === meta.category)
+    .slice(0, 6);
+
+  return (
+    <>
+      <SchemaJsonLd meta={meta} />
 
       <div className="mx-auto max-w-[1200px] px-5 py-8 md:px-5 md:py-8">
-        <div className="grid grid-cols-1 gap-7 lg:grid-cols-[minmax(0,1fr)_300px] lg:gap-7 lg:items-start">
+        <div className="grid grid-cols-1 gap-8 lg:grid-cols-[minmax(0,2fr)_300px] lg:gap-8 lg:items-start">
           <main className="min-w-0">
-            <div className="mb-2 text-[13px] text-[color:var(--muted)]">
-              <Link href="/tools" className="text-[color:hsl(var(--accent))] no-underline">Tools</Link>
-              <span className="mx-1.5">→</span>
-              <Link href={CATEGORY_ROUTE[meta.category]} className="text-[color:hsl(var(--accent))] no-underline">
-                {TOOL_CATEGORY_LABEL[meta.category]}
-              </Link>
-              <span className="mx-1.5">→</span>
-              <span>{meta.name}</span>
-            </div>
-            <h1 className="font-[family-name:var(--font-syne)] text-[26px] font-extrabold leading-tight m-0 sm:text-[30px]">{meta.name}</h1>
-            <p className="mt-2 mb-6 text-[15px] text-[color:var(--muted)]" style={{ lineHeight: 1.6 }}>{meta.longDescription || meta.description}</p>
-
-            <div className="mb-6">
-              <AdSlot positionKey="category_top_banner" />
-            </div>
-
-            <div className="rounded-2xl border border-[color:var(--border)] bg-[color:var(--card)] p-5 sm:p-6">
-              <ToolStatusGate slug={meta.slug}>
-                <ToolView slug={meta.slug} />
-              </ToolStatusGate>
-            </div>
-
-            <FaqSection slug={meta.slug} />
-          </main>
-
-          <aside className="flex flex-col gap-3 lg:sticky lg:top-6">
-            <AdSlot positionKey="post_sidebar_top" />
-            <div className="rounded-xl border border-[color:var(--border)] bg-[color:var(--card)] p-4 sm:p-[18px]">
-              <h3 className="mb-3 text-[14px] font-bold text-[color:var(--text)]">More {TOOL_CATEGORY_LABEL[meta.category]} Tools</h3>
-              <div className="flex flex-col gap-1">
-                {sameCategory.map((s) => (
-                  <Link key={s} href={`/tools/${s}`} className="border-b border-[color:var(--border)] py-1.5 text-[13px] text-[color:var(--muted)] no-underline last:border-b-0">
-                    {TOOL_META[s].name}
-                  </Link>
-                ))}
+            {/* Enhanced header with better breadcrumbs and stats */}
+            <div className="mb-6 flex flex-col sm:flex-row sm:items-start sm:justify-between">
+              <div className="flex items-center space-x-3 mb-3 sm:mb-0">
+                <Link href="/tools" className="text-[color:hsl(var(--accent))] hover:underline">
+                  Tools
+                </Link>
+                <span className="mx-2 text-[color:var(--muted)]">→</span>
+                <Link
+                  href={CATEGORY_ROUTE[meta.category]}
+                  className="text-[color:hsl(var(--accent))] hover:underline"
+                >
+                  {TOOL_CATEGORY_LABEL[meta.category]}
+                </Link>
+                <span className="mx-2 text-[color:var(--muted)]">→</span>
+                <span className="text-[color:var(--heading)] font-medium">{meta.name}</span>
+              </div>
+              
+              {/* View count and privacy badge */}
+              <div className="flex items-center space-x-4 text-sm">
+                <span className="flex items-center space-x-2 text-[color:var(--muted)]">
+                  <span className="w-3 h-3 flex-shrink-0 bg-[color:var(--accent)]/20 rounded"></span>
+                  <span>100% Client-Side</span>
+                </span>
               </div>
             </div>
+
+            {/* Main title and description */}
+            <h1 className="mb-4 text-[color:var(--heading)] font-[family-name:var(--font-syne)] text-[32px] font-extrabold leading-none sm:text-[36px]">
+              {meta.name}
+            </h1>
+            
+            <p className="mb-6 text-[color:var(--text)] text-[16px] leading-relaxed">
+              {meta.description}
+            </p>
+
+            {/* Enhanced badges and tags */}
+            <div className="flex flex-wrap gap-3 mb-6">
+              <span className="inline-flex items-center px-3 py-1 rounded-full text-[color:var(--muted)] bg-[color:var(--muted)]/20 text-[12px]">
+                #techpivo-tools
+              </span>
+              <span className="inline-flex items-center px-3 py-1 rounded-full text-[color:var(--muted)] bg-[color:var(--muted)]/20 text-[12px]">
+                ##{meta.category}
+              </span>
+              {meta.keywords.slice(0, 3).map((keyword, index) => (
+                <span key={index} className="inline-flex items-center px-3 py-1 rounded-full text-[color:var(--muted)] bg-[color:var(--muted)]/20 text-[12px]">
+                  #{keyword}
+                </span>
+              ))}
+            </div>
+
+            {/* How it works section */}
+            <HowItWorksSection meta={meta} />
+
+            {/* Key features section */}
+            <FeaturesSection meta={meta} />
+
+            {/* Use cases section */}
+            <UseCasesSection meta={meta} />
+
+            {/* Main tool interface */}
+            <div className="mb-8">
+              <AdSlot positionKey="category_top_banner" className="mb-6" />
+              <div className="rounded-2xl border border-[color:var(--border)] bg-[color:var(--card)] p-6">
+                <ToolStatusGate slug={meta.slug}>
+                  <ToolView slug={meta.slug} />
+                </ToolStatusGate>
+              </div>
+            </div>
+
+            {/* FAQ section */}
+            <FAQSection meta={meta} />
+
+            {/* Related articles section */}
+            <RelatedArticlesSection meta={meta} />
+
+            {/* Related tools section */}
+            {sameCategory.length > 0 && (
+              <section className="mb-8">
+                <h2 className="mb-4 text-[color:var(--heading)] font-[family-name:var(--font-syne)] text-[22px] font-bold">
+                  More {TOOL_CATEGORY_LABEL[meta.category]} Tools
+                </h2>
+                <div className="space-y-3">
+                  {sameCategory.map((s) => {
+                    const relatedMeta = TOOL_META[s];
+                    if (!relatedMeta) return null;
+                    return (
+                      <Link
+                        key={s}
+                        href={`/tools/${s}`}
+                        className="group block border border-[color:var(--border)] rounded-lg p-5 hover:bg-[color:var(--accent)]/5 transition-colors hover:border-[color:var(--accent)]"
+                      >
+                        <div className="flex items-start space-x-4">
+                          <div className="flex-shrink-0">
+                            <div className="w-10 h-10 flex-shrink-0 bg-[color:var(--muted)]/10 rounded-lg flex items-center justify-center">
+                              <span className="text-[color:var(--accent)] text-[16px]">★</span>
+                            </div>
+                          </div>
+                          <div className="flex-1">
+                            <h3 className="mb-1 text-[color:var(--heading)] font-semibold text-[16px] group-hover:text-[color:var(--accent)]">
+                              {relatedMeta.name}
+                            </h3>
+                            <p className="mb-2 text-[color:var(--muted)] text-[14px] line-clamp-2">
+                              {relatedMeta.description}
+                            </p>
+                            <div className="flex items-center space-x-2 text-[color:var(--muted)] text-[12px]">
+                              <span className="w-3 h-3 flex-shrink-0 bg-[color:var(--accent)]/20 rounded"></span>
+                              <span>Related Tool</span>
+                            </div>
+                          </div>
+                        </div>
+                      </Link>
+                    );
+                  })}
+                </div>
+              </section>
+            )}
+
+            {/* Specific related tools based on meta.related */}
             {related.length > 0 && (
-              <div className="rounded-xl border border-[color:var(--border)] bg-[color:var(--card)] p-4 sm:p-[18px]">
-                <h3 className="mb-3 text-[14px] font-bold text-[color:var(--text)]">Related Tools</h3>
-                <div className="flex flex-col gap-1">
-                  {related.map((s) => (
-                    <Link key={s} href={`/tools/${s}`} className="border-b border-[color:var(--border)] py-1.5 text-[13px] text-[color:var(--muted)] no-underline last:border-b-0">
-                      {TOOL_META[s].name}
-                    </Link>
-                  ))}
+              <section className="mb-8">
+                <h2 className="mb-4 text-[color:var(--heading)] font-[family-name:var(--font-syne)] text-[22px] font-bold">
+                  You Might Also Like
+                </h2>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {related.map((s) => {
+                    const relatedMeta = TOOL_META[s];
+                    if (!relatedMeta) return null;
+                    return (
+                      <Link
+                        key={s}
+                        href={`/tools/${s}`}
+                        className="group block border border-[color:var(--border)] rounded-lg p-5 hover:bg-[color:var(--accent)]/5 transition-colors hover:border-[color:var(--accent)]"
+                      >
+                        <div className="flex items-start space-x-3">
+                          <div className="flex-shrink-0 mt-1">
+                            <span className="text-[color:var(--accent)] font-bold">★</span>
+                          </div>
+                          <div className="flex-1">
+                            <h3 className="mb-1 text-[color:var(--heading)] font-semibold text-[15px] group-hover:text-[color:var(--accent)]">
+                              {relatedMeta.name}
+                            </h3>
+                            <p className="text-[color:var(--muted)] text-[13px] line-clamp-2">
+                              {relatedMeta.description}
+                            </p>
+                          </div>
+                        </div>
+                      </Link>
+                    );
+                  })}
+                </div>
+              </section>
+            )}
+          </main>
+
+          <aside className="flex flex-col gap-4 lg:sticky lg:top-6">
+            {/* Sidebar ads */}
+            <AdSlot positionKey="post_sidebar_top" className="mb-5" />
+
+            {/* Tool stats and info card */}
+            <div className="rounded-xl border border-[color:var(--border)] bg-[color:var(--card)] p-5">
+              <h3 className="mb-3 text-[color:var(--heading)] font-semibold text-[15px]">
+                Tool Information
+              </h3>
+              <div className="space-y-3">
+                <div className="flex justify-between text-[color:var(--text)] text-[14px]">
+                  <span>Category:</span>
+                  <span className="text-[color:var(--muted)] font-medium">{TOOL_CATEGORY_LABEL[meta.category]}</span>
+                </div>
+                <div className="flex justify-between text-[color:var(--text)] text-[14px]">
+                  <span>Privacy:</span>
+                  <span className="text-[color:var(--accent)] font-medium">100% Client-Side</span>
+                </div>
+                <div className="flex justify-between text-[color:var(--text)] text-[14px]">
+                  <span>Cost:</span>
+                  <span className="text-[color:var(--accent)] font-medium">Free Forever</span>
+                </div>
+                <div className="flex justify-between text-[color:var(--text)] text-[14px]">
+                  <span>Updates:</span>
+                  <span className="text-[color:var(--muted)] font-medium">Regularly Maintained</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Related tools in sidebar */}
+            {sameCategory.length > 0 && (
+              <div className="rounded-xl border border-[color:var(--border)] bg-[color:var(--card)] p-5">
+                <h3 className="mb-3 text-[color:var(--heading)] font-semibold text-[15px]">
+                  Similar Tools
+                </h3>
+                <div className="space-y-3">
+                  {sameCategory.slice(0, 4).map((s) => {
+                    const relatedMeta = TOOL_META[s];
+                    if (!relatedMeta) return null;
+                    return (
+                      <div key={s} className="flex items-start space-x-3 py-2">
+                        <div className="flex-shrink-0">
+                          <span className="w-3 h-3 flex-shrink-0 bg-[color:var(--accent)]/20 rounded"></span>
+                        </div>
+                        <div className="flex-1">
+                          <Link
+                            href={`/tools/${s}`}
+                            className="text-[color:var(--text)] hover:text-[color:var(--accent)] font-medium"
+                          >
+                            {relatedMeta.name}
+                          </Link>
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             )}
-            <div className="px-1.5 text-[12px] text-[color:var(--muted)]" style={{ lineHeight: 1.5 }}>
-              Private by design — no file or text ever leaves your browser.
+
+            {/* Quick links */}
+            <div className="rounded-xl border border-[color:var(--border)] bg-[color:var(--card)] p-5">
+              <h3 className="mb-3 text-[color:var(--heading)] font-semibold text-[15px]">
+                Quick Links
+              </h3>
+              <div className="space-y-3">
+                <Link
+                  href="/tools"
+                  className="block py-2 text-[color:var(--text)] hover:text-[color:var(--accent)]"
+                >
+                  All Tools ({TOOL_SLUGS.length}+)
+                </Link>
+                <Link
+                  href={`/tools/category/${meta.category}`}
+                  className="block py-2 text-[color:var(--text)] hover:text-[color:var(--accent)]"
+                >
+                  {TOOL_CATEGORY_LABEL[meta.category]} Tools
+                </Link>
+                <Link
+                  href="/"
+                  className="block py-2 text-[color:var(--text)] hover:text-[color:var(--accent)]"
+                >
+                  TechPivo Home
+                </Link>
+              </div>
             </div>
           </aside>
         </div>
       </div>
     </>
-  )
+  );
 }
