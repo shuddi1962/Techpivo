@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
 import { ArrowLeft, X, Plus, Check } from "lucide-react";
 import { TOOL_META, type ToolMeta } from "@/lib/tools-metadata";
-import { TOOL_CATEGORY_LABEL } from "@/lib/tools-categories";
+import { TOOL_CATEGORY_LABEL } from "@/lib/tools-metadata";
 import { CompareFloatingBar } from "@/lib/compare-tools";
 
 type QueryTool = { slug: string; meta: ToolMeta };
