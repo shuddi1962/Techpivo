@@ -304,12 +304,12 @@ export default function NewCampaignPage() {
   const labelCls = 'block text-xs font-semibold text-slate-500 mb-1.5';
 
   if (loading) {
-    return <div className="space-y-3">{[1, 2, 3].map((i) => <div key={i} className="h-24 bg-muted rounded-lg animate-pulse" />)}</div>;
+    return <div className="space-y-3">{[1, 2, 3].map((i) => <div key={i} className="h-24 bg-surface-2/50 rounded-2xl animate-pulse" />)}</div>;
   }
 
   if (notSignedIn) {
     return (
-      <Card>
+      <Card className="rounded-2xl border-border/60">
         <CardContent className="p-12 text-center">
           <Wallet className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
           <h3 className="text-lg font-semibold mb-2">Sign in to start advertising</h3>
@@ -342,7 +342,7 @@ export default function NewCampaignPage() {
       <div className="grid lg:grid-cols-3 gap-5 items-start">
         <div className="lg:col-span-2 space-y-5">
           {/* Step 1 — ad space */}
-          <Card>
+          <Card className="rounded-2xl border-border/60">
             <CardContent className="p-5">
               <div className="flex items-center gap-2.5 mb-4">
                 <span className="w-6 h-6 rounded-full bg-blue-600 text-white text-xs font-bold flex items-center justify-center">1</span>
@@ -407,7 +407,7 @@ export default function NewCampaignPage() {
           </Card>
 
           {/* Step 2 — budget & bidding */}
-          <Card>
+          <Card className="rounded-2xl border-border/60">
             <CardContent className="p-5">
               <div className="flex items-center gap-2.5 mb-4">
                 <span className="w-6 h-6 rounded-full bg-blue-600 text-white text-xs font-bold flex items-center justify-center">2</span>
@@ -508,7 +508,7 @@ export default function NewCampaignPage() {
           </Card>
 
           {/* Step 3 — creative */}
-          <Card>
+          <Card className="rounded-2xl border-border/60">
             <CardContent className="p-5">
               <div className="flex items-center gap-2.5 mb-4">
                 <span className="w-6 h-6 rounded-full bg-blue-600 text-white text-xs font-bold flex items-center justify-center">3</span>

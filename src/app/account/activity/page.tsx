@@ -1,101 +1,104 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { useState, useEffect, useRef } from 'react';
 import { Badge } from '@/components/ui/badge';
-import { Progress } from '@/components/ui/progress';
-import { BADGES } from '@/lib/community-utils';
-import { Activity, Star, Trophy, Flame, BookOpen, MessageSquare, Award, Target, Calendar } from 'lucide-react';
+import { createClient } from '@/lib/supabase/client';
+import { getLevelForXP, getRankTitle, BADGES } from '@/lib/community-utils';
+import {
+  Activity, Star, TrendingUp, Clock, Award, Flame, Zap, Target,
+  BookOpen, MessageSquare, Trophy, Heart, UserPlus, Share2, ArrowUpRight,
+  CheckCircle2
+} from 'lucide-react';
 
-interface XpLogEntry {
-  id: string;
-  reason: string;
-  amount: number;
-  reference_id: string | null;
-  created_at: string;
+interface Profile { xp: number; level: number; streak: number; badges: string[]; created_at: string; username: string | null; }
+interface XpEntry { id: string; amount: number; reason: string; reference_type: string | null; created_at: string; }
+
+function timeAgo(d: string) {
+  const diff = Date.now() - new Date(d).getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 1) return 'Just now';
+  if (mins < 60) return `${mins}m ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs}h ago`;
+  const days = Math.floor(hrs / 24);
+  if (days < 7) return `${days}d ago`;
+  return new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+}
+
+function xpIcon(reason: string) {
+  const r = reason.toLowerCase();
+  if (r.includes('read')) return { icon: BookOpen, color: 'text-blue-500 bg-blue-100 dark:bg-blue-900/30' };
+  if (r.includes('comment') || r.includes('answer') || r.includes('discuss')) return { icon: MessageSquare, color: 'text-indigo-500 bg-indigo-100 dark:bg-indigo-900/30' };
+  if (r.includes('quiz')) return { icon: Trophy, color: 'text-purple-500 bg-purple-100 dark:bg-purple-900/30' };
+  if (r.includes('follow')) return { icon: UserPlus, color: 'text-emerald-500 bg-emerald-100 dark:bg-emerald-900/30' };
+  if (r.includes('bookmark') || r.includes('like') || r.includes('vote')) return { icon: Heart, color: 'text-pink-500 bg-pink-100 dark:bg-pink-900/30' };
+  if (r.includes('share')) return { icon: Share2, color: 'text-orange-500 bg-orange-100 dark:bg-orange-900/30' };
+  if (r.includes('profile') || r.includes('complete')) return { icon: CheckCircle2, color: 'text-teal-500 bg-teal-100 dark:bg-teal-900/30' };
+  if (r.includes('streak') || r.includes('daily') || r.includes('login')) return { icon: Flame, color: 'text-amber-500 bg-amber-100 dark:bg-amber-900/30' };
+  if (r.includes('news') || r.includes('subscrib')) return { icon: Zap, color: 'text-cyan-500 bg-cyan-100 dark:bg-cyan-900/30' };
+  return { icon: Star, color: 'text-primary bg-primary/10' };
 }
 
 export default function ActivityPage() {
-  const [xpLog, setXpLog] = useState<XpLogEntry[]>([]);
-  const [profile, setProfile] = useState<any>(null);
+  const [profile, setProfile] = useState<Profile | null>(null);
+  const [xpLog, setXpLog] = useState<XpEntry[]>([]);
   const [loading, setLoading] = useState(true);
+  const [tab, setTab] = useState<'overview' | 'xp' | 'badges'>('overview');
+  const mountedRef = useRef(true);
+  const channelName = useRef(`account_activity_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`).current;
+
+  const load = (quiet = false) => {
+    if (!mountedRef.current) return;
+    if (!quiet) setLoading(true);
+    Promise.all([
+      fetch('/api/community/profile').then(r => r.json()).catch(() => ({ profile: null })),
+      fetch('/api/community/xp-log').then(r => r.json()).catch(() => ({ entries: [] })),
+    ]).then(([p, x]) => {
+      if (mountedRef.current) {
+        setProfile(p.profile || null);
+        setXpLog(x.entries || []);
+        setLoading(false);
+      }
+    });
+  };
 
   useEffect(() => {
-    Promise.all([
-      fetch('/api/community/profile').then(r => r.json()),
-      fetch('/api/community/xp-log').then(r => r.json()).catch(() => ({ logs: [] })),
-    ]).then(([profileData, xpData]) => {
-      setProfile(profileData.profile);
-      setXpLog(xpData.logs || []);
-      setLoading(false);
-    }).catch(() => setLoading(false));
+    mountedRef.current = true;
+    load();
+    const supabase = createClient();
+    const channel = supabase
+      .channel(channelName)
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'user_xp_log' }, () => load(true))
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'user_profiles' }, () => load(true))
+      .subscribe();
+    const interval = setInterval(() => load(true), 30000);
+    return () => { mountedRef.current = false; supabase.removeChannel(channel); clearInterval(interval); };
   }, []);
 
-  const getActionIcon = (action: string) => {
-    if (action.includes('quiz')) return <Trophy className="h-4 w-4 text-purple-500" />;
-    if (action.includes('comment') || action.includes('forum')) return <MessageSquare className="h-4 w-4 text-blue-500" />;
-    if (action.includes('read')) return <BookOpen className="h-4 w-4 text-green-500" />;
-    if (action.includes('streak')) return <Flame className="h-4 w-4 text-orange-500" />;
-    if (action.includes('badge')) return <Award className="h-4 w-4 text-yellow-500" />;
-    if (action.includes('login')) return <Target className="h-4 w-4 text-primary" />;
-    return <Star className="h-4 w-4 text-primary" />;
-  };
-
-  const getActionLabel = (action: string) => {
-    const labels: Record<string, string> = {
-      read_article: 'Read Article',
-      complete_profile: 'Complete Profile',
-      comment_approved: 'Comment Approved',
-      forum_answer: 'Forum Answer',
-      forum_post: 'Forum Post',
-      complete_quiz: 'Complete Quiz',
-      share_article: 'Share Article',
-      daily_login: 'Daily Login',
-      newsletter_subscribe: 'Newsletter Subscribe',
-      first_post: 'First Post',
-      follow_user: 'Follow User',
-      bookmark: 'Bookmark',
-      streak_bonus: 'Streak Bonus',
-    };
-    return labels[action] || action.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
-  };
+  const level = profile ? getLevelForXP(profile.xp) : null;
+  const rankTitle = profile ? getRankTitle(profile.xp) : 'Member';
+  const nextLevelXp = level ? level.xpForNext : 0;
+  const prevLevelXp = level ? Math.max(0, level.xpForNext - (level.level > 1 ? getLevelForXP((profile?.xp || 0) - 1)?.xpForNext || 0 : 0)) : 0;
+  const progressPct = profile && nextLevelXp > prevLevelXp ? Math.min(100, ((profile.xp - prevLevelXp) / (nextLevelXp - prevLevelXp)) * 100) : 0;
+  const earnedBadges = profile?.badges || [];
+  const todayXp = xpLog.filter(e => {
+    const d = new Date(e.created_at); const now = new Date();
+    return d.toDateString() === now.toDateString();
+  }).reduce((s, e) => s + e.amount, 0);
+  const weekXp = xpLog.filter(e => {
+    const d = new Date(e.created_at); const now = new Date();
+    const weekAgo = new Date(now); weekAgo.setDate(weekAgo.getDate() - 7);
+    return d >= weekAgo;
+  }).reduce((s, e) => s + e.amount, 0);
 
   if (loading) {
     return (
       <div className="space-y-6">
-        <div className="animate-pulse space-y-4">
-          <div className="h-8 bg-muted rounded w-48" />
-          <div className="h-48 bg-muted rounded-lg" />
-          <div className="h-64 bg-muted rounded-lg" />
-        </div>
+        <div><h2 className="text-2xl font-bold">Activity & Achievements</h2><p className="text-muted-foreground mt-1">Track your XP earnings, streaks, and milestones</p></div>
+        <div className="grid grid-cols-3 gap-3">{[1,2,3].map(i => <div key={i} className="h-24 rounded-2xl bg-surface-2 animate-pulse" />)}</div>
       </div>
     );
   }
-
-  const totalXp = profile?.xp || 0;
-  const streak = profile?.streak || 0;
-  const badges = profile?.badges || [];
-
-  // Calculate stats from XP log
-  const todayXp = xpLog.filter(l => {
-    const d = new Date(l.created_at);
-    const today = new Date();
-    return d.toDateString() === today.toDateString();
-  }).reduce((sum, l) => sum + l.amount, 0);
-
-  const weekXp = xpLog.filter(l => {
-    const d = new Date(l.created_at);
-    const week = new Date();
-    week.setDate(week.getDate() - 7);
-    return d >= week;
-  }).reduce((sum, l) => sum + l.amount, 0);
-
-  const monthXp = xpLog.filter(l => {
-    const d = new Date(l.created_at);
-    const month = new Date();
-    month.setMonth(month.getMonth() - 1);
-    return d >= month;
-  }).reduce((sum, l) => sum + l.amount, 0);
 
   return (
     <div className="space-y-6">
@@ -104,112 +107,195 @@ export default function ActivityPage() {
         <p className="text-muted-foreground mt-1">Track your XP earnings, streaks, and milestones</p>
       </div>
 
-      {/* Stats Grid */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        {[
-          { label: 'Total XP', value: totalXp.toLocaleString(), icon: Star, color: 'text-primary', bg: 'bg-primary/10' },
-          { label: 'Day Streak', value: `${streak} days`, icon: Flame, color: 'text-slate-600', bg: 'bg-slate-100' },
-          { label: 'Badges', value: badges.length.toString(), icon: Trophy, color: 'text-slate-600', bg: 'bg-slate-100' },
-          { label: 'Today XP', value: `+${todayXp}`, icon: Activity, color: 'text-green-500', bg: 'bg-green-500/10' },
-        ].map(stat => (
-          <Card key={stat.label}>
-            <CardContent className="p-4 text-center">
-              <div className={`w-10 h-10 rounded-full ${stat.bg} flex items-center justify-center mx-auto mb-2`}>
-                <stat.icon className={`h-5 w-5 ${stat.color}`} />
+      {/* Level Card */}
+      {profile && (
+        <div className="rounded-2xl border border-border/60 bg-card p-6">
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <div className="flex items-center gap-4">
+              <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-primary/20 to-primary/5 border-2 border-primary/30 flex items-center justify-center">
+                <span className="text-2xl font-bold text-primary">Lv.{profile.level}</span>
               </div>
-              <div className="text-2xl font-bold">{stat.value}</div>
-              <div className="text-sm text-muted-foreground">{stat.label}</div>
-            </CardContent>
-          </Card>
+              <div>
+                <h3 className="text-lg font-bold">{rankTitle}</h3>
+                <p className="text-sm text-muted-foreground">{profile.xp.toLocaleString()} total XP earned</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-4 text-center">
+              <div className="px-4 py-2 rounded-xl bg-surface-2/50">
+                <div className="text-xl font-bold text-primary">{todayXp}</div>
+                <div className="text-xs text-muted-foreground">Today</div>
+              </div>
+              <div className="px-4 py-2 rounded-xl bg-surface-2/50">
+                <div className="text-xl font-bold text-amber-500">{weekXp}</div>
+                <div className="text-xs text-muted-foreground">This Week</div>
+              </div>
+              <div className="px-4 py-2 rounded-xl bg-surface-2/50">
+                <div className="text-xl font-bold text-emerald-500 flex items-center gap-1">
+                  <Flame className="h-5 w-5" />{profile.streak}
+                </div>
+                <div className="text-xs text-muted-foreground">Day Streak</div>
+              </div>
+            </div>
+          </div>
+          {/* XP progress */}
+          <div className="mt-4">
+            <div className="flex justify-between text-xs text-muted-foreground mb-1">
+              <span>Level {profile.level}</span>
+              <span>{profile.xp}/{nextLevelXp} XP to Level {(profile.level || 1) + 1}</span>
+            </div>
+            <div className="h-2.5 rounded-full bg-surface-2 overflow-hidden">
+              <div
+                className="h-full rounded-full bg-gradient-to-r from-primary/80 to-primary transition-all duration-500"
+                style={{ width: `${progressPct}%` }}
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Tabs */}
+      <div className="flex gap-1 bg-surface-2/50 p-1 rounded-xl">
+        {[
+          { key: 'overview' as const, label: 'Overview', icon: Activity },
+          { key: 'xp' as const, label: 'XP Log', icon: TrendingUp },
+          { key: 'badges' as const, label: 'Badges', icon: Award },
+        ].map(t => (
+          <button
+            key={t.key}
+            onClick={() => setTab(t.key)}
+            className={`flex-1 flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg text-sm font-medium transition-all ${
+              tab === t.key
+                ? 'bg-card text-foreground shadow-sm'
+                : 'text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            <t.icon className="h-4 w-4" />
+            {t.label}
+          </button>
         ))}
       </div>
 
-      {/* XP Summary */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Star className="h-5 w-5 text-primary" /> XP Summary
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-3 gap-4">
-            <div className="text-center p-4 rounded-lg bg-muted/30">
-              <div className="text-2xl font-bold text-primary">+{todayXp}</div>
-              <div className="text-sm text-muted-foreground">Today</div>
+      {/* Overview */}
+      {tab === 'overview' && (
+        <div className="space-y-4">
+          {/* Quick stats */}
+          <div className="grid sm:grid-cols-3 gap-3">
+            <div className="rounded-2xl border border-border/60 bg-card p-4">
+              <div className="flex items-center gap-3 mb-2">
+                <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center"><Star className="h-4 w-4 text-primary" /></div>
+                <span className="text-sm font-medium">Total XP</span>
+              </div>
+              <div className="text-2xl font-bold">{(profile?.xp || 0).toLocaleString()}</div>
             </div>
-            <div className="text-center p-4 rounded-lg bg-muted/30">
-              <div className="text-2xl font-bold text-blue-500">+{weekXp}</div>
-              <div className="text-sm text-muted-foreground">This Week</div>
+            <div className="rounded-2xl border border-border/60 bg-card p-4">
+              <div className="flex items-center gap-3 mb-2">
+                <div className="w-9 h-9 rounded-lg bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center"><Flame className="h-4 w-4 text-amber-500" /></div>
+                <span className="text-sm font-medium">Streak</span>
+              </div>
+              <div className="text-2xl font-bold">{profile?.streak || 0} days</div>
             </div>
-            <div className="text-center p-4 rounded-lg bg-muted/30">
-              <div className="text-2xl font-bold text-purple-500">+{monthXp}</div>
-              <div className="text-sm text-muted-foreground">This Month</div>
+            <div className="rounded-2xl border border-border/60 bg-card p-4">
+              <div className="flex items-center gap-3 mb-2">
+                <div className="w-9 h-9 rounded-lg bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center"><Award className="h-4 w-4 text-emerald-500" /></div>
+                <span className="text-sm font-medium">Badges</span>
+              </div>
+              <div className="text-2xl font-bold">{earnedBadges.length}</div>
             </div>
           </div>
-        </CardContent>
-      </Card>
-
-      {/* Badges */}
-      {badges.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Trophy className="h-5 w-5 text-yellow-500" /> Earned Badges ({badges.length})
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-              {badges.map((badgeId: string) => {
-                const badge = BADGES.find(b => b.id === badgeId);
-                return badge ? (
-                  <div key={badgeId} className="flex items-center gap-3 p-3 rounded-lg bg-muted/30">
-                    <div className="text-2xl">{badge.icon}</div>
-                    <div>
-                      <div className="font-medium text-sm">{badge.name}</div>
-                      <div className="text-xs text-muted-foreground">{badge.description}</div>
+          {/* Recent */}
+          <div className="rounded-2xl border border-border/60 bg-card p-4">
+            <h3 className="font-semibold text-sm mb-3">Recent Activity</h3>
+            {xpLog.length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-6">No activity yet — start earning XP!</p>
+            ) : (
+              <div className="space-y-2">
+                {xpLog.slice(0, 8).map(entry => {
+                  const xi = xpIcon(entry.reason);
+                  return (
+                    <div key={entry.id} className="flex items-center gap-3 p-2.5 rounded-xl hover:bg-surface-2/50 transition-colors">
+                      <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${xi.color}`}>
+                        <xi.icon className="h-4 w-4" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="text-sm capitalize">{entry.reason.replace(/_/g, ' ')}</div>
+                        <div className="text-xs text-muted-foreground">{timeAgo(entry.created_at)}</div>
+                      </div>
+                      <span className="text-sm font-semibold text-emerald-600 dark:text-emerald-400">+{entry.amount}</span>
                     </div>
-                  </div>
-                ) : null;
-              })}
-            </div>
-          </CardContent>
-        </Card>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </div>
       )}
 
       {/* XP Log */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Activity className="h-5 w-5" /> XP History
-          </CardTitle>
-          <CardDescription>Your recent XP earnings</CardDescription>
-        </CardHeader>
-        <CardContent>
+      {tab === 'xp' && (
+        <div className="rounded-2xl border border-border/60 bg-card overflow-hidden">
           {xpLog.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground">
-              <Activity className="h-8 w-8 mx-auto mb-2" />
-              <p>No XP history yet. Start reading, commenting, and quizzing to earn XP!</p>
+            <div className="p-12 text-center">
+              <TrendingUp className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
+              <p className="text-sm text-muted-foreground">No XP entries yet</p>
             </div>
           ) : (
-            <div className="space-y-2">
-              {xpLog.slice(0, 20).map((entry) => (
-                <div key={entry.id} className="flex items-center gap-3 p-3 rounded-lg hover:bg-muted/30">
-                  {getActionIcon(entry.reason)}
-                  <div className="flex-1 min-w-0">
-                    <div className="font-medium text-sm">{getActionLabel(entry.reason)}</div>
+            <div className="divide-y divide-border/40">
+              {xpLog.map(entry => {
+                const xi = xpIcon(entry.reason);
+                return (
+                  <div key={entry.id} className="flex items-center gap-3 px-5 py-3.5 hover:bg-surface-2/30 transition-colors">
+                    <div className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${xi.color}`}>
+                      <xi.icon className="h-4 w-4" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="text-sm font-medium capitalize">{entry.reason.replace(/_/g, ' ')}</div>
+                      {entry.reference_type && (
+                        <div className="text-xs text-muted-foreground">{entry.reference_type}</div>
+                      )}
+                    </div>
+                    <div className="text-right shrink-0">
+                      <span className="text-sm font-bold text-emerald-600 dark:text-emerald-400">+{entry.amount}</span>
+                      <div className="text-xs text-muted-foreground">{timeAgo(entry.created_at)}</div>
+                    </div>
                   </div>
-                  <Badge variant="default" className="shrink-0">+{entry.amount} XP</Badge>
-                  <div className="text-xs text-muted-foreground shrink-0">
-                    {new Date(entry.created_at).toLocaleDateString()}
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
-        </CardContent>
-      </Card>
+        </div>
+      )}
+
+      {/* Badges */}
+      {tab === 'badges' && (
+        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
+          {BADGES.map(badge => {
+            const earned = earnedBadges.includes(badge.id);
+            return (
+              <div
+                key={badge.id}
+                className={`rounded-2xl border p-4 transition-all ${
+                  earned
+                    ? 'border-primary/30 bg-primary/[0.03]'
+                    : 'border-border/60 bg-card opacity-50'
+                }`}
+              >
+                <div className="flex items-center gap-3">
+                  <div className="text-3xl">{badge.icon}</div>
+                  <div>
+                    <div className="font-semibold text-sm">{badge.name}</div>
+                    <div className="text-xs text-muted-foreground">{badge.description}</div>
+                  </div>
+                </div>
+                {earned && (
+                  <div className="mt-3 flex items-center gap-1.5 text-xs text-emerald-600 dark:text-emerald-400">
+                    <CheckCircle2 className="h-3.5 w-3.5" /> Earned
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }
-
-

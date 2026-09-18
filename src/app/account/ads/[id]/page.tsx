@@ -227,12 +227,12 @@ export default function CampaignDetailPage() {
   };
 
   if (loading) {
-    return <div className="space-y-3">{[1, 2, 3].map((i) => <div key={i} className="h-24 bg-muted rounded-lg animate-pulse" />)}</div>;
+    return <div className="space-y-3">{[1, 2, 3].map((i) => <div key={i} className="h-24 bg-surface-2/50 rounded-2xl animate-pulse" />)}</div>;
   }
 
   if (error === 'signin' || (!campaign && error)) {
     return (
-      <Card>
+      <Card className="rounded-2xl border-border/60">
         <CardContent className="p-12 text-center">
           <AlertCircle className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
           <h3 className="text-lg font-semibold mb-2">{error === 'signin' ? 'Sign in to view campaigns' : 'Campaign not found'}</h3>
@@ -326,9 +326,9 @@ export default function CampaignDetailPage() {
           { label: 'CTR', value: `${ctr}%`, icon: BarChart3, cls: 'text-slate-600 bg-slate-100' },
           { label: 'Spend', value: formatMoney(spend, campaign.currency || 'NGN'), icon: Wallet, cls: 'text-green-600 bg-green-50' },
         ].map((k) => (
-          <Card key={k.label}>
+          <Card key={k.label} className="rounded-2xl border-border/60">
             <CardContent className="p-4">
-              <div className={`w-9 h-9 rounded-lg flex items-center justify-center mb-2 ${k.cls}`}>
+              <div className={`w-9 h-9 rounded-xl flex items-center justify-center mb-2 ${k.cls}`}>
                 <k.icon className="h-4.5 w-4.5" />
               </div>
               <div className="text-xl font-bold">{k.value}</div>
@@ -340,7 +340,7 @@ export default function CampaignDetailPage() {
       </div>
 
       {/* Performance chart */}
-      <Card>
+      <Card className="rounded-2xl border-border/60">
         <CardContent className="p-5">
           <h3 className="font-semibold mb-1 flex items-center gap-2"><BarChart3 className="h-4 w-4 text-blue-600" /> Performance — last 14 days</h3>
           <p className="text-xs text-muted-foreground mb-4">Delivered impressions per day (clicks shown on hover).</p>
@@ -372,7 +372,7 @@ export default function CampaignDetailPage() {
 
       <div className="grid lg:grid-cols-2 gap-5">
         {/* Campaign settings */}
-        <Card>
+        <Card className="rounded-2xl border-border/60">
           <CardContent className="p-5">
             <h3 className="font-semibold mb-4 flex items-center gap-2"><Target className="h-4 w-4 text-blue-600" /> Campaign settings</h3>
             <div className="space-y-2.5 text-sm">
@@ -409,7 +409,7 @@ export default function CampaignDetailPage() {
         </Card>
 
         {/* Creative preview */}
-        <Card>
+        <Card className="rounded-2xl border-border/60">
           <CardContent className="p-5">
             <h3 className="font-semibold mb-4">Creative preview</h3>
             {campaign.media_type === 'video' && campaign.video_url ? (

@@ -145,7 +145,7 @@ export default function MyAdsPage() {
     return (
       <div className="space-y-3">
         {[1, 2, 3].map((i) => (
-          <div key={i} className="h-24 bg-muted rounded-lg animate-pulse" />
+          <div key={i} className="h-24 bg-surface-2/50 rounded-2xl animate-pulse" />
         ))}
       </div>
     );
@@ -153,16 +153,16 @@ export default function MyAdsPage() {
 
   if (error === 'signin') {
     return (
-      <Card>
-        <CardContent className="p-12 text-center">
-          <Megaphone className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-          <h3 className="text-lg font-semibold mb-2">Sign in to run ads</h3>
-          <p className="text-muted-foreground mb-4">Your ad campaigns, performance and billing live here.</p>
-          <Button asChild>
-            <Link href="/login">Sign In</Link>
-          </Button>
-        </CardContent>
-      </Card>
+        <Card className="rounded-2xl border-border/60">
+            <CardContent className="p-12 text-center">
+              <Megaphone className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+              <h3 className="text-lg font-semibold mb-2">Sign in to run ads</h3>
+              <p className="text-muted-foreground mb-4">Your ad campaigns, performance and billing live here.</p>
+              <Button asChild>
+                <Link href="/login">Sign In</Link>
+              </Button>
+            </CardContent>
+          </Card>
     );
   }
 
@@ -191,9 +191,9 @@ export default function MyAdsPage() {
           { label: 'Total Spend', value: fx.format(totalSpend, fx.displayCurrency), icon: Wallet, cls: 'text-green-600 bg-green-50' },
           { label: 'Clicks', value: totalClicks.toLocaleString(), icon: MousePointerClick, cls: 'text-purple-600 bg-purple-50' },
         ].map((k) => (
-          <Card key={k.label}>
+          <Card key={k.label} className="rounded-2xl border-border/60">
             <CardContent className="p-4">
-              <div className={`w-9 h-9 rounded-lg flex items-center justify-center mb-2 ${k.cls}`}>
+              <div className={`w-9 h-9 rounded-xl flex items-center justify-center mb-2 ${k.cls}`}>
                 <k.icon className="h-4.5 w-4.5" />
               </div>
               <div className="text-xl font-bold">{k.value}</div>
@@ -204,7 +204,7 @@ export default function MyAdsPage() {
       </div>
 
       {campaigns.length === 0 ? (
-        <Card>
+        <Card className="rounded-2xl border-border/60">
           <CardContent className="p-12 text-center">
             <Megaphone className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
             <h3 className="text-lg font-semibold mb-2">No Campaigns Yet</h3>
@@ -223,7 +223,7 @@ export default function MyAdsPage() {
             const ctr = c.impressions > 0 ? ((c.clicks / c.impressions) * 100).toFixed(2) : '0.00';
             const spend = computeCampaignSpend(c);
             return (
-              <Card key={c.id} className="hover:shadow-md transition-shadow">
+              <Card key={c.id} className="rounded-2xl border-border/60 hover:shadow-md transition-shadow">
                 <CardContent className="p-4">
                   <div className="flex items-start justify-between gap-3 flex-wrap">
                     <div className="min-w-0">
@@ -274,19 +274,19 @@ export default function MyAdsPage() {
                   )}
 
                   <div className="mt-3 grid grid-cols-2 sm:grid-cols-4 gap-3">
-                    <div className="bg-muted/50 rounded-lg p-2.5">
+                    <div className="bg-surface-2/50 rounded-xl p-2.5">
                       <div className="text-base font-bold flex items-center gap-1.5"><Eye className="h-3.5 w-3.5 text-muted-foreground" />{c.impressions.toLocaleString()}</div>
                       <div className="text-[11px] text-muted-foreground">Impressions</div>
                     </div>
-                    <div className="bg-muted/50 rounded-lg p-2.5">
+                    <div className="bg-surface-2/50 rounded-xl p-2.5">
                       <div className="text-base font-bold flex items-center gap-1.5"><MousePointerClick className="h-3.5 w-3.5 text-muted-foreground" />{c.clicks.toLocaleString()}</div>
                       <div className="text-[11px] text-muted-foreground">Clicks</div>
                     </div>
-                    <div className="bg-muted/50 rounded-lg p-2.5">
+                    <div className="bg-surface-2/50 rounded-xl p-2.5">
                       <div className="text-base font-bold">{ctr}%</div>
                       <div className="text-[11px] text-muted-foreground">CTR</div>
                     </div>
-                    <div className="bg-muted/50 rounded-lg p-2.5">
+                    <div className="bg-surface-2/50 rounded-xl p-2.5">
                       <div className="text-base font-bold text-green-600">{formatMoney(spend, c.currency || 'NGN')}</div>
                       <div className="text-[11px] text-muted-foreground">Spend</div>
                       {Number(spend) > 0 && <FxApprox amount={Number(spend)} from={c.currency || 'NGN'} className="block text-[10px] text-muted-foreground" />}
