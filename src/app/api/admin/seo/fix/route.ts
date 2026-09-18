@@ -223,6 +223,61 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: true, postId })
     }
 
+    // Strip old auto-generated boilerplate sentences from article content
+    if (action === 'clean_boilerplate') {
+      const BOILERPLATE_PATTERNS = [
+        /This guide covers [^<.!?]+ in detail\./gi,
+        /This tutorial explains [^<.!?]+ step by step\./gi,
+        /Here is a comprehensive overview of [^<.!?]+\./gi,
+        /Understanding [^<.!?]+ is essential for modern developers\./gi,
+        /Let's dive into the details of [^<.!?]+\./gi,
+        /This article explores [^<.!?]+ in depth\./gi,
+        /The article explains how [^<.!?]+ works and why it matters\./gi,
+        /Here is a closer look at how [^<.!?]+ fits into the broader landscape\./gi,
+        /For anyone evaluating [^<.!?]+, the trade-offs are worth understanding\./gi,
+        /The practical implications of [^<.!?]+ depend on the use case\./gi,
+        /Security teams should pay attention to how [^<.!?]+ is evolving\./gi,
+        /Developers working with [^<.!?]+ will find the details below useful\./gi,
+        /Compared with alternatives, [^<.!?]+ has distinct strengths\./gi,
+      ]
+
+      const { data: posts, error: fetchErr } = await supabase
+        .from('posts')
+        .select('id, content')
+        .eq('status', 'published')
+        .limit(count || 500)
+
+      if (fetchErr) throw fetchErr
+
+      let cleaned = 0
+      let totalStripped = 0
+      for (const p of posts || []) {
+        let content: string = p.content || ''
+        let stripped = 0
+        for (const re of BOILERPLATE_PATTERNS) {
+          const before = content
+          content = content.replace(re, '')
+          if (content !== before) stripped += (before.match(re) || []).length
+        }
+        // Clean up double spaces / orphan newlines left behind
+        content = content
+          .replace(/\s{2,}/g, ' ')
+          .replace(/<p>\s*<\/p>/gi, '')
+          .replace(/\n{3,}/g, '\n\n')
+          .trim()
+        if (content !== (p.content || '')) {
+          await supabase
+            .from('posts')
+            .update({ content, updated_at: new Date().toISOString() })
+            .eq('id', p.id)
+          cleaned++
+          totalStripped += stripped
+        }
+      }
+
+      return NextResponse.json({ success: true, cleaned, totalStripped })
+    }
+
     if (action === 'fix_all' && issueType) {
       const { data: issues } = await supabase
         .from('seo_issues')

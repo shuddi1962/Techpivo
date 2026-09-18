@@ -46,11 +46,11 @@ describe("insertKeywordSentence", () => {
   it("adds a keyword mention to the first long paragraph", () => {
     const html = "<h2>Heading</h2><p>Some reasonably long paragraph text here.</p><p>Short.</p>"
     const out = insertKeywordSentence(html, "ai tools")
-    expect(out).toContain("This guide covers ai tools in detail.")
+    expect(out).toContain("The article explains how ai tools works and why it matters.")
     expect(out).not.toContain("<p>Short.</p>This")
   })
   it("does not duplicate when the keyword is already there", () => {
-    const html = "<p>This guide covers ai tools in detail right here.</p>"
+    const html = "<p>The article explains how ai tools works and why it matters right here.</p>"
     expect(insertKeywordSentence(html, "ai tools")).toBe(html)
   })
 })

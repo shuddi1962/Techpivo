@@ -32,8 +32,8 @@ async function findInternalLinks(keyword: string): Promise<string[]> {
   return posts
     .filter((p: any) => words.some((w: string) => (p.title || "").toLowerCase().includes(w)))
     .slice(0, 3)
-    .map((p: any, i: number) =>
-      `<a href="/${p.slug}" target="_blank">${i === 0 ? "related article on this topic" : p.title}</a>`
+    .map((p: any) =>
+      `<a href="/${p.slug}" target="_blank">${p.title}</a>`
     )
 }
 

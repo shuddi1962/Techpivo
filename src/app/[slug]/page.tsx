@@ -163,9 +163,9 @@ export default async function PostPage({ params }: Props) {
   const allTags = tagsRes.data || []
   const sidebarTags = Array.from(new Set(allTags.flatMap((p: any) => p.seo_keywords || []))).slice(0, 20) as string[]
   const postTags = Array.isArray(post.tags)
-    ? post.tags
+    ? post.tags.map((t: string) => t.replace(/^#+/, "").trim()).filter(Boolean)
     : typeof post.tags === "string"
-      ? post.tags.split(",").map((t: string) => t.trim()).filter(Boolean)
+      ? post.tags.split(",").map((t: string) => t.replace(/^#+/, "").trim()).filter(Boolean)
       : []
 
   const faqData = (() => {

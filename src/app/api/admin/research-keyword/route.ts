@@ -46,7 +46,6 @@ async function findInternalLinks(keyword: string): Promise<string[]> {
   const query = keyword.toLowerCase()
   const words = query.split(/\s+/).filter(w => w.length > 2)
   const maxLinks = 3
-  let count = 0
 
   return posts
     .filter(p => {
@@ -55,9 +54,7 @@ async function findInternalLinks(keyword: string): Promise<string[]> {
     })
     .slice(0, maxLinks)
     .map(p => {
-      count++
-      const text = count <= 3 ? `related article on ${p.title.toLowerCase().includes(words[0] || "") ? "this topic" : p.title}` : p.title
-      return `<a href="/${p.slug}" target="_blank">${text}</a>`
+      return `<a href="/${p.slug}" target="_blank">${p.title}</a>`
     })
 }
 

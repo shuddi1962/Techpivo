@@ -53,11 +53,11 @@ export function insertKeywordSentence(html: string, keyword: string): string {
   const target = findFirstLongParagraph(html)
   if (target) {
     if (target.inner.toLowerCase().includes(keyword.toLowerCase())) return html
-    const sentence = ` This guide covers ${keyword} in detail.`
+    const sentence = ` The article explains how ${keyword} works and why it matters.`
     return html.slice(0, target.closeTag) + sentence + html.slice(target.closeTag)
   }
   if (html.toLowerCase().includes(keyword.toLowerCase())) return html
-  return `${html}\n\nThis guide covers ${keyword} in detail.`
+  return `${html}\n\nThe article explains how ${keyword} works and why it matters.`
 }
 
 /** Prepend the focus keyword to the first H2 so a heading contains it. */
@@ -260,16 +260,16 @@ export function ensureKeywordDensity(
           ? [pTags[0], pTags[1]]
           : [pTags[0], pTags[Math.floor(pTags.length / 2)], pTags[pTags.length - 1]]
   if (insertPoints.length === 0) {
-    return `${html}\n\nThis guide covers ${keyword} in detail.`
+    return `${html}\n\nThe article explains how ${keyword} works and why it matters.`
   }
 
   const DENSITY_SENTENCES = [
-    (kw: string) => `This guide covers ${kw} in detail.`,
-    (kw: string) => `Whether you are new to ${kw} or already experienced, the sections below have you covered.`,
-    (kw: string) => `Keep this reference handy whenever you work with ${kw}.`,
-    (kw: string) => `Here is everything you need to know about ${kw}, step by step.`,
-    (kw: string) => `The rest of this article focuses on ${kw} in practice.`,
-    (kw: string) => `If ${kw} is on your radar, keep reading.`,
+    (kw: string) => `Here is a closer look at how ${kw} fits into the broader landscape.`,
+    (kw: string) => `For anyone evaluating ${kw}, the trade-offs are worth understanding.`,
+    (kw: string) => `The practical implications of ${kw} depend on the use case.`,
+    (kw: string) => `Security teams should pay attention to how ${kw} is evolving.`,
+    (kw: string) => `Developers working with ${kw} will find the details below useful.`,
+    (kw: string) => `Compared with alternatives, ${kw} has distinct strengths.`,
   ]
 
   let out = html
