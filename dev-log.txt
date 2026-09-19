@@ -1,0 +1,7 @@
+  Γû▓ Next.js 14.2.35
+  - Local:        http://localhost:3099
+  - Environments: .env.local
+
+ Γ£ô Starting...
+ Γ£ô Ready in 18.7s
+ Γùï Compiling /tools ...
