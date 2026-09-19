@@ -168,6 +168,20 @@ export const CATEGORY_ROUTE: Record<ToolCategory, string> = {
 
 export const categoryRouteSlug = (cat: ToolCategory): string => CATEGORY_ROUTE[cat].split("/").pop()!;
 
-export function getCategoryDetail(cat: ToolCategory): ToolCategoryDetail {
-  return TOOL_CATEGORY_DETAILS[cat];
+const CATEGORY_FALLBACK: ToolCategoryDetail = {
+  value: "developer",
+  label: "Tools",
+  tagline: "Free online tools",
+  description: "Free online tools that run in your browser.",
+  hero: "Free online tools that run entirely in your browser.",
+  icon: Code2,
+  accent: "#F59E0B",
+  soft: "#FFFBEB",
+  keywords: [],
+  faq: [],
+  related: [],
+};
+
+export function getCategoryDetail(cat: string): ToolCategoryDetail {
+  return TOOL_CATEGORY_DETAILS[cat as ToolCategory] ?? CATEGORY_FALLBACK;
 }
