@@ -3,7 +3,7 @@
 import Link from "next/link";
 import React, { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { getToolDef } from "@/lib/tools";
+import { getToolMeta } from "@/lib/tools-registry";
 import { getCategoryDetail } from "@/lib/tools-categories";
 import { useToolStats, formatUsageCount } from "@/lib/use-tool-stats";
 import { useCompareTools } from "@/lib/compare-tools";
@@ -84,7 +84,7 @@ export function ActiveToolGroup({ tools }: { tools: { slug: string; name: string
   return (
     <>
       {shown.map((t) => {
-        const def = getToolDef(t.slug);
+        const def = getToolMeta(t.slug);
         const Icon = def?.icon;
         const accent = def ? getCategoryDetail(def.category).accent : "#F59E0B";
         const soft = def ? getCategoryDetail(def.category).soft : "#FFFBEB";

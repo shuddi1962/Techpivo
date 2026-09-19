@@ -3,7 +3,7 @@
 import Link from "next/link";
 import React, { useEffect, useState } from "react";
 import { TrendingUp } from "lucide-react";
-import { getToolDef } from "@/lib/tools";
+import { getToolMeta } from "@/lib/tools-registry";
 import { getCategoryDetail } from "@/lib/tools-categories";
 
 interface TrendingTool {
@@ -47,7 +47,7 @@ export function TrendingTools({ initialTools }: { initialTools?: TrendingTool[] 
       </div>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))", gap: 14 }}>
         {tools.map((t) => {
-          const def = getToolDef(t.slug);
+          const def = getToolMeta(t.slug);
           const Icon = def?.icon;
           const catDetail = getCategoryDetail((t.category || "developer") as any);
           const accent = catDetail.accent;

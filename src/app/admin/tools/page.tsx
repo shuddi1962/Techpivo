@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useRef } from "react"
 import Link from "next/link"
 import { createClient } from "@/lib/supabase/client"
 import { Search, Wrench, Power, PowerOff, ExternalLink, Activity, Cpu, Layers, Pencil, Trash2, Plus } from "lucide-react"
-import { TOOL_LIST, getToolDef } from "@/lib/tools"
+import { TOOL_REGISTRY, getToolMeta, type ToolMeta } from "@/lib/tools-registry"
 import { TOOL_CATEGORY_LABEL, ToolCategory } from "@/lib/tools-metadata"
 import ToolEditModal, { EditableTool } from "@/components/admin/tool-edit-modal"
 
@@ -129,11 +129,11 @@ export default function ToolsAdminPage() {
     fetchTools()
   }
 
-  const knownSlugs = new Set(TOOL_LIST.map((t) => t.slug))
+  const knownSlugs = new Set(TOOL_REGISTRY.map((t) => t.slug))
   const dbOnly = dbTools.filter((t) => !knownSlugs.has(t.slug))
-  const registryOnly = TOOL_LIST.filter((t) => !dbTools.some((d) => d.slug === t.slug))
+  const registryOnly = TOOL_REGISTRY.filter((t) => !dbTools.some((d) => d.slug === t.slug))
 
-  const merged: MergedTool[] = TOOL_LIST.map((t) => {
+  const merged: MergedTool[] = TOOL_REGISTRY.map((t) => {
     const db = dbTools.find((d) => d.slug === t.slug)
     return {
       slug: t.slug,
@@ -172,7 +172,7 @@ export default function ToolsAdminPage() {
         <div>
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Tools &amp; Utilities</h1>
           <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-            {TOOL_LIST.length} tools in the registry · {dbTools.length} in database · edit, activate, deactivate, delete in realtime · LIVE
+            {TOOL_REGISTRY.length} tools in the registry · {dbTools.length} in database · edit, activate, deactivate, delete in realtime · LIVE
           </p>
         </div>
         <span className="inline-flex items-center gap-1.5 px-3 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">
@@ -234,7 +234,7 @@ export default function ToolsAdminPage() {
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {filtered.map((tool) => {
-            const def = getToolDef(tool.slug)
+            const def = getToolMeta(tool.slug)
             const Icon = def ? def.icon : Layers
             return (
               <div

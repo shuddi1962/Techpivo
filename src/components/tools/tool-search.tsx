@@ -4,7 +4,7 @@ import Link from "next/link";
 import React, { useMemo, useState } from "react";
 import { Search, X } from "lucide-react";
 import { TOOL_META, type ToolMeta } from "@/lib/tools-metadata";
-import { getToolDef } from "@/lib/tools";
+import { getToolMeta } from "@/lib/tools-registry";
 import { getCategoryDetail } from "@/lib/tools-categories";
 
 const allTools: ToolMeta[] = Object.values(TOOL_META);
@@ -81,7 +81,7 @@ export function ToolSearch() {
                 {results.length} tool{results.length !== 1 ? "s" : ""} found
               </div>
               {results.map((t) => {
-                const def = getToolDef(t.slug);
+                const def = getToolMeta(t.slug);
                 const Icon = def?.icon;
                 const cat = getCategoryDetail(t.category);
                 return (
