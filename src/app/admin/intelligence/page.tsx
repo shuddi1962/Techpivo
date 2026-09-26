@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { Brain, RefreshCw, CheckCircle2, XCircle, AlertTriangle } from "lucide-react";
+import { ORIGINALITY_EVIDENCE_TYPES } from "@/lib/intelligence/originality";
 
 /**
  * Admin → Intelligence (Phase 1): connection status + live keyword/SERP
@@ -57,6 +58,22 @@ export default function IntelligencePage() {
   const [oppError, setOppError] = useState<string | null>(null);
   const [opps, setOpps] = useState<Opportunity[] | null>(null);
   const [oppFilter, setOppFilter] = useState("");
+  // Growth modules (trends / gaps / competitors / originality+briefs)
+  const [trendKw, setTrendKw] = useState("AI coding tools");
+  const [trend, setTrend] = useState<{ direction: string; changePct: number | null; evidence: string[]; points: number } | null>(null);
+  const [trendError, setTrendError] = useState<string | null>(null);
+  const [tracked, setTracked] = useState<Array<{ keyword: string; latest_volume: number | null; snapshots: number; last_measured: string }> | null>(null);
+  const [gapOppId, setGapOppId] = useState("");
+  const [gapMsg, setGapMsg] = useState<string | null>(null);
+  const [gaps, setGaps] = useState<Array<{ id: string; keyword: string; gap_type: string; observation: string; inference: string | null; priority: number; status: string }> | null>(null);
+  const [compDomain, setCompDomain] = useState("");
+  const [competitors, setCompetitors] = useState<Array<{ id: string; domain: string; name: string | null; is_active: boolean; last_checked: string | null; observation: { checks?: Array<{ topic: string; coverage: string; conclusion: string }> } | null }> | null>(null);
+  const [compTopic, setCompTopic] = useState<{ [id: string]: string }>({});
+  const [compMsg, setCompMsg] = useState<string | null>(null);
+  const [origOppId, setOrigOppId] = useState("");
+  const [origEvidence, setOrigEvidence] = useState<string[]>([]);
+  const [origResult, setOrigResult] = useState<{ verdict: string; score: number; recommendations: string[] } | null>(null);
+  const [briefMsg, setBriefMsg] = useState<string | null>(null);
 
   const check = useCallback(async () => {
     setConn({ kind: "loading" });
@@ -127,6 +144,139 @@ export default function IntelligencePage() {
     } catch {
       /* silent */
     }
+  }
+
+  async function loadTracked() {
+    try {
+      const res = await fetch("/api/admin/intelligence/trends");
+      const data = await res.json();
+      if (res.ok) setTracked(data.tracked ?? []);
+    } catch { /* silent */ }
+  }
+
+  useEffect(() => { void loadTracked(); }, []);
+
+  async function runTrend() {
+    setTrendError(null);
+    setTrend(null);
+    try {
+      const res = await fetch(`/api/admin/intelligence/trends?keyword=${encodeURIComponent(trendKw.trim())}&locationCode=2840&languageCode=en`);
+      const data = await res.json();
+      if (!res.ok) { setTrendError(data.error ?? "Trend lookup failed."); return; }
+      setTrend(data);
+      void loadTracked();
+    } catch { setTrendError("Trend lookup failed (network)."); }
+  }
+
+  async function loadGaps() {
+    try {
+      const res = await fetch("/api/admin/intelligence/gaps?limit=20");
+      const data = await res.json();
+      if (res.ok) setGaps(data.gaps ?? []);
+    } catch { /* silent */ }
+  }
+
+  useEffect(() => { void loadGaps(); }, []);
+
+  async function runGapAnalyze() {
+    setGapMsg(null);
+    if (!gapOppId) { setGapMsg("Pick an opportunity from the queue first."); return; }
+    try {
+      const res = await fetch("/api/admin/intelligence/gaps", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ opportunityId: gapOppId }),
+      });
+      const data = await res.json();
+      if (!res.ok) { setGapMsg(data.error ?? "Gap analysis failed."); return; }
+      setGapMsg(`Stored ${(data.findings ?? []).length} gap finding(s) — observations separated from inferences.`);
+      void loadGaps();
+    } catch { setGapMsg("Gap analysis failed (network)."); }
+  }
+
+  async function loadCompetitors() {
+    try {
+      const res = await fetch("/api/admin/intelligence/competitors");
+      const data = await res.json();
+      if (res.ok) setCompetitors(data.competitors ?? []);
+    } catch { /* silent */ }
+  }
+
+  useEffect(() => { void loadCompetitors(); }, []);
+
+  async function addCompetitor() {
+    setCompMsg(null);
+    try {
+      const res = await fetch("/api/admin/intelligence/competitors", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ domain: compDomain.trim() }),
+      });
+      const data = await res.json();
+      if (!res.ok) { setCompMsg(data.error ?? "Add failed."); return; }
+      setCompDomain("");
+      void loadCompetitors();
+    } catch { setCompMsg("Add failed (network)."); }
+  }
+
+  async function toggleCompetitor(id: string, is_active: boolean) {
+    try {
+      const res = await fetch("/api/admin/intelligence/competitors", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id, is_active }),
+      });
+      if (res.ok) void loadCompetitors();
+    } catch { /* silent */ }
+  }
+
+  async function runCompCheck(id: string) {
+    setCompMsg(null);
+    const topic = (compTopic[id] ?? "").trim();
+    if (topic.length < 2) { setCompMsg("Type a topic the competitor covers first."); return; }
+    try {
+      const res = await fetch("/api/admin/intelligence/competitors/check", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id, topic }),
+      });
+      const data = await res.json();
+      if (!res.ok) { setCompMsg(data.error ?? "Check failed."); return; }
+      setCompMsg(data.check?.conclusion ?? "Checked.");
+      void loadCompetitors();
+    } catch { setCompMsg("Check failed (network)."); }
+  }
+
+  async function runOriginality() {
+    setOrigResult(null);
+    setBriefMsg(null);
+    if (!origOppId) { setBriefMsg("Pick an opportunity from the queue first."); return; }
+    try {
+      const res = await fetch("/api/admin/intelligence/opportunities/originality", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: origOppId, evidence: origEvidence }),
+      });
+      const data = await res.json();
+      if (!res.ok) { setBriefMsg(data.error ?? "Assessment failed."); return; }
+      setOrigResult({ verdict: data.assessment.verdict, score: data.assessment.score, recommendations: data.assessment.recommendations });
+    } catch { setBriefMsg("Assessment failed (network)."); }
+  }
+
+  async function runBrief(overrideOriginality: boolean) {
+    setBriefMsg(null);
+    if (!origOppId) { setBriefMsg("Pick an opportunity from the queue first."); return; }
+    try {
+      const res = await fetch("/api/admin/intelligence/briefs", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ opportunityId: origOppId, overrideOriginality }),
+      });
+      const data = await res.json();
+      if (!res.ok) { setBriefMsg(data.error ?? "Brief generation failed."); return; }
+      setBriefMsg(`Brief ${data.brief?.id?.slice(0, 8)}… saved (evidence-only, editor review mandatory). Opportunity → brief_ready.`);
+      void loadOpps(oppFilter);
+    } catch { setBriefMsg("Brief generation failed (network)."); }
   }
   async function runKeywords() {
     setBusy(true);
@@ -357,6 +507,109 @@ export default function IntelligencePage() {
             </table>
           </div>
         )}
+      </div>
+      <div className="rounded-xl border p-4">
+        <h2 className="font-semibold">Trend detection (measured movement)</h2>
+        <p className="text-sm text-muted-foreground">Trending = movement between stored snapshots (≥2 measurements). Never a single high volume.</p>
+        <div className="mt-3 flex gap-2">
+          <input value={trendKw} onChange={(e) => setTrendKw(e.target.value)} className="w-full rounded-lg border px-3 py-2 text-sm" placeholder="Keyword" />
+          <button onClick={() => void runTrend()} disabled={trendKw.trim().length < 2} className="rounded-lg bg-slate-950 px-4 py-2 text-sm text-white disabled:opacity-50">Check trend</button>
+        </div>
+        {trendError && <p className="mt-3 text-sm text-red-600">Data unavailable: {trendError}</p>}
+        {trend && (
+          <div className="mt-3 text-sm">
+            <p className="font-semibold">Direction: {trend.direction}{trend.changePct !== null ? ` (${trend.changePct >= 0 ? "+" : ""}${trend.changePct}%)` : ""} · {trend.points} snapshot(s)</p>
+            <ul className="mt-1 list-disc space-y-1 pl-5 text-muted-foreground">{trend.evidence.map((e) => <li key={e}>{e}</li>)}</ul>
+          </div>
+        )}
+        {tracked && tracked.length > 0 && (
+          <div className="mt-3 overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead><tr className="text-left text-muted-foreground"><th className="py-2 pr-3">Tracked keyword</th><th className="py-2 pr-3">Latest vol</th><th className="py-2 pr-3">Snapshots</th><th className="py-2">Last measured</th></tr></thead>
+              <tbody>{tracked.slice(0, 10).map((t) => (
+                <tr key={`${t.keyword}`} className="border-t">
+                  <td className="py-2 pr-3"><button className="underline" onClick={() => { setTrendKw(t.keyword); }}>{t.keyword}</button></td>
+                  <td className="py-2 pr-3">{t.latest_volume ?? "—"}</td>
+                  <td className="py-2 pr-3">{t.snapshots}</td>
+                  <td className="py-2">{new Date(t.last_measured).toLocaleString()}</td>
+                </tr>))}</tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      <div className="rounded-xl border p-4">
+        <h2 className="font-semibold">SERP gap analyzer</h2>
+        <p className="text-sm text-muted-foreground">Runs over the opportunity&apos;s stored SERP (no new API spend). Observations are data; inferences are labeled hypotheses.</p>
+        <div className="mt-3 flex gap-2">
+          <select value={gapOppId} onChange={(e) => setGapOppId(e.target.value)} className="w-full rounded-lg border px-3 py-2 text-sm">
+            <option value="">Select opportunity…</option>{(opps ?? []).map((o) => <option key={o.id} value={o.id}>{o.primary_keyword} ({o.score})</option>)}
+          </select>
+          <button onClick={() => void runGapAnalyze()} disabled={!gapOppId} className="rounded-lg bg-slate-950 px-4 py-2 text-sm text-white disabled:opacity-50">Analyze gaps</button>
+        </div>
+        {gapMsg && <p className="mt-3 text-sm text-muted-foreground">{gapMsg}</p>}
+        {gaps && gaps.length > 0 && (
+          <div className="mt-3 space-y-2">{gaps.slice(0, 8).map((g) => (
+            <div key={g.id} className="rounded-lg border p-3 text-sm">
+              <p className="font-semibold">{g.keyword} · {g.gap_type} · priority {g.priority}/10 · {g.status}</p>
+              <p className="mt-1"><span className="font-medium">Observed:</span> {g.observation}</p>
+              {g.inference && <p className="mt-1 text-muted-foreground"><span className="font-medium">Hypothesis:</span> {g.inference}</p>}
+            </div>))}</div>
+        )}
+      </div>
+
+      <div className="rounded-xl border p-4">
+        <h2 className="font-semibold">Competitor gaps</h2>
+        <p className="text-sm text-muted-foreground">You configure the domains. Gap checks compare a topic against TechPivo&apos;s own coverage — DataForSEO domain-keyword endpoints are not integrated.</p>
+        <div className="mt-3 flex gap-2">
+          <input value={compDomain} onChange={(e) => setCompDomain(e.target.value)} className="w-full rounded-lg border px-3 py-2 text-sm" placeholder="example.com" />
+          <button onClick={() => void addCompetitor()} disabled={compDomain.trim().length < 4} className="rounded-lg bg-slate-950 px-4 py-2 text-sm text-white disabled:opacity-50">Track</button>
+        </div>
+        {compMsg && <p className="mt-3 text-sm text-muted-foreground">{compMsg}</p>}
+        {competitors && competitors.length > 0 && (
+          <div className="mt-3 space-y-2">{competitors.map((c) => (
+            <div key={c.id} className="rounded-lg border p-3 text-sm">
+              <div className="flex items-center gap-2">
+                <p className="font-semibold">{c.domain}</p>
+                <span className="text-xs text-muted-foreground">{c.is_active ? "active" : "paused"}{c.last_checked ? ` · checked ${new Date(c.last_checked).toLocaleString()}` : ""}</span>
+                <button onClick={() => void toggleCompetitor(c.id, !c.is_active)} className="ml-auto rounded-lg border px-2 py-1 text-xs">{c.is_active ? "Pause" : "Activate"}</button>
+              </div>
+              <div className="mt-2 flex gap-2">
+                <input value={compTopic[c.id] ?? ""} onChange={(e) => setCompTopic((p) => ({ ...p, [c.id]: e.target.value }))} className="w-full rounded-lg border px-3 py-1.5 text-sm" placeholder="Topic they cover, e.g. best budget laptops" />
+                <button onClick={() => void runCompCheck(c.id)} className="rounded-lg border px-3 py-1.5 text-sm">Gap-check</button>
+              </div>
+              {c.observation?.checks?.[0] && <p className="mt-2 text-muted-foreground">{c.observation.checks[0].conclusion}</p>}
+            </div>))}</div>
+        )}
+      </div>
+
+      <div className="rounded-xl border p-4">
+        <h2 className="font-semibold">Originality gate + editorial brief</h2>
+        <p className="text-sm text-muted-foreground">Rewrite-only plans are rejected. The brief assembles stored evidence only — every number cites its source.</p>
+        <div className="mt-3 flex gap-2">
+          <select value={origOppId} onChange={(e) => setOrigOppId(e.target.value)} className="w-full rounded-lg border px-3 py-2 text-sm">
+            <option value="">Select opportunity…</option>{(opps ?? []).map((o) => <option key={o.id} value={o.id}>{o.primary_keyword} ({o.score})</option>)}
+          </select>
+        </div>
+        <div className="mt-3 grid gap-2 sm:grid-cols-2">
+          {ORIGINALITY_EVIDENCE_TYPES.map((e) => (
+            <label key={e.type} className="flex items-center gap-2 text-sm">
+              <input type="checkbox" checked={origEvidence.includes(e.type)} onChange={() => setOrigEvidence((p) => p.includes(e.type) ? p.filter((x) => x !== e.type) : [...p, e.type])} />
+              {e.label}
+            </label>))}
+        </div>
+        <div className="mt-3 flex flex-wrap gap-2">
+          <button onClick={() => void runOriginality()} disabled={!origOppId} className="rounded-lg bg-slate-950 px-4 py-2 text-sm text-white disabled:opacity-50">Assess originality</button>
+          <button onClick={() => void runBrief(false)} disabled={!origOppId} className="rounded-lg border px-4 py-2 text-sm">Generate brief</button>
+          <button onClick={() => void runBrief(true)} disabled={!origOppId} className="rounded-lg border px-4 py-2 text-sm text-amber-700">Generate with override (logged)</button>
+        </div>
+        {origResult && (
+          <div className="mt-3 text-sm">
+            <p className="font-semibold">Verdict: {origResult.verdict} ({origResult.score}/100)</p>
+            <ul className="mt-1 list-disc space-y-1 pl-5 text-muted-foreground">{origResult.recommendations.map((r) => <li key={r}>{r}</li>)}</ul>
+          </div>
+        )}
+        {briefMsg && <p className="mt-3 text-sm text-muted-foreground">{briefMsg}</p>}
       </div>
     </div>
   );

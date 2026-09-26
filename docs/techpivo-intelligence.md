@@ -71,3 +71,21 @@ Local: `.env.local` (gitignored). Production: Vercel → Project → Settings �
 - insufficient_credits → top up; cached data stays visible with timestamps.
 - rate_limited → wait 60s, retry.
 - unavailable/timeout → retryable; check https://status.dataforseo.com if persistent.
+
+## Phase 3 - Opportunity engine (089, live)
+
+- `src/lib/intelligence/coverage.ts` - checkTechPivoCoverage() over posts (published/draft/scheduled) + TOOL_REGISTRY + keyword_articles; levels exact/partial/related/none.
+- `src/lib/intelligence/scoring.ts` - explainable 0-100 internal priority (demand 30 / growth 15 / serpGap 20 / coverage 20 / intentFit 15). Never a ranking claim.
+- `GET/PATCH /api/admin/intelligence/opportunities` - queue + 12-state transitions.
+- `POST .../opportunities/analyze` - overview + live SERP (depth 10) + coverage in parallel; writes keyword_snapshots + content_opportunities; 10/min/IP.
+- Tables: keyword_snapshots, content_opportunities (migration 089, idempotent).
+
+## Phase 4 - Growth loop (no new tables; reuses 088/030 tables)
+
+- Trends (`lib/intelligence/trends.ts`, `GET /api/admin/intelligence/trends`): movement between stored snapshots only; needs >= 2 measurements; directions breakout/rapid/sustained/emerging/stable/declining/insufficient_data. No keyword param returns tracked-keyword overview.
+- SERP gaps (`lib/intelligence/serp-gaps.ts`, `GET/POST /api/admin/intelligence/gaps`): observation vs inference kept separate; analyze runs on the STORED serp (no new spend) and writes content_gaps rows.
+- Competitors (`/api/admin/intelligence/competitors` CRUD + `/check`): admin-configured domains; gap check runs TechPivo coverage on an admin-supplied topic. LIMITATION: DataForSEO Labs domain-keyword endpoints are NOT integrated (stated in UI + GET response).
+- Originality gate (`lib/intelligence/originality.ts`, `POST .../opportunities/originality`): 12 evidence types; rewrite-only plans get INSUFFICIENT + recommendations; score stored on the opportunity (merged into score_components).
+- Briefs (`GET/POST /api/admin/intelligence/briefs`): evidence-only assembly into content_briefs; blocked (409) while originality is insufficient unless overrideOriginality:true (override recorded on the brief); sets opportunity brief_ready.
+- Admin hub `/admin/intelligence` gained 4 sections: trends, gaps, competitors, originality+briefs.
+- Tests: `src/lib/intelligence/__tests__/growth.test.ts` (9 tests) + scoring.test.ts (3 tests).
