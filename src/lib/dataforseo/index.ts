@@ -12,5 +12,7 @@ export * from "./client";
 export * from "./locations";
 export * from "./keywords";
 export * from "./serp";
+export * from "./labs";
+export * from "./ai-search";
 export * from "./normalization";
 export * from "./usage";

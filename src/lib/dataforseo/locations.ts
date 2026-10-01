@@ -2,16 +2,26 @@ import { dfsGet } from "./client";
 import type { MarketLocation } from "./types";
 
 /**
- * Market list. Only location codes verified against official DataForSEO
- * documentation are hardcoded. Every other market is resolved through the
- * live locations lookup (admin UI search) so we never fabricate codes.
+ * Market list. Only location codes verified against the LIVE DataForSEO
+ * locations database (GET /v3/dataforseo_labs/locations_and_languages) are
+ * hardcoded. Every other market resolves through the live lookup so codes
+ * are never fabricated.
  *
- * Verified: United States 2840, United Kingdom 2826
- * (see DataForSEO keyword_suggestions / keyword_overview live docs).
+ * Verified 2026-09-26: US 2840, UK 2826, Nigeria 2566, Canada 2124,
+ * India 2356, South Africa 2710, Australia 2036, Germany 2276, Ghana 2288,
+ * Kenya 2404.
  */
 export const DFS_VERIFIED_LOCATIONS: MarketLocation[] = [
   { code: 2840, name: "United States", countryIso: "US", scope: "country" },
   { code: 2826, name: "United Kingdom", countryIso: "GB", scope: "country" },
+  { code: 2566, name: "Nigeria", countryIso: "NG", scope: "country" },
+  { code: 2124, name: "Canada", countryIso: "CA", scope: "country" },
+  { code: 2356, name: "India", countryIso: "IN", scope: "country" },
+  { code: 2710, name: "South Africa", countryIso: "ZA", scope: "country" },
+  { code: 2036, name: "Australia", countryIso: "AU", scope: "country" },
+  { code: 2276, name: "Germany", countryIso: "DE", scope: "country" },
+  { code: 2288, name: "Ghana", countryIso: "GH", scope: "country" },
+  { code: 2404, name: "Kenya", countryIso: "KE", scope: "country" },
 ];
 
 export const DFS_GLOBAL_SCOPE: MarketLocation = {

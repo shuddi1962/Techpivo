@@ -3,6 +3,7 @@ import { z } from "zod";
 import { requireAdminRole } from "@/lib/admin-auth";
 import { createClient } from "@/lib/supabase/admin";
 import { checkRateLimit, clientIp } from "@/lib/rate-limiter";
+import { buildSocialDrafts } from "@/lib/intelligence/social";
 
 export const dynamic = "force-dynamic";
 
@@ -150,4 +151,83 @@ export async function POST(request: NextRequest) {
     .eq("id", opp.id as string);
 
   return NextResponse.json({ brief, brief_data: briefData }, { status: 201 });
+}
+
+const BRIEF_STATUSES = ["generated", "reviewing", "approved", "generating", "published", "discarded"] as const;
+
+const WorkspaceSection = z.object({
+  research_question: z.string().max(2000).optional(),
+  why_it_matters: z.string().max(2000).optional(),
+  what_is_known: z.string().max(4000).optional(),
+  methodology: z.string().max(4000).optional(),
+  sources: z.array(z.object({ label: z.string().max(200), url: z.string().max(500), type: z.string().max(60) })).max(30).optional(),
+  claims: z.array(z.object({ claim: z.string().max(1000), source: z.string().max(500), status: z.enum(["unverified", "partially_verified", "verified", "contested", "outdated"]) })).max(50).optional(),
+  evidence_notes: z.string().max(4000).optional(),
+  limitations: z.string().max(2000).optional(),
+  conclusion: z.string().max(4000).optional(),
+});
+
+const PatchBody = z.object({
+  id: z.string().uuid(),
+  workspace: WorkspaceSection.optional(),
+  status: z.enum(BRIEF_STATUSES).optional(),
+  generate_social: z.boolean().optional(),
+});
+
+/**
+ * PATCH /api/admin/intelligence/briefs — research workspace + status + social.
+ * The workspace is the editor's evidence record (question, methodology,
+ * sources, per-claim verification, limitations). Social drafts are
+ * template-built from stored evidence — drafts only, never auto-posted.
+ */
+export async function PATCH(request: NextRequest) {
+  const auth = await requireAdminRole(["admin", "editor"], request);
+  if (!auth.ok) return auth.response;
+
+  let body: z.infer<typeof PatchBody>;
+  try {
+    body = PatchBody.parse(await request.json().catch(() => null));
+  } catch {
+    return NextResponse.json({ error: "Provide id (uuid) plus workspace, status, or generate_social." }, { status: 400 });
+  }
+
+  const supabase = createClient();
+  const { data: brief, error: readErr } = await supabase
+    .from("content_briefs")
+    .select("id, topic, status, brief_data")
+    .eq("id", body.id)
+    .single();
+  if (readErr || !brief) return NextResponse.json({ error: "Brief not found." }, { status: 404 });
+
+  const merged = { ...((brief.brief_data as object) ?? {}) } as Record<string, unknown>;
+  if (body.workspace) {
+    merged.research_workspace = {
+      ...(typeof merged.research_workspace === "object" ? (merged.research_workspace as object) : {}),
+      ...body.workspace,
+      updated_at: new Date().toISOString(),
+      updated_by: auth.user.id,
+    };
+  }
+  if (body.generate_social) {
+    const bd = brief.brief_data as { primary_keyword?: string; intent?: string; content_gaps?: Array<{ observation?: string }> };
+    merged.social_drafts = buildSocialDrafts({
+      keyword: ((bd.primary_keyword ?? brief.topic) as string) ?? "",
+      intent: bd.intent,
+      gapSummary: bd.content_gaps?.[0]?.observation,
+    });
+    merged.social_note = "Drafts only — review, edit, and publish manually. Never auto-posted.";
+  }
+
+  const { data, error } = await supabase
+    .from("content_briefs")
+    .update({
+      brief_data: merged,
+      ...(body.status ? { status: body.status } : {}),
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", body.id)
+    .select("id, topic, status, updated_at")
+    .single();
+  if (error) return NextResponse.json({ error: "Saving failed. Retry." }, { status: 500 });
+  return NextResponse.json({ brief: data, social_drafts: merged.social_drafts ?? null });
 }

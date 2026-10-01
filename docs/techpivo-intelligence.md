@@ -89,3 +89,20 @@ Local: `.env.local` (gitignored). Production: Vercel → Project → Settings �
 - Briefs (`GET/POST /api/admin/intelligence/briefs`): evidence-only assembly into content_briefs; blocked (409) while originality is insufficient unless overrideOriginality:true (override recorded on the brief); sets opportunity brief_ready.
 - Admin hub `/admin/intelligence` gained 4 sections: trends, gaps, competitors, originality+briefs.
 - Tests: `src/lib/intelligence/__tests__/growth.test.ts` (9 tests) + scoring.test.ts (3 tests).
+
+## Phase 5 - Intelligence command center (091, pending apply)
+
+- Discovery (`lib/intelligence/discovery.ts`, `GET/POST /api/admin/intelligence/discovery`): category seeds built from TechPivo's OWN DB (recent posts/tags, tool registry, community questions, tracked keywords) — never hardcoded lists; seed x market suggestion fan-out with strict depth caps (broad 4x2, standard 6x3, deep 10x4); writes snapshots + lightweight `discovered` opportunities; every run records config + stats + real cost in `discovery_runs` (migration 091, admin RLS + realtime).
+- Daily intel (`lib/intelligence/daily.ts`, `GET /api/admin/intelligence/daily`): "What should TechPivo do today?" from STORED rows only — breakout/rapid trends (>= 2 snapshots), open gaps priority >= 7, competitor no-coverage checks, briefs awaiting review. Empty = honest "no signal".
+- Markets (`POST /api/admin/intelligence/markets/compare`): one live overview call per market (2-6, verified codes only) + coverage once; persists each market measurement as a snapshot for trend history.
+- AI search (`lib/dataforseo/ai-search.ts`, `GET/POST /api/admin/intelligence/ai-search`): `ai_optimization/ai_keyword_data/keywords_search_volume/live` (~$0.01) + `ai_optimization/llm_mentions/target_metrics/live` (~$0.10, on-demand only); POST merges ai_search_volume into the latest stored snapshot.
+- Labs (`lib/dataforseo/labs.ts`, `POST /api/admin/intelligence/competitors/refresh`): `dataforseo_labs/google/ranked_keywords/live` (~$0.013) pulls what a tracked domain ranks for; top-by-volume checked for TechPivo coverage; genuine competitor gaps stored as content_gaps (source dataforseo_labs).
+- Community (`lib/intelligence/community.ts`, `GET /api/admin/intelligence/community`): repeated-question clusters (fuzzy title overlap, >= 3), top-voted discussions, unanswered > 7 days, poll engagement — all from real rows.
+- Opportunity detail (`GET /api/admin/intelligence/opportunities/[id]`): demand + snapshots + SERP + gaps + coverage + community + tools + originality + briefs from stored rows, zero spend.
+- Types (`lib/intelligence/opp-types.ts`) + local intent (`lib/intelligence/local-intent.ts`, heuristic-only): rule-based tags stored on `content_opportunities.opp_types` (GIN index, migration 091).
+- Briefs workspace (`PATCH /api/admin/intelligence/briefs`): research workspace (question, methodology, per-claim verification, limitations) + status moves + template-built social drafts (`lib/intelligence/social.ts`, drafts only, never auto-posted).
+- Cannibalization (`GET /api/admin/intelligence/cannibalization`): pairwise fuzzy title scan over published posts (400 cap); MERGE / REVIEW recommendations, never deletes.
+- Search Console (`GET /api/admin/intelligence/search-console`): honest NOT-connected stub reading `integration_status`; setup path documented, never fabricates metrics.
+- Markets expanded to 10 verified codes (US 2840, UK 2826, NG 2566, CA 2124, IN 2356, ZA 2710, AU 2036, DE 2276, GH 2288, KE 2404); queue filter lists all 12 opportunity statuses.
+- Tests: `src/lib/intelligence/__tests__/system.test.ts` (7 tests: types, local-intent, social, depth caps).
+- Apply: run `supabase/migrations/091_discovery_runs.sql` in the dashboard SQL editor (idempotent), then verify `discovery_runs` + `content_opportunities.opp_types`.
