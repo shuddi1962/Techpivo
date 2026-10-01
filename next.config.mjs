@@ -78,6 +78,37 @@ const nextConfig = {
       { key: 'X-DNS-Prefetch-Control', value: 'on' },
     ]
     return [
+      // Long-lived cache for versioned/fingerprinted static assets.
+      // (Fixes "Use efficient cache lifetimes" on PageSpeed: without this,
+      // shared caches revalidate every static file on each visit.)
+      {
+        source: '/_next/static/:path*',
+        headers: [
+          { key: 'Cache-Control', value: 'public, max-age=31536000, immutable' },
+        ],
+      },
+      // Site icons / manifest / OG image / logos change rarely; a day of edge
+    // caching with stale-while-revalidate keeps them fresh without
+    // re-downloading on every visit. (Exact paths — no regex pitfalls.)
+    ...[
+      '/og-home.png',
+      '/icon.png',
+      '/icon-192.png',
+      '/icon.svg',
+      '/favicon.ico',
+      '/logo.svg',
+      '/logo-light.svg',
+      '/manifest.json',
+      '/badge.png',
+      '/badge-72.png',
+      '/llms.txt',
+      '/robots.txt',
+    ].map((source) => ({
+      source,
+      headers: [
+        { key: 'Cache-Control', value: 'public, max-age=86400, stale-while-revalidate=604800' },
+      ],
+    })),
       {
         source: '/(.*)',
         headers: [

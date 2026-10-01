@@ -28,8 +28,9 @@ export function CategoryStrip({ categoryName, categorySlug, categoryColor, posts
                 <a key={sub.id} href={`/category/${categorySlug}/${sub.slug}`}
                   style={{
                     fontSize: 11, color: "var(--muted2)", background: "var(--bg)",
-                    padding: "2px 10px", borderRadius: 12, textDecoration: "none",
+                    padding: "5px 12px", borderRadius: 12, textDecoration: "none",
                     border: "1px solid var(--border)", transition: "color .2s, border-color .2s",
+                    display: "inline-flex", alignItems: "center", minHeight: 24,
                   }}
                   onMouseEnter={e => { e.currentTarget.style.color = "hsl(var(--accent))"; e.currentTarget.style.borderColor = "hsl(var(--accent))" }}
                   onMouseLeave={e => { e.currentTarget.style.color = "var(--muted2)"; e.currentTarget.style.borderColor = "var(--border)" }}
@@ -39,7 +40,7 @@ export function CategoryStrip({ categoryName, categorySlug, categoryColor, posts
               ))}
             </div>
           )}
-          <Link href={`/category/${categorySlug}`} className="view-all-link">View all</Link>
+          <Link href={`/category/${categorySlug}`} className="view-all-link" aria-label={`View all ${categoryName} articles`}>View all</Link>
         </div>
       </div>
 

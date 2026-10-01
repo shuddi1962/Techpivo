@@ -1,16 +1,54 @@
 import type { Metadata, Viewport } from "next"
 import Script from "next/script"
+import dynamic from "next/dynamic"
+import { DM_Sans, Syne } from "next/font/google"
 import { ThemeProvider } from "@/components/theme-provider"
 import { LayoutWrapper } from "@/components/layout/layout-wrapper"
-import { PHProvider } from "@/components/posthog-provider"
-import { PageViewTracker } from "@/components/post/page-view-tracker"
-import { GoogleCMP } from "@/components/cookies/GoogleCMP"
-import { CookieConsentBanner } from "@/components/cookies/cookie-consent-banner"
-import { PopupAd } from "@/components/ads/popup-ad"
 import { SITE_NAME, SITE_TAGLINE, SITE_URL } from "@/lib/constants"
 import { JsonLd } from "@/components/ui/jsonld"
 import { organizationSchema, websiteSchema } from "@/lib/jsonld"
 import "./globals.css"
+
+// Self-hosted fonts (no render-blocking Google Fonts @import / stylesheet).
+// display:swap keeps text visible during load (fixes "Render-blocking requests").
+const dmSans = DM_Sans({
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
+  display: "swap",
+  variable: "--font-dm-sans",
+  preload: true,
+})
+const syne = Syne({
+  subsets: ["latin"],
+  weight: ["600", "700", "800"],
+  display: "swap",
+  variable: "--font-syne",
+  preload: false,
+})
+
+// Deferred client-only widgets: excluded from the initial bundle so the
+// homepage LCP path ships less JS (fixes "Reduce unused JavaScript" / TBT).
+// Each loads after hydration and renders nothing until needed.
+const PHProvider = dynamic(
+  () => import("@/components/posthog-provider").then((m) => m.PHProvider),
+  { ssr: false },
+)
+const PageViewTracker = dynamic(
+  () => import("@/components/post/page-view-tracker").then((m) => m.PageViewTracker),
+  { ssr: false },
+)
+const GoogleCMP = dynamic(
+  () => import("@/components/cookies/GoogleCMP").then((m) => m.GoogleCMP),
+  { ssr: false },
+)
+const CookieConsentBanner = dynamic(
+  () => import("@/components/cookies/cookie-consent-banner").then((m) => m.CookieConsentBanner),
+  { ssr: false },
+)
+const PopupAd = dynamic(
+  () => import("@/components/ads/popup-ad").then((m) => m.PopupAd),
+  { ssr: false },
+)
 
 export const viewport: Viewport = {
   themeColor: "#0F172A",
@@ -66,14 +104,12 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang="en" suppressHydrationWarning className={`${dmSans.variable} ${syne.variable}`}>
       <head>
         <meta name="apple-mobile-web-app-title" content={SITE_NAME} />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="mobile-web-app-capable" content="yes" />
         <link rel="manifest" href="/manifest.json" />
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link rel="dns-prefetch" href="https://www.googletagmanager.com" />
         <link rel="dns-prefetch" href="https://www.google-analytics.com" />
         <link rel="preconnect" href="https://pagead2.googlesyndication.com" />
@@ -124,7 +160,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         )}
         <Script
           id="google-tag-manager"
-          strategy="afterInteractive"
+          strategy="lazyOnload"
           dangerouslySetInnerHTML={{
             __html: `
               (function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
@@ -139,7 +175,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       </head>
       <body className="min-h-screen bg-background antialiased">
         <noscript>
-          <iframe src="https://www.googletagmanager.com/ns.html?id=GTM-5QPM5TQ5" height="0" width="0" style={{ display: "none", visibility: "hidden" }} />
+          <iframe src="https://www.googletagmanager.com/ns.html?id=GTM-5QPM5TQ5" title="Google Tag Manager" height="0" width="0" style={{ display: "none", visibility: "hidden" }} />
         </noscript>
         <JsonLd data={organizationSchema()} />
         <JsonLd data={websiteSchema()} />

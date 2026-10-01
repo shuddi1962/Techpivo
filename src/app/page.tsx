@@ -75,12 +75,16 @@ export default async function HomePage() {
       }
 
       const results = await Promise.allSettled([
-        supabase.from("posts").select("*, categories(name,slug,color)")
+        // Narrow column lists: the homepage only renders title/slug/excerpt/
+        // image/meta, so never fetch the full `content` body (some rows are
+        // 50KB+ of HTML). `select("*")` here ballooned server latency and the
+        // RSC payload — a direct LCP/TBT cost on PageSpeed.
+        supabase.from("posts").select("id,title,slug,excerpt,featured_image,is_sticky,is_breaking,published_at,categories(name,slug,color)")
           .eq("status", "published")
           .not("featured_image", "is", null)
           .order("published_at", { ascending: false }).limit(30),
 
-        supabase.from("posts").select("*, categories(name,slug,color)")
+        supabase.from("posts").select("id,title,slug,excerpt,featured_image,is_sticky,published_at,views,categories(name,slug,color)")
           .eq("status", "published")
           .order("published_at", { ascending: false }).limit(30),
 
@@ -100,7 +104,7 @@ export default async function HomePage() {
 
         supabase.from("categories").select("id,name,slug,color,icon").eq("is_active", true).order("name"),
 
-        supabase.from("posts").select("*, categories!inner(name,slug,color)")
+        supabase.from("posts").select("id,title,slug,excerpt,featured_image,published_at,categories!inner(name,slug,color)")
           .eq("status", "published")
           .in("categories.slug", [
             "ai-automation","cybersecurity","gadgets","tech-news",
@@ -172,11 +176,11 @@ export default async function HomePage() {
 
   if (!heroPosts || heroPosts.length === 0) {
     return (
-      <div>
+      <main id="main-content">
         <TopBar socialUrls={socialUrls} />
         <Header />
         <MainNav categories={[]} />
-        <main>
+        <div>
           <div className="site-main">
             <div className="main-layout">
               <div className="content-col">
@@ -360,10 +364,10 @@ export default async function HomePage() {
               />
             </div>
           </div>
-        </main>
+        </div>
         <NewsletterStrip />
         <Footer categories={[]} recentPosts={[]} socialUrls={socialUrls} />
-      </div>
+      </main>
     )
   }
 
@@ -384,7 +388,7 @@ export default async function HomePage() {
   }
 
   return (
-    <div>
+    <main id="main-content">
       <TopBar socialUrls={socialUrls} />
         <Header />
       <MainNav categories={cats} />
@@ -521,6 +525,6 @@ export default async function HomePage() {
       <NewsletterStrip />
 
       <Footer categories={cats} recentPosts={latestPosts || []} socialUrls={socialUrls} />
-    </div>
+    </main>
   )
 }

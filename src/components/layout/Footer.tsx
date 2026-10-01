@@ -89,7 +89,7 @@ export function Footer({ categories, recentPosts, socialUrls = {} }: { categorie
         <div>
           <h3 className="footer-col-title">Recent Articles</h3>
           {recentPosts.slice(0, 6).map((post) => (
-            <Link key={post.id} href={`/${post.slug}`} className="footer-post-link">
+            <Link key={post.id} href={`/${post.slug}`} className="footer-post-link" aria-label={post.title}>
               <span style={{ flexShrink: 0, marginTop: 3 }}>&bull;</span>
               <span>{post.title?.slice(0, 48)}</span>
             </Link>

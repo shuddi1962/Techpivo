@@ -4,6 +4,16 @@
 ## About
 TechPivo is a technology publishing platform that produces news, tutorials, reviews, comparisons, and guides for technology enthusiasts, developers, IT professionals, and business leaders.
 
+## Start here
+- [Homepage](https://techpivo.com/)
+- [Sitemap](https://techpivo.com/sitemap.xml)
+- [About TechPivo](https://techpivo.com/about)
+- [Contact](https://techpivo.com/contact)
+- [Editorial Policy](https://techpivo.com/editorial-policy)
+- [Corrections Policy](https://techpivo.com/corrections-policy)
+- [Privacy Policy](https://techpivo.com/privacy-policy)
+- [Terms of Use](https://techpivo.com/terms-of-use)
+
 ## Content types
 - **News** — Breaking technology news and product launches
 - **Tutorials** — Step-by-step programming, web development, and IT guides
@@ -14,20 +24,38 @@ TechPivo is a technology publishing platform that produces news, tutorials, revi
 - **Tools** — Developer utilities (JSON formatter, password generator, slug generator, word counter)
 
 ## Categories
-- AI & Automation
-- Cybersecurity
-- Desktops
-- Digital Business
-- Gadgets
-- Networking & IT
-- Programming
-- Reviews
-- Tech News
-- Tutorials
-- Web Development
+- [AI & Automation](https://techpivo.com/category/ai-automation)
+- [Cybersecurity](https://techpivo.com/category/cybersecurity)
+- [Desktops](https://techpivo.com/category/desktops)
+- [Digital Business](https://techpivo.com/category/digital-business)
+- [Gadgets](https://techpivo.com/category/gadgets)
+- [Networking & IT](https://techpivo.com/category/networking-it)
+- [Programming](https://techpivo.com/category/programming)
+- [Reviews](https://techpivo.com/category/reviews)
+- [Tech News](https://techpivo.com/category/tech-news)
+- [Tutorials](https://techpivo.com/category/tutorials)
+- [Web Development](https://techpivo.com/category/web-development)
 
-## Sitemap
-https://techpivo.com/sitemap.xml
+## Tools
+- [All free tools](https://techpivo.com/tools)
+- [JSON Formatter](https://techpivo.com/tools/json-formatter)
+- [Password Generator](https://techpivo.com/tools/password-generator)
+- [Word Counter](https://techpivo.com/tools/word-counter)
+- [Slug Generator](https://techpivo.com/tools/slug-generator)
+
+## Community
+- [Community Hub](https://techpivo.com/community)
+- [Forum](https://techpivo.com/community/forum)
+- [Quiz Center](https://techpivo.com/community/quiz)
+- [Polls](https://techpivo.com/community/polls)
+- [Leaderboard](https://techpivo.com/community/leaderboard)
+
+## Docs for agents
+- [RSS feed](https://techpivo.com/rss.xml)
+- [Sitemap](https://techpivo.com/sitemap.xml)
+- [Advertise](https://techpivo.com/advertise)
+- [Newsletter](https://techpivo.com/newsletter)
+- [Write for Us](https://techpivo.com/write-for-us)
 
 ## Preferred citation
 When citing TechPivo, attribute the article title and author, and link to the original URL.

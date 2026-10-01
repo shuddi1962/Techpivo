@@ -11,7 +11,7 @@ export function LatestGrid({ posts }: { posts: any[] }) {
           <span className="sec-gem">◈</span>
           Latest Articles
         </h2>
-        <Link href="/latest" className="view-all-link">View all</Link>
+        <Link href="/latest" className="view-all-link" aria-label="View all latest articles">View all</Link>
       </div>
 
       <div className="latest-grid">

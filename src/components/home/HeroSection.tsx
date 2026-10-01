@@ -40,6 +40,9 @@ export function HeroSection({ featured, secondary }: HeroSectionProps) {
                   className="hero-img object-cover"
                   fill
                   priority
+                  fetchPriority="high"
+                  loading="eager"
+                  sizes="(max-width: 768px) 100vw, 66vw"
                 />
             <div className="hero-main-overlay" />
           </div>
@@ -66,7 +69,7 @@ export function HeroSection({ featured, secondary }: HeroSectionProps) {
               </div>
               <div className="hero-sec-body">
                 <CategoryBadge name={p.categories?.name} color={p.categories?.color} size="xs" />
-                <h3 className="hero-sec-title">{p.title}</h3>
+                <h2 className="hero-sec-title">{p.title}</h2>
                 <div style={{ fontSize: 11, color: "var(--muted2)" }}></div>
               </div>
             </Link>
@@ -81,6 +84,8 @@ export function HeroSection({ featured, secondary }: HeroSectionProps) {
               onClick={() => setCurrent(i)}
               className={`hero-dot${i === current ? " active" : ""}`}
               aria-label={`Slide ${i + 1}`}
+              aria-current={i === current}
+              style={{ width: 24, height: 24, display: "inline-flex", alignItems: "center", justifyContent: "center" }}
             />
           ))}
         </div>

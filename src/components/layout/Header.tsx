@@ -101,6 +101,7 @@ export function Header({ socialUrls: socialUrlsProp = {} }: { socialUrls?: Recor
             <input
               type="text"
               placeholder="Search articles..."
+              aria-label="Search articles"
               value={searchQ}
               onChange={(e) => setSearchQ(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && router.push(`/search?q=${encodeURIComponent(searchQ)}`)}
@@ -160,13 +161,14 @@ export function Header({ socialUrls: socialUrlsProp = {} }: { socialUrls?: Recor
         <div className="header-mobile-drawer" onClick={() => setDrawerOpen(false)}>
           <div className="mobile-drawer-panel" onClick={e => e.stopPropagation()}>
             <div className="mobile-drawer-header">
-              <button className="mobile-drawer-close" onClick={() => setDrawerOpen(false)}>&times;</button>
+              <button className="mobile-drawer-close" onClick={() => setDrawerOpen(false)} aria-label="Close menu">&times;</button>
             </div>
             <form className="mobile-drawer-search" onSubmit={handleMobileSearch}>
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" style={{ flexShrink: 0, color: "var(--muted2)" }}><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
               <input
                 type="text"
                 placeholder="Search articles..."
+                aria-label="Search articles"
                 value={mobileSearch}
                 onChange={e => setMobileSearch(e.target.value)}
               />
@@ -288,7 +290,7 @@ export function Header({ socialUrls: socialUrlsProp = {} }: { socialUrls?: Recor
       {loginOpen && (
         <div className="modal-backdrop" onClick={() => setLoginOpen(false)}>
           <div className="modal-box" onClick={(e) => e.stopPropagation()}>
-            <button className="modal-close" onClick={() => setLoginOpen(false)}>&times;</button>
+            <button className="modal-close" onClick={() => setLoginOpen(false)} aria-label="Close sign in dialog">&times;</button>
             <div className="modal-logo" style={{ marginBottom: 16 }}>
               <span style={{ fontFamily: "'Syne', sans-serif", fontWeight: 800, fontSize: 22, color: "var(--text)" }}>Techpivo</span>
             </div>

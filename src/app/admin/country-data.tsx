@@ -1,4 +1,7 @@
 import { ReactElement } from "react"
+// Admin-only flag CSS: kept out of the global bundle so public pages
+// don't pay for flag-icons (fixes "Reduce unused CSS" on PageSpeed).
+import "flag-icons/css/flag-icons.min.css"
 
 export interface CountryMeta {
   /** 2-letter ISO 3166-1 alpha-2 lower-case (e.g. "us", "ng") */

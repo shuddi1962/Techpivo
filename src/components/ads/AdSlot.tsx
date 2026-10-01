@@ -219,7 +219,17 @@ export function AdSlot({ positionKey, className, preview }: AdSlotProps) {
     ""
   const showAutoAds = settings.enable_auto_ads && adsenseClient && marketingConsent
 
-  if (loading) return null
+  if (loading) {
+    // Reserve layout space while the slot resolves so the late ad insert
+    // doesn't push page content down (fixes "Layout shift culprits" / CLS).
+    // min-height matches the smallest common leaderboard; the fixed sizeBox
+    // takes over once placement sizes are known.
+    return (
+      <div className={cn("ad-slot", className)} aria-hidden="true">
+        <div style={{ minHeight: 90, width: "100%" }} />
+      </div>
+    )
+  }
 
   // Follow the placement's declared size — mobile picks the second (smaller)
   // size when one is declared (e.g. "728x90" desktop → "468x60" mobile).
@@ -400,7 +410,13 @@ export function AdSlot({ positionKey, className, preview }: AdSlotProps) {
   // same fixed-size box — no dots, no size change, no layout shift.
   if (campaign) {
     return (
-      <div key={campaign.id} className={cn("ad-slot", className)}>
+      <div
+        key={campaign.id}
+        className={cn("ad-slot", className)}
+        // Keep the reserved height when the placement size is unknown so the
+        // swap from the loading placeholder doesn't shift layout (CLS).
+        style={designSize ? undefined : { minHeight: 90 }}
+      >
         <div className="animate-[fadeIn_0.3s_ease-in]">{renderCampaign()}</div>
       </div>
     )

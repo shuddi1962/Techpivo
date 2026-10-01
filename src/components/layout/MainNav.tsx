@@ -87,7 +87,7 @@ export function MainNav({ categories }: { categories: any[] }) {
 
       {mobileOpen && (
         <div className="mobile-menu">
-          <button className="mobile-menu-close" onClick={() => setMobileOpen(false)}>&times;</button>
+          <button className="mobile-menu-close" onClick={() => setMobileOpen(false)} aria-label="Close menu">&times;</button>
           <div style={{ padding: "8px 0" }}>
             {communityMode ? (
               <>
