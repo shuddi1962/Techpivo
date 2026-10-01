@@ -54,6 +54,15 @@ function audienceAllows(c: CampaignAd, device: string, country: string | null): 
   ) return false
   return true
 }
+
+/** Expected slot height per placement while sizes load — a wrong guess is a layout shift. */
+function placeholderHeight(positionKey: string): number {
+  if (positionKey.includes("sidebar_mid")) return 600
+  if (positionKey.includes("sidebar")) return 250
+  if (positionKey.includes("infeed") || positionKey.includes("in_content")) return 250
+  if (positionKey.includes("popup") || positionKey.includes("sponsored")) return 250
+  return 90
+}
 export function AdSlot({ positionKey, className, preview }: AdSlotProps) {
   const [slotAd, setSlotAd] = useState<SlotAd | null>(null)
   const [campaignAds, setCampaignAds] = useState<CampaignAd[]>([])
@@ -222,11 +231,11 @@ export function AdSlot({ positionKey, className, preview }: AdSlotProps) {
   if (loading) {
     // Reserve layout space while the slot resolves so the late ad insert
     // doesn't push page content down (fixes "Layout shift culprits" / CLS).
-    // min-height matches the smallest common leaderboard; the fixed sizeBox
-    // takes over once placement sizes are known.
+    // Height follows the placement: tall sidebar units reserve tall boxes,
+    // leaderboards stay at 90 — a wrong guess here is itself a shift.
     return (
       <div className={cn("ad-slot", className)} aria-hidden="true">
-        <div style={{ minHeight: 90, width: "100%" }} />
+        <div style={{ minHeight: placeholderHeight(positionKey), width: "100%" }} />
       </div>
     )
   }
@@ -415,7 +424,7 @@ export function AdSlot({ positionKey, className, preview }: AdSlotProps) {
         className={cn("ad-slot", className)}
         // Keep the reserved height when the placement size is unknown so the
         // swap from the loading placeholder doesn't shift layout (CLS).
-        style={designSize ? undefined : { minHeight: 90 }}
+        style={designSize ? undefined : { minHeight: placeholderHeight(positionKey) }}
       >
         <div className="animate-[fadeIn_0.3s_ease-in]">{renderCampaign()}</div>
       </div>

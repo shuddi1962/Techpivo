@@ -26,7 +26,7 @@ export function TrendingWidget({ posts: initialPosts }: { posts: any[] }) {
           <path d="M8 18L12 7L16 18M9.5 14.5H14.5"/>
           <path d="M4 22L12 2L20 22"/>
         </svg>
-        <span className="sidebar-card-title" style={{ color: "var(--accent2)" }}>Trending Now</span>
+        <span className="sidebar-card-title trending-title-amber">Trending Now</span>
       </div>
       <ul className="trending-list">
         {posts.map((post: any, i: number) => (

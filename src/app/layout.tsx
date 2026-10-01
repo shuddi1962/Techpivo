@@ -3,6 +3,7 @@ import Script from "next/script"
 import dynamic from "next/dynamic"
 import { DM_Sans, Syne } from "next/font/google"
 import { ThemeProvider } from "@/components/theme-provider"
+import { DeferredPostHog } from "@/components/deferred-posthog"
 import { LayoutWrapper } from "@/components/layout/layout-wrapper"
 import { SITE_NAME, SITE_TAGLINE, SITE_URL } from "@/lib/constants"
 import { JsonLd } from "@/components/ui/jsonld"
@@ -29,10 +30,8 @@ const syne = Syne({
 // Deferred client-only widgets: excluded from the initial bundle so the
 // homepage LCP path ships less JS (fixes "Reduce unused JavaScript" / TBT).
 // Each loads after hydration and renders nothing until needed.
-const PHProvider = dynamic(
-  () => import("@/components/posthog-provider").then((m) => m.PHProvider),
-  { ssr: false },
-)
+// (PostHog rides an extra idle gate via DeferredPostHog — its ~100KB chunk
+// only downloads once the browser is idle, never contending with LCP.)
 const PageViewTracker = dynamic(
   () => import("@/components/post/page-view-tracker").then((m) => m.PageViewTracker),
   { ssr: false },
@@ -180,9 +179,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <JsonLd data={organizationSchema()} />
         <JsonLd data={websiteSchema()} />
         <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false} disableTransitionOnChange>
-          <PHProvider>
+          <DeferredPostHog>
             <LayoutWrapper>{children}</LayoutWrapper>
-          </PHProvider>
+          </DeferredPostHog>
         </ThemeProvider>
         <PageViewTracker />
         <GoogleCMP />

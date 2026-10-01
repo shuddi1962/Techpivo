@@ -26,6 +26,7 @@ export function CategoryStrip({ categoryName, categorySlug, categoryColor, posts
             <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
               {subcategories.slice(0, 4).map((sub: any) => (
                 <a key={sub.id} href={`/category/${categorySlug}/${sub.slug}`}
+                  aria-label={`${sub.name} in ${categoryName}`}
                   style={{
                     fontSize: 11, color: "var(--muted2)", background: "var(--bg)",
                     padding: "5px 12px", borderRadius: 12, textDecoration: "none",

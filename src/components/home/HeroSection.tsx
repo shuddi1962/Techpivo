@@ -43,6 +43,7 @@ export function HeroSection({ featured, secondary }: HeroSectionProps) {
                   fetchPriority="high"
                   loading="eager"
                   sizes="(max-width: 768px) 100vw, 66vw"
+                  maxWidth={1200}
                 />
             <div className="hero-main-overlay" />
           </div>
@@ -50,7 +51,7 @@ export function HeroSection({ featured, secondary }: HeroSectionProps) {
             <span className="hero-badge-breaking">BREAKING</span>
           )}
           <div className="hero-main-content">
-            <CategoryBadge name={post.categories?.name} color={post.categories?.color} size="sm" />
+            <CategoryBadge name={post.categories?.name} color={post.categories?.color} size="sm" tone="dark" />
             <h1 className="hero-main-title">{post.title}</h1>
             <p className="hero-main-excerpt">{post.excerpt}</p>
           </div>
