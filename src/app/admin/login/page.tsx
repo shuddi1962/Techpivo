@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { Eye, EyeOff, LogIn, Shield, Zap, AlertTriangle } from "lucide-react"
+import TurnstileWidget, { TURNSTILE_SITE_KEY } from "@/components/auth/turnstile-widget"
 
 export default function AdminLoginPage() {
   const [password, setPassword] = useState("")
@@ -13,6 +14,8 @@ export default function AdminLoginPage() {
   const [attempts, setAttempts] = useState(0)
   const [blocked, setBlocked] = useState(false)
   const [cooldown, setCooldown] = useState(0)
+  const [turnstileToken, setTurnstileToken] = useState("")
+  const [captchaResetKey, setCaptchaResetKey] = useState(0)
   const router = useRouter()
 
   useEffect(() => { setMounted(true) }, [])
@@ -34,12 +37,15 @@ export default function AdminLoginPage() {
       const res = await fetch("/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: "techpivohub@gmail.com", password }),
+        body: JSON.stringify({ email: "techpivohub@gmail.com", password, turnstileToken }),
       })
       const data = await res.json()
       if (!res.ok) {
         const newAttempts = attempts + 1
         setAttempts(newAttempts)
+        // Reset the captcha so the next attempt gets a fresh token.
+        setTurnstileToken("")
+        setCaptchaResetKey((k) => k + 1)
         if (res.status === 429) {
           setBlocked(true)
           setCooldown(data.cooldown || 60)
@@ -147,9 +153,15 @@ export default function AdminLoginPage() {
                 </div>
               </div>
 
+              {TURNSTILE_SITE_KEY ? (
+                <div className="flex justify-center">
+                  <TurnstileWidget onToken={(t) => setTurnstileToken(t ?? "")} resetKey={captchaResetKey} />
+                </div>
+              ) : null}
+
               <button
                 type="submit"
-                disabled={loading || !password || blocked}
+                disabled={loading || !password || blocked || (!!TURNSTILE_SITE_KEY && !turnstileToken)}
                 className="relative w-full flex items-center justify-center gap-2 text-white font-semibold py-2.5 rounded-lg text-sm transition-all bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
               >
                 {loading ? (
