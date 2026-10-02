@@ -128,6 +128,122 @@ export async function cjGetProduct(pid: string): Promise<unknown> {
   return cjFetch<unknown>(`/api2.0/v1/product/query?pid=${encodeURIComponent(pid)}`, { method: "GET", token })
 }
 
+export interface CjVariant {
+  vid?: string
+  variantNameEn?: string
+  variantImage?: string
+  variantSellPrice?: number
+  variantStock?: number
+  variantSku?: string
+}
+
+export async function cjGetVariants(pid: string): Promise<CjVariant[]> {
+  const key = await resolveCjApiKey()
+  if (!key) throw new Error("CJ API key not configured")
+  const token = await getAccessToken(key)
+  const data = await cjFetch<{ list?: CjVariant[]; variantList?: CjVariant[] }>(
+    `/api2.0/v1/product/variant/query?pid=${encodeURIComponent(pid)}`,
+    { method: "GET", token }
+  )
+  return data?.list ?? data?.variantList ?? []
+}
+
+export interface CjCategory {
+  categoryFirstId?: string
+  categoryFirstName?: string
+  categorySecondId?: string
+  categorySecondName?: string
+}
+
+export async function cjGetCategories(): Promise<CjCategory[]> {
+  const key = await resolveCjApiKey()
+  if (!key) throw new Error("CJ API key not configured")
+  const token = await getAccessToken(key)
+  const data = await cjFetch<{ list?: CjCategory[] }>(`/api2.0/v1/product/category/getCategory`, {
+    method: "GET",
+    token,
+  })
+  return data?.list ?? []
+}
+
+export interface CjFreightOption {
+  logisticName?: string
+  shippingFee?: number
+  deliveryTime?: string
+}
+
+export async function cjGetFreight(opts: {
+  startCountryCode?: string
+  endCountryCode: string
+  products: Array<{ vid: string; quantity: number }>
+}): Promise<CjFreightOption[]> {
+  const key = await resolveCjApiKey()
+  if (!key) throw new Error("CJ API key not configured")
+  const token = await getAccessToken(key)
+  const data = await cjFetch<{ list?: CjFreightOption[] }>(`/api2.0/v1/logistic/freightCalculate`, {
+    method: "POST",
+    token,
+    body: JSON.stringify({
+      startCountryCode: opts.startCountryCode ?? "CN",
+      endCountryCode: opts.endCountryCode,
+      products: opts.products,
+    }),
+  })
+  return data?.list ?? []
+}
+
+export interface CjOrderInput {
+  externalOrderNumber?: string
+  shippingCountry: string
+  shippingAddress: string
+  shippingCity: string
+  shippingState?: string
+  shippingZip: string
+  shippingCustomerName: string
+  shippingPhone: string
+  logisticName: string
+  products: Array<{ vid: string; quantity: number }>
+  remark?: string
+}
+
+export async function cjCreateOrder(order: CjOrderInput): Promise<unknown> {
+  const key = await resolveCjApiKey()
+  if (!key) throw new Error("CJ API key not configured")
+  const token = await getAccessToken(key)
+  return cjFetch<unknown>(`/api2.0/v1/shopping/order/createOrder`, {
+    method: "POST",
+    token,
+    body: JSON.stringify(order),
+  })
+}
+
+export async function cjGetOrderDetail(cjOrderId: string): Promise<unknown> {
+  const key = await resolveCjApiKey()
+  if (!key) throw new Error("CJ API key not configured")
+  const token = await getAccessToken(key)
+  return cjFetch<unknown>(`/api2.0/v1/shopping/order/getOrderDetail?orderId=${encodeURIComponent(cjOrderId)}`, {
+    method: "GET",
+    token,
+  })
+}
+
+/** Automation helper: search CJ and shape rows ready for affiliate_products insert */
+export async function cjSyncCatalog(opts: {
+  keyword: string
+  limit?: number
+  categorySlug?: string | null
+  subcategorySlug?: string | null
+}) {
+  const found = await cjListProducts({
+    pageNum: 1,
+    pageSize: Math.min(opts.limit ?? 10, 50),
+    productNameEn: opts.keyword,
+  })
+  return (found.list || []).map((cj) =>
+    mapCjToAffiliate(cj, { categorySlug: opts.categorySlug ?? null, subcategorySlug: opts.subcategorySlug ?? null })
+  )
+}
+
 export function mapCjToAffiliate(cj: CjProductSummary, extra?: { categorySlug?: string | null; subcategorySlug?: string | null }) {
   const price = Number(cj.sellPrice ?? 0)
   return {

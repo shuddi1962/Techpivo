@@ -15,13 +15,26 @@ export function MarketplaceHeader({
   cartCount = 2,
   cartTotal = "$1,249.00",
   wishCount = 3,
+  onSearch,
+  onShopDept,
 }: {
   cartCount?: number
   cartTotal?: string
   wishCount?: number
+  onSearch?: (q: string) => void
+  onShopDept?: (slug: string | null) => void
 }) {
   const [open, setOpen] = useState(false)
   const [query, setQuery] = useState("")
+  const [dept, setDept] = useState("")
+  const submitSearch = (e: React.FormEvent) => {
+    e.preventDefault()
+    onSearch?.(query)
+  }
+  const pickDept = (slug: string) => {
+    setDept(slug)
+    onShopDept?.(slug || null)
+  }
   return (
     <header className="w-full rounded-2xl overflow-hidden border border-[#E2E8F0] bg-white shadow-[0_1px_8px_rgba(0,0,0,0.04)]">
       {/* utility bar */}
@@ -62,15 +75,19 @@ export function MarketplaceHeader({
           {/* search (desktop) */}
           <form
             className="hidden md:flex flex-1 max-w-2xl h-12 rounded-lg border border-[#CBD5E1] bg-[#F8FAFC] overflow-hidden focus-within:border-[#F59E0B] focus-within:ring-2 focus-within:ring-[#F59E0B]/20"
-            onSubmit={(e) => e.preventDefault()}
+            onSubmit={submitSearch}
             role="search"
           >
-            <select aria-label="Category" className="bg-transparent px-3 text-sm text-slate-500 border-r border-[#E2E8F0] focus:outline-none cursor-pointer hidden lg:block">
-              <option>All Categories</option>
-              <option>Computing</option>
-              <option>Gaming</option>
-              <option>Mobile</option>
-              <option>Audio</option>
+            <select
+              aria-label="Department"
+              value={dept}
+              onChange={(e) => pickDept(e.target.value)}
+              className="bg-transparent px-3 text-sm text-slate-500 border-r border-[#E2E8F0] focus:outline-none cursor-pointer hidden lg:block max-w-[190px]"
+            >
+              <option value="">All Departments</option>
+              {DEPARTMENTS.map((d) => (
+                <option key={d.slug} value={d.slug}>{d.name}</option>
+              ))}
             </select>
             <input
               value={query}
@@ -121,7 +138,7 @@ export function MarketplaceHeader({
 
         {/* mobile search */}
         <div className="md:hidden px-4 pb-3">
-          <form className="flex h-11 rounded-lg border border-[#CBD5E1] bg-[#F8FAFC] overflow-hidden" onSubmit={(e) => e.preventDefault()} role="search">
+          <form className="flex h-11 rounded-lg border border-[#CBD5E1] bg-[#F8FAFC] overflow-hidden" onSubmit={submitSearch} role="search">
             <input
               value={query}
               onChange={(e) => setQuery(e.target.value)}
@@ -148,11 +165,16 @@ export function MarketplaceHeader({
               <div className="absolute top-full left-0 mt-2 w-[560px] max-w-[80vw] bg-white border border-[#E2E8F0] rounded-xl shadow-xl p-4 grid grid-cols-2 lg:grid-cols-3 gap-3 z-50">
                 {DEPARTMENTS.map((d) => (
                   <div key={d.slug}>
-                    <Link href="/marketplace#trending" className="text-sm font-bold text-[#0F172A] hover:text-[#B45309]">{d.name}</Link>
+                    <button
+                      onClick={() => onShopDept?.(d.slug)}
+                      className="text-sm font-bold text-[#0F172A] hover:text-[#B45309] text-left"
+                    >
+                      {d.name}
+                    </button>
                     <ul className="mt-1.5 space-y-1">
                       {d.subs.map((s) => (
                         <li key={s.slug}>
-                          <Link href="/marketplace#trending" className="text-xs text-slate-500 hover:text-[#0F172A]">{s.name}</Link>
+                          <button onClick={() => onShopDept?.(d.slug)} className="text-xs text-slate-500 hover:text-[#0F172A] text-left">{s.name}</button>
                         </li>
                       ))}
                     </ul>
@@ -199,14 +221,13 @@ export function MarketplaceHeader({
             ))}
             <p className="px-3 pt-2 text-[11px] font-bold uppercase tracking-wider text-slate-400">Departments</p>
             {DEPARTMENTS.map((d) => (
-              <Link
+              <button
                 key={d.slug}
-                href="/marketplace#trending"
-                onClick={() => setOpen(false)}
-                className="px-3 py-2 rounded-lg text-sm font-semibold text-[#0F172A] hover:bg-slate-100"
+                onClick={() => { onShopDept?.(d.slug); setOpen(false) }}
+                className="px-3 py-2 rounded-lg text-sm font-semibold text-[#0F172A] hover:bg-slate-100 text-left"
               >
                 {d.name}
-              </Link>
+              </button>
             ))}
           </nav>
         )}

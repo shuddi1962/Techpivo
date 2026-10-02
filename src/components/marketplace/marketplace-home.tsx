@@ -4,8 +4,8 @@ import Image from "next/image"
 import Link from "next/link"
 import { useEffect, useMemo, useState } from "react"
 import {
-  ArrowRight, Car, ChevronLeft, ChevronRight, Cpu, Flame,
-  Heart, Laptop, ShoppingCart, Smartphone, Star, Wrench, Zap,
+  ArrowRight, Car, Check, ChevronLeft, ChevronRight, Cpu, Flame,
+  Heart, Laptop, ShoppingCart, Smartphone, Star, Wrench, X, Zap,
   CalendarDays, GitCompareArrows, BadgeCheck, Truck,
 } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
@@ -30,6 +30,8 @@ interface DbProduct {
   sale_price: number | null
   program_key: string | null
   is_featured: boolean
+  category_slug?: string | null
+  subcategory_slug?: string | null
 }
 
 function Stars({ value }: { value: number }) {
@@ -45,13 +47,21 @@ function Stars({ value }: { value: number }) {
   )
 }
 
-function ProductCard({ p }: { p: DemoProduct }) {
+function ProductCard({ p, onAdd, wished, onWish, added }: { p: DemoProduct; onAdd: () => void; wished: boolean; onWish: () => void; added: boolean }) {
   const discount = p.oldPrice ? Math.round((1 - p.price / p.oldPrice) * 100) : 0
   return (
     <div className="group bg-[#F8FAFC] rounded-xl p-3 flex flex-col justify-between hover:bg-slate-100 transition-colors relative">
       {discount > 0 && (
         <span className="absolute top-2 left-2 bg-[#EF4444] text-white text-[10px] font-bold px-1.5 py-0.5 rounded z-10">-{discount}%</span>
       )}
+      <button
+        onClick={onWish}
+        aria-label={wished ? "Remove from wishlist" : "Add to wishlist"}
+        aria-pressed={wished}
+        className={`absolute top-2 right-2 z-10 w-8 h-8 rounded-full flex items-center justify-center transition-colors ${wished ? "bg-[#EF4444] text-white" : "bg-white border border-[#E2E8F0] text-slate-400 hover:text-[#EF4444]"}`}
+      >
+        <Heart className={`h-4 w-4 ${wished ? "fill-current" : ""}`} />
+      </button>
       <div className="w-full aspect-square bg-white rounded-lg p-3 flex items-center justify-center mb-2 overflow-hidden">
         <img src={p.image} alt={p.name} loading="lazy" className="w-full h-full object-cover rounded-md group-hover:scale-105 transition-transform duration-300" />
       </div>
@@ -69,8 +79,15 @@ function ProductCard({ p }: { p: DemoProduct }) {
             <span className={`text-base font-bold ${discount > 0 ? "text-[#EF4444]" : "text-[#0F172A]"}`}>${p.price.toFixed(2)}</span>
             {p.oldPrice && <span className="text-[11px] text-slate-400 line-through">${p.oldPrice.toFixed(2)}</span>}
           </div>
-          <button className="w-full mt-2 bg-[#F59E0B] hover:bg-[#D97706] text-[#0F172A] text-xs font-bold py-2 rounded-lg transition-colors flex items-center justify-center gap-1">
-            <ShoppingCart className="h-3.5 w-3.5" /> Add
+          <button
+            onClick={onAdd}
+            className={`w-full mt-2 text-xs font-bold py-2 rounded-lg transition-colors flex items-center justify-center gap-1 ${added ? "bg-[#10B981] text-white" : "bg-[#F59E0B] hover:bg-[#D97706] text-[#0F172A]"}`}
+          >
+            {added ? (
+              <><Check className="h-3.5 w-3.5" /> Added</>
+            ) : (
+              <><ShoppingCart className="h-3.5 w-3.5" /> Add</>
+            )}
           </button>
         </div>
       </div>
@@ -103,6 +120,12 @@ function useCountdown() {
 export function MarketplaceHome() {
   const [dbProducts, setDbProducts] = useState<DbProduct[]>([])
   const [tab, setTab] = useState<"new" | "featured" | "best">("new")
+  const [cartCount, setCartCount] = useState(2)
+  const [cartTotal, setCartTotal] = useState(1249)
+  const [wishlist, setWishlist] = useState<Record<string, boolean>>({ "d1": true, "d6": true, "d8": true })
+  const [justAdded, setJustAdded] = useState<Record<string, boolean>>({})
+  const [query, setQuery] = useState("")
+  const [deptFilter, setDeptFilter] = useState<string | null>(null)
   const t = useCountdown()
 
   useEffect(() => {
@@ -139,12 +162,73 @@ export function MarketplaceHome() {
   const newArrivals = grid.slice(0, 6)
   const featured = (liveProducts.length > 0 ? liveProducts.filter((_, i) => i % 2 === 0) : DEMO_PRODUCTS.slice(2, 8)).slice(0, 6)
   const best = (liveProducts.length > 0 ? liveProducts : DEMO_PRODUCTS).slice(0, 6)
-  const shown = tab === "new" ? newArrivals : tab === "featured" ? featured : best
+  const tabShown = tab === "new" ? newArrivals : tab === "featured" ? featured : best
+
+  const q = query.trim().toLowerCase()
+  const matchQuery = (p: DemoProduct) =>
+    !q || p.name.toLowerCase().includes(q) || p.category.toLowerCase().includes(q)
+  const deptOf = useMemo(() => {
+    const m = new Map<string, string>()
+    dbProducts.forEach((d) => {
+      const slug = d.category_slug || d.subcategory_slug
+      if (!slug) return
+      const dept = MARKET_DEPARTMENTS.find((dep) => dep.slug === slug || dep.subs.some((s) => s.slug === slug))
+      if (dept) m.set(d.id, dept.slug)
+    })
+    return m
+  }, [dbProducts])
+  const matchDept = (p: DemoProduct) => {
+    if (!deptFilter) return true
+    const mapped = deptOf.get(p.id)
+    if (mapped) return mapped === deptFilter
+    const dept = MARKET_DEPARTMENTS.find((d) => d.slug === deptFilter)
+    if (!dept) return true
+    const hay = `${p.name} ${p.category}`.toLowerCase()
+    const needles = [dept.name, ...dept.subs.flatMap((s) => [s.name, ...s.items.map((i) => i.name)])]
+    return needles.some((n) =>
+      n.toLowerCase().split(/[^a-z0-9]+/).filter((w) => w.length > 4).some((w) => hay.includes(w))
+    )
+  }
+  const shown = tabShown.filter((p) => matchQuery(p) && matchDept(p))
+  const filtering = q.length > 0 || deptFilter !== null
+  const wishCount = Object.values(wishlist).filter(Boolean).length
+  const subChips = useMemo(
+    () =>
+      MARKET_DEPARTMENTS.flatMap((d) => d.subs.map((s) => ({ name: s.name, slug: s.slug, dept: d.slug }))).slice(0, 14),
+    []
+  )
+
+  const addToCart = (p: DemoProduct) => {
+    setCartCount((c) => c + 1)
+    setCartTotal((sum) => Math.round((sum + p.price) * 100) / 100)
+    setJustAdded((m) => ({ ...m, [p.id]: true }))
+    setTimeout(() => setJustAdded((m) => ({ ...m, [p.id]: false })), 1600)
+  }
+  const toggleWish = (id: string) => setWishlist((m) => ({ ...m, [id]: !m[id] }))
+  const cardProps = (p: DemoProduct) => ({
+    p,
+    onAdd: () => addToCart(p),
+    wished: !!wishlist[p.id],
+    onWish: () => toggleWish(p.id),
+    added: !!justAdded[p.id],
+  })
 
   return (
     <div className="w-full bg-[#F8FAFC] min-h-screen">
       <div className="mx-auto max-w-7xl px-3 sm:px-4 py-4 space-y-4 sm:space-y-6">
-        <MarketplaceHeader />
+        <MarketplaceHeader
+          cartCount={cartCount}
+          cartTotal={`$${cartTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+          wishCount={wishCount}
+          onSearch={(v) => {
+            setQuery(v)
+            if (v.trim()) document.getElementById("trending")?.scrollIntoView({ behavior: "smooth", block: "start" })
+          }}
+          onShopDept={(slug) => {
+            setDeptFilter(slug)
+            document.getElementById("trending")?.scrollIntoView({ behavior: "smooth", block: "start" })
+          }}
+        />
 
         {/* promo ticker */}
         <div className="bg-[#FFFBEB] border border-[#F59E0B]/30 rounded-xl p-3 flex flex-col sm:flex-row items-center justify-between gap-3">
@@ -249,8 +333,17 @@ export function MarketplaceHome() {
             {MARKET_DEPARTMENTS.map((c) => {
               const Icon = CATEGORY_ICONS[c.icon] ?? Laptop
               const leaves = c.subs.reduce((n, s) => n + s.items.length, 0)
+              const selected = deptFilter === c.slug
               return (
-                <Link key={c.slug} href="#trending" className="group rounded-xl overflow-hidden border border-[#E2E8F0] bg-[#F8FAFC] hover:bg-slate-100 transition-colors">
+                <button
+                  key={c.slug}
+                  onClick={() => {
+                    setDeptFilter(selected ? null : c.slug)
+                    document.getElementById("trending")?.scrollIntoView({ behavior: "smooth", block: "start" })
+                  }}
+                  aria-pressed={selected}
+                  className={`group rounded-xl overflow-hidden border text-left transition-colors ${selected ? "border-[#F59E0B] ring-2 ring-[#F59E0B]/30 bg-[#FFFBEB]" : "border-[#E2E8F0] bg-[#F8FAFC] hover:bg-slate-100"}`}
+                >
                   <div className="h-20 overflow-hidden">
                     <img src={c.image} alt={c.name} loading="lazy" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
                   </div>
@@ -263,16 +356,23 @@ export function MarketplaceHome() {
                       <span className="block text-[11px] text-slate-400">{c.subs.length} groups · {leaves} types</span>
                     </span>
                   </div>
-                </Link>
+                </button>
               )
             })}
           </div>
           {/* subcategory chips */}
           <div className="flex flex-wrap gap-1.5 mt-4">
-            {MARKET_DEPARTMENTS.flatMap((d) => d.subs).slice(0, 14).map((s) => (
-              <Link key={s.slug} href="#trending" className="text-[11px] font-medium bg-[#F8FAFC] border border-[#E2E8F0] rounded-full px-2.5 py-1 text-slate-600 hover:text-[#0F172A] hover:border-[#F59E0B]">
+            {subChips.map((s) => (
+              <button
+                key={s.slug}
+                onClick={() => {
+                  setDeptFilter(s.dept)
+                  document.getElementById("trending")?.scrollIntoView({ behavior: "smooth", block: "start" })
+                }}
+                className="text-[11px] font-medium bg-[#F8FAFC] border border-[#E2E8F0] rounded-full px-2.5 py-1 text-slate-600 hover:text-[#0F172A] hover:border-[#F59E0B]"
+              >
                 {s.name}
-              </Link>
+              </button>
             ))}
           </div>
         </section>
@@ -342,11 +442,23 @@ export function MarketplaceHome() {
                       </div>
                     </div>
                     <div className="flex items-center gap-2 mt-4">
-                      <button className="flex-1 bg-[#F59E0B] hover:bg-[#D97706] text-[#0F172A] text-sm font-bold py-2.5 rounded-lg transition-colors flex items-center justify-center gap-1.5">
-                        <ShoppingCart className="h-4 w-4" /> Add to Cart
+                      <button
+                        onClick={() => addToCart(p)}
+                        className={`flex-1 text-sm font-bold py-2.5 rounded-lg transition-colors flex items-center justify-center gap-1.5 ${justAdded[p.id] ? "bg-[#10B981] text-white" : "bg-[#F59E0B] hover:bg-[#D97706] text-[#0F172A]"}`}
+                      >
+                        {justAdded[p.id] ? (
+                          <><Check className="h-4 w-4" /> Added</>
+                        ) : (
+                          <><ShoppingCart className="h-4 w-4" /> Add to Cart</>
+                        )}
                       </button>
-                      <button aria-label="Wishlist" className="w-10 h-10 rounded-lg bg-white border border-[#E2E8F0] hover:bg-slate-100 flex items-center justify-center text-slate-500 hover:text-[#EF4444] transition-colors">
-                        <Heart className="h-5 w-5" />
+                      <button
+                        onClick={() => toggleWish(p.id)}
+                        aria-label={wishlist[p.id] ? "Remove from wishlist" : "Add to wishlist"}
+                        aria-pressed={!!wishlist[p.id]}
+                        className={`w-10 h-10 rounded-lg bg-white border flex items-center justify-center transition-colors ${wishlist[p.id] ? "border-[#EF4444] text-[#EF4444]" : "border-[#E2E8F0] text-slate-500 hover:text-[#EF4444]"}`}
+                      >
+                        <Heart className={`h-5 w-5 ${wishlist[p.id] ? "fill-current" : ""}`} />
                       </button>
                       <button aria-label="Compare" className="w-10 h-10 rounded-lg bg-white border border-[#E2E8F0] hover:bg-slate-100 hidden sm:flex items-center justify-center text-slate-500 transition-colors">
                         <GitCompareArrows className="h-5 w-5" />
@@ -379,14 +491,48 @@ export function MarketplaceHome() {
               ))}
             </div>
             <span className="text-sm text-slate-500 hidden sm:block">
-              {liveProducts.length > 0 ? `${liveProducts.length} live products from TechPivo partners` : "Sorted by Verified Quality"}
+              {filtering
+                ? `${shown.length} result${shown.length === 1 ? "" : "s"}${deptFilter ? ` in ${MARKET_DEPARTMENTS.find((d) => d.slug === deptFilter)?.name}` : ""}${q ? ` for “${query.trim()}”` : ""}`
+                : liveProducts.length > 0 ? `${liveProducts.length} live products from TechPivo partners` : "Sorted by Verified Quality"}
             </span>
           </div>
+          {filtering && (
+            <div className="flex flex-wrap items-center gap-2 pb-3">
+              {deptFilter && (
+                <button
+                  onClick={() => setDeptFilter(null)}
+                  className="inline-flex items-center gap-1.5 text-xs font-semibold bg-[#0F172A] text-white rounded-full px-3 py-1.5 hover:bg-slate-700"
+                >
+                  {MARKET_DEPARTMENTS.find((d) => d.slug === deptFilter)?.name} <X className="h-3.5 w-3.5" />
+                </button>
+              )}
+              {q && (
+                <button
+                  onClick={() => setQuery("")}
+                  className="inline-flex items-center gap-1.5 text-xs font-semibold bg-slate-100 text-slate-700 rounded-full px-3 py-1.5 hover:bg-slate-200"
+                >
+                  “{query.trim()}” <X className="h-3.5 w-3.5" />
+                </button>
+              )}
+            </div>
+          )}
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 pt-1">
             {shown.map((p) => (
-              <ProductCard key={p.id} p={p} />
+              <ProductCard key={p.id} {...cardProps(p)} />
             ))}
           </div>
+          {shown.length === 0 && (
+            <div className="text-center py-10">
+              <p className="font-bold text-[#0F172A]">No products match your filters</p>
+              <p className="text-sm text-slate-500 mt-1">Try a different search or department.</p>
+              <button
+                onClick={() => { setQuery(""); setDeptFilter(null) }}
+                className="mt-3 bg-[#F59E0B] hover:bg-[#D97706] text-[#0F172A] text-sm font-bold px-5 py-2.5 rounded-lg transition-colors"
+              >
+                Clear filters
+              </button>
+            </div>
+          )}
         </section>
 
         {/* vendors */}
@@ -417,41 +563,69 @@ export function MarketplaceHome() {
                     </div>
                   ))}
                 </div>
-                <button className="w-full mt-1 bg-white hover:bg-slate-100 border border-[#E2E8F0] text-[#0F172A] text-[11px] py-1.5 rounded font-semibold transition-colors">Visit Store</button>
+                <button
+                  onClick={() => document.getElementById("trending")?.scrollIntoView({ behavior: "smooth" })}
+                  className="w-full mt-1 bg-white hover:bg-slate-100 border border-[#E2E8F0] text-[#0F172A] text-[11px] py-1.5 rounded font-semibold transition-colors"
+                >
+                  Visit Store
+                </button>
               </div>
             ))}
           </div>
         </section>
 
-        {/* departments */}
-        {[
-          { id: "smartphones", title: "Smartphones & Tablets", accent: "#F59E0B", items: DEMO_PRODUCTS.slice(2, 7) },
-          { id: "gaming", title: "Gaming Gears & Console", accent: "#EF4444", items: [DEMO_PRODUCTS[6], DEMO_PRODUCTS[9], DEMO_PRODUCTS[11], DEMO_PRODUCTS[7], DEMO_PRODUCTS[8]] },
-        ].map((dept) => (
-          <section key={dept.id} className="bg-white rounded-2xl p-5 shadow-sm border border-[#E2E8F0]">
-            <div className="flex items-center gap-2.5 pb-4">
-              <div className="w-2.5 h-6 rounded-full" style={{ background: dept.accent }} />
-              <h2 className="text-lg font-bold text-[#0F172A]">{dept.title}</h2>
+        {/* departments — real category spotlights */}
+        {MARKET_DEPARTMENTS.slice(0, 3).map((dept, di) => {
+          const hay = (p: DemoProduct) => `${p.name} ${p.category}`.toLowerCase()
+          const deptItems = grid.filter((p) => {
+            const mapped = deptOf.get(p.id)
+            if (mapped) return mapped === dept.slug
+            const needles = [dept.name, ...dept.subs.flatMap((s) => [s.name, ...s.items.map((i) => i.name)])]
+            return needles.some((n) =>
+              n.toLowerCase().split(/[^a-z0-9]+/).filter((w) => w.length > 4).some((w) => hay(p).includes(w))
+            )
+          })
+          const items = (deptItems.length > 0 ? deptItems : grid).slice(0, 5)
+          const accent = di === 1 ? "#EF4444" : "#F59E0B"
+          return (
+          <section key={dept.slug} className="bg-white rounded-2xl p-5 shadow-sm border border-[#E2E8F0]">
+            <div className="flex items-center justify-between gap-2 pb-4">
+              <div className="flex items-center gap-2.5">
+                <div className="w-2.5 h-6 rounded-full" style={{ background: accent }} />
+                <h2 className="text-lg font-bold text-[#0F172A]">{dept.name}</h2>
+              </div>
+              <button
+                onClick={() => { setDeptFilter(dept.slug); document.getElementById("trending")?.scrollIntoView({ behavior: "smooth" }) }}
+                className="text-sm text-[#B45309] hover:text-[#D97706] font-semibold hidden sm:inline-flex items-center gap-1"
+              >
+                Shop all <ChevronRight className="h-4 w-4" />
+              </button>
             </div>
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-3">
-              <div className="lg:col-span-3 rounded-xl p-5 text-white flex flex-col justify-between relative overflow-hidden min-h-[280px]" style={{ background: `linear-gradient(135deg, ${MARKETPLACE_BRAND.navy} 0%, #334155 100%)` }}>
-                <div className="space-y-1.5 relative z-10">
+              <div className="lg:col-span-3 rounded-xl overflow-hidden text-white flex flex-col justify-between relative min-h-[280px]">
+                <img src={dept.image} alt={dept.name} loading="lazy" className="absolute inset-0 w-full h-full object-cover" />
+                <div className="absolute inset-0" style={{ background: "linear-gradient(180deg, rgba(15,23,42,0.55) 0%, rgba(15,23,42,0.92) 100%)" }} />
+                <div className="space-y-1.5 relative z-10 p-5">
                   <span className="bg-[#EF4444] text-white text-[11px] font-bold uppercase px-2 py-0.5 rounded">Mega Drop</span>
                   <h3 className="text-2xl font-extrabold leading-tight">Special<br />Sale <span className="text-[#F59E0B]">Up to 50%</span></h3>
-                  <p className="text-sm text-slate-300">Genuine TechPivo-verified stock with full warranty.</p>
+                  <p className="text-sm text-slate-300">{dept.subs.length} groups · {dept.subs.reduce((n, s) => n + s.items.length, 0)} product types with full warranty.</p>
                 </div>
-                <Link href="#trending" className="relative z-10 bg-[#F59E0B] hover:bg-[#D97706] text-[#0F172A] text-sm font-bold text-center py-2.5 rounded-lg transition-colors mt-4">
-                  Shop {dept.title.split(" ")[0]}
-                </Link>
+                <button
+                  onClick={() => { setDeptFilter(dept.slug); document.getElementById("trending")?.scrollIntoView({ behavior: "smooth" }) }}
+                  className="relative z-10 m-5 mt-4 bg-[#F59E0B] hover:bg-[#D97706] text-[#0F172A] text-sm font-bold text-center py-2.5 rounded-lg transition-colors"
+                >
+                  Shop {dept.name.split(" ")[0]}
+                </button>
               </div>
               <div className="lg:col-span-9 grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-5 gap-3">
-                {dept.items.map((p) => (
-                  <ProductCard key={`${dept.id}-${p.id}`} p={p} />
+                {items.map((p) => (
+                  <ProductCard key={`${dept.slug}-${p.id}`} {...cardProps(p)} />
                 ))}
               </div>
             </div>
           </section>
-        ))}
+          )
+        })}
 
         {/* promo banner */}
         <section className="rounded-2xl overflow-hidden p-6 md:p-8 text-white relative" style={{ background: MARKETPLACE_BRAND.navy }}>
@@ -468,9 +642,12 @@ export function MarketplaceHome() {
               <p className="text-slate-300">Top-brand high-efficiency smart home devices at seasonal prices.</p>
             </div>
             <div className="md:col-span-3 flex items-center justify-center md:justify-end">
-              <Link href="#trending" className="bg-[#F59E0B] hover:bg-[#D97706] text-[#0F172A] text-sm font-bold px-6 py-3 rounded-lg transition-colors shadow-lg">
+              <button
+                onClick={() => { setDeptFilter("home-improvement"); setQuery(""); document.getElementById("trending")?.scrollIntoView({ behavior: "smooth" }) }}
+                className="bg-[#F59E0B] hover:bg-[#D97706] text-[#0F172A] text-sm font-bold px-6 py-3 rounded-lg transition-colors shadow-lg"
+              >
                 Shop Appliances
-              </Link>
+              </button>
             </div>
           </div>
         </section>

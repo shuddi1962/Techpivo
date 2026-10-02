@@ -21,7 +21,8 @@ export function LayoutClient({
   const pathname = usePathname()
   const isAdmin = pathname?.startsWith("/admin")
   const isHome = pathname === "/"
-  const noLayout = isAdmin || isHome || pathname === "/login" || pathname === "/signup" || pathname?.startsWith("/auth/")
+  const isStandaloneStore = pathname === "/marketplace" || pathname?.startsWith("/marketplace/")
+  const noLayout = isAdmin || isHome || isStandaloneStore || pathname === "/login" || pathname === "/signup" || pathname?.startsWith("/auth/")
   const isAccount = pathname === "/account" || pathname?.startsWith("/account/")
 
   if (noLayout) {
