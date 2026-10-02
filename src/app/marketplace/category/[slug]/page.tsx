@@ -5,6 +5,8 @@ import { ChevronRight } from "lucide-react"
 import { createPublicClient } from "@/lib/supabase/server"
 import { fetchWithTimeout } from "@/lib/fetch-timeout"
 import { MARKET_DEPARTMENTS } from "@/lib/marketplace-categories"
+import { marketImage, cleanSupplierText } from "@/lib/marketplace-images"
+import { supplierDisplayName } from "@/lib/marketplace"
 import { MarketplaceHeader, MarketplaceFooter } from "@/components/marketplace/marketplace-header"
 import { CategoryBrowse } from "@/components/marketplace/category-browse"
 
@@ -69,7 +71,14 @@ export default async function MarketplaceCategoryPage({ params }: { params: { sl
   const { data, error } = catRes
   if (error) throw new Error(`Marketplace category fetch failed: ${error.message}`)
 
-  const products = (data || []) as CatProduct[]
+  const products = ((data || []) as CatProduct[]).map((p) => ({
+    ...p,
+    // Never expose supplier internals to the storefront (keys, CDN hosts,
+    // sourcing breadcrumbs in descriptions).
+    program_key: supplierDisplayName(p.program_key),
+    product_description: cleanSupplierText(p.product_description),
+    product_image_url: marketImage(p.product_image_url),
+  }))
   const title = found.kind === "dept" ? found.dept.name : found.sub!.name
 
   return (

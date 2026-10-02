@@ -5,6 +5,8 @@ import { ChevronRight } from "lucide-react"
 import { createPublicClient } from "@/lib/supabase/server"
 import { fetchWithTimeout } from "@/lib/fetch-timeout"
 import { MARKET_DEPARTMENTS } from "@/lib/marketplace-categories"
+import { marketImage, cleanSupplierText } from "@/lib/marketplace-images"
+import { supplierDisplayName } from "@/lib/marketplace"
 import { MarketplaceHeader, MarketplaceFooter } from "@/components/marketplace/marketplace-header"
 import { ProductDetail } from "@/components/marketplace/product-detail"
 
@@ -74,7 +76,13 @@ export default async function MarketplaceProductPage({ params }: { params: { id:
   const { data: product, error: productError } = prodRes
   if (productError) throw new Error(`Marketplace product fetch failed: ${productError.message}`)
   if (!product) notFound()
-  const p = product as DbProduct
+  // Never expose supplier internals to the storefront.
+  const p = {
+    ...product,
+    program_key: supplierDisplayName(product.program_key),
+    product_description: cleanSupplierText(product.product_description),
+    product_image_url: marketImage(product.product_image_url),
+  } as DbProduct
 
   const relatedQuery = supabase
     .from("affiliate_products")
@@ -99,7 +107,11 @@ export default async function MarketplaceProductPage({ params }: { params: { id:
     { data: Array<{ id: string; product_name: string; product_image_url: string | null; original_price: number | null; sale_price: number | null; program_key: string | null }> | null },
   ] | null
   const reviews = rr?.[0]?.data ?? []
-  const related = rr?.[1]?.data ?? []
+  const related = (rr?.[1]?.data ?? []).map((r) => ({
+    ...r,
+    program_key: supplierDisplayName(r.program_key),
+    product_image_url: marketImage(r.product_image_url),
+  }))
 
   const deptSlug =
     MARKET_DEPARTMENTS.find(
@@ -140,7 +152,7 @@ export default async function MarketplaceProductPage({ params }: { params: { id:
         </nav>
         <ProductDetail product={p} reviews={reviews || []} related={related || []} deptSlug={deptSlug} />
         <p className="text-center text-[11px] text-slate-400 px-4">
-          TechPivo Market is a dropshipping store: you pay securely here and we fulfil every order through verified CJDropshipping suppliers — with tracking from dispatch to delivery.
+          Every order is quality-checked, securely paid and delivered with tracking — shop with confidence on TechPivo Market.
         </p>
       </main>
       <MarketplaceFooter />

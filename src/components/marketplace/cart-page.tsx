@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from "react"
 import { ArrowLeft, Minus, Plus, ShieldCheck, ShoppingCart, Trash2 } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
 import { getCart, removeFromCart, setQty, useMarketCart } from "@/lib/marketplace-cart"
+import { marketImage } from "@/lib/marketplace-images"
 import { dualPrice, useUsdNgnRate } from "@/lib/marketplace-pricing"
 
 interface Row {
@@ -89,7 +90,7 @@ export function CartPage() {
                 <Link href={`/marketplace/product/${l.id}`} className="w-20 h-20 rounded-lg bg-[#F8FAFC] border border-[#E2E8F0] overflow-hidden shrink-0">
                   {l.product!.product_image_url ? (
                     // eslint-disable-next-line @next/next/no-img-element
-                    <img src={l.product!.product_image_url} alt={l.product!.product_name} loading="lazy" decoding="async" className="w-full h-full object-cover" />
+                    <img src={marketImage(l.product!.product_image_url)} alt={l.product!.product_name} loading="lazy" decoding="async" className="w-full h-full object-cover" />
                   ) : null}
                 </Link>
                 <div className="flex-1 min-w-0">

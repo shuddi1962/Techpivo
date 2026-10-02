@@ -157,7 +157,7 @@ export function MarketplaceHeader({
   return (
     <>
       {/* utility bar — static, scrolls away with the page */}
-      <div style={{ background: `linear-gradient(90deg, ${MARKETPLACE_BRAND.navy} 0%, ${MARKETPLACE_BRAND.navySoft} 100%)` }} className="w-full text-white">
+      <div style={{ background: `linear-gradient(90deg, ${MARKETPLACE_BRAND.topbar} 0%, ${MARKETPLACE_BRAND.topbarSoft} 100%)` }} className="w-full text-white">
         <div className="mx-auto w-full max-w-[1400px] px-3 sm:px-6 lg:px-10 flex items-center justify-between h-10 text-xs gap-2">
           <div className="flex items-center gap-2 min-w-0">
             <span className="bg-[#EF4444] text-white px-2 py-0.5 rounded font-bold text-[10px] uppercase tracking-wide shrink-0">
@@ -210,7 +210,7 @@ export function MarketplaceHeader({
           <Link href="/marketplace" className="flex items-center gap-2 shrink-0" aria-label="TechPivo Market home">
             <span
               className="flex h-9 w-9 items-center justify-center rounded-lg text-lg font-extrabold text-white"
-              style={{ background: `linear-gradient(135deg, ${MARKETPLACE_BRAND.navy} 0%, ${MARKETPLACE_BRAND.navySoft} 100%)` }}
+              style={{ background: `linear-gradient(135deg, #F59E0B 0%, #EF4444 100%)` }}
             >
               T
             </span>
@@ -257,7 +257,7 @@ export function MarketplaceHeader({
             </Link>
             <div className="h-8 w-px bg-[#E2E8F0] hidden sm:block" />
             <Link href="/account" className="hidden sm:flex items-center gap-2 hover:opacity-90 p-1">
-              <span className="w-8 h-8 rounded-full bg-[#1668DC] flex items-center justify-center shrink-0">
+              <span className="w-8 h-8 rounded-full bg-[#23272E] flex items-center justify-center shrink-0">
                 <User className="h-4 w-4 text-white" />
               </span>
               <span className="hidden xl:flex flex-col text-left">
@@ -348,7 +348,7 @@ export function MarketplaceHeader({
                             <Link
                               href={`/marketplace/category/${d.slug}`}
                               onClick={() => setDeptOpen(false)}
-                              className="mt-2.5 block text-sm font-bold text-[#0F172A] hover:text-[#1668DC]"
+                              className="mt-2.5 block text-sm font-bold text-[#0F172A] hover:text-[#DC2626]"
                             >
                               {d.name}
                             </Link>
@@ -358,7 +358,7 @@ export function MarketplaceHeader({
                                   <Link
                                     href={`/marketplace/category/${s.slug}`}
                                     onClick={() => setDeptOpen(false)}
-                                    className="text-[13px] text-slate-500 transition-colors hover:text-[#1668DC]"
+                                    className="text-[13px] text-slate-500 transition-colors hover:text-[#DC2626]"
                                   >
                                     {s.name}
                                   </Link>
@@ -368,7 +368,7 @@ export function MarketplaceHeader({
                             <Link
                               href={`/marketplace/category/${d.slug}`}
                               onClick={() => setDeptOpen(false)}
-                              className="mt-2 inline-block text-xs font-bold text-[#1668DC] hover:underline"
+                              className="mt-2 inline-block text-xs font-bold text-[#DC2626] hover:underline"
                             >
                               View all →
                             </Link>
@@ -376,7 +376,7 @@ export function MarketplaceHeader({
                         ))}
                         <div
                           className="flex min-h-[280px] flex-col justify-between overflow-hidden rounded-xl p-5 text-white"
-                          style={{ background: `linear-gradient(160deg, ${MARKETPLACE_BRAND.navy} 0%, ${MARKETPLACE_BRAND.navySoft} 100%)` }}
+                          style={{ background: `linear-gradient(160deg, #DC2626 0%, #7F1D1D 100%)` }}
                         >
                           <div>
                             <span className="inline-flex items-center gap-1 rounded bg-[#EF4444] px-2 py-0.5 text-[11px] font-bold uppercase">
@@ -524,8 +524,8 @@ export function MarketplaceFooter() {
           ))}
         </div>
       </div>
-      {/* main footer — full width navy */}
-      <div className="w-full text-white" style={{ background: MARKETPLACE_BRAND.navy }}>
+      {/* main footer — formal charcoal */}
+      <div className="w-full text-white" style={{ background: `linear-gradient(180deg, ${MARKETPLACE_BRAND.navy} 0%, ${MARKETPLACE_BRAND.navyDeep} 100%)` }}>
         <div className="mx-auto grid w-full max-w-[1400px] grid-cols-1 gap-10 px-3 py-12 sm:px-6 md:grid-cols-2 lg:grid-cols-4 lg:px-10">
           <div className="space-y-4 lg:col-span-1">
             <div className="flex items-center gap-2">
@@ -578,10 +578,10 @@ export function MarketplaceFooter() {
         </div>
       </div>
       {/* bottom bar — full width */}
-      <div className="w-full bg-[#0A2A6B] text-white">
+      <div className="w-full text-white" style={{ background: MARKETPLACE_BRAND.navyDeep }}>
         <div className="mx-auto flex w-full max-w-[1400px] flex-col items-center justify-between gap-2 px-3 py-5 text-xs sm:flex-row sm:px-6 sm:text-sm lg:px-10">
           <p className="text-slate-400">© {new Date().getFullYear()} TechPivo Market. All rights reserved.</p>
-          <p className="text-[11px] leading-relaxed text-slate-500">Dropshipping store — you pay securely here, we fulfil via verified CJ suppliers.</p>
+          <p className="text-[11px] leading-relaxed text-slate-500">Quality-checked products · secure payment · tracked delivery on every order.</p>
         </div>
       </div>
     </footer>

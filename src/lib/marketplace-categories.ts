@@ -49,7 +49,7 @@ export const MARKET_DEPARTMENTS: MarketDepartment[] = [
     name: "Consumer Electronics",
     slug: "consumer-electronics",
     icon: "Cpu",
-    image: px(159376, 600),
+    image: px(909907, 600),
     subs: [
       {
         name: "Smart Electronics",
@@ -87,7 +87,7 @@ export const MARKET_DEPARTMENTS: MarketDepartment[] = [
     name: "Phones & Accessories",
     slug: "phones-accessories",
     icon: "Smartphone",
-    image: px(109264, 600),
+    image: px(607812, 600),
     subs: [
       {
         name: "Mobile Phone Parts",
@@ -116,7 +116,7 @@ export const MARKET_DEPARTMENTS: MarketDepartment[] = [
     name: "Computer & Office",
     slug: "computer-office",
     icon: "Laptop",
-    image: px(18105, 600),
+    image: px(1108101, 600),
     subs: [
       {
         name: "Storage Devices",

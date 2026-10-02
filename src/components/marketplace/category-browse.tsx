@@ -4,6 +4,7 @@ import Link from "next/link"
 import { useEffect, useMemo, useState } from "react"
 import { PackageSearch, SlidersHorizontal, Star, X } from "lucide-react"
 import { useUsdNgnRate } from "@/lib/marketplace-pricing"
+import { marketImage } from "@/lib/marketplace-images"
 import { supplierDisplayName } from "@/lib/marketplace"
 import type { CatProduct } from "@/app/marketplace/category/[slug]/page"
 
@@ -281,10 +282,10 @@ export function CategoryBrowse({
                   {!inStock(p) && <span className="absolute top-2 right-2 bg-slate-900 text-white text-[10px] font-bold px-1.5 py-0.5 rounded z-10">Out of stock</span>}
                   <div className="aspect-square bg-[#F8FAFC] rounded-lg overflow-hidden mb-2">
                     {p.product_image_url ? (
-                      <img src={p.product_image_url} alt={p.product_name} loading="lazy" decoding="async" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+                      <img src={marketImage(p.product_image_url)} alt={p.product_name} loading="lazy" decoding="async" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
                     ) : null}
                   </div>
-                  <p className="text-[10px] text-slate-400 uppercase tracking-wide">{p.program_key || "TechPivo Pick"}</p>
+                  <p className="text-[10px] text-slate-400 uppercase tracking-wide">{supplierDisplayName(p.program_key)}</p>
                   <h3 className="text-sm font-semibold text-[#0F172A] line-clamp-2 min-h-[2.5em]">{p.product_name}</h3>
                   <p className="text-base font-bold text-[#0F172A] mt-1">${price.toFixed(2)}</p>
                   {old && <p className="text-[11px] text-slate-400 line-through">${old.toFixed(2)}</p>}

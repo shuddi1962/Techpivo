@@ -1,31 +1,28 @@
 // TechPivo Marketplace — brand + demo catalog (DB-backed, demo fallback)
-// Brand: TechPivo blue #1668DC (deep #0F4FB3) + amber #F59E0B
+// Store theme: formal charcoal surfaces + orange/red actions. The ONLY blue
+// on the storefront is the top utility bar (topbar/topbarSoft).
 export const MARKETPLACE_BRAND = {
   name: "TechPivo",
   storeName: "TechPivo Market",
-  navy: "#1668DC",
-  navySoft: "#0F4FB3",
-  navyDeep: "#0A2A6B",
+  navy: "#23272E",
+  navySoft: "#14171C",
+  navyDeep: "#101216",
+  topbar: "#1668DC",
+  topbarSoft: "#0F4FB3",
   amber: "#F59E0B",
   amberHover: "#D97706",
   red: "#EF4444",
+  redDark: "#DC2626",
   green: "#10B981",
   bg: "#F8FAFC",
   card: "#FFFFFF",
   border: "#E2E8F0",
 } as const
 
-// Dropshipping supplier display names — never show raw program keys
-// (e.g. "cjdropshipping") on the storefront.
-export function supplierDisplayName(programKey: string | null | undefined): string {
-  const key = (programKey || "").trim().toLowerCase()
-  if (!key) return "TechPivo Verified"
-  if (key === "cjdropshipping" || key === "cj" || key === "cj-dropshipping") return "CJ Verified Supply"
-  return (programKey || "TechPivo Verified")
-    .trim()
-    .split(/[\s_-]+/)
-    .map((w) => (w ? w[0]!.toUpperCase() + w.slice(1) : w))
-    .join(" ")
+// Storefront supplier label — neutral. Raw supplier program keys must never
+// appear on the storefront, and the sourcing model is never disclosed.
+export function supplierDisplayName(_programKey: string | null | undefined): string {
+  return "TechPivo Direct"
 }
 
 export interface DemoProduct {

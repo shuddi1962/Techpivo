@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation"
 import { useEffect, useMemo, useState } from "react"
 import { Check, Heart, Minus, Plus, RotateCcw, ShieldCheck, ShoppingCart, Star, Truck, Zap } from "lucide-react"
 import { addToCart } from "@/lib/marketplace-cart"
+import { marketImage } from "@/lib/marketplace-images"
 import { supplierDisplayName } from "@/lib/marketplace"
 import { dualPrice, useUsdNgnRate } from "@/lib/marketplace-pricing"
 
@@ -158,7 +159,7 @@ export function ProductDetail({
           <div className="relative rounded-xl overflow-hidden bg-[#F8FAFC] border border-[#E2E8F0] aspect-square">
             {p.product_image_url ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={p.product_image_url} alt={p.product_name} loading="eager" decoding="async" className="w-full h-full object-cover" />
+              <img src={marketImage(p.product_image_url)} alt={p.product_name} loading="eager" decoding="async" className="w-full h-full object-cover" />
             ) : (
               <div className="w-full h-full flex items-center justify-center text-slate-300 text-sm">No image</div>
             )}
@@ -209,7 +210,7 @@ export function ProductDetail({
             >
               {added ? <><Check className="h-4 w-4" /> Added to cart</> : <><ShoppingCart className="h-4 w-4" /> Add to Cart</>}
             </button>
-            <button onClick={buyNow} className="flex-1 bg-[#1668DC] hover:bg-[#0F4FB3] text-white text-sm font-bold py-3 rounded-lg transition-colors flex items-center justify-center gap-2">
+            <button onClick={buyNow} className="flex-1 bg-[#DC2626] hover:bg-[#B91C1C] text-white text-sm font-bold py-3 rounded-lg transition-colors flex items-center justify-center gap-2">
               <Zap className="h-4 w-4" /> Buy Now
             </button>
             <button
@@ -286,7 +287,7 @@ export function ProductDetail({
           </div>
           <textarea value={rText} onChange={(e) => setRText(e.target.value)} placeholder="What did you like about this product?" rows={3} maxLength={1000} className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#F59E0B]" />
           {rNotice && <p className="text-xs text-slate-600">{rNotice}</p>}
-          <button onClick={submitReview} disabled={rSending || !rText.trim()} className="bg-[#1668DC] hover:bg-[#0F4FB3] text-white text-sm font-bold px-5 py-2.5 rounded-lg disabled:opacity-50">
+          <button onClick={submitReview} disabled={rSending || !rText.trim()} className="bg-[#F59E0B] hover:bg-[#D97706] text-[#0F172A] text-sm font-bold px-5 py-2.5 rounded-lg disabled:opacity-50">
             {rSending ? "Posting..." : "Post review"}
           </button>
         </div>
@@ -308,10 +309,10 @@ export function ProductDetail({
                 <div className="aspect-square bg-white rounded-lg overflow-hidden mb-2">
                   {r.product_image_url ? (
                     // eslint-disable-next-line @next/next/no-img-element
-                    <img src={r.product_image_url} alt={r.product_name} loading="lazy" decoding="async" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+                    <img src={marketImage(r.product_image_url)} alt={r.product_name} loading="lazy" decoding="async" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
                   ) : null}
                 </div>
-                <p className="text-[10px] text-slate-400 uppercase tracking-wide">{r.program_key || "TechPivo Pick"}</p>
+                <p className="text-[10px] text-slate-400 uppercase tracking-wide">{supplierDisplayName(r.program_key)}</p>
                 <h3 className="text-sm font-semibold text-[#0F172A] line-clamp-1">{r.product_name}</h3>
                 <p className="text-base font-bold text-[#0F172A] mt-1">${Number(r.sale_price ?? r.original_price ?? 0).toFixed(2)}</p>
               </Link>

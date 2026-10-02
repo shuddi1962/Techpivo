@@ -5,6 +5,8 @@ import { useEffect, useState } from "react"
 import { Heart, ShoppingCart } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
 import { addToCart } from "@/lib/marketplace-cart"
+import { marketImage } from "@/lib/marketplace-images"
+import { supplierDisplayName } from "@/lib/marketplace"
 
 const WISH_KEY = "tp_market_wish_v1"
 
@@ -88,10 +90,10 @@ export function WishlistPage() {
                 <div className="aspect-square bg-white rounded-lg overflow-hidden mb-2">
                   {p.product_image_url ? (
                     // eslint-disable-next-line @next/next/no-img-element
-                    <img src={p.product_image_url} alt={p.product_name} loading="lazy" decoding="async" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+                    <img src={marketImage(p.product_image_url)} alt={p.product_name} loading="lazy" decoding="async" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
                   ) : null}
                 </div>
-                <p className="text-[10px] text-slate-400 uppercase tracking-wide">{p.program_key || "TechPivo Pick"}</p>
+                <p className="text-[10px] text-slate-400 uppercase tracking-wide">{supplierDisplayName(p.program_key)}</p>
                 <h3 className="text-sm font-semibold text-[#0F172A] line-clamp-1">{p.product_name}</h3>
                 <p className="text-base font-bold text-[#0F172A] mt-1">${price.toFixed(2)}</p>
               </Link>

@@ -14,6 +14,7 @@ import {
   MARKETPLACE_BRAND, MARKETPLACE_HERO, supplierDisplayName, type DemoProduct,
 } from "@/lib/marketplace"
 import { MARKET_DEPARTMENTS } from "@/lib/marketplace-categories"
+import { marketImage, cleanSupplierText } from "@/lib/marketplace-images"
 import { MarketplaceHeader, MarketplaceFooter } from "./marketplace-header"
 
 const CATEGORY_ICONS: Record<string, typeof Laptop> = {
@@ -54,7 +55,7 @@ function ProductCard({ p, onAdd, wished, onWish, added, href }: { p: DemoProduct
     <>
       <div className="w-full aspect-square bg-white rounded-lg p-3 flex items-center justify-center mb-2 overflow-hidden">
         {p.image ? (
-          <img src={p.image} alt={p.name} loading="lazy" decoding="async" className="w-full h-full object-cover rounded-md group-hover:scale-105 transition-transform duration-300" />
+          <img src={marketImage(p.image)} alt={p.name} loading="lazy" decoding="async" className="w-full h-full object-cover rounded-md group-hover:scale-105 transition-transform duration-300" />
         ) : (
           <span className="flex items-center justify-center w-full h-full" aria-hidden>
             <Package className="h-12 w-12 text-slate-200" />
@@ -230,7 +231,7 @@ export function MarketplaceHome() {
     }
   }, [])
 
-  // CJ catalog only — no demo products. Ratings/reviews come from real
+  // Live catalog only — no demo products. Ratings/reviews come from real
   // marketplace_reviews rows; unrated products show as New.
   const liveProducts: DemoProduct[] = useMemo(
     () =>
@@ -238,7 +239,7 @@ export function MarketplaceHome() {
         const st = revStats[d.id]
         return {
           id: d.id,
-          name: d.product_name,
+          name: cleanSupplierText(d.product_name) || d.product_name,
           category: supplierDisplayName(d.program_key),
           price: Number(d.sale_price ?? d.original_price ?? 0),
           oldPrice: d.original_price && Number(d.original_price) > Number(d.sale_price ?? d.original_price ?? 0)
@@ -278,22 +279,28 @@ export function MarketplaceHome() {
   const filtering = q.length > 0 || vendorFilter !== null
   const wishCount = Object.values(wishlist).filter(Boolean).length
 
-  // Real suppliers: distinct CJ program keys present in the live catalog.
+  // Top stores: departments that actually have live products, each with
+  // a live count and sample images — no supplier internals on screen.
   const vendors = useMemo(() => {
-    const m = new Map<string, DbProduct[]>()
+    const byDept = new Map<string, DbProduct[]>()
     dbProducts.forEach((d) => {
-      const name = supplierDisplayName(d.program_key)
-      const list = m.get(name) || []
+      const slug = deptOf.get(d.id)
+      if (!slug) return
+      const list = byDept.get(slug) || []
       list.push(d)
-      m.set(name, list)
+      byDept.set(slug, list)
     })
-    return [...m.entries()].map(([name, items]) => ({
-      name,
-      count: items.length,
-      initials: name.split(/\s+/).slice(0, 2).map((w) => w[0]?.toUpperCase() || "").join("") || "TP",
-      images: items.slice(0, 3).map((d) => d.product_image_url || ""),
-    }))
-  }, [dbProducts])
+    return MARKET_DEPARTMENTS.filter((dep) => (byDept.get(dep.slug) || []).length > 0).map((dep) => {
+      const items = byDept.get(dep.slug) || []
+      return {
+        name: `${dep.name} Store`,
+        slug: dep.slug,
+        count: items.length,
+        initials: dep.name.split(/\s+/).slice(0, 2).map((w) => w[0]?.toUpperCase() || "").join("") || "TP",
+        images: items.slice(0, 3).map((d) => d.product_image_url || ""),
+      }
+    })
+  }, [dbProducts, deptOf])
 
   // Flash deals: live discounted products first, then the rest.
   const flashItems = useMemo(
@@ -395,14 +402,14 @@ export function MarketplaceHome() {
       <main className="mx-auto w-full max-w-[1400px] px-3 sm:px-6 lg:px-10 py-6 sm:py-8 space-y-6 sm:space-y-8">
 
         {/* welcome strip */}
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 rounded-2xl border border-[#BFDBFE] bg-gradient-to-r from-[#EFF6FF] via-white to-[#EFF6FF] p-3 sm:p-4">
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 rounded-2xl border border-[#FED7AA] bg-gradient-to-r from-[#FFF7ED] via-white to-[#FEF2F2] p-3 sm:p-4">
           <div className="flex items-center gap-2.5 text-sm min-w-0">
-            <span className="bg-[#1668DC] text-white text-[11px] font-bold uppercase px-2.5 py-1 rounded-md shrink-0">Welcome Offer</span>
+            <span className="bg-[#DC2626] text-white text-[11px] font-bold uppercase px-2.5 py-1 rounded-md shrink-0">Welcome Offer</span>
             <p className="text-sm text-slate-600">
-              Welcome to <strong className="text-[#0F172A]">TechPivo Market</strong> — pay securely here, we fulfil via verified suppliers with tracking.
+              Welcome to <strong className="text-[#0F172A]">TechPivo Market</strong> — quality-checked products, secure payment and tracked delivery.
             </p>
           </div>
-          <Link href="#flash-deals" className="bg-[#1668DC] hover:bg-[#0F4FB3] text-white text-sm font-semibold px-4 py-2 rounded-lg transition-colors flex items-center gap-1 shrink-0">
+          <Link href="#flash-deals" className="bg-[#F59E0B] hover:bg-[#D97706] text-[#0F172A] text-sm font-semibold px-4 py-2 rounded-lg transition-colors flex items-center gap-1 shrink-0">
             Explore Now <ArrowRight className="h-4 w-4" />
           </Link>
         </div>
@@ -432,9 +439,9 @@ export function MarketplaceHome() {
                   </Link>
                   <span className="text-2xl font-extrabold">{MARKETPLACE_HERO.price}</span>
                 </div>
-                <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 pt-2 text-xs text-blue-100">
-                  <span className="inline-flex items-center gap-1.5"><ShieldCheck className="h-3.5 w-3.5 text-[#F59E0B]" /> Secure Paystack payment</span>
-                  <span className="inline-flex items-center gap-1.5"><BadgeCheck className="h-3.5 w-3.5 text-[#F59E0B]" /> Verified CJ suppliers</span>
+                <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 pt-2 text-xs text-slate-300">
+                  <span className="inline-flex items-center gap-1.5"><ShieldCheck className="h-3.5 w-3.5 text-[#F59E0B]" /> Secure payment</span>
+                  <span className="inline-flex items-center gap-1.5"><BadgeCheck className="h-3.5 w-3.5 text-[#F59E0B]" /> Quality-checked products</span>
                   <span className="inline-flex items-center gap-1.5"><Truck className="h-3.5 w-3.5 text-[#F59E0B]" /> Tracked 7–12 day delivery</span>
                 </div>
               </div>
@@ -479,7 +486,7 @@ export function MarketplaceHome() {
                     </div>
                     <div className="w-24 h-24 rounded-xl bg-[#F8FAFC] overflow-hidden flex items-center justify-center border border-[#E2E8F0]">
                       {p.image ? (
-                        <img src={p.image} alt={p.name} loading="lazy" decoding="async" className="w-full h-full object-cover" />
+                        <img src={marketImage(p.image)} alt={p.name} loading="lazy" decoding="async" className="w-full h-full object-cover" />
                       ) : (
                         <Package className="h-10 w-10 text-slate-200" />
                       )}
@@ -498,7 +505,7 @@ export function MarketplaceHome() {
               <h2 className="text-lg font-bold text-[#0F172A]">Shop by Department</h2>
               <p className="text-sm text-slate-500">{MARKET_DEPARTMENTS.length} departments · live supplier catalog</p>
             </div>
-            <span className="text-[11px] font-bold uppercase text-slate-400 hidden sm:block">Verified CJ suppliers</span>
+            <span className="text-[11px] font-bold uppercase text-slate-400 hidden sm:block">New stock weekly</span>
           </div>
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2.5">
             {MARKET_DEPARTMENTS.map((c) => {
@@ -544,7 +551,7 @@ export function MarketplaceHome() {
         {flashItems.length > 0 && (
           <section id="flash-deals" className="bg-white rounded-2xl p-5 md:p-6 shadow-sm border border-[#E2E8F0] scroll-mt-4">
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-stretch">
-              <div className="lg:col-span-4 rounded-2xl p-5 flex flex-col justify-between relative overflow-hidden text-white" style={{ background: MARKETPLACE_BRAND.navy }}>
+              <div className="lg:col-span-4 rounded-2xl p-5 flex flex-col justify-between relative overflow-hidden text-white" style={{ background: "linear-gradient(160deg, #DC2626 0%, #7F1D1D 100%)" }}>
                 <div className="space-y-1.5">
                   <div className="inline-flex items-center gap-1.5 bg-[#EF4444] text-white px-2.5 py-1 rounded text-[11px] font-bold uppercase">
                     <Flame className="h-3.5 w-3.5" /> Flash Sale
@@ -571,7 +578,7 @@ export function MarketplaceHome() {
                 </div>
                 <div className="flex items-center gap-2 text-xs text-slate-300 bg-white/5 p-2.5 rounded-xl">
                   <Zap className="h-4 w-4 text-[#F59E0B] shrink-0" />
-                  <span>Live supplier inventory — ships tracked from verified CJ partners</span>
+                  <span>Live stock — every order ships tracked to your door</span>
                 </div>
               </div>
               {flashItems.map((p) => {
@@ -581,7 +588,7 @@ export function MarketplaceHome() {
                     {pct > 0 && <span className="absolute top-4 left-4 bg-[#EF4444] text-white text-[11px] font-bold px-2 py-0.5 rounded-full z-10">-{pct}%</span>}
                     <Link href={`/marketplace/product/${p.id}`} className="relative w-full aspect-[4/3] rounded-xl bg-white p-3 flex items-center justify-center overflow-hidden mb-3 border border-[#E2E8F0]">
                       {p.image ? (
-                        <img src={p.image} alt={p.name} loading="lazy" decoding="async" className="w-full h-full object-cover rounded-lg group-hover:scale-105 transition-transform duration-300" />
+                        <img src={marketImage(p.image)} alt={p.name} loading="lazy" decoding="async" className="w-full h-full object-cover rounded-lg group-hover:scale-105 transition-transform duration-300" />
                       ) : (
                         <Package className="h-14 w-14 text-slate-200" />
                       )}
@@ -630,7 +637,7 @@ export function MarketplaceHome() {
           </section>
         )}
 
-        {/* tabbed products — live CJ catalog */}
+        {/* tabbed products — live catalog */}
         <section id="trending" className="bg-white rounded-2xl p-5 shadow-sm border border-[#E2E8F0] scroll-mt-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4">
             <div className="flex items-center gap-1 bg-[#F8FAFC] border border-[#E2E8F0] p-1 rounded-xl overflow-x-auto">
@@ -642,8 +649,7 @@ export function MarketplaceHome() {
                 <button
                   key={b.id}
                   onClick={() => setTab(b.id)}
-                  className={`text-sm font-semibold px-4 py-2 rounded-lg transition-colors whitespace-nowrap ${tab === b.id ? "text-white" : "text-slate-500 hover:text-[#0F172A]"}`}
-                  style={tab === b.id ? { background: MARKETPLACE_BRAND.navy } : undefined}
+                  className={`text-sm font-semibold px-4 py-2 rounded-lg transition-colors whitespace-nowrap ${tab === b.id ? "text-white bg-[#DC2626]" : "text-slate-500 hover:text-[#0F172A]"}`}
                 >
                   {b.label}
                 </button>
@@ -660,7 +666,7 @@ export function MarketplaceHome() {
               {vendorFilter && (
                 <button
                   onClick={() => setVendorFilter(null)}
-                  className="inline-flex items-center gap-1.5 text-xs font-semibold bg-[#1668DC] text-white rounded-full px-3 py-1.5 hover:bg-[#0F4FB3]"
+                  className="inline-flex items-center gap-1.5 text-xs font-semibold bg-[#DC2626] text-white rounded-full px-3 py-1.5 hover:bg-[#B91C1C]"
                 >
                   {vendorFilter} <X className="h-3.5 w-3.5" />
                 </button>
@@ -685,7 +691,7 @@ export function MarketplaceHome() {
             <div className="text-center py-10">
               <Package className="h-10 w-10 text-slate-300 mx-auto mb-3" />
               <p className="font-bold text-[#0F172A]">Fresh stock is on the way</p>
-              <p className="text-sm text-slate-500 mt-1">New CJ picks land here as soon as they sync — browse the departments meanwhile.</p>
+              <p className="text-sm text-slate-500 mt-1">New picks land here as soon as they sync — browse the departments meanwhile.</p>
               <Link
                 href={`/marketplace/category/${MARKET_DEPARTMENTS[0].slug}`}
                 className="inline-block mt-4 bg-[#F59E0B] hover:bg-[#D97706] text-[#0F172A] text-sm font-bold px-5 py-2.5 rounded-lg transition-colors"
@@ -707,23 +713,23 @@ export function MarketplaceHome() {
           )}
         </section>
 
-        {/* vendors — real CJ program keys from the live catalog */}
+        {/* top stores — departments with live products */}
         {vendors.length > 0 && (
           <section id="vendors" className="bg-white rounded-2xl p-5 shadow-sm border border-[#E2E8F0] scroll-mt-4">
             <div className="flex items-center justify-between mb-4">
               <div>
-                <span className="text-[#1668DC] text-[11px] font-bold uppercase tracking-wider block">Fulfilled by verified suppliers</span>
-                <h2 className="text-lg font-bold text-[#0F172A]">Our Supply Network</h2>
+                <span className="text-[#DC2626] text-[11px] font-bold uppercase tracking-wider block">Top rated this week</span>
+                <h2 className="text-lg font-bold text-[#0F172A]">Top Stores</h2>
               </div>
-              <Link className="text-sm text-[#1668DC] hover:underline font-semibold hidden sm:inline-flex items-center gap-1" href="#trending">
-                Meet our suppliers <ChevronRight className="h-4 w-4" />
+              <Link className="text-sm text-[#DC2626] hover:underline font-semibold hidden sm:inline-flex items-center gap-1" href="#trending">
+                Shop top stores <ChevronRight className="h-4 w-4" />
               </Link>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3">
               {vendors.map((v) => (
                 <div key={v.name} className="bg-[#F8FAFC] border border-[#E2E8F0] rounded-xl p-3 flex flex-col justify-between hover:shadow-md transition-shadow">
                   <div className="flex items-center gap-2 mb-2">
-                    <div className="w-9 h-9 rounded-full text-white text-xs font-bold flex items-center justify-center shrink-0" style={{ background: MARKETPLACE_BRAND.navy }}>{v.initials}</div>
+                    <div className="w-9 h-9 rounded-full text-white text-xs font-bold flex items-center justify-center shrink-0" style={{ background: "linear-gradient(135deg, #F59E0B 0%, #EF4444 100%)" }}>{v.initials}</div>
                     <div className="min-w-0">
                       <h4 className="text-sm font-bold text-[#0F172A] truncate">{v.name}</h4>
                       <p className="text-[11px] text-slate-500">{v.count} Product{v.count === 1 ? "" : "s"}</p>
@@ -733,7 +739,7 @@ export function MarketplaceHome() {
                     {v.images.map((src, i) => (
                       <div key={i} className="aspect-square bg-white border border-[#E2E8F0] rounded p-1">
                         {src ? (
-                          <img src={src} alt={`${v.name} product ${i + 1}`} loading="lazy" decoding="async" className="w-full h-full object-cover rounded" />
+                          <img src={marketImage(src)} alt={`${v.name} product ${i + 1}`} loading="lazy" decoding="async" className="w-full h-full object-cover rounded" />
                         ) : (
                           <span className="w-full h-full flex items-center justify-center" aria-hidden>
                             <Package className="h-5 w-5 text-slate-200" />
@@ -742,12 +748,12 @@ export function MarketplaceHome() {
                       </div>
                     ))}
                   </div>
-                  <button
-                    onClick={() => { setVendorFilter(v.name); document.getElementById("trending")?.scrollIntoView({ behavior: "smooth" }) }}
-                    className="w-full mt-1 bg-white hover:bg-slate-100 border border-[#E2E8F0] text-[#0F172A] text-[11px] py-1.5 rounded font-semibold transition-colors"
+                  <Link
+                    href={`/marketplace/category/${v.slug}`}
+                    className="w-full mt-1 bg-white hover:bg-slate-100 border border-[#E2E8F0] text-[#0F172A] text-[11px] py-1.5 rounded font-semibold transition-colors text-center block"
                   >
-                    Visit Store
-                  </button>
+                    Shop now
+                  </Link>
                 </div>
               ))}
             </div>
@@ -798,23 +804,23 @@ export function MarketplaceHome() {
         })}
 
         {/* promo banner */}
-        <section className="rounded-2xl overflow-hidden p-6 md:p-8 text-white relative" style={{ background: MARKETPLACE_BRAND.navy }}>
+        <section className="rounded-2xl overflow-hidden p-6 md:p-8 text-[#0F172A] relative" style={{ background: "linear-gradient(120deg, #F59E0B 0%, #F97316 55%, #EF4444 100%)" }}>
           <div className="grid grid-cols-1 md:grid-cols-12 gap-5 items-center">
             <div className="md:col-span-3 flex items-center justify-center">
-              <div className="w-32 h-32 rounded-full border-4 border-[#F59E0B] flex flex-col items-center justify-center bg-white/5">
-                <span className="text-3xl text-[#F59E0B] font-extrabold leading-none">50%</span>
+              <div className="w-32 h-32 rounded-full border-4 border-white flex flex-col items-center justify-center bg-black/15 text-white">
+                <span className="text-3xl font-extrabold leading-none">50%</span>
                 <span className="text-[11px] font-bold uppercase">OFF PROMO</span>
               </div>
             </div>
             <div className="md:col-span-6 text-center md:text-left space-y-1.5">
-              <span className="bg-[#F59E0B] text-[#0F172A] text-[11px] font-bold uppercase px-2 py-0.5 rounded">Major Appliance Drop</span>
-              <h3 className="text-2xl font-bold tracking-tight">TechPivo Home Essentials — Washer & Smart Devices</h3>
-              <p className="text-slate-300">Top-brand high-efficiency smart home devices at seasonal prices.</p>
+              <span className="bg-[#0F172A] text-white text-[11px] font-bold uppercase px-2 py-0.5 rounded">Major Appliance Drop</span>
+              <h3 className="text-2xl font-bold tracking-tight text-white">TechPivo Home Essentials — Washer & Smart Devices</h3>
+              <p className="text-white/85">Top-brand high-efficiency smart home devices at seasonal prices.</p>
             </div>
             <div className="md:col-span-3 flex items-center justify-center md:justify-end">
               <Link
                 href={`/marketplace/category/${MARKET_DEPARTMENTS[0].slug}`}
-                className="bg-[#F59E0B] hover:bg-[#D97706] text-[#0F172A] text-sm font-bold px-6 py-3 rounded-lg transition-colors shadow-lg"
+                className="bg-[#0F172A] hover:bg-black text-white text-sm font-bold px-6 py-3 rounded-lg transition-colors shadow-lg"
               >
                 Shop Appliances
               </Link>
@@ -842,7 +848,7 @@ export function MarketplaceHome() {
                   <Link key={d.id} href={`/marketplace/product/${d.id}`} className="flex items-center gap-3 p-2 rounded-xl bg-[#F8FAFC] border border-[#E2E8F0] hover:bg-slate-100 transition-colors">
                     <div className="w-16 h-16 rounded-lg bg-white p-1.5 shrink-0 flex items-center justify-center border border-[#E2E8F0]">
                       {d.product_image_url ? (
-                        <img src={d.product_image_url} alt={d.product_name} loading="lazy" decoding="async" className="w-full h-full object-cover rounded" />
+                        <img src={marketImage(d.product_image_url)} alt={d.product_name} loading="lazy" decoding="async" className="w-full h-full object-cover rounded" />
                       ) : (
                         <Package className="h-7 w-7 text-slate-200" />
                       )}
@@ -859,9 +865,9 @@ export function MarketplaceHome() {
           </section>
         )}
 
-        {/* affiliate disclosure */}
+        {/* store promise */}
         <p className="text-center text-[11px] text-slate-400 px-4">
-          TechPivo Market is a dropshipping store: you pay securely here and we fulfil every order through verified CJDropshipping suppliers — with tracking from dispatch to delivery.
+          Every order is quality-checked, securely paid and delivered with tracking — shop with confidence on TechPivo Market.
         </p>
       </main>
       <MarketplaceFooter />
