@@ -1,17 +1,35 @@
 "use client"
 
 import Link from "next/link"
+import { useEffect } from "react"
 
 /**
  * Storefront-scoped error page: keeps the shopper inside the Market
  * experience (no main-site chrome, no dead ends) with retry + navigation.
  */
 export default function MarketplaceError({
+  error,
   reset,
 }: {
   error: Error & { digest?: string }
   reset: () => void
 }) {
+  // Report the real crash (message + stack) so the cause can be fixed
+  // instead of guessed — the server HTML alone never shows client crashes.
+  useEffect(() => {
+    try {
+      fetch("/api/debug/client-error", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          url: window.location.href,
+          error_message: `marketplace-boundary: ${error.message || String(error)} (digest: ${error.digest || "none"})`,
+          error_stack: error.stack || null,
+        }),
+      }).catch(() => {})
+    } catch {}
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
   return (
     <div className="w-full bg-[#F8FAFC] min-h-screen">
       <div className="px-3 sm:px-6 lg:px-10 py-10">
