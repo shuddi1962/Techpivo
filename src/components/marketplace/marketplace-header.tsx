@@ -9,7 +9,15 @@ import {
 import { MARKET_DEPARTMENTS as DEPARTMENTS } from "@/lib/marketplace-categories"
 import { MARKETPLACE_BRAND } from "@/lib/marketplace"
 
-const NAV = ["Home", "Shop", "Deals of the Day", "Best Sellers", "Top Vendors", "New Arrivals", "Blog"]
+const NAV: Array<{ label: string; href: string }> = [
+  { label: "Home", href: "/marketplace" },
+  { label: "Shop", href: "/marketplace#trending" },
+  { label: "Deals of the Day", href: "/marketplace#flash-deals" },
+  { label: "Best Sellers", href: "/marketplace#trending" },
+  { label: "Top Vendors", href: "/marketplace#vendors" },
+  { label: "New Arrivals", href: "/marketplace#trending" },
+  { label: "Blog", href: "/blog" },
+]
 
 export function MarketplaceHeader({
   cartCount = 2,
@@ -39,7 +47,7 @@ export function MarketplaceHeader({
     <header className="w-full rounded-2xl overflow-hidden border border-[#E2E8F0] bg-white shadow-[0_1px_8px_rgba(0,0,0,0.04)]">
       {/* utility bar */}
       <div style={{ background: MARKETPLACE_BRAND.navy }} className="text-white">
-        <div className="mx-auto max-w-7xl px-4 flex items-center justify-between h-10 text-xs">
+        <div className="px-3 sm:px-6 lg:px-10 flex items-center justify-between h-10 text-xs">
           <div className="flex items-center gap-2 min-w-0">
             <span className="bg-[#EF4444] text-white px-2 py-0.5 rounded font-bold text-[10px] uppercase tracking-wide shrink-0">
               Limited Deal
@@ -49,7 +57,7 @@ export function MarketplaceHeader({
           <div className="flex items-center gap-3 text-slate-300 shrink-0">
             <span className="hidden sm:inline-flex items-center gap-1 cursor-pointer hover:text-white">USD <ChevronDown className="h-3.5 w-3.5" /></span>
             <span className="hidden sm:inline text-slate-600">|</span>
-            <Link href="/marketplace" className="hover:text-white hidden md:inline">Track Order</Link>
+            <Link href="/marketplace/track" className="hover:text-white hidden md:inline">Track Order</Link>
             <span className="hidden md:inline text-slate-600">|</span>
             <Link href="/contact" className="hover:text-white hidden md:inline">Help Center</Link>
           </div>
@@ -58,7 +66,7 @@ export function MarketplaceHeader({
 
       {/* main bar */}
       <div className="bg-white">
-        <div className="mx-auto max-w-7xl px-4 flex items-center justify-between gap-4 h-16 md:h-20">
+        <div className="px-3 sm:px-6 lg:px-10 flex items-center justify-between gap-4 h-16 md:h-20">
           <Link href="/marketplace" className="flex items-center gap-2 shrink-0" aria-label="TechPivo Market home">
             <span
               className="flex h-9 w-9 items-center justify-center rounded-lg text-lg font-extrabold text-white"
@@ -101,7 +109,7 @@ export function MarketplaceHeader({
           </form>
 
           <div className="flex items-center gap-1 sm:gap-2 shrink-0">
-            <Link href="/marketplace" aria-label="Wishlist" className="relative p-2 rounded-full hover:bg-slate-100 flex items-center justify-center">
+            <Link href="/marketplace/wishlist" aria-label="Wishlist" className="relative p-2 rounded-full hover:bg-slate-100 flex items-center justify-center">
               <Heart className="h-6 w-6 text-slate-600" />
               <span className="absolute -top-0.5 -right-0.5 bg-[#EF4444] text-white text-[10px] w-5 h-5 rounded-full flex items-center justify-center font-bold">{wishCount}</span>
             </Link>
@@ -116,7 +124,7 @@ export function MarketplaceHeader({
               </span>
             </Link>
             <div className="h-8 w-px bg-[#E2E8F0] hidden sm:block" />
-            <Link href="/marketplace" className="flex items-center gap-2 bg-[#F8FAFC] hover:bg-slate-100 px-3 py-2 rounded-lg border border-[#E2E8F0]">
+            <Link href="/marketplace/cart" className="flex items-center gap-2 bg-[#F8FAFC] hover:bg-slate-100 px-3 py-2 rounded-lg border border-[#E2E8F0]">
               <span className="relative flex items-center justify-center">
                 <ShoppingBag className="h-6 w-6 text-[#F59E0B]" />
                 <span className="absolute -top-2 -right-2 bg-[#F59E0B] text-[#0F172A] text-[10px] w-4 h-4 rounded-full flex items-center justify-center font-bold">{cartCount}</span>
@@ -154,7 +162,7 @@ export function MarketplaceHeader({
 
       {/* nav bar */}
       <div className="bg-white border-t border-[#E2E8F0] relative">
-        <div className="mx-auto max-w-7xl px-4 hidden md:flex items-center justify-between h-14">
+        <div className="px-3 sm:px-6 lg:px-10 hidden md:flex items-center justify-between h-14">
           <div className="flex items-center gap-3">
             <details className="relative group">
               <summary className="bg-[#F59E0B] hover:bg-[#D97706] text-[#0F172A] px-4 py-2.5 rounded-lg flex items-center gap-2 text-sm font-bold transition-colors cursor-pointer list-none">
@@ -185,8 +193,8 @@ export function MarketplaceHeader({
             <nav className="hidden lg:flex items-center gap-1" aria-label="Marketplace">
               {NAV.map((item, i) => (
                 <Link
-                  key={item}
-                  href="/marketplace"
+                  key={item.label}
+                  href={item.href}
                   aria-current={i === 0 ? "page" : undefined}
                   className={
                     i === 0
@@ -194,7 +202,7 @@ export function MarketplaceHeader({
                       : "px-3 py-2 rounded-lg text-slate-600 hover:bg-slate-100 hover:text-[#0F172A] text-sm"
                   }
                 >
-                  {item}
+                  {item.label}
                 </Link>
               ))}
             </nav>
@@ -211,14 +219,21 @@ export function MarketplaceHeader({
           <nav className="md:hidden border-t border-[#E2E8F0] px-4 py-3 grid gap-1 bg-white" aria-label="Marketplace mobile">
             {NAV.map((item) => (
               <Link
-                key={item}
-                href="/marketplace"
+                key={item.label}
+                href={item.href}
                 onClick={() => setOpen(false)}
                 className="px-3 py-2.5 rounded-lg text-sm font-medium text-slate-700 hover:bg-slate-100"
               >
-                {item}
+                {item.label}
               </Link>
             ))}
+            <Link
+              href="/marketplace/track"
+              onClick={() => setOpen(false)}
+              className="px-3 py-2.5 rounded-lg text-sm font-medium text-slate-700 hover:bg-slate-100"
+            >
+              Track Order
+            </Link>
             <p className="px-3 pt-2 text-[11px] font-bold uppercase tracking-wider text-slate-400">Departments</p>
             {DEPARTMENTS.map((d) => (
               <button
@@ -244,10 +259,37 @@ const PERKS = [
 ]
 
 export function MarketplaceFooter() {
+  const [email, setEmail] = useState("")
+  const [subMsg, setSubMsg] = useState("")
+  const [subBusy, setSubBusy] = useState(false)
+  const subscribe = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!email.trim() || subBusy) return
+    setSubBusy(true)
+    setSubMsg("")
+    try {
+      const res = await fetch("/api/subscribe", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: email.trim() }),
+      })
+      const data = await res.json().catch(() => null)
+      if (res.ok) {
+        setSubMsg("You're in — watch your inbox for tech drops.")
+        setEmail("")
+      } else {
+        setSubMsg(data?.error || "Subscription failed. Try again.")
+      }
+    } catch {
+      setSubMsg("Subscription failed. Try again.")
+    } finally {
+      setSubBusy(false)
+    }
+  }
   return (
     <footer className="w-full bg-white border border-[#E2E8F0] rounded-2xl overflow-hidden mt-8">
       <div className="bg-[#F8FAFC] border-b border-[#E2E8F0]">
-        <div className="mx-auto max-w-7xl px-4 py-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+        <div className="px-3 sm:px-6 lg:px-10 py-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
           {PERKS.map((p) => (
             <div key={p.title} className="flex items-center gap-3">
               <div className="w-12 h-12 rounded-xl bg-white border border-[#E2E8F0] flex items-center justify-center text-[#F59E0B] shrink-0">
@@ -261,7 +303,7 @@ export function MarketplaceFooter() {
           ))}
         </div>
       </div>
-      <div className="mx-auto max-w-7xl px-4 py-8 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+      <div className="px-3 sm:px-6 lg:px-10 py-8 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
         <div className="space-y-3 lg:col-span-1">
           <div className="flex items-center gap-2">
             <span className="flex h-8 w-8 items-center justify-center rounded-lg text-base font-extrabold text-white" style={{ background: MARKETPLACE_BRAND.navy }}>T</span>
@@ -277,8 +319,8 @@ export function MarketplaceFooter() {
         <div>
           <h5 className="text-sm font-bold uppercase tracking-wider text-[#0F172A] mb-3">Shop</h5>
           <ul className="space-y-2 text-sm text-slate-500">
-            {["New Arrivals", "Best Sellers", "Deals of the Day", "Top Vendors", "Gift Cards"].map((x) => (
-              <li key={x}><Link className="hover:text-[#F59E0B]" href="/marketplace">{x}</Link></li>
+            {DEPARTMENTS.map((d) => (
+              <li key={d.slug}><Link className="hover:text-[#F59E0B]" href={`/marketplace/category/${d.slug}`}>{d.name}</Link></li>
             ))}
           </ul>
         </div>
@@ -286,22 +328,25 @@ export function MarketplaceFooter() {
           <h5 className="text-sm font-bold uppercase tracking-wider text-[#0F172A] mb-3">Support</h5>
           <ul className="space-y-2 text-sm text-slate-500">
             <li><Link className="hover:text-[#F59E0B]" href="/contact">Help Center</Link></li>
-            <li><Link className="hover:text-[#F59E0B]" href="/marketplace">Order Tracking</Link></li>
-            <li><Link className="hover:text-[#F59E0B]" href="/marketplace">Returns & Exchanges</Link></li>
-            <li><Link className="hover:text-[#F59E0B]" href="/marketplace">Warranty</Link></li>
+            <li><Link className="hover:text-[#F59E0B]" href="/marketplace/track">Order Tracking</Link></li>
+            <li><Link className="hover:text-[#F59E0B]" href="/marketplace/cart">Your Cart</Link></li>
+            <li><Link className="hover:text-[#F59E0B]" href="/contact">Returns & Warranty</Link></li>
           </ul>
         </div>
         <div>
           <h5 className="text-sm font-bold uppercase tracking-wider text-[#0F172A] mb-3">Newsletter</h5>
           <p className="text-sm text-slate-500 mb-3">Weekly tech drops and member coupons.</p>
-          <form className="space-y-2" onSubmit={(e) => e.preventDefault()}>
-            <input className="w-full bg-[#F8FAFC] border border-[#CBD5E1] rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:border-[#F59E0B]" placeholder="Your email" type="email" aria-label="Email" />
-            <button className="w-full bg-[#F59E0B] hover:bg-[#D97706] text-[#0F172A] text-sm font-bold py-2.5 rounded-lg transition-colors" type="submit">Subscribe</button>
+          <form className="space-y-2" onSubmit={subscribe}>
+            <input value={email} onChange={(e) => setEmail(e.target.value)} className="w-full bg-[#F8FAFC] border border-[#CBD5E1] rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:border-[#F59E0B]" placeholder="Your email" type="email" aria-label="Email" />
+            <button className="w-full bg-[#F59E0B] hover:bg-[#D97706] text-[#0F172A] text-sm font-bold py-2.5 rounded-lg transition-colors disabled:opacity-60" type="submit" disabled={subBusy}>
+              {subBusy ? "Subscribing..." : "Subscribe"}
+            </button>
+            {subMsg && <p className="text-xs text-slate-600">{subMsg}</p>}
           </form>
         </div>
       </div>
       <div style={{ background: MARKETPLACE_BRAND.navy }} className="text-white py-4">
-        <div className="mx-auto max-w-7xl px-4 flex flex-col sm:flex-row items-center justify-between gap-3 text-sm">
+        <div className="px-3 sm:px-6 lg:px-10 flex flex-col sm:flex-row items-center justify-between gap-3 text-sm">
           <p className="text-slate-300 text-xs sm:text-sm">© {new Date().getFullYear()} TechPivo Market. All rights reserved.</p>
           <div className="flex items-center gap-2 text-[11px] font-bold">
             {["VISA", "MASTERCARD", "PAYPAL", "PAYSTACK"].map((p) => (

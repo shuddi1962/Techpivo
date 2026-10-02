@@ -6,10 +6,12 @@ import { createClient } from "@/lib/supabase/client"
 import {
   Store, Package, Eye, EyeOff, Star, Trash2, Plus, Search, RefreshCw,
   ExternalLink, Pencil, MousePointerClick, ShoppingBag, BadgeCheck, Globe,
-  LayoutGrid, Plug,
+  LayoutGrid, Plug, ReceiptText, CreditCard,
 } from "lucide-react"
 import { MarketplaceCategoriesTab } from "@/components/admin/marketplace-categories-tab"
 import { MarketplaceCjTab } from "@/components/admin/marketplace-cj-tab"
+import { MarketplaceOrdersTab } from "@/components/admin/marketplace-orders-tab"
+import { MarketplacePaymentsTab } from "@/components/admin/marketplace-payments-tab"
 
 interface Product {
   id: string
@@ -60,7 +62,7 @@ export default function AdminMarketplacePage() {
   const [form, setForm] = useState(emptyForm)
   const [saving, setSaving] = useState(false)
   const [notice, setNotice] = useState("")
-  const [tab, setTab] = useState<"products" | "categories" | "cj" | "visibility">("products")
+  const [tab, setTab] = useState<"products" | "orders" | "categories" | "cj" | "payments" | "visibility">("products")
 
   const load = useCallback(async () => {
     const [ov, pr] = await Promise.all([
@@ -78,6 +80,7 @@ export default function AdminMarketplacePage() {
     const ch = supabase
       .channel(`admin_marketplace_${Date.now()}_${Math.random().toString(36).slice(2)}`)
       .on("postgres_changes", { event: "*", schema: "public", table: "affiliate_products" }, () => load())
+      .on("postgres_changes", { event: "*", schema: "public", table: "marketplace_orders" }, () => load())
       .on("postgres_changes", { event: "*", schema: "public", table: "site_pages" }, () => load())
       .subscribe()
     const poll = setInterval(load, 30000)
@@ -280,8 +283,10 @@ export default function AdminMarketplacePage() {
       <div className="flex gap-1 mb-4 border-b overflow-x-auto">
         {([
           { id: "products", label: "Products", icon: Package },
+          { id: "orders", label: "Orders", icon: ReceiptText },
           { id: "categories", label: "Categories", icon: LayoutGrid },
           { id: "cj", label: "CJ Import", icon: Plug },
+          { id: "payments", label: "Payments", icon: CreditCard },
           { id: "visibility", label: "Storefront visibility", icon: Globe },
         ] as const).map((t) => (
           <button
@@ -297,6 +302,10 @@ export default function AdminMarketplacePage() {
       {tab === "categories" && <MarketplaceCategoriesTab />}
 
       {tab === "cj" && <MarketplaceCjTab onImported={load} />}
+
+      {tab === "orders" && <MarketplaceOrdersTab />}
+
+      {tab === "payments" && <MarketplacePaymentsTab />}
 
       {tab === "visibility" && (
         <div className="bg-white border rounded-xl p-5 max-w-2xl">

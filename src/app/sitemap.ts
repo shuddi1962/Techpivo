@@ -2,6 +2,7 @@ import { createPublicClient } from "@/lib/supabase/server"
 import { SITE_URL } from "@/lib/constants"
 import { TOOL_SLUGS } from "@/lib/tools-metadata"
 import { CATEGORY_SLUGS, CATEGORY_ROUTE } from "@/lib/tools-categories"
+import { MARKET_DEPARTMENTS } from "@/lib/marketplace-categories"
 import { STATIC_PAGE_SLUGS } from "@/lib/pages"
 import type { MetadataRoute } from "next"
 
@@ -79,6 +80,18 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { path: "/community/quiz", priority: 0.7, freq: "weekly" },
     { path: "/community/polls", priority: 0.6, freq: "weekly" },
     { path: "/community/leaderboard", priority: 0.6, freq: "daily" },
+    { path: "/marketplace", priority: 0.8, freq: "daily" },
+    { path: "/marketplace/cart", priority: 0.3, freq: "monthly" },
+    { path: "/marketplace/track", priority: 0.3, freq: "monthly" },
+    { path: "/marketplace/wishlist", priority: 0.3, freq: "monthly" },
+    ...MARKET_DEPARTMENTS.flatMap((d) => [
+      { path: `/marketplace/category/${d.slug}`, priority: 0.7, freq: "weekly" as const },
+      ...d.subs.map((s) => ({
+        path: `/marketplace/category/${s.slug}`,
+        priority: 0.6,
+        freq: "weekly" as const,
+      })),
+    ]),
   ]
 
   const entries: MetadataRoute.Sitemap = staticPages
@@ -162,6 +175,23 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       changeFrequency: "daily",
       priority: 0.6,
     })
+  }
+
+  try {
+    const productsRes = await fetchWithTimeout(
+      supabase.from("affiliate_products").select("id, created_at").eq("is_active", true).limit(500),
+      15000
+    )
+    for (const p of ((productsRes as any)?.data ?? []) as any[]) {
+      entries.push({
+        url: `${SITE_URL}/marketplace/product/${p.id}`,
+        lastModified: p.created_at || now,
+        changeFrequency: "weekly",
+        priority: 0.7,
+      })
+    }
+  } catch {
+    // product URLs skipped — static marketplace entries above still serve
   }
 
   return entries

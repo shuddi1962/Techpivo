@@ -9,6 +9,7 @@ import {
   CalendarDays, GitCompareArrows, BadgeCheck, Truck,
 } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
+import { addToCart as addLine, cartCount as countLines, useMarketCart } from "@/lib/marketplace-cart"
 import {
   DEMO_PRODUCTS, MARKETPLACE_BRAND, MARKETPLACE_HERO,
   MARKETPLACE_POSTS, MARKETPLACE_VENDORS, type DemoProduct,
@@ -47,8 +48,25 @@ function Stars({ value }: { value: number }) {
   )
 }
 
-function ProductCard({ p, onAdd, wished, onWish, added }: { p: DemoProduct; onAdd: () => void; wished: boolean; onWish: () => void; added: boolean }) {
+function ProductCard({ p, onAdd, wished, onWish, added, href }: { p: DemoProduct; onAdd: () => void; wished: boolean; onWish: () => void; added: boolean; href?: string }) {
   const discount = p.oldPrice ? Math.round((1 - p.price / p.oldPrice) * 100) : 0
+  const body = (
+    <>
+      <div className="w-full aspect-square bg-white rounded-lg p-3 flex items-center justify-center mb-2 overflow-hidden">
+        <img src={p.image} alt={p.name} loading="lazy" className="w-full h-full object-cover rounded-md group-hover:scale-105 transition-transform duration-300" />
+      </div>
+      <div className="flex flex-col flex-1 justify-between gap-1">
+        <div>
+          <p className="text-[10px] text-slate-400 uppercase tracking-wide">{p.category}</p>
+          <h5 className="text-sm font-semibold text-[#0F172A] line-clamp-1 group-hover:text-[#B45309] transition-colors">{p.name}</h5>
+          <div className="flex items-center gap-1 my-1">
+            <Stars value={p.rating} />
+            <span className="text-[11px] text-slate-500">({p.reviews})</span>
+          </div>
+        </div>
+      </div>
+    </>
+  )
   return (
     <div className="group bg-[#F8FAFC] rounded-xl p-3 flex flex-col justify-between hover:bg-slate-100 transition-colors relative">
       {discount > 0 && (
@@ -62,34 +80,22 @@ function ProductCard({ p, onAdd, wished, onWish, added }: { p: DemoProduct; onAd
       >
         <Heart className={`h-4 w-4 ${wished ? "fill-current" : ""}`} />
       </button>
-      <div className="w-full aspect-square bg-white rounded-lg p-3 flex items-center justify-center mb-2 overflow-hidden">
-        <img src={p.image} alt={p.name} loading="lazy" className="w-full h-full object-cover rounded-md group-hover:scale-105 transition-transform duration-300" />
-      </div>
-      <div className="flex flex-col flex-1 justify-between gap-1">
-        <div>
-          <p className="text-[10px] text-slate-400 uppercase tracking-wide">{p.category}</p>
-          <h5 className="text-sm font-semibold text-[#0F172A] line-clamp-1">{p.name}</h5>
-          <div className="flex items-center gap-1 my-1">
-            <Stars value={p.rating} />
-            <span className="text-[11px] text-slate-500">({p.reviews})</span>
-          </div>
+      {href ? <Link href={href} className="flex flex-col flex-1">{body}</Link> : <div className="flex flex-col flex-1">{body}</div>}
+      <div>
+        <div className="flex items-baseline gap-1.5">
+          <span className={`text-base font-bold ${discount > 0 ? "text-[#EF4444]" : "text-[#0F172A]"}`}>${p.price.toFixed(2)}</span>
+          {p.oldPrice && <span className="text-[11px] text-slate-400 line-through">${p.oldPrice.toFixed(2)}</span>}
         </div>
-        <div>
-          <div className="flex items-baseline gap-1.5">
-            <span className={`text-base font-bold ${discount > 0 ? "text-[#EF4444]" : "text-[#0F172A]"}`}>${p.price.toFixed(2)}</span>
-            {p.oldPrice && <span className="text-[11px] text-slate-400 line-through">${p.oldPrice.toFixed(2)}</span>}
-          </div>
-          <button
-            onClick={onAdd}
-            className={`w-full mt-2 text-xs font-bold py-2 rounded-lg transition-colors flex items-center justify-center gap-1 ${added ? "bg-[#10B981] text-white" : "bg-[#F59E0B] hover:bg-[#D97706] text-[#0F172A]"}`}
-          >
-            {added ? (
-              <><Check className="h-3.5 w-3.5" /> Added</>
-            ) : (
-              <><ShoppingCart className="h-3.5 w-3.5" /> Add</>
-            )}
-          </button>
-        </div>
+        <button
+          onClick={onAdd}
+          className={`w-full mt-2 text-xs font-bold py-2 rounded-lg transition-colors flex items-center justify-center gap-1 ${added ? "bg-[#10B981] text-white" : "bg-[#F59E0B] hover:bg-[#D97706] text-[#0F172A]"}`}
+        >
+          {added ? (
+            <><Check className="h-3.5 w-3.5" /> Added</>
+          ) : (
+            <><ShoppingCart className="h-3.5 w-3.5" /> Add</>
+          )}
+        </button>
       </div>
     </div>
   )
@@ -117,29 +123,62 @@ function useCountdown() {
   return { days: "02", hrs: pad(hrs), mins: pad(mins), secs: pad(secs) }
 }
 
+const WISH_KEY = "tp_market_wish_v1"
+
+function readWish(): Record<string, boolean> {
+  if (typeof window === "undefined") return {}
+  try {
+    const raw = window.localStorage.getItem(WISH_KEY)
+    const arr = raw ? (JSON.parse(raw) as string[]) : []
+    return Object.fromEntries((Array.isArray(arr) ? arr : []).map((id) => [id, true]))
+  } catch {
+    return {}
+  }
+}
+
 export function MarketplaceHome() {
   const [dbProducts, setDbProducts] = useState<DbProduct[]>([])
   const [tab, setTab] = useState<"new" | "featured" | "best">("new")
-  const [cartCount, setCartCount] = useState(2)
-  const [cartTotal, setCartTotal] = useState(1249)
-  const [wishlist, setWishlist] = useState<Record<string, boolean>>({ "d1": true, "d6": true, "d8": true })
+  const cart = useMarketCart()
+  const [wishlist, setWishlist] = useState<Record<string, boolean>>({})
   const [justAdded, setJustAdded] = useState<Record<string, boolean>>({})
   const [query, setQuery] = useState("")
   const [deptFilter, setDeptFilter] = useState<string | null>(null)
   const t = useCountdown()
 
   useEffect(() => {
+    setWishlist(readWish())
+  }, [])
+
+  useEffect(() => {
     const supabase = createClient()
-    supabase
-      .from("affiliate_products")
-      .select("*")
-      .eq("is_active", true)
-      .order("is_featured", { ascending: false })
-      .order("created_at", { ascending: false })
-      .limit(24)
-      .then(({ data }) => {
-        if (data) setDbProducts(data as DbProduct[])
-      })
+    let alive = true
+    const load = () => {
+      supabase
+        .from("affiliate_products")
+        .select("*")
+        .eq("is_active", true)
+        .order("is_featured", { ascending: false })
+        .order("created_at", { ascending: false })
+        .limit(24)
+        .then(({ data }) => {
+          if (alive && data) setDbProducts(data as DbProduct[])
+        })
+    }
+    load()
+    const ch = supabase
+      .channel(`market_home_${Date.now()}_${Math.random().toString(36).slice(2)}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "affiliate_products" }, () => load())
+      .subscribe()
+    const poll = setInterval(load, 30000)
+    const onFocus = () => load()
+    window.addEventListener("focus", onFocus)
+    return () => {
+      alive = false
+      clearInterval(poll)
+      window.removeEventListener("focus", onFocus)
+      supabase.removeChannel(ch)
+    }
   }, [])
 
   const liveProducts: DemoProduct[] = useMemo(
@@ -198,24 +237,43 @@ export function MarketplaceHome() {
     []
   )
 
+  const cartCount = countLines(cart)
+  const cartTotal = cart.reduce((sum, l) => {
+    const found = dbProducts.find((d) => d.id === l.id)
+    const unit = found ? Number(found.sale_price ?? found.original_price ?? 0) : 0
+    return Math.round((sum + unit * l.qty) * 100) / 100
+  }, 0)
+
   const addToCart = (p: DemoProduct) => {
-    setCartCount((c) => c + 1)
-    setCartTotal((sum) => Math.round((sum + p.price) * 100) / 100)
+    addLine(p.id, 1)
     setJustAdded((m) => ({ ...m, [p.id]: true }))
     setTimeout(() => setJustAdded((m) => ({ ...m, [p.id]: false })), 1600)
   }
-  const toggleWish = (id: string) => setWishlist((m) => ({ ...m, [id]: !m[id] }))
+  const toggleWish = (id: string) =>
+    setWishlist((m) => {
+      const next = { ...m, [id]: !m[id] }
+      if (!next[id]) delete next[id]
+      try {
+        window.localStorage.setItem(WISH_KEY, JSON.stringify(Object.keys(next)))
+      } catch {
+        // ignore
+      }
+      return next
+    })
+  const liveHref = (p: DemoProduct) =>
+    /^[0-9a-f-]{36}$/i.test(p.id) ? `/marketplace/product/${p.id}` : undefined
   const cardProps = (p: DemoProduct) => ({
     p,
     onAdd: () => addToCart(p),
     wished: !!wishlist[p.id],
     onWish: () => toggleWish(p.id),
     added: !!justAdded[p.id],
+    href: liveHref(p),
   })
 
   return (
     <div className="w-full bg-[#F8FAFC] min-h-screen">
-      <div className="mx-auto max-w-7xl px-3 sm:px-4 py-4 space-y-4 sm:space-y-6">
+      <div className="px-3 sm:px-6 lg:px-10 py-4 space-y-4 sm:space-y-6">
         <MarketplaceHeader
           cartCount={cartCount}
           cartTotal={`$${cartTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
@@ -536,7 +594,7 @@ export function MarketplaceHome() {
         </section>
 
         {/* vendors */}
-        <section className="bg-white rounded-2xl p-5 shadow-sm border border-[#E2E8F0]">
+        <section id="vendors" className="bg-white rounded-2xl p-5 shadow-sm border border-[#E2E8F0] scroll-mt-4">
           <div className="flex items-center justify-between mb-4">
             <div>
               <span className="text-[#F59E0B] text-[11px] font-bold uppercase tracking-wider block">Marketplace Network</span>

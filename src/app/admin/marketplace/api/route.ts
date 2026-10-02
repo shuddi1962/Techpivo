@@ -36,6 +36,20 @@ export async function GET(request: NextRequest) {
       const status = await cjStatus()
       return NextResponse.json({ status })
     }
+    if (section === "pay-status") {
+      const { data } = await supabase.from("site_settings").select("key").in("key", ["paystack_secret_key", "paystack_public_key"])
+      const keys = new Set(((data || []) as Array<{ key: string }>).map((r) => r.key))
+      return NextResponse.json({ status: { secret: keys.has("paystack_secret_key"), public: keys.has("paystack_public_key") } })
+    }
+    if (section === "orders") {
+      const { data, error } = await supabase
+        .from("marketplace_orders")
+        .select("id,email,items,subtotal_usd,shipping_usd,total_usd,total_ngn,paystack_reference,paystack_status,cj_order_id,cj_status,status,ship_name,ship_phone,ship_city,ship_country,created_at")
+        .order("created_at", { ascending: false })
+        .limit(200)
+      if (error) throw error
+      return NextResponse.json({ orders: data || [] })
+    }
     if (section === "cj-list") {
       const key = await resolveCjApiKey()
       if (!key) return NextResponse.json({ demo: true, list: [], message: "CJ API key not set" })
@@ -82,7 +96,31 @@ export async function POST(request: NextRequest) {
       const status = await cjStatus()
       return NextResponse.json({ success: true, status })
     }
-    // Import CJ products into affiliate_products
+    // Save Paystack keys to site_settings
+    if (body.action === "pay-save-keys") {
+      const secret = String(body.secret || "").trim()
+      const pub = String(body.public || "").trim()
+      if (secret && !secret.startsWith("sk_")) return NextResponse.json({ error: "Secret key should start with sk_." }, { status: 400 })
+      if (pub && !pub.startsWith("pk_")) return NextResponse.json({ error: "Public key should start with pk_." }, { status: 400 })
+      const rows = []
+      if (secret) rows.push({ key: "paystack_secret_key", value: secret as unknown as never })
+      if (pub) rows.push({ key: "paystack_public_key", value: pub as unknown as never })
+      if (rows.length === 0) return NextResponse.json({ error: "Paste at least one key." }, { status: 400 })
+      const { error } = await supabase.from("site_settings").upsert(rows, { onConflict: "key" })
+      if (error) throw error
+      return NextResponse.json({ success: true })
+    }
+    // Update order status (fulfillment pipeline)
+    if (body.action === "order-status") {
+      const id = String(body.id || "")
+      const status = String(body.status || "")
+      if (!id || !["pending", "paid", "fulfilled", "delivered", "cancelled"].includes(status)) {
+        return NextResponse.json({ error: "Valid id and status required." }, { status: 400 })
+      }
+      const { data, error } = await supabase.from("marketplace_orders").update({ status }).eq("id", id).select("id,status").single()
+      if (error) throw error
+      return NextResponse.json({ order: data })
+    }
     if (body.action === "cj-import") {
       const items = Array.isArray(body.items) ? body.items : []
       if (items.length === 0) return NextResponse.json({ error: "No items to import" }, { status: 400 })
