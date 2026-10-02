@@ -51,12 +51,16 @@ function deptNameFor(slug: string | null): string | null {
 
 export default async function MarketplaceProductPage({ params }: { params: { id: string } }) {
   const supabase = createPublicClient()
-  const { data: product } = await supabase
+  // A failed query must throw (500 + Try Again), never masquerade as a
+  // missing product: the database can transiently fail under load, and a
+  // 404 would be a lie for a product that exists.
+  const { data: product, error: productError } = await supabase
     .from("affiliate_products")
     .select("id,product_name,product_description,product_image_url,original_price,sale_price,program_key,category_slug,subcategory_slug,stock,clicks,cj_data")
     .eq("id", params.id)
     .eq("is_active", true)
     .maybeSingle()
+  if (productError) throw new Error(`Marketplace product fetch failed: ${productError.message}`)
   if (!product) notFound()
   const p = product as DbProduct
 

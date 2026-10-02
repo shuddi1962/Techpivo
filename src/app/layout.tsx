@@ -5,6 +5,7 @@ import { DM_Sans, Syne } from "next/font/google"
 import { ThemeProvider } from "@/components/theme-provider"
 import { DeferredPostHog } from "@/components/deferred-posthog"
 import { LayoutWrapper } from "@/components/layout/layout-wrapper"
+import { HideOnStorefront } from "@/components/layout/store-gate"
 import { SITE_NAME, SITE_TAGLINE, SITE_URL } from "@/lib/constants"
 import { JsonLd } from "@/components/ui/jsonld"
 import { organizationSchema, websiteSchema } from "@/lib/jsonld"
@@ -111,6 +112,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <link rel="manifest" href="/manifest.json" />
         <link rel="dns-prefetch" href="https://www.googletagmanager.com" />
         <link rel="dns-prefetch" href="https://www.google-analytics.com" />
+        <link rel="preconnect" href="https://images.pexels.com" crossOrigin="anonymous" />
         <link rel="preconnect" href="https://pagead2.googlesyndication.com" />
         {process.env.NEXT_PUBLIC_ADSENSE_CLIENT_ID && (
           <>
@@ -183,10 +185,22 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <LayoutWrapper>{children}</LayoutWrapper>
           </DeferredPostHog>
         </ThemeProvider>
-        <PageViewTracker />
-        <GoogleCMP />
-        <CookieConsentBanner />
-        <PopupAd />
+        {/* Main-site overlays stay off the Market storefront: the store is a
+            standalone experience with its own header/footer and tracking, so
+            popup ads, the cookie banner, CMP and the main page-view tracker
+            must never mount or pop over /marketplace* routes. */}
+        <HideOnStorefront>
+          <PageViewTracker />
+        </HideOnStorefront>
+        <HideOnStorefront>
+          <GoogleCMP />
+        </HideOnStorefront>
+        <HideOnStorefront>
+          <CookieConsentBanner />
+        </HideOnStorefront>
+        <HideOnStorefront>
+          <PopupAd />
+        </HideOnStorefront>
       </body>
     </html>
   )

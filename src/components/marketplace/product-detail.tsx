@@ -157,7 +157,7 @@ export function ProductDetail({
           <div className="relative rounded-xl overflow-hidden bg-[#F8FAFC] border border-[#E2E8F0] aspect-square">
             {p.product_image_url ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={p.product_image_url} alt={p.product_name} className="w-full h-full object-cover" />
+              <img src={p.product_image_url} alt={p.product_name} loading="eager" decoding="async" className="w-full h-full object-cover" />
             ) : (
               <div className="w-full h-full flex items-center justify-center text-slate-300 text-sm">No image</div>
             )}
@@ -307,7 +307,7 @@ export function ProductDetail({
                 <div className="aspect-square bg-white rounded-lg overflow-hidden mb-2">
                   {r.product_image_url ? (
                     // eslint-disable-next-line @next/next/no-img-element
-                    <img src={r.product_image_url} alt={r.product_name} loading="lazy" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+                    <img src={r.product_image_url} alt={r.product_name} loading="lazy" decoding="async" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
                   ) : null}
                 </div>
                 <p className="text-[10px] text-slate-400 uppercase tracking-wide">{r.program_key || "TechPivo Pick"}</p>

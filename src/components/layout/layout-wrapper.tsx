@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server"
+import { fetchWithTimeout } from "@/lib/fetch-timeout"
 import { LayoutClient } from "./layout-client"
 
 export async function LayoutWrapper({ children }: { children: React.ReactNode }) {
@@ -8,15 +9,21 @@ export async function LayoutWrapper({ children }: { children: React.ReactNode })
 
   try {
     const supabase = await createClient()
-    const [catsRes, settingsRes, recentRes] = await Promise.all([
-      supabase.from("categories").select("*, subcategories(*)").eq("is_active", true).order("name"),
-      supabase.from("site_settings").select("key, value").like("key", "social_%"),
-      supabase.from("posts").select("id,title,slug,featured_image").eq("status", "published").order("published_at", { ascending: false }).limit(6),
-    ])
+    // 8s cap: this wrapper runs on EVERY page — a slow database must never
+    // hang the whole site. On timeout we render without nav/footer data.
+    const settled = await fetchWithTimeout(
+      Promise.all([
+        supabase.from("categories").select("*, subcategories(*)").eq("is_active", true).order("name"),
+        supabase.from("site_settings").select("key, value").like("key", "social_%"),
+        supabase.from("posts").select("id,title,slug,featured_image").eq("status", "published").order("published_at", { ascending: false }).limit(6),
+      ]),
+      8000
+    )
 
-    if (catsRes.data) categories = catsRes.data as any[]
-    if (recentRes.data) recentPosts = recentRes.data as any[]
-    if (settingsRes.data) {
+    const [catsRes, settingsRes, recentRes] = settled ?? []
+    if (catsRes?.data) categories = catsRes.data as any[]
+    if (recentRes?.data) recentPosts = recentRes.data as any[]
+    if (settingsRes?.data) {
       const map: Record<string, string> = {}
       ;(settingsRes.data as any[]).forEach((row: any) => {
         const platform = row.key.replace("social_", "")

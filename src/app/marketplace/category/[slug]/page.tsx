@@ -18,6 +18,7 @@ export interface CatProduct {
   sale_price: number | null
   program_key: string | null
   is_featured: boolean
+  stock: number | null
   clicks: number | null
   created_at: string | null
 }
@@ -51,13 +52,16 @@ export default async function MarketplaceCategoryPage({ params }: { params: { sl
       ? [found.dept.slug, ...found.dept.subs.map((s) => s.slug)]
       : [found.sub!.slug]
 
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from("affiliate_products")
-    .select("id,product_name,product_description,product_image_url,original_price,sale_price,program_key,is_featured,clicks,created_at")
+    .select("id,product_name,product_description,product_image_url,original_price,sale_price,program_key,is_featured,stock,clicks,created_at")
     .eq("is_active", true)
     .or(`category_slug.in.(${slugs.join(",")}),subcategory_slug.in.(${slugs.join(",")})`)
     .order("created_at", { ascending: false })
     .limit(100)
+  // Same rule as the product page: a failed query throws (500 + Try Again)
+  // instead of pretending the department is empty.
+  if (error) throw new Error(`Marketplace category fetch failed: ${error.message}`)
 
   const products = (data || []) as CatProduct[]
   const title = found.kind === "dept" ? found.dept.name : found.sub!.name

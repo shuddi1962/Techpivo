@@ -16,7 +16,7 @@ const NAV: Array<{ label: string; href: string }> = [
   { label: "Best Sellers", href: "/marketplace#trending" },
   { label: "Top Vendors", href: "/marketplace#vendors" },
   { label: "New Arrivals", href: "/marketplace#trending" },
-  { label: "Blog", href: "/blog" },
+  { label: "Track Order", href: "/marketplace/track" },
 ]
 
 export function MarketplaceHeader({

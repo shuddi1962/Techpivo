@@ -1,5 +1,6 @@
 import type { Metadata } from "next"
 import { createPublicClient } from "@/lib/supabase/server"
+import { fetchWithTimeout } from "@/lib/fetch-timeout"
 import { TopBar } from "@/components/layout/TopBar"
 import { Header } from "@/components/layout/Header"
 import { MainNav } from "@/components/layout/MainNav"
@@ -74,7 +75,8 @@ export default async function HomePage() {
         return a
       }
 
-      const results = await Promise.allSettled([
+      const results = (await fetchWithTimeout(
+        Promise.allSettled([
         // Narrow column lists: the homepage only renders title/slug/excerpt/
         // image/meta, so never fetch the full `content` body (some rows are
         // 50KB+ of HTML). `select("*")` here ballooned server latency and the
@@ -123,10 +125,14 @@ export default async function HomePage() {
           .eq("status", "published").limit(100),
 
         supabase.from("social_accounts").select("platform, credentials"),
-      ])
+      ]),
+        // 15s cap: a slow database must degrade to the fast static fallback
+        // below instead of hanging the homepage (Vercel timeout / blank tab).
+        15000
+      )) ?? []
 
       const extract = (r: any, i: number) =>
-        results[i]?.status === "fulfilled" ? results[i].value.data : null
+        Array.isArray(results) && results[i]?.status === "fulfilled" ? results[i].value.data : null
 
       const allRecent = extract(results[0], 0) || []
       const sticky = allRecent.filter((p: any) => p.is_sticky === true)

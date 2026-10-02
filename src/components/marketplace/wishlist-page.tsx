@@ -88,7 +88,7 @@ export function WishlistPage() {
                 <div className="aspect-square bg-white rounded-lg overflow-hidden mb-2">
                   {p.product_image_url ? (
                     // eslint-disable-next-line @next/next/no-img-element
-                    <img src={p.product_image_url} alt={p.product_name} loading="lazy" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+                    <img src={p.product_image_url} alt={p.product_name} loading="lazy" decoding="async" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
                   ) : null}
                 </div>
                 <p className="text-[10px] text-slate-400 uppercase tracking-wide">{p.program_key || "TechPivo Pick"}</p>
