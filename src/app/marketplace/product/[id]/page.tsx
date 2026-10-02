@@ -3,6 +3,7 @@ import Link from "next/link"
 import { notFound } from "next/navigation"
 import { ChevronRight } from "lucide-react"
 import { createPublicClient } from "@/lib/supabase/server"
+import { fetchWithTimeout } from "@/lib/fetch-timeout"
 import { MARKET_DEPARTMENTS } from "@/lib/marketplace-categories"
 import { MarketplaceHeader, MarketplaceFooter } from "@/components/marketplace/marketplace-header"
 import { ProductDetail } from "@/components/marketplace/product-detail"
@@ -26,12 +27,18 @@ interface DbProduct {
 
 export async function generateMetadata({ params }: { params: { id: string } }): Promise<Metadata> {
   const supabase = createPublicClient()
-  const { data } = await supabase
-    .from("affiliate_products")
-    .select("product_name,product_description,product_image_url")
-    .eq("id", params.id)
-    .eq("is_active", true)
-    .maybeSingle()
+  const metaRes = (await fetchWithTimeout(
+    supabase
+      .from("affiliate_products")
+      .select("product_name,product_description,product_image_url")
+      .eq("id", params.id)
+      .eq("is_active", true)
+      .maybeSingle(),
+    8000
+  )) as {
+    data: { product_name: string; product_description: string | null; product_image_url: string | null } | null
+  } | null
+  const { data } = metaRes ?? { data: null }
   if (!data) return { title: "Product not found — TechPivo Market" }
   return {
     title: `${data.product_name} — TechPivo Market`,
@@ -54,12 +61,17 @@ export default async function MarketplaceProductPage({ params }: { params: { id:
   // A failed query must throw (500 + Try Again), never masquerade as a
   // missing product: the database can transiently fail under load, and a
   // 404 would be a lie for a product that exists.
-  const { data: product, error: productError } = await supabase
-    .from("affiliate_products")
-    .select("id,product_name,product_description,product_image_url,original_price,sale_price,program_key,category_slug,subcategory_slug,stock,clicks,cj_data")
-    .eq("id", params.id)
-    .eq("is_active", true)
-    .maybeSingle()
+  const prodRes = (await fetchWithTimeout(
+    supabase
+      .from("affiliate_products")
+      .select("id,product_name,product_description,product_image_url,original_price,sale_price,program_key,category_slug,subcategory_slug,stock,clicks,cj_data")
+      .eq("id", params.id)
+      .eq("is_active", true)
+      .maybeSingle(),
+    12000
+  )) as { data: DbProduct | null; error: { message: string } | null } | null
+  if (!prodRes) throw new Error("Marketplace product fetch timed out. Please try again.")
+  const { data: product, error: productError } = prodRes
   if (productError) throw new Error(`Marketplace product fetch failed: ${productError.message}`)
   if (!product) notFound()
   const p = product as DbProduct
@@ -71,15 +83,23 @@ export default async function MarketplaceProductPage({ params }: { params: { id:
     .neq("id", p.id)
     .order("created_at", { ascending: false })
     .limit(4)
-  const [{ data: reviews }, { data: related }] = await Promise.all([
-    supabase
-      .from("marketplace_reviews")
-      .select("id,author_name,rating,title,comment,created_at")
-      .eq("product_id", p.id)
-      .order("created_at", { ascending: false })
-      .limit(20),
-    (p.category_slug ? relatedQuery.eq("category_slug", p.category_slug) : relatedQuery) as typeof relatedQuery,
-  ])
+  const rr = (await fetchWithTimeout(
+    Promise.all([
+      supabase
+        .from("marketplace_reviews")
+        .select("id,author_name,rating,title,comment,created_at")
+        .eq("product_id", p.id)
+        .order("created_at", { ascending: false })
+        .limit(20),
+      (p.category_slug ? relatedQuery.eq("category_slug", p.category_slug) : relatedQuery) as typeof relatedQuery,
+    ]),
+    10000
+  )) as [
+    { data: Array<{ id: string; author_name: string; rating: number; title: string | null; comment: string | null; created_at: string }> | null },
+    { data: Array<{ id: string; product_name: string; product_image_url: string | null; original_price: number | null; sale_price: number | null; program_key: string | null }> | null },
+  ] | null
+  const reviews = rr?.[0]?.data ?? []
+  const related = rr?.[1]?.data ?? []
 
   const deptSlug =
     MARKET_DEPARTMENTS.find(

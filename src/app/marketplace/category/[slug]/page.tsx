@@ -3,6 +3,7 @@ import Link from "next/link"
 import { notFound } from "next/navigation"
 import { ChevronRight } from "lucide-react"
 import { createPublicClient } from "@/lib/supabase/server"
+import { fetchWithTimeout } from "@/lib/fetch-timeout"
 import { MARKET_DEPARTMENTS } from "@/lib/marketplace-categories"
 import { MarketplaceHeader, MarketplaceFooter } from "@/components/marketplace/marketplace-header"
 import { CategoryBrowse } from "@/components/marketplace/category-browse"
@@ -52,15 +53,20 @@ export default async function MarketplaceCategoryPage({ params }: { params: { sl
       ? [found.dept.slug, ...found.dept.subs.map((s) => s.slug)]
       : [found.sub!.slug]
 
-  const { data, error } = await supabase
-    .from("affiliate_products")
-    .select("id,product_name,product_description,product_image_url,original_price,sale_price,program_key,is_featured,stock,clicks,created_at")
-    .eq("is_active", true)
-    .or(`category_slug.in.(${slugs.join(",")}),subcategory_slug.in.(${slugs.join(",")})`)
-    .order("created_at", { ascending: false })
-    .limit(100)
+  const catRes = (await fetchWithTimeout(
+    supabase
+      .from("affiliate_products")
+      .select("id,product_name,product_description,product_image_url,original_price,sale_price,program_key,is_featured,stock,clicks,created_at")
+      .eq("is_active", true)
+      .or(`category_slug.in.(${slugs.join(",")}),subcategory_slug.in.(${slugs.join(",")})`)
+      .order("created_at", { ascending: false })
+      .limit(100),
+    10000
+  )) as { data: CatProduct[] | null; error: { message: string } | null } | null
   // Same rule as the product page: a failed query throws (500 + Try Again)
   // instead of pretending the department is empty.
+  if (!catRes) throw new Error("Marketplace category fetch timed out. Please try again.")
+  const { data, error } = catRes
   if (error) throw new Error(`Marketplace category fetch failed: ${error.message}`)
 
   const products = (data || []) as CatProduct[]

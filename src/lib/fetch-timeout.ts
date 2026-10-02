@@ -8,24 +8,22 @@
  * failed static generation). Wrap every build/request-time query batch and
  * treat `null` as "data unavailable — render without it".
  */
-export function fetchWithTimeout<T>(task: Promise<T>, ms: number): Promise<T | null> {
+export function fetchWithTimeout<T>(task: PromiseLike<T>, ms: number): Promise<T | null> {
   let timer: ReturnType<typeof setTimeout> | undefined
   const timeout = new Promise<null>((resolve) => {
     timer = setTimeout(() => resolve(null), ms)
   })
-  return Promise.race([
-    task.then(
-      (v) => {
-        if (timer) clearTimeout(timer)
-        return v as T | null
-      },
-      () => {
-        if (timer) clearTimeout(timer)
-        return null
-      },
-    ),
-    timeout,
-  ]).then((v) => {
+  const run = Promise.resolve(task).then(
+    (v) => {
+      if (timer) clearTimeout(timer)
+      return v as T | null
+    },
+    () => {
+      if (timer) clearTimeout(timer)
+      return null
+    },
+  )
+  return Promise.race([run, timeout]).then((v) => {
     if (timer) clearTimeout(timer)
     return v
   })
