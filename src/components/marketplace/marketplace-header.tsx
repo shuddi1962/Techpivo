@@ -13,11 +13,11 @@ import { cartCount as countLines, useMarketCart } from "@/lib/marketplace-cart"
 
 const NAV: Array<{ label: string; href: string }> = [
   { label: "Home", href: "/marketplace" },
-  { label: "Shop", href: "/marketplace#trending" },
-  { label: "Deals of the Day", href: "/marketplace#flash-deals" },
-  { label: "Best Sellers", href: "/marketplace#trending" },
-  { label: "Top Vendors", href: "/marketplace#vendors" },
-  { label: "New Arrivals", href: "/marketplace#trending" },
+  { label: "Shop", href: "/marketplace/shop" },
+  { label: "Deals of the Day", href: "/marketplace/deals" },
+  { label: "Best Sellers", href: "/marketplace/best-sellers" },
+  { label: "Top Stores", href: "/marketplace/top-stores" },
+  { label: "New Arrivals", href: "/marketplace/new-arrivals" },
   { label: "Track Order", href: "/marketplace/track" },
 ]
 
@@ -207,17 +207,9 @@ export function MarketplaceHeader({
       {/* main bar — full width */}
       <div className="w-full bg-white">
         <div className="mx-auto w-full max-w-[1400px] px-3 sm:px-6 lg:px-10 flex items-center justify-between gap-4 h-16 md:h-20">
-          <Link href="/marketplace" className="flex items-center gap-2 shrink-0" aria-label="TechPivo Market home">
-            <span
-              className="flex h-9 w-9 items-center justify-center rounded-lg text-lg font-extrabold text-white"
-              style={{ background: `linear-gradient(135deg, #F59E0B 0%, #EF4444 100%)` }}
-            >
-              T
-            </span>
-            <span className="leading-tight">
-              <span className="block text-lg font-extrabold tracking-tight text-[#0F172A]">TechPivo</span>
-              <span className="block text-[10px] font-bold uppercase tracking-[0.2em] text-[#F59E0B]">Market</span>
-            </span>
+          <Link href="/marketplace" className="flex items-center shrink-0" aria-label="TechPivo Market home">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/market-logo.svg" alt="TechPivo Market" className="h-10 w-auto sm:h-11" />
           </Link>
 
           {/* search (desktop) */}
@@ -528,10 +520,11 @@ export function MarketplaceFooter() {
       <div className="w-full text-white" style={{ background: `linear-gradient(180deg, ${MARKETPLACE_BRAND.navy} 0%, ${MARKETPLACE_BRAND.navyDeep} 100%)` }}>
         <div className="mx-auto grid w-full max-w-[1400px] grid-cols-1 gap-10 px-3 py-12 sm:px-6 md:grid-cols-2 lg:grid-cols-4 lg:px-10">
           <div className="space-y-4 lg:col-span-1">
-            <div className="flex items-center gap-2">
-              <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-[#F59E0B] text-base font-extrabold text-[#0F172A]">T</span>
-              <span className="text-lg font-extrabold">TechPivo <span className="text-[#F59E0B]">Market</span></span>
-            </div>
+          <div className="flex items-center gap-2">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/logo.svg" alt="TechPivo Market" className="h-9 w-auto" />
+            <span className="text-[10px] font-bold uppercase tracking-[0.25em] text-[#F59E0B]">Market</span>
+          </div>
             <p className="text-sm leading-relaxed text-slate-300">Curated tech products, reviewed by the TechPivo editorial team. Every purchase supports independent tech journalism.</p>
             <div className="space-y-2 text-sm text-slate-300">
               <div className="flex items-start gap-2"><MapPin className="mt-0.5 h-4 w-4 shrink-0 text-[#F59E0B]" /><span>Lagos • Nairobi • Accra — ships worldwide</span></div>

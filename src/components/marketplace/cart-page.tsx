@@ -85,8 +85,9 @@ export function CartPage() {
         <div className="divide-y divide-[#E2E8F0]">
           {lines.map((l) => {
             const unit = Number(l.product!.sale_price ?? l.product!.original_price ?? 0)
+            const key = `${l.id}::${l.variant?.vid || ""}`
             return (
-              <div key={l.id} className="py-3 flex gap-3">
+              <div key={key} className="py-3 flex gap-3">
                 <Link href={`/marketplace/product/${l.id}`} className="w-20 h-20 rounded-lg bg-[#F8FAFC] border border-[#E2E8F0] overflow-hidden shrink-0">
                   {l.product!.product_image_url ? (
                     // eslint-disable-next-line @next/next/no-img-element
@@ -97,18 +98,23 @@ export function CartPage() {
                   <Link href={`/marketplace/product/${l.id}`} className="text-sm font-semibold text-[#0F172A] line-clamp-2 hover:text-[#B45309]">
                     {l.product!.product_name}
                   </Link>
+                  {l.variant?.label && (
+                    <p className="mt-0.5 inline-block rounded-full bg-[#FFF7ED] border border-[#FED7AA] px-2 py-0.5 text-[11px] font-semibold text-[#B45309]">
+                      {l.variant.label}
+                    </p>
+                  )}
                   <p className="text-sm font-bold text-[#0F172A] mt-1">{dualPrice(unit, rate)}</p>
                   <div className="flex items-center justify-between mt-2 flex-wrap gap-2">
                     <div className="flex items-center border border-[#CBD5E1] rounded-lg overflow-hidden">
-                      <button onClick={() => setQty(l.id, l.qty - 1)} className="px-2.5 py-1.5 hover:bg-slate-100" aria-label="Decrease quantity">
+                      <button onClick={() => setQty(l.id, l.qty - 1, l.variant)} className="px-2.5 py-1.5 hover:bg-slate-100" aria-label="Decrease quantity">
                         <Minus className="h-3.5 w-3.5" />
                       </button>
                       <span className="w-8 text-center text-sm font-bold tabular-nums">{l.qty}</span>
-                      <button onClick={() => setQty(l.id, l.qty + 1)} className="px-2.5 py-1.5 hover:bg-slate-100" aria-label="Increase quantity">
+                      <button onClick={() => setQty(l.id, l.qty + 1, l.variant)} className="px-2.5 py-1.5 hover:bg-slate-100" aria-label="Increase quantity">
                         <Plus className="h-3.5 w-3.5" />
                       </button>
                     </div>
-                    <button onClick={() => removeFromCart(l.id)} className="text-xs text-slate-400 hover:text-[#EF4444] inline-flex items-center gap-1" aria-label={`Remove ${l.product!.product_name}`}>
+                    <button onClick={() => removeFromCart(l.id, l.variant)} className="text-xs text-slate-400 hover:text-[#EF4444] inline-flex items-center gap-1" aria-label={`Remove ${l.product!.product_name}`}>
                       <Trash2 className="h-3.5 w-3.5" /> Remove
                     </button>
                   </div>

@@ -42,10 +42,12 @@ export async function generateMetadata({ params }: { params: { id: string } }): 
   } | null
   const { data } = metaRes ?? { data: null }
   if (!data) return { title: "Product not found — TechPivo Market" }
+  const cleanDesc = cleanSupplierText(data.product_description)
+  const cleanImg = marketImage(data.product_image_url)
   return {
-    title: `${data.product_name} — TechPivo Market`,
-    description: (data.product_description || `Buy ${data.product_name} on TechPivo Market with fast delivery.`).slice(0, 160),
-    openGraph: data.product_image_url ? { images: [{ url: data.product_image_url }] } : undefined,
+    title: `${cleanSupplierText(data.product_name) || data.product_name} — TechPivo Market`,
+    description: (cleanDesc || `Buy ${data.product_name} on TechPivo Market with fast delivery.`).slice(0, 160),
+    openGraph: cleanImg ? { images: [{ url: cleanImg }] } : undefined,
   }
 }
 

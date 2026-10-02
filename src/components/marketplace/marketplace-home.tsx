@@ -4,8 +4,8 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useEffect, useMemo, useState } from "react"
 import {
-  ArrowRight, Car, Check, ChevronLeft, ChevronRight, Cpu, Flame,
-  Heart, Laptop, Package, ShoppingCart, ShieldCheck, Smartphone, Star, Wrench, X, Zap,
+  ArrowRight, Check, ChevronLeft, ChevronRight, Flame,
+  Heart, Package, ShoppingCart, ShieldCheck, Star, X, Zap,
   BadgeCheck, Truck,
 } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
@@ -16,10 +16,6 @@ import {
 import { MARKET_DEPARTMENTS } from "@/lib/marketplace-categories"
 import { marketImage, cleanSupplierText } from "@/lib/marketplace-images"
 import { MarketplaceHeader, MarketplaceFooter } from "./marketplace-header"
-
-const CATEGORY_ICONS: Record<string, typeof Laptop> = {
-  Cpu, Smartphone, Laptop, Car, Wrench,
-}
 
 interface DbProduct {
   id: string
@@ -503,35 +499,27 @@ export function MarketplaceHome() {
           <div className="flex items-center justify-between mb-4">
             <div>
               <h2 className="text-lg font-bold text-[#0F172A]">Shop by Department</h2>
-              <p className="text-sm text-slate-500">{MARKET_DEPARTMENTS.length} departments · live supplier catalog</p>
+              <p className="text-sm text-slate-500">Every aisle, curated — pick a department to explore</p>
             </div>
             <span className="text-[11px] font-bold uppercase text-slate-400 hidden sm:block">New stock weekly</span>
           </div>
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2.5">
-            {MARKET_DEPARTMENTS.map((c) => {
-              const Icon = CATEGORY_ICONS[c.icon] ?? Laptop
-              const leaves = c.subs.reduce((n, s) => n + s.items.length, 0)
-              return (
-                <Link
-                  key={c.slug}
-                  href={`/marketplace/category/${c.slug}`}
-                  className="group rounded-xl overflow-hidden border text-left transition-colors border-[#E2E8F0] bg-[#F8FAFC] hover:bg-slate-100"
-                >
-                  <div className="h-20 overflow-hidden">
-                    <img src={c.image} alt={c.name} loading="lazy" decoding="async" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
-                  </div>
-                  <div className="p-3 flex items-center gap-2.5">
-                    <span className="w-10 h-10 rounded-full bg-white border border-[#E2E8F0] flex items-center justify-center text-[#0F172A] shrink-0">
-                      <Icon className="h-5 w-5" />
-                    </span>
-                    <span className="min-w-0">
-                      <span className="block text-sm font-semibold text-[#0F172A] group-hover:text-[#B45309] line-clamp-1">{c.name}</span>
-                      <span className="block text-[11px] text-slate-400">{c.subs.length} groups · {leaves} types</span>
-                    </span>
-                  </div>
-                </Link>
-              )
-            })}
+            {MARKET_DEPARTMENTS.map((c) => (
+              <Link
+                key={c.slug}
+                href={`/marketplace/category/${c.slug}`}
+                className="group relative rounded-xl overflow-hidden border border-[#E2E8F0] transition-all hover:-translate-y-0.5 hover:shadow-lg"
+              >
+                <div className="h-32 sm:h-36 overflow-hidden">
+                  <img src={c.image} alt={c.name} loading="lazy" decoding="async" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+                </div>
+                <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/15 to-transparent" />
+                <div className="absolute bottom-0 inset-x-0 p-3">
+                  <span className="block text-sm font-bold text-white leading-tight">{c.name}</span>
+                  <span className="mt-0.5 inline-block text-[11px] font-semibold text-[#FCD34D]">Shop now →</span>
+                </div>
+              </Link>
+            ))}
           </div>
           {/* subcategory chips */}
           <div className="flex flex-wrap gap-1.5 mt-4">

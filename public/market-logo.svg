@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 236 60" fill="none">
+  <defs>
+    <linearGradient id="mlg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#FCD34D"/>
+      <stop offset="50%" stop-color="#F59E0B"/>
+      <stop offset="100%" stop-color="#EF4444"/>
+    </linearGradient>
+  </defs>
+  <rect x="4" y="4" width="52" height="52" rx="13" fill="#23272E"/>
+  <rect x="4" y="4" width="52" height="52" rx="13" stroke="url(#mlg)" stroke-width="2"/>
+  <path d="M20 16h20l-4 8h-10l-2 3h9l-4 6h-7l-6 12h-6l10-20-5-9z" fill="url(#mlg)"/>
+  <rect x="20" y="34" width="20" height="4" rx="2" fill="url(#mlg)"/>
+  <circle cx="52" cy="52" r="11" fill="#DC2626" stroke="#FFFFFF" stroke-width="2.5"/>
+  <path d="M46.6 48.6l-2-4.2h2.8" stroke="#FFFFFF" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M46.6 48.6h10.8l-1.3 5.6h-8.2z" fill="#FFFFFF"/>
+  <circle cx="48.8" cy="56.4" r="1.3" fill="#FFFFFF"/>
+  <circle cx="53.8" cy="56.4" r="1.3" fill="#FFFFFF"/>
+  <text x="70" y="37" font-family="'Inter','Segoe UI',system-ui,sans-serif" font-size="30" font-weight="800" fill="#0F172A" letter-spacing="-0.5">TechPivo</text>
+  <text x="71" y="53" font-family="'Inter','Segoe UI',system-ui,sans-serif" font-size="13" font-weight="700" fill="#D97706" letter-spacing="5">MARKET</text>
+</svg>

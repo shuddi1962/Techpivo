@@ -80,7 +80,7 @@ export function CheckoutPage() {
           ship_state: form.state,
           ship_zip: form.zip,
           ship_country: form.country,
-          items: lines.map((l) => ({ id: l.id, qty: l.qty })),
+          items: lines.map((l) => ({ id: l.id, qty: l.qty, variant: l.variant ? { vid: l.variant.vid, label: l.variant.label } : null })),
         }),
       })
       const data = await res.json()

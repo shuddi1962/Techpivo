@@ -244,16 +244,23 @@ export async function cjSyncCatalog(opts: {
   )
 }
 
+/** Store pricing rule: 20% margin over CJ cost.
+ *  sale = cost × 1.20, compare-at = cost × 1.50 (shows ~20% off). */
+export const MARKET_MARGIN = 1.2
+export const MARKET_COMPARE = 1.5
+
 export function mapCjToAffiliate(cj: CjProductSummary, extra?: { categorySlug?: string | null; subcategorySlug?: string | null }) {
-  const price = Number(cj.sellPrice ?? 0)
+  const cost = Number(cj.sellPrice ?? 0)
+  const sale = cost ? Math.round(cost * MARKET_MARGIN * 100) / 100 : null
+  const original = cost ? Math.round(cost * MARKET_COMPARE * 100) / 100 : null
   return {
     program_key: "cjdropshipping",
     product_name: (cj.productNameEn || `CJ Product ${cj.pid}`).slice(0, 200),
     product_description: [cj.categoryFirstName, cj.categorySecondName].filter(Boolean).join(" / ") || null,
     product_image_url: cj.productImage || null,
     affiliate_link: `https://cjdropshipping.com/`,
-    original_price: price ? Math.round(price * 1.25 * 100) / 100 : null,
-    sale_price: price || null,
+    original_price: original,
+    sale_price: sale,
     is_active: true,
     is_featured: false,
     category_slug: extra?.categorySlug || null,

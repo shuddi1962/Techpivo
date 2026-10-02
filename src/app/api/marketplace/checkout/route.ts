@@ -2,12 +2,14 @@ import { NextRequest, NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
 import { createClient as createAdmin } from "@/lib/supabase/admin"
 import { paystackInit } from "@/lib/paystack"
+import { cjGetVariants, MARKET_MARGIN } from "@/lib/cj"
 
 export const dynamic = "force-dynamic"
 
 interface CheckoutItem {
   id: string
   qty: number
+  variant?: { vid?: string; label?: string } | null
 }
 
 // POST /api/marketplace/checkout — validate cart server-side, create a
@@ -52,17 +54,38 @@ export async function POST(request: NextRequest) {
       const p = byId.get(String(it.id))
       const qty = Math.max(1, Math.min(99, Math.floor(Number(it.qty) || 1)))
       if (!p) continue
-      const unit = Number(p.sale_price ?? p.original_price ?? 0)
-      if (!Number.isFinite(unit) || unit <= 0) continue
+      const base = Number(p.sale_price ?? p.original_price ?? 0)
+      if (!Number.isFinite(base) || base <= 0) continue
+      // Selected option: verify its live price when the product is linked
+      // to a supplier catalog, otherwise charge the base product price.
+      let unit = base
+      let vid = (p as { cj_vid?: string }).cj_vid || null
+      const wantVid = typeof it.variant?.vid === "string" ? it.variant.vid.slice(0, 80) : ""
+      const wantLabel = typeof it.variant?.label === "string" ? it.variant.label.slice(0, 120) : ""
+      const cjPid = (p as { cj_pid?: string }).cj_pid || null
+      if (wantVid && cjPid) {
+        try {
+          const variants = await cjGetVariants(cjPid)
+          const match = (variants || []).find((v) => String(v.vid) === wantVid)
+          const cost = match ? Number(match.variantSellPrice) : NaN
+          if (match && Number.isFinite(cost) && cost > 0) {
+            unit = Math.round(cost * MARKET_MARGIN * 100) / 100
+            vid = wantVid
+          }
+        } catch {
+          // supplier unreachable — fall back to base price, manual fulfillment
+          vid = null
+        }
+      }
       subtotal += unit * qty
       lines.push({
         id: p.id,
-        name: p.product_name,
+        name: wantLabel ? `${p.product_name} (${wantLabel})` : p.product_name,
         image: p.product_image_url,
         unit_usd: Math.round(unit * 100) / 100,
         qty,
-        cj_pid: (p as { cj_pid?: string }).cj_pid || null,
-        cj_vid: (p as { cj_vid?: string }).cj_vid || null,
+        cj_pid: cjPid,
+        cj_vid: vid,
       })
     }
     if (lines.length === 0) {

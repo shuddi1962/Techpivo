@@ -7,9 +7,15 @@
 
 import { useSyncExternalStore } from "react"
 
+export interface CartVariant {
+  vid: string
+  label: string
+}
+
 export interface CartLine {
   id: string
   qty: number
+  variant?: CartVariant | null
 }
 
 const KEY = "tp_market_cart_v1"
@@ -29,7 +35,14 @@ function parseLines(raw: string | null): CartLine[] {
     if (!Array.isArray(arr)) return []
     return arr
       .filter((l) => typeof l?.id === "string" && Number.isFinite(l?.qty))
-      .map((l) => ({ id: l.id, qty: Math.max(1, Math.min(99, Math.floor(l.qty))) }))
+      .map((l) => ({
+        id: l.id,
+        qty: Math.max(1, Math.min(99, Math.floor(l.qty))),
+        variant:
+          l.variant && typeof l.variant.vid === "string" && typeof l.variant.label === "string"
+            ? { vid: l.variant.vid.slice(0, 80), label: l.variant.label.slice(0, 120) }
+            : null,
+      }))
   } catch {
     return []
   }
@@ -84,28 +97,32 @@ export function getCart(): CartLine[] {
   return read()
 }
 
-export function setQty(id: string, qty: number) {
+function sameLine(a: CartLine, id: string, variant?: CartVariant | null): boolean {
+  return a.id === id && (a.variant?.vid || "") === (variant?.vid || "")
+}
+
+export function setQty(id: string, qty: number, variant?: CartVariant | null) {
   const lines = read()
   if (qty <= 0) {
-    write(lines.filter((l) => l.id !== id))
+    write(lines.filter((l) => !sameLine(l, id, variant)))
     return
   }
-  const found = lines.find((l) => l.id === id)
+  const found = lines.find((l) => sameLine(l, id, variant))
   if (found) found.qty = Math.max(1, Math.min(99, Math.floor(qty)))
-  else lines.push({ id, qty: Math.max(1, Math.min(99, Math.floor(qty))) })
+  else lines.push({ id, qty: Math.max(1, Math.min(99, Math.floor(qty))), variant: variant || null })
   write(lines)
 }
 
-export function addToCart(id: string, qty = 1) {
+export function addToCart(id: string, qty = 1, variant?: CartVariant | null) {
   const lines = read()
-  const found = lines.find((l) => l.id === id)
+  const found = lines.find((l) => sameLine(l, id, variant))
   if (found) found.qty = Math.min(99, found.qty + Math.max(1, Math.floor(qty)))
-  else lines.push({ id, qty: Math.max(1, Math.floor(qty)) })
+  else lines.push({ id, qty: Math.max(1, Math.floor(qty)), variant: variant || null })
   write(lines)
 }
 
-export function removeFromCart(id: string) {
-  write(read().filter((l) => l.id !== id))
+export function removeFromCart(id: string, variant?: CartVariant | null) {
+  write(read().filter((l) => !sameLine(l, id, variant)))
 }
 
 export function clearCart() {

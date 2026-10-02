@@ -45,6 +45,32 @@ interface Product {
 const RECENT_KEY = "tp_market_recent_v1"
 const WISH_KEY = "tp_market_wish_v1"
 
+const SWATCH_HEX: Record<string, string> = {
+  black: "#1F2937", white: "#FFFFFF", red: "#DC2626", blue: "#2563EB",
+  green: "#16A34A", yellow: "#EAB308", pink: "#EC4899", purple: "#9333EA",
+  orange: "#F97316", gray: "#9CA3AF", grey: "#9CA3AF", silver: "#C0C0C0",
+  gold: "#C9A227", brown: "#92400E", beige: "#E7D8C3", navy: "#1E3A8A",
+}
+
+function swatchFor(value: string): string | null {
+  const v = value.toLowerCase()
+  for (const [k, hex] of Object.entries(SWATCH_HEX)) {
+    if (v.includes(k)) return hex
+  }
+  return null
+}
+
+interface VariantOpt {
+  vid: string
+  label: string
+  price: number | null
+  image: string
+  stock: number | null
+}
+
+const splitParts = (s: string): string[] =>
+  s.split(/[/;|]+/).map((x) => x.trim()).filter(Boolean)
+
 function recordRecent(id: string) {
   try {
     const raw = window.localStorage.getItem(RECENT_KEY)
@@ -88,6 +114,10 @@ export function ProductDetail({
   const [rText, setRText] = useState("")
   const [rSending, setRSending] = useState(false)
   const [rNotice, setRNotice] = useState("")
+  const [variants, setVariants] = useState<VariantOpt[]>([])
+  const [attrs, setAttrs] = useState<Array<{ name: string; values: string[] }>>([])
+  const [picked, setPicked] = useState<Record<string, string>>({})
+  const [activeImg, setActiveImg] = useState<string>(p.product_image_url || "")
 
   useEffect(() => {
     try {
@@ -105,9 +135,45 @@ export function ProductDetail({
     }).catch(() => {
       // click tracking is best-effort
     })
+    // Live supplier options (colors, sizes, types) for this product.
+    fetch(`/api/marketplace/variants?product_id=${encodeURIComponent(p.id)}`)
+      .then((r) => r.json())
+      .then((d) => {
+        if (Array.isArray(d?.variants) && d.variants.length > 0) {
+          setVariants(d.variants as VariantOpt[])
+          const at = (Array.isArray(d?.attributes) ? d.attributes : []) as Array<{ name: string; values: string[] }>
+          setAttrs(at)
+          const init: Record<string, string> = {}
+          at.forEach((a) => {
+            if (a.values[0]) init[a.name] = a.values[0]
+          })
+          setPicked(init)
+        }
+      })
+      .catch(() => {
+        // options unavailable — base product still sells
+      })
   }, [p.id])
 
-  const price = Number(p.sale_price ?? p.original_price ?? 0)
+  const selected: VariantOpt | null =
+    variants.length > 0
+      ? variants.find((v) => {
+          const parts = splitParts(v.label)
+          return attrs.every((a, i) => !picked[a.name] || parts[i] === picked[a.name])
+        }) || null
+      : null
+
+  useEffect(() => {
+    if (selected?.image) setActiveImg(selected.image)
+  }, [selected?.image])
+
+  const gallery = (() => {
+    const imgs = [p.product_image_url || "", ...(variants.map((v) => v.image).filter(Boolean) as string[])]
+    return [...new Set(imgs.filter(Boolean))]
+  })()
+
+  const basePrice = Number(p.sale_price ?? p.original_price ?? 0)
+  const price = selected?.price ?? basePrice
   const oldPrice = p.original_price && p.sale_price ? Number(p.original_price) : null
   const discount = oldPrice && oldPrice > price ? Math.round((1 - price / oldPrice) * 100) : 0
   const avg = useMemo(
@@ -116,12 +182,12 @@ export function ProductDetail({
   )
 
   const doAdd = () => {
-    addToCart(p.id, qty)
+    addToCart(p.id, qty, selected ? { vid: selected.vid, label: selected.label } : null)
     setAdded(true)
     setTimeout(() => setAdded(false), 1600)
   }
   const buyNow = () => {
-    addToCart(p.id, qty)
+    addToCart(p.id, qty, selected ? { vid: selected.vid, label: selected.label } : null)
     router.push("/marketplace/checkout")
   }
 
@@ -188,6 +254,60 @@ export function ProductDetail({
           </div>
           <p className="text-sm font-semibold text-slate-600 mt-1">≈ {dualPrice(price, rate).split(" · ")[1] || ""} · pay in naira at checkout</p>
           {p.product_description && <p className="text-sm text-slate-600 mt-3">{p.product_description}</p>}
+
+          {/* supplier options — colors, sizes, types */}
+          {attrs.length > 0 && (
+            <div className="mt-5 space-y-3 rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] p-3.5">
+              {attrs.map((a) => {
+                const isColor = a.name.toLowerCase() === "color"
+                return (
+                  <div key={a.name}>
+                    <p className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">
+                      {a.name}: <span className="text-[#0F172A] normal-case">{picked[a.name]}</span>
+                    </p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {a.values.map((v) => {
+                        const on = picked[a.name] === v
+                        if (isColor) {
+                          const hex = swatchFor(v)
+                          return (
+                            <button
+                              key={v}
+                              type="button"
+                              title={v}
+                              aria-label={`Select color ${v}`}
+                              aria-pressed={on}
+                              onClick={() => setPicked((m) => ({ ...m, [a.name]: v }))}
+                              className={`flex h-9 w-9 items-center justify-center rounded-full border-2 transition-all ${on ? "scale-110 border-[#DC2626]" : "border-[#E2E8F0] hover:border-slate-400"}`}
+                              style={{ background: hex || "#F1F5F9" }}
+                            >
+                              {on && <Check className={`h-4 w-4 ${hex === "#FFFFFF" ? "text-slate-800" : "text-white"}`} />}
+                            </button>
+                          )
+                        }
+                        return (
+                          <button
+                            key={v}
+                            type="button"
+                            aria-pressed={on}
+                            onClick={() => setPicked((m) => ({ ...m, [a.name]: v }))}
+                            className={`min-w-10 rounded-lg border px-3 py-1.5 text-xs font-bold transition-colors ${on ? "border-[#DC2626] bg-[#DC2626] text-white" : "border-[#CBD5E1] bg-white text-slate-600 hover:border-[#DC2626]"}`}
+                          >
+                            {v}
+                          </button>
+                        )
+                      })}
+                    </div>
+                  </div>
+                )
+              })}
+              {selected?.stock != null && (
+                <p className="text-[11px] text-slate-500">
+                  {selected.stock > 0 ? `${selected.stock} available in this option` : "Made to order in this option"}
+                </p>
+              )}
+            </div>
+          )}
 
           <div className="flex items-center gap-3 mt-5">
             <span className="text-sm font-semibold text-slate-700">Qty</span>
