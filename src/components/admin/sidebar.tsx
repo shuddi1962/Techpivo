@@ -11,7 +11,7 @@ import {
   Globe, Users, MessageSquare, Mail,
   Bell, Shield,
   Brain, HeartPulse, Calendar,
-  FileBarChart, Cpu, Key, Wrench, Lock,
+  FileBarChart, Cpu, Key, Wrench, Lock, Store,
   Trophy, BookOpen, PanelLeftClose, PanelLeftOpen, Newspaper, PieChart,
   Plus, ExternalLink, Radar, Zap, PanelsTopLeft, LayoutTemplate, CalendarPlus, ShieldAlert, Hash, type LucideIcon,
 } from "lucide-react"
@@ -74,6 +74,8 @@ const navGroups: NavGroup[] = [
     label: "Monetization",
     links: [
       { href: "/admin/ads", label: "Ads", icon: DollarSign },
+      { href: "/admin/marketplace", label: "Marketplace", icon: Store, badge: "LIVE" },
+      { href: "/admin/affiliate", label: "Affiliate", icon: BarChart3 },
     ],
   },
   {

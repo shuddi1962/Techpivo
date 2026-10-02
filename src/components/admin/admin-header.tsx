@@ -45,6 +45,7 @@ const breadcrumbMap: Record<string, string> = {
   "push": "Push Notifications",
   "ads": "Ads",
   "affiliate": "Affiliate",
+  "marketplace": "TechPivo Market",
   "revenue-intelligence": "Revenue Intelligence",
   "analytics": "Analytics",
   "reports": "Reports",
