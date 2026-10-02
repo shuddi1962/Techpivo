@@ -61,7 +61,7 @@ export function TrackPage() {
         <div className="grid gap-2 mt-4">
           <input value={reference} onChange={(e) => setReference(e.target.value)} placeholder="Order reference (TPM-...)" className="border rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:border-[#F59E0B]" />
           <input value={email} onChange={(e) => setEmail(e.target.value)} type="email" placeholder="Payment email" className="border rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:border-[#F59E0B]" />
-          <button onClick={lookup} disabled={loading} className="bg-[#0F172A] text-white text-sm font-bold py-2.5 rounded-lg disabled:opacity-60 flex items-center justify-center gap-2">
+          <button onClick={lookup} disabled={loading} className="bg-[#1668DC] text-white text-sm font-bold py-2.5 rounded-lg disabled:opacity-60 flex items-center justify-center gap-2">
             {loading ? <><Loader2 className="h-4 w-4 animate-spin" /> Looking up...</> : "Track order"}
           </button>
         </div>

@@ -4,6 +4,7 @@ import Link from "next/link"
 import { useEffect, useMemo, useState } from "react"
 import { PackageSearch, SlidersHorizontal, Star, X } from "lucide-react"
 import { useUsdNgnRate } from "@/lib/marketplace-pricing"
+import { supplierDisplayName } from "@/lib/marketplace"
 import type { CatProduct } from "@/app/marketplace/category/[slug]/page"
 
 type Sort = "popular" | "newest" | "price-asc" | "price-desc" | "discount"
@@ -160,12 +161,12 @@ export function CategoryBrowse({
       </div>
       {vendorOptions.length > 1 && (
         <div>
-          <h3 className="text-sm font-bold text-[#0F172A] mb-2">Vendor</h3>
+          <h3 className="text-sm font-bold text-[#0F172A] mb-2">Supplier</h3>
           <div className="space-y-1">
             {vendorOptions.map(([v, n]) => (
               <label key={v} className="flex items-center gap-2 text-sm text-slate-600 cursor-pointer">
                 <input type="checkbox" checked={vendors.includes(v)} onChange={() => toggleVendor(v)} className="accent-[#F59E0B] h-4 w-4" />
-                <span className="flex-1">{v}</span>
+                <span className="flex-1">{supplierDisplayName(v)}</span>
                 <span className="text-[11px] text-slate-400">({n})</span>
               </label>
             ))}

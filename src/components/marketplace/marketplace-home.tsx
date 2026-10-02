@@ -5,13 +5,13 @@ import { useRouter } from "next/navigation"
 import { useEffect, useMemo, useState } from "react"
 import {
   ArrowRight, Car, Check, ChevronLeft, ChevronRight, Cpu, Flame,
-  Heart, Laptop, Package, ShoppingCart, Smartphone, Star, Wrench, X, Zap,
+  Heart, Laptop, Package, ShoppingCart, ShieldCheck, Smartphone, Star, Wrench, X, Zap,
   BadgeCheck, Truck,
 } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
 import { addToCart as addLine, cartCount as countLines, useMarketCart } from "@/lib/marketplace-cart"
 import {
-  MARKETPLACE_BRAND, MARKETPLACE_HERO, type DemoProduct,
+  MARKETPLACE_BRAND, MARKETPLACE_HERO, supplierDisplayName, type DemoProduct,
 } from "@/lib/marketplace"
 import { MARKET_DEPARTMENTS } from "@/lib/marketplace-categories"
 import { MarketplaceHeader, MarketplaceFooter } from "./marketplace-header"
@@ -239,7 +239,7 @@ export function MarketplaceHome() {
         return {
           id: d.id,
           name: d.product_name,
-          category: d.program_key || "TechPivo Pick",
+          category: supplierDisplayName(d.program_key),
           price: Number(d.sale_price ?? d.original_price ?? 0),
           oldPrice: d.original_price && Number(d.original_price) > Number(d.sale_price ?? d.original_price ?? 0)
             ? Number(d.original_price)
@@ -278,11 +278,11 @@ export function MarketplaceHome() {
   const filtering = q.length > 0 || vendorFilter !== null
   const wishCount = Object.values(wishlist).filter(Boolean).length
 
-  // Real vendors: distinct CJ program keys present in the live catalog.
+  // Real suppliers: distinct CJ program keys present in the live catalog.
   const vendors = useMemo(() => {
     const m = new Map<string, DbProduct[]>()
     dbProducts.forEach((d) => {
-      const name = (d.program_key || "TechPivo Picks").trim() || "TechPivo Picks"
+      const name = supplierDisplayName(d.program_key)
       const list = m.get(name) || []
       list.push(d)
       m.set(name, list)
@@ -394,15 +394,15 @@ export function MarketplaceHome() {
       />
       <main className="mx-auto w-full max-w-[1400px] px-3 sm:px-6 lg:px-10 py-6 sm:py-8 space-y-6 sm:space-y-8">
 
-        {/* promo ticker */}
-        <div className="bg-[#FFFBEB] border border-[#F59E0B]/30 rounded-xl p-3 flex flex-col sm:flex-row items-center justify-between gap-3">
-          <div className="flex items-center gap-2 text-sm">
-            <span className="bg-[#F59E0B] text-[#0F172A] text-[11px] font-bold uppercase px-2 py-1 rounded-md shrink-0">Welcome Offer</span>
-            <p className="text-sm text-slate-500">
-              Welcome to <strong className="text-[#0F172A]">TechPivo Market</strong>! New deals & free gifts every weekend.
+        {/* welcome strip */}
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 rounded-2xl border border-[#BFDBFE] bg-gradient-to-r from-[#EFF6FF] via-white to-[#EFF6FF] p-3 sm:p-4">
+          <div className="flex items-center gap-2.5 text-sm min-w-0">
+            <span className="bg-[#1668DC] text-white text-[11px] font-bold uppercase px-2.5 py-1 rounded-md shrink-0">Welcome Offer</span>
+            <p className="text-sm text-slate-600">
+              Welcome to <strong className="text-[#0F172A]">TechPivo Market</strong> — pay securely here, we fulfil via verified suppliers with tracking.
             </p>
           </div>
-          <Link href="#flash-deals" className="bg-[#0F172A] hover:bg-slate-800 text-white text-sm font-semibold px-4 py-2 rounded-lg transition-colors flex items-center gap-1 shrink-0">
+          <Link href="#flash-deals" className="bg-[#1668DC] hover:bg-[#0F4FB3] text-white text-sm font-semibold px-4 py-2 rounded-lg transition-colors flex items-center gap-1 shrink-0">
             Explore Now <ArrowRight className="h-4 w-4" />
           </Link>
         </div>
@@ -432,6 +432,11 @@ export function MarketplaceHome() {
                   </Link>
                   <span className="text-2xl font-extrabold">{MARKETPLACE_HERO.price}</span>
                 </div>
+                <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 pt-2 text-xs text-blue-100">
+                  <span className="inline-flex items-center gap-1.5"><ShieldCheck className="h-3.5 w-3.5 text-[#F59E0B]" /> Secure Paystack payment</span>
+                  <span className="inline-flex items-center gap-1.5"><BadgeCheck className="h-3.5 w-3.5 text-[#F59E0B]" /> Verified CJ suppliers</span>
+                  <span className="inline-flex items-center gap-1.5"><Truck className="h-3.5 w-3.5 text-[#F59E0B]" /> Tracked 7–12 day delivery</span>
+                </div>
               </div>
               <div className="relative flex items-center justify-center">
                 <div className="w-60 h-60 sm:w-72 sm:h-72 rounded-2xl overflow-hidden bg-white/5 p-4 flex items-center justify-center">
@@ -440,8 +445,8 @@ export function MarketplaceHome() {
                 <div className="absolute -bottom-2 -left-2 bg-white text-[#0F172A] rounded-xl p-2.5 shadow-xl flex items-center gap-2">
                   <Truck className="h-5 w-5 text-[#10B981]" />
                   <div>
-                    <p className="text-[10px] text-slate-500 uppercase leading-none">Express Global</p>
-                    <p className="text-xs font-bold leading-tight">Free 2-Day Air</p>
+                    <p className="text-[10px] text-slate-500 uppercase leading-none">Tracked Delivery</p>
+                    <p className="text-xs font-bold leading-tight">Ships in 7–12 Days</p>
                   </div>
                 </div>
               </div>
@@ -491,9 +496,9 @@ export function MarketplaceHome() {
           <div className="flex items-center justify-between mb-4">
             <div>
               <h2 className="text-lg font-bold text-[#0F172A]">Shop by Department</h2>
-              <p className="text-sm text-slate-500">{MARKET_DEPARTMENTS.length} departments · live CJDropshipping catalog</p>
+              <p className="text-sm text-slate-500">{MARKET_DEPARTMENTS.length} departments · live supplier catalog</p>
             </div>
-            <span className="text-[11px] font-bold uppercase text-slate-400 hidden sm:block">CJDropshipping synced</span>
+            <span className="text-[11px] font-bold uppercase text-slate-400 hidden sm:block">Verified CJ suppliers</span>
           </div>
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2.5">
             {MARKET_DEPARTMENTS.map((c) => {
@@ -566,7 +571,7 @@ export function MarketplaceHome() {
                 </div>
                 <div className="flex items-center gap-2 text-xs text-slate-300 bg-white/5 p-2.5 rounded-xl">
                   <Zap className="h-4 w-4 text-[#F59E0B] shrink-0" />
-                  <span>Real-time inventory sync from TechPivo fulfillment</span>
+                  <span>Live supplier inventory — ships tracked from verified CJ partners</span>
                 </div>
               </div>
               {flashItems.map((p) => {
@@ -655,7 +660,7 @@ export function MarketplaceHome() {
               {vendorFilter && (
                 <button
                   onClick={() => setVendorFilter(null)}
-                  className="inline-flex items-center gap-1.5 text-xs font-semibold bg-[#0F172A] text-white rounded-full px-3 py-1.5 hover:bg-slate-700"
+                  className="inline-flex items-center gap-1.5 text-xs font-semibold bg-[#1668DC] text-white rounded-full px-3 py-1.5 hover:bg-[#0F4FB3]"
                 >
                   {vendorFilter} <X className="h-3.5 w-3.5" />
                 </button>
@@ -707,11 +712,11 @@ export function MarketplaceHome() {
           <section id="vendors" className="bg-white rounded-2xl p-5 shadow-sm border border-[#E2E8F0] scroll-mt-4">
             <div className="flex items-center justify-between mb-4">
               <div>
-                <span className="text-[#F59E0B] text-[11px] font-bold uppercase tracking-wider block">Marketplace Network</span>
-                <h2 className="text-lg font-bold text-[#0F172A]">Weekly Top Vendors</h2>
+                <span className="text-[#1668DC] text-[11px] font-bold uppercase tracking-wider block">Fulfilled by verified suppliers</span>
+                <h2 className="text-lg font-bold text-[#0F172A]">Our Supply Network</h2>
               </div>
-              <Link className="text-sm text-[#B45309] hover:text-[#D97706] font-semibold hidden sm:inline-flex items-center gap-1" href="#trending">
-                Explore All Vendors <ChevronRight className="h-4 w-4" />
+              <Link className="text-sm text-[#1668DC] hover:underline font-semibold hidden sm:inline-flex items-center gap-1" href="#trending">
+                Meet our suppliers <ChevronRight className="h-4 w-4" />
               </Link>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3">
@@ -845,7 +850,7 @@ export function MarketplaceHome() {
                     <div className="min-w-0">
                       <h5 className="text-sm font-semibold text-[#0F172A] line-clamp-1">{d.product_name}</h5>
                       <span className="text-sm font-bold text-[#EF4444]">${price.toFixed(2)}</span>
-                      <span className="block text-[10px] text-[#10B981] font-medium">In Stock</span>
+                      <span className="block text-[10px] text-[#10B981] font-medium">Tracked delivery</span>
                     </div>
                   </Link>
                 )
@@ -856,7 +861,7 @@ export function MarketplaceHome() {
 
         {/* affiliate disclosure */}
         <p className="text-center text-[11px] text-slate-400 px-4">
-          TechPivo Market contains affiliate links. When you buy through links on this page, we may earn a commission — it never affects our reviews.
+          TechPivo Market is a dropshipping store: you pay securely here and we fulfil every order through verified CJDropshipping suppliers — with tracking from dispatch to delivery.
         </p>
       </main>
       <MarketplaceFooter />

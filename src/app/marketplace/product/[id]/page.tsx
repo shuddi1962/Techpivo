@@ -140,7 +140,7 @@ export default async function MarketplaceProductPage({ params }: { params: { id:
         </nav>
         <ProductDetail product={p} reviews={reviews || []} related={related || []} deptSlug={deptSlug} />
         <p className="text-center text-[11px] text-slate-400 px-4">
-          TechPivo Market contains affiliate links. When you buy through links on this page, we may earn a commission — it never affects our reviews.
+          TechPivo Market is a dropshipping store: you pay securely here and we fulfil every order through verified CJDropshipping suppliers — with tracking from dispatch to delivery.
         </p>
       </main>
       <MarketplaceFooter />

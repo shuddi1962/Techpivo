@@ -65,7 +65,7 @@ function Inner() {
           <p className="text-sm text-slate-500 mt-2">{detail}</p>
           <p className="text-sm text-slate-500 mt-1">Reference: <strong className="text-[#0F172A]">{reference}</strong></p>
           <div className="flex flex-col sm:flex-row gap-2 justify-center mt-6">
-            <Link href={`/marketplace/track?reference=${encodeURIComponent(reference)}`} className="bg-[#0F172A] text-white text-sm font-bold px-6 py-3 rounded-lg">
+            <Link href={`/marketplace/track?reference=${encodeURIComponent(reference)}`} className="bg-[#1668DC] text-white text-sm font-bold px-6 py-3 rounded-lg">
               Track your order
             </Link>
             <Link href="/marketplace" className="border text-sm font-semibold px-6 py-3 rounded-lg hover:bg-slate-50">
@@ -94,7 +94,7 @@ function Inner() {
           <PackageSearch className="h-12 w-12 text-slate-300 mx-auto mb-4" />
           <h1 className="text-xl font-extrabold text-[#0F172A]">No payment reference</h1>
           <p className="text-sm text-slate-500 mt-2">If you just paid, use the Track Order page with your reference and email.</p>
-          <Link href="/marketplace/track" className="inline-block mt-6 bg-[#0F172A] text-white text-sm font-bold px-6 py-3 rounded-lg">
+          <Link href="/marketplace/track" className="inline-block mt-6 bg-[#1668DC] text-white text-sm font-bold px-6 py-3 rounded-lg">
             Track order
           </Link>
         </>

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation"
 import { useEffect, useMemo, useState } from "react"
 import { Check, Heart, Minus, Plus, RotateCcw, ShieldCheck, ShoppingCart, Star, Truck, Zap } from "lucide-react"
 import { addToCart } from "@/lib/marketplace-cart"
+import { supplierDisplayName } from "@/lib/marketplace"
 import { dualPrice, useUsdNgnRate } from "@/lib/marketplace-pricing"
 
 interface Review {
@@ -172,7 +173,7 @@ export function ProductDetail({
         </div>
 
         <div className="flex flex-col">
-          <p className="text-[11px] uppercase tracking-wider text-slate-400">{p.program_key || "TechPivo Pick"}</p>
+          <p className="text-[11px] uppercase tracking-wider text-slate-400">{supplierDisplayName(p.program_key)} · Ships tracked in 7–12 days</p>
           <h1 className="text-2xl sm:text-3xl font-extrabold text-[#0F172A] tracking-tight mt-1">{p.product_name}</h1>
           <div className="flex items-center gap-2 mt-2">
             <Stars value={avg || 4} />
@@ -208,7 +209,7 @@ export function ProductDetail({
             >
               {added ? <><Check className="h-4 w-4" /> Added to cart</> : <><ShoppingCart className="h-4 w-4" /> Add to Cart</>}
             </button>
-            <button onClick={buyNow} className="flex-1 bg-[#0F172A] hover:bg-slate-800 text-white text-sm font-bold py-3 rounded-lg transition-colors flex items-center justify-center gap-2">
+            <button onClick={buyNow} className="flex-1 bg-[#1668DC] hover:bg-[#0F4FB3] text-white text-sm font-bold py-3 rounded-lg transition-colors flex items-center justify-center gap-2">
               <Zap className="h-4 w-4" /> Buy Now
             </button>
             <button
@@ -285,7 +286,7 @@ export function ProductDetail({
           </div>
           <textarea value={rText} onChange={(e) => setRText(e.target.value)} placeholder="What did you like about this product?" rows={3} maxLength={1000} className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#F59E0B]" />
           {rNotice && <p className="text-xs text-slate-600">{rNotice}</p>}
-          <button onClick={submitReview} disabled={rSending || !rText.trim()} className="bg-[#0F172A] text-white text-sm font-bold px-5 py-2.5 rounded-lg disabled:opacity-50">
+          <button onClick={submitReview} disabled={rSending || !rText.trim()} className="bg-[#1668DC] hover:bg-[#0F4FB3] text-white text-sm font-bold px-5 py-2.5 rounded-lg disabled:opacity-50">
             {rSending ? "Posting..." : "Post review"}
           </button>
         </div>
