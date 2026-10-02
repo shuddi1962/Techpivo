@@ -112,25 +112,17 @@ function ProductCard({ p, onAdd, wished, onWish, added, href }: { p: DemoProduct
 }
 
 function useCountdown() {
-  const [secs, setSecs] = useState(59)
-  const [mins, setMins] = useState(52)
-  const [hrs, setHrs] = useState(9)
+  // Single countdown value — never call setState inside another setState
+  // updater (impure updaters cascade extra renders under StrictMode).
+  const [left, setLeft] = useState(9 * 3600 + 52 * 60 + 59)
   useEffect(() => {
     const t = setInterval(() => {
-      setSecs((s) => {
-        if (s > 0) return s - 1
-        setMins((m) => {
-          if (m > 0) return m - 1
-          setHrs((h) => (h > 0 ? h - 1 : 23))
-          return 59
-        })
-        return 59
-      })
+      setLeft((v) => (v > 0 ? v - 1 : 9 * 3600 + 52 * 60 + 59))
     }, 1000)
     return () => clearInterval(t)
   }, [])
   const pad = (n: number) => String(n).padStart(2, "0")
-  return { days: "02", hrs: pad(hrs), mins: pad(mins), secs: pad(secs) }
+  return { days: "02", hrs: pad(Math.floor(left / 3600)), mins: pad(Math.floor((left % 3600) / 60)), secs: pad(left % 60) }
 }
 
 const WISH_KEY = "tp_market_wish_v1"

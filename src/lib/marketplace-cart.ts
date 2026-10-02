@@ -14,12 +14,18 @@ export interface CartLine {
 
 const KEY = "tp_market_cart_v1"
 
-function read(): CartLine[] {
-  if (typeof window === "undefined") return []
+// useSyncExternalStore calls getSnapshot on EVERY render and re-renders
+// while the snapshot identity keeps changing — so the snapshot MUST be
+// referentially stable. Returning a freshly-parsed array each call caused
+// "Minified React error #185 / Maximum update depth exceeded" (infinite
+// re-render loop) on every store page as soon as any state update (product
+// load, countdown tick) triggered a re-render. Cache keyed on the raw
+// localStorage string: identical storage → identical array reference.
+let snapshotCache: { raw: string | null; lines: CartLine[] } | null = null
+
+function parseLines(raw: string | null): CartLine[] {
   try {
-    const raw = window.localStorage.getItem(KEY)
-    if (!raw) return []
-    const arr = JSON.parse(raw) as CartLine[]
+    const arr = raw ? (JSON.parse(raw) as CartLine[]) : []
     if (!Array.isArray(arr)) return []
     return arr
       .filter((l) => typeof l?.id === "string" && Number.isFinite(l?.qty))
@@ -27,6 +33,20 @@ function read(): CartLine[] {
   } catch {
     return []
   }
+}
+
+function read(): CartLine[] {
+  if (typeof window === "undefined") return []
+  let raw: string | null = null
+  try {
+    raw = window.localStorage.getItem(KEY)
+  } catch {
+    return snapshotCache?.lines ?? []
+  }
+  if (snapshotCache && snapshotCache.raw === raw) return snapshotCache.lines
+  const lines = parseLines(raw)
+  snapshotCache = { raw, lines }
+  return lines
 }
 
 const listeners = new Set<() => void>()
