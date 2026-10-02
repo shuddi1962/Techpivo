@@ -74,9 +74,9 @@ export default async function MarketplaceCategoryPage({ params }: { params: { sl
 
   return (
     <div className="w-full bg-[#F8FAFC] min-h-screen">
-      <div className="px-3 sm:px-6 lg:px-10 py-4 space-y-4">
-        <MarketplaceHeader />
-        <nav aria-label="Breadcrumb" className="flex items-center gap-1 text-xs text-slate-500 flex-wrap">
+      <MarketplaceHeader />
+      <main className="mx-auto w-full max-w-[1400px] px-3 sm:px-6 lg:px-10 py-6 sm:py-8 space-y-6 sm:space-y-8">
+        <nav aria-label="Breadcrumb" className="flex items-center gap-1.5 text-xs text-slate-500 flex-wrap">
           <Link href="/marketplace" className="hover:text-[#0F172A]">Home</Link>
           <ChevronRight className="h-3 w-3" />
           {found.kind === "sub" ? (
@@ -95,8 +95,8 @@ export default async function MarketplaceCategoryPage({ params }: { params: { sl
           </p>
         </div>
         <CategoryBrowse products={products} deptSlug={found.dept.slug} subs={found.dept.subs.map((s) => ({ name: s.name, slug: s.slug }))} />
-        <MarketplaceFooter />
-      </div>
+      </main>
+      <MarketplaceFooter />
     </div>
   )
 }

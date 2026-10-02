@@ -125,9 +125,9 @@ export default async function MarketplaceProductPage({ params }: { params: { id:
   return (
     <div className="w-full bg-[#F8FAFC] min-h-screen">
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
-      <div className="px-3 sm:px-6 lg:px-10 py-4 space-y-4">
-        <MarketplaceHeader />
-        <nav aria-label="Breadcrumb" className="flex items-center gap-1 text-xs text-slate-500 flex-wrap">
+      <MarketplaceHeader />
+      <main className="mx-auto w-full max-w-[1400px] px-3 sm:px-6 lg:px-10 py-6 sm:py-8 space-y-6 sm:space-y-8">
+        <nav aria-label="Breadcrumb" className="flex items-center gap-1.5 text-xs text-slate-500 flex-wrap">
           <Link href="/marketplace" className="hover:text-[#0F172A]">Home</Link>
           <ChevronRight className="h-3 w-3" />
           {deptSlug ? (
@@ -139,11 +139,11 @@ export default async function MarketplaceProductPage({ params }: { params: { id:
           <span className="text-[#0F172A] font-medium line-clamp-1 max-w-[60vw]">{p.product_name}</span>
         </nav>
         <ProductDetail product={p} reviews={reviews || []} related={related || []} deptSlug={deptSlug} />
-        <MarketplaceFooter />
-        <p className="text-center text-[11px] text-slate-400 px-4 pb-2">
+        <p className="text-center text-[11px] text-slate-400 px-4">
           TechPivo Market contains affiliate links. When you buy through links on this page, we may earn a commission — it never affects our reviews.
         </p>
-      </div>
+      </main>
+      <MarketplaceFooter />
     </div>
   )
 }

@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { PackageSearch, SlidersHorizontal, Star, X } from "lucide-react"
 import { useUsdNgnRate } from "@/lib/marketplace-pricing"
 import type { CatProduct } from "@/app/marketplace/category/[slug]/page"
@@ -40,6 +40,16 @@ export function CategoryBrowse({
   const [dealsOnly, setDealsOnly] = useState(false)
   const [inStockOnly, setInStockOnly] = useState(false)
   const [filtersOpen, setFiltersOpen] = useState(false)
+
+  // Header search can land here as /marketplace/category/<slug>?q=...
+  useEffect(() => {
+    try {
+      const q = new URLSearchParams(window.location.search).get("q")
+      if (q) setSearch(q)
+    } catch {
+      // ignore malformed query strings
+    }
+  }, [])
 
   const vendorOptions = useMemo(() => {
     const s = new Map<string, number>()

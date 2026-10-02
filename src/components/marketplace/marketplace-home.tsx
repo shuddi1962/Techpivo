@@ -168,6 +168,16 @@ export function MarketplaceHome() {
   useEffect(() => {
     setWishlist(readWish())
     setRecentIds(readRecentIds())
+    // Header search on other store pages lands here as /marketplace?q=...
+    try {
+      const q = new URLSearchParams(window.location.search).get("q")
+      if (q) {
+        setQuery(q)
+        setTimeout(() => document.getElementById("trending")?.scrollIntoView({ behavior: "smooth", block: "start" }), 400)
+      }
+    } catch {
+      // ignore malformed query strings
+    }
   }, [])
 
   useEffect(() => {
@@ -369,19 +379,20 @@ export function MarketplaceHome() {
 
   return (
     <div className="w-full bg-[#F8FAFC] min-h-screen">
-      <div className="px-3 sm:px-6 lg:px-10 py-4 space-y-4 sm:space-y-6">
-        <MarketplaceHeader
-          cartCount={cartCount}
-          cartTotal={`$${cartTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
-          wishCount={wishCount}
-          onSearch={(v) => {
-            setQuery(v)
-            if (v.trim()) document.getElementById("trending")?.scrollIntoView({ behavior: "smooth", block: "start" })
-          }}
-          onShopDept={(slug) => {
-            router.push(`/marketplace/category/${slug}`)
-          }}
-        />
+      <MarketplaceHeader
+        cartCount={cartCount}
+        cartTotal={`$${cartTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+        wishCount={wishCount}
+        onSearch={(v) => {
+          setQuery(v)
+          if (v.trim()) document.getElementById("trending")?.scrollIntoView({ behavior: "smooth", block: "start" })
+        }}
+        onShopDept={(slug) => {
+          if (slug) router.push(`/marketplace/category/${slug}`)
+          else router.push("/marketplace")
+        }}
+      />
+      <main className="mx-auto w-full max-w-[1400px] px-3 sm:px-6 lg:px-10 py-6 sm:py-8 space-y-6 sm:space-y-8">
 
         {/* promo ticker */}
         <div className="bg-[#FFFBEB] border border-[#F59E0B]/30 rounded-xl p-3 flex flex-col sm:flex-row items-center justify-between gap-3">
@@ -843,13 +854,12 @@ export function MarketplaceHome() {
           </section>
         )}
 
-        <MarketplaceFooter />
-
         {/* affiliate disclosure */}
-        <p className="text-center text-[11px] text-slate-400 px-4 pb-2">
+        <p className="text-center text-[11px] text-slate-400 px-4">
           TechPivo Market contains affiliate links. When you buy through links on this page, we may earn a commission — it never affects our reviews.
         </p>
-      </div>
+      </main>
+      <MarketplaceFooter />
     </div>
   )
 }
