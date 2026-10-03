@@ -19,6 +19,7 @@ import { marketImage, cleanSupplierText } from "@/lib/marketplace-images"
 import { MarketplaceHeader, MarketplaceFooter } from "./marketplace-header"
 import { FeaturePanels } from "./feature-panels"
 import { CategoryShowcase } from "./category-showcase"
+import { ShopCollections, type CollectionItem } from "./shop-collections"
 
 interface DbProduct {
   id: string
@@ -387,6 +388,30 @@ export function MarketplaceHome() {
 
   const heroImg = banners.hero_image || MARKETPLACE_HERO.image
   const promoImg = banners.promo_image || ""
+
+  // Shop By Collections: every real category node — departments first,
+  // then subcategories — each with a live product photo where one exists.
+  const collections = useMemo<CollectionItem[]>(() => {
+    const bySub = new Map<string, string>()
+    dbProducts.forEach((d) => {
+      const key = d.subcategory_slug || d.category_slug
+      if (key && d.product_image_url && !bySub.has(key)) bySub.set(key, d.product_image_url)
+    })
+    const out: CollectionItem[] = []
+    MARKET_DEPARTMENTS.forEach((dep) => {
+      const deptImg = banners.departments[dep.slug] || deptCover.get(dep.slug) || dep.image
+      out.push({ name: dep.name, slug: dep.slug, href: `/marketplace/category/${dep.slug}`, image: deptImg })
+      dep.subs.forEach((s) => {
+        out.push({
+          name: s.name,
+          slug: s.slug,
+          href: `/marketplace/category/${s.slug}`,
+          image: bySub.get(s.slug) || deptImg,
+        })
+      })
+    })
+    return out
+  }, [dbProducts, banners, deptCover])
 
   // Smartphone & tablet showcase: live products in the phones department,
   // each tagged with its subcategory slug for the category nav.
@@ -858,6 +883,9 @@ export function MarketplaceHome() {
             onWish={toggleWish}
           />
         )}
+
+        {/* shop by collections — every real category node */}
+        <ShopCollections collections={collections} />
 
         {/* top stores — icon-led department tiles */}
         {vendors.length > 0 && (
