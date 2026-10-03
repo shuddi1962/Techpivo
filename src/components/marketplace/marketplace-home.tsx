@@ -709,6 +709,47 @@ export function MarketplaceHome() {
           )}
         </section>
 
+        {/* trending slider — horizontal product rail */}
+        {best.length > 1 && (
+          <section className="bg-white rounded-2xl p-5 shadow-sm border border-[#E2E8F0]">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <span className="text-[#DC2626] text-[11px] font-bold uppercase tracking-wider block">Most viewed right now</span>
+                <h2 className="text-lg font-bold text-[#0F172A]">Trending Now</h2>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => document.getElementById("trend-rail")?.scrollBy({ left: -320, behavior: "smooth" })}
+                  aria-label="Scroll trending products left"
+                  className="w-9 h-9 rounded-full border border-[#E2E8F0] bg-white flex items-center justify-center text-[#0F172A] hover:bg-slate-100"
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => document.getElementById("trend-rail")?.scrollBy({ left: 320, behavior: "smooth" })}
+                  aria-label="Scroll trending products right"
+                  className="w-9 h-9 rounded-full border border-[#E2E8F0] bg-white flex items-center justify-center text-[#0F172A] hover:bg-slate-100"
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </button>
+              </div>
+            </div>
+            <div
+              id="trend-rail"
+              className="flex gap-3 overflow-x-auto pb-1 snap-x snap-mandatory"
+              style={{ scrollbarWidth: "thin" }}
+            >
+              {best.map((p) => (
+                <div key={p.id} className="w-44 sm:w-52 shrink-0 snap-start">
+                  <ProductCard {...cardProps(p)} />
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
+
         {/* top stores — departments with live products */}
         {vendors.length > 0 && (
           <section id="vendors" className="bg-white rounded-2xl p-5 shadow-sm border border-[#E2E8F0] scroll-mt-4">

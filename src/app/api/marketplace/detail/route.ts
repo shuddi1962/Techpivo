@@ -29,6 +29,9 @@ export async function GET(request: NextRequest) {
       short: cleanSupplierText(d.short),
       paras: d.paras.map((x) => cleanSupplierText(x)).filter(Boolean).slice(0, 20),
       images: d.images.map((x) => marketImage(x)).filter(Boolean),
+      video: /^https?:\/\//i.test(d.video) ? d.video : "",
+      material: cleanSupplierText(d.material).slice(0, 120),
+      weightGrams: d.weightGrams,
     })
   } catch {
     return NextResponse.json({ short: "", paras: [], images: [] })

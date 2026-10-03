@@ -132,13 +132,16 @@ export interface CjDetail {
   short: string
   paras: string[]
   images: string[]
+  video: string
+  material: string
+  weightGrams: number | null
 }
 
-// Extract a clean long description + extra images from a CJ product/query
-// payload. Field names vary, so probe candidates defensively; always
-// returns safe plain-text paragraphs (never raw supplier HTML).
+// Extract a clean long description + extra images + specs + video from a
+// CJ product/query payload. Field names vary, so probe candidates
+// defensively; always returns safe plain-text (never raw supplier HTML).
 export function extractCjDetail(raw: unknown): CjDetail {
-  const empty: CjDetail = { short: "", paras: [], images: [] }
+  const empty: CjDetail = { short: "", paras: [], images: [], video: "", material: "", weightGrams: null }
   if (!raw || typeof raw !== "object") return empty
   const obj = raw as Record<string, unknown>
 
@@ -198,6 +201,37 @@ export function extractCjDetail(raw: unknown): CjDetail {
     short: paras[0] ? paras[0].slice(0, 220) : "",
     paras,
     images: [...new Set([...embedded, ...images])].slice(0, 8),
+    video: pickVideo(),
+    material: pickMaterial(),
+    weightGrams: pickWeight(),
+  }
+
+  function pickVideo(): string {
+    for (const k of ["productVideo", "videoUrl", "video"]) {
+      const v = obj[k]
+      if (typeof v === "string" && /^https?:\/\//i.test(v)) return v
+    }
+    return ""
+  }
+
+  function pickMaterial(): string {
+    for (const k of ["materialNameEn", "materialName", "material"]) {
+      const v = obj[k]
+      if (typeof v === "string" && v.trim()) return v.slice(0, 120)
+      if (Array.isArray(v)) {
+        const s = v.filter((x) => typeof x === "string" && x.trim()).join(", ")
+        if (s) return s.slice(0, 120)
+      }
+    }
+    return ""
+  }
+
+  function pickWeight(): number | null {
+    for (const k of ["productWeight", "weight", "variantWeight", "packingWeight"]) {
+      const n = Number(obj[k])
+      if (Number.isFinite(n) && n > 0) return n
+    }
+    return null
   }
 }
 

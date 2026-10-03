@@ -127,6 +127,22 @@ export default async function MarketplaceProductPage({ params }: { params: { id:
     )?.slug ?? null
   const deptName = deptNameFor(p.subcategory_slug || p.category_slug)
 
+  // Real units sold across completed buyer payments.
+  let sold = 0
+  try {
+    const soldRes = (await fetchWithTimeout(
+      supabase.from("marketplace_orders").select("items").in("status", ["paid", "fulfilled", "delivered"]).limit(500),
+      8000
+    )) as { data: Array<{ items: Array<{ id?: string; qty?: number }> }> | null } | null
+    for (const o of soldRes?.data || []) {
+      for (const it of Array.isArray(o.items) ? o.items : []) {
+        if (it?.id === p.id) sold += Math.max(0, Math.floor(Number(it.qty) || 0))
+      }
+    }
+  } catch {
+    // sales count is informational only
+  }
+
   const jsonLd = {
     "@context": "https://schema.org",
     "@type": "Product",
@@ -158,7 +174,7 @@ export default async function MarketplaceProductPage({ params }: { params: { id:
           ) : null}
           <span className="text-[#0F172A] font-medium line-clamp-1 max-w-[60vw]">{p.product_name}</span>
         </nav>
-        <ProductDetail product={p} reviews={reviews || []} related={related || []} deptSlug={deptSlug} detail={detail} />
+        <ProductDetail product={p} reviews={reviews || []} related={related || []} deptSlug={deptSlug} detail={detail} sold={sold} hasSupplier={!!p.cj_pid} />
         <p className="text-center text-[11px] text-slate-400 px-4">
           Every order is quality-checked, securely paid and delivered with tracking — shop with confidence on TechPivo Market.
         </p>

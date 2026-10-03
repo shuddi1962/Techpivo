@@ -3,7 +3,7 @@
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useEffect, useMemo, useState } from "react"
-import { Check, Heart, Minus, Plus, RotateCcw, ShieldCheck, ShoppingCart, Star, Truck, Zap } from "lucide-react"
+import { Check, Heart, Minus, Play, Plus, RotateCcw, ShieldCheck, ShoppingCart, Star, Truck, Zap } from "lucide-react"
 import { addToCart } from "@/lib/marketplace-cart"
 import { marketImage } from "@/lib/marketplace-images"
 import {
@@ -68,7 +68,21 @@ interface VariantOpt {
   price: number | null
   image: string
   stock: number | null
+  weightGrams: number | null
 }
+
+export function formatWeight(g: number | null | undefined): string {
+  const n = Number(g)
+  if (!Number.isFinite(n) || n <= 0) return ""
+  if (n >= 1000) return `${(n / 1000).toFixed(n % 1000 === 0 ? 0 : 2)}kg`
+  return `${Math.round(n)}g`
+}
+
+export function neutralSku(id: string): string {
+  return `TPM-${id.replace(/-/g, "").slice(0, 8).toUpperCase()}`
+}
+
+const SHIP_COUNTRIES = ["NG", "GH", "KE", "ZA", "US", "GB", "CA", "AU", "DE", "FR", "IN", "AE"]
 
 const splitParts = (s: string): string[] =>
   s.split(/[/;|]+/).map((x) => x.trim()).filter(Boolean)
@@ -98,9 +112,20 @@ export interface ProductDetailData {
   short: string
   paras: string[]
   images: string[]
+  video?: string
+  material?: string
+  weightGrams?: number | null
 }
 
-function ProductDetailsTabs({ description, paras }: { description: string | null; paras: string[] }) {
+function ProductDetailsTabs({
+  description,
+  paras,
+  specs,
+}: {
+  description: string | null
+  paras: string[]
+  specs: Array<{ k: string; v: string }>
+}) {
   const [tab, setTab] = useState<"desc" | "ship">("desc")
   const long = paras.length > 0 ? paras : description ? [description] : []
   return (
@@ -138,6 +163,23 @@ function ProductDetailsTabs({ description, paras }: { description: string | null
               </li>
             ))}
           </ul>
+          {specs.length > 0 && (
+            <div className="overflow-hidden rounded-xl border border-[#E2E8F0]">
+              <table className="w-full text-sm">
+                <caption className="bg-[#F8FAFC] px-3 py-2 text-left text-xs font-bold uppercase tracking-wider text-slate-500">
+                  Specifications
+                </caption>
+                <tbody>
+                  {specs.map((s) => (
+                    <tr key={s.k} className="border-t border-[#E2E8F0]">
+                      <th className="w-32 bg-[#F8FAFC] px-3 py-2 text-left font-semibold text-slate-600">{s.k}</th>
+                      <td className="px-3 py-2 text-slate-800">{s.v}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
       ) : (
         <div className="space-y-3 pt-4 text-sm text-slate-600">
@@ -157,12 +199,16 @@ export function ProductDetail({
   related,
   deptSlug,
   detail,
+  sold,
+  hasSupplier,
 }: {
   product: Product
   reviews: Review[]
   related: Related[]
   deptSlug: string | null
   detail: ProductDetailData
+  sold: number
+  hasSupplier: boolean
 }) {
   const router = useRouter()
   const rate = useUsdNgnRate()
@@ -178,7 +224,6 @@ export function ProductDetail({
   const [variants, setVariants] = useState<VariantOpt[]>([])
   const [attrs, setAttrs] = useState<Array<{ name: string; values: string[] }>>([])
   const [picked, setPicked] = useState<Record<string, string>>({})
-  const [activeImg, setActiveImg] = useState<string>(p.product_image_url || "")
   const [liveDetail, setLiveDetail] = useState<ProductDetailData | null>(null)
 
   // Live long description + extra gallery images fill in client-side so the
@@ -187,11 +232,14 @@ export function ProductDetail({
     fetch(`/api/marketplace/detail?product_id=${encodeURIComponent(p.id)}`)
       .then((r) => r.json())
       .then((d) => {
-        if (d && (d.short || (Array.isArray(d.paras) && d.paras.length > 0) || (Array.isArray(d.images) && d.images.length > 0))) {
+        if (d && (d.short || (Array.isArray(d.paras) && d.paras.length > 0) || (Array.isArray(d.images) && d.images.length > 0) || d.video)) {
           setLiveDetail({
             short: typeof d.short === "string" ? d.short : "",
             paras: Array.isArray(d.paras) ? d.paras : [],
             images: Array.isArray(d.images) ? d.images : [],
+            video: typeof d.video === "string" ? d.video : "",
+            material: typeof d.material === "string" ? d.material : "",
+            weightGrams: Number.isFinite(Number(d.weightGrams)) ? Number(d.weightGrams) : null,
           })
         }
       })
@@ -202,6 +250,7 @@ export function ProductDetail({
   const detailEff = liveDetail ?? detail
   const [shipOptions, setShipOptions] = useState<ShipOption[]>([])
   const [shipPick, setShipPick] = useState<ShipSelection | null>(null)
+  const [shipCountry, setShipCountry] = useState("NG")
   const [courier, setCourier] = useState<{ name: string; fee: number; eta: string } | null>(null)
 
   useEffect(() => {
@@ -247,13 +296,14 @@ export function ProductDetail({
           return attrs.every((a, i) => !picked[a.name] || parts[i] === picked[a.name])
         }) || null
       : null
+  const activeWeight = selected?.weightGrams ?? detailEff.weightGrams ?? null
 
   useEffect(() => {
     setShipPick(readShipSelection())
     // Delivery options: live supplier courier rates (with markup) plus
     // store Standard / Express. The pick is honored at checkout.
     fetch(
-      `/api/marketplace/shipping?product_id=${encodeURIComponent(p.id)}&variant_vid=${encodeURIComponent(selected?.vid || "")}&qty=${qty}&country=NG&subtotal=${(price * qty).toFixed(2)}`
+      `/api/marketplace/shipping?product_id=${encodeURIComponent(p.id)}&variant_vid=${encodeURIComponent(selected?.vid || "")}&qty=${qty}&country=${encodeURIComponent(shipCountry)}&subtotal=${(price * qty).toFixed(2)}`
     )
       .then((r) => r.json())
       .then((d) => {
@@ -268,7 +318,7 @@ export function ProductDetail({
         // options unavailable — store fallbacks still render below
       })
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [p.id, selected?.vid, qty])
+  }, [p.id, selected?.vid, qty, shipCountry])
 
   const pickShip = (o: ShipOption) => {
     const sel = { id: o.id, name: o.name, eta: o.eta, feeUsd: o.feeUsd }
@@ -277,10 +327,33 @@ export function ProductDetail({
   }
   const shipActive = (id: string) => (shipPick?.id || "standard") === id
 
-  const gallery = (() => {
+  interface GalleryItem {
+    type: "image" | "video"
+    src: string
+  }
+
+  const gallery: GalleryItem[] = (() => {
+    const items: GalleryItem[] = []
+    if (detailEff.video) items.push({ type: "video", src: detailEff.video })
     const imgs = [p.product_image_url || "", ...(variants.map((v) => v.image).filter(Boolean) as string[]), ...detailEff.images]
-    return [...new Set(imgs.filter(Boolean))]
+    for (const src of [...new Set(imgs.filter(Boolean))]) items.push({ type: "image", src })
+    return items.slice(0, 10)
   })()
+
+  const [activeMedia, setActiveMedia] = useState<GalleryItem>({ type: "image", src: p.product_image_url || "" })
+
+  useEffect(() => {
+    if (selected?.image) setActiveMedia({ type: "image", src: selected.image })
+  }, [selected?.image])
+
+  useEffect(() => {
+    setActiveMedia((cur) => {
+      if (cur.src) return cur
+      const first = gallery[0]
+      return first || cur
+    })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [gallery.length])
 
   const basePrice = Number(p.sale_price ?? p.original_price ?? 0)
   const price = selected?.price ?? basePrice
@@ -333,9 +406,11 @@ export function ProductDetail({
       <section className="bg-white rounded-2xl border border-[#E2E8F0] p-4 sm:p-6 grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div>
           <div className="relative rounded-xl overflow-hidden bg-[#F8FAFC] border border-[#E2E8F0] aspect-square">
-            {p.product_image_url ? (
+            {activeMedia.type === "video" ? (
+              <video src={activeMedia.src} controls playsInline preload="metadata" className="w-full h-full object-cover" />
+            ) : activeMedia.src ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={marketImage(p.product_image_url)} alt={p.product_name} loading="eager" decoding="async" className="w-full h-full object-cover" />
+              <img src={activeMedia.src} alt={p.product_name} loading="eager" decoding="async" className="w-full h-full object-cover" />
             ) : (
               <div className="w-full h-full flex items-center justify-center text-slate-300 text-sm">No image</div>
             )}
@@ -343,6 +418,31 @@ export function ProductDetail({
               <span className="absolute top-3 left-3 bg-[#EF4444] text-white text-xs font-bold px-2 py-1 rounded-full">-{discount}%</span>
             )}
           </div>
+          {gallery.length > 1 && (
+            <div className="mt-2 grid grid-cols-5 gap-2" role="list" aria-label="Product gallery">
+              {gallery.slice(0, 10).map((g) => (
+                <button
+                  key={`${g.type}:${g.src}`}
+                  type="button"
+                  role="listitem"
+                  onClick={() => setActiveMedia(g)}
+                  aria-label={g.type === "video" ? "Play product video" : "View product image"}
+                  aria-pressed={activeMedia.src === g.src && activeMedia.type === g.type}
+                  className={`relative aspect-square overflow-hidden rounded-lg border-2 bg-[#F8FAFC] transition-all ${activeMedia.src === g.src && activeMedia.type === g.type ? "border-[#F59E0B]" : "border-[#E2E8F0] hover:border-slate-400"}`}
+                >
+                  {g.type === "video" ? (
+                    <span className="flex h-full w-full flex-col items-center justify-center gap-1 bg-[#0F172A]">
+                      <Play className="h-6 w-6 fill-white text-white" />
+                      <span className="text-[9px] font-bold uppercase text-white/80">Video</span>
+                    </span>
+                  ) : (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={g.src} alt="" loading="lazy" decoding="async" className="w-full h-full object-cover" />
+                  )}
+                </button>
+              ))}
+            </div>
+          )}
           <div className="flex items-center gap-2 mt-3 text-xs text-slate-500">
             <ShieldCheck className="h-4 w-4 text-[#10B981]" />
             <span>Quality checked by the TechPivo editorial team</span>
@@ -350,7 +450,11 @@ export function ProductDetail({
         </div>
 
         <div className="flex flex-col">
-          <p className="text-[11px] uppercase tracking-wider text-slate-400">Ships tracked in 7–12 days</p>
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-slate-500">
+            <span>SKU: <strong className="text-[#0F172A]">{neutralSku(p.id)}</strong></span>
+            {sold > 0 && <span><strong className="text-[#0F172A]">{sold}</strong> sold</span>}
+            {hasSupplier && <span>Ships from: <strong className="text-[#0F172A]">China</strong></span>}
+          </div>
           <h1 className="text-2xl sm:text-3xl font-extrabold text-[#0F172A] tracking-tight mt-1">{p.product_name}</h1>
           {detailEff.short && (
             <p className="mt-2 rounded-lg border-l-4 border-[#F59E0B] bg-[#FFFBEB] px-3 py-2 text-sm text-slate-700">
@@ -384,7 +488,31 @@ export function ProductDetail({
                       {a.values.map((v) => {
                         const on = picked[a.name] === v
                         if (isColor) {
+                          // Prefer the option's own photo (AliExpress-style
+                          // image swatch), fall back to a color dot.
+                          const opt = variants.find((vv) => splitParts(vv.label)[attrs.indexOf(a)] === v)
                           const hex = swatchFor(v)
+                          if (opt?.image) {
+                            return (
+                              <button
+                                key={v}
+                                type="button"
+                                title={v}
+                                aria-label={`Select color ${v}`}
+                                aria-pressed={on}
+                                onClick={() => setPicked((m) => ({ ...m, [a.name]: v }))}
+                                className={`relative h-12 w-12 overflow-hidden rounded-lg border-2 transition-all ${on ? "scale-105 border-[#DC2626]" : "border-[#E2E8F0] hover:border-slate-400"}`}
+                              >
+                                {/* eslint-disable-next-line @next/next/no-img-element */}
+                                <img src={opt.image} alt={v} loading="lazy" decoding="async" className="h-full w-full object-cover" />
+                                {on && (
+                                  <span className="absolute inset-0 flex items-center justify-center bg-black/30">
+                                    <Check className="h-4 w-4 text-white" />
+                                  </span>
+                                )}
+                              </button>
+                            )
+                          }
                           return (
                             <button
                               key={v}
@@ -393,10 +521,10 @@ export function ProductDetail({
                               aria-label={`Select color ${v}`}
                               aria-pressed={on}
                               onClick={() => setPicked((m) => ({ ...m, [a.name]: v }))}
-                              className={`flex h-9 w-9 items-center justify-center rounded-full border-2 transition-all ${on ? "scale-110 border-[#DC2626]" : "border-[#E2E8F0] hover:border-slate-400"}`}
-                              style={{ background: hex || "#F1F5F9" }}
+                              className={`flex h-9 items-center gap-1.5 rounded-full border-2 py-1 pl-1.5 pr-3 transition-all ${on ? "border-[#DC2626] bg-[#FEF2F2]" : "border-[#E2E8F0] hover:border-slate-400"}`}
                             >
-                              {on && <Check className={`h-4 w-4 ${hex === "#FFFFFF" ? "text-slate-800" : "text-white"}`} />}
+                              <span className="h-6 w-6 rounded-full border border-black/10" style={{ background: hex || "#F1F5F9" }} />
+                              <span className="text-xs font-semibold text-[#0F172A]">{v}</span>
                             </button>
                           )
                         }
@@ -426,8 +554,23 @@ export function ProductDetail({
 
           {/* delivery selection with pricing */}
           <div className="mt-5">
-            <p className="mb-2 text-xs font-bold uppercase tracking-wider text-slate-500">Delivery</p>
-            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2" role="radiogroup" aria-label="Delivery method">
+            <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+              <p className="text-xs font-bold uppercase tracking-wider text-slate-500">Delivery</p>
+              <label className="flex items-center gap-1.5 text-xs text-slate-500">
+                Ship to
+                <select
+                  value={shipCountry}
+                  onChange={(e) => setShipCountry(e.target.value)}
+                  aria-label="Ship to country"
+                  className="cursor-pointer rounded-lg border border-[#E2E8F0] bg-white px-2 py-1 text-xs font-bold text-[#0F172A] focus:border-[#F59E0B] focus:outline-none"
+                >
+                  {SHIP_COUNTRIES.map((c) => (
+                    <option key={c} value={c}>{c}</option>
+                  ))}
+                </select>
+              </label>
+            </div>
+            <div className="grid grid-cols-1 gap-2" role="radiogroup" aria-label="Delivery method">
               {(shipOptions.length > 0 ? shipOptions : [
                 { id: "standard", name: "Standard", eta: "7–12 days", feeUsd: (price * qty) >= 49 ? 0 : 5, source: "store" as const },
                 { id: "express", name: "Express", eta: "3–7 days", feeUsd: 19, source: "store" as const },
@@ -446,7 +589,7 @@ export function ProductDetail({
                       <Truck className={`h-4 w-4 shrink-0 ${on ? "text-[#B45309]" : "text-slate-400"}`} />
                       <span>
                         <span className="block text-sm font-bold text-[#0F172A]">{m.name}</span>
-                        <span className="block text-[11px] text-slate-500">{m.eta}{m.eta ? " · " : ""}tracked</span>
+                        <span className="block text-[11px] text-slate-500">Processing 1–3 days · {m.eta}{m.eta ? " · " : ""}tracked</span>
                       </span>
                     </span>
                     <span className={`text-sm font-extrabold ${m.feeUsd === 0 ? "text-[#10B981]" : "text-[#0F172A]"}`}>
@@ -465,17 +608,26 @@ export function ProductDetail({
             )}
           </div>
 
-          <div className="flex items-center gap-3 mt-5">
-            <span className="text-sm font-semibold text-slate-700">Qty</span>            <div className="flex items-center border border-[#CBD5E1] rounded-lg overflow-hidden">
-              <button onClick={() => setQty((q) => Math.max(1, q - 1))} className="px-3 py-2 hover:bg-slate-100" aria-label="Decrease quantity">
-                <Minus className="h-4 w-4" />
-              </button>
-              <span className="w-10 text-center text-sm font-bold tabular-nums">{qty}</span>
-              <button onClick={() => setQty((q) => Math.min(99, q + 1))} className="px-3 py-2 hover:bg-slate-100" aria-label="Increase quantity">
-                <Plus className="h-4 w-4" />
-              </button>
-            </div>
-            {p.stock != null && <span className="text-xs text-slate-500">{p.stock > 0 ? `${p.stock} in stock` : "Ships on demand"}</span>}
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-2 mt-5">
+            <span className="flex items-center gap-2">
+              <span className="text-sm font-semibold text-slate-700">Qty</span>
+              <span className="flex items-center border border-[#CBD5E1] rounded-lg overflow-hidden">
+                <button onClick={() => setQty((q) => Math.max(1, q - 1))} className="px-3 py-2 hover:bg-slate-100" aria-label="Decrease quantity">
+                  <Minus className="h-4 w-4" />
+                </button>
+                <span className="w-10 text-center text-sm font-bold tabular-nums">{qty}</span>
+                <button onClick={() => setQty((q) => Math.min(99, q + 1))} className="px-3 py-2 hover:bg-slate-100" aria-label="Increase quantity">
+                  <Plus className="h-4 w-4" />
+                </button>
+              </span>
+            </span>
+            {activeWeight ? (
+              <span className="text-xs text-slate-500">{formatWeight(activeWeight)} · {selected?.stock != null && selected.stock > 0 ? `${selected.stock} available` : p.stock != null && p.stock > 0 ? `${p.stock} in stock` : "In stock"} · ships in 1–3 days</span>
+            ) : p.stock != null ? (
+              <span className="text-xs text-slate-500">{p.stock > 0 ? `${p.stock} in stock` : "Ships on demand"} · ships in 1–3 days</span>
+            ) : (
+              <span className="text-xs text-slate-500">In stock · ships in 1–3 days</span>
+            )}
           </div>
 
           <div className="flex flex-col sm:flex-row gap-2 mt-4">
@@ -529,7 +681,15 @@ export function ProductDetail({
         </div>
       </section>
 
-      <ProductDetailsTabs description={p.product_description} paras={detailEff.paras} />
+      <ProductDetailsTabs
+        description={p.product_description}
+        paras={detailEff.paras}
+        specs={[
+          { k: "SKU", v: neutralSku(p.id) },
+          ...(detailEff.material ? [{ k: "Material", v: detailEff.material }] : []),
+          ...(activeWeight ? [{ k: "Weight", v: formatWeight(activeWeight) }] : []),
+        ]}
+      />
 
       <section className="bg-white rounded-2xl border border-[#E2E8F0] p-4 sm:p-6">
         <h2 className="text-lg font-bold text-[#0F172A]">Customer reviews</h2>

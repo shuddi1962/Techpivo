@@ -36,6 +36,7 @@ export interface StoreVariant {
   price: number | null
   image: string
   stock: number | null
+  weightGrams: number | null
 }
 
 // GET /api/marketplace/variants?product_id=<uuid> — live supplier options
@@ -66,6 +67,11 @@ export async function GET(request: NextRequest) {
             : null,
         image: marketImage(v.variantImage || ""),
         stock: v.variantStock != null && Number.isFinite(Number(v.variantStock)) ? Number(v.variantStock) : null,
+        weightGrams:
+          (v as { variantWeight?: unknown }).variantWeight != null &&
+          Number.isFinite(Number((v as { variantWeight?: unknown }).variantWeight))
+            ? Number((v as { variantWeight?: unknown }).variantWeight)
+            : null,
       }))
     if (variants.length === 0) return NextResponse.json({ variants: [], attributes: [] })
     // A lone option with no real name (e.g. a single-SKU product) is not a
