@@ -495,7 +495,24 @@ export function MarketplaceHome() {
           </Link>
         </div>
 
-        {/* hero bento */}
+        {/* hero — your uploaded banner takes over the full hero area.
+            No navy card, no side promos: the image IS the hero. */}
+        {banners.hero_image ? (
+          <section className="overflow-hidden rounded-2xl border border-[#E2E8F0] shadow-sm">
+            <Link href="#trending" aria-label="Shop TechPivo Market" className="block">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={marketImage(banners.hero_image)}
+                alt="TechPivo Market — shop the collection"
+                className="block h-[280px] w-full object-cover sm:h-[360px] lg:h-[420px]"
+                loading="eager"
+                decoding="async"
+              />
+            </Link>
+          </section>
+        ) : (
+        <>
+        {/* hero bento (default — shown until you upload a hero banner in Admin) */}
         <section className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-stretch">
           <div className="lg:col-span-8 rounded-2xl relative overflow-hidden flex flex-col justify-between p-5 md:p-8 text-white min-h-[420px]" style={{ background: MARKETPLACE_BRAND.navy }}>
             <div className="absolute -right-20 -top-20 w-96 h-96 rounded-full bg-[#F59E0B]/10 blur-3xl pointer-events-none" />
@@ -590,7 +607,7 @@ export function MarketplaceHome() {
             </Link>
           </div>
         </section>
-
+        </>)}
         {/* categories — real department tree, all linked to category pages */}
         <section className="bg-white rounded-2xl p-5 shadow-sm border border-[#E2E8F0]">
           <div className="flex items-center justify-between mb-4">
