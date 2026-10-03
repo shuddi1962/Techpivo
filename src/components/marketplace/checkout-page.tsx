@@ -198,10 +198,10 @@ export function CheckoutPage() {
                 value={form.dial || preset.dial}
                 onChange={(e) => { setDialTouched(true); setForm((f) => ({ ...f, dial: e.target.value })) }}
                 aria-label="Country dial code"
-                className="w-28 shrink-0 cursor-pointer border rounded-lg px-2 py-2.5 bg-white focus:outline-none focus:border-[#F59E0B]"
+                className="w-44 shrink-0 cursor-pointer border rounded-lg px-2 py-2.5 bg-white focus:outline-none focus:border-[#F59E0B]"
               >
                 {DIAL_CODES.map((d) => (
-                  <option key={`${d.code}-${d.dial}`} value={d.dial}>{d.dial} {d.code}</option>
+                  <option key={`${d.code}-${d.dial}`} value={d.dial}>{d.dial} — {d.name}</option>
                 ))}
               </select>
               <input value={form.phone} onChange={set("phone")} inputMode="tel" placeholder={preset.phone} className="w-full border rounded-lg px-3 py-2.5 focus:outline-none focus:border-[#F59E0B]" />
