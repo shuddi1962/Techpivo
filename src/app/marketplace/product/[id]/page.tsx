@@ -127,7 +127,7 @@ export default async function MarketplaceProductPage({ params }: { params: { id:
     name: p.product_name,
     description: p.product_description || undefined,
     image: p.product_image_url || undefined,
-    brand: { "@type": "Brand", name: p.program_key || "TechPivo Market" },
+    brand: { "@type": "Brand", name: "TechPivo Market" },
     offers: {
       "@type": "Offer",
       priceCurrency: "USD",

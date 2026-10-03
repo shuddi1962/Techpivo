@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server"
 import { createClient as createAdmin } from "@/lib/supabase/admin"
 import { paystackInit } from "@/lib/paystack"
 import { cjGetVariants, MARKET_MARGIN } from "@/lib/cj"
+import { shippingCost, type ShipMethodId } from "@/lib/marketplace-shipping"
 
 export const dynamic = "force-dynamic"
 
@@ -34,6 +35,7 @@ export async function POST(request: NextRequest) {
     if (items.length === 0 || items.length > 50) {
       return NextResponse.json({ error: "Your cart is empty." }, { status: 400 })
     }
+    const shippingMethod: ShipMethodId = body?.shipping_method === "express" ? "express" : "standard"
     if (!ship.name || !ship.phone || !ship.address || !ship.city) {
       return NextResponse.json({ error: "Name, phone, address and city are required." }, { status: 400 })
     }
@@ -92,7 +94,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "None of those products are available anymore." }, { status: 400 })
     }
 
-    const shippingUsd = subtotal >= 49 ? 0 : 5
+    const shippingUsd = shippingCost(subtotal, shippingMethod)
     const totalUsd = Math.round((subtotal + shippingUsd) * 100) / 100
 
     // NGN total via live FX (fallback 1600) — Paystack charges kobo

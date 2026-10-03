@@ -60,7 +60,6 @@ function ProductCard({ p, onAdd, wished, onWish, added, href }: { p: DemoProduct
       </div>
       <div className="flex flex-col flex-1 justify-between gap-1">
         <div>
-          <p className="text-[10px] text-slate-400 uppercase tracking-wide">{p.category}</p>
           <h5 className="text-sm font-semibold text-[#0F172A] line-clamp-1 group-hover:text-[#B45309] transition-colors">{p.name}</h5>
           <div className="flex items-center gap-1 my-1">
             <Stars value={p.rating} />
@@ -307,12 +306,9 @@ export function MarketplaceHome() {
           const db = b.oldPrice && b.oldPrice > b.price ? 1 - b.price / b.oldPrice : -1
           return db - da
         })
-        .slice(0, 2),
+        .slice(0, 4),
     [grid]
   )
-
-  // Hero side cards: first live products, linked to their pages.
-  const sideCards = grid.slice(0, 2)
 
   // Department spotlights only for departments that actually have live
   // products — never backfill unrelated items under a department name.
@@ -412,7 +408,7 @@ export function MarketplaceHome() {
 
         {/* hero bento */}
         <section className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-stretch">
-          <div className={`${sideCards.length > 0 ? "lg:col-span-8" : "lg:col-span-12"} rounded-2xl relative overflow-hidden flex flex-col justify-between p-5 md:p-8 text-white min-h-[420px]`} style={{ background: MARKETPLACE_BRAND.navy }}>
+          <div className="lg:col-span-8 rounded-2xl relative overflow-hidden flex flex-col justify-between p-5 md:p-8 text-white min-h-[420px]" style={{ background: MARKETPLACE_BRAND.navy }}>
             <div className="absolute -right-20 -top-20 w-96 h-96 rounded-full bg-[#F59E0B]/10 blur-3xl pointer-events-none" />
             <div className="absolute -left-10 -bottom-10 w-80 h-80 rounded-full bg-[#EF4444]/10 blur-3xl pointer-events-none" />
             <div className="relative z-10 flex items-center justify-between">
@@ -467,31 +463,43 @@ export function MarketplaceHome() {
             </div>
           </div>
 
-          {sideCards.length > 0 && (
-            <div className="lg:col-span-4 flex flex-col gap-4">
-              {sideCards.map((p) => (
-                <Link key={p.id} href={`/marketplace/product/${p.id}`} className="bg-white rounded-2xl p-5 flex flex-col justify-between shadow-sm hover:shadow-md transition-shadow relative overflow-hidden flex-1 border border-[#E2E8F0] group">
-                  <div className="space-y-1.5">
-                    <span className="bg-[#FEF2F2] text-[#EF4444] text-[11px] font-bold uppercase px-2 py-0.5 rounded">{p.category}</span>
-                    <h3 className="text-lg font-bold text-[#0F172A] line-clamp-1 group-hover:text-[#B45309] transition-colors">{p.name}</h3>
-                  </div>
-                  <div className="flex items-center justify-between mt-4">
-                    <div>
-                      <span className="text-lg font-bold text-[#0F172A]">${p.price.toFixed(2)}</span>
-                      <span className="block text-sm text-[#B45309] font-semibold mt-1">Shop Now →</span>
-                    </div>
-                    <div className="w-24 h-24 rounded-xl bg-[#F8FAFC] overflow-hidden flex items-center justify-center border border-[#E2E8F0]">
-                      {p.image ? (
-                        <img src={marketImage(p.image)} alt={p.name} loading="lazy" decoding="async" className="w-full h-full object-cover" />
-                      ) : (
-                        <Package className="h-10 w-10 text-slate-200" />
-                      )}
-                    </div>
-                  </div>
-                </Link>
-              ))}
-            </div>
-          )}
+          {/* hero side banners */}
+          <div className="lg:col-span-4 flex flex-col gap-4">
+            <Link
+              href="/marketplace/deals"
+              className="group relative flex-1 overflow-hidden rounded-2xl p-5 text-white shadow-sm transition-shadow hover:shadow-md min-h-[200px] flex flex-col justify-between"
+              style={{ background: "linear-gradient(150deg, #DC2626 0%, #991B1B 100%)" }}
+            >
+              <div className="absolute -right-10 -top-10 h-40 w-40 rounded-full bg-white/10 blur-2xl" />
+              <div className="relative">
+                <span className="inline-flex items-center gap-1 rounded bg-white/20 px-2 py-0.5 text-[11px] font-bold uppercase backdrop-blur-sm">
+                  <Flame className="h-3 w-3" /> Flash Sale
+                </span>
+                <h3 className="mt-2 text-2xl font-extrabold leading-tight">Mega Deal<br />Up to 50% Off</h3>
+                <p className="mt-1 text-xs text-white/80">Today only — biggest price drops</p>
+              </div>
+              <span className="relative mt-3 inline-flex w-fit items-center gap-1 rounded-lg bg-white px-4 py-2 text-sm font-bold text-[#991B1B] transition-colors group-hover:bg-[#FEF2F2]">
+                Shop deals <ArrowRight className="h-4 w-4" />
+              </span>
+            </Link>
+            <Link
+              href="/marketplace/new-arrivals"
+              className="group relative flex-1 overflow-hidden rounded-2xl p-5 text-[#0F172A] shadow-sm transition-shadow hover:shadow-md min-h-[200px] flex flex-col justify-between"
+              style={{ background: "linear-gradient(150deg, #F59E0B 0%, #F97316 100%)" }}
+            >
+              <div className="absolute -right-10 -bottom-10 h-40 w-40 rounded-full bg-white/20 blur-2xl" />
+              <div className="relative">
+                <span className="inline-flex items-center gap-1 rounded bg-black/20 px-2 py-0.5 text-[11px] font-bold uppercase text-white">
+                  <Zap className="h-3 w-3" /> Just landed
+                </span>
+                <h3 className="mt-2 text-2xl font-extrabold leading-tight text-white">New Season<br />Tech Drop</h3>
+                <p className="mt-1 text-xs text-white/85">Fresh stock, first to own</p>
+              </div>
+              <span className="relative mt-3 inline-flex w-fit items-center gap-1 rounded-lg bg-[#0F172A] px-4 py-2 text-sm font-bold text-white transition-colors group-hover:bg-black">
+                Shop new <ArrowRight className="h-4 w-4" />
+              </span>
+            </Link>
+          </div>
         </section>
 
         {/* categories — real department tree, all linked to category pages */}
@@ -535,72 +543,72 @@ export function MarketplaceHome() {
           </div>
         </section>
 
-        {/* flash deals — live discounted products */}
+        {/* flash deals — 4 live discounted products under a countdown banner */}
         {flashItems.length > 0 && (
-          <section id="flash-deals" className="bg-white rounded-2xl p-5 md:p-6 shadow-sm border border-[#E2E8F0] scroll-mt-4">
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-stretch">
-              <div className="lg:col-span-4 rounded-2xl p-5 flex flex-col justify-between relative overflow-hidden text-white" style={{ background: "linear-gradient(160deg, #DC2626 0%, #7F1D1D 100%)" }}>
-                <div className="space-y-1.5">
-                  <div className="inline-flex items-center gap-1.5 bg-[#EF4444] text-white px-2.5 py-1 rounded text-[11px] font-bold uppercase">
-                    <Flame className="h-3.5 w-3.5" /> Flash Sale
-                  </div>
-                  <h3 className="text-3xl font-bold tracking-tight pt-1">Special Offer!</h3>
-                  <p className="text-3xl text-[#F59E0B] font-extrabold leading-none">Up to 50% Off</p>
-                  <p className="text-sm text-slate-300 pt-1">Hurry — stock is limited on verified TechPivo batches.</p>
-                </div>
-                <div className="my-4">
-                  <p className="text-[11px] uppercase text-slate-400 tracking-wider mb-2">Offer Ends In:</p>
-                  <div className="grid grid-cols-4 gap-2 text-center">
-                    {[
-                      { v: t.days, l: "Days" },
-                      { v: t.hrs, l: "Hours" },
-                      { v: t.mins, l: "Mins" },
-                      { v: t.secs, l: "Secs" },
-                    ].map((x) => (
-                      <div key={x.l} className="bg-white/10 rounded-xl p-2">
-                        <span className="text-xl font-extrabold text-[#F59E0B] block tabular-nums">{x.v}</span>
-                        <span className="text-[10px] uppercase font-bold text-slate-300">{x.l}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-                <div className="flex items-center gap-2 text-xs text-slate-300 bg-white/5 p-2.5 rounded-xl">
-                  <Zap className="h-4 w-4 text-[#F59E0B] shrink-0" />
-                  <span>Live stock — every order ships tracked to your door</span>
+          <section id="flash-deals" className="overflow-hidden rounded-2xl border border-[#E2E8F0] bg-white shadow-sm scroll-mt-4">
+            <div
+              className="flex flex-col gap-3 p-5 sm:flex-row sm:items-center sm:justify-between md:px-6"
+              style={{ background: "linear-gradient(100deg, #DC2626 0%, #991B1B 100%)" }}
+            >
+              <div className="flex items-center gap-3">
+                <span className="inline-flex items-center gap-1.5 rounded bg-white px-2.5 py-1 text-[11px] font-bold uppercase text-[#991B1B]">
+                  <Flame className="h-3.5 w-3.5" /> Flash Sale
+                </span>
+                <div>
+                  <h3 className="text-xl font-extrabold tracking-tight text-white sm:text-2xl">Special Offer — Up to 50% Off</h3>
+                  <p className="text-xs text-white/80">Hurry — discounted stock goes fast</p>
                 </div>
               </div>
+              <div className="flex items-center gap-1.5" aria-label="Offer countdown">
+                {[
+                  { v: t.days, l: "Days" },
+                  { v: t.hrs, l: "Hrs" },
+                  { v: t.mins, l: "Min" },
+                  { v: t.secs, l: "Sec" },
+                ].map((x, i, arr) => (
+                  <span key={x.l} className="flex items-center gap-1.5">
+                    <span className="min-w-12 rounded-lg bg-white/15 px-2 py-1.5 text-center backdrop-blur-sm">
+                      <span className="block text-lg font-extrabold tabular-nums text-white">{x.v}</span>
+                      <span className="block text-[9px] font-bold uppercase text-white/75">{x.l}</span>
+                    </span>
+                    {i < arr.length - 1 && <span className="font-bold text-white/60">:</span>}
+                  </span>
+                ))}
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3 p-4 sm:p-5 lg:grid-cols-4">
               {flashItems.map((p) => {
                 const pct = p.oldPrice ? Math.round((1 - p.price / p.oldPrice) * 100) : 0
                 return (
-                  <div key={p.id} className="lg:col-span-4 bg-[#F8FAFC] border border-[#E2E8F0] rounded-2xl p-4 flex flex-col justify-between hover:bg-slate-100 transition-colors group relative">
-                    {pct > 0 && <span className="absolute top-4 left-4 bg-[#EF4444] text-white text-[11px] font-bold px-2 py-0.5 rounded-full z-10">-{pct}%</span>}
-                    <Link href={`/marketplace/product/${p.id}`} className="relative w-full aspect-[4/3] rounded-xl bg-white p-3 flex items-center justify-center overflow-hidden mb-3 border border-[#E2E8F0]">
+                  <div key={p.id} className="group relative flex flex-col justify-between rounded-2xl border border-[#E2E8F0] bg-[#F8FAFC] p-3 transition-colors hover:bg-slate-100 sm:p-4">
+                    {pct > 0 && <span className="absolute left-3 top-3 z-10 rounded-full bg-[#EF4444] px-2 py-0.5 text-[11px] font-bold text-white">-{pct}%</span>}
+                    <Link href={`/marketplace/product/${p.id}`} className="relative mb-3 flex aspect-square w-full items-center justify-center overflow-hidden rounded-xl border border-[#E2E8F0] bg-white p-3">
                       {p.image ? (
-                        <img src={marketImage(p.image)} alt={p.name} loading="lazy" decoding="async" className="w-full h-full object-cover rounded-lg group-hover:scale-105 transition-transform duration-300" />
+                        <img src={marketImage(p.image)} alt={p.name} loading="lazy" decoding="async" className="h-full w-full rounded-lg object-cover transition-transform duration-300 group-hover:scale-105" />
                       ) : (
                         <Package className="h-14 w-14 text-slate-200" />
                       )}
                     </Link>
-                    <div className="space-y-1.5 flex-1 flex flex-col justify-between">
+                    <div className="flex flex-1 flex-col justify-between space-y-1.5">
                       <div>
-                        <div className="flex items-center gap-1 mb-1">
+                        <div className="mb-1 flex items-center gap-1">
                           <Stars value={p.rating} />
                           {p.reviews > 0 ? (
-                            <span className="text-xs text-slate-500 ml-1">({p.reviews})</span>
+                            <span className="ml-1 text-xs text-slate-500">({p.reviews})</span>
                           ) : (
-                            <span className="text-xs font-semibold text-[#10B981] ml-1">New</span>
+                            <span className="ml-1 text-xs font-semibold text-[#10B981]">New</span>
                           )}
                         </div>
-                        <Link href={`/marketplace/product/${p.id}`} className="font-bold text-[#0F172A] line-clamp-1 hover:text-[#B45309]">{p.name}</Link>
-                        <div className="flex items-baseline gap-2 mt-1">
-                          <span className="text-lg text-[#EF4444] font-extrabold">${p.price.toFixed(2)}</span>
+                        <Link href={`/marketplace/product/${p.id}`} className="line-clamp-2 min-h-[2.5rem] font-bold text-[#0F172A] hover:text-[#B45309] text-sm">{p.name}</Link>
+                        <div className="mt-1 flex items-baseline gap-2">
+                          <span className="text-lg font-extrabold text-[#EF4444]">${p.price.toFixed(2)}</span>
                           {p.oldPrice && <span className="text-sm text-slate-400 line-through">${p.oldPrice.toFixed(2)}</span>}
                         </div>
                       </div>
-                      <div className="flex items-center gap-2 mt-4">
+                      <div className="mt-3 flex items-center gap-2">
                         <button
                           onClick={() => addToCart(p)}
-                          className={`flex-1 text-sm font-bold py-2.5 rounded-lg transition-colors flex items-center justify-center gap-1.5 ${justAdded[p.id] ? "bg-[#10B981] text-white" : "bg-[#F59E0B] hover:bg-[#D97706] text-[#0F172A]"}`}
+                          className={`flex flex-1 items-center justify-center gap-1.5 rounded-lg py-2.5 text-sm font-bold transition-colors ${justAdded[p.id] ? "bg-[#10B981] text-white" : "bg-[#F59E0B] text-[#0F172A] hover:bg-[#D97706]"}`}
                         >
                           {justAdded[p.id] ? (
                             <><Check className="h-4 w-4" /> Added</>
@@ -612,7 +620,7 @@ export function MarketplaceHome() {
                           onClick={() => toggleWish(p.id)}
                           aria-label={wishlist[p.id] ? "Remove from wishlist" : "Add to wishlist"}
                           aria-pressed={!!wishlist[p.id]}
-                          className={`w-10 h-10 rounded-lg bg-white border flex items-center justify-center transition-colors ${wishlist[p.id] ? "border-[#EF4444] text-[#EF4444]" : "border-[#E2E8F0] text-slate-500 hover:text-[#EF4444]"}`}
+                          className={`flex h-10 w-10 items-center justify-center rounded-lg border bg-white transition-colors ${wishlist[p.id] ? "border-[#EF4444] text-[#EF4444]" : "border-[#E2E8F0] text-slate-500 hover:text-[#EF4444]"}`}
                         >
                           <Heart className={`h-5 w-5 ${wishlist[p.id] ? "fill-current" : ""}`} />
                         </button>

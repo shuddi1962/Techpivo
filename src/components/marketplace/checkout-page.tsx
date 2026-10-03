@@ -7,6 +7,10 @@ import { ArrowLeft, Loader2, Lock } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
 import { clearCart, getCart, useMarketCart } from "@/lib/marketplace-cart"
 import { useUsdNgnRate } from "@/lib/marketplace-pricing"
+import {
+  SHIP_METHODS, readShipMethod, saveShipMethod, shippingCost,
+  type ShipMethodId,
+} from "@/lib/marketplace-shipping"
 
 interface Row {
   id: string
@@ -24,6 +28,7 @@ export function CheckoutPage() {
   const [paying, setPaying] = useState(false)
   const [error, setError] = useState("")
   const [form, setForm] = useState({ email: "", name: "", phone: "", address: "", city: "", state: "", zip: "", country: "NG" })
+  const [shipMethod, setShipMethod] = useState<ShipMethodId>("standard")
 
   useEffect(() => {
     const ids = getCart().map((l) => l.id)
@@ -49,9 +54,13 @@ export function CheckoutPage() {
     [cart, rows]
   )
   const subtotal = lines.reduce((s, l) => s + Number(l.product!.sale_price ?? l.product!.original_price ?? 0) * l.qty, 0)
-  const shipping = subtotal === 0 ? 0 : subtotal >= 49 ? 0 : 5
+  const shipping = shippingCost(subtotal, shipMethod)
   const totalUsd = subtotal + shipping
   const totalNgn = Math.round(totalUsd * rate)
+
+  useEffect(() => {
+    setShipMethod(readShipMethod())
+  }, [])
 
   useEffect(() => {
     if (!loading && lines.length === 0) router.replace("/marketplace/cart")
@@ -81,6 +90,7 @@ export function CheckoutPage() {
           ship_zip: form.zip,
           ship_country: form.country,
           items: lines.map((l) => ({ id: l.id, qty: l.qty, variant: l.variant ? { vid: l.variant.vid, label: l.variant.label } : null })),
+          shipping_method: shipMethod,
         }),
       })
       const data = await res.json()
@@ -155,6 +165,33 @@ export function CheckoutPage() {
           </label>
         </div>
         {error && <p className="text-sm text-[#EF4444] bg-[#FEF2F2] border border-[#EF4444]/20 rounded-lg px-3 py-2">{error}</p>}
+        <div>
+          <p className="mb-2 text-sm font-semibold text-slate-700">Delivery method</p>
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2" role="radiogroup" aria-label="Delivery method">
+            {SHIP_METHODS.map((m) => {
+              const on = shipMethod === m.id
+              const fee = shippingCost(subtotal, m.id)
+              return (
+                <button
+                  key={m.id}
+                  type="button"
+                  role="radio"
+                  aria-checked={on}
+                  onClick={() => { setShipMethod(m.id); saveShipMethod(m.id) }}
+                  className={`flex items-center justify-between gap-2 rounded-xl border-2 px-3 py-2.5 text-left transition-all ${on ? "border-[#F59E0B] bg-[#FFFBEB]" : "border-[#E2E8F0] hover:border-slate-400"}`}
+                >
+                  <span>
+                    <span className="block text-sm font-bold text-[#0F172A]">{m.name}</span>
+                    <span className="block text-[11px] text-slate-500">{m.eta} · tracked</span>
+                  </span>
+                  <span className={`text-sm font-extrabold ${fee === 0 ? "text-[#10B981]" : "text-[#0F172A]"}`}>
+                    {fee === 0 ? "FREE" : `$${fee.toFixed(2)}`}
+                  </span>
+                </button>
+              )
+            })}
+          </div>
+        </div>
       </div>
       <div className="lg:col-span-5">
         <div className="bg-white rounded-2xl border border-[#E2E8F0] p-4 sm:p-5 sticky top-4 space-y-2">

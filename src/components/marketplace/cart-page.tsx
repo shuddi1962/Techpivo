@@ -6,6 +6,7 @@ import { ArrowLeft, Minus, Plus, ShieldCheck, ShoppingCart, Trash2 } from "lucid
 import { createClient } from "@/lib/supabase/client"
 import { getCart, removeFromCart, setQty, useMarketCart } from "@/lib/marketplace-cart"
 import { marketImage } from "@/lib/marketplace-images"
+import { readShipMethod, shippingCost, SHIP_METHODS, type ShipMethodId } from "@/lib/marketplace-shipping"
 import { dualPrice, useUsdNgnRate } from "@/lib/marketplace-pricing"
 
 interface Row {
@@ -21,6 +22,18 @@ export function CartPage() {
   const rate = useUsdNgnRate()
   const [rows, setRows] = useState<Row[]>([])
   const [loading, setLoading] = useState(true)
+  const [shipMethod, setShipMethod] = useState<ShipMethodId>("standard")
+
+  useEffect(() => {
+    setShipMethod(readShipMethod())
+    const sync = () => setShipMethod(readShipMethod())
+    window.addEventListener("tp-market-ship", sync)
+    window.addEventListener("storage", sync)
+    return () => {
+      window.removeEventListener("tp-market-ship", sync)
+      window.removeEventListener("storage", sync)
+    }
+  }, [])
 
   useEffect(() => {
     const ids = getCart().map((l) => l.id)
@@ -50,7 +63,8 @@ export function CartPage() {
     [cart, rows]
   )
   const subtotal = lines.reduce((s, l) => s + Number(l.product!.sale_price ?? l.product!.original_price ?? 0) * l.qty, 0)
-  const shipping = subtotal === 0 ? 0 : subtotal >= 49 ? 0 : 5
+  const shipLabel = SHIP_METHODS.find((m) => m.id === shipMethod)?.name || "Standard"
+  const shipping = shippingCost(subtotal, shipMethod)
 
   if (loading) {
     return (
@@ -133,7 +147,7 @@ export function CartPage() {
             <span className="font-semibold text-[#0F172A]">${subtotal.toFixed(2)}</span>
           </div>
           <div className="flex justify-between text-sm text-slate-600">
-            <span>Shipping</span>
+            <span>Shipping ({shipLabel})</span>
             <span className="font-semibold text-[#0F172A]">{shipping === 0 ? "FREE" : `$${shipping.toFixed(2)}`}</span>
           </div>
           {shipping > 0 && <p className="text-[11px] text-slate-400">Free shipping on orders over $49.</p>}

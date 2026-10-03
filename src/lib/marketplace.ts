@@ -19,10 +19,10 @@ export const MARKETPLACE_BRAND = {
   border: "#E2E8F0",
 } as const
 
-// Storefront supplier label — neutral. Raw supplier program keys must never
-// appear on the storefront, and the sourcing model is never disclosed.
+// Storefront supplier label — intentionally blank. No supplier names,
+// keys, or sourcing hints may appear anywhere on the storefront.
 export function supplierDisplayName(_programKey: string | null | undefined): string {
-  return "TechPivo Direct"
+  return ""
 }
 
 export interface DemoProduct {

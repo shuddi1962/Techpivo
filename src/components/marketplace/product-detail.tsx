@@ -6,7 +6,10 @@ import { useEffect, useMemo, useState } from "react"
 import { Check, Heart, Minus, Plus, RotateCcw, ShieldCheck, ShoppingCart, Star, Truck, Zap } from "lucide-react"
 import { addToCart } from "@/lib/marketplace-cart"
 import { marketImage } from "@/lib/marketplace-images"
-import { supplierDisplayName } from "@/lib/marketplace"
+import {
+  SHIP_METHODS, readShipMethod, saveShipMethod, shippingCost,
+  type ShipMethodId,
+} from "@/lib/marketplace-shipping"
 import { dualPrice, useUsdNgnRate } from "@/lib/marketplace-pricing"
 
 interface Review {
@@ -118,6 +121,8 @@ export function ProductDetail({
   const [attrs, setAttrs] = useState<Array<{ name: string; values: string[] }>>([])
   const [picked, setPicked] = useState<Record<string, string>>({})
   const [activeImg, setActiveImg] = useState<string>(p.product_image_url || "")
+  const [shipMethod, setShipMethod] = useState<ShipMethodId>("standard")
+  const [courier, setCourier] = useState<{ name: string; fee: number; eta: string } | null>(null)
 
   useEffect(() => {
     try {
@@ -164,8 +169,29 @@ export function ProductDetail({
       : null
 
   useEffect(() => {
+    setShipMethod(readShipMethod())
+    // Live courier estimate for this item (informational — the Standard /
+    // Express choice below is what checkout charges).
+    fetch(
+      `/api/marketplace/shipping?product_id=${encodeURIComponent(p.id)}&variant_vid=${encodeURIComponent(selected?.vid || "")}&qty=${qty}&country=NG`
+    )
+      .then((r) => r.json())
+      .then((d) => {
+        if (d?.estimate && Number.isFinite(Number(d.estimate.fee))) setCourier(d.estimate)
+        else setCourier(null)
+      })
+      .catch(() => setCourier(null))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [p.id, selected?.vid, qty])
+
+  useEffect(() => {
     if (selected?.image) setActiveImg(selected.image)
   }, [selected?.image])
+
+  const pickShip = (m: ShipMethodId) => {
+    setShipMethod(m)
+    saveShipMethod(m)
+  }
 
   const gallery = (() => {
     const imgs = [p.product_image_url || "", ...(variants.map((v) => v.image).filter(Boolean) as string[])]
@@ -240,7 +266,7 @@ export function ProductDetail({
         </div>
 
         <div className="flex flex-col">
-          <p className="text-[11px] uppercase tracking-wider text-slate-400">{supplierDisplayName(p.program_key)} · Ships tracked in 7–12 days</p>
+          <p className="text-[11px] uppercase tracking-wider text-slate-400">Ships tracked in 7–12 days</p>
           <h1 className="text-2xl sm:text-3xl font-extrabold text-[#0F172A] tracking-tight mt-1">{p.product_name}</h1>
           <div className="flex items-center gap-2 mt-2">
             <Stars value={avg || 4} />
@@ -309,9 +335,47 @@ export function ProductDetail({
             </div>
           )}
 
+          {/* delivery selection with pricing */}
+          <div className="mt-5">
+            <p className="mb-2 text-xs font-bold uppercase tracking-wider text-slate-500">Delivery</p>
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2" role="radiogroup" aria-label="Delivery method">
+              {SHIP_METHODS.map((m) => {
+                const on = shipMethod === m.id
+                const fee = shippingCost(price * qty, m.id)
+                return (
+                  <button
+                    key={m.id}
+                    type="button"
+                    role="radio"
+                    aria-checked={on}
+                    onClick={() => pickShip(m.id)}
+                    className={`flex items-center justify-between gap-2 rounded-xl border-2 px-3 py-2.5 text-left transition-all ${on ? "border-[#F59E0B] bg-[#FFFBEB]" : "border-[#E2E8F0] bg-white hover:border-slate-400"}`}
+                  >
+                    <span className="flex items-center gap-2">
+                      <Truck className={`h-4 w-4 shrink-0 ${on ? "text-[#B45309]" : "text-slate-400"}`} />
+                      <span>
+                        <span className="block text-sm font-bold text-[#0F172A]">{m.name}</span>
+                        <span className="block text-[11px] text-slate-500">{m.eta} · tracked</span>
+                      </span>
+                    </span>
+                    <span className={`text-sm font-extrabold ${fee === 0 ? "text-[#10B981]" : "text-[#0F172A]"}`}>
+                      {fee === 0 ? "FREE" : `$${fee.toFixed(2)}`}
+                    </span>
+                  </button>
+                )
+              })}
+            </div>
+            {courier ? (
+              <p className="mt-1.5 text-[11px] text-slate-500">
+                Courier estimate for this item: {courier.name} — ${Number(courier.fee).toFixed(2)}{courier.eta ? ` · ${courier.eta}` : ""}
+              </p>
+            ) : (
+              <p className="mt-1.5 text-[11px] text-slate-500">Standard is free on orders over $49.</p>
+            )}
+          </div>
+
           <div className="flex items-center gap-3 mt-5">
-            <span className="text-sm font-semibold text-slate-700">Qty</span>
-            <div className="flex items-center border border-[#CBD5E1] rounded-lg overflow-hidden">
+            <span className="text-sm font-semibold text-slate-700">Qty</span>            <div className="flex items-center border border-[#CBD5E1] rounded-lg overflow-hidden">
               <button onClick={() => setQty((q) => Math.max(1, q - 1))} className="px-3 py-2 hover:bg-slate-100" aria-label="Decrease quantity">
                 <Minus className="h-4 w-4" />
               </button>
@@ -432,7 +496,6 @@ export function ProductDetail({
                     <img src={marketImage(r.product_image_url)} alt={r.product_name} loading="lazy" decoding="async" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
                   ) : null}
                 </div>
-                <p className="text-[10px] text-slate-400 uppercase tracking-wide">{supplierDisplayName(r.program_key)}</p>
                 <h3 className="text-sm font-semibold text-[#0F172A] line-clamp-1">{r.product_name}</h3>
                 <p className="text-base font-bold text-[#0F172A] mt-1">${Number(r.sale_price ?? r.original_price ?? 0).toFixed(2)}</p>
               </Link>
