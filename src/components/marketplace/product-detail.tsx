@@ -7,7 +7,7 @@ import { Check, Heart, Minus, Play, Plus, RotateCcw, ShieldCheck, ShoppingCart, 
 import { addToCart } from "@/lib/marketplace-cart"
 import { marketImage } from "@/lib/marketplace-images"
 import {
-  readShipSelection, saveShipSelection, SHIP_COUNTRIES, type ShipOption, type ShipSelection,
+  readShipSelection, saveShipSelection, SHIP_COUNTRIES, DEFAULT_SHIP_COUNTRY, type ShipOption, type ShipSelection,
 } from "@/lib/marketplace-shipping"
 import { getGeoOnce } from "@/lib/tools-geo"
 import { DeliveryPicker } from "./delivery-picker"
@@ -259,7 +259,7 @@ export function ProductDetail({
   const detailEff = liveDetail ?? detail
   const [shipOptions, setShipOptions] = useState<ShipOption[]>([])
   const [shipPick, setShipPick] = useState<ShipSelection | null>(null)
-  const [shipCountry, setShipCountry] = useState("NG")
+  const [shipCountry, setShipCountry] = useState(DEFAULT_SHIP_COUNTRY)
 
   useEffect(() => {
     try {
@@ -566,7 +566,6 @@ export function ProductDetail({
                 saveShipSelection(sel)
               }}
             />
-            <p className="mt-1.5 text-[11px] text-slate-500">Standard is free on orders over $49.</p>
           </div>
 
           <div className="flex flex-wrap items-center gap-x-4 gap-y-2 mt-5">

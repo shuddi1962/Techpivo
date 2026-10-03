@@ -294,15 +294,20 @@ export async function cjGetFreight(opts: {
   const key = await resolveCjApiKey()
   if (!key) throw new Error("CJ API key not configured")
   const token = await getAccessToken(key)
-  const data = await cjFetch<{ list?: CjFreightOption[] }>(`/api2.0/v1/logistic/freightCalculate`, {
-    method: "POST",
-    token,
-    body: JSON.stringify({
-      startCountryCode: opts.startCountryCode ?? "CN",
-      endCountryCode: opts.endCountryCode,
-      products: opts.products,
-    }),
-  })
+  // NOTE: freightCalculate returns data as a RAW ARRAY, not a { list } wrapper.
+  const data = await cjFetch<CjFreightOption[] | { list?: CjFreightOption[] }>(
+    `/api2.0/v1/logistic/freightCalculate`,
+    {
+      method: "POST",
+      token,
+      body: JSON.stringify({
+        startCountryCode: opts.startCountryCode ?? "CN",
+        endCountryCode: opts.endCountryCode,
+        products: opts.products,
+      }),
+    }
+  )
+  if (Array.isArray(data)) return data
   return data?.list ?? []
 }
 

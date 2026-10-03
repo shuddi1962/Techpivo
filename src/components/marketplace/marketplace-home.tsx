@@ -727,6 +727,7 @@ export function MarketplaceHome() {
         {/* trending slider — horizontal product rail */}
         {best.length > 1 && (
           <section className="bg-white rounded-2xl p-5 shadow-sm border border-[#E2E8F0]">
+            <style>{`.trend-rail{scrollbar-width:none;-ms-overflow-style:none}.trend-rail::-webkit-scrollbar{display:none}`}</style>
             <div className="flex items-center justify-between mb-4">
               <div>
                 <span className="text-[#DC2626] text-[11px] font-bold uppercase tracking-wider block">Most viewed right now</span>
@@ -753,8 +754,7 @@ export function MarketplaceHome() {
             </div>
             <div
               id="trend-rail"
-              className="flex gap-3 overflow-x-auto pb-1 snap-x snap-mandatory"
-              style={{ scrollbarWidth: "thin" }}
+              className="trend-rail flex gap-3 overflow-x-auto pb-1 snap-x snap-mandatory"
               ref={trendRailRef}
               onMouseEnter={() => { trendPauseRef.current = true }}
               onMouseLeave={() => { trendPauseRef.current = false }}

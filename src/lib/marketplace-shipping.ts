@@ -21,8 +21,9 @@ export const EXPRESS_FLAT_USD = 19
 export const FREE_SHIP_THRESHOLD_USD = 49
 export const STANDARD_FLAT_USD = 5
 
-// Full ship-to country list (full names, CJ-style).
-export const SHIP_COUNTRIES: Array<{ code: string; name: string }> = [
+// Full ship-to country list (full names, CJ-style) — alphabetical like a
+// worldwide store. Nigeria is NOT first and never the default.
+const SHIP_COUNTRIES_UNSORTED: Array<{ code: string; name: string }> = [
   { code: "NG", name: "Nigeria" },
   { code: "GH", name: "Ghana" },
   { code: "KE", name: "Kenya" },
@@ -183,6 +184,13 @@ export const SHIP_COUNTRIES: Array<{ code: string; name: string }> = [
   { code: "FJ", name: "Fiji" },
   { code: "PG", name: "Papua New Guinea" },
 ]
+
+export const SHIP_COUNTRIES: Array<{ code: string; name: string }> = [...SHIP_COUNTRIES_UNSORTED].sort((a, b) =>
+  a.name.localeCompare(b.name)
+)
+
+// Worldwide default when geo detection fails — never a single home market.
+export const DEFAULT_SHIP_COUNTRY = "US"
 
 export function standardFee(subtotalUsd: number): number {
   return subtotalUsd >= FREE_SHIP_THRESHOLD_USD ? 0 : STANDARD_FLAT_USD

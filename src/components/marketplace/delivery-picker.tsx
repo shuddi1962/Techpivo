@@ -23,11 +23,15 @@ export function DeliveryPicker({
   compact?: boolean
 }) {
   const list = options.length > 0 ? options : fallbackOptions
+  // When live supplier couriers exist, they are the ONLY methods — the
+  // buyer always pays the real marked-up courier rate, never less.
+  const live = list.filter((o) => o.source === "supplier")
+  const shown = live.length > 0 ? live : list
   const activeId = value?.id || "standard"
-  const active = list.find((o) => o.id === activeId) || list[0]
+  const active = shown.find((o) => o.id === activeId) || shown[0]
 
   const pick = (id: string) => {
-    const o = list.find((x) => x.id === id)
+    const o = shown.find((x) => x.id === id)
     if (o) onChange({ id: o.id, name: o.name, eta: o.eta, feeUsd: o.feeUsd })
   }
 
@@ -55,7 +59,7 @@ export function DeliveryPicker({
             aria-label="Shipping method"
             className="w-full cursor-pointer rounded-xl border-2 border-[#E2E8F0] bg-white px-3 py-2.5 text-sm font-bold text-[#0F172A] focus:border-[#F59E0B] focus:outline-none"
           >
-            {list.map((o) => (
+            {shown.map((o) => (
               <option key={o.id} value={o.id}>
                 {o.name} — {o.feeUsd === 0 ? "FREE" : `$${o.feeUsd.toFixed(2)}`}
               </option>
@@ -79,6 +83,11 @@ export function DeliveryPicker({
           </span>
         </div>
       )}
+      <p className="mt-1.5 text-[11px] text-slate-500">
+        {live.length > 0
+          ? "Live courier rates with tracking — the exact rate is charged at checkout."
+          : "Standard is free on orders over $49."}
+      </p>
     </div>
   )
 }

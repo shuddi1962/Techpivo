@@ -8,7 +8,7 @@ import { createClient } from "@/lib/supabase/client"
 import { clearCart, getCart, useMarketCart } from "@/lib/marketplace-cart"
 import { useUsdNgnRate } from "@/lib/marketplace-pricing"
 import {
-  readShipSelection, saveShipSelection, storeShipOptions, SHIP_COUNTRIES,
+  readShipSelection, saveShipSelection, storeShipOptions, SHIP_COUNTRIES, DEFAULT_SHIP_COUNTRY,
   type ShipOption, type ShipSelection,
 } from "@/lib/marketplace-shipping"
 import { getGeoOnce } from "@/lib/tools-geo"
@@ -29,7 +29,7 @@ export function CheckoutPage() {
   const [loading, setLoading] = useState(true)
   const [paying, setPaying] = useState(false)
   const [error, setError] = useState("")
-  const [form, setForm] = useState({ email: "", name: "", phone: "", address: "", city: "", state: "", zip: "", country: "NG" })
+  const [form, setForm] = useState({ email: "", name: "", phone: "", address: "", city: "", state: "", zip: "", country: DEFAULT_SHIP_COUNTRY })
   const [shipOptions, setShipOptions] = useState<ShipOption[]>([])
   const [shipPick, setShipPick] = useState<ShipSelection | null>(null)
 
@@ -91,7 +91,7 @@ export function CheckoutPage() {
       .then((g) => {
         const code = g?.countryCode?.toUpperCase()
         if (code && SHIP_COUNTRIES.some((c) => c.code === code)) {
-          setForm((f) => (f.country === "NG" ? { ...f, country: code } : f))
+          setForm((f) => ({ ...f, country: code }))
         }
       })
       .catch(() => {
