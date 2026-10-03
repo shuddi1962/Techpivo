@@ -9,7 +9,7 @@ import { marketImage } from "@/lib/marketplace-images"
 import { clearCart, getCart, useMarketCart } from "@/lib/marketplace-cart"
 import { useUsdNgnRate } from "@/lib/marketplace-pricing"
 import {
-  readShipSelection, saveShipSelection, storeShipOptions, SHIP_COUNTRIES, DEFAULT_SHIP_COUNTRY,
+  readShipSelection, saveShipSelection, storeShipOptions, SHIP_COUNTRIES, DEFAULT_SHIP_COUNTRY, FREE_SHIP_THRESHOLD_USD,
   type ShipOption, type ShipSelection,
 } from "@/lib/marketplace-shipping"
 import { getGeoOnce } from "@/lib/tools-geo"
@@ -254,11 +254,11 @@ export function CheckoutPage() {
         <div className="bg-white rounded-2xl border border-[#E2E8F0] p-4 sm:p-5 sticky top-4 space-y-3">
           <h2 className="font-bold text-[#0F172A]">Order summary · {lines.reduce((s, l) => s + l.qty, 0)} item(s)</h2>
           {/* free-shipping meter */}
-          {subtotal < 49 ? (
+          {subtotal < FREE_SHIP_THRESHOLD_USD ? (
             <div className="rounded-xl bg-[#FFFBEB] border border-[#FED7AA] p-3">
-              <p className="text-xs text-slate-600">Add <strong className="text-[#0F172A]">${(49 - subtotal).toFixed(2)}</strong> more for <strong className="text-[#10B981]">FREE Standard shipping</strong></p>
+              <p className="text-xs text-slate-600">Add <strong className="text-[#0F172A]">${(FREE_SHIP_THRESHOLD_USD - subtotal).toFixed(2)}</strong> more for <strong className="text-[#10B981]">FREE Standard shipping</strong></p>
               <div className="mt-2 h-2 overflow-hidden rounded-full bg-[#FDEBD3]">
-                <div className="h-full rounded-full bg-gradient-to-r from-[#F59E0B] to-[#EF4444] transition-all" style={{ width: `${Math.min(100, Math.round((subtotal / 49) * 100))}%` }} />
+                <div className="h-full rounded-full bg-gradient-to-r from-[#F59E0B] to-[#EF4444] transition-all" style={{ width: `${Math.min(100, Math.round((subtotal / FREE_SHIP_THRESHOLD_USD) * 100))}%` }} />
               </div>
             </div>
           ) : (

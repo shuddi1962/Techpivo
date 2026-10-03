@@ -464,7 +464,7 @@ export function MarketplaceHeader({
 }
 
 const PERKS = [
-  { icon: Truck, title: "Free Shipping", copy: "On all orders over $49" },
+  { icon: Truck, title: "Free Shipping", copy: "On all orders over $35" },
   { icon: RefreshCcw, title: "Money Guarantee", copy: "30-day easy returns" },
   { icon: Headset, title: "Online Support 24/7", copy: "Dedicated care team" },
   { icon: ShieldCheck, title: "Secure Payments", copy: "Encrypted checkout" },

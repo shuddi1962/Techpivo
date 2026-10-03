@@ -6,7 +6,7 @@ import { ArrowLeft, Minus, Plus, RotateCcw, ShieldCheck, ShoppingCart, Trash2, T
 import { createClient } from "@/lib/supabase/client"
 import { getCart, removeFromCart, setQty, useMarketCart } from "@/lib/marketplace-cart"
 import { marketImage } from "@/lib/marketplace-images"
-import { readShipSelection, shippingCost, type ShipMethodId } from "@/lib/marketplace-shipping"
+import { readShipSelection, shippingCost, FREE_SHIP_THRESHOLD_USD } from "@/lib/marketplace-shipping"
 import { dualPrice, useUsdNgnRate } from "@/lib/marketplace-pricing"
 
 interface Row {
@@ -103,11 +103,11 @@ export function CartPage() {
             <ArrowLeft className="h-4 w-4" /> Continue shopping
           </Link>
         </div>
-        {subtotal < 49 ? (
+        {subtotal < FREE_SHIP_THRESHOLD_USD ? (
           <div className="mb-3 rounded-xl bg-[#FFFBEB] border border-[#FED7AA] p-3">
-            <p className="text-xs text-slate-600">Add <strong className="text-[#0F172A]">${(49 - subtotal).toFixed(2)}</strong> more for <strong className="text-[#10B981]">FREE Standard shipping</strong></p>
+            <p className="text-xs text-slate-600">Add <strong className="text-[#0F172A]">${(FREE_SHIP_THRESHOLD_USD - subtotal).toFixed(2)}</strong> more for <strong className="text-[#10B981]">FREE Standard shipping</strong></p>
             <div className="mt-2 h-2 overflow-hidden rounded-full bg-[#FDEBD3]">
-              <div className="h-full rounded-full bg-gradient-to-r from-[#F59E0B] to-[#EF4444] transition-all" style={{ width: `${Math.min(100, Math.round((subtotal / 49) * 100))}%` }} />
+              <div className="h-full rounded-full bg-gradient-to-r from-[#F59E0B] to-[#EF4444] transition-all" style={{ width: `${Math.min(100, Math.round((subtotal / FREE_SHIP_THRESHOLD_USD) * 100))}%` }} />
             </div>
           </div>
         ) : (
@@ -169,7 +169,7 @@ export function CartPage() {
             <span>Shipping ({shipSel.name})</span>
             <span className="font-semibold text-[#0F172A]">{shipping === 0 ? "FREE" : `$${shipping.toFixed(2)}`}</span>
           </div>
-          {shipping > 0 && <p className="text-[11px] text-slate-400">Free shipping on orders over $49.</p>}
+          {shipping > 0 && <p className="text-[11px] text-slate-400">Free shipping on orders over $35.</p>}
           <div className="border-t border-[#E2E8F0] pt-2 flex justify-between items-baseline">
             <span className="text-sm font-bold text-[#0F172A]">Total</span>
             <span className="text-right">

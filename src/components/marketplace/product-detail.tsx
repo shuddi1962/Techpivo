@@ -7,7 +7,7 @@ import { Check, Heart, Minus, Play, Plus, RotateCcw, ShieldCheck, ShoppingCart, 
 import { addToCart } from "@/lib/marketplace-cart"
 import { marketImage } from "@/lib/marketplace-images"
 import {
-  readShipSelection, saveShipSelection, SHIP_COUNTRIES, DEFAULT_SHIP_COUNTRY, type ShipOption, type ShipSelection,
+  readShipSelection, saveShipSelection, SHIP_COUNTRIES, DEFAULT_SHIP_COUNTRY, FREE_SHIP_THRESHOLD_USD, type ShipOption, type ShipSelection,
 } from "@/lib/marketplace-shipping"
 import { getGeoOnce } from "@/lib/tools-geo"
 import { DeliveryPicker } from "./delivery-picker"
@@ -183,7 +183,7 @@ function ProductDetailsTabs({
         </div>
       ) : (
         <div className="space-y-3 pt-4 text-sm text-slate-600">
-          <p><strong className="text-[#0F172A]">Standard (7–12 days):</strong> tracked delivery — $5, free on orders over $49.</p>
+          <p><strong className="text-[#0F172A]">Standard (7–12 days):</strong> tracked delivery — $5, free on orders over $35.</p>
           <p><strong className="text-[#0F172A]">Express (3–7 days):</strong> priority tracked delivery — $19 flat.</p>
           <p><strong className="text-[#0F172A]">Courier options:</strong> live courier rates with tracking are shown above when available for your country.</p>
           <p><strong className="text-[#0F172A]">Returns:</strong> 30-day easy returns on every order. Need help? <Link href="/contact" className="font-semibold text-[#B45309] hover:underline">Contact us</Link>.</p>
@@ -557,7 +557,7 @@ export function ProductDetail({
               onCountry={setShipCountry}
               options={shipOptions}
               fallbackOptions={[
-                { id: "standard", name: "Standard", eta: "7–12 days", feeUsd: price * qty >= 49 ? 0 : 5, source: "store" },
+                { id: "standard", name: "Standard", eta: "7–12 days", feeUsd: price * qty >= FREE_SHIP_THRESHOLD_USD ? 0 : 5, source: "store" },
                 { id: "express", name: "Express", eta: "3–7 days", feeUsd: 19, source: "store" },
               ]}
               value={shipPick}

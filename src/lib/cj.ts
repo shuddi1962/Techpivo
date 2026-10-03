@@ -368,8 +368,9 @@ export async function cjSyncCatalog(opts: {
 export const MARKET_MARGIN = 1.2
 export const MARKET_COMPARE = 1.5
 
-/** Freight rule: CJ courier rates + 20% markup — no separate courier key. */
-export const FREIGHT_MARKUP = 1.2
+/** Freight rule: supplier courier rates + 10% — kept near-cost on purpose
+ *  so delivery never feels expensive; the real margin lives in products. */
+export const FREIGHT_MARKUP = 1.1
 
 export function withMargin(cost: number): number {
   return Math.round(Number(cost) * MARKET_MARGIN * 100) / 100

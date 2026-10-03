@@ -18,7 +18,7 @@ export interface ShipSelection {
 
 export const SHIP_KEY = "tp_market_ship_v1"
 export const EXPRESS_FLAT_USD = 19
-export const FREE_SHIP_THRESHOLD_USD = 49
+export const FREE_SHIP_THRESHOLD_USD = 35
 export const STANDARD_FLAT_USD = 5
 
 // Full ship-to country list (full names, CJ-style) — alphabetical like a
