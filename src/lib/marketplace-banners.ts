@@ -26,7 +26,7 @@ export const BANNER_SLOTS = [
     id: "hero_image",
     label: "Homepage hero",
     dims: "1600 × 900 px (min 1200 × 630)",
-    hint: "Takes over the ENTIRE hero area — the navy card + side promos hide and your image shows full-width (clicks through to the collection). Clear it to bring the default hero back.",
+    hint: "Replaces ONLY the main navy card — the two side promos stay. Your image shows in FULL (never cropped); any ratio fits, the card height adapts. Clear it to bring the default hero back.",
   },
   {
     id: "promo_image",
