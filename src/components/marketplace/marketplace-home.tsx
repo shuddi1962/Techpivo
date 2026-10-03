@@ -210,6 +210,7 @@ export function MarketplaceHome() {
   const [recentIds, setRecentIds] = useState<string[]>([])
   const [justAdded, setJustAdded] = useState<Record<string, boolean>>({})
   const trendRailRef = useRef<HTMLDivElement>(null)
+  const storesRailRef = useRef<HTMLDivElement>(null)
   const trendPauseRef = useRef(false)
 
   // Auto-moving product rail — glides on its own, pauses while touched.
@@ -389,20 +390,37 @@ export function MarketplaceHome() {
   const heroImg = banners.hero_image || MARKETPLACE_HERO.image
   const promoImg = banners.promo_image || ""
 
-  // Shop By Collections: every real category node — departments first,
-  // then subcategories — each with a live product photo where one exists.
+  // Shop By Collections: a curated 12 — the 5 departments plus the 7
+  // subcategories closest to a classic marketplace mix. Real nodes only.
+  const COLLECTION_SLUGS = useMemo(
+    () => [
+      "consumer-electronics",
+      "phones-accessories",
+      "computer-office",
+      "automobiles-motorcycles",
+      "home-improvement",
+      "smart-electronics",
+      "camera-photo",
+      "video-games",
+      "mobile-phones",
+      "portable-audio-video",
+      "home-audio-video",
+      "laptops-tablets",
+    ],
+    []
+  )
   const collections = useMemo<CollectionItem[]>(() => {
     const bySub = new Map<string, string>()
     dbProducts.forEach((d) => {
       const key = d.subcategory_slug || d.category_slug
       if (key && d.product_image_url && !bySub.has(key)) bySub.set(key, d.product_image_url)
     })
-    const out: CollectionItem[] = []
+    const bySlug = new Map<string, CollectionItem>()
     MARKET_DEPARTMENTS.forEach((dep) => {
       const deptImg = banners.departments[dep.slug] || deptCover.get(dep.slug) || dep.image
-      out.push({ name: dep.name, slug: dep.slug, href: `/marketplace/category/${dep.slug}`, image: deptImg })
+      bySlug.set(dep.slug, { name: dep.name, slug: dep.slug, href: `/marketplace/category/${dep.slug}`, image: deptImg })
       dep.subs.forEach((s) => {
-        out.push({
+        bySlug.set(s.slug, {
           name: s.name,
           slug: s.slug,
           href: `/marketplace/category/${s.slug}`,
@@ -410,8 +428,8 @@ export function MarketplaceHome() {
         })
       })
     })
-    return out
-  }, [dbProducts, banners, deptCover])
+    return COLLECTION_SLUGS.map((slug) => bySlug.get(slug)).filter((c): c is CollectionItem => !!c)
+  }, [dbProducts, banners, deptCover, COLLECTION_SLUGS])
 
   // Smartphone & tablet showcase: live products in the phones department,
   // each tagged with its subcategory slug for the category nav.
@@ -887,39 +905,52 @@ export function MarketplaceHome() {
         {/* shop by collections — every real category node */}
         <ShopCollections collections={collections} />
 
-        {/* top stores — icon-led department tiles */}
+        {/* top stores — same card style as collections, as a slider */}
         {vendors.length > 0 && (
           <section id="vendors" className="bg-white rounded-2xl p-5 shadow-sm border border-[#E2E8F0] scroll-mt-4">
-            <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center justify-between gap-3 mb-4">
               <div>
                 <span className="text-[#DC2626] text-[11px] font-bold uppercase tracking-wider block">Top rated this week</span>
                 <h2 className="text-lg font-bold text-[#0F172A]">Top Stores</h2>
               </div>
-              <Link className="text-sm text-[#DC2626] hover:underline font-semibold hidden sm:inline-flex items-center gap-1" href="#trending">
-                Shop top stores <ChevronRight className="h-4 w-4" />
-              </Link>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => storesRailRef.current?.scrollBy({ left: -480, behavior: "smooth" })}
+                  aria-label="Scroll top stores left"
+                  className="flex h-9 w-9 items-center justify-center rounded-full border border-[#E5E7EB] bg-white text-[#0F172A] transition-colors hover:border-[#F59E0B]"
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => storesRailRef.current?.scrollBy({ left: 480, behavior: "smooth" })}
+                  aria-label="Scroll top stores right"
+                  className="flex h-9 w-9 items-center justify-center rounded-full border border-[#E5E7EB] bg-white text-[#0F172A] transition-colors hover:border-[#F59E0B]"
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </button>
+              </div>
             </div>
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
-              {vendors.map((v) => {
-                const Icon = v.icon === "Smartphone" ? Smartphone : v.icon === "Laptop" ? Laptop : v.icon === "Car" ? Car : v.icon === "Wrench" ? Wrench : Cpu
-                return (
+            <div ref={storesRailRef} className="flex gap-3 overflow-x-auto pb-1 snap-x" style={{ scrollbarWidth: "thin" }}>
+              {vendors.map((v) => (
                 <Link
                   key={v.slug}
                   href={`/marketplace/category/${v.slug}`}
                   title={v.name}
                   aria-label={`${v.name} store`}
-                  className="group relative flex flex-col items-center gap-2 overflow-hidden rounded-2xl border border-[#E2E8F0] bg-[#F8FAFC] p-5 text-center transition-all hover:-translate-y-0.5 hover:shadow-lg"
+                  className="group block w-40 shrink-0 snap-start sm:w-48"
                 >
-                  <span className="flex h-14 w-14 items-center justify-center rounded-2xl text-white shadow-sm transition-transform group-hover:scale-110" style={{ background: "linear-gradient(135deg, #F59E0B 0%, #EF4444 100%)" }} aria-hidden>
-                    <Icon className="h-7 w-7" />
+                  <span className="block aspect-[5/4] w-full overflow-hidden rounded-xl bg-[#F1F5F9] transition-colors group-hover:bg-[#E8EEF4]">
+                    {v.cover ? (
+                      <img src={marketImage(v.cover)} alt="" loading="lazy" decoding="async" className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105" />
+                    ) : null}
                   </span>
-                  <span className="block w-full truncate text-[13px] font-bold text-[#0F172A]">{v.short}</span>
-                  <span className="inline-flex items-center gap-1 text-[11px] font-bold text-[#B45309] opacity-0 transition-opacity group-hover:opacity-100 max-md:opacity-100">
-                    Shop now <ArrowRight className="h-3.5 w-3.5" />
+                  <span className="mt-2 block truncate text-center text-[13px] font-medium text-slate-700 transition-colors group-hover:text-[#B45309]">
+                    {v.short}
                   </span>
                 </Link>
-                )
-              })}
+              ))}
             </div>
           </section>
         )}
