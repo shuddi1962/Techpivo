@@ -96,19 +96,34 @@ export async function POST(request: NextRequest) {
     }
 
     // Delivery: buyer's chosen option, re-resolved server-side (never trusted
-    // from the client). Supplier courier rates carry store markup.
+    // from the client). Supplier courier rates carry store markup. The
+    // resolved method name + ETA are stored for fulfillment + tracking.
     let shippingUsd = 0
+    let shipMethodName = "Standard"
+    let shipEta = "7–12 days"
     if (shippingId === "express") {
-      shippingUsd = storeShipOptions(subtotal).find((o) => o.id === "express")?.feeUsd ?? 19
+      const opt = storeShipOptions(subtotal).find((o) => o.id === "express")
+      shippingUsd = opt?.feeUsd ?? 19
+      shipMethodName = "Express"
+      shipEta = opt?.eta || "3–7 days"
     } else if (shippingId.startsWith("supplier:")) {
       const live = await supplierShipOptions(
         lines.map((l) => ({ product_id: l.id as string, variant_vid: (l.cj_vid as string) || "", qty: l.qty as number })),
         ship.country
       )
-      shippingUsd = live.find((o) => o.id === shippingId)?.feeUsd
-        ?? storeShipOptions(subtotal).find((o) => o.id === "standard")?.feeUsd ?? 5
+      const match = live.find((o) => o.id === shippingId)
+      if (match) {
+        shippingUsd = match.feeUsd
+        shipMethodName = match.name
+        shipEta = match.eta
+      } else {
+        const fb = storeShipOptions(subtotal).find((o) => o.id === "standard")
+        shippingUsd = fb?.feeUsd ?? 5
+      }
     } else {
-      shippingUsd = storeShipOptions(subtotal).find((o) => o.id === "standard")?.feeUsd ?? 5
+      const opt = storeShipOptions(subtotal).find((o) => o.id === "standard")
+      shippingUsd = opt?.feeUsd ?? 5
+      shipEta = opt?.eta || shipEta
     }
     const totalUsd = Math.round((subtotal + shippingUsd) * 100) / 100
 
@@ -145,6 +160,8 @@ export async function POST(request: NextRequest) {
         ship_state: ship.state || null,
         ship_zip: ship.zip || null,
         ship_country: ship.country,
+        ship_method: shipMethodName,
+        ship_eta: shipEta,
       })
       .select("id")
       .single()

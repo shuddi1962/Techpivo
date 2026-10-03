@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/admin"
 import { paystackVerify } from "@/lib/paystack"
 import { cjCreateOrder } from "@/lib/cj"
+import { supplierShipOptions } from "@/lib/marketplace-freight"
 
 export const dynamic = "force-dynamic"
 
@@ -36,11 +37,28 @@ export async function POST(request: NextRequest) {
 
     await supabase.from("marketplace_orders").update({ paystack_status: "paid", status: "paid" }).eq("id", order.id)
 
-    // Auto-fulfill via CJ when we have variant ids for every line
+    // Auto-fulfill via the buyer's chosen courier when we have variant ids
+    // for every line. The stored method name goes to the supplier; store
+    // methods resolve to the cheapest live courier right now.
     const lines = (order.items || []) as OrderLine[]
     const fulfillable = lines.length > 0 && lines.every((l) => l.cj_vid)
     if (fulfillable) {
       try {
+        let logisticName = "CJPacket"
+        const stored = String(order.ship_method || "")
+        if (stored && stored !== "Standard" && stored !== "Express") {
+          logisticName = stored
+        } else {
+          try {
+            const live = await supplierShipOptions(
+              lines.map((l) => ({ product_id: l.id, variant_vid: l.cj_vid || "", qty: l.qty })),
+              String(order.ship_country || "NG")
+            )
+            if (live.length > 0) logisticName = live[0].name
+          } catch {
+            // keep CJPacket fallback
+          }
+        }
         const result = (await cjCreateOrder({
           externalOrderNumber: String(order.id),
           shippingCountry: order.ship_country || "NG",
@@ -50,7 +68,7 @@ export async function POST(request: NextRequest) {
           shippingZip: order.ship_zip || "",
           shippingCustomerName: order.ship_name || "",
           shippingPhone: order.ship_phone || "",
-          logisticName: "CJPacket",
+          logisticName,
           products: lines.map((l) => ({ vid: l.cj_vid as string, quantity: l.qty })),
         })) as { orderId?: string; id?: string } | null
         const cjId = result?.orderId || result?.id || null

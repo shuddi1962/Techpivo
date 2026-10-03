@@ -44,7 +44,7 @@ export async function GET(request: NextRequest) {
     if (section === "orders") {
       const { data, error } = await supabase
         .from("marketplace_orders")
-        .select("id,email,items,subtotal_usd,shipping_usd,total_usd,total_ngn,paystack_reference,paystack_status,cj_order_id,cj_status,status,ship_name,ship_phone,ship_city,ship_country,created_at")
+        .select("id,email,items,subtotal_usd,shipping_usd,total_usd,total_ngn,paystack_reference,paystack_status,cj_order_id,cj_status,status,ship_name,ship_phone,ship_city,ship_country,ship_method,ship_eta,created_at")
         .order("created_at", { ascending: false })
         .limit(200)
       if (error) throw error

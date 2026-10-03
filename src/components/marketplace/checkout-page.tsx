@@ -294,6 +294,11 @@ export function CheckoutPage() {
             <span>Shipping{activePick ? ` (${activePick.name})` : ""}</span>
             <span className="font-semibold text-[#0F172A]">{shipping === 0 ? "FREE" : `$${shipping.toFixed(2)}`}</span>
           </div>
+          {lines.length > 1 && (
+            <p className="text-[11px] leading-relaxed text-slate-500">
+              Items may ship in separate parcels and arrive on different days — one delivery fee covers the whole order, and every parcel is tracked.
+            </p>
+          )}
           <div className="flex justify-between items-baseline">
             <span className="text-sm font-bold text-[#0F172A]">Total</span>
             <span className="text-right">

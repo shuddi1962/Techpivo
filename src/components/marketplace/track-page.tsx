@@ -100,6 +100,11 @@ export function TrackPage() {
             </div>
             <p className="text-xs text-slate-400">Ordered {new Date(order.created_at).toLocaleString()}{order.ship_city ? ` · delivering to ${order.ship_city}` : ""}</p>
             {order.cj_order_id && <p className="text-xs text-slate-400">Fulfillment ID: {order.cj_order_id}</p>}
+            {(Array.isArray(order.items) ? order.items : []).length > 1 && (
+              <p className="rounded-lg bg-[#F8FAFC] border border-[#E2E8F0] px-3 py-2 text-[11px] leading-relaxed text-slate-500">
+                Your items may ship in separate parcels and arrive on different days — each parcel is tracked to your door.
+              </p>
+            )}
           </div>
         </div>
       )}
