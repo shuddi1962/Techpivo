@@ -561,6 +561,7 @@ export function ProductDetail({
                 { id: "express", name: "Express", eta: "3–7 days", feeUsd: 19, source: "store" },
               ]}
               value={shipPick}
+              hideFees
               onChange={(sel) => {
                 setShipPick(sel)
                 saveShipSelection(sel)

@@ -3,8 +3,9 @@
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useEffect, useMemo, useState } from "react"
-import { ArrowLeft, Loader2, Lock } from "lucide-react"
+import { ArrowLeft, Loader2, Lock, RotateCcw, ShieldCheck, Truck } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
+import { marketImage } from "@/lib/marketplace-images"
 import { clearCart, getCart, useMarketCart } from "@/lib/marketplace-cart"
 import { useUsdNgnRate } from "@/lib/marketplace-pricing"
 import {
@@ -12,11 +13,13 @@ import {
   type ShipOption, type ShipSelection,
 } from "@/lib/marketplace-shipping"
 import { getGeoOnce } from "@/lib/tools-geo"
+import { countryPreset, DIAL_CODES } from "@/lib/marketplace-locale"
 import { DeliveryPicker } from "./delivery-picker"
 
 interface Row {
   id: string
   product_name: string
+  product_image_url: string | null
   sale_price: number | null
   original_price: number | null
 }
@@ -29,7 +32,13 @@ export function CheckoutPage() {
   const [loading, setLoading] = useState(true)
   const [paying, setPaying] = useState(false)
   const [error, setError] = useState("")
-  const [form, setForm] = useState({ email: "", name: "", phone: "", address: "", city: "", state: "", zip: "", country: DEFAULT_SHIP_COUNTRY })
+  const [form, setForm] = useState({ email: "", name: "", phone: "", dial: "", address: "", city: "", state: "", zip: "", country: DEFAULT_SHIP_COUNTRY })
+  const [dialTouched, setDialTouched] = useState(false)
+  const preset = countryPreset(form.country)
+  // Dial code follows the country until the buyer picks one manually.
+  useEffect(() => {
+    if (!dialTouched) setForm((f) => ({ ...f, dial: countryPreset(f.country).dial }))
+  }, [form.country, dialTouched])
   const [shipOptions, setShipOptions] = useState<ShipOption[]>([])
   const [shipPick, setShipPick] = useState<ShipSelection | null>(null)
 
@@ -43,7 +52,7 @@ export function CheckoutPage() {
     const supabase = createClient()
     supabase
       .from("affiliate_products")
-      .select("id,product_name,sale_price,original_price")
+      .select("id,product_name,product_image_url,sale_price,original_price")
       .in("id", ids)
       .eq("is_active", true)
       .then(({ data }) => {
@@ -106,6 +115,8 @@ export function CheckoutPage() {
   const set = (k: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
     setForm((f) => ({ ...f, [k]: e.target.value }))
 
+  const fullPhone = `${form.dial || preset.dial} ${form.phone.trim()}`.trim()
+
   const pay = async () => {
     setError("")
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) return setError("Enter a valid email for your receipt.")
@@ -120,7 +131,7 @@ export function CheckoutPage() {
         body: JSON.stringify({
           email: form.email.trim(),
           ship_name: form.name,
-          ship_phone: form.phone,
+          ship_phone: fullPhone.slice(0, 40),
           ship_address: form.address,
           ship_city: form.city,
           ship_state: form.state,
@@ -160,6 +171,16 @@ export function CheckoutPage() {
             <ArrowLeft className="h-4 w-4" /> Back to cart
           </Link>
         </div>
+        {/* checkout steps */}
+        <ol className="flex items-center gap-2 text-xs font-bold" aria-label="Checkout steps">
+          <li className="flex items-center gap-1.5 text-[#0F172A]">
+            <span className="flex h-6 w-6 items-center justify-center rounded-full bg-[#F59E0B] text-[#0F172A]">1</span> Details
+          </li>
+          <li className="h-px flex-1 bg-[#E2E8F0]" aria-hidden />
+          <li className="flex items-center gap-1.5 text-slate-400">
+            <span className="flex h-6 w-6 items-center justify-center rounded-full bg-slate-100 text-slate-500">2</span> Payment
+          </li>
+        </ol>
         <h1 className="text-xl font-extrabold text-[#0F172A]">Delivery details</h1>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <label className="sm:col-span-2 text-sm">
@@ -168,28 +189,40 @@ export function CheckoutPage() {
           </label>
           <label className="text-sm">
             <span className="font-semibold text-slate-700">Full name *</span>
-            <input value={form.name} onChange={set("name")} placeholder="Adaeze Okafor" className="mt-1 w-full border rounded-lg px-3 py-2.5 focus:outline-none focus:border-[#F59E0B]" />
+            <input value={form.name} onChange={set("name")} placeholder={preset.name} className="mt-1 w-full border rounded-lg px-3 py-2.5 focus:outline-none focus:border-[#F59E0B]" />
           </label>
-          <label className="text-sm">
+          <div className="text-sm">
             <span className="font-semibold text-slate-700">Phone *</span>
-            <input value={form.phone} onChange={set("phone")} placeholder="+234 ..." className="mt-1 w-full border rounded-lg px-3 py-2.5 focus:outline-none focus:border-[#F59E0B]" />
-          </label>
+            <div className="mt-1 flex gap-2">
+              <select
+                value={form.dial || preset.dial}
+                onChange={(e) => { setDialTouched(true); setForm((f) => ({ ...f, dial: e.target.value })) }}
+                aria-label="Country dial code"
+                className="w-28 shrink-0 cursor-pointer border rounded-lg px-2 py-2.5 bg-white focus:outline-none focus:border-[#F59E0B]"
+              >
+                {DIAL_CODES.map((d) => (
+                  <option key={`${d.code}-${d.dial}`} value={d.dial}>{d.dial} {d.code}</option>
+                ))}
+              </select>
+              <input value={form.phone} onChange={set("phone")} inputMode="tel" placeholder={preset.phone} className="w-full border rounded-lg px-3 py-2.5 focus:outline-none focus:border-[#F59E0B]" />
+            </div>
+          </div>
           <label className="sm:col-span-2 text-sm">
             <span className="font-semibold text-slate-700">Street address *</span>
-            <input value={form.address} onChange={set("address")} placeholder="12 Adeola Odeku St, Victoria Island" className="mt-1 w-full border rounded-lg px-3 py-2.5 focus:outline-none focus:border-[#F59E0B]" />
+            <input value={form.address} onChange={set("address")} placeholder={preset.street} className="mt-1 w-full border rounded-lg px-3 py-2.5 focus:outline-none focus:border-[#F59E0B]" />
           </label>
           <label className="text-sm">
             <span className="font-semibold text-slate-700">City *</span>
-            <input value={form.city} onChange={set("city")} placeholder="Lagos" className="mt-1 w-full border rounded-lg px-3 py-2.5 focus:outline-none focus:border-[#F59E0B]" />
+            <input value={form.city} onChange={set("city")} placeholder={preset.city} className="mt-1 w-full border rounded-lg px-3 py-2.5 focus:outline-none focus:border-[#F59E0B]" />
           </label>
           <div className="grid grid-cols-2 gap-3">
             <label className="text-sm">
               <span className="font-semibold text-slate-700">State</span>
-              <input value={form.state} onChange={set("state")} placeholder="Lagos" className="mt-1 w-full border rounded-lg px-3 py-2.5 focus:outline-none focus:border-[#F59E0B]" />
+              <input value={form.state} onChange={set("state")} placeholder={preset.state} className="mt-1 w-full border rounded-lg px-3 py-2.5 focus:outline-none focus:border-[#F59E0B]" />
             </label>
             <label className="text-sm">
               <span className="font-semibold text-slate-700">Postal code</span>
-              <input value={form.zip} onChange={set("zip")} placeholder="101241" className="mt-1 w-full border rounded-lg px-3 py-2.5 focus:outline-none focus:border-[#F59E0B]" />
+              <input value={form.zip} onChange={set("zip")} placeholder={preset.zip} className="mt-1 w-full border rounded-lg px-3 py-2.5 focus:outline-none focus:border-[#F59E0B]" />
             </label>
           </div>
           <label className="sm:col-span-2 text-sm">
@@ -218,18 +251,47 @@ export function CheckoutPage() {
         </div>
       </div>
       <div className="lg:col-span-5">
-        <div className="bg-white rounded-2xl border border-[#E2E8F0] p-4 sm:p-5 sticky top-4 space-y-2">
-          <h2 className="font-bold text-[#0F172A]">Pay {lines.reduce((s, l) => s + l.qty, 0)} item(s)</h2>
-          {lines.map((l) => (
-            <div key={l.id} className="flex justify-between text-sm text-slate-600">
-              <span className="line-clamp-1 mr-2">{l.product!.product_name} × {l.qty}</span>
-              <span className="font-semibold text-[#0F172A] whitespace-nowrap">
-                ${(Number(l.product!.sale_price ?? l.product!.original_price ?? 0) * l.qty).toFixed(2)}
-              </span>
+        <div className="bg-white rounded-2xl border border-[#E2E8F0] p-4 sm:p-5 sticky top-4 space-y-3">
+          <h2 className="font-bold text-[#0F172A]">Order summary · {lines.reduce((s, l) => s + l.qty, 0)} item(s)</h2>
+          {/* free-shipping meter */}
+          {subtotal < 49 ? (
+            <div className="rounded-xl bg-[#FFFBEB] border border-[#FED7AA] p-3">
+              <p className="text-xs text-slate-600">Add <strong className="text-[#0F172A]">${(49 - subtotal).toFixed(2)}</strong> more for <strong className="text-[#10B981]">FREE Standard shipping</strong></p>
+              <div className="mt-2 h-2 overflow-hidden rounded-full bg-[#FDEBD3]">
+                <div className="h-full rounded-full bg-gradient-to-r from-[#F59E0B] to-[#EF4444] transition-all" style={{ width: `${Math.min(100, Math.round((subtotal / 49) * 100))}%` }} />
+              </div>
             </div>
-          ))}
+          ) : (
+            <div className="rounded-xl bg-[#ECFDF5] border border-[#A7F3D0] p-3">
+              <p className="text-xs font-semibold text-[#047857]">You unlocked FREE Standard shipping on this order.</p>
+            </div>
+          )}
+          <div className="space-y-2">
+            {lines.map((l) => (
+              <div key={`${l.id}::${l.variant?.vid || ""}`} className="flex items-center gap-2.5">
+                <span className="relative h-12 w-12 shrink-0 overflow-hidden rounded-lg border border-[#E2E8F0] bg-[#F8FAFC]">
+                  {l.product!.product_image_url ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={marketImage(l.product!.product_image_url)} alt="" loading="lazy" decoding="async" className="h-full w-full object-cover" />
+                  ) : null}
+                  <span className="absolute -right-0 -top-0 rounded-bl-lg bg-[#0F172A] px-1.5 text-[10px] font-bold text-white">{l.qty}</span>
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-sm font-medium text-slate-700">{l.product!.product_name}</span>
+                  {l.variant?.label && <span className="block truncate text-[11px] text-slate-400">{l.variant.label}</span>}
+                </span>
+                <span className="whitespace-nowrap text-sm font-semibold text-[#0F172A]">
+                  ${(Number(l.product!.sale_price ?? l.product!.original_price ?? 0) * l.qty).toFixed(2)}
+                </span>
+              </div>
+            ))}
+          </div>
           <div className="flex justify-between text-sm text-slate-600 border-t border-[#E2E8F0] pt-2">
-            <span>Shipping</span>
+            <span>Subtotal</span>
+            <span className="font-semibold text-[#0F172A]">${subtotal.toFixed(2)}</span>
+          </div>
+          <div className="flex justify-between text-sm text-slate-600">
+            <span>Shipping{activePick ? ` (${activePick.name})` : ""}</span>
             <span className="font-semibold text-[#0F172A]">{shipping === 0 ? "FREE" : `$${shipping.toFixed(2)}`}</span>
           </div>
           <div className="flex justify-between items-baseline">
@@ -242,7 +304,20 @@ export function CheckoutPage() {
           <button onClick={pay} disabled={paying || lines.length === 0} className="w-full bg-[#10B981] hover:bg-[#059669] text-white text-sm font-bold py-3 rounded-lg disabled:opacity-60 flex items-center justify-center gap-2">
             {paying ? <><Loader2 className="h-4 w-4 animate-spin" /> Starting payment...</> : <><Lock className="h-4 w-4" /> Pay ₦{totalNgn.toLocaleString()}</>}
           </button>
-          <p className="text-[11px] text-slate-400 text-center">Cards, bank transfer & USSD via Paystack · 7–12 day tracked delivery</p>
+          <div className="flex items-center justify-center gap-1.5">
+            {["VISA", "MASTERCARD", "VERVE", "PAYSTACK"].map((b) => (
+              <span key={b} className="rounded border border-[#E2E8F0] bg-[#F8FAFC] px-2 py-0.5 text-[10px] font-bold text-slate-500">{b}</span>
+            ))}
+          </div>
+          <div className="rounded-xl bg-[#F8FAFC] border border-[#E2E8F0] p-3 text-[11px] leading-relaxed text-slate-500">
+            <p className="font-bold text-[#0F172A] mb-1">International delivery notes</p>
+            <p>Orders ship tracked from abroad. Duties &amp; taxes (where applicable) are the buyer&apos;s responsibility — customs inspection rates are low (under 10%). Delayed-order claims are handled 100 days after dispatch.</p>
+          </div>
+          <div className="flex items-center justify-center gap-3 pt-1 text-[11px] text-slate-400">
+            <span className="inline-flex items-center gap-1"><ShieldCheck className="h-3.5 w-3.5 text-[#10B981]" /> Secure checkout</span>
+            <span className="inline-flex items-center gap-1"><Truck className="h-3.5 w-3.5 text-[#F59E0B]" /> Tracked delivery</span>
+            <span className="inline-flex items-center gap-1"><RotateCcw className="h-3.5 w-3.5 text-[#F59E0B]" /> 30-day returns</span>
+          </div>
           <button onClick={() => { clearCart(); router.push("/marketplace") }} className="w-full text-xs text-slate-400 hover:text-slate-600">
             Clear cart
           </button>

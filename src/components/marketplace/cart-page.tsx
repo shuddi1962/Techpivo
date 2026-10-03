@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { useEffect, useMemo, useState } from "react"
-import { ArrowLeft, Minus, Plus, ShieldCheck, ShoppingCart, Trash2 } from "lucide-react"
+import { ArrowLeft, Minus, Plus, RotateCcw, ShieldCheck, ShoppingCart, Trash2, Truck } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
 import { getCart, removeFromCart, setQty, useMarketCart } from "@/lib/marketplace-cart"
 import { marketImage } from "@/lib/marketplace-images"
@@ -103,6 +103,18 @@ export function CartPage() {
             <ArrowLeft className="h-4 w-4" /> Continue shopping
           </Link>
         </div>
+        {subtotal < 49 ? (
+          <div className="mb-3 rounded-xl bg-[#FFFBEB] border border-[#FED7AA] p-3">
+            <p className="text-xs text-slate-600">Add <strong className="text-[#0F172A]">${(49 - subtotal).toFixed(2)}</strong> more for <strong className="text-[#10B981]">FREE Standard shipping</strong></p>
+            <div className="mt-2 h-2 overflow-hidden rounded-full bg-[#FDEBD3]">
+              <div className="h-full rounded-full bg-gradient-to-r from-[#F59E0B] to-[#EF4444] transition-all" style={{ width: `${Math.min(100, Math.round((subtotal / 49) * 100))}%` }} />
+            </div>
+          </div>
+        ) : (
+          <div className="mb-3 rounded-xl bg-[#ECFDF5] border border-[#A7F3D0] p-3">
+            <p className="text-xs font-semibold text-[#047857]">You unlocked FREE Standard shipping on this order.</p>
+          </div>
+        )}
         <div className="divide-y divide-[#E2E8F0]">
           {lines.map((l) => {
             const unit = Number(l.product!.sale_price ?? l.product!.original_price ?? 0)
@@ -168,9 +180,18 @@ export function CartPage() {
           <Link href="/marketplace/checkout" className="block text-center bg-[#F59E0B] hover:bg-[#D97706] text-[#0F172A] text-sm font-bold py-3 rounded-lg mt-2">
             Proceed to checkout
           </Link>
+          <div className="flex items-center justify-center gap-1.5">
+            {["VISA", "MASTERCARD", "VERVE", "PAYSTACK"].map((b) => (
+              <span key={b} className="rounded border border-[#E2E8F0] bg-[#F8FAFC] px-2 py-0.5 text-[10px] font-bold text-slate-500">{b}</span>
+            ))}
+          </div>
           <p className="text-[11px] text-slate-400 flex items-center gap-1 justify-center pt-1">
             <ShieldCheck className="h-3.5 w-3.5" /> Secure Paystack checkout · pay in naira
           </p>
+          <div className="flex items-center justify-center gap-3 pt-1 text-[11px] text-slate-400">
+            <span className="inline-flex items-center gap-1"><Truck className="h-3.5 w-3.5 text-[#F59E0B]" /> Tracked delivery</span>
+            <span className="inline-flex items-center gap-1"><RotateCcw className="h-3.5 w-3.5 text-[#F59E0B]" /> 30-day returns</span>
+          </div>
         </div>
       </div>
     </div>

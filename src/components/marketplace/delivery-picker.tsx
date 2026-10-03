@@ -13,6 +13,7 @@ export function DeliveryPicker({
   value,
   onChange,
   compact = false,
+  hideFees = false,
 }: {
   country: string
   onCountry: (code: string) => void
@@ -21,6 +22,7 @@ export function DeliveryPicker({
   value: ShipSelection | null
   onChange: (sel: ShipSelection) => void
   compact?: boolean
+  hideFees?: boolean
 }) {
   const list = options.length > 0 ? options : fallbackOptions
   // When live supplier couriers exist, they are the ONLY methods — the
@@ -61,7 +63,7 @@ export function DeliveryPicker({
           >
             {shown.map((o) => (
               <option key={o.id} value={o.id}>
-                {o.name} — {o.feeUsd === 0 ? "FREE" : `$${o.feeUsd.toFixed(2)}`}
+                {hideFees ? o.name : `${o.name} — ${o.feeUsd === 0 ? "FREE" : `$${o.feeUsd.toFixed(2)}`}`}
               </option>
             ))}
           </select>
@@ -78,8 +80,9 @@ export function DeliveryPicker({
               </span>
             </span>
           </span>
-          <span className={`text-sm font-extrabold ${active.feeUsd === 0 ? "text-[#10B981]" : "text-[#0F172A]"}`}>
-            {active.feeUsd === 0 ? "FREE" : `$${active.feeUsd.toFixed(2)}`}
+          <span className={`text-sm font-extrabold ${!hideFees && active.feeUsd === 0 ? "text-[#10B981]" : "text-[#0F172A]"}`}>
+            {!hideFees && (active.feeUsd === 0 ? "FREE" : `$${active.feeUsd.toFixed(2)}`)}
+            {hideFees && <span className="text-xs font-semibold text-slate-500">Priced at checkout</span>}
           </span>
         </div>
       )}
