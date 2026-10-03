@@ -279,6 +279,9 @@ export async function cjGetCategories(): Promise<CjCategory[]> {
 
 export interface CjFreightOption {
   logisticName?: string
+  logisticPrice?: number
+  totalPostageFee?: number
+  logisticAging?: string
   shippingFee?: number
   deliveryTime?: string
 }

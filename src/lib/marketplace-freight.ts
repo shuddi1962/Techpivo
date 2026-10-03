@@ -56,12 +56,16 @@ export async function supplierShipOptions(
     if (products.length === 0) return []
     const list = await cjGetFreight({ endCountryCode: country.toUpperCase().slice(0, 2) || "NG", products })
     return (list || [])
-      .map((o) => ({
-        id: `supplier:${String(o.logisticName || "Standard")}`,
-        name: String(o.logisticName || "Standard").slice(0, 80),
-        eta: String(o.deliveryTime || "").slice(0, 40),
-        feeUsd: withFreightMarkup(Number(o.shippingFee)),
-      }))
+      .map((o) => {
+        const fee = Number(o.logisticPrice ?? o.totalPostageFee ?? o.shippingFee)
+        const aging = String(o.logisticAging || o.deliveryTime || "").trim()
+        return {
+          id: `supplier:${String(o.logisticName || "Standard")}`,
+          name: String(o.logisticName || "Standard").slice(0, 80),
+          eta: /^\d/.test(aging) && !/day/i.test(aging) ? `${aging} days` : aging,
+          feeUsd: withFreightMarkup(fee),
+        }
+      })
       .filter((o) => Number.isFinite(o.feeUsd) && o.feeUsd >= 0)
       .sort((a, b) => a.feeUsd - b.feeUsd)
       .slice(0, 6)

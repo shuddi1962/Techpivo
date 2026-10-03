@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import {
   ArrowRight, Check, ChevronLeft, ChevronRight, Flame,
   Heart, Package, ShoppingCart, ShieldCheck, Star, X, Zap,
@@ -157,6 +157,21 @@ export function MarketplaceHome() {
   const [wishlist, setWishlist] = useState<Record<string, boolean>>({})
   const [recentIds, setRecentIds] = useState<string[]>([])
   const [justAdded, setJustAdded] = useState<Record<string, boolean>>({})
+  const trendRailRef = useRef<HTMLDivElement>(null)
+  const trendPauseRef = useRef(false)
+
+  // Auto-moving product rail — glides on its own, pauses while touched.
+  useEffect(() => {
+    const t = setInterval(() => {
+      const el = trendRailRef.current
+      if (!el || trendPauseRef.current || document.hidden) return
+      const max = el.scrollWidth - el.clientWidth - 8
+      if (max <= 0) return
+      if (el.scrollLeft >= max) el.scrollTo({ left: 0, behavior: "smooth" })
+      else el.scrollBy({ left: 240, behavior: "smooth" })
+    }, 2800)
+    return () => clearInterval(t)
+  }, [])
   const [query, setQuery] = useState("")
   const [vendorFilter, setVendorFilter] = useState<string | null>(null)
   const t = useCountdown()
@@ -740,6 +755,11 @@ export function MarketplaceHome() {
               id="trend-rail"
               className="flex gap-3 overflow-x-auto pb-1 snap-x snap-mandatory"
               style={{ scrollbarWidth: "thin" }}
+              ref={trendRailRef}
+              onMouseEnter={() => { trendPauseRef.current = true }}
+              onMouseLeave={() => { trendPauseRef.current = false }}
+              onTouchStart={() => { trendPauseRef.current = true }}
+              onTouchEnd={() => { trendPauseRef.current = false }}
             >
               {best.map((p) => (
                 <div key={p.id} className="w-44 sm:w-52 shrink-0 snap-start">

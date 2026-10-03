@@ -8,9 +8,11 @@ import { createClient } from "@/lib/supabase/client"
 import { clearCart, getCart, useMarketCart } from "@/lib/marketplace-cart"
 import { useUsdNgnRate } from "@/lib/marketplace-pricing"
 import {
-  readShipSelection, saveShipSelection, storeShipOptions,
+  readShipSelection, saveShipSelection, storeShipOptions, SHIP_COUNTRIES,
   type ShipOption, type ShipSelection,
 } from "@/lib/marketplace-shipping"
+import { getGeoOnce } from "@/lib/tools-geo"
+import { DeliveryPicker } from "./delivery-picker"
 
 interface Row {
   id: string
@@ -82,6 +84,20 @@ export function CheckoutPage() {
   const shipping = activePick ? activePick.feeUsd : 0
   const totalUsd = subtotal + shipping
   const totalNgn = Math.round(totalUsd * rate)
+
+  // Default country follows the shopper's real location (worldwide store).
+  useEffect(() => {
+    getGeoOnce()
+      .then((g) => {
+        const code = g?.countryCode?.toUpperCase()
+        if (code && SHIP_COUNTRIES.some((c) => c.code === code)) {
+          setForm((f) => (f.country === "NG" ? { ...f, country: code } : f))
+        }
+      })
+      .catch(() => {
+        // keep default
+      })
+  }, [])
 
   useEffect(() => {
     if (!loading && lines.length === 0) router.replace("/marketplace/cart")
@@ -179,42 +195,26 @@ export function CheckoutPage() {
           <label className="sm:col-span-2 text-sm">
             <span className="font-semibold text-slate-700">Country</span>
             <select value={form.country} onChange={set("country")} className="mt-1 w-full border rounded-lg px-3 py-2.5 bg-white focus:outline-none focus:border-[#F59E0B]">
-              {["NG", "GH", "KE", "ZA", "US", "GB"].map((c) => (
-                <option key={c} value={c}>{c}</option>
+              {SHIP_COUNTRIES.map((c) => (
+                <option key={c.code} value={c.code}>{c.name}</option>
               ))}
             </select>
           </label>
         </div>
         {error && <p className="text-sm text-[#EF4444] bg-[#FEF2F2] border border-[#EF4444]/20 rounded-lg px-3 py-2">{error}</p>}
         <div>
-          <p className="mb-2 text-sm font-semibold text-slate-700">Delivery method</p>
-          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2" role="radiogroup" aria-label="Delivery method">
-            {effectiveOptions.map((m) => {
-              const on = activePick?.id === m.id
-              return (
-                <button
-                  key={m.id}
-                  type="button"
-                  role="radio"
-                  aria-checked={on}
-                  onClick={() => {
-                    const sel = { id: m.id, name: m.name, eta: m.eta, feeUsd: m.feeUsd }
-                    setShipPick(sel)
-                    saveShipSelection(sel)
-                  }}
-                  className={`flex items-center justify-between gap-2 rounded-xl border-2 px-3 py-2.5 text-left transition-all ${on ? "border-[#F59E0B] bg-[#FFFBEB]" : "border-[#E2E8F0] hover:border-slate-400"}`}
-                >
-                  <span>
-                    <span className="block text-sm font-bold text-[#0F172A]">{m.name}</span>
-                    <span className="block text-[11px] text-slate-500">{m.eta}{m.eta ? " · " : ""}tracked</span>
-                  </span>
-                  <span className={`text-sm font-extrabold ${m.feeUsd === 0 ? "text-[#10B981]" : "text-[#0F172A]"}`}>
-                    {m.feeUsd === 0 ? "FREE" : `$${m.feeUsd.toFixed(2)}`}
-                  </span>
-                </button>
-              )
-            })}
-          </div>
+          <p className="mb-2 text-sm font-semibold text-slate-700">Delivery</p>
+          <DeliveryPicker
+            country={form.country}
+            onCountry={(code) => setForm((f) => ({ ...f, country: code }))}
+            options={shipOptions}
+            fallbackOptions={storeShipOptions(subtotal)}
+            value={shipPick}
+            onChange={(sel) => {
+              setShipPick(sel)
+              saveShipSelection(sel)
+            }}
+          />
         </div>
       </div>
       <div className="lg:col-span-5">

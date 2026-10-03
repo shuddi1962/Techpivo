@@ -7,8 +7,10 @@ import { Check, Heart, Minus, Play, Plus, RotateCcw, ShieldCheck, ShoppingCart, 
 import { addToCart } from "@/lib/marketplace-cart"
 import { marketImage } from "@/lib/marketplace-images"
 import {
-  readShipSelection, saveShipSelection, type ShipOption, type ShipSelection,
+  readShipSelection, saveShipSelection, SHIP_COUNTRIES, type ShipOption, type ShipSelection,
 } from "@/lib/marketplace-shipping"
+import { getGeoOnce } from "@/lib/tools-geo"
+import { DeliveryPicker } from "./delivery-picker"
 import { dualPrice, useUsdNgnRate } from "@/lib/marketplace-pricing"
 
 interface Review {
@@ -81,8 +83,6 @@ export function formatWeight(g: number | null | undefined): string {
 export function neutralSku(id: string): string {
   return `TPM-${id.replace(/-/g, "").slice(0, 8).toUpperCase()}`
 }
-
-const SHIP_COUNTRIES = ["NG", "GH", "KE", "ZA", "US", "GB", "CA", "AU", "DE", "FR", "IN", "AE"]
 
 const splitParts = (s: string): string[] =>
   s.split(/[/;|]+/).map((x) => x.trim()).filter(Boolean)
@@ -226,8 +226,17 @@ export function ProductDetail({
   const [picked, setPicked] = useState<Record<string, string>>({})
   const [liveDetail, setLiveDetail] = useState<ProductDetailData | null>(null)
 
-  // Live long description + extra gallery images fill in client-side so the
-  // cached page shell stays fast.
+  // Default ship-to follows the shopper's real location (worldwide store).
+  useEffect(() => {
+    getGeoOnce()
+      .then((g) => {
+        const code = g?.countryCode?.toUpperCase()
+        if (code && SHIP_COUNTRIES.some((c) => c.code === code)) setShipCountry(code)
+      })
+      .catch(() => {
+        // keep default
+      })
+  }, [])
   useEffect(() => {
     fetch(`/api/marketplace/detail?product_id=${encodeURIComponent(p.id)}`)
       .then((r) => r.json())
@@ -251,7 +260,6 @@ export function ProductDetail({
   const [shipOptions, setShipOptions] = useState<ShipOption[]>([])
   const [shipPick, setShipPick] = useState<ShipSelection | null>(null)
   const [shipCountry, setShipCountry] = useState("NG")
-  const [courier, setCourier] = useState<{ name: string; fee: number; eta: string } | null>(null)
 
   useEffect(() => {
     try {
@@ -309,9 +317,6 @@ export function ProductDetail({
       .then((d) => {
         if (Array.isArray(d?.options) && d.options.length > 0) {
           setShipOptions(d.options as ShipOption[])
-          const firstSupplier = (d.options as ShipOption[]).find((o) => o.source === "supplier")
-          if (firstSupplier) setCourier({ name: firstSupplier.name, fee: firstSupplier.feeUsd, eta: firstSupplier.eta })
-          else setCourier(null)
         }
       })
       .catch(() => {
@@ -319,13 +324,6 @@ export function ProductDetail({
       })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [p.id, selected?.vid, qty, shipCountry])
-
-  const pickShip = (o: ShipOption) => {
-    const sel = { id: o.id, name: o.name, eta: o.eta, feeUsd: o.feeUsd }
-    setShipPick(sel)
-    saveShipSelection(sel)
-  }
-  const shipActive = (id: string) => (shipPick?.id || "standard") === id
 
   interface GalleryItem {
     type: "image" | "video"
@@ -552,60 +550,23 @@ export function ProductDetail({
             </div>
           )}
 
-          {/* delivery selection with pricing */}
+          {/* delivery — ship-to country + method, CJ style */}
           <div className="mt-5">
-            <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-              <p className="text-xs font-bold uppercase tracking-wider text-slate-500">Delivery</p>
-              <label className="flex items-center gap-1.5 text-xs text-slate-500">
-                Ship to
-                <select
-                  value={shipCountry}
-                  onChange={(e) => setShipCountry(e.target.value)}
-                  aria-label="Ship to country"
-                  className="cursor-pointer rounded-lg border border-[#E2E8F0] bg-white px-2 py-1 text-xs font-bold text-[#0F172A] focus:border-[#F59E0B] focus:outline-none"
-                >
-                  {SHIP_COUNTRIES.map((c) => (
-                    <option key={c} value={c}>{c}</option>
-                  ))}
-                </select>
-              </label>
-            </div>
-            <div className="grid grid-cols-1 gap-2" role="radiogroup" aria-label="Delivery method">
-              {(shipOptions.length > 0 ? shipOptions : [
-                { id: "standard", name: "Standard", eta: "7–12 days", feeUsd: (price * qty) >= 49 ? 0 : 5, source: "store" as const },
-                { id: "express", name: "Express", eta: "3–7 days", feeUsd: 19, source: "store" as const },
-              ]).map((m) => {
-                const on = shipActive(m.id)
-                return (
-                  <button
-                    key={m.id}
-                    type="button"
-                    role="radio"
-                    aria-checked={on}
-                    onClick={() => pickShip(m)}
-                    className={`flex items-center justify-between gap-2 rounded-xl border-2 px-3 py-2.5 text-left transition-all ${on ? "border-[#F59E0B] bg-[#FFFBEB]" : "border-[#E2E8F0] bg-white hover:border-slate-400"}`}
-                  >
-                    <span className="flex items-center gap-2">
-                      <Truck className={`h-4 w-4 shrink-0 ${on ? "text-[#B45309]" : "text-slate-400"}`} />
-                      <span>
-                        <span className="block text-sm font-bold text-[#0F172A]">{m.name}</span>
-                        <span className="block text-[11px] text-slate-500">Processing 1–3 days · {m.eta}{m.eta ? " · " : ""}tracked</span>
-                      </span>
-                    </span>
-                    <span className={`text-sm font-extrabold ${m.feeUsd === 0 ? "text-[#10B981]" : "text-[#0F172A]"}`}>
-                      {m.feeUsd === 0 ? "FREE" : `$${m.feeUsd.toFixed(2)}`}
-                    </span>
-                  </button>
-                )
-              })}
-            </div>
-            {courier ? (
-              <p className="mt-1.5 text-[11px] text-slate-500">
-                Courier rate for this item: {courier.name} — ${Number(courier.fee).toFixed(2)}{courier.eta ? ` · ${courier.eta}` : ""}
-              </p>
-            ) : (
-              <p className="mt-1.5 text-[11px] text-slate-500">Standard is free on orders over $49.</p>
-            )}
+            <DeliveryPicker
+              country={shipCountry}
+              onCountry={setShipCountry}
+              options={shipOptions}
+              fallbackOptions={[
+                { id: "standard", name: "Standard", eta: "7–12 days", feeUsd: price * qty >= 49 ? 0 : 5, source: "store" },
+                { id: "express", name: "Express", eta: "3–7 days", feeUsd: 19, source: "store" },
+              ]}
+              value={shipPick}
+              onChange={(sel) => {
+                setShipPick(sel)
+                saveShipSelection(sel)
+              }}
+            />
+            <p className="mt-1.5 text-[11px] text-slate-500">Standard is free on orders over $49.</p>
           </div>
 
           <div className="flex flex-wrap items-center gap-x-4 gap-y-2 mt-5">
