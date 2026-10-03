@@ -4,15 +4,16 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useEffect, useMemo, useRef, useState } from "react"
 import {
-  ArrowRight, Check, ChevronLeft, ChevronRight, Flame,
-  Heart, Package, ShoppingCart, ShieldCheck, Star, X, Zap,
-  BadgeCheck, Truck,
+  ArrowLeftRight, ArrowRight, Check, ChevronLeft, ChevronRight, Eye, Flame,
+  Heart, Package, ShoppingCart, ShieldCheck, X, Zap,
+  BadgeCheck, Truck, Cpu, Smartphone, Laptop, Car, Wrench,
 } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
 import { addToCart as addLine, cartCount as countLines, useMarketCart } from "@/lib/marketplace-cart"
 import {
   MARKETPLACE_BRAND, MARKETPLACE_HERO, supplierDisplayName, type DemoProduct,
 } from "@/lib/marketplace"
+import { EMPTY_BANNERS, parseBanners, type MarketBanners } from "@/lib/marketplace-banners"
 import { MARKET_DEPARTMENTS } from "@/lib/marketplace-categories"
 import { marketImage, cleanSupplierText } from "@/lib/marketplace-images"
 import { MarketplaceHeader, MarketplaceFooter } from "./marketplace-header"
@@ -32,76 +33,124 @@ interface DbProduct {
   subcategory_slug?: string | null
 }
 
-function Stars({ value }: { value: number }) {
-  return (
-    <span className="flex items-center gap-0.5" aria-label={`${value} out of 5 stars`}>
-      {Array.from({ length: 5 }).map((_, i) => (
-        <Star
-          key={i}
-          className={`h-3.5 w-3.5 ${i < Math.round(value) ? "fill-[#F59E0B] text-[#F59E0B]" : "text-slate-300"}`}
-        />
-      ))}
-    </span>
-  )
+const COMPARE_KEY = "tp_market_compare_v1"
+
+function readCompare(): Record<string, boolean> {
+  if (typeof window === "undefined") return {}
+  try {
+    const raw = window.localStorage.getItem(COMPARE_KEY)
+    const arr = raw ? (JSON.parse(raw) as string[]) : []
+    return Object.fromEntries((Array.isArray(arr) ? arr : []).map((id) => [id, true]))
+  } catch {
+    return {}
+  }
 }
 
+// Calm-at-rest storefront card: image, short title, price.
+// Cart / wishlist / quick-view / compare icons reveal on hover
+// (always visible on touch screens where hover doesn't exist).
 function ProductCard({ p, onAdd, wished, onWish, added, href }: { p: DemoProduct; onAdd: () => void; wished: boolean; onWish: () => void; added: boolean; href?: string }) {
   const discount = p.oldPrice ? Math.round((1 - p.price / p.oldPrice) * 100) : 0
-  const body = (
-    <>
-      <div className="w-full aspect-square bg-white rounded-lg p-3 flex items-center justify-center mb-2 overflow-hidden">
-        {p.image ? (
-          <img src={marketImage(p.image)} alt={p.name} loading="lazy" decoding="async" className="w-full h-full object-cover rounded-md group-hover:scale-105 transition-transform duration-300" />
-        ) : (
-          <span className="flex items-center justify-center w-full h-full" aria-hidden>
-            <Package className="h-12 w-12 text-slate-200" />
-          </span>
-        )}
-      </div>
-      <div className="flex flex-col flex-1 justify-between gap-1">
-        <div>
-          <h5 className="text-sm font-semibold text-[#0F172A] line-clamp-1 group-hover:text-[#B45309] transition-colors">{p.name}</h5>
-          <div className="flex items-center gap-1 my-1">
-            <Stars value={p.rating} />
-            {p.reviews > 0 ? (
-              <span className="text-[11px] text-slate-500">({p.reviews})</span>
-            ) : (
-              <span className="text-[11px] font-semibold text-[#10B981]">New</span>
-            )}
-          </div>
-        </div>
-      </div>
-    </>
-  )
-  return (
-    <div className="group bg-[#F8FAFC] rounded-xl p-3 flex flex-col justify-between hover:bg-slate-100 transition-colors relative">
-      {discount > 0 && (
-        <span className="absolute top-2 left-2 bg-[#EF4444] text-white text-[10px] font-bold px-1.5 py-0.5 rounded z-10">-{discount}%</span>
-      )}
+  const [compared, setCompared] = useState(() => !!readCompare()[p.id])
+  const toggleCompare = () => {
+    setCompared((v) => {
+      const next = !v
+      try {
+        const cur = readCompare()
+        if (next) cur[p.id] = true
+        else delete cur[p.id]
+        window.localStorage.setItem(COMPARE_KEY, JSON.stringify(Object.keys(cur)))
+      } catch {
+        // storage blocked — visual state still toggles
+      }
+      return next
+    })
+  }
+  const railBtn =
+    "flex h-9 w-9 items-center justify-center rounded-full bg-white/95 text-slate-600 shadow-md backdrop-blur-sm transition-all hover:scale-110 hover:text-[#0F172A] focus-visible:outline-2 focus-visible:outline-[#F59E0B]"
+  const rail = (
+    <div className="absolute right-2.5 top-1/2 z-10 flex -translate-y-1/2 flex-col gap-2 opacity-0 translate-x-3 transition-all duration-300 group-hover:translate-x-0 group-hover:opacity-100 group-focus-within:translate-x-0 group-focus-within:opacity-100 max-md:translate-x-0 max-md:opacity-100">
       <button
+        type="button"
+        onClick={onAdd}
+        aria-label={added ? "Added to cart" : `Add ${p.name} to cart`}
+        title={added ? "Added to cart" : "Add to cart"}
+        className={`${railBtn} ${added ? "!bg-[#10B981] !text-white" : "hover:!bg-[#F59E0B]"}`}
+      >
+        {added ? <Check className="h-4 w-4" /> : <ShoppingCart className="h-4 w-4" />}
+      </button>
+      <button
+        type="button"
         onClick={onWish}
         aria-label={wished ? "Remove from wishlist" : "Add to wishlist"}
         aria-pressed={wished}
-        className={`absolute top-2 right-2 z-10 w-8 h-8 rounded-full flex items-center justify-center transition-colors ${wished ? "bg-[#EF4444] text-white" : "bg-white border border-[#E2E8F0] text-slate-400 hover:text-[#EF4444]"}`}
+        title="Wishlist"
+        className={`${railBtn} ${wished ? "!bg-[#EF4444] !text-white" : "hover:!text-[#EF4444]"}`}
       >
         <Heart className={`h-4 w-4 ${wished ? "fill-current" : ""}`} />
       </button>
-      {href ? <Link href={href} className="flex flex-col flex-1">{body}</Link> : <div className="flex flex-col flex-1">{body}</div>}
-      <div>
+      {href ? (
+        <Link href={href} aria-label={`Quick view ${p.name}`} title="Quick view" className={railBtn}>
+          <Eye className="h-4 w-4" />
+        </Link>
+      ) : (
+        <span className={`${railBtn} opacity-50`} aria-hidden>
+          <Eye className="h-4 w-4" />
+        </span>
+      )}
+      <button
+        type="button"
+        onClick={toggleCompare}
+        aria-label={compared ? "Remove from compare" : "Add to compare"}
+        aria-pressed={compared}
+        title="Compare"
+        className={`${railBtn} ${compared ? "!bg-[#0F172A] !text-white" : ""}`}
+      >
+        <ArrowLeftRight className="h-4 w-4" />
+      </button>
+    </div>
+  )
+  return (
+    <div className="group relative flex flex-col overflow-hidden rounded-2xl border border-[#E2E8F0] bg-white shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_16px_40px_-16px_rgba(15,23,42,0.25)]">
+      <div className="relative aspect-square w-full overflow-hidden bg-[#F8FAFC]">
+        {href ? (
+          <Link href={href} aria-label={p.name} className="block h-full w-full">
+            {p.image ? (
+              <img src={marketImage(p.image)} alt={p.name} loading="lazy" decoding="async" className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110" />
+            ) : (
+              <span className="flex h-full w-full items-center justify-center" aria-hidden>
+                <Package className="h-12 w-12 text-slate-200" />
+              </span>
+            )}
+          </Link>
+        ) : (
+          <div className="h-full w-full">
+            {p.image ? (
+              <img src={marketImage(p.image)} alt={p.name} loading="lazy" decoding="async" className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110" />
+            ) : (
+              <span className="flex h-full w-full items-center justify-center" aria-hidden>
+                <Package className="h-12 w-12 text-slate-200" />
+              </span>
+            )}
+          </div>
+        )}
+        {discount > 0 && (
+          <span className="absolute left-2.5 top-2.5 z-10 rounded-full bg-[#DC2626] px-2 py-1 text-[10px] font-extrabold tracking-wide text-white shadow-sm">-{discount}%</span>
+        )}
+        {rail}
+      </div>
+      <div className="flex flex-1 flex-col gap-1 p-3">
+        {href ? (
+          <Link href={href} title={p.name} className="block min-w-0">
+            <h5 className="truncate text-[13px] font-semibold leading-snug text-[#0F172A] transition-colors group-hover:text-[#B45309]">{p.name}</h5>
+          </Link>
+        ) : (
+          <h5 title={p.name} className="truncate text-[13px] font-semibold leading-snug text-[#0F172A]">{p.name}</h5>
+        )}
         <div className="flex items-baseline gap-1.5">
-          <span className={`text-base font-bold ${discount > 0 ? "text-[#EF4444]" : "text-[#0F172A]"}`}>${p.price.toFixed(2)}</span>
-          {p.oldPrice && <span className="text-[11px] text-slate-400 line-through">${p.oldPrice.toFixed(2)}</span>}
+          <span className={`text-[15px] font-extrabold tabular-nums ${discount > 0 ? "text-[#DC2626]" : "text-[#0F172A]"}`}>${p.price.toFixed(2)}</span>
+          {p.oldPrice && <span className="text-[11px] tabular-nums text-slate-400 line-through">${p.oldPrice.toFixed(2)}</span>}
         </div>
-        <button
-          onClick={onAdd}
-          className={`w-full mt-2 text-xs font-bold py-2 rounded-lg transition-colors flex items-center justify-center gap-1 ${added ? "bg-[#10B981] text-white" : "bg-[#F59E0B] hover:bg-[#D97706] text-[#0F172A]"}`}
-        >
-          {added ? (
-            <><Check className="h-3.5 w-3.5" /> Added</>
-          ) : (
-            <><ShoppingCart className="h-3.5 w-3.5" /> Add</>
-          )}
-        </button>
       </div>
     </div>
   )
@@ -174,6 +223,7 @@ export function MarketplaceHome() {
   }, [])
   const [query, setQuery] = useState("")
   const [vendorFilter, setVendorFilter] = useState<string | null>(null)
+  const [banners, setBanners] = useState<MarketBanners>({ ...EMPTY_BANNERS, departments: {} })
   const t = useCountdown()
 
   useEffect(() => {
@@ -220,6 +270,15 @@ export function MarketplaceHome() {
             m[r.product_id] = cur
           }
           setRevStats(m)
+        })
+      // Admin-custom storefront banners (public site_settings read).
+      supabase
+        .from("site_settings")
+        .select("value")
+        .eq("key", "marketplace_banners")
+        .maybeSingle()
+        .then(({ data }) => {
+          if (alive && data) setBanners(parseBanners((data as { value?: unknown }).value))
         })
     }
     load()
@@ -289,8 +348,7 @@ export function MarketplaceHome() {
   const filtering = q.length > 0 || vendorFilter !== null
   const wishCount = Object.values(wishlist).filter(Boolean).length
 
-  // Top stores: departments that actually have live products, each with
-  // a live count and sample images — no supplier internals on screen.
+  // Top stores: icon-led department tiles (no store names, no counts).
   const vendors = useMemo(() => {
     const byDept = new Map<string, DbProduct[]>()
     dbProducts.forEach((d) => {
@@ -302,15 +360,31 @@ export function MarketplaceHome() {
     })
     return MARKET_DEPARTMENTS.filter((dep) => (byDept.get(dep.slug) || []).length > 0).map((dep) => {
       const items = byDept.get(dep.slug) || []
+      const short = dep.name.replace(/\s*&\s*/g, " & ")
       return {
-        name: `${dep.name} Store`,
+        name: dep.name,
+        short,
         slug: dep.slug,
-        count: items.length,
-        initials: dep.name.split(/\s+/).slice(0, 2).map((w) => w[0]?.toUpperCase() || "").join("") || "TP",
-        images: items.slice(0, 3).map((d) => d.product_image_url || ""),
+        icon: dep.icon,
+        cover: items.find((d) => d.product_image_url)?.product_image_url || dep.image,
       }
     })
   }, [dbProducts, deptOf])
+
+  // Real product photo per department for Shop-by-Department tiles
+  // (CJ-style: actual catalog photos, not generic stock).
+  const deptCover = useMemo(() => {
+    const m = new Map<string, string>()
+    dbProducts.forEach((d) => {
+      const slug = deptOf.get(d.id)
+      if (!slug || m.has(slug) || !d.product_image_url) return
+      m.set(slug, d.product_image_url)
+    })
+    return m
+  }, [dbProducts, deptOf])
+
+  const heroImg = banners.hero_image || MARKETPLACE_HERO.image
+  const promoImg = banners.promo_image || ""
 
   // Flash deals: live discounted products first, then the rest.
   const flashItems = useMemo(
@@ -454,7 +528,7 @@ export function MarketplaceHome() {
               </div>
               <div className="relative flex items-center justify-center">
                 <div className="w-60 h-60 sm:w-72 sm:h-72 rounded-2xl overflow-hidden bg-white/5 p-4 flex items-center justify-center">
-                  <img src={MARKETPLACE_HERO.image} alt="TechPivo Market hero product" className="w-full h-full object-cover rounded-xl" loading="eager" decoding="async" />
+                  <img src={heroImg} alt="TechPivo Market hero product" className="w-full h-full object-cover rounded-xl" loading="eager" decoding="async" />
                 </div>
                 <div className="absolute -bottom-2 -left-2 bg-white text-[#0F172A] rounded-xl p-2.5 shadow-xl flex items-center gap-2">
                   <Truck className="h-5 w-5 text-[#10B981]" />
@@ -527,22 +601,29 @@ export function MarketplaceHome() {
             <span className="text-[11px] font-bold uppercase text-slate-400 hidden sm:block">New stock weekly</span>
           </div>
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2.5">
-            {MARKET_DEPARTMENTS.map((c) => (
+            {MARKET_DEPARTMENTS.map((c) => {
+              const Icon = c.icon === "Smartphone" ? Smartphone : c.icon === "Laptop" ? Laptop : c.icon === "Car" ? Car : c.icon === "Wrench" ? Wrench : Cpu
+              const cover = banners.departments[c.slug] || deptCover.get(c.slug) || c.image
+              return (
               <Link
                 key={c.slug}
                 href={`/marketplace/category/${c.slug}`}
                 className="group relative rounded-xl overflow-hidden border border-[#E2E8F0] transition-all hover:-translate-y-0.5 hover:shadow-lg"
               >
                 <div className="h-32 sm:h-36 overflow-hidden">
-                  <img src={c.image} alt={c.name} loading="lazy" decoding="async" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+                  <img src={marketImage(cover)} alt={c.name} loading="lazy" decoding="async" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
                 </div>
                 <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/15 to-transparent" />
+                <span className="absolute left-2.5 top-2.5 flex h-8 w-8 items-center justify-center rounded-full bg-white/90 text-[#0F172A] shadow-sm" aria-hidden>
+                  <Icon className="h-4 w-4" />
+                </span>
                 <div className="absolute bottom-0 inset-x-0 p-3">
-                  <span className="block text-sm font-bold text-white leading-tight">{c.name}</span>
+                  <span className="block truncate text-sm font-bold text-white leading-tight" title={c.name}>{c.name}</span>
                   <span className="mt-0.5 inline-block text-[11px] font-semibold text-[#FCD34D]">Shop now →</span>
                 </div>
               </Link>
-            ))}
+              )
+            })}
           </div>
           {/* subcategory chips */}
           <div className="flex flex-wrap gap-1.5 mt-4">
@@ -592,58 +673,9 @@ export function MarketplaceHome() {
               </div>
             </div>
             <div className="grid grid-cols-2 gap-3 p-4 sm:p-5 lg:grid-cols-4">
-              {flashItems.map((p) => {
-                const pct = p.oldPrice ? Math.round((1 - p.price / p.oldPrice) * 100) : 0
-                return (
-                  <div key={p.id} className="group relative flex flex-col justify-between rounded-2xl border border-[#E2E8F0] bg-[#F8FAFC] p-3 transition-colors hover:bg-slate-100 sm:p-4">
-                    {pct > 0 && <span className="absolute left-3 top-3 z-10 rounded-full bg-[#EF4444] px-2 py-0.5 text-[11px] font-bold text-white">-{pct}%</span>}
-                    <Link href={`/marketplace/product/${p.id}`} className="relative mb-3 flex aspect-square w-full items-center justify-center overflow-hidden rounded-xl border border-[#E2E8F0] bg-white p-3">
-                      {p.image ? (
-                        <img src={marketImage(p.image)} alt={p.name} loading="lazy" decoding="async" className="h-full w-full rounded-lg object-cover transition-transform duration-300 group-hover:scale-105" />
-                      ) : (
-                        <Package className="h-14 w-14 text-slate-200" />
-                      )}
-                    </Link>
-                    <div className="flex flex-1 flex-col justify-between space-y-1.5">
-                      <div>
-                        <div className="mb-1 flex items-center gap-1">
-                          <Stars value={p.rating} />
-                          {p.reviews > 0 ? (
-                            <span className="ml-1 text-xs text-slate-500">({p.reviews})</span>
-                          ) : (
-                            <span className="ml-1 text-xs font-semibold text-[#10B981]">New</span>
-                          )}
-                        </div>
-                        <Link href={`/marketplace/product/${p.id}`} className="line-clamp-2 min-h-[2.5rem] font-bold text-[#0F172A] hover:text-[#B45309] text-sm">{p.name}</Link>
-                        <div className="mt-1 flex items-baseline gap-2">
-                          <span className="text-lg font-extrabold text-[#EF4444]">${p.price.toFixed(2)}</span>
-                          {p.oldPrice && <span className="text-sm text-slate-400 line-through">${p.oldPrice.toFixed(2)}</span>}
-                        </div>
-                      </div>
-                      <div className="mt-3 flex items-center gap-2">
-                        <button
-                          onClick={() => addToCart(p)}
-                          className={`flex flex-1 items-center justify-center gap-1.5 rounded-lg py-2.5 text-sm font-bold transition-colors ${justAdded[p.id] ? "bg-[#10B981] text-white" : "bg-[#F59E0B] text-[#0F172A] hover:bg-[#D97706]"}`}
-                        >
-                          {justAdded[p.id] ? (
-                            <><Check className="h-4 w-4" /> Added</>
-                          ) : (
-                            <><ShoppingCart className="h-4 w-4" /> Add to Cart</>
-                          )}
-                        </button>
-                        <button
-                          onClick={() => toggleWish(p.id)}
-                          aria-label={wishlist[p.id] ? "Remove from wishlist" : "Add to wishlist"}
-                          aria-pressed={!!wishlist[p.id]}
-                          className={`flex h-10 w-10 items-center justify-center rounded-lg border bg-white transition-colors ${wishlist[p.id] ? "border-[#EF4444] text-[#EF4444]" : "border-[#E2E8F0] text-slate-500 hover:text-[#EF4444]"}`}
-                        >
-                          <Heart className={`h-5 w-5 ${wishlist[p.id] ? "fill-current" : ""}`} />
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                )
-              })}
+              {flashItems.map((p) => (
+                <ProductCard key={p.id} {...cardProps(p)} />
+              ))}
             </div>
           </section>
         )}
@@ -770,7 +802,7 @@ export function MarketplaceHome() {
           </section>
         )}
 
-        {/* top stores — departments with live products */}
+        {/* top stores — icon-led department tiles */}
         {vendors.length > 0 && (
           <section id="vendors" className="bg-white rounded-2xl p-5 shadow-sm border border-[#E2E8F0] scroll-mt-4">
             <div className="flex items-center justify-between mb-4">
@@ -782,37 +814,27 @@ export function MarketplaceHome() {
                 Shop top stores <ChevronRight className="h-4 w-4" />
               </Link>
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3">
-              {vendors.map((v) => (
-                <div key={v.name} className="bg-[#F8FAFC] border border-[#E2E8F0] rounded-xl p-3 flex flex-col justify-between hover:shadow-md transition-shadow">
-                  <div className="flex items-center gap-2 mb-2">
-                    <div className="w-9 h-9 rounded-full text-white text-xs font-bold flex items-center justify-center shrink-0" style={{ background: "linear-gradient(135deg, #F59E0B 0%, #EF4444 100%)" }}>{v.initials}</div>
-                    <div className="min-w-0">
-                      <h4 className="text-sm font-bold text-[#0F172A] truncate">{v.name}</h4>
-                      <p className="text-[11px] text-slate-500">{v.count} Product{v.count === 1 ? "" : "s"}</p>
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-3 gap-1 my-2">
-                    {v.images.map((src, i) => (
-                      <div key={i} className="aspect-square bg-white border border-[#E2E8F0] rounded p-1">
-                        {src ? (
-                          <img src={marketImage(src)} alt={`${v.name} product ${i + 1}`} loading="lazy" decoding="async" className="w-full h-full object-cover rounded" />
-                        ) : (
-                          <span className="w-full h-full flex items-center justify-center" aria-hidden>
-                            <Package className="h-5 w-5 text-slate-200" />
-                          </span>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                  <Link
-                    href={`/marketplace/category/${v.slug}`}
-                    className="w-full mt-1 bg-white hover:bg-slate-100 border border-[#E2E8F0] text-[#0F172A] text-[11px] py-1.5 rounded font-semibold transition-colors text-center block"
-                  >
-                    Shop now
-                  </Link>
-                </div>
-              ))}
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+              {vendors.map((v) => {
+                const Icon = v.icon === "Smartphone" ? Smartphone : v.icon === "Laptop" ? Laptop : v.icon === "Car" ? Car : v.icon === "Wrench" ? Wrench : Cpu
+                return (
+                <Link
+                  key={v.slug}
+                  href={`/marketplace/category/${v.slug}`}
+                  title={v.name}
+                  aria-label={`${v.name} store`}
+                  className="group relative flex flex-col items-center gap-2 overflow-hidden rounded-2xl border border-[#E2E8F0] bg-[#F8FAFC] p-5 text-center transition-all hover:-translate-y-0.5 hover:shadow-lg"
+                >
+                  <span className="flex h-14 w-14 items-center justify-center rounded-2xl text-white shadow-sm transition-transform group-hover:scale-110" style={{ background: "linear-gradient(135deg, #F59E0B 0%, #EF4444 100%)" }} aria-hidden>
+                    <Icon className="h-7 w-7" />
+                  </span>
+                  <span className="block w-full truncate text-[13px] font-bold text-[#0F172A]">{v.short}</span>
+                  <span className="inline-flex items-center gap-1 text-[11px] font-bold text-[#B45309] opacity-0 transition-opacity group-hover:opacity-100 max-md:opacity-100">
+                    Shop now <ArrowRight className="h-3.5 w-3.5" />
+                  </span>
+                </Link>
+                )
+              })}
             </div>
           </section>
         )}
@@ -836,7 +858,7 @@ export function MarketplaceHome() {
             </div>
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-3">
               <div className="lg:col-span-3 rounded-xl overflow-hidden text-white flex flex-col justify-between relative min-h-[280px]">
-                <img src={dept.image} alt={dept.name} loading="lazy" decoding="async" className="absolute inset-0 w-full h-full object-cover" />
+                <img src={marketImage(banners.departments[dept.slug] || deptCover.get(dept.slug) || dept.image)} alt={dept.name} loading="lazy" decoding="async" className="absolute inset-0 w-full h-full object-cover" />
                 <div className="absolute inset-0" style={{ background: "linear-gradient(180deg, rgba(15,23,42,0.55) 0%, rgba(15,23,42,0.92) 100%)" }} />
                 <div className="space-y-1.5 relative z-10 p-5">
                   <span className="bg-[#EF4444] text-white text-[11px] font-bold uppercase px-2 py-0.5 rounded">Mega Drop</span>
@@ -860,8 +882,13 @@ export function MarketplaceHome() {
           )
         })}
 
-        {/* promo banner */}
-        <section className="rounded-2xl overflow-hidden p-6 md:p-8 text-[#0F172A] relative" style={{ background: "linear-gradient(120deg, #F59E0B 0%, #F97316 55%, #EF4444 100%)" }}>
+        {/* promo banner — admin-custom image or default gradient */}
+        <section
+          className="rounded-2xl overflow-hidden p-6 md:p-8 text-[#0F172A] relative"
+          style={promoImg
+            ? { background: `linear-gradient(100deg, rgba(15,23,42,0.88) 20%, rgba(15,23,42,0.45) 60%, rgba(15,23,42,0.15) 100%), url(${promoImg}) center/cover no-repeat` }
+            : { background: "linear-gradient(120deg, #F59E0B 0%, #F97316 55%, #EF4444 100%)" }}
+        >
           <div className="grid grid-cols-1 md:grid-cols-12 gap-5 items-center">
             <div className="md:col-span-3 flex items-center justify-center">
               <div className="w-32 h-32 rounded-full border-4 border-white flex flex-col items-center justify-center bg-black/15 text-white">

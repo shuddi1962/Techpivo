@@ -77,6 +77,7 @@ export function MarketplaceHeader({
 
   // Live wishlist count (same localStorage key the home grid writes).
   const [liveWish, setLiveWish] = useState(0)
+  const [deptCovers, setDeptCovers] = useState<Record<string, string>>({})
   useEffect(() => {
     setLiveWish(readWishCount())
     setCurrency(readCurrency())
@@ -86,6 +87,22 @@ export function MarketplaceHeader({
     }
     window.addEventListener("storage", sync)
     window.addEventListener("focus", sync)
+    // Admin-custom department banners (public site_settings read) so the
+    // mega-menu shows the same imagery as the homepage tiles.
+    ;(async () => {
+      try {
+        const { createClient } = await import("@/lib/supabase/client")
+        const { data } = await createClient()
+          .from("site_settings")
+          .select("value")
+          .eq("key", "marketplace_banners")
+          .maybeSingle()
+        const v = (data as { value?: unknown } | null)?.value as { departments?: Record<string, string> } | null
+        if (v?.departments) setDeptCovers(v.departments)
+      } catch {
+        // banners unavailable — built-in photos stay
+      }
+    })()
     return () => {
       window.removeEventListener("storage", sync)
       window.removeEventListener("focus", sync)
@@ -157,7 +174,7 @@ export function MarketplaceHeader({
   return (
     <>
       {/* utility bar — static, scrolls away with the page */}
-      <div style={{ background: `linear-gradient(90deg, ${MARKETPLACE_BRAND.topbar} 0%, ${MARKETPLACE_BRAND.topbarSoft} 100%)` }} className="w-full text-white">
+      <div style={{ background: `linear-gradient(90deg, ${MARKETPLACE_BRAND.topbar} 0%, ${MARKETPLACE_BRAND.topbarSoft} 100%)` }} className="relative z-[60] w-full text-white">
         <div className="mx-auto w-full max-w-[1400px] px-3 sm:px-6 lg:px-10 flex items-center justify-between h-10 text-xs gap-2">
           <div className="flex items-center gap-2 min-w-0">
             <span className="bg-[#EF4444] text-white px-2 py-0.5 rounded font-bold text-[10px] uppercase tracking-wide shrink-0">
@@ -178,7 +195,7 @@ export function MarketplaceHeader({
                 {currency} <ChevronDown className="h-3.5 w-3.5" />
               </button>
               {currencyOpen && (
-                <div role="listbox" className="absolute right-0 top-full mt-2 w-28 rounded-lg border border-[#E2E8F0] bg-white py-1 shadow-xl z-50">
+                <div role="listbox" className="absolute right-0 top-full mt-2 w-28 rounded-lg border border-[#E2E8F0] bg-white py-1 shadow-xl z-[70]">
                   {["USD", "NGN"].map((code) => (
                     <button
                       key={code}
@@ -297,16 +314,17 @@ export function MarketplaceHeader({
         </div>
       </div>
 
-      {/* nav bar — full width, mega menu spans the whole bar like AliExpress */}
+      {/* nav bar — single row, never wraps: horizontal scroll instead of pushing content down */}
       <div
         className="relative w-full bg-white border-t border-[#E2E8F0]"
         onMouseLeave={() => setDeptOpen(false)}
       >
         <div className="mx-auto w-full max-w-[1400px] px-3 sm:px-6 lg:px-10 hidden md:flex items-center justify-between h-14 gap-3">
-          <div className="flex items-center gap-3 min-w-0">
+          <div className="flex items-center gap-3 min-w-0 flex-1 overflow-hidden">
             <div
               ref={deptWrapRef}
               onMouseEnter={() => setDeptOpen(true)}
+              className="shrink-0"
             >
               <button
                 type="button"
@@ -325,7 +343,7 @@ export function MarketplaceHeader({
                     className="mx-auto w-full max-w-[1400px] px-3 sm:px-6 lg:px-10"
                     onMouseEnter={() => setDeptOpen(true)}
                   >
-                    <div className="rounded-b-2xl border border-t-0 border-[#E2E8F0] bg-white p-6 shadow-2xl lg:p-8">
+                    <div className="rounded-b-2xl border border-t-0 border-[#E2E8F0] bg-white p-6 shadow-2xl lg:p-8 max-h-[70vh] overflow-y-auto">
                       <div className="grid grid-cols-2 gap-6 sm:grid-cols-3 lg:grid-cols-6">
                         {DEPARTMENTS.map((d) => (
                           <div key={d.slug} className="min-w-0">
@@ -335,7 +353,7 @@ export function MarketplaceHeader({
                               className="group block overflow-hidden rounded-xl border border-[#E2E8F0]"
                             >
                               {/* eslint-disable-next-line @next/next/no-img-element */}
-                              <img src={d.image} alt={d.name} loading="lazy" className="h-24 w-full object-cover transition-transform duration-300 group-hover:scale-105" />
+                              <img src={deptCovers[d.slug] || d.image} alt={d.name} loading="lazy" className="h-24 w-full object-cover transition-transform duration-300 group-hover:scale-105" />
                             </Link>
                             <Link
                               href={`/marketplace/category/${d.slug}`}
@@ -391,7 +409,7 @@ export function MarketplaceHeader({
                 </div>
               )}
             </div>
-            <nav className="hidden lg:flex items-center gap-1" aria-label="Marketplace">
+            <nav className="hidden lg:flex items-center gap-1 min-w-0 flex-1 overflow-x-auto whitespace-nowrap" aria-label="Marketplace" style={{ scrollbarWidth: "none" }}>
               {NAV.map((item, i) => (
                 <Link
                   key={item.label}
@@ -399,8 +417,8 @@ export function MarketplaceHeader({
                   aria-current={i === 0 ? "page" : undefined}
                   className={
                     i === 0
-                      ? "px-3 py-2 rounded-lg bg-slate-100 text-[#0F172A] font-semibold text-sm"
-                      : "px-3 py-2 rounded-lg text-slate-600 hover:bg-slate-100 hover:text-[#0F172A] text-sm"
+                      ? "shrink-0 px-3 py-2 rounded-lg bg-slate-100 text-[#0F172A] font-semibold text-sm"
+                      : "shrink-0 px-3 py-2 rounded-lg text-slate-600 hover:bg-slate-100 hover:text-[#0F172A] text-sm"
                   }
                 >
                   {item.label}

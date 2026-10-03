@@ -6,9 +6,10 @@ import { createClient } from "@/lib/supabase/client"
 import {
   Store, Package, Eye, EyeOff, Star, Trash2, Plus, Search, RefreshCw,
   ExternalLink, Pencil, MousePointerClick, ShoppingBag, BadgeCheck, Globe,
-  LayoutGrid, Plug, ReceiptText, CreditCard,
+  LayoutGrid, Plug, ReceiptText, CreditCard, ImagePlus,
 } from "lucide-react"
 import { MarketplaceCategoriesTab } from "@/components/admin/marketplace-categories-tab"
+import { MarketplaceBannersTab } from "@/components/admin/marketplace-banners-tab"
 import { MarketplaceCjTab } from "@/components/admin/marketplace-cj-tab"
 import { MarketplaceOrdersTab } from "@/components/admin/marketplace-orders-tab"
 import { MarketplacePaymentsTab } from "@/components/admin/marketplace-payments-tab"
@@ -62,7 +63,7 @@ export default function AdminMarketplacePage() {
   const [form, setForm] = useState(emptyForm)
   const [saving, setSaving] = useState(false)
   const [notice, setNotice] = useState("")
-  const [tab, setTab] = useState<"products" | "orders" | "categories" | "cj" | "payments" | "visibility">("products")
+  const [tab, setTab] = useState<"products" | "orders" | "categories" | "banners" | "cj" | "payments" | "visibility">("products")
 
   const load = useCallback(async () => {
     const [ov, pr] = await Promise.all([
@@ -285,6 +286,7 @@ export default function AdminMarketplacePage() {
           { id: "products", label: "Products", icon: Package },
           { id: "orders", label: "Orders", icon: ReceiptText },
           { id: "categories", label: "Categories", icon: LayoutGrid },
+          { id: "banners", label: "Banners", icon: ImagePlus },
           { id: "cj", label: "CJ Import", icon: Plug },
           { id: "payments", label: "Payments", icon: CreditCard },
           { id: "visibility", label: "Storefront visibility", icon: Globe },
@@ -300,6 +302,8 @@ export default function AdminMarketplacePage() {
       </div>
 
       {tab === "categories" && <MarketplaceCategoriesTab />}
+
+      {tab === "banners" && <MarketplaceBannersTab />}
 
       {tab === "cj" && <MarketplaceCjTab onImported={load} />}
 

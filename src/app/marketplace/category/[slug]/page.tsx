@@ -2,9 +2,11 @@ import type { Metadata } from "next"
 import Link from "next/link"
 import { notFound } from "next/navigation"
 import { MARKET_DEPARTMENTS } from "@/lib/marketplace-categories"
+import { deptBannerOf, parseBanners } from "@/lib/marketplace-banners"
 import { fetchStoreProducts } from "@/lib/marketplace-products"
 import { ProductListing } from "@/components/marketplace/product-listing"
 import { StorePageShell } from "@/components/marketplace/store-shell"
+import { createClient } from "@/lib/supabase/server"
 
 export const revalidate = 60
 
@@ -38,6 +40,16 @@ export default async function MarketplaceCategoryPage({ params }: { params: { sl
   const products = await fetchStoreProducts({ slugs, limit: 150 })
   const title = found.kind === "dept" ? found.dept.name : found.sub!.name
 
+  // Admin-custom banner (per-department override → default → built-in photo).
+  let bannerImg = found.dept.image
+  try {
+    const supabase = await createClient()
+    const { data } = await supabase.from("site_settings").select("value").eq("key", "marketplace_banners").maybeSingle()
+    bannerImg = deptBannerOf(parseBanners((data as { value?: unknown } | null)?.value), found.dept.slug, found.dept.image)
+  } catch {
+    // anon read blocked or offline — built-in photo stays
+  }
+
   return (
     <StorePageShell
       trail={
@@ -52,7 +64,7 @@ export default async function MarketplaceCategoryPage({ params }: { params: { sl
       {/* department banner */}
       <section className="relative overflow-hidden rounded-2xl">
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={found.dept.image} alt={title} loading="eager" decoding="async" className="absolute inset-0 h-full w-full object-cover" />
+        <img src={bannerImg} alt={title} loading="eager" decoding="async" className="absolute inset-0 h-full w-full object-cover" />
         <div className="absolute inset-0" style={{ background: "linear-gradient(100deg, rgba(20,23,28,0.94) 20%, rgba(20,23,28,0.55) 55%, rgba(20,23,28,0.15) 100%)" }} />
         <div className="relative z-10 max-w-2xl space-y-2 p-6 sm:p-8">
           <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-[#F59E0B]">

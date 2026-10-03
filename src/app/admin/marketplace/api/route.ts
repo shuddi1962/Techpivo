@@ -50,8 +50,12 @@ export async function GET(request: NextRequest) {
       if (error) throw error
       return NextResponse.json({ orders: data || [] })
     }
-    if (section === "cj-list") {
-      const key = await resolveCjApiKey()
+    if (section === "banners") {
+      const { data } = await supabase.from("site_settings").select("value").eq("key", "marketplace_banners").maybeSingle()
+      const { parseBanners } = await import("@/lib/marketplace-banners")
+      return NextResponse.json({ banners: parseBanners((data as { value?: unknown } | null)?.value) })
+    }
+    if (section === "cj-list") {      const key = await resolveCjApiKey()
       if (!key) return NextResponse.json({ demo: true, list: [], message: "CJ API key not set" })
       const list = await cjListProducts({
         pageNum: Number(url.searchParams.get("page") || "1"),
@@ -120,6 +124,16 @@ export async function POST(request: NextRequest) {
       const { data, error } = await supabase.from("marketplace_orders").update({ status }).eq("id", id).select("id,status").single()
       if (error) throw error
       return NextResponse.json({ order: data })
+    }
+    // Save storefront banners (hero / promo / category default / per-department)
+    if (body.action === "banners-save") {
+      const { parseBanners } = await import("@/lib/marketplace-banners")
+      const banners = parseBanners(body.banners)
+      const { error } = await supabase
+        .from("site_settings")
+        .upsert({ key: "marketplace_banners", value: banners as unknown as never }, { onConflict: "key" })
+      if (error) throw error
+      return NextResponse.json({ success: true, banners })
     }
     if (body.action === "cj-import") {
       const items = Array.isArray(body.items) ? body.items : []
