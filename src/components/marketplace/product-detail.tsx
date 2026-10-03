@@ -7,8 +7,7 @@ import { Check, Heart, Minus, Plus, RotateCcw, ShieldCheck, ShoppingCart, Star, 
 import { addToCart } from "@/lib/marketplace-cart"
 import { marketImage } from "@/lib/marketplace-images"
 import {
-  SHIP_METHODS, readShipMethod, saveShipMethod, shippingCost,
-  type ShipMethodId,
+  readShipSelection, saveShipSelection, type ShipOption, type ShipSelection,
 } from "@/lib/marketplace-shipping"
 import { dualPrice, useUsdNgnRate } from "@/lib/marketplace-pricing"
 
@@ -95,16 +94,75 @@ function Stars({ value, size = "h-4 w-4" }: { value: number; size?: string }) {
   )
 }
 
+export interface ProductDetailData {
+  short: string
+  paras: string[]
+  images: string[]
+}
+
+function ProductDetailsTabs({ description, paras }: { description: string | null; paras: string[] }) {
+  const [tab, setTab] = useState<"desc" | "ship">("desc")
+  const long = paras.length > 0 ? paras : description ? [description] : []
+  return (
+    <section className="bg-white rounded-2xl border border-[#E2E8F0] p-4 sm:p-6">
+      <div className="flex items-center gap-1 border-b border-[#E2E8F0] pb-0" role="tablist" aria-label="Product information">
+        {([
+          { id: "desc", label: "Description" },
+          { id: "ship", label: "Shipping & Returns" },
+        ] as const).map((t) => (
+          <button
+            key={t.id}
+            type="button"
+            role="tab"
+            aria-selected={tab === t.id}
+            onClick={() => setTab(t.id)}
+            className={`px-4 py-2.5 text-sm font-bold transition-colors ${tab === t.id ? "border-b-2 border-[#DC2626] text-[#0F172A]" : "text-slate-500 hover:text-[#0F172A]"}`}
+          >
+            {t.label}
+          </button>
+        ))}
+      </div>
+      {tab === "desc" ? (
+        <div className="space-y-3 pt-4">
+          {long.length > 0 ? (
+            long.map((para, i) => (
+              <p key={i} className="text-sm leading-relaxed text-slate-600">{para}</p>
+            ))
+          ) : (
+            <p className="pt-4 text-sm text-slate-500">Full details for this product are on the way — check back soon.</p>
+          )}
+          <ul className="grid grid-cols-1 gap-1.5 pt-1 sm:grid-cols-2">
+            {["Quality-checked before dispatch", "Secure payment on TechPivo Market", "Tracked delivery on every order", "30-day easy returns"].map((h) => (
+              <li key={h} className="flex items-center gap-2 text-sm text-slate-600">
+                <Check className="h-4 w-4 shrink-0 text-[#10B981]" /> {h}
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : (
+        <div className="space-y-3 pt-4 text-sm text-slate-600">
+          <p><strong className="text-[#0F172A]">Standard (7–12 days):</strong> tracked delivery — $5, free on orders over $49.</p>
+          <p><strong className="text-[#0F172A]">Express (3–7 days):</strong> priority tracked delivery — $19 flat.</p>
+          <p><strong className="text-[#0F172A]">Courier options:</strong> live courier rates with tracking are shown above when available for your country.</p>
+          <p><strong className="text-[#0F172A]">Returns:</strong> 30-day easy returns on every order. Need help? <Link href="/contact" className="font-semibold text-[#B45309] hover:underline">Contact us</Link>.</p>
+        </div>
+      )}
+    </section>
+  )
+}
+
 export function ProductDetail({
   product: p,
   reviews: initialReviews,
   related,
   deptSlug,
+  detail,
 }: {
   product: Product
   reviews: Review[]
   related: Related[]
   deptSlug: string | null
+  detail: ProductDetailData
 }) {
   const router = useRouter()
   const rate = useUsdNgnRate()
@@ -121,7 +179,29 @@ export function ProductDetail({
   const [attrs, setAttrs] = useState<Array<{ name: string; values: string[] }>>([])
   const [picked, setPicked] = useState<Record<string, string>>({})
   const [activeImg, setActiveImg] = useState<string>(p.product_image_url || "")
-  const [shipMethod, setShipMethod] = useState<ShipMethodId>("standard")
+  const [liveDetail, setLiveDetail] = useState<ProductDetailData | null>(null)
+
+  // Live long description + extra gallery images fill in client-side so the
+  // cached page shell stays fast.
+  useEffect(() => {
+    fetch(`/api/marketplace/detail?product_id=${encodeURIComponent(p.id)}`)
+      .then((r) => r.json())
+      .then((d) => {
+        if (d && (d.short || (Array.isArray(d.paras) && d.paras.length > 0) || (Array.isArray(d.images) && d.images.length > 0))) {
+          setLiveDetail({
+            short: typeof d.short === "string" ? d.short : "",
+            paras: Array.isArray(d.paras) ? d.paras : [],
+            images: Array.isArray(d.images) ? d.images : [],
+          })
+        }
+      })
+      .catch(() => {
+        // base content stands
+      })
+  }, [p.id])
+  const detailEff = liveDetail ?? detail
+  const [shipOptions, setShipOptions] = useState<ShipOption[]>([])
+  const [shipPick, setShipPick] = useState<ShipSelection | null>(null)
   const [courier, setCourier] = useState<{ name: string; fee: number; eta: string } | null>(null)
 
   useEffect(() => {
@@ -169,32 +249,36 @@ export function ProductDetail({
       : null
 
   useEffect(() => {
-    setShipMethod(readShipMethod())
-    // Live courier estimate for this item (informational — the Standard /
-    // Express choice below is what checkout charges).
+    setShipPick(readShipSelection())
+    // Delivery options: live supplier courier rates (with markup) plus
+    // store Standard / Express. The pick is honored at checkout.
     fetch(
-      `/api/marketplace/shipping?product_id=${encodeURIComponent(p.id)}&variant_vid=${encodeURIComponent(selected?.vid || "")}&qty=${qty}&country=NG`
+      `/api/marketplace/shipping?product_id=${encodeURIComponent(p.id)}&variant_vid=${encodeURIComponent(selected?.vid || "")}&qty=${qty}&country=NG&subtotal=${(price * qty).toFixed(2)}`
     )
       .then((r) => r.json())
       .then((d) => {
-        if (d?.estimate && Number.isFinite(Number(d.estimate.fee))) setCourier(d.estimate)
-        else setCourier(null)
+        if (Array.isArray(d?.options) && d.options.length > 0) {
+          setShipOptions(d.options as ShipOption[])
+          const firstSupplier = (d.options as ShipOption[]).find((o) => o.source === "supplier")
+          if (firstSupplier) setCourier({ name: firstSupplier.name, fee: firstSupplier.feeUsd, eta: firstSupplier.eta })
+          else setCourier(null)
+        }
       })
-      .catch(() => setCourier(null))
+      .catch(() => {
+        // options unavailable — store fallbacks still render below
+      })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [p.id, selected?.vid, qty])
 
-  useEffect(() => {
-    if (selected?.image) setActiveImg(selected.image)
-  }, [selected?.image])
-
-  const pickShip = (m: ShipMethodId) => {
-    setShipMethod(m)
-    saveShipMethod(m)
+  const pickShip = (o: ShipOption) => {
+    const sel = { id: o.id, name: o.name, eta: o.eta, feeUsd: o.feeUsd }
+    setShipPick(sel)
+    saveShipSelection(sel)
   }
+  const shipActive = (id: string) => (shipPick?.id || "standard") === id
 
   const gallery = (() => {
-    const imgs = [p.product_image_url || "", ...(variants.map((v) => v.image).filter(Boolean) as string[])]
+    const imgs = [p.product_image_url || "", ...(variants.map((v) => v.image).filter(Boolean) as string[]), ...detailEff.images]
     return [...new Set(imgs.filter(Boolean))]
   })()
 
@@ -268,6 +352,11 @@ export function ProductDetail({
         <div className="flex flex-col">
           <p className="text-[11px] uppercase tracking-wider text-slate-400">Ships tracked in 7–12 days</p>
           <h1 className="text-2xl sm:text-3xl font-extrabold text-[#0F172A] tracking-tight mt-1">{p.product_name}</h1>
+          {detailEff.short && (
+            <p className="mt-2 rounded-lg border-l-4 border-[#F59E0B] bg-[#FFFBEB] px-3 py-2 text-sm text-slate-700">
+              {detailEff.short}
+            </p>
+          )}
           <div className="flex items-center gap-2 mt-2">
             <Stars value={avg || 4} />
             <span className="text-sm text-slate-500">
@@ -339,27 +428,29 @@ export function ProductDetail({
           <div className="mt-5">
             <p className="mb-2 text-xs font-bold uppercase tracking-wider text-slate-500">Delivery</p>
             <div className="grid grid-cols-1 gap-2 sm:grid-cols-2" role="radiogroup" aria-label="Delivery method">
-              {SHIP_METHODS.map((m) => {
-                const on = shipMethod === m.id
-                const fee = shippingCost(price * qty, m.id)
+              {(shipOptions.length > 0 ? shipOptions : [
+                { id: "standard", name: "Standard", eta: "7–12 days", feeUsd: (price * qty) >= 49 ? 0 : 5, source: "store" as const },
+                { id: "express", name: "Express", eta: "3–7 days", feeUsd: 19, source: "store" as const },
+              ]).map((m) => {
+                const on = shipActive(m.id)
                 return (
                   <button
                     key={m.id}
                     type="button"
                     role="radio"
                     aria-checked={on}
-                    onClick={() => pickShip(m.id)}
+                    onClick={() => pickShip(m)}
                     className={`flex items-center justify-between gap-2 rounded-xl border-2 px-3 py-2.5 text-left transition-all ${on ? "border-[#F59E0B] bg-[#FFFBEB]" : "border-[#E2E8F0] bg-white hover:border-slate-400"}`}
                   >
                     <span className="flex items-center gap-2">
                       <Truck className={`h-4 w-4 shrink-0 ${on ? "text-[#B45309]" : "text-slate-400"}`} />
                       <span>
                         <span className="block text-sm font-bold text-[#0F172A]">{m.name}</span>
-                        <span className="block text-[11px] text-slate-500">{m.eta} · tracked</span>
+                        <span className="block text-[11px] text-slate-500">{m.eta}{m.eta ? " · " : ""}tracked</span>
                       </span>
                     </span>
-                    <span className={`text-sm font-extrabold ${fee === 0 ? "text-[#10B981]" : "text-[#0F172A]"}`}>
-                      {fee === 0 ? "FREE" : `$${fee.toFixed(2)}`}
+                    <span className={`text-sm font-extrabold ${m.feeUsd === 0 ? "text-[#10B981]" : "text-[#0F172A]"}`}>
+                      {m.feeUsd === 0 ? "FREE" : `$${m.feeUsd.toFixed(2)}`}
                     </span>
                   </button>
                 )
@@ -367,7 +458,7 @@ export function ProductDetail({
             </div>
             {courier ? (
               <p className="mt-1.5 text-[11px] text-slate-500">
-                Courier estimate for this item: {courier.name} — ${Number(courier.fee).toFixed(2)}{courier.eta ? ` · ${courier.eta}` : ""}
+                Courier rate for this item: {courier.name} — ${Number(courier.fee).toFixed(2)}{courier.eta ? ` · ${courier.eta}` : ""}
               </p>
             ) : (
               <p className="mt-1.5 text-[11px] text-slate-500">Standard is free on orders over $49.</p>
@@ -437,6 +528,8 @@ export function ProductDetail({
           </div>
         </div>
       </section>
+
+      <ProductDetailsTabs description={p.product_description} paras={detailEff.paras} />
 
       <section className="bg-white rounded-2xl border border-[#E2E8F0] p-4 sm:p-6">
         <h2 className="text-lg font-bold text-[#0F172A]">Customer reviews</h2>

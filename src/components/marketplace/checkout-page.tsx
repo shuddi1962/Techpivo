@@ -8,8 +8,8 @@ import { createClient } from "@/lib/supabase/client"
 import { clearCart, getCart, useMarketCart } from "@/lib/marketplace-cart"
 import { useUsdNgnRate } from "@/lib/marketplace-pricing"
 import {
-  SHIP_METHODS, readShipMethod, saveShipMethod, shippingCost,
-  type ShipMethodId,
+  readShipSelection, saveShipSelection, storeShipOptions,
+  type ShipOption, type ShipSelection,
 } from "@/lib/marketplace-shipping"
 
 interface Row {
@@ -28,7 +28,8 @@ export function CheckoutPage() {
   const [paying, setPaying] = useState(false)
   const [error, setError] = useState("")
   const [form, setForm] = useState({ email: "", name: "", phone: "", address: "", city: "", state: "", zip: "", country: "NG" })
-  const [shipMethod, setShipMethod] = useState<ShipMethodId>("standard")
+  const [shipOptions, setShipOptions] = useState<ShipOption[]>([])
+  const [shipPick, setShipPick] = useState<ShipSelection | null>(null)
 
   useEffect(() => {
     const ids = getCart().map((l) => l.id)
@@ -54,13 +55,33 @@ export function CheckoutPage() {
     [cart, rows]
   )
   const subtotal = lines.reduce((s, l) => s + Number(l.product!.sale_price ?? l.product!.original_price ?? 0) * l.qty, 0)
-  const shipping = shippingCost(subtotal, shipMethod)
+  // Delivery options for the whole cart (supplier rates + store fallbacks).
+  useEffect(() => {
+    setShipPick(readShipSelection())
+    if (lines.length === 0) return
+    fetch("/api/marketplace/shipping", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        items: lines.map((l) => ({ product_id: l.id, variant_vid: l.variant?.vid || "", qty: l.qty })),
+        country: form.country,
+        subtotal,
+      }),
+    })
+      .then((r) => r.json())
+      .then((d) => {
+        if (Array.isArray(d?.options)) setShipOptions(d.options as ShipOption[])
+      })
+      .catch(() => {
+        // fallbacks below still render
+      })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading, lines.length, form.country])
+  const effectiveOptions = shipOptions.length > 0 ? shipOptions : storeShipOptions(subtotal)
+  const activePick = effectiveOptions.find((o) => o.id === shipPick?.id) || effectiveOptions[0]
+  const shipping = activePick ? activePick.feeUsd : 0
   const totalUsd = subtotal + shipping
   const totalNgn = Math.round(totalUsd * rate)
-
-  useEffect(() => {
-    setShipMethod(readShipMethod())
-  }, [])
 
   useEffect(() => {
     if (!loading && lines.length === 0) router.replace("/marketplace/cart")
@@ -90,7 +111,7 @@ export function CheckoutPage() {
           ship_zip: form.zip,
           ship_country: form.country,
           items: lines.map((l) => ({ id: l.id, qty: l.qty, variant: l.variant ? { vid: l.variant.vid, label: l.variant.label } : null })),
-          shipping_method: shipMethod,
+          shipping_id: activePick?.id || "standard",
         }),
       })
       const data = await res.json()
@@ -168,24 +189,27 @@ export function CheckoutPage() {
         <div>
           <p className="mb-2 text-sm font-semibold text-slate-700">Delivery method</p>
           <div className="grid grid-cols-1 gap-2 sm:grid-cols-2" role="radiogroup" aria-label="Delivery method">
-            {SHIP_METHODS.map((m) => {
-              const on = shipMethod === m.id
-              const fee = shippingCost(subtotal, m.id)
+            {effectiveOptions.map((m) => {
+              const on = activePick?.id === m.id
               return (
                 <button
                   key={m.id}
                   type="button"
                   role="radio"
                   aria-checked={on}
-                  onClick={() => { setShipMethod(m.id); saveShipMethod(m.id) }}
+                  onClick={() => {
+                    const sel = { id: m.id, name: m.name, eta: m.eta, feeUsd: m.feeUsd }
+                    setShipPick(sel)
+                    saveShipSelection(sel)
+                  }}
                   className={`flex items-center justify-between gap-2 rounded-xl border-2 px-3 py-2.5 text-left transition-all ${on ? "border-[#F59E0B] bg-[#FFFBEB]" : "border-[#E2E8F0] hover:border-slate-400"}`}
                 >
                   <span>
                     <span className="block text-sm font-bold text-[#0F172A]">{m.name}</span>
-                    <span className="block text-[11px] text-slate-500">{m.eta} · tracked</span>
+                    <span className="block text-[11px] text-slate-500">{m.eta}{m.eta ? " · " : ""}tracked</span>
                   </span>
-                  <span className={`text-sm font-extrabold ${fee === 0 ? "text-[#10B981]" : "text-[#0F172A]"}`}>
-                    {fee === 0 ? "FREE" : `$${fee.toFixed(2)}`}
+                  <span className={`text-sm font-extrabold ${m.feeUsd === 0 ? "text-[#10B981]" : "text-[#0F172A]"}`}>
+                    {m.feeUsd === 0 ? "FREE" : `$${m.feeUsd.toFixed(2)}`}
                   </span>
                 </button>
               )

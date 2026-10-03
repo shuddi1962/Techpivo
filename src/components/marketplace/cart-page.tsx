@@ -6,7 +6,7 @@ import { ArrowLeft, Minus, Plus, ShieldCheck, ShoppingCart, Trash2 } from "lucid
 import { createClient } from "@/lib/supabase/client"
 import { getCart, removeFromCart, setQty, useMarketCart } from "@/lib/marketplace-cart"
 import { marketImage } from "@/lib/marketplace-images"
-import { readShipMethod, shippingCost, SHIP_METHODS, type ShipMethodId } from "@/lib/marketplace-shipping"
+import { readShipSelection, shippingCost, type ShipMethodId } from "@/lib/marketplace-shipping"
 import { dualPrice, useUsdNgnRate } from "@/lib/marketplace-pricing"
 
 interface Row {
@@ -22,11 +22,14 @@ export function CartPage() {
   const rate = useUsdNgnRate()
   const [rows, setRows] = useState<Row[]>([])
   const [loading, setLoading] = useState(true)
-  const [shipMethod, setShipMethod] = useState<ShipMethodId>("standard")
+  const [shipSel, setShipSel] = useState({ id: "standard", name: "Standard", feeUsd: 0 })
 
   useEffect(() => {
-    setShipMethod(readShipMethod())
-    const sync = () => setShipMethod(readShipMethod())
+    const sync = () => {
+      const sel = readShipSelection()
+      setShipSel({ id: sel.id, name: sel.name || "Standard", feeUsd: Number.isFinite(sel.feeUsd) ? sel.feeUsd : 0 })
+    }
+    sync()
     window.addEventListener("tp-market-ship", sync)
     window.addEventListener("storage", sync)
     return () => {
@@ -63,8 +66,12 @@ export function CartPage() {
     [cart, rows]
   )
   const subtotal = lines.reduce((s, l) => s + Number(l.product!.sale_price ?? l.product!.original_price ?? 0) * l.qty, 0)
-  const shipLabel = SHIP_METHODS.find((m) => m.id === shipMethod)?.name || "Standard"
-  const shipping = shippingCost(subtotal, shipMethod)
+  // Cart estimate: store methods priced by rule, supplier couriers by the
+  // snapshot saved on the product page (checkout re-prices authoritatively).
+  const shipping =
+    shipSel.id === "standard" || shipSel.id === "express"
+      ? shippingCost(subtotal, shipSel.id)
+      : shipSel.feeUsd
 
   if (loading) {
     return (
@@ -147,7 +154,7 @@ export function CartPage() {
             <span className="font-semibold text-[#0F172A]">${subtotal.toFixed(2)}</span>
           </div>
           <div className="flex justify-between text-sm text-slate-600">
-            <span>Shipping ({shipLabel})</span>
+            <span>Shipping ({shipSel.name})</span>
             <span className="font-semibold text-[#0F172A]">{shipping === 0 ? "FREE" : `$${shipping.toFixed(2)}`}</span>
           </div>
           {shipping > 0 && <p className="text-[11px] text-slate-400">Free shipping on orders over $49.</p>}

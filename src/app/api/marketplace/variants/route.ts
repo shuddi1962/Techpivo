@@ -68,6 +68,11 @@ export async function GET(request: NextRequest) {
         stock: v.variantStock != null && Number.isFinite(Number(v.variantStock)) ? Number(v.variantStock) : null,
       }))
     if (variants.length === 0) return NextResponse.json({ variants: [], attributes: [] })
+    // A lone option with no real name (e.g. a single-SKU product) is not a
+    // choice — expose it as the definitive option without selectors.
+    if (variants.length === 1 && !String(list[0]?.variantNameEn || "").trim()) {
+      return NextResponse.json({ variants, attributes: [], solo: true })
+    }
     // Group option values by position (e.g. "Red / L" -> Color + Size).
     const width = Math.max(...variants.map((v) => splitAttrs(v.label).length))
     const attributes = Array.from({ length: width }, (_, i) => {

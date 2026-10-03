@@ -3,7 +3,8 @@ import { createClient } from "@/lib/supabase/server"
 import { createClient as createAdmin } from "@/lib/supabase/admin"
 import { paystackInit } from "@/lib/paystack"
 import { cjGetVariants, MARKET_MARGIN } from "@/lib/cj"
-import { shippingCost, type ShipMethodId } from "@/lib/marketplace-shipping"
+import { storeShipOptions } from "@/lib/marketplace-shipping"
+import { supplierShipOptions } from "@/lib/marketplace-freight"
 
 export const dynamic = "force-dynamic"
 
@@ -35,7 +36,7 @@ export async function POST(request: NextRequest) {
     if (items.length === 0 || items.length > 50) {
       return NextResponse.json({ error: "Your cart is empty." }, { status: 400 })
     }
-    const shippingMethod: ShipMethodId = body?.shipping_method === "express" ? "express" : "standard"
+    const shippingId = String(body?.shipping_id || body?.shipping_method || "standard").slice(0, 80)
     if (!ship.name || !ship.phone || !ship.address || !ship.city) {
       return NextResponse.json({ error: "Name, phone, address and city are required." }, { status: 400 })
     }
@@ -94,7 +95,21 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "None of those products are available anymore." }, { status: 400 })
     }
 
-    const shippingUsd = shippingCost(subtotal, shippingMethod)
+    // Delivery: buyer's chosen option, re-resolved server-side (never trusted
+    // from the client). Supplier courier rates carry store markup.
+    let shippingUsd = 0
+    if (shippingId === "express") {
+      shippingUsd = storeShipOptions(subtotal).find((o) => o.id === "express")?.feeUsd ?? 19
+    } else if (shippingId.startsWith("supplier:")) {
+      const live = await supplierShipOptions(
+        lines.map((l) => ({ product_id: l.id as string, variant_vid: (l.cj_vid as string) || "", qty: l.qty as number })),
+        ship.country
+      )
+      shippingUsd = live.find((o) => o.id === shippingId)?.feeUsd
+        ?? storeShipOptions(subtotal).find((o) => o.id === "standard")?.feeUsd ?? 5
+    } else {
+      shippingUsd = storeShipOptions(subtotal).find((o) => o.id === "standard")?.feeUsd ?? 5
+    }
     const totalUsd = Math.round((subtotal + shippingUsd) * 100) / 100
 
     // NGN total via live FX (fallback 1600) — Paystack charges kobo

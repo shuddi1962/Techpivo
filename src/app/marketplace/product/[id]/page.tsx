@@ -8,7 +8,7 @@ import { MARKET_DEPARTMENTS } from "@/lib/marketplace-categories"
 import { marketImage, cleanSupplierText } from "@/lib/marketplace-images"
 import { supplierDisplayName } from "@/lib/marketplace"
 import { MarketplaceHeader, MarketplaceFooter } from "@/components/marketplace/marketplace-header"
-import { ProductDetail } from "@/components/marketplace/product-detail"
+import { ProductDetail, type ProductDetailData } from "@/components/marketplace/product-detail"
 
 export const revalidate = 60
 
@@ -25,6 +25,7 @@ interface DbProduct {
   stock: number | null
   clicks: number | null
   cj_data: unknown
+  cj_pid: string | null
 }
 
 export async function generateMetadata({ params }: { params: { id: string } }): Promise<Metadata> {
@@ -68,7 +69,7 @@ export default async function MarketplaceProductPage({ params }: { params: { id:
   const prodRes = (await fetchWithTimeout(
     supabase
       .from("affiliate_products")
-      .select("id,product_name,product_description,product_image_url,original_price,sale_price,program_key,category_slug,subcategory_slug,stock,clicks,cj_data")
+      .select("id,product_name,product_description,product_image_url,original_price,sale_price,program_key,category_slug,subcategory_slug,stock,clicks,cj_data,cj_pid")
       .eq("id", params.id)
       .eq("is_active", true)
       .maybeSingle(),
@@ -93,6 +94,8 @@ export default async function MarketplaceProductPage({ params }: { params: { id:
     .neq("id", p.id)
     .order("created_at", { ascending: false })
     .limit(4)
+  // Live supplier detail (long description + extra gallery images) loads in
+  // parallel with reviews/related — best-effort, never rejects.
   const rr = (await fetchWithTimeout(
     Promise.all([
       supabase
@@ -108,6 +111,9 @@ export default async function MarketplaceProductPage({ params }: { params: { id:
     { data: Array<{ id: string; author_name: string; rating: number; title: string | null; comment: string | null; created_at: string }> | null },
     { data: Array<{ id: string; product_name: string; product_image_url: string | null; original_price: number | null; sale_price: number | null; program_key: string | null }> | null },
   ] | null
+  // Supplier long description + extra images load client-side (see the
+  // detail API) so the cached page shell always stays fast.
+  const detail: ProductDetailData = { short: "", paras: [], images: [] }
   const reviews = rr?.[0]?.data ?? []
   const related = (rr?.[1]?.data ?? []).map((r) => ({
     ...r,
@@ -152,7 +158,7 @@ export default async function MarketplaceProductPage({ params }: { params: { id:
           ) : null}
           <span className="text-[#0F172A] font-medium line-clamp-1 max-w-[60vw]">{p.product_name}</span>
         </nav>
-        <ProductDetail product={p} reviews={reviews || []} related={related || []} deptSlug={deptSlug} />
+        <ProductDetail product={p} reviews={reviews || []} related={related || []} deptSlug={deptSlug} detail={detail} />
         <p className="text-center text-[11px] text-slate-400 px-4">
           Every order is quality-checked, securely paid and delivered with tracking — shop with confidence on TechPivo Market.
         </p>

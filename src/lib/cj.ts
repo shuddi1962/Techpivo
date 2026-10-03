@@ -128,6 +128,79 @@ export async function cjGetProduct(pid: string): Promise<unknown> {
   return cjFetch<unknown>(`/api2.0/v1/product/query?pid=${encodeURIComponent(pid)}`, { method: "GET", token })
 }
 
+export interface CjDetail {
+  short: string
+  paras: string[]
+  images: string[]
+}
+
+// Extract a clean long description + extra images from a CJ product/query
+// payload. Field names vary, so probe candidates defensively; always
+// returns safe plain-text paragraphs (never raw supplier HTML).
+export function extractCjDetail(raw: unknown): CjDetail {
+  const empty: CjDetail = { short: "", paras: [], images: [] }
+  if (!raw || typeof raw !== "object") return empty
+  const obj = raw as Record<string, unknown>
+
+  const pickString = (...keys: string[]): string => {
+    for (const k of keys) {
+      const v = obj[k]
+      if (typeof v === "string" && v.trim()) return v
+    }
+    return ""
+  }
+  const html = pickString(
+    "productDescriptionEn", "descriptionEn", "productDescription",
+    "description", "detailEn", "detail"
+  )
+  // Collect embedded content images before stripping tags.
+  const embedded: string[] = []
+  const imgRe = /<img[^>]+src=["'](https?:\/\/[^"']+)["']/gi
+  let m: RegExpExecArray | null
+  while ((m = imgRe.exec(html)) !== null) embedded.push(m[1])
+  const text = html
+    .replace(/<(li|p|br|h\d|tr)[^>]*>/gi, "\n")
+    .replace(/<\/(li|p|h\d|tr|table|ul|ol)>/gi, "\n")
+    .replace(/<[^>]+>/g, " ")
+    .replace(/&nbsp;/gi, " ")
+    .replace(/&amp;/gi, "&")
+    .replace(/&lt;/gi, "<")
+    .replace(/&gt;/gi, ">")
+    .replace(/&quot;/gi, '"')
+    .replace(/&#39;/g, "'")
+  const paras = text
+    .split("\n")
+    .map((s) => s.replace(/\s+/g, " ").trim())
+    .filter((s) => s.length > 24)
+    .slice(0, 30)
+
+  const images: string[] = []
+  const pushImg = (v: unknown) => {
+    if (typeof v === "string" && /^https?:\/\//i.test(v)) images.push(v)
+    else if (v && typeof v === "object") {
+      const o = v as Record<string, unknown>
+      for (const k of ["productImageUrl", "imageUrl", "url", "src", "image"]) {
+        if (typeof o[k] === "string" && /^https?:\/\//i.test(o[k] as string)) {
+          images.push(o[k] as string)
+          break
+        }
+      }
+    }
+  }
+  for (const k of ["productImageSet", "detailImageList", "images", "productImages", "imageSet", "detailImages"]) {
+    const v = obj[k]
+    if (Array.isArray(v)) v.forEach(pushImg)
+    else if (typeof v === "string") {
+      v.split(/[,;|]/).forEach(pushImg)
+    }
+  }
+  return {
+    short: paras[0] ? paras[0].slice(0, 220) : "",
+    paras,
+    images: [...new Set([...embedded, ...images])].slice(0, 8),
+  }
+}
+
 export interface CjVariant {
   vid?: string
   variantNameEn?: string
@@ -141,11 +214,15 @@ export async function cjGetVariants(pid: string): Promise<CjVariant[]> {
   const key = await resolveCjApiKey()
   if (!key) throw new Error("CJ API key not configured")
   const token = await getAccessToken(key)
-  const data = await cjFetch<{ list?: CjVariant[]; variantList?: CjVariant[] }>(
+  const data = await cjFetch<CjVariant[] | { list?: CjVariant[]; variantList?: CjVariant[] }>(
     `/api2.0/v1/product/variant/query?pid=${encodeURIComponent(pid)}`,
     { method: "GET", token }
   )
-  return data?.list ?? data?.variantList ?? []
+  // CJ returns either a single variant object or a { list } wrapper.
+  if (Array.isArray(data)) return data
+  const d = (data || {}) as CjVariant & { list?: CjVariant[]; variantList?: CjVariant[] }
+  if (d.vid) return [d]
+  return d.list ?? d.variantList ?? []
 }
 
 export interface CjCategory {
@@ -248,6 +325,17 @@ export async function cjSyncCatalog(opts: {
  *  sale = cost × 1.20, compare-at = cost × 1.50 (shows ~20% off). */
 export const MARKET_MARGIN = 1.2
 export const MARKET_COMPARE = 1.5
+
+/** Freight rule: CJ courier rates + 20% markup — no separate courier key. */
+export const FREIGHT_MARKUP = 1.2
+
+export function withMargin(cost: number): number {
+  return Math.round(Number(cost) * MARKET_MARGIN * 100) / 100
+}
+
+export function withFreightMarkup(fee: number): number {
+  return Math.round(Number(fee) * FREIGHT_MARKUP * 100) / 100
+}
 
 export function mapCjToAffiliate(cj: CjProductSummary, extra?: { categorySlug?: string | null; subcategorySlug?: string | null }) {
   const cost = Number(cj.sellPrice ?? 0)
