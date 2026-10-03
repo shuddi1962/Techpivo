@@ -88,8 +88,8 @@ export function DeliveryPicker({
       )}
       <p className="mt-1.5 text-[11px] text-slate-500">
         {live.length > 0
-          ? "Live courier rates with tracking — the exact rate is charged at checkout."
-          : "Standard is free on orders over $49."}
+          ? "Live courier rates with tracking — one fee covers your whole order at checkout."
+          : "Standard is free on orders over $49. Final shipping is calculated once per order at checkout."}
       </p>
     </div>
   )
