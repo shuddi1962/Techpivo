@@ -17,6 +17,8 @@ import { EMPTY_BANNERS, parseBanners, type MarketBanners } from "@/lib/marketpla
 import { MARKET_DEPARTMENTS } from "@/lib/marketplace-categories"
 import { marketImage, cleanSupplierText } from "@/lib/marketplace-images"
 import { MarketplaceHeader, MarketplaceFooter } from "./marketplace-header"
+import { FeaturePanels } from "./feature-panels"
+import { CategoryShowcase } from "./category-showcase"
 
 interface DbProduct {
   id: string
@@ -385,6 +387,19 @@ export function MarketplaceHome() {
 
   const heroImg = banners.hero_image || MARKETPLACE_HERO.image
   const promoImg = banners.promo_image || ""
+
+  // Smartphone & tablet showcase: live products in the phones department,
+  // each tagged with its subcategory slug for the category nav.
+  const phonesDept = MARKET_DEPARTMENTS.find((d) => d.slug === "phones-accessories")
+  const phonesItems = useMemo(() => {
+    const byId = new Map(dbProducts.map((d) => [d.id, d]))
+    return grid
+      .filter((p) => deptOf.get(p.id) === "phones-accessories")
+      .map((p) => {
+        const d = byId.get(p.id)
+        return { ...p, subSlug: d?.subcategory_slug || d?.category_slug || null }
+      })
+  }, [grid, dbProducts, deptOf])
 
   // Flash deals: live discounted products first, then the rest.
   const flashItems = useMemo(
@@ -771,6 +786,19 @@ export function MarketplaceHome() {
           )}
         </section>
 
+        {/* feature panels — new arrivals / featured / best selling */}
+        <FeaturePanels
+          groups={[
+            { title: "New Arrivals", items: newArrivals },
+            { title: "Featured Products", items: featured },
+            { title: "Best Selling", items: best },
+          ]}
+          onAdd={addToCart}
+          added={justAdded}
+          wished={wishlist}
+          onWish={toggleWish}
+        />
+
         {/* trending slider — horizontal product rail */}
         {best.length > 1 && (
           <section className="bg-white rounded-2xl p-5 shadow-sm border border-[#E2E8F0]">
@@ -815,6 +843,20 @@ export function MarketplaceHome() {
               ))}
             </div>
           </section>
+        )}
+
+        {/* smartphone & tablet showcase */}
+        {phonesDept && (
+          <CategoryShowcase
+            title="Smartphone & Tablet"
+            deptSlug={phonesDept.slug}
+            nav={phonesDept.subs.map((s) => ({ name: s.name, slug: s.slug }))}
+            items={phonesItems}
+            onAdd={addToCart}
+            added={justAdded}
+            wished={wishlist}
+            onWish={toggleWish}
+          />
         )}
 
         {/* top stores — icon-led department tiles */}

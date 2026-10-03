@@ -1,0 +1,213 @@
+"use client"
+
+import Link from "next/link"
+import { useMemo, useRef, useState } from "react"
+import {
+  ArrowLeftRight, Check, ChevronLeft, ChevronRight, Flame, Heart, ShoppingCart,
+} from "lucide-react"
+import type { DemoProduct } from "@/lib/marketplace"
+import { marketImage } from "@/lib/marketplace-images"
+import { readCompare, toggleCompareStored } from "@/lib/marketplace-compare"
+import { PanelStars, discountPct } from "./feature-panels"
+
+interface ShowcaseActions {
+  onAdd: (p: DemoProduct) => void
+  added: Record<string, boolean>
+  wished: Record<string, boolean>
+  onWish: (id: string) => void
+}
+
+function ShowcaseCard({ p, onAdd, added, wished, onWish }: { p: DemoProduct } & ShowcaseActions) {
+  const [compared, setCompared] = useState<Record<string, boolean>>(() => readCompare())
+  const pct = discountPct(p.price, p.oldPrice)
+  const href = /^[0-9a-f-]{36}$/i.test(p.id) ? `/marketplace/product/${p.id}` : undefined
+  const flipCompare = () => setCompared((m) => ({ ...m, [p.id]: toggleCompareStored(p.id) }))
+
+  return (
+    <div className="flex w-44 shrink-0 snap-start flex-col bg-white rounded-xl border border-[#E5E7EB] p-3 sm:w-52">
+      <div className="relative aspect-square w-full overflow-hidden rounded-lg bg-white">
+        {href ? (
+          <Link href={href} aria-label={p.name} className="block h-full w-full p-3">
+            {p.image ? (
+              <img src={marketImage(p.image)} alt={p.name} loading="lazy" decoding="async" className="h-full w-full object-contain" />
+            ) : null}
+          </Link>
+        ) : (
+          <div className="h-full w-full p-3">
+            {p.image ? (
+              <img src={marketImage(p.image)} alt={p.name} loading="lazy" decoding="async" className="h-full w-full object-contain" />
+            ) : null}
+          </div>
+        )}
+        {pct > 0 && (
+          <span className="absolute right-1.5 top-1.5 flex h-10 w-10 items-center justify-center rounded-full bg-[#F59E0B] text-[11px] font-extrabold text-[#0F172A] shadow-sm">
+            -{pct}%
+          </span>
+        )}
+      </div>
+      <div className="mt-2 flex flex-1 flex-col gap-1">
+        {href ? (
+          <Link href={href} title={p.name} className="block truncate text-[13px] font-semibold text-[#0F172A] hover:text-[#B45309]">
+            {p.name}
+          </Link>
+        ) : (
+          <p title={p.name} className="truncate text-[13px] font-semibold text-[#0F172A]">{p.name}</p>
+        )}
+        <PanelStars value={p.rating} />
+        <div className="flex items-baseline gap-1.5">
+          <span className="text-[15px] font-extrabold tabular-nums text-[#0F172A]">${p.price.toFixed(2)}</span>
+          {p.oldPrice && p.oldPrice > p.price && (
+            <span className="text-xs tabular-nums text-slate-400 line-through">${p.oldPrice.toFixed(2)}</span>
+          )}
+        </div>
+        <div className="mt-1.5 flex items-center gap-1.5">
+          <button
+            type="button"
+            onClick={() => onAdd(p)}
+            aria-label={added[p.id] ? "Added to cart" : `Add ${p.name} to cart`}
+            title={added[p.id] ? "Added to cart" : "Add to cart"}
+            className={`flex flex-1 items-center justify-center gap-1 rounded-lg py-2 text-xs font-bold transition-colors ${added[p.id] ? "bg-[#10B981] text-white" : "bg-slate-100 text-[#0F172A] hover:bg-[#F59E0B]"}`}
+          >
+            {added[p.id] ? <Check className="h-3.5 w-3.5" /> : <ShoppingCart className="h-3.5 w-3.5" />}
+            <span className="hidden sm:inline">{added[p.id] ? "Added" : "Add to cart"}</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => onWish(p.id)}
+            aria-label={wished[p.id] ? "Remove from wishlist" : "Add to wishlist"}
+            aria-pressed={!!wished[p.id]}
+            title="Wishlist"
+            className={`flex h-8 w-8 items-center justify-center rounded-lg border transition-colors ${wished[p.id] ? "border-[#EF4444] bg-[#EF4444] text-white" : "border-[#E5E7EB] text-slate-500 hover:text-[#EF4444]"}`}
+          >
+            <Heart className={`h-3.5 w-3.5 ${wished[p.id] ? "fill-current" : ""}`} />
+          </button>
+          <button
+            type="button"
+            onClick={flipCompare}
+            aria-label={compared[p.id] ? "Remove from compare" : "Add to compare"}
+            aria-pressed={!!compared[p.id]}
+            title="Compare"
+            className={`flex h-8 w-8 items-center justify-center rounded-lg border transition-colors ${compared[p.id] ? "border-[#0F172A] bg-[#0F172A] text-white" : "border-[#E5E7EB] text-slate-500 hover:text-[#0F172A]"}`}
+          >
+            <ArrowLeftRight className="h-3.5 w-3.5" />
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+export function CategoryShowcase({
+  title,
+  deptSlug,
+  nav,
+  items,
+  onAdd,
+  added,
+  wished,
+  onWish,
+}: {
+  title: string
+  deptSlug: string
+  nav: Array<{ name: string; slug: string }>
+  items: Array<DemoProduct & { subSlug?: string | null }>
+  onAdd: (p: DemoProduct) => void
+  added: Record<string, boolean>
+  wished: Record<string, boolean>
+  onWish: (id: string) => void
+}) {
+  const [active, setActive] = useState<string | null>(null)
+  const railRef = useRef<HTMLDivElement>(null)
+
+  const shown = useMemo(
+    () => (active ? items.filter((p) => p.subSlug === active) : items),
+    [items, active]
+  )
+
+  if (items.length === 0) return null
+
+  const scroll = (dir: 1 | -1) =>
+    railRef.current?.scrollBy({ left: dir * 640, behavior: "smooth" })
+
+  return (
+    <section aria-label={title} className="bg-white rounded-2xl p-5 shadow-sm border border-[#E2E8F0]">
+      {/* header: title + yellow underline, category nav, arrows */}
+      <div className="mb-4 flex flex-wrap items-center gap-3">
+        <div className="mr-auto">
+          <h2 className="text-lg font-extrabold uppercase tracking-tight text-[#0F172A]">{title}</h2>
+          <span className="mt-1 block h-1 w-12 rounded-full bg-[#F59E0B]" aria-hidden />
+        </div>
+        <nav aria-label={`${title} categories`} className="flex min-w-0 flex-1 items-center gap-1 overflow-x-auto whitespace-nowrap" style={{ scrollbarWidth: "none" }}>
+          <button
+            type="button"
+            onClick={() => setActive(null)}
+            aria-pressed={active === null}
+            className={`shrink-0 rounded-full px-3 py-1.5 text-[13px] font-semibold transition-colors ${active === null ? "bg-[#0F172A] text-white" : "text-slate-500 hover:text-[#0F172A]"}`}
+          >
+            All
+          </button>
+          {nav.map((n) => (
+            <button
+              key={n.slug}
+              type="button"
+              onClick={() => setActive(n.slug)}
+              aria-pressed={active === n.slug}
+              className={`shrink-0 rounded-full px-3 py-1.5 text-[13px] font-semibold transition-colors ${active === n.slug ? "bg-[#0F172A] text-white" : "text-slate-500 hover:text-[#0F172A]"}`}
+            >
+              {n.name}
+            </button>
+          ))}
+        </nav>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => scroll(-1)}
+            aria-label={`Scroll ${title} products left`}
+            className="flex h-9 w-9 items-center justify-center rounded-full border border-[#E5E7EB] bg-white text-[#0F172A] transition-colors hover:border-[#F59E0B]"
+          >
+            <ChevronLeft className="h-4 w-4" />
+          </button>
+          <button
+            type="button"
+            onClick={() => scroll(1)}
+            aria-label={`Scroll ${title} products right`}
+            className="flex h-9 w-9 items-center justify-center rounded-full border border-[#E5E7EB] bg-white text-[#0F172A] transition-colors hover:border-[#F59E0B]"
+          >
+            <ChevronRight className="h-4 w-4" />
+          </button>
+        </div>
+      </div>
+
+      {/* promo banner + product rail */}
+      <div className="flex gap-3 overflow-x-auto pb-1 snap-x" ref={railRef} style={{ scrollbarWidth: "thin" }}>
+        <Link
+          href="/marketplace/deals"
+          className="flex w-44 shrink-0 snap-start flex-col justify-between overflow-hidden rounded-xl bg-[#DC2626] p-4 text-white sm:w-52"
+        >
+          <span className="inline-flex w-fit items-center gap-1 rounded bg-white/20 px-2 py-0.5 text-[11px] font-bold uppercase">
+            <Flame className="h-3 w-3" /> Special
+          </span>
+          <span className="mt-6 block">
+            <span className="block text-3xl font-extrabold leading-none">SALE</span>
+            <span className="mt-1 block text-xs font-semibold text-white/85">Up to 50% off {title.toLowerCase()}</span>
+          </span>
+          <span className="mt-6 inline-flex w-fit items-center rounded-lg bg-white px-4 py-2 text-xs font-bold text-[#991B1B]">
+            Shop now
+          </span>
+        </Link>
+        {shown.map((p) => (
+          <ShowcaseCard key={p.id} p={p} onAdd={onAdd} added={added} wished={wished} onWish={onWish} />
+        ))}
+        {shown.length === 0 && (
+          <p className="flex items-center px-4 text-sm text-slate-500">No products in this category yet.</p>
+        )}
+      </div>
+
+      <div className="mt-3 text-right">
+        <Link href={`/marketplace/category/${deptSlug}`} className="text-sm font-semibold text-[#B45309] hover:underline">
+          Shop all {title.toLowerCase()} →
+        </Link>
+      </div>
+    </section>
+  )
+}
