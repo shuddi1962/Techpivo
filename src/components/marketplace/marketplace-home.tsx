@@ -250,6 +250,9 @@ export function MarketplaceHome() {
     return () => clearInterval(t)
   }, [])
   const [query, setQuery] = useState("")
+  // Per-visit store notice — closable, and it shows again on every visit
+  // (dismissal is intentionally not persisted).
+  const [showNotice, setShowNotice] = useState(true)
   const [banners, setBanners] = useState<MarketBanners>({ ...EMPTY_BANNERS, departments: {} })
   const t = useCountdown()
 
@@ -640,18 +643,30 @@ export function MarketplaceHome() {
       />
       <main className="mx-auto w-full max-w-[1400px] px-3 sm:px-6 lg:px-10 py-6 sm:py-8 space-y-6 sm:space-y-8">
 
-        {/* welcome strip */}
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 rounded-2xl border border-[#FED7AA] bg-gradient-to-r from-[#FFF7ED] via-white to-[#FEF2F2] p-3 sm:p-4">
-          <div className="flex items-center gap-2.5 text-sm min-w-0">
-            <span className="bg-[#DC2626] text-white text-[11px] font-bold uppercase px-2.5 py-1 rounded-md shrink-0">Welcome Offer</span>
-            <p className="text-sm text-slate-600">
-              Welcome to <strong className="text-[#0F172A]">TechPivo Market</strong> — quality-checked products, secure payment and tracked delivery.
-            </p>
+        {/* store notice — shows on every visit, closable */}
+        {showNotice && (
+          <div className="flex items-center justify-between gap-3 rounded-2xl border border-[#FED7AA] bg-gradient-to-r from-[#FFF7ED] via-white to-[#FEF2F2] p-3 sm:p-4">
+            <div className="flex items-center gap-2.5 text-sm min-w-0">
+              <span className="bg-[#DC2626] text-white text-[11px] font-bold uppercase px-2.5 py-1 rounded-md shrink-0">Welcome Offer</span>
+              <p className="text-sm text-slate-600">
+                Welcome to <strong className="text-[#0F172A]">TechPivo Market</strong> — quality-checked products, secure payment and tracked delivery.
+              </p>
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              <Link href="#flash-deals" className="bg-[#F59E0B] hover:bg-[#D97706] text-[#0F172A] text-sm font-semibold px-4 py-2 rounded-lg transition-colors flex items-center gap-1">
+                Explore Now <ArrowRight className="h-4 w-4" />
+              </Link>
+              <button
+                type="button"
+                onClick={() => setShowNotice(false)}
+                aria-label="Dismiss notice"
+                className="flex h-8 w-8 items-center justify-center rounded-full text-slate-400 transition-colors hover:bg-slate-100 hover:text-[#0F172A]"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
           </div>
-          <Link href="#flash-deals" className="bg-[#F59E0B] hover:bg-[#D97706] text-[#0F172A] text-sm font-semibold px-4 py-2 rounded-lg transition-colors flex items-center gap-1 shrink-0">
-            Explore Now <ArrowRight className="h-4 w-4" />
-          </Link>
-        </div>
+        )}
 
         {/* hero bento — side promos always show; your uploaded banner
             replaces ONLY the main navy card, shown fully (never cropped). */}
@@ -797,18 +812,6 @@ export function MarketplaceHome() {
               </Link>
               )
             })}
-          </div>
-          {/* subcategory chips */}
-          <div className="flex flex-wrap gap-1.5 mt-4">
-            {MARKET_DEPARTMENTS.flatMap((d) => d.subs.map((s) => ({ name: s.name, slug: s.slug }))).slice(0, 20).map((s) => (
-              <Link
-                key={s.slug}
-                href={`/marketplace/category/${s.slug}`}
-                className="text-[11px] font-medium bg-[#F8FAFC] border border-[#E2E8F0] rounded-full px-2.5 py-1 text-slate-600 hover:text-[#0F172A] hover:border-[#F59E0B]"
-              >
-                {s.name}
-              </Link>
-            ))}
           </div>
         </section>
 

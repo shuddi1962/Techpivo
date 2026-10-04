@@ -150,19 +150,25 @@ export function CategoryShowcase({
     railRef.current?.scrollBy({ left: dir * 640, behavior: "smooth" })
 
   const pill = (isActive: boolean) =>
-    `flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-[13px] font-semibold transition-colors lg:w-full lg:justify-start lg:rounded-lg lg:px-3 ${
+    `flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-[13px] font-semibold transition-colors ${
       isActive ? "bg-[#0F172A] text-white" : "text-slate-500 hover:text-[#0F172A] hover:bg-slate-100"
     }`
 
   return (
     <section aria-label={title} className="bg-white rounded-2xl p-5 shadow-sm border border-[#E2E8F0]">
       <style>{`.showcase-rail{scrollbar-width:none;-ms-overflow-style:none}.showcase-rail::-webkit-scrollbar{display:none}`}</style>
-      {/* header: title + yellow underline, arrows */}
-      <div className="mb-4 flex flex-wrap items-center gap-3">
+      {/* header: title + yellow underline, shop-all, arrows */}
+      <div className="mb-3 flex flex-wrap items-center gap-3">
         <div className="mr-auto">
           <h2 className="text-lg font-extrabold uppercase tracking-tight text-[#0F172A]">{title}</h2>
           <span className="mt-1 block h-1 w-12 rounded-full bg-[#F59E0B]" aria-hidden />
         </div>
+        <Link
+          href={`/marketplace/category/${deptSlug}`}
+          className="text-sm font-semibold text-[#B45309] hover:underline"
+        >
+          Shop all {title.toLowerCase()} →
+        </Link>
         <div className="flex items-center gap-2">
           <button
             type="button"
@@ -183,84 +189,66 @@ export function CategoryShowcase({
         </div>
       </div>
 
-      <div className="flex flex-col gap-4 lg:flex-row">
-        {/* left subcategory sidebar (horizontal scroll row on mobile) */}
-        <aside className="shrink-0 lg:w-52">
-          <p className="mb-2 hidden text-[11px] font-bold uppercase tracking-wider text-slate-400 lg:block">
-            Shop by category
-          </p>
-          <nav aria-label={`${title} categories`} className="flex gap-1.5 overflow-x-auto pb-1 lg:flex-col lg:overflow-visible lg:pb-0">
-            <button
-              type="button"
-              onClick={() => setActive(null)}
-              aria-pressed={active === null}
-              className={pill(active === null)}
-            >
-              <span>All</span>
-              <span className={`text-[11px] tabular-nums ${active === null ? "text-white/70" : "text-slate-400"}`}>
-                ({totalCount})
-              </span>
-            </button>
-            {nav.map((n) => (
-              <button
-                key={n.slug}
-                type="button"
-                onClick={() => setActive(n.slug)}
-                aria-pressed={active === n.slug}
-                className={pill(active === n.slug)}
-              >
-                <span className="truncate">{n.name}</span>
-                <span className={`text-[11px] tabular-nums ${active === n.slug ? "text-white/70" : "text-slate-400"}`}>
-                  ({n.count})
-                </span>
-              </button>
-            ))}
-          </nav>
-          <Link
-            href={`/marketplace/category/${deptSlug}`}
-            className="mt-3 hidden text-sm font-semibold text-[#B45309] hover:underline lg:block"
+      {/* subcategory pills — horizontal, landscape */}
+      <nav aria-label={`${title} categories`} className="mb-4 flex items-center gap-1.5 overflow-x-auto pb-1" style={{ scrollbarWidth: "none" }}>
+        <button
+          type="button"
+          onClick={() => setActive(null)}
+          aria-pressed={active === null}
+          className={pill(active === null)}
+        >
+          <span>All</span>
+          <span className={`text-[11px] tabular-nums ${active === null ? "text-white/70" : "text-slate-400"}`}>
+            ({totalCount})
+          </span>
+        </button>
+        {nav.map((n) => (
+          <button
+            key={n.slug}
+            type="button"
+            onClick={() => setActive(n.slug)}
+            aria-pressed={active === n.slug}
+            className={pill(active === n.slug)}
           >
-            Shop all {title.toLowerCase()} →
-          </Link>
-        </aside>
+            <span className="whitespace-nowrap">{n.name}</span>
+            <span className={`text-[11px] tabular-nums ${active === n.slug ? "text-white/70" : "text-slate-400"}`}>
+              ({n.count})
+            </span>
+          </button>
+        ))}
+      </nav>
 
-        {/* product rail — scrollbar hidden, glides non-stop */}
-        <div className="min-w-0 flex-1">
-          <div
-            className="showcase-rail flex gap-3 overflow-x-auto pb-1 snap-x"
-            ref={railRef}
-            onMouseEnter={() => { pauseRef.current = true }}
-            onMouseLeave={() => { pauseRef.current = false }}
-            onTouchStart={() => { pauseRef.current = true }}
-            onTouchEnd={() => { pauseRef.current = false }}
-          >
-            <Link
-              href="/marketplace/deals"
-              className="flex w-44 shrink-0 snap-start flex-col justify-between overflow-hidden rounded-xl bg-[#DC2626] p-4 text-white sm:w-52"
-            >
-              <span className="inline-flex w-fit items-center gap-1 rounded bg-white/20 px-2 py-0.5 text-[11px] font-bold uppercase">
-                <Flame className="h-3 w-3" /> Special
-              </span>
-              <span className="mt-6 block">
-                <span className="block text-3xl font-extrabold leading-none">SALE</span>
-                <span className="mt-1 block text-xs font-semibold text-white/85">Up to 50% off {title.toLowerCase()}</span>
-              </span>
-              <span className="mt-6 inline-flex w-fit items-center rounded-lg bg-white px-4 py-2 text-xs font-bold text-[#991B1B]">
-                Shop now
-              </span>
-            </Link>
-            {shown.map((p) => (
-              <ShowcaseCard key={p.id} p={p} onAdd={onAdd} added={added} wished={wished} onWish={onWish} />
-            ))}
-            {shown.length === 0 && (
-              <p className="flex items-center px-4 text-sm text-slate-500">No products in this category yet.</p>
-            )}
-          </div>
-          <div className="mt-3 text-right lg:hidden">
-            <Link href={`/marketplace/category/${deptSlug}`} className="text-sm font-semibold text-[#B45309] hover:underline">
-              Shop all {title.toLowerCase()} →
-            </Link>
-          </div>
+      {/* side promo banner + product rail — scrollbar hidden */}
+      <div className="flex gap-3">
+        <Link
+          href="/marketplace/deals"
+          className="flex w-36 shrink-0 flex-col justify-between self-stretch overflow-hidden rounded-xl bg-[#DC2626] p-4 text-white sm:w-52"
+        >
+          <span className="inline-flex w-fit items-center gap-1 rounded bg-white/20 px-2 py-0.5 text-[11px] font-bold uppercase">
+            <Flame className="h-3 w-3" /> Special
+          </span>
+          <span className="mt-6 block">
+            <span className="block text-3xl font-extrabold leading-none">SALE</span>
+            <span className="mt-1 block text-xs font-semibold text-white/85">Up to 50% off {title.toLowerCase()}</span>
+          </span>
+          <span className="mt-6 inline-flex w-fit items-center rounded-lg bg-white px-4 py-2 text-xs font-bold text-[#991B1B]">
+            Shop now
+          </span>
+        </Link>
+        <div
+          className="showcase-rail flex min-w-0 flex-1 gap-3 overflow-x-auto pb-1 snap-x"
+          ref={railRef}
+          onMouseEnter={() => { pauseRef.current = true }}
+          onMouseLeave={() => { pauseRef.current = false }}
+          onTouchStart={() => { pauseRef.current = true }}
+          onTouchEnd={() => { pauseRef.current = false }}
+        >
+          {shown.map((p) => (
+            <ShowcaseCard key={p.id} p={p} onAdd={onAdd} added={added} wished={wished} onWish={onWish} />
+          ))}
+          {shown.length === 0 && (
+            <p className="flex items-center px-4 text-sm text-slate-500">No products in this category yet.</p>
+          )}
         </div>
       </div>
     </section>
