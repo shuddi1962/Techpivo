@@ -527,51 +527,54 @@ export function MarketplaceHome() {
     return COLLECTION_SLUGS.map((slug) => bySlug.get(slug)).filter((c): c is CollectionItem => !!c)
   }, [dbProducts, banners, deptOf, COLLECTION_SLUGS])
 
-  // Smartphone & tablet showcase: live products in the phones department,
-  // each tagged with its subcategory slug for the category nav. Prefers
-  // products not already shown in rails above; falls back to the full
-  // phones shelf so the rail never vanishes while stock exists.
-  const phonesDept = MARKET_DEPARTMENTS.find((d) => d.slug === "phones-accessories")
-  const phonesById = new Map(dbProducts.map((d) => [d.id, d]))
-  const phonesShelf = grid
-    .filter((p) => deptOf.get(p.id) === "phones-accessories")
-    .map((p) => {
-      const d = phonesById.get(p.id)
-      return { ...p, subSlug: d?.subcategory_slug || d?.category_slug || null }
-    })
-  const phonesItems = (() => {
-    const fresh = phonesShelf.filter((p) => !usedIds.has(p.id))
-    const items = fresh.length > 0 ? fresh : phonesShelf
-    items.forEach((p) => usedIds.add(p.id))
-    return items
-  })()
-
-  // Department spotlights: STRICT stored-category match only. A product
-  // lives in exactly one department (its category_slug), so it can never
-  // appear under a department it doesn't belong to. Departments with the
-  // most live stock go first (not hardcoded first-three), and each skips
-  // products already shown in rails above so spotlights feel fresh.
-  const spotDepts = MARKET_DEPARTMENTS.map((dept) => ({
-    dept,
-    count: grid.filter((p) => deptOf.get(p.id) === dept.slug).length,
-  }))
-    .sort((a, b) => b.count - a.count)
-    .slice(0, 3)
-    .map(({ dept }) => {
-      const deptItems = grid.filter((p) => deptOf.get(p.id) === dept.slug)
-      let items = deptItems.filter((p) => !usedIds.has(p.id)).slice(0, 5)
-      if (items.length < 3) {
+  // Showcase sections: the 4 departments with the most live stock. Each
+  // gets the left-nav showcase treatment with its stocked subcategories
+  // (with counts). Items are drawn from products not shown in any rail
+  // above — distinct everywhere — topped up from the department shelf so
+  // no section looks thin. Strict stored-category match only: a product
+  // lives in exactly one department, so it can never appear under a
+  // department it doesn't belong to.
+  const dbById = new Map(dbProducts.map((d) => [d.id, d]))
+  // Showcase order: Phones always leads (the store's signature section),
+  // followed by the 3 departments with the most live stock.
+  const rankedDepts = MARKET_DEPARTMENTS.map((dep) => ({
+    dep,
+    count: grid.filter((p) => deptOf.get(p.id) === dep.slug).length,
+  })).sort((a, b) => b.count - a.count)
+  const showcaseOrder = [
+    ...rankedDepts.filter((r) => r.dep.slug === "phones-accessories"),
+    ...rankedDepts.filter((r) => r.dep.slug !== "phones-accessories").slice(0, 3),
+  ].map((r) => r.dep)
+  const showcases = showcaseOrder
+    .map((dep) => {
+      const shelf = grid
+        .filter((p) => deptOf.get(p.id) === dep.slug)
+        .map((p) => {
+          const d = dbById.get(p.id)
+          return { ...p, subSlug: d?.subcategory_slug || d?.category_slug || null }
+        })
+      const counts = new Map<string, number>()
+      shelf.forEach((p) => {
+        if (p.subSlug) counts.set(p.subSlug, (counts.get(p.subSlug) || 0) + 1)
+      })
+      const nav = dep.subs
+        .filter((s) => (counts.get(s.slug) || 0) > 0)
+        .map((s) => ({ name: s.name, slug: s.slug, count: counts.get(s.slug) || 0 }))
+      let items = shelf.filter((p) => !usedIds.has(p.id))
+      if (items.length < 4) {
         const have = new Set(items.map((p) => p.id))
-        for (const p of deptItems) {
-          if (items.length >= 5) break
+        for (const p of shelf) {
+          if (items.length >= 10) break
           if (!have.has(p.id)) {
             items.push(p)
             have.add(p.id)
           }
         }
+      } else {
+        items = items.slice(0, 10)
       }
       items.forEach((p) => usedIds.add(p.id))
-      return { dept, items }
+      return { dep, nav, items, total: shelf.length }
     })
     .filter((x) => x.items.length > 0)
 
@@ -998,19 +1001,22 @@ export function MarketplaceHome() {
           )
         })()}
 
-        {/* smartphone & tablet showcase */}
-        {phonesDept && (
+        {/* department showcases — top departments by live stock, each with
+            a left-side subcategory nav and its own distinct products */}
+        {showcases.map(({ dep, nav, items, total }) => (
           <CategoryShowcase
-            title="Smartphone & Tablet"
-            deptSlug={phonesDept.slug}
-            nav={phonesDept.subs.filter((s) => phonesItems.some((p) => p.subSlug === s.slug)).map((s) => ({ name: s.name, slug: s.slug }))}
-            items={phonesItems}
+            key={dep.slug}
+            title={dep.name}
+            deptSlug={dep.slug}
+            nav={nav}
+            totalCount={total}
+            items={items}
             onAdd={addToCart}
             added={justAdded}
             wished={wishlist}
             onWish={toggleWish}
           />
-        )}
+        ))}
 
         {/* shop by collections — every real category node */}
         <ShopCollections collections={collections} />
@@ -1076,49 +1082,6 @@ export function MarketplaceHome() {
           </section>
         )}
 
-        {/* departments — real category spotlights (only depts with live items) */}
-        {spotDepts.map(({ dept, items }, di) => {
-          const accent = di === 1 ? "#EF4444" : "#F59E0B"
-          return (
-          <section key={dept.slug} className="bg-white rounded-2xl p-5 shadow-sm border border-[#E2E8F0]">
-            <div className="flex items-center justify-between gap-2 pb-4">
-              <div className="flex items-center gap-2.5">
-                <div className="w-2.5 h-6 rounded-full" style={{ background: accent }} />
-                <h2 className="text-lg font-bold text-[#0F172A]">{dept.name}</h2>
-              </div>
-              <Link
-                href={`/marketplace/category/${dept.slug}`}
-                className="text-sm text-[#B45309] hover:text-[#D97706] font-semibold hidden sm:inline-flex items-center gap-1"
-              >
-                Shop all <ChevronRight className="h-4 w-4" />
-              </Link>
-            </div>
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-3">
-              <div className="lg:col-span-3 rounded-xl overflow-hidden text-white flex flex-col justify-between relative min-h-[280px]">
-                <img src={marketImage(banners.departments[dept.slug] || deptCover.get(dept.slug) || dept.image)} alt={dept.name} loading="lazy" decoding="async" className="absolute inset-0 w-full h-full object-cover" />
-                <div className="absolute inset-0" style={{ background: "linear-gradient(180deg, rgba(15,23,42,0.55) 0%, rgba(15,23,42,0.92) 100%)" }} />
-                <div className="space-y-1.5 relative z-10 p-5">
-                  <span className="bg-[#EF4444] text-white text-[11px] font-bold uppercase px-2 py-0.5 rounded">Mega Drop</span>
-                  <h3 className="text-2xl font-extrabold leading-tight">Special<br />Sale <span className="text-[#F59E0B]">Up to 50%</span></h3>
-                  <p className="text-sm text-slate-300">{dept.subs.length} groups · {dept.subs.reduce((n, s) => n + s.items.length, 0)} product types with full warranty.</p>
-                </div>
-                <Link
-                  href={`/marketplace/category/${dept.slug}`}
-                  className="relative z-10 m-5 mt-4 bg-[#F59E0B] hover:bg-[#D97706] text-[#0F172A] text-sm font-bold text-center py-2.5 rounded-lg transition-colors"
-                >
-                  Shop {dept.name.split(" ")[0]}
-                </Link>
-              </div>
-              <div className="lg:col-span-9 grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-5 gap-3">
-                {items.map((p) => (
-                  <ProductCard key={`${dept.slug}-${p.id}`} {...cardProps(p)} />
-                ))}
-              </div>
-            </div>
-          </section>
-          )
-        })}
-
         {/* promo banner — admin-custom image or default gradient */}
         <section
           className="rounded-2xl overflow-hidden p-6 md:p-8 text-[#0F172A] relative"
@@ -1140,7 +1103,7 @@ export function MarketplaceHome() {
             </div>
             <div className="md:col-span-3 flex items-center justify-center md:justify-end">
               <Link
-                href={`/marketplace/category/${MARKET_DEPARTMENTS[0].slug}`}
+                href="/marketplace/category/home-appliances"
                 className="bg-[#0F172A] hover:bg-black text-white text-sm font-bold px-6 py-3 rounded-lg transition-colors shadow-lg"
               >
                 Shop Appliances

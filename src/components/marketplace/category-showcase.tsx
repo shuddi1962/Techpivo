@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { useEffect, useMemo, useRef, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import {
   ArrowLeftRight, Check, ChevronLeft, ChevronRight, Flame, Heart, ShoppingCart,
 } from "lucide-react"
@@ -15,6 +15,12 @@ interface ShowcaseActions {
   added: Record<string, boolean>
   wished: Record<string, boolean>
   onWish: (id: string) => void
+}
+
+export interface ShowcaseNavItem {
+  name: string
+  slug: string
+  count: number
 }
 
 function ShowcaseCard({ p, onAdd, added, wished, onWish }: { p: DemoProduct } & ShowcaseActions) {
@@ -101,6 +107,7 @@ export function CategoryShowcase({
   title,
   deptSlug,
   nav,
+  totalCount,
   items,
   onAdd,
   added,
@@ -109,7 +116,8 @@ export function CategoryShowcase({
 }: {
   title: string
   deptSlug: string
-  nav: Array<{ name: string; slug: string }>
+  nav: ShowcaseNavItem[]
+  totalCount: number
   items: Array<DemoProduct & { subSlug?: string | null }>
   onAdd: (p: DemoProduct) => void
   added: Record<string, boolean>
@@ -121,7 +129,7 @@ export function CategoryShowcase({
   const pauseRef = useRef(false)
 
   // Auto-moving rail — glides on its own, pauses while touched, wraps
-  // around at the end for a non-stop loop feel.
+  // around at the end for a non-stop loop feel. No visible scrollbar.
   useEffect(() => {
     const t = setInterval(() => {
       const el = railRef.current
@@ -134,45 +142,27 @@ export function CategoryShowcase({
     return () => clearInterval(t)
   }, [])
 
-  const shown = useMemo(
-    () => (active ? items.filter((p) => p.subSlug === active) : items),
-    [items, active]
-  )
+  const shown = active ? items.filter((p) => p.subSlug === active) : items
 
   if (items.length === 0) return null
 
   const scroll = (dir: 1 | -1) =>
     railRef.current?.scrollBy({ left: dir * 640, behavior: "smooth" })
 
+  const pill = (isActive: boolean) =>
+    `flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-[13px] font-semibold transition-colors lg:w-full lg:justify-start lg:rounded-lg lg:px-3 ${
+      isActive ? "bg-[#0F172A] text-white" : "text-slate-500 hover:text-[#0F172A] hover:bg-slate-100"
+    }`
+
   return (
     <section aria-label={title} className="bg-white rounded-2xl p-5 shadow-sm border border-[#E2E8F0]">
-      {/* header: title + yellow underline, category nav, arrows */}
+      <style>{`.showcase-rail{scrollbar-width:none;-ms-overflow-style:none}.showcase-rail::-webkit-scrollbar{display:none}`}</style>
+      {/* header: title + yellow underline, arrows */}
       <div className="mb-4 flex flex-wrap items-center gap-3">
         <div className="mr-auto">
           <h2 className="text-lg font-extrabold uppercase tracking-tight text-[#0F172A]">{title}</h2>
           <span className="mt-1 block h-1 w-12 rounded-full bg-[#F59E0B]" aria-hidden />
         </div>
-        <nav aria-label={`${title} categories`} className="flex min-w-0 flex-1 items-center gap-1 overflow-x-auto whitespace-nowrap" style={{ scrollbarWidth: "none" }}>
-          <button
-            type="button"
-            onClick={() => setActive(null)}
-            aria-pressed={active === null}
-            className={`shrink-0 rounded-full px-3 py-1.5 text-[13px] font-semibold transition-colors ${active === null ? "bg-[#0F172A] text-white" : "text-slate-500 hover:text-[#0F172A]"}`}
-          >
-            All
-          </button>
-          {nav.map((n) => (
-            <button
-              key={n.slug}
-              type="button"
-              onClick={() => setActive(n.slug)}
-              aria-pressed={active === n.slug}
-              className={`shrink-0 rounded-full px-3 py-1.5 text-[13px] font-semibold transition-colors ${active === n.slug ? "bg-[#0F172A] text-white" : "text-slate-500 hover:text-[#0F172A]"}`}
-            >
-              {n.name}
-            </button>
-          ))}
-        </nav>
         <div className="flex items-center gap-2">
           <button
             type="button"
@@ -193,43 +183,85 @@ export function CategoryShowcase({
         </div>
       </div>
 
-      {/* promo banner + product rail */}
-      <div
-        className="flex gap-3 overflow-x-auto pb-1 snap-x"
-        ref={railRef}
-        style={{ scrollbarWidth: "thin" }}
-        onMouseEnter={() => { pauseRef.current = true }}
-        onMouseLeave={() => { pauseRef.current = false }}
-        onTouchStart={() => { pauseRef.current = true }}
-        onTouchEnd={() => { pauseRef.current = false }}
-      >
-        <Link
-          href="/marketplace/deals"
-          className="flex w-44 shrink-0 snap-start flex-col justify-between overflow-hidden rounded-xl bg-[#DC2626] p-4 text-white sm:w-52"
-        >
-          <span className="inline-flex w-fit items-center gap-1 rounded bg-white/20 px-2 py-0.5 text-[11px] font-bold uppercase">
-            <Flame className="h-3 w-3" /> Special
-          </span>
-          <span className="mt-6 block">
-            <span className="block text-3xl font-extrabold leading-none">SALE</span>
-            <span className="mt-1 block text-xs font-semibold text-white/85">Up to 50% off {title.toLowerCase()}</span>
-          </span>
-          <span className="mt-6 inline-flex w-fit items-center rounded-lg bg-white px-4 py-2 text-xs font-bold text-[#991B1B]">
-            Shop now
-          </span>
-        </Link>
-        {shown.map((p) => (
-          <ShowcaseCard key={p.id} p={p} onAdd={onAdd} added={added} wished={wished} onWish={onWish} />
-        ))}
-        {shown.length === 0 && (
-          <p className="flex items-center px-4 text-sm text-slate-500">No products in this category yet.</p>
-        )}
-      </div>
+      <div className="flex flex-col gap-4 lg:flex-row">
+        {/* left subcategory sidebar (horizontal scroll row on mobile) */}
+        <aside className="shrink-0 lg:w-52">
+          <p className="mb-2 hidden text-[11px] font-bold uppercase tracking-wider text-slate-400 lg:block">
+            Shop by category
+          </p>
+          <nav aria-label={`${title} categories`} className="flex gap-1.5 overflow-x-auto pb-1 lg:flex-col lg:overflow-visible lg:pb-0">
+            <button
+              type="button"
+              onClick={() => setActive(null)}
+              aria-pressed={active === null}
+              className={pill(active === null)}
+            >
+              <span>All</span>
+              <span className={`text-[11px] tabular-nums ${active === null ? "text-white/70" : "text-slate-400"}`}>
+                ({totalCount})
+              </span>
+            </button>
+            {nav.map((n) => (
+              <button
+                key={n.slug}
+                type="button"
+                onClick={() => setActive(n.slug)}
+                aria-pressed={active === n.slug}
+                className={pill(active === n.slug)}
+              >
+                <span className="truncate">{n.name}</span>
+                <span className={`text-[11px] tabular-nums ${active === n.slug ? "text-white/70" : "text-slate-400"}`}>
+                  ({n.count})
+                </span>
+              </button>
+            ))}
+          </nav>
+          <Link
+            href={`/marketplace/category/${deptSlug}`}
+            className="mt-3 hidden text-sm font-semibold text-[#B45309] hover:underline lg:block"
+          >
+            Shop all {title.toLowerCase()} →
+          </Link>
+        </aside>
 
-      <div className="mt-3 text-right">
-        <Link href={`/marketplace/category/${deptSlug}`} className="text-sm font-semibold text-[#B45309] hover:underline">
-          Shop all {title.toLowerCase()} →
-        </Link>
+        {/* product rail — scrollbar hidden, glides non-stop */}
+        <div className="min-w-0 flex-1">
+          <div
+            className="showcase-rail flex gap-3 overflow-x-auto pb-1 snap-x"
+            ref={railRef}
+            onMouseEnter={() => { pauseRef.current = true }}
+            onMouseLeave={() => { pauseRef.current = false }}
+            onTouchStart={() => { pauseRef.current = true }}
+            onTouchEnd={() => { pauseRef.current = false }}
+          >
+            <Link
+              href="/marketplace/deals"
+              className="flex w-44 shrink-0 snap-start flex-col justify-between overflow-hidden rounded-xl bg-[#DC2626] p-4 text-white sm:w-52"
+            >
+              <span className="inline-flex w-fit items-center gap-1 rounded bg-white/20 px-2 py-0.5 text-[11px] font-bold uppercase">
+                <Flame className="h-3 w-3" /> Special
+              </span>
+              <span className="mt-6 block">
+                <span className="block text-3xl font-extrabold leading-none">SALE</span>
+                <span className="mt-1 block text-xs font-semibold text-white/85">Up to 50% off {title.toLowerCase()}</span>
+              </span>
+              <span className="mt-6 inline-flex w-fit items-center rounded-lg bg-white px-4 py-2 text-xs font-bold text-[#991B1B]">
+                Shop now
+              </span>
+            </Link>
+            {shown.map((p) => (
+              <ShowcaseCard key={p.id} p={p} onAdd={onAdd} added={added} wished={wished} onWish={onWish} />
+            ))}
+            {shown.length === 0 && (
+              <p className="flex items-center px-4 text-sm text-slate-500">No products in this category yet.</p>
+            )}
+          </div>
+          <div className="mt-3 text-right lg:hidden">
+            <Link href={`/marketplace/category/${deptSlug}`} className="text-sm font-semibold text-[#B45309] hover:underline">
+              Shop all {title.toLowerCase()} →
+            </Link>
+          </div>
+        </div>
       </div>
     </section>
   )
