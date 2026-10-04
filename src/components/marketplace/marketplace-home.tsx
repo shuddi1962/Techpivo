@@ -32,6 +32,7 @@ interface DbProduct {
   program_key: string | null
   is_featured: boolean
   stock?: number | null
+  clicks?: number | null
   category_slug?: string | null
   subcategory_slug?: string | null
 }
@@ -198,6 +199,24 @@ function readRecentIds(): string[] {
   }
 }
 
+function discountRateOf(p: { price: number; oldPrice?: number }): number {
+  return p.oldPrice && p.oldPrice > p.price ? 1 - p.price / p.oldPrice : 0
+}
+
+// Take up to n items from pool, skipping (and recording) IDs already used
+// by an earlier homepage section. Mutates `used`.
+function takeFresh<T extends { id: string }>(pool: T[], used: Set<string>, n: number): T[] {
+  const out: T[] = []
+  for (const p of pool) {
+    if (out.length >= n) break
+    if (!used.has(p.id)) {
+      out.push(p)
+      used.add(p.id)
+    }
+  }
+  return out
+}
+
 interface RevStat { sum: number; n: number }
 
 export function MarketplaceHome() {
@@ -255,7 +274,7 @@ export function MarketplaceHome() {
         .eq("is_active", true)
         .order("is_featured", { ascending: false })
         .order("created_at", { ascending: false })
-        .limit(24)
+        .limit(120)
         .then(({ data }) => {
           if (alive && data) setDbProducts(data as DbProduct[])
         })
@@ -328,14 +347,44 @@ export function MarketplaceHome() {
   )
 
   const grid: DemoProduct[] = liveProducts
-  // Strict per-tab lists — each tab shows genuinely different products so
-  // switching tabs always changes the grid (no silent backfilling).
-  const newArrivals = grid.slice(0, 6)
-  const featured = grid.filter((p) => p.badge === "Featured").slice(0, 6)
-  const best = [...grid]
-    .filter((p) => p.reviews > 0)
-    .sort((a, b) => b.reviews - a.reviews || b.rating - a.rating)
+  // Homepage allocation — every product appears in ONE section only.
+  // Order: flash → featured → new → best → trending, each skipping IDs
+  // already taken, so rails never repeat each other. (The tabbed grid
+  // re-uses these same lists as alternative catalog views — that overlap
+  // is intentional.) Best sellers fall back to most-clicked / biggest
+  // discount while no reviews exist yet, so all three panels always show.
+  const clicksById = new Map<string, number>(
+    dbProducts.map((d) => [d.id, Number(d.clicks) || 0])
+  )
+  const usedIds = new Set<string>()
+  const flashItems = takeFresh(
+    [...grid].sort((a, b) => discountRateOf(b) - discountRateOf(a)),
+    usedIds,
+    4
+  )
+  const featured = takeFresh(
+    grid.filter((p) => p.badge === "Featured"),
+    usedIds,
+    6
+  )
+  const newArrivals = takeFresh(grid, usedIds, 6)
+  const bestPool = [...grid].sort(
+    (a, b) =>
+      b.reviews - a.reviews ||
+      (clicksById.get(b.id) || 0) - (clicksById.get(a.id) || 0) ||
+      discountRateOf(b) - discountRateOf(a) ||
+      b.rating - a.rating
+  )
+  const best = takeFresh(bestPool, usedIds, 6)
+  const trending = [...grid]
+    .filter((p) => !usedIds.has(p.id))
+    .sort(
+      (a, b) =>
+        (clicksById.get(b.id) || 0) - (clicksById.get(a.id) || 0) ||
+        discountRateOf(b) - discountRateOf(a)
+    )
     .slice(0, 6)
+  trending.forEach((p) => usedIds.add(p.id))
   const tabShown = tab === "new" ? newArrivals : tab === "featured" ? featured : best
 
   const q = query.trim().toLowerCase()
@@ -450,44 +499,52 @@ export function MarketplaceHome() {
   }, [dbProducts, banners, deptCover, COLLECTION_SLUGS])
 
   // Smartphone & tablet showcase: live products in the phones department,
-  // each tagged with its subcategory slug for the category nav.
+  // each tagged with its subcategory slug for the category nav. Prefers
+  // products not already shown in rails above; falls back to the full
+  // phones shelf so the rail never vanishes while stock exists.
   const phonesDept = MARKET_DEPARTMENTS.find((d) => d.slug === "phones-accessories")
-  const phonesItems = useMemo(() => {
-    const byId = new Map(dbProducts.map((d) => [d.id, d]))
-    return grid
-      .filter((p) => deptOf.get(p.id) === "phones-accessories")
-      .map((p) => {
-        const d = byId.get(p.id)
-        return { ...p, subSlug: d?.subcategory_slug || d?.category_slug || null }
-      })
-  }, [grid, dbProducts, deptOf])
-
-  // Flash deals: live discounted products first, then the rest.
-  const flashItems = useMemo(
-    () =>
-      [...grid]
-        .sort((a, b) => {
-          const da = a.oldPrice && a.oldPrice > a.price ? 1 - a.price / a.oldPrice : -1
-          const db = b.oldPrice && b.oldPrice > b.price ? 1 - b.price / b.oldPrice : -1
-          return db - da
-        })
-        .slice(0, 4),
-    [grid]
-  )
+  const phonesById = new Map(dbProducts.map((d) => [d.id, d]))
+  const phonesShelf = grid
+    .filter((p) => deptOf.get(p.id) === "phones-accessories")
+    .map((p) => {
+      const d = phonesById.get(p.id)
+      return { ...p, subSlug: d?.subcategory_slug || d?.category_slug || null }
+    })
+  const phonesItems = (() => {
+    const fresh = phonesShelf.filter((p) => !usedIds.has(p.id))
+    const items = fresh.length > 0 ? fresh : phonesShelf
+    items.forEach((p) => usedIds.add(p.id))
+    return items
+  })()
 
   // Department spotlights: STRICT stored-category match only. A product
   // lives in exactly one department (its category_slug), so it can never
-  // appear under a department it doesn't belong to.
-  const spotDepts = useMemo(
-    () =>
-      MARKET_DEPARTMENTS.slice(0, 3)
-        .map((dept) => ({
-          dept,
-          items: grid.filter((p) => deptOf.get(p.id) === dept.slug).slice(0, 5),
-        }))
-        .filter((x) => x.items.length > 0),
-    [grid, deptOf]
-  )
+  // appear under a department it doesn't belong to. Departments with the
+  // most live stock go first (not hardcoded first-three), and each skips
+  // products already shown in rails above so spotlights feel fresh.
+  const spotDepts = MARKET_DEPARTMENTS.map((dept) => ({
+    dept,
+    count: grid.filter((p) => deptOf.get(p.id) === dept.slug).length,
+  }))
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 3)
+    .map(({ dept }) => {
+      const deptItems = grid.filter((p) => deptOf.get(p.id) === dept.slug)
+      let items = deptItems.filter((p) => !usedIds.has(p.id)).slice(0, 5)
+      if (items.length < 3) {
+        const have = new Set(items.map((p) => p.id))
+        for (const p of deptItems) {
+          if (items.length >= 5) break
+          if (!have.has(p.id)) {
+            items.push(p)
+            have.add(p.id)
+          }
+        }
+      }
+      items.forEach((p) => usedIds.add(p.id))
+      return { dept, items }
+    })
+    .filter((x) => x.items.length > 0)
 
   // Real recently-viewed products (recorded by product pages locally).
   const recentRows = useMemo(
@@ -711,7 +768,7 @@ export function MarketplaceHome() {
           </div>
           {/* subcategory chips */}
           <div className="flex flex-wrap gap-1.5 mt-4">
-            {MARKET_DEPARTMENTS.flatMap((d) => d.subs.map((s) => ({ name: s.name, slug: s.slug }))).slice(0, 14).map((s) => (
+            {MARKET_DEPARTMENTS.flatMap((d) => d.subs.map((s) => ({ name: s.name, slug: s.slug }))).slice(0, 20).map((s) => (
               <Link
                 key={s.slug}
                 href={`/marketplace/category/${s.slug}`}
@@ -871,9 +928,8 @@ export function MarketplaceHome() {
           onWish={toggleWish}
         />
 
-        {/* trending slider — reviewed best first, newest fills in until reviews exist */}
+        {/* trending slider — products not shown in any rail above */}
         {(() => {
-          const trending = [...best, ...grid.filter((g) => !best.some((b) => b.id === g.id))].slice(0, 6)
           if (trending.length < 2) return null
           return (
           <section className="bg-white rounded-2xl p-5 shadow-sm border border-[#E2E8F0]">
