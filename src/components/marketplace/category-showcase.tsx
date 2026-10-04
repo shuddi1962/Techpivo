@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { useMemo, useRef, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import {
   ArrowLeftRight, Check, ChevronLeft, ChevronRight, Flame, Heart, ShoppingCart,
 } from "lucide-react"
@@ -118,6 +118,21 @@ export function CategoryShowcase({
 }) {
   const [active, setActive] = useState<string | null>(null)
   const railRef = useRef<HTMLDivElement>(null)
+  const pauseRef = useRef(false)
+
+  // Auto-moving rail — glides on its own, pauses while touched, wraps
+  // around at the end for a non-stop loop feel.
+  useEffect(() => {
+    const t = setInterval(() => {
+      const el = railRef.current
+      if (!el || pauseRef.current || document.hidden) return
+      const max = el.scrollWidth - el.clientWidth - 8
+      if (max <= 0) return
+      if (el.scrollLeft >= max) el.scrollTo({ left: 0, behavior: "smooth" })
+      else el.scrollBy({ left: 320, behavior: "smooth" })
+    }, 3200)
+    return () => clearInterval(t)
+  }, [])
 
   const shown = useMemo(
     () => (active ? items.filter((p) => p.subSlug === active) : items),
@@ -179,7 +194,15 @@ export function CategoryShowcase({
       </div>
 
       {/* promo banner + product rail */}
-      <div className="flex gap-3 overflow-x-auto pb-1 snap-x" ref={railRef} style={{ scrollbarWidth: "thin" }}>
+      <div
+        className="flex gap-3 overflow-x-auto pb-1 snap-x"
+        ref={railRef}
+        style={{ scrollbarWidth: "thin" }}
+        onMouseEnter={() => { pauseRef.current = true }}
+        onMouseLeave={() => { pauseRef.current = false }}
+        onTouchStart={() => { pauseRef.current = true }}
+        onTouchEnd={() => { pauseRef.current = false }}
+      >
         <Link
           href="/marketplace/deals"
           className="flex w-44 shrink-0 snap-start flex-col justify-between overflow-hidden rounded-xl bg-[#DC2626] p-4 text-white sm:w-52"

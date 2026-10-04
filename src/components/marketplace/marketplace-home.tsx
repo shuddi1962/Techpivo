@@ -231,21 +231,25 @@ export function MarketplaceHome() {
   const trendRailRef = useRef<HTMLDivElement>(null)
   const storesRailRef = useRef<HTMLDivElement>(null)
   const trendPauseRef = useRef(false)
+  const storesPauseRef = useRef(false)
 
-  // Auto-moving product rail — glides on its own, pauses while touched.
+  // Auto-moving rails — glide on their own, pause while touched, wrap
+  // around at the end for a non-stop loop feel.
   useEffect(() => {
-    const t = setInterval(() => {
-      const el = trendRailRef.current
-      if (!el || trendPauseRef.current || document.hidden) return
+    const glide = (el: HTMLDivElement | null) => {
+      if (!el || document.hidden) return
       const max = el.scrollWidth - el.clientWidth - 8
       if (max <= 0) return
       if (el.scrollLeft >= max) el.scrollTo({ left: 0, behavior: "smooth" })
       else el.scrollBy({ left: 240, behavior: "smooth" })
+    }
+    const t = setInterval(() => {
+      if (!trendPauseRef.current) glide(trendRailRef.current)
+      if (!storesPauseRef.current) glide(storesRailRef.current)
     }, 2800)
     return () => clearInterval(t)
   }, [])
   const [query, setQuery] = useState("")
-  const [vendorFilter, setVendorFilter] = useState<string | null>(null)
   const [banners, setBanners] = useState<MarketBanners>({ ...EMPTY_BANNERS, departments: {} })
   const t = useCountdown()
 
@@ -383,14 +387,13 @@ export function MarketplaceHome() {
         (clicksById.get(b.id) || 0) - (clicksById.get(a.id) || 0) ||
         discountRateOf(b) - discountRateOf(a)
     )
-    .slice(0, 6)
+    .slice(0, 12)
   trending.forEach((p) => usedIds.add(p.id))
   const tabShown = tab === "new" ? newArrivals : tab === "featured" ? featured : best
 
   const q = query.trim().toLowerCase()
   const matchQuery = (p: DemoProduct) =>
     !q || p.name.toLowerCase().includes(q) || p.category.toLowerCase().includes(q)
-  const matchVendor = (p: DemoProduct) => !vendorFilter || p.category === vendorFilter
   const deptOf = useMemo(() => {
     const m = new Map<string, string>()
     dbProducts.forEach((d) => {
@@ -401,33 +404,40 @@ export function MarketplaceHome() {
     })
     return m
   }, [dbProducts])
-  const shown = tabShown.filter((p) => matchQuery(p) && matchVendor(p))
-  const filtering = q.length > 0 || vendorFilter !== null
+  const shown = tabShown.filter((p) => matchQuery(p))
+  const filtering = q.length > 0
   const tabEmpty = !filtering && tab !== "new" && tabShown.length === 0
   const wishCount = Object.values(wishlist).filter(Boolean).length
 
-  // Top stores: icon-led department tiles (no store names, no counts).
+  // Top stores: one tile per stocked subcategory (not per department),
+  // so the rail has ~25 distinct tiles and scrolls well. Cover = that
+  // subcategory's first live product photo — never a repeated generic.
   const vendors = useMemo(() => {
-    const byDept = new Map<string, DbProduct[]>()
+    const bySub = new Map<string, DbProduct[]>()
     dbProducts.forEach((d) => {
-      const slug = deptOf.get(d.id)
-      if (!slug) return
-      const list = byDept.get(slug) || []
+      const key = d.subcategory_slug || d.category_slug
+      if (!key) return
+      const list = bySub.get(key) || []
       list.push(d)
-      byDept.set(slug, list)
+      bySub.set(key, list)
     })
-    return MARKET_DEPARTMENTS.filter((dep) => (byDept.get(dep.slug) || []).length > 0).map((dep) => {
-      const items = byDept.get(dep.slug) || []
-      const short = dep.name.replace(/\s*&\s*/g, " & ")
-      return {
-        name: dep.name,
-        short,
-        slug: dep.slug,
-        icon: dep.icon,
-        cover: items.find((d) => d.product_image_url)?.product_image_url || dep.image,
-      }
+    const out: Array<{ name: string; short: string; dept: string; slug: string; icon: string; cover: string }> = []
+    MARKET_DEPARTMENTS.forEach((dep) => {
+      dep.subs.forEach((s) => {
+        const items = bySub.get(s.slug) || []
+        if (items.length === 0) return
+        out.push({
+          name: s.name,
+          short: s.name,
+          dept: dep.name,
+          slug: s.slug,
+          icon: dep.icon,
+          cover: items.find((d) => d.product_image_url)?.product_image_url || dep.image,
+        })
+      })
     })
-  }, [dbProducts, deptOf])
+    return out
+  }, [dbProducts])
 
   // Real product photo per department for Shop-by-Department tiles
   // (CJ-style: actual catalog photos, not generic stock).
@@ -464,39 +474,58 @@ export function MarketplaceHome() {
     []
   )
   const collections = useMemo<CollectionItem[]>(() => {
-    const bySub = new Map<string, string[]>()
+    // Candidate product images per node, in preference order.
+    const subImgs = new Map<string, string[]>()
     dbProducts.forEach((d) => {
       const key = d.subcategory_slug || d.category_slug
       if (key && d.product_image_url) {
-        const list = bySub.get(key) || []
-        list.push(d.product_image_url)
-        bySub.set(key, list)
+        const list = subImgs.get(key) || []
+        if (!list.includes(d.product_image_url)) list.push(d.product_image_url)
+        subImgs.set(key, list)
       }
     })
-    // Prefer an image no other card has used yet, so tiles never repeat.
+    const deptImgs = new Map<string, string[]>()
+    dbProducts.forEach((d) => {
+      const slug = deptOf.get(d.id)
+      if (slug && d.product_image_url) {
+        const list = deptImgs.get(slug) || []
+        if (!list.includes(d.product_image_url)) list.push(d.product_image_url)
+        deptImgs.set(slug, list)
+      }
+    })
+    const allImgs: string[] = []
+    dbProducts.forEach((d) => {
+      if (d.product_image_url && !allImgs.includes(d.product_image_url)) allImgs.push(d.product_image_url)
+    })
+    // Globally unique tile images: walk the 12 tiles in order, each takes
+    // the first candidate no other tile has used yet — so two different
+    // categories can never show the same photo.
     const used = new Set<string>()
-    const pick = (cands: string[], fallback: string): string => {
-      const fresh = cands.find((c) => !used.has(c))
-      const img = fresh || cands[0] || fallback
+    const claim = (cands: string[], fallback: string): string => {
+      const img = cands.find((c) => !used.has(c)) || allImgs.find((c) => !used.has(c)) || cands[0] || fallback
       used.add(img)
       return img
     }
     const bySlug = new Map<string, CollectionItem>()
     MARKET_DEPARTMENTS.forEach((dep) => {
-      const deptImg = banners.departments[dep.slug] || deptCover.get(dep.slug) || dep.image
-      used.add(deptImg)
-      bySlug.set(dep.slug, { name: dep.name, slug: dep.slug, href: `/marketplace/category/${dep.slug}`, image: deptImg })
+      const stock = banners.departments[dep.slug] || dep.image
+      bySlug.set(dep.slug, {
+        name: dep.name,
+        slug: dep.slug,
+        href: `/marketplace/category/${dep.slug}`,
+        image: claim(deptImgs.get(dep.slug) || [], stock),
+      })
       dep.subs.forEach((s) => {
         bySlug.set(s.slug, {
           name: s.name,
           slug: s.slug,
           href: `/marketplace/category/${s.slug}`,
-          image: pick(bySub.get(s.slug) || [], deptImg),
+          image: claim([...(subImgs.get(s.slug) || []), ...(deptImgs.get(dep.slug) || [])], stock),
         })
       })
     })
     return COLLECTION_SLUGS.map((slug) => bySlug.get(slug)).filter((c): c is CollectionItem => !!c)
-  }, [dbProducts, banners, deptCover, COLLECTION_SLUGS])
+  }, [dbProducts, banners, deptOf, COLLECTION_SLUGS])
 
   // Smartphone & tablet showcase: live products in the phones department,
   // each tagged with its subcategory slug for the category nav. Prefers
@@ -847,14 +876,6 @@ export function MarketplaceHome() {
           </div>
           {filtering && (
             <div className="flex flex-wrap items-center gap-2 pb-3">
-              {vendorFilter && (
-                <button
-                  onClick={() => setVendorFilter(null)}
-                  className="inline-flex items-center gap-1.5 text-xs font-semibold bg-[#DC2626] text-white rounded-full px-3 py-1.5 hover:bg-[#B91C1C]"
-                >
-                  {vendorFilter} <X className="h-3.5 w-3.5" />
-                </button>
-              )}
               {q && (
                 <button
                   onClick={() => setQuery("")}
@@ -903,10 +924,10 @@ export function MarketplaceHome() {
             </div>
           ) : (
             <div className="text-center py-10">
-              <p className="font-bold text-[#0F172A]">No products match your filters</p>
-              <p className="text-sm text-slate-500 mt-1">Try a different search or vendor.</p>
+              <p className="font-bold text-[#0F172A]">No products match your search</p>
+              <p className="text-sm text-slate-500 mt-1">Try a different search.</p>
               <button
-                onClick={() => { setQuery(""); setVendorFilter(null) }}
+                onClick={() => setQuery("")}
                 className="mt-3 bg-[#F59E0B] hover:bg-[#D97706] text-[#0F172A] text-sm font-bold px-5 py-2.5 rounded-lg transition-colors"
               >
                 Clear filters
@@ -982,7 +1003,7 @@ export function MarketplaceHome() {
           <CategoryShowcase
             title="Smartphone & Tablet"
             deptSlug={phonesDept.slug}
-            nav={phonesDept.subs.map((s) => ({ name: s.name, slug: s.slug }))}
+            nav={phonesDept.subs.filter((s) => phonesItems.some((p) => p.subSlug === s.slug)).map((s) => ({ name: s.name, slug: s.slug }))}
             items={phonesItems}
             onAdd={addToCart}
             added={justAdded}
@@ -1021,7 +1042,15 @@ export function MarketplaceHome() {
                 </button>
               </div>
             </div>
-            <div ref={storesRailRef} className="flex gap-3 overflow-x-auto pb-1 snap-x" style={{ scrollbarWidth: "thin" }}>
+            <div
+              ref={storesRailRef}
+              className="flex gap-3 overflow-x-auto pb-1 snap-x"
+              style={{ scrollbarWidth: "thin" }}
+              onMouseEnter={() => { storesPauseRef.current = true }}
+              onMouseLeave={() => { storesPauseRef.current = false }}
+              onTouchStart={() => { storesPauseRef.current = true }}
+              onTouchEnd={() => { storesPauseRef.current = false }}
+            >
               {vendors.map((v) => (
                 <Link
                   key={v.slug}
@@ -1037,6 +1066,9 @@ export function MarketplaceHome() {
                   </span>
                   <span className="mt-2 block truncate text-center text-[13px] font-medium text-slate-700 transition-colors group-hover:text-[#B45309]">
                     {v.short}
+                  </span>
+                  <span className="block truncate text-center text-[11px] text-slate-400">
+                    {v.dept}
                   </span>
                 </Link>
               ))}
