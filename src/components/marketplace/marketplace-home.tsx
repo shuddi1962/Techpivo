@@ -328,10 +328,14 @@ export function MarketplaceHome() {
   )
 
   const grid: DemoProduct[] = liveProducts
+  // Strict per-tab lists — each tab shows genuinely different products so
+  // switching tabs always changes the grid (no silent backfilling).
   const newArrivals = grid.slice(0, 6)
-  const featured = grid.filter((p) => p.badge === "Featured").concat(grid.filter((p) => p.badge !== "Featured")).slice(0, 6)
-  const byReviews = [...grid].sort((a, b) => b.reviews - a.reviews)
-  const best = (byReviews.length > 0 ? byReviews : grid).slice(0, 6)
+  const featured = grid.filter((p) => p.badge === "Featured").slice(0, 6)
+  const best = [...grid]
+    .filter((p) => p.reviews > 0)
+    .sort((a, b) => b.reviews - a.reviews || b.rating - a.rating)
+    .slice(0, 6)
   const tabShown = tab === "new" ? newArrivals : tab === "featured" ? featured : best
 
   const q = query.trim().toLowerCase()
@@ -350,6 +354,7 @@ export function MarketplaceHome() {
   }, [dbProducts])
   const shown = tabShown.filter((p) => matchQuery(p) && matchVendor(p))
   const filtering = q.length > 0 || vendorFilter !== null
+  const tabEmpty = !filtering && tab !== "new" && tabShown.length === 0
   const wishCount = Object.values(wishlist).filter(Boolean).length
 
   // Top stores: icon-led department tiles (no store names, no counts).
@@ -410,21 +415,34 @@ export function MarketplaceHome() {
     []
   )
   const collections = useMemo<CollectionItem[]>(() => {
-    const bySub = new Map<string, string>()
+    const bySub = new Map<string, string[]>()
     dbProducts.forEach((d) => {
       const key = d.subcategory_slug || d.category_slug
-      if (key && d.product_image_url && !bySub.has(key)) bySub.set(key, d.product_image_url)
+      if (key && d.product_image_url) {
+        const list = bySub.get(key) || []
+        list.push(d.product_image_url)
+        bySub.set(key, list)
+      }
     })
+    // Prefer an image no other card has used yet, so tiles never repeat.
+    const used = new Set<string>()
+    const pick = (cands: string[], fallback: string): string => {
+      const fresh = cands.find((c) => !used.has(c))
+      const img = fresh || cands[0] || fallback
+      used.add(img)
+      return img
+    }
     const bySlug = new Map<string, CollectionItem>()
     MARKET_DEPARTMENTS.forEach((dep) => {
       const deptImg = banners.departments[dep.slug] || deptCover.get(dep.slug) || dep.image
+      used.add(deptImg)
       bySlug.set(dep.slug, { name: dep.name, slug: dep.slug, href: `/marketplace/category/${dep.slug}`, image: deptImg })
       dep.subs.forEach((s) => {
         bySlug.set(s.slug, {
           name: s.name,
           slug: s.slug,
           href: `/marketplace/category/${s.slug}`,
-          image: bySub.get(s.slug) || deptImg,
+          image: pick(bySub.get(s.slug) || [], deptImg),
         })
       })
     })
@@ -457,22 +475,15 @@ export function MarketplaceHome() {
     [grid]
   )
 
-  // Department spotlights only for departments that actually have live
-  // products — never backfill unrelated items under a department name.
+  // Department spotlights: STRICT stored-category match only. A product
+  // lives in exactly one department (its category_slug), so it can never
+  // appear under a department it doesn't belong to.
   const spotDepts = useMemo(
     () =>
       MARKET_DEPARTMENTS.slice(0, 3)
         .map((dept) => ({
           dept,
-          items: grid.filter((p) => {
-            const mapped = deptOf.get(p.id)
-            if (mapped) return mapped === dept.slug
-            const needles = [dept.name, ...dept.subs.flatMap((s) => [s.name, ...s.items.map((i) => i.name)])]
-            const hay = `${p.name} ${p.category}`.toLowerCase()
-            return needles.some((n) =>
-              n.toLowerCase().split(/[^a-z0-9]+/).filter((w) => w.length > 4).some((w) => hay.includes(w))
-            )
-          }).slice(0, 5),
+          items: grid.filter((p) => deptOf.get(p.id) === dept.slug).slice(0, 5),
         }))
         .filter((x) => x.items.length > 0),
     [grid, deptOf]
@@ -815,6 +826,24 @@ export function MarketplaceHome() {
                 Browse departments
               </Link>
             </div>
+          ) : tabEmpty ? (
+            <div className="text-center py-10">
+              <Package className="h-10 w-10 text-slate-300 mx-auto mb-3" />
+              <p className="font-bold text-[#0F172A]">
+                {tab === "featured" ? "No featured products yet" : "No best sellers yet"}
+              </p>
+              <p className="text-sm text-slate-500 mt-1">
+                {tab === "featured"
+                  ? "Hand-picked highlights land here — browse the latest arrivals meanwhile."
+                  : "Top-rated picks appear here as soon as customers start reviewing."}
+              </p>
+              <button
+                onClick={() => setTab("new")}
+                className="mt-4 bg-[#F59E0B] hover:bg-[#D97706] text-[#0F172A] text-sm font-bold px-5 py-2.5 rounded-lg transition-colors"
+              >
+                Shop new arrivals
+              </button>
+            </div>
           ) : (
             <div className="text-center py-10">
               <p className="font-bold text-[#0F172A]">No products match your filters</p>
@@ -842,8 +871,11 @@ export function MarketplaceHome() {
           onWish={toggleWish}
         />
 
-        {/* trending slider — horizontal product rail */}
-        {best.length > 1 && (
+        {/* trending slider — reviewed best first, newest fills in until reviews exist */}
+        {(() => {
+          const trending = [...best, ...grid.filter((g) => !best.some((b) => b.id === g.id))].slice(0, 6)
+          if (trending.length < 2) return null
+          return (
           <section className="bg-white rounded-2xl p-5 shadow-sm border border-[#E2E8F0]">
             <style>{`.trend-rail{scrollbar-width:none;-ms-overflow-style:none}.trend-rail::-webkit-scrollbar{display:none}`}</style>
             <div className="flex items-center justify-between mb-4">
@@ -879,14 +911,15 @@ export function MarketplaceHome() {
               onTouchStart={() => { trendPauseRef.current = true }}
               onTouchEnd={() => { trendPauseRef.current = false }}
             >
-              {best.map((p) => (
+              {trending.map((p) => (
                 <div key={p.id} className="w-44 sm:w-52 shrink-0 snap-start">
                   <ProductCard {...cardProps(p)} />
                 </div>
               ))}
             </div>
           </section>
-        )}
+          )
+        })()}
 
         {/* smartphone & tablet showcase */}
         {phonesDept && (
