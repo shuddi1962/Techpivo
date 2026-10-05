@@ -250,9 +250,26 @@ export function MarketplaceHome() {
     return () => clearInterval(t)
   }, [])
   const [query, setQuery] = useState("")
-  // Per-visit store notice — closable, and it shows again on every visit
-  // (dismissal is intentionally not persisted).
-  const [showNotice, setShowNotice] = useState(true)
+  // Per-visit welcome popup — shows on every visit (dismissal is
+  // intentionally not persisted). Closable via X, backdrop or Escape.
+  const [showNotice, setShowNotice] = useState(false)
+  useEffect(() => {
+    const t = setTimeout(() => setShowNotice(true), 1000)
+    return () => clearTimeout(t)
+  }, [])
+  useEffect(() => {
+    if (!showNotice) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setShowNotice(false)
+    }
+    document.addEventListener("keydown", onKey)
+    const prev = document.body.style.overflow
+    document.body.style.overflow = "hidden"
+    return () => {
+      document.removeEventListener("keydown", onKey)
+      document.body.style.overflow = prev
+    }
+  }, [showNotice])
   const [banners, setBanners] = useState<MarketBanners>({ ...EMPTY_BANNERS, departments: {} })
   const t = useCountdown()
 
@@ -643,27 +660,63 @@ export function MarketplaceHome() {
       />
       <main className="mx-auto w-full max-w-[1400px] px-3 sm:px-6 lg:px-10 py-6 sm:py-8 space-y-6 sm:space-y-8">
 
-        {/* store notice — shows on every visit, closable */}
+        {/* welcome popup — shows on every visit, closable */}
         {showNotice && (
-          <div className="flex items-center justify-between gap-3 rounded-2xl border border-[#FED7AA] bg-gradient-to-r from-[#FFF7ED] via-white to-[#FEF2F2] p-3 sm:p-4">
-            <div className="flex items-center gap-2.5 text-sm min-w-0">
-              <span className="bg-[#DC2626] text-white text-[11px] font-bold uppercase px-2.5 py-1 rounded-md shrink-0">Welcome Offer</span>
-              <p className="text-sm text-slate-600">
-                Welcome to <strong className="text-[#0F172A]">TechPivo Market</strong> — quality-checked products, secure payment and tracked delivery.
-              </p>
-            </div>
-            <div className="flex items-center gap-2 shrink-0">
-              <Link href="#flash-deals" className="bg-[#F59E0B] hover:bg-[#D97706] text-[#0F172A] text-sm font-semibold px-4 py-2 rounded-lg transition-colors flex items-center gap-1">
-                Explore Now <ArrowRight className="h-4 w-4" />
-              </Link>
-              <button
-                type="button"
-                onClick={() => setShowNotice(false)}
-                aria-label="Dismiss notice"
-                className="flex h-8 w-8 items-center justify-center rounded-full text-slate-400 transition-colors hover:bg-slate-100 hover:text-[#0F172A]"
-              >
-                <X className="h-4 w-4" />
-              </button>
+          <div className="fixed inset-0 z-[80] flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-label="Welcome offer">
+            <button
+              type="button"
+              aria-label="Dismiss notice"
+              onClick={() => setShowNotice(false)}
+              className="absolute inset-0 bg-[#0F172A]/60 backdrop-blur-[2px]"
+            />
+            <div className="relative w-full max-w-md overflow-hidden rounded-2xl bg-white shadow-2xl">
+              <div className="relative p-6 text-white" style={{ background: "linear-gradient(140deg, #0F172A 0%, #7F1D1D 100%)" }}>
+                <div className="absolute -right-12 -top-12 h-40 w-40 rounded-full bg-[#F59E0B]/20 blur-2xl" />
+                <button
+                  type="button"
+                  onClick={() => setShowNotice(false)}
+                  aria-label="Close popup"
+                  className="absolute right-3 top-3 flex h-8 w-8 items-center justify-center rounded-full bg-white/10 text-white transition-colors hover:bg-white/25"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+                <span className="inline-block bg-[#DC2626] text-white text-[11px] font-bold uppercase px-2.5 py-1 rounded-md">
+                  Welcome Offer
+                </span>
+                <h2 className="mt-3 text-2xl font-extrabold tracking-tight">
+                  Welcome to <span className="text-[#F59E0B]">TechPivo Market</span>
+                </h2>
+                <p className="mt-1 text-sm text-white/80">
+                  Quality-checked products, secure payment and tracked delivery.
+                </p>
+              </div>
+              <div className="space-y-2 p-6">
+                <div className="flex items-center gap-2.5 text-sm text-slate-600">
+                  <ShieldCheck className="h-4 w-4 shrink-0 text-[#10B981]" /> Secure payment on every order
+                </div>
+                <div className="flex items-center gap-2.5 text-sm text-slate-600">
+                  <BadgeCheck className="h-4 w-4 shrink-0 text-[#F59E0B]" /> Quality-checked products
+                </div>
+                <div className="flex items-center gap-2.5 text-sm text-slate-600">
+                  <Truck className="h-4 w-4 shrink-0 text-[#0F172A]" /> Tracked 7–12 day delivery
+                </div>
+                <div className="flex items-center gap-2 pt-3">
+                  <Link
+                    href="#flash-deals"
+                    onClick={() => setShowNotice(false)}
+                    className="flex flex-1 items-center justify-center gap-1.5 rounded-lg bg-[#F59E0B] px-4 py-2.5 text-sm font-bold text-[#0F172A] transition-colors hover:bg-[#D97706]"
+                  >
+                    Explore Now <ArrowRight className="h-4 w-4" />
+                  </Link>
+                  <button
+                    type="button"
+                    onClick={() => setShowNotice(false)}
+                    className="rounded-lg px-4 py-2.5 text-sm font-semibold text-slate-500 transition-colors hover:bg-slate-100 hover:text-[#0F172A]"
+                  >
+                    Browse
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
         )}
