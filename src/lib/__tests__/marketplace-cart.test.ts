@@ -39,7 +39,7 @@ describe("marketplace-cart snapshot stability", () => {
     const first = getCart()
     const second = getCart()
     expect(second).toBe(first)
-    expect(first).toEqual([{ id: "a", qty: 2 }])
+    expect(first).toEqual([{ id: "a", qty: 2, variant: null }])
   })
 
   it("returns a new reference once after mutation, then stays stable", async () => {
@@ -49,7 +49,7 @@ describe("marketplace-cart snapshot stability", () => {
     expect(before).toEqual([])
     addToCart("p1", 3)
     const after = getCart()
-    expect(after).toEqual([{ id: "p1", qty: 3 }])
+    expect(after).toEqual([{ id: "p1", qty: 3, variant: null }])
     expect(after).not.toBe(before)
     // Repeated reads without writes must be referentially stable —
     // this is what stops the infinite re-render loop.
@@ -66,7 +66,7 @@ describe("marketplace-cart snapshot stability", () => {
       ]),
     })
     const { getCart, cartCount } = await import("@/lib/marketplace-cart")
-    expect(getCart()).toEqual([{ id: "ok", qty: 99 }])
+    expect(getCart()).toEqual([{ id: "ok", qty: 99, variant: null }])
     expect(cartCount(getCart())).toBe(99)
   })
 })

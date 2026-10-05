@@ -20,7 +20,6 @@ interface ShowcaseActions {
 export interface ShowcaseNavItem {
   name: string
   slug: string
-  count: number
 }
 
 function ShowcaseCard({ p, onAdd, added, wished, onWish }: { p: DemoProduct } & ShowcaseActions) {
@@ -107,8 +106,8 @@ export function CategoryShowcase({
   title,
   deptSlug,
   nav,
-  totalCount,
   items,
+  promoImage,
   onAdd,
   added,
   wished,
@@ -117,7 +116,7 @@ export function CategoryShowcase({
   title: string
   deptSlug: string
   nav: ShowcaseNavItem[]
-  totalCount: number
+  promoImage: string
   items: Array<DemoProduct & { subSlug?: string | null }>
   onAdd: (p: DemoProduct) => void
   added: Record<string, boolean>
@@ -150,7 +149,7 @@ export function CategoryShowcase({
     railRef.current?.scrollBy({ left: dir * 640, behavior: "smooth" })
 
   const pill = (isActive: boolean) =>
-    `flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-[13px] font-semibold transition-colors ${
+    `shrink-0 rounded-full px-3 py-1.5 text-[13px] font-semibold transition-colors ${
       isActive ? "bg-[#0F172A] text-white" : "text-slate-500 hover:text-[#0F172A] hover:bg-slate-100"
     }`
 
@@ -197,10 +196,7 @@ export function CategoryShowcase({
           aria-pressed={active === null}
           className={pill(active === null)}
         >
-          <span>All</span>
-          <span className={`text-[11px] tabular-nums ${active === null ? "text-white/70" : "text-slate-400"}`}>
-            ({totalCount})
-          </span>
+          All
         </button>
         {nav.map((n) => (
           <button
@@ -211,27 +207,38 @@ export function CategoryShowcase({
             className={pill(active === n.slug)}
           >
             <span className="whitespace-nowrap">{n.name}</span>
-            <span className={`text-[11px] tabular-nums ${active === n.slug ? "text-white/70" : "text-slate-400"}`}>
-              ({n.count})
-            </span>
           </button>
         ))}
       </nav>
 
-      {/* side promo banner + product rail — scrollbar hidden */}
+      {/* side promo banner — real photo banner, bigger */}
       <div className="flex gap-3">
         <Link
           href="/marketplace/deals"
-          className="flex w-36 shrink-0 flex-col justify-between self-stretch overflow-hidden rounded-xl bg-[#DC2626] p-4 text-white sm:w-52"
+          className="relative flex w-48 shrink-0 flex-col justify-between self-stretch overflow-hidden rounded-xl p-4 text-white sm:w-64"
         >
-          <span className="inline-flex w-fit items-center gap-1 rounded bg-white/20 px-2 py-0.5 text-[11px] font-bold uppercase">
+          {promoImage ? (
+            <img
+              src={marketImage(promoImage)}
+              alt=""
+              aria-hidden
+              loading="lazy"
+              decoding="async"
+              className="absolute inset-0 h-full w-full object-cover"
+            />
+          ) : null}
+          <div
+            className="absolute inset-0"
+            style={{ background: "linear-gradient(180deg, rgba(15,23,42,0.55) 0%, rgba(153,27,27,0.88) 100%)" }}
+          />
+          <span className="relative inline-flex w-fit items-center gap-1 rounded bg-white/20 px-2 py-0.5 text-[11px] font-bold uppercase">
             <Flame className="h-3 w-3" /> Special
           </span>
-          <span className="mt-6 block">
-            <span className="block text-3xl font-extrabold leading-none">SALE</span>
+          <span className="relative mt-6 block">
+            <span className="block text-3xl font-extrabold leading-none sm:text-4xl">SALE</span>
             <span className="mt-1 block text-xs font-semibold text-white/85">Up to 50% off {title.toLowerCase()}</span>
           </span>
-          <span className="mt-6 inline-flex w-fit items-center rounded-lg bg-white px-4 py-2 text-xs font-bold text-[#991B1B]">
+          <span className="relative mt-6 inline-flex w-fit items-center rounded-lg bg-white px-4 py-2 text-xs font-bold text-[#991B1B]">
             Shop now
           </span>
         </Link>

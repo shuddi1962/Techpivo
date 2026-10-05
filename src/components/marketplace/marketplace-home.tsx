@@ -548,8 +548,8 @@ export function MarketplaceHome() {
   }, [dbProducts, banners, deptOf, COLLECTION_SLUGS])
 
   // Showcase sections: the 4 departments with the most live stock. Each
-  // gets the left-nav showcase treatment with its stocked subcategories
-  // (with counts). Items are drawn from products not shown in any rail
+  // gets the showcase treatment with its stocked subcategories as pills.
+  // Items are drawn from products not shown in any rail
   // above — distinct everywhere — topped up from the department shelf so
   // no section looks thin. Strict stored-category match only: a product
   // lives in exactly one department, so it can never appear under a
@@ -579,7 +579,7 @@ export function MarketplaceHome() {
       })
       const nav = dep.subs
         .filter((s) => (counts.get(s.slug) || 0) > 0)
-        .map((s) => ({ name: s.name, slug: s.slug, count: counts.get(s.slug) || 0 }))
+        .map((s) => ({ name: s.name, slug: s.slug }))
       let items = shelf.filter((p) => !usedIds.has(p.id))
       if (items.length < 4) {
         const have = new Set(items.map((p) => p.id))
@@ -594,7 +594,7 @@ export function MarketplaceHome() {
         items = items.slice(0, 10)
       }
       items.forEach((p) => usedIds.add(p.id))
-      return { dep, nav, items, total: shelf.length }
+      return { dep, nav, items }
     })
     .filter((x) => x.items.length > 0)
 
@@ -1058,15 +1058,15 @@ export function MarketplaceHome() {
         })()}
 
         {/* department showcases — top departments by live stock, each with
-            a left-side subcategory nav and its own distinct products */}
-        {showcases.map(({ dep, nav, items, total }) => (
+            subcategory pills, a photo promo banner, and its own distinct products */}
+        {showcases.map(({ dep, nav, items }) => (
           <CategoryShowcase
             key={dep.slug}
             title={dep.name}
             deptSlug={dep.slug}
             nav={nav}
-            totalCount={total}
             items={items}
+            promoImage={banners.departments[dep.slug] || deptCover.get(dep.slug) || dep.image}
             onAdd={addToCart}
             added={justAdded}
             wished={wishlist}
