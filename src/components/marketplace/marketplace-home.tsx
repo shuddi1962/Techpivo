@@ -6,7 +6,7 @@ import { useEffect, useMemo, useRef, useState } from "react"
 import {
   ArrowLeftRight, ArrowRight, Check, ChevronLeft, ChevronRight, Eye, Flame,
   Heart, Package, ShoppingCart, ShieldCheck, X, Zap,
-  BadgeCheck, Truck, Cpu, Smartphone, Laptop, Car, Wrench,
+  BadgeCheck, Truck,
 } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
 import { addToCart as addLine, cartCount as countLines, useMarketCart } from "@/lib/marketplace-cart"
@@ -271,6 +271,10 @@ export function MarketplaceHome() {
     }
   }, [showNotice])
   const [banners, setBanners] = useState<MarketBanners>({ ...EMPTY_BANNERS, departments: {} })
+  // First-paint gate: while the live catalog hasn't arrived yet, render
+  // neutral skeletons instead of fallback/empty designs — so visitors
+  // never see a previous design flash before the current one paints.
+  const [loaded, setLoaded] = useState(false)
   const t = useCountdown()
 
   useEffect(() => {
@@ -300,7 +304,9 @@ export function MarketplaceHome() {
         .order("created_at", { ascending: false })
         .limit(120)
         .then(({ data }) => {
-          if (alive && data) setDbProducts(data as DbProduct[])
+          if (!alive) return
+          if (data) setDbProducts(data as DbProduct[])
+          setLoaded(true)
         })
       // Real review aggregates for honest ratings (public read policy).
       supabase
@@ -724,7 +730,11 @@ export function MarketplaceHome() {
         {/* hero bento — side promos always show; your uploaded banner
             replaces ONLY the main navy card, shown fully (never cropped). */}
         <section className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-stretch">
-        {banners.hero_image ? (
+        {!loaded ? (
+          <div className="lg:col-span-8 rounded-2xl border border-[#E2E8F0] bg-white shadow-sm min-h-[420px] animate-pulse" aria-hidden>
+            <div className="h-full min-h-[420px] w-full rounded-2xl bg-slate-100" />
+          </div>
+        ) : banners.hero_image ? (
           <div className="lg:col-span-8 overflow-hidden rounded-2xl border border-[#E2E8F0] bg-white shadow-sm">
             <Link href="#trending" aria-label="Shop TechPivo Market" className="block">
               {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -832,41 +842,22 @@ export function MarketplaceHome() {
             </Link>
           </div>
         </section>
-        {/* categories — real department tree, all linked to category pages */}
-        <section className="bg-white rounded-2xl p-5 shadow-sm border border-[#E2E8F0]">
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <h2 className="text-lg font-bold text-[#0F172A]">Shop by Department</h2>
-              <p className="text-sm text-slate-500">Every aisle, curated — pick a department to explore</p>
+        {/* shop by collections — every real category node */}
+        {!loaded ? (
+          <section aria-label="Loading collections" className="bg-white rounded-2xl p-5 shadow-sm border border-[#E2E8F0] animate-pulse" aria-hidden>
+            <div className="mb-4 h-6 w-48 rounded bg-slate-100" />
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
+              {Array.from({ length: 12 }).map((_, i) => (
+                <div key={i}>
+                  <div className="aspect-[5/4] w-full rounded-xl bg-slate-100" />
+                  <div className="mx-auto mt-2 h-4 w-3/4 rounded bg-slate-100" />
+                </div>
+              ))}
             </div>
-            <span className="text-[11px] font-bold uppercase text-slate-400 hidden sm:block">New stock weekly</span>
-          </div>
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2.5">
-            {MARKET_DEPARTMENTS.map((c) => {
-              const Icon = c.icon === "Smartphone" ? Smartphone : c.icon === "Laptop" ? Laptop : c.icon === "Car" ? Car : c.icon === "Wrench" ? Wrench : Cpu
-              const cover = banners.departments[c.slug] || deptCover.get(c.slug) || c.image
-              return (
-              <Link
-                key={c.slug}
-                href={`/marketplace/category/${c.slug}`}
-                className="group relative rounded-xl overflow-hidden border border-[#E2E8F0] transition-all hover:-translate-y-0.5 hover:shadow-lg"
-              >
-                <div className="h-32 sm:h-36 overflow-hidden">
-                  <img src={marketImage(cover)} alt={c.name} loading="lazy" decoding="async" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
-                </div>
-                <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/15 to-transparent" />
-                <span className="absolute left-2.5 top-2.5 flex h-8 w-8 items-center justify-center rounded-full bg-white/90 text-[#0F172A] shadow-sm" aria-hidden>
-                  <Icon className="h-4 w-4" />
-                </span>
-                <div className="absolute bottom-0 inset-x-0 p-3">
-                  <span className="block truncate text-sm font-bold text-white leading-tight" title={c.name}>{c.name}</span>
-                  <span className="mt-0.5 inline-block text-[11px] font-semibold text-[#FCD34D]">Shop now →</span>
-                </div>
-              </Link>
-              )
-            })}
-          </div>
-        </section>
+          </section>
+        ) : (
+          <ShopCollections collections={collections} />
+        )}
 
         {/* flash deals — 4 live discounted products under a countdown banner */}
         {flashItems.length > 0 && (
@@ -945,7 +936,17 @@ export function MarketplaceHome() {
               )}
             </div>
           )}
-          {shown.length > 0 ? (
+          {!loaded ? (
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 pt-1 animate-pulse" aria-hidden aria-label="Loading products">
+              {Array.from({ length: 6 }).map((_, i) => (
+                <div key={i} className="rounded-xl border border-[#E2E8F0] bg-white p-3">
+                  <div className="aspect-square w-full rounded-lg bg-slate-100" />
+                  <div className="mt-3 h-4 w-full rounded bg-slate-100" />
+                  <div className="mt-2 h-4 w-2/3 rounded bg-slate-100" />
+                </div>
+              ))}
+            </div>
+          ) : shown.length > 0 ? (
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 pt-1">
               {shown.map((p) => (
                 <ProductCard key={p.id} {...cardProps(p)} />
@@ -996,6 +997,7 @@ export function MarketplaceHome() {
         </section>
 
         {/* feature panels — new arrivals / featured / best selling */}
+        {loaded ? (
         <FeaturePanels
           groups={[
             { title: "New Arrivals", items: newArrivals },
@@ -1007,6 +1009,7 @@ export function MarketplaceHome() {
           wished={wishlist}
           onWish={toggleWish}
         />
+        ) : null}
 
         {/* trending slider — products not shown in any rail above */}
         {(() => {
@@ -1059,7 +1062,7 @@ export function MarketplaceHome() {
 
         {/* department showcases — top departments by live stock, each with
             subcategory pills, a photo promo banner, and its own distinct products */}
-        {showcases.map(({ dep, nav, items }) => (
+        {loaded ? showcases.map(({ dep, nav, items }) => (
           <CategoryShowcase
             key={dep.slug}
             title={dep.name}
@@ -1072,10 +1075,7 @@ export function MarketplaceHome() {
             wished={wishlist}
             onWish={toggleWish}
           />
-        ))}
-
-        {/* shop by collections — every real category node */}
-        <ShopCollections collections={collections} />
+        )) : null}
 
         {/* top stores — same card style as collections, as a slider */}
         {vendors.length > 0 && (
