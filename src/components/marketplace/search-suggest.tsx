@@ -3,6 +3,7 @@
 import Link from "next/link"
 import { useEffect, useState } from "react"
 import { ArrowRight, Search } from "lucide-react"
+import { MarketPrice } from "./market-price"
 
 export interface SuggestItem {
   id: string
@@ -120,7 +121,7 @@ export function SuggestDropdown({
                 </span>
                 <span className="min-w-0 flex-1">
                   <span className="block truncate text-sm font-semibold text-[#0F172A]">{it.name}</span>
-                  <span className="block text-xs font-bold text-[#EF4444]">${it.price.toFixed(2)}</span>
+                  <MarketPrice usd={it.price} className="block text-xs font-bold text-[#EF4444]" />
                 </span>
               </Link>
             </li>

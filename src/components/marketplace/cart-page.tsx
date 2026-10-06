@@ -7,7 +7,8 @@ import { createClient } from "@/lib/supabase/client"
 import { getCart, removeFromCart, setQty, useMarketCart } from "@/lib/marketplace-cart"
 import { marketImage } from "@/lib/marketplace-images"
 import { readShipSelection, shippingCost, FREE_SHIP_THRESHOLD_USD } from "@/lib/marketplace-shipping"
-import { dualPrice, useUsdNgnRate } from "@/lib/marketplace-pricing"
+import { useMarketCurrency, useUsdNgnRate } from "@/lib/marketplace-pricing"
+import { MarketPrice } from "./market-price"
 
 interface Row {
   id: string
@@ -20,6 +21,7 @@ interface Row {
 export function CartPage() {
   const cart = useMarketCart()
   const rate = useUsdNgnRate()
+  const currency = useMarketCurrency()
   const [rows, setRows] = useState<Row[]>([])
   const [loading, setLoading] = useState(true)
   const [shipSel, setShipSel] = useState({ id: "standard", name: "Standard", feeUsd: 0 })
@@ -105,7 +107,7 @@ export function CartPage() {
         </div>
         {subtotal < FREE_SHIP_THRESHOLD_USD ? (
           <div className="mb-3 rounded-xl bg-[#FFFBEB] border border-[#FED7AA] p-3">
-            <p className="text-xs text-slate-600">Add <strong className="text-[#0F172A]">${(FREE_SHIP_THRESHOLD_USD - subtotal).toFixed(2)}</strong> more for <strong className="text-[#10B981]">FREE Standard shipping</strong></p>
+            <p className="text-xs text-slate-600">Add <MarketPrice usd={FREE_SHIP_THRESHOLD_USD - subtotal} className="font-bold text-[#0F172A]" /> more for <strong className="text-[#10B981]">FREE Standard shipping</strong></p>
             <div className="mt-2 h-2 overflow-hidden rounded-full bg-[#FDEBD3]">
               <div className="h-full rounded-full bg-gradient-to-r from-[#F59E0B] to-[#EF4444] transition-all" style={{ width: `${Math.min(100, Math.round((subtotal / FREE_SHIP_THRESHOLD_USD) * 100))}%` }} />
             </div>
@@ -136,7 +138,7 @@ export function CartPage() {
                       {l.variant.label}
                     </p>
                   )}
-                  <p className="text-sm font-bold text-[#0F172A] mt-1">{dualPrice(unit, rate)}</p>
+                  <p className="text-sm font-bold text-[#0F172A] mt-1"><MarketPrice usd={unit} /></p>
                   <div className="flex items-center justify-between mt-2 flex-wrap gap-2">
                     <div className="flex items-center border border-[#CBD5E1] rounded-lg overflow-hidden">
                       <button onClick={() => setQty(l.id, l.qty - 1, l.variant)} className="px-2.5 py-1.5 hover:bg-slate-100" aria-label="Decrease quantity">
@@ -152,7 +154,7 @@ export function CartPage() {
                     </button>
                   </div>
                 </div>
-                <p className="text-sm font-extrabold text-[#0F172A] whitespace-nowrap">${(unit * l.qty).toFixed(2)}</p>
+                <p className="text-sm font-extrabold text-[#0F172A] whitespace-nowrap"><MarketPrice usd={unit * l.qty} /></p>
               </div>
             )
           })}
@@ -163,18 +165,26 @@ export function CartPage() {
           <h2 className="font-bold text-[#0F172A]">Order summary</h2>
           <div className="flex justify-between text-sm text-slate-600">
             <span>Subtotal</span>
-            <span className="font-semibold text-[#0F172A]">${subtotal.toFixed(2)}</span>
+            <MarketPrice usd={subtotal} className="font-semibold text-[#0F172A]" />
           </div>
           <div className="flex justify-between text-sm text-slate-600">
             <span>Shipping ({shipSel.name})</span>
-            <span className="font-semibold text-[#0F172A]">{shipping === 0 ? "FREE" : `$${shipping.toFixed(2)}`}</span>
+            {shipping === 0 ? (
+              <span className="font-semibold text-[#0F172A]">FREE</span>
+            ) : (
+              <MarketPrice usd={shipping} className="font-semibold text-[#0F172A]" />
+            )}
           </div>
-          {shipping > 0 && <p className="text-[11px] text-slate-400">Free shipping on orders over $35.</p>}
+          {shipping > 0 && <p className="text-[11px] text-slate-400">Free shipping on orders over <MarketPrice usd={FREE_SHIP_THRESHOLD_USD} />.</p>}
           <div className="border-t border-[#E2E8F0] pt-2 flex justify-between items-baseline">
             <span className="text-sm font-bold text-[#0F172A]">Total</span>
             <span className="text-right">
-              <span className="block text-xl font-extrabold text-[#0F172A]">${(subtotal + shipping).toFixed(2)}</span>
-              <span className="block text-xs text-slate-500">≈ ₦{Math.round((subtotal + shipping) * rate).toLocaleString()} at checkout</span>
+              <MarketPrice usd={subtotal + shipping} className="block text-xl font-extrabold text-[#0F172A]" />
+              <span className="block text-xs text-slate-500">
+                {currency === "NGN"
+                  ? `≈ $${(subtotal + shipping).toFixed(2)}`
+                  : `≈ ₦${Math.round((subtotal + shipping) * rate).toLocaleString()}`} at checkout
+              </span>
             </span>
           </div>
           <Link href="/marketplace/checkout" className="block text-center bg-[#F59E0B] hover:bg-[#D97706] text-[#0F172A] text-sm font-bold py-3 rounded-lg mt-2">

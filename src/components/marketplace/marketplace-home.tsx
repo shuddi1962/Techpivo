@@ -21,6 +21,7 @@ import { FeaturePanels } from "./feature-panels"
 import { CategoryShowcase } from "./category-showcase"
 import { ShopCollections, type CollectionItem } from "./shop-collections"
 import { BrandRail } from "./brand-rail"
+import { MarketPrice } from "./market-price"
 
 interface DbProduct {
   id: string
@@ -153,8 +154,8 @@ function ProductCard({ p, onAdd, wished, onWish, added, href }: { p: DemoProduct
           <h5 title={p.name} className="truncate text-[13px] font-semibold leading-snug text-[#0F172A]">{p.name}</h5>
         )}
         <div className="flex items-baseline gap-1.5">
-          <span className={`text-[15px] font-extrabold tabular-nums ${discount > 0 ? "text-[#DC2626]" : "text-[#0F172A]"}`}>${p.price.toFixed(2)}</span>
-          {p.oldPrice && <span className="text-[11px] tabular-nums text-slate-400 line-through">${p.oldPrice.toFixed(2)}</span>}
+          <MarketPrice usd={p.price} className={`text-[15px] font-extrabold tabular-nums ${discount > 0 ? "text-[#DC2626]" : "text-[#0F172A]"}`} />
+          {p.oldPrice && <MarketPrice usd={p.oldPrice} className="text-[11px] tabular-nums text-slate-400 line-through" />}
         </div>
       </div>
     </div>
@@ -1228,7 +1229,7 @@ export function MarketplaceHome() {
                     </div>
                     <div className="min-w-0">
                       <h5 className="text-sm font-semibold text-[#0F172A] line-clamp-1">{d.product_name}</h5>
-                      <span className="text-sm font-bold text-[#EF4444]">${price.toFixed(2)}</span>
+                      <MarketPrice usd={price} className="text-sm font-bold text-[#EF4444]" />
                       <span className="block text-[10px] text-[#10B981] font-medium">Tracked delivery</span>
                     </div>
                   </Link>

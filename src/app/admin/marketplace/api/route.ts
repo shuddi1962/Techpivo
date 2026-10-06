@@ -55,6 +55,11 @@ export async function GET(request: NextRequest) {
       const { parseBanners } = await import("@/lib/marketplace-banners")
       return NextResponse.json({ banners: parseBanners((data as { value?: unknown } | null)?.value) })
     }
+    if (section === "store") {
+      const { data } = await supabase.from("site_settings").select("value").eq("key", "marketplace_store").maybeSingle()
+      const { sanitizeStore } = await import("@/lib/marketplace-store")
+      return NextResponse.json({ store: sanitizeStore((data as { value?: unknown } | null)?.value) })
+    }
     if (section === "cj-list") {      const key = await resolveCjApiKey()
       if (!key) return NextResponse.json({ demo: true, list: [], message: "CJ API key not set" })
       const list = await cjListProducts({
@@ -134,6 +139,16 @@ export async function POST(request: NextRequest) {
         .upsert({ key: "marketplace_banners", value: banners as unknown as never }, { onConflict: "key" })
       if (error) throw error
       return NextResponse.json({ success: true, banners })
+    }
+    // Save store contact info (footer address / phone / email)
+    if (body.action === "store-save") {
+      const { sanitizeStore } = await import("@/lib/marketplace-store")
+      const store = sanitizeStore(body.store)
+      const { error } = await supabase
+        .from("site_settings")
+        .upsert({ key: "marketplace_store", value: store as unknown as never }, { onConflict: "key" })
+      if (error) throw error
+      return NextResponse.json({ success: true, store })
     }
     if (body.action === "cj-import") {
       const items = Array.isArray(body.items) ? body.items : []

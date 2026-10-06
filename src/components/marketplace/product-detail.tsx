@@ -11,7 +11,8 @@ import {
 } from "@/lib/marketplace-shipping"
 import { getGeoOnce } from "@/lib/tools-geo"
 import { DeliveryPicker } from "./delivery-picker"
-import { dualPrice, useUsdNgnRate } from "@/lib/marketplace-pricing"
+import { useMarketCurrency, useUsdNgnRate } from "@/lib/marketplace-pricing"
+import { MarketPrice } from "./market-price"
 
 interface Review {
   id: string
@@ -212,6 +213,7 @@ export function ProductDetail({
 }) {
   const router = useRouter()
   const rate = useUsdNgnRate()
+  const currency = useMarketCurrency()
   const [qty, setQty] = useState(1)
   const [added, setAdded] = useState(false)
   const [wished, setWished] = useState(false)
@@ -472,10 +474,14 @@ export function ProductDetail({
             </span>
           </div>
           <div className="flex items-baseline gap-2 mt-3 flex-wrap">
-            <span className={`text-3xl font-extrabold ${discount > 0 ? "text-[#EF4444]" : "text-[#0F172A]"}`}>{dualPrice(price, rate).split(" · ")[0]}</span>
-            {oldPrice && <span className="text-lg text-slate-400 line-through">{dualPrice(oldPrice, rate).split(" · ")[0]}</span>}
+            <MarketPrice usd={price} className={`text-3xl font-extrabold ${discount > 0 ? "text-[#EF4444]" : "text-[#0F172A]"}`} />
+            {oldPrice && <MarketPrice usd={oldPrice} className="text-lg text-slate-400 line-through" />}
           </div>
-          <p className="text-sm font-semibold text-slate-600 mt-1">≈ {dualPrice(price, rate).split(" · ")[1] || ""} · pay in naira at checkout</p>
+          <p className="text-sm font-semibold text-slate-600 mt-1">
+            {currency === "NGN"
+              ? `≈ $${price.toFixed(2)}`
+              : `≈ ₦${Math.round(price * rate).toLocaleString()}`} · pay in naira at checkout
+          </p>
           {p.product_description && <p className="text-sm text-slate-600 mt-3">{p.product_description}</p>}
 
           {/* supplier options — colors, sizes, types */}
@@ -717,7 +723,7 @@ export function ProductDetail({
                   ) : null}
                 </div>
                 <h3 className="text-sm font-semibold text-[#0F172A] line-clamp-1">{r.product_name}</h3>
-                <p className="text-base font-bold text-[#0F172A] mt-1">${Number(r.sale_price ?? r.original_price ?? 0).toFixed(2)}</p>
+                <p className="text-base font-bold text-[#0F172A] mt-1"><MarketPrice usd={Number(r.sale_price ?? r.original_price ?? 0)} /></p>
               </Link>
             ))}
           </div>

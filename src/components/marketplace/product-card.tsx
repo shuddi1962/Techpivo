@@ -5,6 +5,7 @@ import { useState } from "react"
 import { ArrowLeftRight, Check, Eye, Heart, Package, ShoppingCart } from "lucide-react"
 import { marketImage } from "@/lib/marketplace-images"
 import { priceOf, discountOf, type StoreProduct } from "@/lib/marketplace-catalog"
+import { MarketPrice } from "./market-price"
 
 const COMPARE_KEY = "tp_market_compare_v1"
 
@@ -131,11 +132,12 @@ export function ProductCard({
           </h3>
         </Link>
         <div className="flex items-baseline gap-1.5">
-          <span className={`text-[15px] font-extrabold tabular-nums ${discount > 0 ? "text-[#DC2626]" : "text-[#0F172A]"}`}>
-            ${price.toFixed(2)}
-          </span>
+          <MarketPrice
+            usd={price}
+            className={`text-[15px] font-extrabold tabular-nums ${discount > 0 ? "text-[#DC2626]" : "text-[#0F172A]"}`}
+          />
           {discount > 0 && Number.isFinite(old) && (
-            <span className="text-[11px] tabular-nums text-slate-400 line-through">${old.toFixed(2)}</span>
+            <MarketPrice usd={old} className="text-[11px] tabular-nums text-slate-400 line-through" />
           )}
         </div>
       </div>

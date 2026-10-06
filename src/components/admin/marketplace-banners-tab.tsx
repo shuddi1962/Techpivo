@@ -9,6 +9,7 @@ import {
   EMPTY_BANNERS,
   type MarketBanners,
 } from "@/lib/marketplace-banners"
+import { MARKET_STORE_DEFAULTS } from "@/lib/marketplace-store"
 
 function isUrl(v: string): boolean {
   return /^https?:\/\/.+/i.test(v.trim()) || v.trim().startsWith("/")
@@ -22,6 +23,9 @@ export function MarketplaceBannersTab() {
   const [notice, setNotice] = useState("")
   const fileRef = useRef<HTMLInputElement>(null)
   const [uploadTarget, setUploadTarget] = useState<string | null>(null)
+  // Store contact info (footer) — separate settings row, own save.
+  const [store, setStore] = useState({ ...MARKET_STORE_DEFAULTS })
+  const [storeSaving, setStoreSaving] = useState(false)
 
   useEffect(() => {
     fetch("/admin/marketplace/api?section=banners")
@@ -31,6 +35,12 @@ export function MarketplaceBannersTab() {
       })
       .catch(() => {})
       .finally(() => setLoading(false))
+    fetch("/admin/marketplace/api?section=store")
+      .then((r) => r.json())
+      .then((d) => {
+        if (d?.store) setStore({ ...MARKET_STORE_DEFAULTS, ...d.store })
+      })
+      .catch(() => {})
   }, [])
 
   const flash = (msg: string) => {
@@ -96,6 +106,25 @@ export function MarketplaceBannersTab() {
     }
   }
 
+  const saveStore = async () => {
+    setStoreSaving(true)
+    try {
+      const res = await fetch("/admin/marketplace/api", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "store-save", store }),
+      })
+      const data = await res.json().catch(() => null)
+      if (!res.ok) throw new Error(data?.error || "Save failed")
+      if (data?.store) setStore({ ...MARKET_STORE_DEFAULTS, ...data.store })
+      flash("Store contact info saved — live in the footer instantly")
+    } catch (err) {
+      flash(err instanceof Error ? err.message : "Save failed")
+    } finally {
+      setStoreSaving(false)
+    }
+  }
+
   if (loading) {
     return (
       <div className="bg-white border rounded-xl p-10 text-center text-sm text-slate-500">
@@ -134,6 +163,53 @@ export function MarketplaceBannersTab() {
             {banners.promo_enabled !== false ? "Promo is ON — showing publicly" : "Promo is OFF — hidden publicly"}
           </span>
         </label>
+      </div>
+
+      <div className="bg-white border rounded-xl p-5">
+        <h2 className="font-bold text-slate-900">Store contact info</h2>
+        <p className="text-sm text-slate-500 mt-1">
+          The address, phone and email shown in the storefront footer. Save here and it reflects publicly right away.
+        </p>
+        <div className="grid gap-3 mt-4">
+          <label className="block">
+            <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Coverage line</span>
+            <input
+              value={store.address}
+              onChange={(e) => setStore((s) => ({ ...s, address: e.target.value }))}
+              placeholder="Lagos • Nairobi • Accra — ships worldwide"
+              className="mt-1 w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-amber-500"
+            />
+          </label>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <label className="block">
+              <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Phone</span>
+              <input
+                value={store.phone}
+                onChange={(e) => setStore((s) => ({ ...s, phone: e.target.value }))}
+                placeholder="+234 (0) 800 000 0000"
+                className="mt-1 w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-amber-500"
+              />
+            </label>
+            <label className="block">
+              <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Email</span>
+              <input
+                value={store.email}
+                onChange={(e) => setStore((s) => ({ ...s, email: e.target.value }))}
+                placeholder="market@techpivo.com"
+                className="mt-1 w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-amber-500"
+              />
+            </label>
+          </div>
+        </div>
+        <button
+          type="button"
+          onClick={saveStore}
+          disabled={storeSaving}
+          className="mt-4 inline-flex items-center gap-2 bg-[#0F172A] hover:bg-black text-white text-sm font-bold rounded-lg px-5 py-2.5 disabled:opacity-60"
+        >
+          {storeSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+          {storeSaving ? "Saving..." : "Save contact info"}
+        </button>
       </div>
 
       <div className="bg-white border rounded-xl p-5">

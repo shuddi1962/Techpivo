@@ -5,6 +5,7 @@ import { useMemo, useState } from "react"
 import { Check, ChevronDown, RotateCcw, Search, SlidersHorizontal, Star } from "lucide-react"
 import { priceOf, discountOf, type StoreProduct } from "@/lib/marketplace-catalog"
 import { brandsInCatalog, detectBrand } from "@/lib/marketplace-brands"
+import { MarketPrice } from "./market-price"
 
 export interface FilterValue {
   q: string
@@ -158,7 +159,7 @@ export function FilterSidebar({
   const showSuggest = suggestOpen && value.q.trim().length >= 2 && matches.length > 0
   // Brand options come from the live list itself — a newly imported
   // brand appears here on its own the moment its products arrive.
-  const brandOptions = useMemo(() => brandsInCatalog(products).map((s) => s.def.name), [products])
+  const brandOptions = useMemo(() => brandsInCatalog(products), [products])
 
   return (
     <aside className="rounded-2xl border border-[#E2E8F0] bg-white p-5 shadow-sm lg:sticky lg:top-36">
@@ -219,7 +220,7 @@ export function FilterSidebar({
                       </span>
                       <span className="min-w-0 flex-1">
                         <span className="block truncate text-[13px] font-semibold text-[#0F172A]">{p.product_name}</span>
-                        <span className="block text-xs font-bold text-[#EF4444]">${priceOf(p).toFixed(2)}</span>
+                        <MarketPrice usd={priceOf(p)} className="block text-xs font-bold text-[#EF4444]" />
                       </span>
                     </Link>
                   </li>
@@ -351,18 +352,36 @@ export function FilterSidebar({
 
         {brandOptions.length > 0 && (
         <Section title="Brand">
-          <div className="flex flex-wrap gap-1.5">
-            {brandOptions.map((b) => {
-              const on = value.brands.includes(b)
+          <div className="grid grid-cols-3 gap-2">
+            {brandOptions.map(({ def }) => {
+              const on = value.brands.includes(def.name)
               return (
                 <button
-                  key={b}
+                  key={def.name}
                   type="button"
+                  title={def.name}
+                  aria-label={`Filter by brand ${def.name}`}
                   aria-pressed={on}
-                  onClick={() => toggleList("brands", b)}
-                  className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors ${on ? "border-[#0F172A] bg-[#0F172A] text-white" : "border-[#E2E8F0] text-slate-600 hover:border-[#0F172A]"}`}
+                  onClick={() => toggleList("brands", def.name)}
+                  className={`flex h-16 flex-col items-center justify-center gap-1 rounded-xl border-2 px-1 transition-all ${on ? "border-[#0F172A] bg-[#0F172A]" : "border-[#E2E8F0] bg-white hover:border-slate-400"}`}
                 >
-                  {b}
+                  <span className="flex h-6 items-center justify-center" aria-hidden>
+                    {def.path ? (
+                      <svg viewBox="0 0 24 24" className="h-6 w-auto max-w-full">
+                        <path d={def.path} fill={on ? "#FFFFFF" : def.color} />
+                      </svg>
+                    ) : (
+                      <span
+                        className="text-xs font-extrabold tracking-tight"
+                        style={{ color: on ? "#FFFFFF" : def.color, textTransform: def.lowercase ? "lowercase" : "uppercase" }}
+                      >
+                        {def.name}
+                      </span>
+                    )}
+                  </span>
+                  <span className={`text-[9px] font-semibold uppercase tracking-wide ${on ? "text-white/70" : "text-slate-400"}`}>
+                    {def.name}
+                  </span>
                 </button>
               )
             })}

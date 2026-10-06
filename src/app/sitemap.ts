@@ -89,6 +89,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { path: "/marketplace/cart", priority: 0.3, freq: "monthly" },
     { path: "/marketplace/track", priority: 0.3, freq: "monthly" },
     { path: "/marketplace/wishlist", priority: 0.3, freq: "monthly" },
+    { path: "/marketplace/help", priority: 0.5, freq: "monthly" },
+    { path: "/marketplace/faq", priority: 0.5, freq: "monthly" },
     ...MARKET_DEPARTMENTS.flatMap((d) => [
       { path: `/marketplace/category/${d.slug}`, priority: 0.7, freq: "weekly" as const },
       ...d.subs.map((s) => ({

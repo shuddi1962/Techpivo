@@ -7,7 +7,8 @@ import { ArrowLeft, Loader2, Lock, RotateCcw, ShieldCheck, Truck } from "lucide-
 import { createClient } from "@/lib/supabase/client"
 import { marketImage } from "@/lib/marketplace-images"
 import { clearCart, getCart, useMarketCart } from "@/lib/marketplace-cart"
-import { useUsdNgnRate } from "@/lib/marketplace-pricing"
+import { useMarketCurrency, useUsdNgnRate } from "@/lib/marketplace-pricing"
+import { MarketPrice } from "./market-price"
 import {
   readShipSelection, saveShipSelection, storeShipOptions, SHIP_COUNTRIES, DEFAULT_SHIP_COUNTRY, FREE_SHIP_THRESHOLD_USD,
   type ShipOption, type ShipSelection,
@@ -28,6 +29,7 @@ export function CheckoutPage() {
   const router = useRouter()
   const cart = useMarketCart()
   const rate = useUsdNgnRate()
+  const currency = useMarketCurrency()
   const [rows, setRows] = useState<Row[]>([])
   const [loading, setLoading] = useState(true)
   const [paying, setPaying] = useState(false)
@@ -256,7 +258,7 @@ export function CheckoutPage() {
           {/* free-shipping meter */}
           {subtotal < FREE_SHIP_THRESHOLD_USD ? (
             <div className="rounded-xl bg-[#FFFBEB] border border-[#FED7AA] p-3">
-              <p className="text-xs text-slate-600">Add <strong className="text-[#0F172A]">${(FREE_SHIP_THRESHOLD_USD - subtotal).toFixed(2)}</strong> more for <strong className="text-[#10B981]">FREE Standard shipping</strong></p>
+              <p className="text-xs text-slate-600">Add <MarketPrice usd={FREE_SHIP_THRESHOLD_USD - subtotal} className="font-bold text-[#0F172A]" /> more for <strong className="text-[#10B981]">FREE Standard shipping</strong></p>
               <div className="mt-2 h-2 overflow-hidden rounded-full bg-[#FDEBD3]">
                 <div className="h-full rounded-full bg-gradient-to-r from-[#F59E0B] to-[#EF4444] transition-all" style={{ width: `${Math.min(100, Math.round((subtotal / FREE_SHIP_THRESHOLD_USD) * 100))}%` }} />
               </div>
@@ -281,18 +283,22 @@ export function CheckoutPage() {
                   {l.variant?.label && <span className="block truncate text-[11px] text-slate-400">{l.variant.label}</span>}
                 </span>
                 <span className="whitespace-nowrap text-sm font-semibold text-[#0F172A]">
-                  ${(Number(l.product!.sale_price ?? l.product!.original_price ?? 0) * l.qty).toFixed(2)}
+                  <MarketPrice usd={Number(l.product!.sale_price ?? l.product!.original_price ?? 0) * l.qty} />
                 </span>
               </div>
             ))}
           </div>
           <div className="flex justify-between text-sm text-slate-600 border-t border-[#E2E8F0] pt-2">
             <span>Subtotal</span>
-            <span className="font-semibold text-[#0F172A]">${subtotal.toFixed(2)}</span>
+            <MarketPrice usd={subtotal} className="font-semibold text-[#0F172A]" />
           </div>
           <div className="flex justify-between text-sm text-slate-600">
             <span>Shipping{activePick ? ` (${activePick.name})` : ""}</span>
-            <span className="font-semibold text-[#0F172A]">{shipping === 0 ? "FREE" : `$${shipping.toFixed(2)}`}</span>
+            {shipping === 0 ? (
+              <span className="font-semibold text-[#0F172A]">FREE</span>
+            ) : (
+              <MarketPrice usd={shipping} className="font-semibold text-[#0F172A]" />
+            )}
           </div>
           {lines.length > 1 && (
             <p className="text-[11px] leading-relaxed text-slate-500">
@@ -302,8 +308,10 @@ export function CheckoutPage() {
           <div className="flex justify-between items-baseline">
             <span className="text-sm font-bold text-[#0F172A]">Total</span>
             <span className="text-right">
-              <span className="block text-2xl font-extrabold text-[#0F172A]">₦{totalNgn.toLocaleString()}</span>
-              <span className="block text-xs text-slate-500">≈ ${totalUsd.toFixed(2)}</span>
+              <MarketPrice usd={totalUsd} className="block text-2xl font-extrabold text-[#0F172A]" />
+              <span className="block text-xs text-slate-500">
+                {currency === "NGN" ? `≈ $${totalUsd.toFixed(2)}` : `≈ ₦${totalNgn.toLocaleString()}`} · charged in naira
+              </span>
             </span>
           </div>
           <button onClick={pay} disabled={paying || lines.length === 0} className="w-full bg-[#10B981] hover:bg-[#059669] text-white text-sm font-bold py-3 rounded-lg disabled:opacity-60 flex items-center justify-center gap-2">

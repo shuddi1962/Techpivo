@@ -11,8 +11,10 @@ import { MARKET_DEPARTMENTS as DEPARTMENTS } from "@/lib/marketplace-categories"
 import { MARKETPLACE_BRAND } from "@/lib/marketplace"
 import { cartCount as countLines, useMarketCart } from "@/lib/marketplace-cart"
 import { SuggestDropdown, useRemoteSuggest } from "./search-suggest"
+import { readMarketCurrency, setMarketCurrency } from "@/lib/marketplace-pricing"
+import { MARKET_STORE_DEFAULTS } from "@/lib/marketplace-store"
 
-const NAV: Array<{ label: string; href: string }> = [
+const NAV: Array<{ label: string; href: string; external?: boolean }> = [
   { label: "Home", href: "/marketplace" },
   { label: "Shop", href: "/marketplace/shop" },
   { label: "Deals of the Day", href: "/marketplace/deals" },
@@ -20,10 +22,10 @@ const NAV: Array<{ label: string; href: string }> = [
   { label: "Top Stores", href: "/marketplace/top-stores" },
   { label: "New Arrivals", href: "/marketplace/new-arrivals" },
   { label: "Track Order", href: "/marketplace/track" },
+  { label: "Blog", href: "https://techpivo.com/", external: true },
 ]
 
 const WISH_KEY = "tp_market_wish_v1"
-const CURRENCY_KEY = "tp_market_currency_v1"
 
 function readWishCount(): number {
   if (typeof window === "undefined") return 0
@@ -37,12 +39,7 @@ function readWishCount(): number {
 }
 
 function readCurrency(): string {
-  if (typeof window === "undefined") return "USD"
-  try {
-    return window.localStorage.getItem(CURRENCY_KEY) || "USD"
-  } catch {
-    return "USD"
-  }
+  return readMarketCurrency()
 }
 
 export function MarketplaceHeader({
@@ -105,6 +102,43 @@ export function MarketplaceHeader({
 
   // Live wishlist count (same localStorage key the home grid writes).
   const [liveWish, setLiveWish] = useState(0)
+  // Signed-in shopper — same Supabase auth as the general site
+  // (profiles.full_name → user_metadata → email prefix, like Header).
+  const [acctName, setAcctName] = useState<string | null>(null)
+  const [acctAvatar, setAcctAvatar] = useState<string | null>(null)
+  useEffect(() => {
+    let alive = true
+    ;(async () => {
+      try {
+        const { createClient } = await import("@/lib/supabase/client")
+        const supabase = createClient()
+        const { data: { user } } = await supabase.auth.getUser()
+        if (!alive || !user) return
+        let name: string | null = null
+        try {
+          const { data } = await supabase.from("profiles").select("full_name").eq("id", user.id).single()
+          name = (data as { full_name?: string | null } | null)?.full_name || null
+        } catch {
+          // profile unreadable — fall back to metadata below
+        }
+        if (!alive) return
+        const meta = (user.user_metadata || {}) as Record<string, unknown>
+        if (typeof meta.avatar_url === "string" && meta.avatar_url) setAcctAvatar(meta.avatar_url)
+        setAcctName(
+          name ||
+          (typeof meta.full_name === "string" && meta.full_name ? meta.full_name : null) ||
+          user.email?.split("@")[0] ||
+          "Account"
+        )
+      } catch {
+        // logged out — generic Sign In stays
+      }
+    })()
+    return () => {
+      alive = false
+    }
+  }, [])
+  const acctFirst = acctName ? acctName.split(" ")[0] : null
   const [deptCovers, setDeptCovers] = useState<Record<string, string>>({})
   // Admin Black Friday promo switch — hides the promo strip + Specials
   // button publicly (default ON).
@@ -118,6 +152,7 @@ export function MarketplaceHeader({
     }
     window.addEventListener("storage", sync)
     window.addEventListener("focus", sync)
+    window.addEventListener("tp-market-currency", sync)
     // Admin-custom storefront banners (public site_settings read): the
     // mega-menu shows the same imagery as the homepage tiles, and the
     // Black Friday promo switch hides promo surfaces publicly.
@@ -140,6 +175,7 @@ export function MarketplaceHeader({
     return () => {
       window.removeEventListener("storage", sync)
       window.removeEventListener("focus", sync)
+      window.removeEventListener("tp-market-currency", sync)
     }
   }, [])
   const shownWishCount = wishCount ?? liveWish
@@ -198,12 +234,7 @@ export function MarketplaceHeader({
   const setCurrencyChoice = (code: string) => {
     setCurrency(code)
     setCurrencyOpen(false)
-    try {
-      window.localStorage.setItem(CURRENCY_KEY, code)
-    } catch {
-      // storage blocked — header still shows the picked currency
-    }
-    window.dispatchEvent(new Event("tp-market-currency"))
+    setMarketCurrency(code === "NGN" ? "NGN" : "USD")
   }
 
   return (
@@ -318,13 +349,20 @@ export function MarketplaceHeader({
               )}
             </Link>
             <div className="h-8 w-px bg-[#E2E8F0] hidden sm:block" />
-            <Link href="/account" className="hidden sm:flex items-center gap-2 hover:opacity-90 p-1">
-              <span className="w-8 h-8 rounded-full bg-[#23272E] flex items-center justify-center shrink-0">
-                <User className="h-4 w-4 text-white" />
+            <Link href={acctName ? "/marketplace/account" : "/login"} className="hidden sm:flex items-center gap-2 hover:opacity-90 p-1" aria-label={acctName ? `My marketplace account (${acctName})` : "Sign in"}>
+              <span className="w-8 h-8 rounded-full bg-[#23272E] flex items-center justify-center shrink-0 overflow-hidden">
+                {acctAvatar ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={acctAvatar} alt="" className="h-full w-full object-cover" />
+                ) : acctFirst ? (
+                  <span className="text-sm font-extrabold text-white">{acctFirst.charAt(0).toUpperCase()}</span>
+                ) : (
+                  <User className="h-4 w-4 text-white" />
+                )}
               </span>
-              <span className="hidden xl:flex flex-col text-left">
-                <span className="text-[11px] text-slate-400 uppercase leading-none">Sign In</span>
-                <span className="text-sm font-semibold text-[#0F172A] leading-tight">My Account</span>
+              <span className="hidden xl:flex flex-col text-left max-w-[140px]">
+                <span className="text-[11px] text-slate-400 uppercase leading-none">{acctFirst ? `Hi, ${acctFirst}` : "Sign In"}</span>
+                <span className="text-sm font-semibold text-[#0F172A] leading-tight truncate">{acctName || "My Account"}</span>
               </span>
             </Link>
             <div className="h-8 w-px bg-[#E2E8F0] hidden sm:block" />
@@ -482,6 +520,17 @@ export function MarketplaceHeader({
             </div>
             <nav className="hidden lg:flex items-center gap-1 min-w-0 flex-1 overflow-x-auto whitespace-nowrap" aria-label="Marketplace" style={{ scrollbarWidth: "none" }}>
               {NAV.map((item, i) => (
+                item.external ? (
+                <a
+                  key={item.label}
+                  href={item.href}
+                  target="_blank"
+                  rel="noopener"
+                  className="shrink-0 px-3 py-2 rounded-lg text-slate-600 hover:bg-slate-100 hover:text-[#0F172A] text-sm"
+                >
+                  {item.label}
+                </a>
+                ) : (
                 <Link
                   key={item.label}
                   href={item.href}
@@ -494,6 +543,7 @@ export function MarketplaceHeader({
                 >
                   {item.label}
                 </Link>
+                )
               ))}
             </nav>
           </div>
@@ -513,14 +563,27 @@ export function MarketplaceHeader({
         {open && (
           <nav className="md:hidden border-t border-[#E2E8F0] px-4 py-3 grid gap-1 bg-white max-h-[70vh] overflow-y-auto" aria-label="Marketplace mobile">
             {NAV.map((item) => (
-              <Link
-                key={item.label}
-                href={item.href}
-                onClick={() => setOpen(false)}
-                className="px-3 py-2.5 rounded-lg text-sm font-medium text-slate-700 hover:bg-slate-100"
-              >
-                {item.label}
-              </Link>
+              item.external ? (
+                <a
+                  key={item.label}
+                  href={item.href}
+                  target="_blank"
+                  rel="noopener"
+                  onClick={() => setOpen(false)}
+                  className="px-3 py-2.5 rounded-lg text-sm font-medium text-slate-700 hover:bg-slate-100"
+                >
+                  {item.label}
+                </a>
+              ) : (
+                <Link
+                  key={item.label}
+                  href={item.href}
+                  onClick={() => setOpen(false)}
+                  className="px-3 py-2.5 rounded-lg text-sm font-medium text-slate-700 hover:bg-slate-100"
+                >
+                  {item.label}
+                </Link>
+              )
             ))}
             <p className="px-3 pt-2 text-[11px] font-bold uppercase tracking-wider text-slate-400">Departments</p>
             {DEPARTMENTS.map((d) => (
@@ -565,6 +628,32 @@ export function MarketplaceFooter() {
   const [email, setEmail] = useState("")
   const [subMsg, setSubMsg] = useState("")
   const [subBusy, setSubBusy] = useState(false)
+  // Store contact info — editable in Admin → Marketplace → Banners
+  // ("Store contact info"), reflected here live.
+  const [store, setStore] = useState(MARKET_STORE_DEFAULTS)
+  useEffect(() => {
+    let alive = true
+    const load = async () => {
+      try {
+        const { createClient } = await import("@/lib/supabase/client")
+        const { sanitizeStore } = await import("@/lib/marketplace-store")
+        const { data } = await createClient()
+          .from("site_settings")
+          .select("value")
+          .eq("key", "marketplace_store")
+          .maybeSingle()
+        if (alive) setStore(sanitizeStore((data as { value?: unknown } | null)?.value))
+      } catch {
+        // offline — defaults stay
+      }
+    }
+    load()
+    window.addEventListener("focus", load)
+    return () => {
+      alive = false
+      window.removeEventListener("focus", load)
+    }
+  }, [])
   const subscribe = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!email.trim() || subBusy) return
@@ -612,15 +701,17 @@ export function MarketplaceFooter() {
         <div className="mx-auto grid w-full max-w-[1400px] grid-cols-1 gap-10 px-3 py-12 sm:px-6 md:grid-cols-2 lg:grid-cols-4 lg:px-10">
           <div className="space-y-4 lg:col-span-1">
           <div className="flex items-center gap-2">
+            <span className="inline-flex rounded-xl bg-white px-2.5 py-1.5">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/logo.svg" alt="TechPivo Market" className="h-9 w-auto" />
+            <img src="/market-logo.svg" alt="TechPivo Market" className="h-9 w-auto" />
+            </span>
             <span className="text-[10px] font-bold uppercase tracking-[0.25em] text-[#F59E0B]">Market</span>
           </div>
             <p className="text-sm leading-relaxed text-slate-300">Curated tech products, reviewed by the TechPivo editorial team. Every purchase supports independent tech journalism.</p>
             <div className="space-y-2 text-sm text-slate-300">
-              <div className="flex items-start gap-2"><MapPin className="mt-0.5 h-4 w-4 shrink-0 text-[#F59E0B]" /><span>Lagos • Nairobi • Accra — ships worldwide</span></div>
-              <div className="flex items-center gap-2"><Phone className="h-4 w-4 shrink-0 text-[#F59E0B]" /><span>+234 (0) 800 000 0000</span></div>
-              <div className="flex items-center gap-2"><Mail className="h-4 w-4 shrink-0 text-[#F59E0B]" /><span>market@techpivo.com</span></div>
+              <div className="flex items-start gap-2"><MapPin className="mt-0.5 h-4 w-4 shrink-0 text-[#F59E0B]" /><span>{store.address}</span></div>
+              <div className="flex items-center gap-2"><Phone className="h-4 w-4 shrink-0 text-[#F59E0B}" /><span>{store.phone}</span></div>
+              <div className="flex items-center gap-2"><Mail className="h-4 w-4 shrink-0 text-[#F59E0B]" /><span>{store.email}</span></div>
             </div>
           </div>
           <nav aria-label="Shop departments">
@@ -634,13 +725,15 @@ export function MarketplaceFooter() {
           <nav aria-label="Customer service">
             <h5 className="mb-4 text-sm font-bold uppercase tracking-wider text-white">Customer Service</h5>
             <ul className="grid grid-cols-1 gap-2.5 text-sm text-slate-300">
-              <li><Link className="transition-colors hover:text-[#F59E0B]" href="/contact">Help Center</Link></li>
+              <li><Link className="transition-colors hover:text-[#F59E0B]" href="/marketplace/help">Help Center</Link></li>
+              <li><Link className="transition-colors hover:text-[#F59E0B]" href="/marketplace/faq">FAQ</Link></li>
               <li><Link className="transition-colors hover:text-[#F59E0B]" href="/marketplace/track">Order Tracking</Link></li>
               <li><Link className="transition-colors hover:text-[#F59E0B]" href="/marketplace/cart">Your Cart</Link></li>
               <li><Link className="transition-colors hover:text-[#F59E0B]" href="/marketplace/wishlist">Your Wishlist</Link></li>
-              <li><Link className="transition-colors hover:text-[#F59E0B]" href="/contact">Returns & Warranty</Link></li>
+              <li><Link className="transition-colors hover:text-[#F59E0B]" href="/marketplace/faq">Returns & Warranty</Link></li>
               <li><Link className="transition-colors hover:text-[#F59E0B]" href="/privacy-policy">Privacy Policy</Link></li>
               <li><Link className="transition-colors hover:text-[#F59E0B]" href="/terms-of-use">Terms of Use</Link></li>
+              <li><a className="transition-colors hover:text-[#F59E0B]" href="https://techpivo.com/" target="_blank" rel="noopener">Blog</a></li>
             </ul>
           </nav>
           <div>
@@ -653,11 +746,6 @@ export function MarketplaceFooter() {
               </button>
               {subMsg && <p className="text-xs text-slate-300">{subMsg}</p>}
             </form>
-            <div className="mt-4 flex items-center gap-2 text-[11px] font-bold">
-              {["VISA", "MASTERCARD", "PAYPAL", "PAYSTACK"].map((p) => (
-                <span key={p} className="rounded bg-white/10 px-2.5 py-1 text-slate-200">{p}</span>
-              ))}
-            </div>
           </div>
         </div>
       </div>

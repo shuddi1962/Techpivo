@@ -2,6 +2,7 @@
 
 import { Truck } from "lucide-react"
 import { SHIP_COUNTRIES, type ShipOption, type ShipSelection } from "@/lib/marketplace-shipping"
+import { formatMarketPrice, useMarketCurrency, useUsdNgnRate } from "@/lib/marketplace-pricing"
 
 // CJ-style delivery picker: "Ship to [full country name] by [method]"
 // with the selected method's processing time, ETA and fee below.
@@ -31,6 +32,10 @@ export function DeliveryPicker({
   const shown = live.length > 0 ? live : list
   const activeId = value?.id || "standard"
   const active = shown.find((o) => o.id === activeId) || shown[0]
+  const currency = useMarketCurrency()
+  const rate = useUsdNgnRate()
+  const feeLabel = (feeUsd: number) =>
+    feeUsd === 0 ? "FREE" : formatMarketPrice(feeUsd, rate, currency)
 
   const pick = (id: string) => {
     const o = shown.find((x) => x.id === id)
@@ -63,7 +68,7 @@ export function DeliveryPicker({
           >
             {shown.map((o) => (
               <option key={o.id} value={o.id}>
-                {hideFees ? o.name : `${o.name} — ${o.feeUsd === 0 ? "FREE" : `$${o.feeUsd.toFixed(2)}`}`}
+                {hideFees ? o.name : `${o.name} — ${feeLabel(o.feeUsd)}`}
               </option>
             ))}
           </select>
@@ -81,7 +86,7 @@ export function DeliveryPicker({
             </span>
           </span>
           <span className={`text-sm font-extrabold ${!hideFees && active.feeUsd === 0 ? "text-[#10B981]" : "text-[#0F172A]"}`}>
-            {!hideFees && (active.feeUsd === 0 ? "FREE" : `$${active.feeUsd.toFixed(2)}`)}
+            {!hideFees && feeLabel(active.feeUsd)}
             {hideFees && <span className="text-xs font-semibold text-slate-500">Priced at checkout</span>}
           </span>
         </div>

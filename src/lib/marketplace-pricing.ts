@@ -9,6 +9,58 @@ import { fxFormat } from "@/lib/fx-shared"
 const RATE_KEY = "tp_market_fx_v1"
 const FALLBACK_USD_NGN = 1600
 
+/** Display-currency preference shared with the header FX switch. */
+export const MARKET_CURRENCY_KEY = "tp_market_currency_v1"
+export type MarketCurrency = "USD" | "NGN"
+
+export function readMarketCurrency(): MarketCurrency {
+  if (typeof window === "undefined") return "USD"
+  try {
+    return window.localStorage.getItem(MARKET_CURRENCY_KEY) === "NGN" ? "NGN" : "USD"
+  } catch {
+    return "USD"
+  }
+}
+
+export function setMarketCurrency(code: MarketCurrency): void {
+  try {
+    window.localStorage.setItem(MARKET_CURRENCY_KEY, code)
+  } catch {
+    // storage blocked — header label still updates from its own state
+  }
+  window.dispatchEvent(new Event("tp-market-currency"))
+}
+
+/** Live display-currency preference: updates instantly on every mounted
+    price the moment the header switch (or another tab) changes it.
+    Initializes to USD (matching SSR) then syncs the stored preference
+    after mount — no hydration mismatch. */
+export function useMarketCurrency(): MarketCurrency {
+  const [cur, setCur] = useState<MarketCurrency>("USD")
+  useEffect(() => {
+    setCur(readMarketCurrency())
+    const sync = () => setCur(readMarketCurrency())
+    window.addEventListener("tp-market-currency", sync)
+    window.addEventListener("storage", sync)
+    window.addEventListener("focus", sync)
+    return () => {
+      window.removeEventListener("tp-market-currency", sync)
+      window.removeEventListener("storage", sync)
+      window.removeEventListener("focus", sync)
+    }
+  }, [])
+  return cur
+}
+
+/** Single-currency display honoring the header switch: USD → "$4.92",
+    NGN → "₦7,872" at the live rate. */
+export function formatMarketPrice(usd: number | null | undefined, rate: number, currency: MarketCurrency): string {
+  const u = Number(usd ?? 0)
+  if (!Number.isFinite(u) || u <= 0) return "—"
+  if (currency === "NGN") return fxFormat(Math.round(u * rate), "NGN", { maxFrac: 0 })
+  return fxFormat(u, "USD")
+}
+
 interface FxCache {
   rate: number
   at: number

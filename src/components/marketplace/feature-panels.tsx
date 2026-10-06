@@ -8,6 +8,7 @@ import {
 import type { DemoProduct } from "@/lib/marketplace"
 import { marketImage } from "@/lib/marketplace-images"
 import { readCompare, toggleCompareStored } from "@/lib/marketplace-compare"
+import { MarketPrice } from "./market-price"
 
 export function PanelStars({ value }: { value: number }) {
   return (
@@ -104,9 +105,9 @@ function FeaturePanel({ title, items, onAdd, added, wished, onWish }: { title: s
             )}
             <PanelStars value={current.rating} />
             <div className="flex items-baseline gap-2">
-              <span className="text-base font-extrabold tabular-nums text-[#0F172A]">${current.price.toFixed(2)}</span>
+              <MarketPrice usd={current.price} className="text-base font-extrabold tabular-nums text-[#0F172A]" />
               {current.oldPrice && current.oldPrice > current.price && (
-                <span className="text-sm tabular-nums text-slate-400 line-through">${current.oldPrice.toFixed(2)}</span>
+                <MarketPrice usd={current.oldPrice} className="text-sm tabular-nums text-slate-400 line-through" />
               )}
             </div>
           </div>

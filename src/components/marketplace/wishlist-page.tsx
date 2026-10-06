@@ -6,6 +6,7 @@ import { Heart, ShoppingCart } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
 import { addToCart } from "@/lib/marketplace-cart"
 import { marketImage } from "@/lib/marketplace-images"
+import { MarketPrice } from "./market-price"
 
 const WISH_KEY = "tp_market_wish_v1"
 
@@ -93,7 +94,7 @@ export function WishlistPage() {
                   ) : null}
                 </div>
                 <h3 className="text-sm font-semibold text-[#0F172A] line-clamp-1">{p.product_name}</h3>
-                <p className="text-base font-bold text-[#0F172A] mt-1">${price.toFixed(2)}</p>
+                <p className="text-base font-bold text-[#0F172A] mt-1"><MarketPrice usd={price} /></p>
               </Link>
               <button onClick={() => addToCart(p.id, 1)} className="w-full mt-2 bg-[#F59E0B] hover:bg-[#D97706] text-[#0F172A] text-xs font-bold py-2 rounded-lg flex items-center justify-center gap-1">
                 <ShoppingCart className="h-3.5 w-3.5" /> Add

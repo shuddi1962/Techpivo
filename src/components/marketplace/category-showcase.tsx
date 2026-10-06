@@ -9,6 +9,7 @@ import type { DemoProduct } from "@/lib/marketplace"
 import { marketImage } from "@/lib/marketplace-images"
 import { readCompare, toggleCompareStored } from "@/lib/marketplace-compare"
 import { PanelStars, discountPct } from "./feature-panels"
+import { MarketPrice } from "./market-price"
 
 interface ShowcaseActions {
   onAdd: (p: DemoProduct) => void
@@ -60,9 +61,9 @@ function ShowcaseCard({ p, onAdd, added, wished, onWish }: { p: DemoProduct } & 
         )}
         <PanelStars value={p.rating} />
         <div className="flex items-baseline gap-1.5">
-          <span className="text-[15px] font-extrabold tabular-nums text-[#0F172A]">${p.price.toFixed(2)}</span>
+          <MarketPrice usd={p.price} className="text-[15px] font-extrabold tabular-nums text-[#0F172A]" />
           {p.oldPrice && p.oldPrice > p.price && (
-            <span className="text-xs tabular-nums text-slate-400 line-through">${p.oldPrice.toFixed(2)}</span>
+            <MarketPrice usd={p.oldPrice} className="text-xs tabular-nums text-slate-400 line-through" />
           )}
         </div>
         <div className="mt-1.5 flex items-center gap-1.5">
