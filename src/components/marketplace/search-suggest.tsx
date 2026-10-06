@@ -30,11 +30,19 @@ export function useRemoteSuggest(query: string): { items: SuggestItem[]; loading
     const t = setTimeout(async () => {
       try {
         const { createClient } = await import("@/lib/supabase/client")
+        const safe = q.replace(/[%_\\(),]/g, "")
+        if (safe.length < 2) {
+          if (alive) {
+            setItems([])
+            setLoading(false)
+          }
+          return
+        }
         const { data } = await createClient()
           .from("affiliate_products")
           .select("id,product_name,product_image_url,sale_price,original_price")
           .eq("is_active", true)
-          .ilike("product_name", `%${q.replace(/[%_\\]/g, "")}%`)
+          .or(`product_name.ilike.%${safe}%,product_description.ilike.%${safe}%`)
           .order("clicks", { ascending: false, nullsFirst: false })
           .limit(6)
         if (!alive) return

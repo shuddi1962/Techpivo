@@ -403,44 +403,50 @@ export function ProductDetail({
     <div className="space-y-4">
       <section className="bg-white rounded-2xl border border-[#E2E8F0] p-4 sm:p-6 grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div>
-          <div className="relative rounded-xl overflow-hidden bg-[#F8FAFC] border border-[#E2E8F0] aspect-square">
-            {activeMedia.type === "video" ? (
-              <video src={activeMedia.src} controls playsInline preload="metadata" className="w-full h-full object-cover" />
-            ) : activeMedia.src ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={activeMedia.src} alt={p.product_name} loading="eager" decoding="async" className="w-full h-full object-cover" />
-            ) : (
-              <div className="w-full h-full flex items-center justify-center text-slate-300 text-sm">No image</div>
+          <div className="flex gap-3">
+            {gallery.length > 1 && (
+              <div
+                className="flex w-16 sm:w-20 shrink-0 flex-col gap-2 overflow-y-auto overflow-x-hidden pr-0.5"
+                style={{ maxHeight: 480, scrollbarWidth: "thin" }}
+                role="group"
+                aria-label="Product gallery"
+              >
+                {gallery.slice(0, 10).map((g) => (
+                  <button
+                    key={`${g.type}:${g.src}`}
+                    type="button"
+                    onClick={() => setActiveMedia(g)}
+                    aria-label={g.type === "video" ? "Play product video" : "View product image"}
+                    aria-pressed={activeMedia.src === g.src && activeMedia.type === g.type}
+                    className={`relative aspect-[3/4] w-full shrink-0 overflow-hidden rounded-lg border-2 bg-[#F8FAFC] transition-all ${activeMedia.src === g.src && activeMedia.type === g.type ? "border-[#F59E0B]" : "border-[#E2E8F0] hover:border-slate-400"}`}
+                  >
+                    {g.type === "video" ? (
+                      <span className="flex h-full w-full flex-col items-center justify-center gap-1 bg-[#0F172A]">
+                        <Play className="h-5 w-5 fill-white text-white" />
+                        <span className="text-[9px] font-bold uppercase text-white/80">Video</span>
+                      </span>
+                    ) : (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={g.src} alt="" loading="lazy" decoding="async" className="h-full w-full object-cover" />
+                    )}
+                  </button>
+                ))}
+              </div>
             )}
-            {discount > 0 && (
-              <span className="absolute top-3 left-3 bg-[#EF4444] text-white text-xs font-bold px-2 py-1 rounded-full">-{discount}%</span>
-            )}
-          </div>
-          {gallery.length > 1 && (
-            <div className="mt-2 grid grid-cols-5 gap-2" role="list" aria-label="Product gallery">
-              {gallery.slice(0, 10).map((g) => (
-                <button
-                  key={`${g.type}:${g.src}`}
-                  type="button"
-                  role="listitem"
-                  onClick={() => setActiveMedia(g)}
-                  aria-label={g.type === "video" ? "Play product video" : "View product image"}
-                  aria-pressed={activeMedia.src === g.src && activeMedia.type === g.type}
-                  className={`relative aspect-square overflow-hidden rounded-lg border-2 bg-[#F8FAFC] transition-all ${activeMedia.src === g.src && activeMedia.type === g.type ? "border-[#F59E0B]" : "border-[#E2E8F0] hover:border-slate-400"}`}
-                >
-                  {g.type === "video" ? (
-                    <span className="flex h-full w-full flex-col items-center justify-center gap-1 bg-[#0F172A]">
-                      <Play className="h-6 w-6 fill-white text-white" />
-                      <span className="text-[9px] font-bold uppercase text-white/80">Video</span>
-                    </span>
-                  ) : (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={g.src} alt="" loading="lazy" decoding="async" className="w-full h-full object-cover" />
-                  )}
-                </button>
-              ))}
+            <div className="relative flex-1 min-w-0 rounded-xl overflow-hidden bg-[#F8FAFC] border border-[#E2E8F0] aspect-square">
+              {activeMedia.type === "video" ? (
+                <video src={activeMedia.src} controls playsInline preload="metadata" className="w-full h-full object-cover" />
+              ) : activeMedia.src ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={activeMedia.src} alt={p.product_name} loading="eager" decoding="async" className="w-full h-full object-cover" />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center text-slate-300 text-sm">No image</div>
+              )}
+              {discount > 0 && (
+                <span className="absolute top-3 left-3 bg-[#EF4444] text-white text-xs font-bold px-2 py-1 rounded-full">-{discount}%</span>
+              )}
             </div>
-          )}
+          </div>
           <div className="flex items-center gap-2 mt-3 text-xs text-slate-500">
             <ShieldCheck className="h-4 w-4 text-[#10B981]" />
             <span>Quality checked by the TechPivo editorial team</span>

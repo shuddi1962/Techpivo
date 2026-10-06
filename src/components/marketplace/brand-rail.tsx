@@ -1,34 +1,10 @@
 import Link from "next/link"
-import { siIntel, siJbl, siSamsung, siSony, siXiaomi } from "simple-icons"
-
-interface BrandDef {
-  name: string
-  q: string
-  path?: string
-  color: string
-  wordmark?: boolean
-  lowercase?: boolean
-}
-
-// Official vector marks (simple-icons) in official brand colors.
-// Sony's registered brand color is white, so it renders in black on the
-// light tile — the same monochrome wordmark Sony uses on light surfaces.
-// Anker + Logitech have no simple-icons mark, so they render as styled
-// wordmarks in their official brand colors.
-const BRANDS: BrandDef[] = [
-  { name: "Samsung", q: "samsung", path: siSamsung.path, color: `#${siSamsung.hex}` },
-  { name: "Sony", q: "sony", path: siSony.path, color: "#111111" },
-  { name: "Intel", q: "intel", path: siIntel.path, color: `#${siIntel.hex}` },
-  { name: "JBL", q: "jbl", path: siJbl.path, color: `#${siJbl.hex}` },
-  { name: "Anker", q: "anker", color: "#00A9CE", wordmark: true },
-  { name: "Logitech", q: "logitech", color: "#2B2D42", wordmark: true, lowercase: true },
-  { name: "Xiaomi", q: "xiaomi", path: siXiaomi.path, color: `#${siXiaomi.hex}` },
-]
+import { brandsInCatalog, type BrandDef } from "@/lib/marketplace-brands"
 
 function BrandTile({ b }: { b: BrandDef }) {
   return (
     <Link
-      href={`/marketplace?q=${encodeURIComponent(b.q)}`}
+      href={`/marketplace?q=${encodeURIComponent(b.name)}`}
       title={`Shop ${b.name}`}
       aria-label={`Shop ${b.name} products`}
       className="group mr-3 flex w-36 shrink-0 snap-start flex-col items-center justify-center gap-2 rounded-xl border border-[#E2E8F0] bg-white px-4 py-4 transition-all hover:-translate-y-0.5 hover:shadow-md"
@@ -54,10 +30,22 @@ function BrandTile({ b }: { b: BrandDef }) {
   )
 }
 
-// "Top Brands" — infinite auto-slideshow. Duplicated list + CSS keyframes
-// translate the track -50% for a seamless loop; pauses on hover/touch.
-export function BrandRail() {
-  const loop = [...BRANDS, ...BRANDS]
+// "Top Brands" — derived from the LIVE catalog, never hardcoded. A tile
+// appears only while that brand is actually in stock; a newly imported
+// brand joins the rail on its own (realtime + 30s poll upstream). Tapping
+// a tile searches the store for that brand's products. Empty catalog
+// match = the whole section stays hidden (no dead promises).
+export function BrandRail({
+  products,
+}: {
+  products: Array<{ product_name: string; product_description?: string | null }>
+}) {
+  const found = brandsInCatalog(products)
+  if (found.length === 0) return null
+  // Repeat the set so the strip always looks full and the -50% loop
+  // stays seamless (even reps only): 1 brand → 6 tiles, 2 → 4, else ×2.
+  const reps = found.length === 1 ? 6 : found.length === 2 ? 4 : 2
+  const loop = Array.from({ length: reps }).flatMap(() => found)
   return (
     <section aria-label="Top brands" className="bg-white rounded-2xl p-5 shadow-sm border border-[#E2E8F0]">
       <div className="mb-4 flex items-center justify-between gap-3">
@@ -69,8 +57,8 @@ export function BrandRail() {
       </div>
       <div className="brand-rail-mask overflow-hidden">
         <div className="brand-rail-track flex w-max">
-          {loop.map((b, i) => (
-            <BrandTile key={`${b.q}-${i}`} b={b} />
+          {loop.map((s, i) => (
+            <BrandTile key={`${s.def.name}-${i}`} b={s.def} />
           ))}
         </div>
       </div>

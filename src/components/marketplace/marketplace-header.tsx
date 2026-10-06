@@ -106,6 +106,9 @@ export function MarketplaceHeader({
   // Live wishlist count (same localStorage key the home grid writes).
   const [liveWish, setLiveWish] = useState(0)
   const [deptCovers, setDeptCovers] = useState<Record<string, string>>({})
+  // Admin Black Friday promo switch — hides the promo strip + Specials
+  // button publicly (default ON).
+  const [promoOn, setPromoOn] = useState(true)
   useEffect(() => {
     setLiveWish(readWishCount())
     setCurrency(readCurrency())
@@ -115,20 +118,23 @@ export function MarketplaceHeader({
     }
     window.addEventListener("storage", sync)
     window.addEventListener("focus", sync)
-    // Admin-custom department banners (public site_settings read) so the
-    // mega-menu shows the same imagery as the homepage tiles.
+    // Admin-custom storefront banners (public site_settings read): the
+    // mega-menu shows the same imagery as the homepage tiles, and the
+    // Black Friday promo switch hides promo surfaces publicly.
     ;(async () => {
       try {
         const { createClient } = await import("@/lib/supabase/client")
+        const { parseBanners } = await import("@/lib/marketplace-banners")
         const { data } = await createClient()
           .from("site_settings")
           .select("value")
           .eq("key", "marketplace_banners")
           .maybeSingle()
-        const v = (data as { value?: unknown } | null)?.value as { departments?: Record<string, string> } | null
-        if (v?.departments) setDeptCovers(v.departments)
+        const b = parseBanners((data as { value?: unknown } | null)?.value)
+        if (b.departments) setDeptCovers(b.departments)
+        setPromoOn(b.promo_enabled !== false)
       } catch {
-        // banners unavailable — built-in photos stay
+        // banners unavailable — built-in photos stay, promo stays on
       }
     })()
     return () => {
@@ -206,11 +212,17 @@ export function MarketplaceHeader({
       <div style={{ background: `linear-gradient(90deg, ${MARKETPLACE_BRAND.topbar} 0%, ${MARKETPLACE_BRAND.topbarSoft} 100%)` }} className="relative z-[60] w-full text-white">
         <div className="mx-auto w-full max-w-[1400px] px-3 sm:px-6 lg:px-10 flex items-center justify-between h-10 text-xs gap-2">
           <div className="flex items-center gap-2 min-w-0">
+            {promoOn ? (
+            <>
             <span className="bg-[#EF4444] text-white px-2 py-0.5 rounded font-bold text-[10px] uppercase tracking-wide shrink-0">
               Limited Deal
             </span>
             <p className="text-slate-300 hidden sm:block truncate">Black Friday Sale! Special offers up to 50% Off at TechPivo Market</p>
             <p className="text-slate-300 sm:hidden truncate">Up to 50% Off at TechPivo Market</p>
+            </>
+            ) : (
+            <p className="text-slate-300 truncate">Quality-checked tech, tracked delivery</p>
+            )}
           </div>
           <div className="flex items-center gap-3 text-slate-300 shrink-0">
             <div ref={currencyWrapRef} className="relative hidden sm:block">
@@ -485,6 +497,7 @@ export function MarketplaceHeader({
               ))}
             </nav>
           </div>
+          {promoOn && (
           <Link
             href="/marketplace#flash-deals"
             className="flex items-center gap-2 bg-[#FEF2F2] text-[#EF4444] border border-[#EF4444]/20 px-3 py-1.5 rounded-full text-sm font-semibold hover:bg-[#FEE2E2] shrink-0"
@@ -493,6 +506,7 @@ export function MarketplaceHeader({
             <span className="hidden xl:inline">Black Friday Specials</span>
             <span className="xl:hidden">Specials</span>
           </Link>
+          )}
         </div>
 
         {/* mobile nav drawer */}

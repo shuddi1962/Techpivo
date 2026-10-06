@@ -4,6 +4,7 @@ import Link from "next/link"
 import { useMemo, useState } from "react"
 import { Check, ChevronDown, RotateCcw, Search, SlidersHorizontal, Star } from "lucide-react"
 import { priceOf, discountOf, type StoreProduct } from "@/lib/marketplace-catalog"
+import { brandsInCatalog, detectBrand } from "@/lib/marketplace-brands"
 
 export interface FilterValue {
   q: string
@@ -13,6 +14,7 @@ export interface FilterValue {
   colors: string[]
   sizes: string[]
   features: string[]
+  brands: string[]
   inStock: boolean
   onSale: boolean
 }
@@ -25,6 +27,7 @@ export const EMPTY_FILTERS: FilterValue = {
   colors: [],
   sizes: [],
   features: [],
+  brands: [],
   inStock: false,
   onSale: false,
 }
@@ -90,6 +93,10 @@ export function applyFilters(products: StoreProduct[], f: FilterValue): StorePro
       const hay = hayOf(p)
       if (!f.features.some((feat) => hay.includes(feat.toLowerCase()))) return false
     }
+    if (f.brands.length > 0) {
+      const b = detectBrand(p.product_name, p.product_description)
+      if (!b || !f.brands.includes(b.name)) return false
+    }
     if (f.inStock && !(p.stock == null || Number(p.stock) > 0)) return false
     if (f.onSale && discountOf(p) <= 0) return false
     return true
@@ -101,7 +108,7 @@ export function countActiveFilters(f: FilterValue): number {
   if (f.q.trim()) n++
   if (f.minPrice || f.maxPrice) n++
   if (f.minRating > 0) n++
-  n += f.colors.length + f.sizes.length + f.features.length
+  n += f.colors.length + f.sizes.length + f.features.length + f.brands.length
   if (f.inStock) n++
   if (f.onSale) n++
   return n
@@ -135,7 +142,7 @@ export function FilterSidebar({
   products?: StoreProduct[]
 }) {
   const set = (patch: Partial<FilterValue>) => onChange({ ...value, ...patch })
-  const toggleList = (key: "colors" | "sizes" | "features", item: string) =>
+  const toggleList = (key: "colors" | "sizes" | "features" | "brands", item: string) =>
     set({ [key]: value[key].includes(item) ? value[key].filter((x) => x !== item) : [...value[key], item] } as Partial<FilterValue>)
   const active = countActiveFilters(value)
   const presetActive = (min: string, max: string) => value.minPrice === min && value.maxPrice === max
@@ -149,6 +156,9 @@ export function FilterSidebar({
     return products.filter((p) => hayOf(p).includes(q)).slice(0, 6)
   }, [value.q, products])
   const showSuggest = suggestOpen && value.q.trim().length >= 2 && matches.length > 0
+  // Brand options come from the live list itself — a newly imported
+  // brand appears here on its own the moment its products arrive.
+  const brandOptions = useMemo(() => brandsInCatalog(products).map((s) => s.def.name), [products])
 
   return (
     <aside className="rounded-2xl border border-[#E2E8F0] bg-white p-5 shadow-sm lg:sticky lg:top-36">
@@ -338,6 +348,27 @@ export function FilterSidebar({
             })}
           </div>
         </Section>
+
+        {brandOptions.length > 0 && (
+        <Section title="Brand">
+          <div className="flex flex-wrap gap-1.5">
+            {brandOptions.map((b) => {
+              const on = value.brands.includes(b)
+              return (
+                <button
+                  key={b}
+                  type="button"
+                  aria-pressed={on}
+                  onClick={() => toggleList("brands", b)}
+                  className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors ${on ? "border-[#0F172A] bg-[#0F172A] text-white" : "border-[#E2E8F0] text-slate-600 hover:border-[#0F172A]"}`}
+                >
+                  {b}
+                </button>
+              )
+            })}
+          </div>
+        </Section>
+        )}
 
         <Section title="Availability">
           <div className="space-y-2">

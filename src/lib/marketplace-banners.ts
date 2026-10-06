@@ -14,6 +14,9 @@ export interface MarketBanners {
   promo_image: string
   category_default: string
   departments: Record<string, string>
+  /** Black Friday promo surfaces (top strip, Specials button, homepage
+      promo banner + hero kicker). False = hidden publicly, instantly. */
+  promo_enabled: boolean
   shop_image: string
   deals_image: string
   best_sellers_image: string
@@ -27,6 +30,7 @@ export const EMPTY_BANNERS: MarketBanners = {
   promo_image: "",
   category_default: "",
   departments: {},
+  promo_enabled: true,
   shop_image: "",
   deals_image: "",
   best_sellers_image: "",
@@ -133,6 +137,7 @@ export function parseBanners(raw: unknown): MarketBanners {
     hero_image: str(r.hero_image).trim(),
     promo_image: str(r.promo_image).trim(),
     category_default: str(r.category_default).trim(),
+    promo_enabled: typeof r.promo_enabled === "boolean" ? r.promo_enabled : true,
     shop_image: str(r.shop_image).trim(),
     deals_image: str(r.deals_image).trim(),
     best_sellers_image: str(r.best_sellers_image).trim(),

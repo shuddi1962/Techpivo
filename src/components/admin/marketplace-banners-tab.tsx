@@ -117,6 +117,26 @@ export function MarketplaceBannersTab() {
       )}
 
       <div className="bg-white border rounded-xl p-5">
+        <h2 className="font-bold text-slate-900">Black Friday promo surfaces</h2>
+        <p className="text-sm text-slate-500 mt-1">
+          One switch for every promo surface: the red top strip, the “Black Friday Specials” button,
+          the homepage promo banner and the hero “Limited Black Friday Special” kicker. Turn it OFF and
+          they all disappear from the public store instantly — no deploy. Turn it back ON anytime.
+        </p>
+        <label className="mt-3 inline-flex cursor-pointer items-center gap-3 rounded-xl border px-4 py-3">
+          <input
+            type="checkbox"
+            checked={banners.promo_enabled !== false}
+            onChange={(e) => setBanners((b) => ({ ...b, promo_enabled: e.target.checked }))}
+            className="h-5 w-5 accent-[#F59E0B]"
+          />
+          <span className="text-sm font-bold text-slate-900">
+            {banners.promo_enabled !== false ? "Promo is ON — showing publicly" : "Promo is OFF — hidden publicly"}
+          </span>
+        </label>
+      </div>
+
+      <div className="bg-white border rounded-xl p-5">
         <h2 className="font-bold text-slate-900">Storefront banners</h2>
         <p className="text-sm text-slate-500 mt-1">
           Upload your own banners or paste image URLs. Empty = built-in default. Page heroes

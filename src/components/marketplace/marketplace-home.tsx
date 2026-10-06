@@ -276,6 +276,15 @@ export function MarketplaceHome() {
   // neutral skeletons instead of fallback/empty designs — so visitors
   // never see a previous design flash before the current one paints.
   const [loaded, setLoaded] = useState(false)
+  // Collection-cover rotation: every 30s the tiles re-deal from each
+  // node's own live photos, so covers change on their own over time.
+  const [rot, setRot] = useState(0)
+  useEffect(() => {
+    const t = setInterval(() => {
+      if (!document.hidden) setRot((r) => r + 1)
+    }, 30000)
+    return () => clearInterval(t)
+  }, [])
   const t = useCountdown()
 
   useEffect(() => {
@@ -419,8 +428,15 @@ export function MarketplaceHome() {
   const tabShown = tab === "new" ? newArrivals : tab === "featured" ? featured : best
 
   const q = query.trim().toLowerCase()
+  const descById = useMemo(
+    () => new Map(dbProducts.map((d) => [d.id, `${d.product_name} ${d.product_description || ""}`.toLowerCase()])),
+    [dbProducts]
+  )
   const matchQuery = (p: DemoProduct) =>
-    !q || p.name.toLowerCase().includes(q) || p.category.toLowerCase().includes(q)
+    !q ||
+    p.name.toLowerCase().includes(q) ||
+    p.category.toLowerCase().includes(q) ||
+    (descById.get(p.id) || "").includes(q)
   const deptOf = useMemo(() => {
     const m = new Map<string, string>()
     dbProducts.forEach((d) => {
@@ -526,10 +542,18 @@ export function MarketplaceHome() {
     })
     // Globally unique tile images: walk the 12 tiles in order, each takes
     // the first candidate no other tile has used yet — so two different
-    // categories can never show the same photo.
+    // categories can never show the same photo. Candidate pools rotate
+    // with `rot`, so every 30s each tile re-deals a (possibly) new photo
+    // from its own node's live stock.
     const used = new Set<string>()
+    const spin = (list: string[]): string[] => {
+      if (list.length < 2 || rot === 0) return list
+      const k = rot % list.length
+      return [...list.slice(k), ...list.slice(0, k)]
+    }
     const claim = (cands: string[], fallback: string): string => {
-      const img = cands.find((c) => !used.has(c)) || allImgs.find((c) => !used.has(c)) || cands[0] || fallback
+      const pool = spin(cands)
+      const img = pool.find((c) => !used.has(c)) || spin(allImgs).find((c) => !used.has(c)) || cands[0] || fallback
       used.add(img)
       return img
     }
@@ -552,7 +576,7 @@ export function MarketplaceHome() {
       })
     })
     return COLLECTION_SLUGS.map((slug) => bySlug.get(slug)).filter((c): c is CollectionItem => !!c)
-  }, [dbProducts, banners, deptOf, COLLECTION_SLUGS])
+  }, [dbProducts, banners, deptOf, COLLECTION_SLUGS, rot])
 
   // Showcase sections: the 4 departments with the most live stock. Each
   // gets the showcase treatment with its stocked subcategories as pills.
@@ -760,8 +784,10 @@ export function MarketplaceHome() {
               <span className="text-slate-500 text-[11px] font-bold">EST. 2025</span>
             </div>
             <div className="relative z-10 grid grid-cols-1 md:grid-cols-2 gap-6 items-center my-4">
-              <div className="space-y-3">
-                <span className="inline-block text-[#EF4444] text-sm font-bold tracking-wide uppercase">{MARKETPLACE_HERO.kicker}</span>
+                <div className="space-y-3">
+                  {banners.promo_enabled !== false && (
+                    <span className="inline-block text-[#EF4444] text-sm font-bold tracking-wide uppercase">{MARKETPLACE_HERO.kicker}</span>
+                  )}
                 <h1 className="text-4xl md:text-5xl font-extrabold tracking-tight leading-none">
                   {MARKETPLACE_HERO.titleA} <span className="text-[#F59E0B]">{MARKETPLACE_HERO.titleB}</span>
                 </h1>
@@ -1137,7 +1163,9 @@ export function MarketplaceHome() {
           </section>
         )}
 
-        {/* promo banner — admin-custom image or default gradient */}
+        {/* promo banner — admin-custom image or default gradient.
+            Hidden publicly while the admin's Black Friday promo toggle is OFF. */}
+        {banners.promo_enabled !== false && (
         <section
           className="rounded-2xl overflow-hidden p-6 md:p-8 text-[#0F172A] relative"
           style={promoImg
@@ -1166,9 +1194,21 @@ export function MarketplaceHome() {
             </div>
           </div>
         </section>
+        )}
 
-        {/* brands */}
-        <BrandRail />
+        {/* brands — live catalog brands only, with loading skeleton */}
+        {!loaded ? (
+          <section aria-label="Loading brands" className="bg-white rounded-2xl p-5 shadow-sm border border-[#E2E8F0] animate-pulse" aria-hidden>
+            <div className="mb-4 h-6 w-40 rounded bg-slate-100" />
+            <div className="flex gap-3 overflow-hidden">
+              {Array.from({ length: 7 }).map((_, i) => (
+                <div key={i} className="h-[92px] w-36 shrink-0 rounded-xl bg-slate-100" />
+              ))}
+            </div>
+          </section>
+        ) : (
+          <BrandRail products={dbProducts} />
+        )}
 
         {/* recently viewed — real local history */}
         {recentRows.length > 0 && (
