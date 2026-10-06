@@ -10,6 +10,7 @@ import {
 import { MARKET_DEPARTMENTS as DEPARTMENTS } from "@/lib/marketplace-categories"
 import { MARKETPLACE_BRAND } from "@/lib/marketplace"
 import { cartCount as countLines, useMarketCart } from "@/lib/marketplace-cart"
+import { SuggestDropdown, useRemoteSuggest } from "./search-suggest"
 
 const NAV: Array<{ label: string; href: string }> = [
   { label: "Home", href: "/marketplace" },
@@ -66,6 +67,33 @@ export function MarketplaceHeader({
   const [currencyOpen, setCurrencyOpen] = useState(false)
   const deptWrapRef = useRef<HTMLDivElement>(null)
   const currencyWrapRef = useRef<HTMLDivElement>(null)
+  // Live AJAX suggestions under both search boxes — product names pop up
+  // as you type; Escape / outside click / submit dismisses the panel.
+  const { items: suggestItems, loading: suggestLoading } = useRemoteSuggest(query)
+  const [suggestOpen, setSuggestOpen] = useState(false)
+  const searchBoxRef = useRef<HTMLDivElement>(null)
+  const mobileBoxRef = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    if (query.trim().length >= 2) setSuggestOpen(true)
+    else setSuggestOpen(false)
+  }, [query])
+  useEffect(() => {
+    const onDown = (e: MouseEvent) => {
+      const t = e.target as Node
+      if (searchBoxRef.current && !searchBoxRef.current.contains(t) && mobileBoxRef.current && !mobileBoxRef.current.contains(t)) {
+        setSuggestOpen(false)
+      }
+    }
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setSuggestOpen(false)
+    }
+    document.addEventListener("mousedown", onDown)
+    document.addEventListener("keydown", onKey)
+    return () => {
+      document.removeEventListener("mousedown", onDown)
+      document.removeEventListener("keydown", onKey)
+    }
+  }, [])
 
   // Live cart lines — always subscribed so the badge is correct on every
   // store page even when the page doesn't pass cartCount/cartTotal props.
@@ -132,6 +160,7 @@ export function MarketplaceHeader({
 
   const submitSearch = (e: React.FormEvent) => {
     e.preventDefault()
+    setSuggestOpen(false)
     const q = query.trim()
     if (onSearch) {
       // Homepage: filter the live grid in place.
@@ -229,9 +258,10 @@ export function MarketplaceHeader({
             <img src="/market-logo.svg" alt="TechPivo Market" className="h-10 w-auto sm:h-11" />
           </Link>
 
-          {/* search (desktop) */}
+          {/* search (desktop) with live AJAX suggestions */}
+          <div ref={searchBoxRef} className="hidden md:flex flex-1 max-w-2xl relative">
           <form
-            className="hidden md:flex flex-1 max-w-2xl h-12 rounded-lg border border-[#CBD5E1] bg-[#F8FAFC] overflow-hidden focus-within:border-[#F59E0B] focus-within:ring-2 focus-within:ring-[#F59E0B]/20"
+            className="flex w-full h-12 rounded-lg border border-[#CBD5E1] bg-[#F8FAFC] overflow-hidden focus-within:border-[#F59E0B] focus-within:ring-2 focus-within:ring-[#F59E0B]/20"
             onSubmit={submitSearch}
             role="search"
           >
@@ -249,6 +279,7 @@ export function MarketplaceHeader({
             <input
               value={query}
               onChange={(e) => setQuery(e.target.value)}
+              onFocus={() => { if (query.trim().length >= 2) setSuggestOpen(true) }}
               className="flex-1 bg-transparent px-4 text-sm text-[#0F172A] placeholder:text-slate-400 focus:outline-none"
               placeholder="Search TechPivo Market — gadgets, laptops, cameras..."
             />
@@ -256,6 +287,16 @@ export function MarketplaceHeader({
               <Search className="h-5 w-5" />
             </button>
           </form>
+          {suggestOpen && (
+            <SuggestDropdown
+              items={suggestItems}
+              loading={suggestLoading}
+              query={query}
+              onPick={() => setSuggestOpen(false)}
+              onSubmitAll={() => { setSuggestOpen(false); submitSearch({ preventDefault: () => {} } as React.FormEvent) }}
+            />
+          )}
+          </div>
 
           <div className="flex items-center gap-1 sm:gap-2 shrink-0">
             <Link href="/marketplace/wishlist" aria-label="Wishlist" className="relative p-2 rounded-full hover:bg-slate-100 flex items-center justify-center">
@@ -298,12 +339,14 @@ export function MarketplaceHeader({
           </div>
         </div>
 
-        {/* mobile search */}
+        {/* mobile search with live AJAX suggestions */}
         <div className="md:hidden px-4 pb-3">
+          <div ref={mobileBoxRef} className="relative">
           <form className="flex h-11 rounded-lg border border-[#CBD5E1] bg-[#F8FAFC] overflow-hidden" onSubmit={submitSearch} role="search">
             <input
               value={query}
               onChange={(e) => setQuery(e.target.value)}
+              onFocus={() => { if (query.trim().length >= 2) setSuggestOpen(true) }}
               className="flex-1 bg-transparent px-3 text-sm focus:outline-none"
               placeholder="Search TechPivo Market..."
             />
@@ -311,6 +354,16 @@ export function MarketplaceHeader({
               <Search className="h-5 w-5" />
             </button>
           </form>
+          {suggestOpen && (
+            <SuggestDropdown
+              items={suggestItems}
+              loading={suggestLoading}
+              query={query}
+              onPick={() => setSuggestOpen(false)}
+              onSubmitAll={() => { setSuggestOpen(false); submitSearch({ preventDefault: () => {} } as React.FormEvent) }}
+            />
+          )}
+          </div>
         </div>
       </div>
 

@@ -20,6 +20,7 @@ import { MarketplaceHeader, MarketplaceFooter } from "./marketplace-header"
 import { FeaturePanels } from "./feature-panels"
 import { CategoryShowcase } from "./category-showcase"
 import { ShopCollections, type CollectionItem } from "./shop-collections"
+import { BrandRail } from "./brand-rail"
 
 interface DbProduct {
   id: string
@@ -1167,13 +1168,7 @@ export function MarketplaceHome() {
         </section>
 
         {/* brands */}
-        <section className="bg-white rounded-2xl p-5 shadow-sm border border-[#E2E8F0]">
-          <div className="flex flex-wrap items-center justify-between gap-4 opacity-70">
-            {["SAMSUNG", "SONY", "INTEL", "JBL", "ANKER", "LOGITECH", "XIAOMI"].map((b) => (
-              <span key={b} className="text-lg font-extrabold tracking-tight text-[#0F172A]">{b}</span>
-            ))}
-          </div>
-        </section>
+        <BrandRail />
 
         {/* recently viewed — real local history */}
         {recentRows.length > 0 && (

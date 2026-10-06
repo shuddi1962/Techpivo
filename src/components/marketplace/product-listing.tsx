@@ -83,7 +83,7 @@ export function ProductListing({ products }: { products: StoreProduct[] }) {
   return (
     <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
       <div className="hidden lg:col-span-3 lg:block xl:col-span-3">
-        <FilterSidebar value={filters} onChange={setFilters} />
+        <FilterSidebar value={filters} onChange={setFilters} products={products} />
       </div>
       <div className="lg:col-span-9 xl:col-span-9">
         <div className="mb-4 flex flex-wrap items-center justify-end gap-3">
@@ -158,6 +158,7 @@ export function ProductListing({ products }: { products: StoreProduct[] }) {
             <FilterSidebar
               value={filters}
               onChange={setFilters}
+              products={products}
             />
             <button
               type="button"

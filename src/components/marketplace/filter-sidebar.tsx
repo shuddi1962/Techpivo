@@ -1,6 +1,7 @@
 "use client"
 
-import { useState } from "react"
+import Link from "next/link"
+import { useMemo, useState } from "react"
 import { Check, ChevronDown, RotateCcw, Search, SlidersHorizontal, Star } from "lucide-react"
 import { priceOf, discountOf, type StoreProduct } from "@/lib/marketplace-catalog"
 
@@ -127,15 +128,27 @@ function Section({ title, children, defaultOpen = true }: { title: string; child
 export function FilterSidebar({
   value,
   onChange,
+  products = [],
 }: {
   value: FilterValue
   onChange: (v: FilterValue) => void
+  products?: StoreProduct[]
 }) {
   const set = (patch: Partial<FilterValue>) => onChange({ ...value, ...patch })
   const toggleList = (key: "colors" | "sizes" | "features", item: string) =>
     set({ [key]: value[key].includes(item) ? value[key].filter((x) => x !== item) : [...value[key], item] } as Partial<FilterValue>)
   const active = countActiveFilters(value)
   const presetActive = (min: string, max: string) => value.minPrice === min && value.maxPrice === max
+  // Live suggestions: matching product names pop up as you type (instant,
+  // from the already-loaded list — no extra request). Picking one jumps
+  // straight to its product page.
+  const [suggestOpen, setSuggestOpen] = useState(false)
+  const matches = useMemo(() => {
+    const q = value.q.trim().toLowerCase()
+    if (q.length < 2 || products.length === 0) return []
+    return products.filter((p) => hayOf(p).includes(q)).slice(0, 6)
+  }, [value.q, products])
+  const showSuggest = suggestOpen && value.q.trim().length >= 2 && matches.length > 0
 
   return (
     <aside className="rounded-2xl border border-[#E2E8F0] bg-white p-5 shadow-sm lg:sticky lg:top-36">
@@ -162,15 +175,48 @@ export function FilterSidebar({
 
       <div className="mt-2">
         <Section title="Search products">
+          <div className="relative">
           <div className="flex h-10 items-center gap-2 rounded-lg border border-[#CBD5E1] bg-[#F8FAFC] px-3 focus-within:border-[#F59E0B]">
             <Search className="h-4 w-4 shrink-0 text-slate-400" />
             <input
               value={value.q}
-              onChange={(e) => set({ q: e.target.value })}
+              onChange={(e) => { set({ q: e.target.value }); setSuggestOpen(true) }}
+              onFocus={() => setSuggestOpen(true)}
+              onBlur={() => setTimeout(() => setSuggestOpen(false), 150)}
+              onKeyDown={(e) => { if (e.key === "Escape") setSuggestOpen(false) }}
               placeholder="Search in this list..."
               aria-label="Search products"
               className="w-full bg-transparent text-sm text-[#0F172A] placeholder:text-slate-400 focus:outline-none"
             />
+          </div>
+          {showSuggest && (
+            <div className="absolute inset-x-0 top-full z-40 mt-1.5 overflow-hidden rounded-xl border border-[#E2E8F0] bg-white shadow-xl">
+              <ul>
+                {matches.map((p) => (
+                  <li key={p.id}>
+                    <Link
+                      href={`/marketplace/product/${p.id}`}
+                      onClick={() => setSuggestOpen(false)}
+                      className="flex items-center gap-2.5 px-2.5 py-2 transition-colors hover:bg-[#F8FAFC]"
+                    >
+                      <span className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-[#E2E8F0] bg-white">
+                        {p.product_image_url ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img src={p.product_image_url} alt="" loading="lazy" decoding="async" className="h-full w-full object-cover" />
+                        ) : (
+                          <Search className="h-3.5 w-3.5 text-slate-300" />
+                        )}
+                      </span>
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate text-[13px] font-semibold text-[#0F172A]">{p.product_name}</span>
+                        <span className="block text-xs font-bold text-[#EF4444]">${priceOf(p).toFixed(2)}</span>
+                      </span>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
           </div>
         </Section>
 
