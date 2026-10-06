@@ -44,12 +44,12 @@ function readCurrency(): string {
 
 export function MarketplaceHeader({
   cartCount,
-  cartTotal,
   wishCount,
   onSearch,
   onShopDept,
 }: {
   cartCount?: number
+  /** Legacy — the header now shows the live item count, never a price. */
   cartTotal?: string
   wishCount?: number
   onSearch?: (q: string) => void
@@ -93,12 +93,10 @@ export function MarketplaceHeader({
   }, [])
 
   // Live cart lines — always subscribed so the badge is correct on every
-  // store page even when the page doesn't pass cartCount/cartTotal props.
+  // store page even when the page doesn't pass cartCount.
   const liveLines = useMarketCart()
   const liveCount = countLines(liveLines)
   const shownCartCount = cartCount ?? liveCount
-  const shownCartTotal =
-    cartTotal ?? (liveCount === 0 ? "$0.00" : `${liveCount} item${liveCount === 1 ? "" : "s"}`)
 
   // Live wishlist count (same localStorage key the home grid writes).
   const [liveWish, setLiveWish] = useState(0)
@@ -286,7 +284,7 @@ export function MarketplaceHeader({
             <span className="hidden sm:inline text-slate-600">|</span>
             <Link href="/marketplace/track" className="hover:text-white hidden md:inline">Track Order</Link>
             <span className="hidden md:inline text-slate-600">|</span>
-            <Link href="/contact" className="hover:text-white hidden md:inline">Help Center</Link>
+            <Link href="/marketplace/help" className="hover:text-white hidden md:inline">Help Center</Link>
           </div>
         </div>
       </div>
@@ -366,7 +364,7 @@ export function MarketplaceHeader({
               </span>
             </Link>
             <div className="h-8 w-px bg-[#E2E8F0] hidden sm:block" />
-            <Link href="/marketplace/cart" className="flex items-center gap-2 bg-[#F8FAFC] hover:bg-slate-100 px-3 py-2 rounded-lg border border-[#E2E8F0]">
+            <Link href="/marketplace/cart" aria-label={`Your cart, ${shownCartCount} item${shownCartCount === 1 ? "" : "s"}`} className="flex items-center gap-2 bg-[#F8FAFC] hover:bg-slate-100 px-3 py-2 rounded-lg border border-[#E2E8F0]">
               <span className="relative flex items-center justify-center">
                 <ShoppingBag className="h-6 w-6 text-[#F59E0B]" />
                 {shownCartCount > 0 && (
@@ -375,7 +373,7 @@ export function MarketplaceHeader({
               </span>
               <span className="hidden sm:flex flex-col text-left">
                 <span className="text-[11px] text-slate-400 uppercase leading-none">Cart</span>
-                <span className="text-sm font-bold text-[#0F172A]">{shownCartTotal}</span>
+                <span className="text-sm font-bold text-[#0F172A]">{shownCartCount === 0 ? "Empty" : `${shownCartCount} item${shownCartCount === 1 ? "" : "s"}`}</span>
               </span>
             </Link>
             <button
@@ -705,14 +703,15 @@ export function MarketplaceFooter() {
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src="/market-logo.svg" alt="TechPivo Market" className="h-9 w-auto" />
             </span>
-            <span className="text-[10px] font-bold uppercase tracking-[0.25em] text-[#F59E0B]">Market</span>
           </div>
             <p className="text-sm leading-relaxed text-slate-300">Curated tech products, reviewed by the TechPivo editorial team. Every purchase supports independent tech journalism.</p>
+            {store.contact_visible !== false && (
             <div className="space-y-2 text-sm text-slate-300">
               <div className="flex items-start gap-2"><MapPin className="mt-0.5 h-4 w-4 shrink-0 text-[#F59E0B]" /><span>{store.address}</span></div>
               <div className="flex items-center gap-2"><Phone className="h-4 w-4 shrink-0 text-[#F59E0B}" /><span>{store.phone}</span></div>
-              <div className="flex items-center gap-2"><Mail className="h-4 w-4 shrink-0 text-[#F59E0B]" /><span>{store.email}</span></div>
+              <div className="flex items-center gap-2"><Mail className="h-4 w-4 shrink-0 text-[#F59E0B}" /><span>{store.email}</span></div>
             </div>
+            )}
           </div>
           <nav aria-label="Shop departments">
             <h5 className="mb-4 text-sm font-bold uppercase tracking-wider text-white">Shop</h5>

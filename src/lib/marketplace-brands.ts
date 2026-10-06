@@ -91,6 +91,22 @@ export const KNOWN_BRANDS: BrandDef[] = [
   { name: "Infinix", aliases: ["infinix"], color: "#00A651" },
 ]
 
+// House brands — always pinned on the rail in this order; newly detected
+// brands from the live catalog are appended after them automatically.
+export const CURATED_BRAND_NAMES = [
+  "Samsung",
+  "Sony",
+  "Intel",
+  "JBL",
+  "Anker",
+  "Logitech",
+  "Xiaomi",
+]
+
+export function brandDefByName(name: string): BrandDef | null {
+  return KNOWN_BRANDS.find((b) => b.name.toLowerCase() === name.toLowerCase()) || null
+}
+
 const esc = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
 
 // First known brand mentioned as a whole word in name/description.

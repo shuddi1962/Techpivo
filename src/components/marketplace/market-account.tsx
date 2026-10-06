@@ -4,11 +4,12 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useEffect, useState } from "react"
 import {
-  Heart, LogOut, PackageSearch, Settings2, ShoppingBag, ShoppingCart,
+  Heart, LogOut, PackageSearch, ReceiptText, Settings2, ShoppingBag, ShoppingCart,
   Sparkles, Store, Tag, Truck, UserRound,
 } from "lucide-react"
 import { cartCount as countLines, useMarketCart } from "@/lib/marketplace-cart"
 import { marketImage } from "@/lib/marketplace-images"
+import { MarketPrice } from "./market-price"
 
 const WISH_KEY = "tp_market_wish_v1"
 const RECENT_KEY = "tp_market_recent_v1"
@@ -19,6 +20,18 @@ interface RecentRow {
   product_image_url: string | null
   sale_price: number | null
   original_price: number | null
+}
+
+interface MyOrder {
+  paystack_reference: string
+  status: string
+  paystack_status: string | null
+  total_ngn: number | null
+  total_usd: number | null
+  items: Array<{ name: string; qty: number; unit_usd: number }> | null
+  created_at: string
+  ship_city: string | null
+  ship_country: string | null
 }
 
 function readIds(key: string): string[] {
@@ -48,6 +61,8 @@ export function MarketAccount() {
   const [authChecked, setAuthChecked] = useState(false)
   const [wishCount, setWishCount] = useState(0)
   const [recent, setRecent] = useState<RecentRow[]>([])
+  const [orders, setOrders] = useState<MyOrder[]>([])
+  const [ordersLoading, setOrdersLoading] = useState(false)
   const [signingOut, setSigningOut] = useState(false)
 
   useEffect(() => {
@@ -77,6 +92,19 @@ export function MarketAccount() {
           setEmail(user.email || null)
         }
         setAuthChecked(true)
+        // Live order history for the signed-in email (server matches it).
+        if (user?.email) {
+          setOrdersLoading(true)
+          fetch("/api/marketplace/orders/mine")
+            .then((r) => r.json())
+            .then((d) => {
+              if (alive && Array.isArray(d?.orders)) setOrders(d.orders as MyOrder[])
+            })
+            .catch(() => {})
+            .finally(() => {
+              if (alive) setOrdersLoading(false)
+            })
+        }
         // Local shopper state (same keys the storefront writes everywhere).
         setWishCount(readIds(WISH_KEY).length)
         const ids = readIds(RECENT_KEY).slice(0, 4)
@@ -172,10 +200,11 @@ export function MarketAccount() {
       </section>
 
       {/* live stats */}
-      <section className="grid grid-cols-3 gap-3" aria-label="Account stats">
+      <section className="grid grid-cols-2 gap-3 sm:grid-cols-4" aria-label="Account stats">
         {[
           { label: "Cart items", value: String(cartQty), href: "/marketplace/cart", icon: ShoppingCart },
           { label: "Wishlist", value: String(wishCount), href: "/marketplace/wishlist", icon: Heart },
+          { label: "My orders", value: ordersLoading ? "…" : String(orders.length), href: "/marketplace/track", icon: ReceiptText },
           { label: "Recently viewed", value: String(recent.length), href: "/marketplace", icon: PackageSearch },
         ].map((s) => (
           <Link
@@ -190,6 +219,80 @@ export function MarketAccount() {
         ))}
       </section>
 
+      {/* my orders — real order history for the signed-in email */}
+      <section className="rounded-2xl border border-[#E2E8F0] bg-white p-5 shadow-sm">
+        <div className="mb-4 flex items-center justify-between gap-3">
+          <h2 className="flex items-center gap-2 text-lg font-bold text-[#0F172A]">
+            <ReceiptText className="h-5 w-5 text-[#B45309]" /> My orders
+          </h2>
+          <Link href="/marketplace/track" className="text-sm font-bold text-[#B45309] hover:text-[#D97706]">
+            Track →
+          </Link>
+        </div>
+        {!authChecked || ordersLoading ? (
+          <div className="space-y-2.5 animate-pulse" aria-hidden>
+            {[0, 1].map((i) => (
+              <div key={i} className="h-16 rounded-xl bg-slate-100" />
+            ))}
+          </div>
+        ) : !email ? (
+          <div className="rounded-xl bg-[#F8FAFC] p-5 text-center">
+            <p className="text-sm font-bold text-[#0F172A]">Sign in to see your orders</p>
+            <p className="mt-1 text-sm text-slate-500">Your order history appears here once you sign in with your purchase email.</p>
+            <Link
+              href="/login"
+              className="mt-3 inline-block rounded-lg bg-[#F59E0B] px-5 py-2.5 text-sm font-bold text-[#0F172A] transition-colors hover:bg-[#D97706]"
+            >
+              Sign in
+            </Link>
+          </div>
+        ) : orders.length === 0 ? (
+          <div className="rounded-xl bg-[#F8FAFC] p-5 text-center">
+            <p className="text-sm font-bold text-[#0F172A]">No orders yet</p>
+            <p className="mt-1 text-sm text-slate-500">When you check out, your orders will live here with live tracking.</p>
+            <Link
+              href="/marketplace/shop"
+              className="mt-3 inline-block rounded-lg bg-[#F59E0B] px-5 py-2.5 text-sm font-bold text-[#0F172A] transition-colors hover:bg-[#D97706]"
+            >
+              Start shopping
+            </Link>
+          </div>
+        ) : (
+          <ul className="space-y-2.5">
+            {orders.map((o) => {
+              const itemCount = Array.isArray(o.items) ? o.items.reduce((s, it) => s + (Number(it.qty) || 0), 0) : 0
+              return (
+                <li
+                  key={o.paystack_reference}
+                  className="flex flex-wrap items-center gap-3 rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] p-3.5"
+                >
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-bold text-[#0F172A]">{o.paystack_reference}</p>
+                    <p className="mt-0.5 text-xs text-slate-500">
+                      {new Date(o.created_at).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" })}
+                      {itemCount > 0 && ` · ${itemCount} item${itemCount === 1 ? "" : "s"}`}
+                      {o.ship_city && ` · ${o.ship_city}`}
+                    </p>
+                  </div>
+                  <span className="rounded-full bg-amber-50 px-2.5 py-1 text-[11px] font-bold uppercase text-amber-700">
+                    {o.status}
+                  </span>
+                  <MarketPrice
+                    usd={Number(o.total_usd ?? 0)}
+                    className="text-sm font-extrabold tabular-nums text-[#0F172A]"
+                  />
+                  <Link
+                    href={`/marketplace/track?reference=${encodeURIComponent(o.paystack_reference)}&email=${encodeURIComponent(email)}`}
+                    className="rounded-lg bg-[#0F172A] px-4 py-2 text-xs font-bold text-white transition-colors hover:bg-black"
+                  >
+                    Track
+                  </Link>
+                </li>
+              )
+            })}
+          </ul>
+        )}
+      </section>
       {/* shortcuts — every tile works */}
       <section className="rounded-2xl border border-[#E2E8F0] bg-white p-5 shadow-sm">
         <h2 className="text-lg font-bold text-[#0F172A]">Quick actions</h2>

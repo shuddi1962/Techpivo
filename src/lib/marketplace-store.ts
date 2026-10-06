@@ -8,12 +8,15 @@ export interface MarketStore {
   address: string
   phone: string
   email: string
+  /** Footer contact block visibility. False = hidden publicly. */
+  contact_visible: boolean
 }
 
 export const MARKET_STORE_DEFAULTS: MarketStore = {
   address: "Lagos • Nairobi • Accra — ships worldwide",
   phone: "+234 (0) 800 000 0000",
   email: "market@techpivo.com",
+  contact_visible: true,
 }
 
 export function sanitizeStore(raw: unknown): MarketStore {
@@ -24,5 +27,6 @@ export function sanitizeStore(raw: unknown): MarketStore {
     address: str(r.address, MARKET_STORE_DEFAULTS.address),
     phone: str(r.phone, MARKET_STORE_DEFAULTS.phone),
     email: str(r.email, MARKET_STORE_DEFAULTS.email),
+    contact_visible: typeof r.contact_visible === "boolean" ? r.contact_visible : true,
   }
 }

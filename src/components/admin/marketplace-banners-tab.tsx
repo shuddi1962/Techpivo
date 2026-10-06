@@ -170,6 +170,17 @@ export function MarketplaceBannersTab() {
         <p className="text-sm text-slate-500 mt-1">
           The address, phone and email shown in the storefront footer. Save here and it reflects publicly right away.
         </p>
+        <label className="mt-3 inline-flex cursor-pointer items-center gap-3 rounded-xl border px-4 py-3">
+          <input
+            type="checkbox"
+            checked={store.contact_visible !== false}
+            onChange={(e) => setStore((s) => ({ ...s, contact_visible: e.target.checked }))}
+            className="h-5 w-5 accent-[#F59E0B]"
+          />
+          <span className="text-sm font-bold text-slate-900">
+            {store.contact_visible !== false ? "Contact block is ON — showing publicly" : "Contact block is OFF — hidden publicly"}
+          </span>
+        </label>
         <div className="grid gap-3 mt-4">
           <label className="block">
             <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Coverage line</span>

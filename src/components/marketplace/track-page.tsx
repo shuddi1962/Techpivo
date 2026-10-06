@@ -22,7 +22,7 @@ const STATUS_STEPS = ["pending", "paid", "fulfilled", "delivered"]
 export function TrackPage() {
   const params = useSearchParams()
   const [reference, setReference] = useState(params.get("reference") || "")
-  const [email, setEmail] = useState("")
+  const [email, setEmail] = useState(params.get("email") || "")
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
   const [order, setOrder] = useState<TrackedOrder | null>(null)
