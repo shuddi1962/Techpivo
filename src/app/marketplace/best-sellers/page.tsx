@@ -1,5 +1,6 @@
 import type { Metadata } from "next"
-import { fetchStoreProducts } from "@/lib/marketplace-products"
+import { fetchStoreProducts, fetchMarketBanners } from "@/lib/marketplace-products"
+import { pageBannerOf } from "@/lib/marketplace-banners"
 import { ProductListing } from "@/components/marketplace/product-listing"
 import { StorePageShell, CollectionHero } from "@/components/marketplace/store-shell"
 
@@ -11,7 +12,10 @@ export const metadata: Metadata = {
 }
 
 export default async function MarketplaceBestSellersPage() {
-  const products = await fetchStoreProducts({ order: "popular", limit: 100 })
+  const [products, banners] = await Promise.all([
+    fetchStoreProducts({ order: "popular", limit: 100 }),
+    fetchMarketBanners(),
+  ])
   return (
     <StorePageShell trail={[{ label: "Best Sellers" }]}>
       <CollectionHero
@@ -19,6 +23,7 @@ export default async function MarketplaceBestSellersPage() {
         title="Best Sellers"
         copy="Ranked by real shopper interest — the products everyone keeps coming back for."
         theme="orange"
+        image={pageBannerOf(banners, "best_sellers_image")}
       />
       <ProductListing products={products} />
     </StorePageShell>

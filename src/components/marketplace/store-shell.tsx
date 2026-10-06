@@ -40,11 +40,13 @@ export function CollectionHero({
   title,
   copy,
   theme = "dark",
+  image = "",
 }: {
   kicker: string
   title: string
   copy: string
   theme?: "dark" | "red" | "orange"
+  image?: string
 }) {
   const bg =
     theme === "red"
@@ -52,6 +54,21 @@ export function CollectionHero({
       : theme === "orange"
         ? "linear-gradient(120deg, #F59E0B 0%, #EA580C 60%, #DC2626 100%)"
         : "linear-gradient(120deg, #23272E 0%, #14171C 100%)"
+  // Uploaded banner: shown in FULL like the homepage hero (h-auto w-full,
+  // never cropped) with the title band beneath — any ratio fits.
+  if (image.trim()) {
+    return (
+      <section className="overflow-hidden rounded-2xl border border-[#E2E8F0] bg-white shadow-sm">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={image.trim()} alt={title} loading="eager" decoding="async" className="block h-auto w-full" />
+        <div className="p-6 sm:p-8 text-white" style={{ background: bg }}>
+          <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-[#F59E0B]">{kicker}</p>
+          <h1 className="mt-1 text-2xl font-extrabold tracking-tight sm:text-3xl">{title}</h1>
+          <p className="mt-1 max-w-2xl text-sm text-white/80">{copy}</p>
+        </div>
+      </section>
+    )
+  }
   return (
     <section className="overflow-hidden rounded-2xl p-6 sm:p-8 text-white" style={{ background: bg }}>
       <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-[#F59E0B]">{kicker}</p>

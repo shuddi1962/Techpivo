@@ -352,8 +352,14 @@ export function MarketplaceHeader({
                               onClick={() => setDeptOpen(false)}
                               className="group block overflow-hidden rounded-xl border border-[#E2E8F0]"
                             >
-                              {/* eslint-disable-next-line @next/next/no-img-element */}
-                              <img src={deptCovers[d.slug] || d.image} alt={d.name} loading="lazy" className="h-24 w-full object-cover transition-transform duration-300 group-hover:scale-105" />
+                              {deptCovers[d.slug] ? (
+                              // eslint-disable-next-line @next/next/no-img-element
+                              <img src={deptCovers[d.slug]} alt={d.name} loading="lazy" className="h-24 w-full object-cover transition-transform duration-300 group-hover:scale-105" />
+                              ) : (
+                              <span className="flex h-24 w-full items-center justify-center" style={{ background: "linear-gradient(120deg, #23272E 0%, #14171C 100%)" }} aria-hidden>
+                                <span className="text-2xl font-extrabold text-white/25">{d.name.charAt(0)}</span>
+                              </span>
+                              )}
                             </Link>
                             <Link
                               href={`/marketplace/category/${d.slug}`}

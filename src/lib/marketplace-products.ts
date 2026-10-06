@@ -6,6 +6,7 @@ import { fetchWithTimeout } from "@/lib/fetch-timeout"
 import { supplierDisplayName } from "@/lib/marketplace"
 import { marketImage, cleanSupplierText } from "@/lib/marketplace-images"
 import type { StoreProduct } from "@/lib/marketplace-catalog"
+import type { MarketBanners } from "@/lib/marketplace-banners"
 
 export type { StoreProduct } from "@/lib/marketplace-catalog"
 
@@ -85,4 +86,20 @@ export async function fetchStoreProducts(opts?: {
     const st = stats.get(p.id)
     return sanitize(p, st && st.n > 0 ? st.sum / st.n : 0, st?.n ?? 0)
   })
+}
+
+// Admin-custom storefront banners (public site_settings read). Never
+// throws — pages fall back to EMPTY_BANNERS (gradient heroes) instead.
+export async function fetchMarketBanners(): Promise<MarketBanners> {
+  const { EMPTY_BANNERS, parseBanners } = await import("@/lib/marketplace-banners")
+  try {
+    const supabase = createPublicClient()
+    const res = (await fetchWithTimeout(
+      supabase.from("site_settings").select("value").eq("key", "marketplace_banners").maybeSingle(),
+      8000
+    )) as { data: { value?: unknown } | null } | null
+    return parseBanners(res?.data?.value)
+  } catch {
+    return { ...EMPTY_BANNERS, departments: {} }
+  }
 }

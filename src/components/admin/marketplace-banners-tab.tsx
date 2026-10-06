@@ -119,9 +119,10 @@ export function MarketplaceBannersTab() {
       <div className="bg-white border rounded-xl p-5">
         <h2 className="font-bold text-slate-900">Storefront banners</h2>
         <p className="text-sm text-slate-500 mt-1">
-          Upload your own banners or paste image URLs. Empty = built-in default. All banners render with{" "}
-          <code>object-cover</code> so any ratio fits without stretching — but matching the recommended dimensions
-          below gives the sharpest result.
+          Upload your own banners or paste image URLs. Empty = built-in default. Page heroes
+          (Shop, Deals, Best Sellers, New Arrivals, Top Stores, Track Order, homepage) show in{" "}
+          <strong>FULL</strong> — never cropped, any ratio fits. Category / department banners render with{" "}
+          <code>object-cover</code> under a text scrim.
         </p>
 
         <div className="grid gap-4 mt-4">

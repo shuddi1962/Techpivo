@@ -1,5 +1,6 @@
 import type { Metadata } from "next"
-import { fetchStoreProducts } from "@/lib/marketplace-products"
+import { fetchStoreProducts, fetchMarketBanners } from "@/lib/marketplace-products"
+import { pageBannerOf } from "@/lib/marketplace-banners"
 import { discountOf } from "@/lib/marketplace-catalog"
 import { ProductListing } from "@/components/marketplace/product-listing"
 import { StorePageShell, CollectionHero } from "@/components/marketplace/store-shell"
@@ -12,7 +13,10 @@ export const metadata: Metadata = {
 }
 
 export default async function MarketplaceDealsPage() {
-  const all = await fetchStoreProducts({ limit: 150 })
+  const [all, banners] = await Promise.all([
+    fetchStoreProducts({ limit: 150 }),
+    fetchMarketBanners(),
+  ])
   const products = all
     .filter((p) => discountOf(p) > 0)
     .sort((a, b) => discountOf(b) - discountOf(a))
@@ -23,6 +27,7 @@ export default async function MarketplaceDealsPage() {
         title="Deals of the Day"
         copy="The biggest discounts in the store right now — when the price drops, it goes fast."
         theme="red"
+        image={pageBannerOf(banners, "deals_image")}
       />
       <ProductListing products={products} />
     </StorePageShell>

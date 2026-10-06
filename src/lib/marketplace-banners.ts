@@ -1,8 +1,11 @@
 // TechPivo Market — storefront banner settings (DB-driven, admin-editable).
 // Stored in site_settings under key "marketplace_banners" as JSON:
-//   { hero_image, promo_image, category_default, departments: { [slug]: url } }
-// Empty string = use the built-in default. All images render with
-// object-cover so any aspect ratio fits without stretching.
+//   { hero_image, promo_image, category_default, departments: {...},
+//     shop_image, deals_image, best_sellers_image, new_arrivals_image,
+//     top_stores_image, track_image }
+// Empty string = use the built-in default. Homepage + collection-page
+// banners render FULL (never cropped) so any aspect ratio fits; category
+// banners render with object-cover under a text scrim.
 
 export const MARKETPLACE_BANNERS_KEY = "marketplace_banners"
 
@@ -11,6 +14,12 @@ export interface MarketBanners {
   promo_image: string
   category_default: string
   departments: Record<string, string>
+  shop_image: string
+  deals_image: string
+  best_sellers_image: string
+  new_arrivals_image: string
+  top_stores_image: string
+  track_image: string
 }
 
 export const EMPTY_BANNERS: MarketBanners = {
@@ -18,6 +27,12 @@ export const EMPTY_BANNERS: MarketBanners = {
   promo_image: "",
   category_default: "",
   departments: {},
+  shop_image: "",
+  deals_image: "",
+  best_sellers_image: "",
+  new_arrivals_image: "",
+  top_stores_image: "",
+  track_image: "",
 }
 
 // Recommended upload dimensions — shown in Admin so uploads fit well.
@@ -40,6 +55,42 @@ export const BANNER_SLOTS = [
     dims: "1600 × 600 px",
     hint: "Used on every department/category page banner unless that department has its own image below.",
   },
+  {
+    id: "shop_image",
+    label: "Shop page",
+    dims: "1600 × 600 px (any ratio fits)",
+    hint: "Shown in FULL on the Shop page (never cropped) — any ratio fits, like the homepage hero.",
+  },
+  {
+    id: "deals_image",
+    label: "Deals of the Day page",
+    dims: "1600 × 600 px (any ratio fits)",
+    hint: "Shown in FULL on the Deals of the Day page (never cropped) — any ratio fits.",
+  },
+  {
+    id: "best_sellers_image",
+    label: "Best Sellers page",
+    dims: "1600 × 600 px (any ratio fits)",
+    hint: "Shown in FULL on the Best Sellers page (never cropped) — any ratio fits.",
+  },
+  {
+    id: "new_arrivals_image",
+    label: "New Arrivals page",
+    dims: "1600 × 600 px (any ratio fits)",
+    hint: "Shown in FULL on the New Arrivals page (never cropped) — any ratio fits.",
+  },
+  {
+    id: "top_stores_image",
+    label: "Top Stores page",
+    dims: "1600 × 600 px (any ratio fits)",
+    hint: "Shown in FULL on the Top Stores page (never cropped) — any ratio fits.",
+  },
+  {
+    id: "track_image",
+    label: "Track Order page",
+    dims: "1600 × 600 px (any ratio fits)",
+    hint: "Shown in FULL on the Track Order page (never cropped) — any ratio fits.",
+  },
 ] as const
 
 export const DEPT_BANNER_DIMS = "1200 × 600 px"
@@ -51,6 +102,22 @@ export function deptBannerOf(b: MarketBanners | null | undefined, slug: string, 
   const def = b?.category_default?.trim()
   if (def) return def
   return fallback
+}
+
+// Uploaded banner for a collection/utility page (shop, deals, best
+// sellers, new arrivals, top stores, track). Empty string = no upload,
+// the page renders its default gradient hero.
+export type PageBannerKey =
+  | "shop_image"
+  | "deals_image"
+  | "best_sellers_image"
+  | "new_arrivals_image"
+  | "top_stores_image"
+  | "track_image"
+
+export function pageBannerOf(b: MarketBanners | null | undefined, key: PageBannerKey): string {
+  const v = b?.[key]
+  return typeof v === "string" ? v.trim() : ""
 }
 
 export function parseBanners(raw: unknown): MarketBanners {
@@ -66,6 +133,12 @@ export function parseBanners(raw: unknown): MarketBanners {
     hero_image: str(r.hero_image).trim(),
     promo_image: str(r.promo_image).trim(),
     category_default: str(r.category_default).trim(),
+    shop_image: str(r.shop_image).trim(),
+    deals_image: str(r.deals_image).trim(),
+    best_sellers_image: str(r.best_sellers_image).trim(),
+    new_arrivals_image: str(r.new_arrivals_image).trim(),
+    top_stores_image: str(r.top_stores_image).trim(),
+    track_image: str(r.track_image).trim(),
     departments,
   }
 }
