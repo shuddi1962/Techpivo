@@ -74,7 +74,7 @@ export default async function MarketplaceCategoryPage({ params }: { params: { sl
           </p>
           <h1 className="text-2xl font-extrabold tracking-tight text-white sm:text-3xl">{title}</h1>
           <p className="text-sm text-white/80">
-            {products.length} product{products.length === 1 ? "" : "s"} — quality-checked, securely paid, delivered with tracking.
+            Quality-checked, securely paid, delivered with tracking.
           </p>
           {found.kind === "dept" && (
             <div className="flex flex-wrap gap-1.5 pt-1">
@@ -100,7 +100,7 @@ export default async function MarketplaceCategoryPage({ params }: { params: { sl
             </p>
             <h1 className="text-2xl font-extrabold tracking-tight sm:text-3xl">{title}</h1>
             <p className="text-sm text-white/80">
-              {products.length} product{products.length === 1 ? "" : "s"} — quality-checked, securely paid, delivered with tracking.
+              Quality-checked, securely paid, delivered with tracking.
             </p>
             {found.kind === "dept" && (
               <div className="flex flex-wrap gap-1.5 pt-1">

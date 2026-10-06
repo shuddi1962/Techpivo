@@ -919,9 +919,7 @@ export function MarketplaceHome() {
               ))}
             </div>
             <span className="text-sm text-slate-500 hidden sm:block">
-              {filtering
-                ? `${shown.length} result${shown.length === 1 ? "" : "s"}${q ? ` for “${query.trim()}”` : ""}`
-                : "Shop the collection"}
+              Shop the collection
             </span>
           </div>
           {filtering && (

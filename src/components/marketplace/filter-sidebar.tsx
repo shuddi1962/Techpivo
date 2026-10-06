@@ -127,11 +127,9 @@ function Section({ title, children, defaultOpen = true }: { title: string; child
 export function FilterSidebar({
   value,
   onChange,
-  resultCount,
 }: {
   value: FilterValue
   onChange: (v: FilterValue) => void
-  resultCount: number
 }) {
   const set = (patch: Partial<FilterValue>) => onChange({ ...value, ...patch })
   const toggleList = (key: "colors" | "sizes" | "features", item: string) =>
@@ -159,7 +157,7 @@ export function FilterSidebar({
         )}
       </div>
       <p className="mt-1 text-xs text-slate-500">
-        {resultCount} product{resultCount === 1 ? "" : "s"} found
+        Refine the list with the filters below
       </p>
 
       <div className="mt-2">

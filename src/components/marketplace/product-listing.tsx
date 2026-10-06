@@ -83,13 +83,10 @@ export function ProductListing({ products }: { products: StoreProduct[] }) {
   return (
     <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
       <div className="hidden lg:col-span-3 lg:block xl:col-span-3">
-        <FilterSidebar value={filters} onChange={setFilters} resultCount={shown.length} />
+        <FilterSidebar value={filters} onChange={setFilters} />
       </div>
       <div className="lg:col-span-9 xl:col-span-9">
-        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-          <p className="text-sm text-slate-500">
-            <strong className="text-[#0F172A]">{shown.length}</strong> of {products.length} products
-          </p>
+        <div className="mb-4 flex flex-wrap items-center justify-end gap-3">
           <div className="flex items-center gap-2">
             <button
               type="button"
@@ -161,14 +158,13 @@ export function ProductListing({ products }: { products: StoreProduct[] }) {
             <FilterSidebar
               value={filters}
               onChange={setFilters}
-              resultCount={shown.length}
             />
             <button
               type="button"
               onClick={() => setDrawer(false)}
               className="mt-4 w-full rounded-lg bg-[#DC2626] py-3 text-sm font-bold text-white"
             >
-              Show {shown.length} result{shown.length === 1 ? "" : "s"}
+              Show results
             </button>
           </div>
         </div>
