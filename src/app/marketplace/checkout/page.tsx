@@ -6,7 +6,7 @@ import { MarketplaceHeader, MarketplaceFooter } from "@/components/marketplace/m
 
 export const metadata: Metadata = {
   title: "Checkout — TechPivo Market",
-  description: "Enter delivery details and pay securely with Paystack on TechPivo Market.",
+  description: "Enter delivery details and pay securely with Korapay on TechPivo Market.",
 }
 
 export default function MarketplaceCheckoutRoute() {

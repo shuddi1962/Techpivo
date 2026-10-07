@@ -318,7 +318,7 @@ export function CheckoutPage() {
             {paying ? <><Loader2 className="h-4 w-4 animate-spin" /> Starting payment...</> : <><Lock className="h-4 w-4" /> Pay ₦{totalNgn.toLocaleString()}</>}
           </button>
           <div className="flex items-center justify-center gap-1.5">
-            {["VISA", "MASTERCARD", "VERVE", "PAYSTACK"].map((b) => (
+            {["VISA", "MASTERCARD", "VERVE", "KORAPAY"].map((b) => (
               <span key={b} className="rounded border border-[#E2E8F0] bg-[#F8FAFC] px-2 py-0.5 text-[10px] font-bold text-slate-500">{b}</span>
             ))}
           </div>

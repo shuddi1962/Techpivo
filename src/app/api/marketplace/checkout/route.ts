@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
 import { createClient as createAdmin } from "@/lib/supabase/admin"
-import { paystackInit } from "@/lib/paystack"
+import { korapayInit } from "@/lib/korapay"
 import { cjGetVariants, MARKET_MARGIN } from "@/lib/cj"
 import { storeShipOptions } from "@/lib/marketplace-shipping"
 import { supplierShipOptions } from "@/lib/marketplace-freight"
@@ -15,7 +15,7 @@ interface CheckoutItem {
 }
 
 // POST /api/marketplace/checkout — validate cart server-side, create a
-// pending order, and initialize a Paystack transaction (NGN).
+// pending order, and initialize a Korapay checkout (NGN).
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json().catch(() => null)
@@ -127,7 +127,7 @@ export async function POST(request: NextRequest) {
     }
     const totalUsd = Math.round((subtotal + shippingUsd) * 100) / 100
 
-    // NGN total via live FX (fallback 1600) — Paystack charges kobo
+    // NGN total via live FX (fallback 1600) — Korapay charges naira units
     let usdNgn = 1600
     try {
       const fx = await fetch(`${new URL(request.url).origin}/api/tools/fx?from=USD&to=NGN&amount=1`, { signal: AbortSignal.timeout(8000) }).then((r) => r.json())
@@ -169,11 +169,20 @@ export async function POST(request: NextRequest) {
 
     try {
       const origin = new URL(request.url).origin
-      const init = await paystackInit(email, totalNgn * 100, reference, { order_id: order.id, items: lines.length }, `${origin}/marketplace/checkout/success`)
+      const init = await korapayInit({
+        email,
+        name: ship.name,
+        amountNgn: totalNgn,
+        reference,
+        redirectUrl: `${origin}/marketplace/checkout/success`,
+        notificationUrl: `${origin}/api/marketplace/webhook`,
+        narration: `TechPivo Market order ${reference}`,
+        metadata: { order_id: order.id },
+      })
       return NextResponse.json({
         order_id: order.id,
         reference,
-        authorization_url: init.authorization_url,
+        authorization_url: init.checkout_url,
         total_ngn: totalNgn,
         total_usd: totalUsd,
       })

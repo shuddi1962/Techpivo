@@ -1,20 +1,11 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/admin"
-import { paystackVerify } from "@/lib/paystack"
-import { cjCreateOrder } from "@/lib/cj"
-import { supplierShipOptions } from "@/lib/marketplace-freight"
+import { korapayVerify } from "@/lib/korapay"
+import { fulfillMarketplaceOrder } from "@/lib/marketplace-fulfill"
 
 export const dynamic = "force-dynamic"
 
-interface OrderLine {
-  id: string
-  name: string
-  qty: number
-  cj_pid?: string | null
-  cj_vid?: string | null
-}
-
-// POST /api/marketplace/verify — confirm Paystack payment, then auto-place
+// POST /api/marketplace/verify — confirm Korapay payment, then auto-place
 // the CJDropshipping fulfillment order when every line has a variant id.
 export async function POST(request: NextRequest) {
   try {
@@ -26,10 +17,16 @@ export async function POST(request: NextRequest) {
     const { data: order } = await supabase.from("marketplace_orders").select("*").eq("paystack_reference", reference).maybeSingle()
     if (!order) return NextResponse.json({ error: "Order not found." }, { status: 404 })
     if (order.paystack_status === "paid") {
+      // Already confirmed (e.g. via webhook) — still attempt fulfillment if
+      // it hasn't happened yet instead of returning early without CJ.
+      if (!order.cj_order_id && order.status === "paid") {
+        const result = await fulfillMarketplaceOrder(supabase, order)
+        return NextResponse.json({ paid: true, status: result.cj_order_id ? "fulfilled" : "paid", cj_order_id: result.cj_order_id })
+      }
       return NextResponse.json({ paid: true, status: order.status, cj_order_id: order.cj_order_id })
     }
 
-    const tx = await paystackVerify(reference)
+    const tx = await korapayVerify(reference)
     if (tx.status !== "success") {
       await supabase.from("marketplace_orders").update({ paystack_status: tx.status || "failed" }).eq("id", order.id)
       return NextResponse.json({ paid: false, status: tx.status })
@@ -37,53 +34,10 @@ export async function POST(request: NextRequest) {
 
     await supabase.from("marketplace_orders").update({ paystack_status: "paid", status: "paid" }).eq("id", order.id)
 
-    // Auto-fulfill via the buyer's chosen courier when we have variant ids
-    // for every line. The stored method name goes to the supplier; store
-    // methods resolve to the cheapest live courier right now.
-    const lines = (order.items || []) as OrderLine[]
-    const fulfillable = lines.length > 0 && lines.every((l) => l.cj_vid)
-    if (fulfillable) {
-      try {
-        let logisticName = "CJPacket"
-        const stored = String(order.ship_method || "")
-        if (stored && stored !== "Standard" && stored !== "Express") {
-          logisticName = stored
-        } else {
-          try {
-            const live = await supplierShipOptions(
-              lines.map((l) => ({ product_id: l.id, variant_vid: l.cj_vid || "", qty: l.qty })),
-              String(order.ship_country || "NG")
-            )
-            if (live.length > 0) logisticName = live[0].name
-          } catch {
-            // keep CJPacket fallback
-          }
-        }
-        const result = (await cjCreateOrder({
-          externalOrderNumber: String(order.id),
-          shippingCountry: order.ship_country || "NG",
-          shippingAddress: `${order.ship_address || ""} ${order.ship_city || ""}`.trim(),
-          shippingCity: order.ship_city || "",
-          shippingState: order.ship_state || "",
-          shippingZip: order.ship_zip || "",
-          shippingCustomerName: order.ship_name || "",
-          shippingPhone: order.ship_phone || "",
-          logisticName,
-          products: lines.map((l) => ({ vid: l.cj_vid as string, quantity: l.qty })),
-        })) as { orderId?: string; id?: string } | null
-        const cjId = result?.orderId || result?.id || null
-        await supabase
-          .from("marketplace_orders")
-          .update({ cj_order_id: cjId, cj_status: cjId ? "submitted" : "manual_needed", status: cjId ? "fulfilled" : "paid" })
-          .eq("id", order.id)
-        return NextResponse.json({ paid: true, status: cjId ? "fulfilled" : "paid", cj_order_id: cjId })
-      } catch {
-        await supabase.from("marketplace_orders").update({ cj_status: "manual_needed" }).eq("id", order.id)
-        return NextResponse.json({ paid: true, status: "paid", fulfillment: "manual" })
-      }
+    const result = await fulfillMarketplaceOrder(supabase, { ...order, paystack_status: "paid", status: "paid" })
+    if (result.cj_order_id) {
+      return NextResponse.json({ paid: true, status: "fulfilled", cj_order_id: result.cj_order_id })
     }
-
-    await supabase.from("marketplace_orders").update({ cj_status: "manual_needed" }).eq("id", order.id)
     return NextResponse.json({ paid: true, status: "paid", fulfillment: "manual" })
   } catch (e) {
     const msg = e instanceof Error ? e.message : "Verification failed."

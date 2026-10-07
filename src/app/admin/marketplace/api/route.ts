@@ -37,9 +37,9 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ status })
     }
     if (section === "pay-status") {
-      const { data } = await supabase.from("site_settings").select("key").in("key", ["paystack_secret_key", "paystack_public_key"])
+      const { data } = await supabase.from("site_settings").select("key").in("key", ["korapay_secret_key", "korapay_public_key", "korapay_encryption_key"])
       const keys = new Set(((data || []) as Array<{ key: string }>).map((r) => r.key))
-      return NextResponse.json({ status: { secret: keys.has("paystack_secret_key"), public: keys.has("paystack_public_key") } })
+      return NextResponse.json({ status: { secret: keys.has("korapay_secret_key"), public: keys.has("korapay_public_key"), encryption: keys.has("korapay_encryption_key") } })
     }
     if (section === "orders") {
       const { data, error } = await supabase
@@ -105,15 +105,17 @@ export async function POST(request: NextRequest) {
       const status = await cjStatus()
       return NextResponse.json({ success: true, status })
     }
-    // Save Paystack keys to site_settings
+    // Save Korapay keys to site_settings
     if (body.action === "pay-save-keys") {
       const secret = String(body.secret || "").trim()
       const pub = String(body.public || "").trim()
+      const encryption = String(body.encryption || "").trim()
       if (secret && !secret.startsWith("sk_")) return NextResponse.json({ error: "Secret key should start with sk_." }, { status: 400 })
       if (pub && !pub.startsWith("pk_")) return NextResponse.json({ error: "Public key should start with pk_." }, { status: 400 })
       const rows = []
-      if (secret) rows.push({ key: "paystack_secret_key", value: secret as unknown as never })
-      if (pub) rows.push({ key: "paystack_public_key", value: pub as unknown as never })
+      if (secret) rows.push({ key: "korapay_secret_key", value: secret as unknown as never })
+      if (pub) rows.push({ key: "korapay_public_key", value: pub as unknown as never })
+      if (encryption) rows.push({ key: "korapay_encryption_key", value: encryption as unknown as never })
       if (rows.length === 0) return NextResponse.json({ error: "Paste at least one key." }, { status: 400 })
       const { error } = await supabase.from("site_settings").upsert(rows, { onConflict: "key" })
       if (error) throw error
