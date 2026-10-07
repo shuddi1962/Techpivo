@@ -6,6 +6,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js"
 import { cjCreateOrder } from "@/lib/cj"
 import { supplierShipOptions } from "@/lib/marketplace-freight"
+import { SHIP_COUNTRIES } from "@/lib/marketplace-shipping"
 
 interface OrderLine {
   id: string
@@ -63,27 +64,38 @@ export async function fulfillMarketplaceOrder(supabase: SupabaseClient, order: F
         // keep CJPacket fallback
       }
     }
-    let result: { orderId?: string; id?: string } | null = null
+    let result: { orderId?: string; id?: string; orderNum?: string } | null = null
     try {
+      const countryCode = String(order.ship_country || "NG").toUpperCase().slice(0, 2) || "NG"
+      const countryName =
+        SHIP_COUNTRIES.find((c) => c.code === countryCode)?.name || countryCode
+      const province = String(order.ship_state || order.ship_city || countryName).slice(0, 50)
+      const city = String(order.ship_city || order.ship_state || countryName).slice(0, 50)
+      const phone = String(order.ship_phone || "").replace(/[^\d]/g, "").slice(0, 20)
       result = (await cjCreateOrder({
-        externalOrderNumber: String(order.id),
-        shippingCountry: order.ship_country || "NG",
-        shippingAddress: `${order.ship_address || ""} ${order.ship_city || ""}`.trim(),
-        shippingCity: order.ship_city || "",
-        shippingState: order.ship_state || "",
-        shippingZip: order.ship_zip || "",
-        shippingCustomerName: order.ship_name || "",
-        shippingPhone: order.ship_phone || "",
-        logisticName,
+        orderNumber: String(order.id).slice(0, 50),
+        shippingCountryCode: countryCode,
+        shippingCountry: countryName.slice(0, 50),
+        shippingProvince: province,
+        shippingCity: city,
+        shippingAddress: String(order.ship_address || `${city}, ${countryName}`).slice(0, 200),
+        shippingAddress2: String(order.ship_state || "").slice(0, 200),
+        shippingCustomerName: String(order.ship_name || "Customer").slice(0, 50),
+        shippingPhone: phone,
+        shippingZip: String(order.ship_zip || "").slice(0, 20),
+        logisticName: logisticName.slice(0, 50),
+        fromCountryCode: "CN",
         products: lines.map((l) => ({ vid: l.cj_vid as string, quantity: l.qty })),
-      })) as { orderId?: string; id?: string } | null
+        remark: `TechPivo Market ${String(order.id).slice(0, 8)}`,
+      })) as { orderId?: string; id?: string; orderNum?: string } | null
     } catch (e) {
       const msg = e instanceof Error ? e.message : "CJ order create failed"
       return fail(supabase, order.id, `CJ: ${msg}`)
     }
-    const cjId = result?.orderId || result?.id || null
+    const cjId = result?.orderId || result?.id || result?.orderNum || null
     if (!cjId) {
-      return fail(supabase, order.id, "CJ accepted the request but returned no order id.")
+      const keys = result && typeof result === "object" ? Object.keys(result).join(",") : typeof result
+      return fail(supabase, order.id, `CJ accepted the request but returned no order id (fields: ${keys}).`)
     }
     await supabaseUpdate(supabase, order.id, {
       cj_order_id: cjId,

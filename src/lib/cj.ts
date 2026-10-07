@@ -311,16 +311,25 @@ export async function cjGetFreight(opts: {
   return data?.list ?? []
 }
 
+// Field names match the CJ v1 createOrder contract exactly
+// (docs: developers.cjdropshipping.com shopping API):
+// orderNumber + shippingCountryCode + shippingCountry (full name) +
+// shippingProvince + shippingCity + shippingAddress + shippingCustomerName +
+// shippingPhone + shippingZip + logisticName + fromCountryCode are required;
+// the old externalOrderNumber/shippingState shape was rejected by CJ.
 export interface CjOrderInput {
-  externalOrderNumber?: string
+  orderNumber: string
+  shippingCountryCode: string
   shippingCountry: string
-  shippingAddress: string
+  shippingProvince: string
   shippingCity: string
-  shippingState?: string
-  shippingZip: string
+  shippingAddress: string
+  shippingAddress2?: string
   shippingCustomerName: string
   shippingPhone: string
+  shippingZip: string
   logisticName: string
+  fromCountryCode: string
   products: Array<{ vid: string; quantity: number }>
   remark?: string
 }
