@@ -408,7 +408,9 @@ export default function AdminMarketplacePage() {
                         {(() => {
                           if (p.program_key !== "cjdropshipping" || p.sale_price == null || !p.original_price) return <span className="text-slate-400">—</span>
                           const cost = Number(p.original_price) / 1.5
-                          const margin = Number(p.sale_price) - cost
+                          // Round to cents BEFORE the threshold so $1.50 never
+                          // flags "thin!" over a floating-point speck.
+                          const margin = Math.round((Number(p.sale_price) - cost) * 100) / 100
                           const good = margin >= 1.5
                           return (
                             <span title={`Est. CJ cost $${cost.toFixed(2)}`} className={`text-xs font-bold px-2 py-1 rounded-full ${good ? "bg-emerald-50 text-emerald-700" : margin >= 0 ? "bg-amber-50 text-amber-700" : "bg-red-50 text-red-700"}`}>
