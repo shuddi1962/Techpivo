@@ -372,17 +372,20 @@ export async function cjSyncCatalog(opts: {
   )
 }
 
-/** Store pricing rule: 20% margin over CJ cost.
- *  sale = cost × 1.20, compare-at = cost × 1.50 (shows ~20% off). */
+/** Store pricing rule: 20% margin over CJ cost with a $1.50 absolute floor,
+ *  so cheap items still clear gateway + FX + handling costs.
+ *  sale = max(cost × 1.20, cost + 1.50); compare-at = max(cost × 1.50, sale × 1.25). */
 export const MARKET_MARGIN = 1.2
+export const MARKET_MIN_MARGIN_USD = 1.5
 export const MARKET_COMPARE = 1.5
 
-/** Freight rule: supplier courier rates + 10% — kept near-cost on purpose
- *  so delivery never feels expensive; the real margin lives in products. */
-export const FREIGHT_MARKUP = 1.1
+/** Freight rule: supplier courier rates + 35%. Shipping must earn, not
+ *  bleed — CJ lane rates (especially Africa) dwarf flat fees. */
+export const FREIGHT_MARKUP = 1.35
 
 export function withMargin(cost: number): number {
-  return Math.round(Number(cost) * MARKET_MARGIN * 100) / 100
+  const c = Number(cost)
+  return Math.round(Math.max(c * MARKET_MARGIN, c + MARKET_MIN_MARGIN_USD) * 100) / 100
 }
 
 export function withFreightMarkup(fee: number): number {
@@ -391,8 +394,8 @@ export function withFreightMarkup(fee: number): number {
 
 export function mapCjToAffiliate(cj: CjProductSummary, extra?: { categorySlug?: string | null; subcategorySlug?: string | null }) {
   const cost = Number(cj.sellPrice ?? 0)
-  const sale = cost ? Math.round(cost * MARKET_MARGIN * 100) / 100 : null
-  const original = cost ? Math.round(cost * MARKET_COMPARE * 100) / 100 : null
+  const sale = cost ? withMargin(cost) : null
+  const original = cost && sale ? Math.max(Math.round(cost * MARKET_COMPARE * 100) / 100, Math.round(sale * 1.25 * 100) / 100) : null
   return {
     program_key: "cjdropshipping",
     product_name: (cj.productNameEn || `CJ Product ${cj.pid}`).slice(0, 200),

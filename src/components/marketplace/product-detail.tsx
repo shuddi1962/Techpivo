@@ -7,7 +7,7 @@ import { Check, Heart, Minus, Play, Plus, RotateCcw, ShieldCheck, ShoppingCart, 
 import { addToCart } from "@/lib/marketplace-cart"
 import { marketImage } from "@/lib/marketplace-images"
 import {
-  readShipSelection, saveShipSelection, SHIP_COUNTRIES, DEFAULT_SHIP_COUNTRY, FREE_SHIP_THRESHOLD_USD, type ShipOption, type ShipSelection,
+  readShipSelection, saveShipSelection, standardFee, SHIP_COUNTRIES, DEFAULT_SHIP_COUNTRY, type ShipOption, type ShipSelection,
 } from "@/lib/marketplace-shipping"
 import { getGeoOnce } from "@/lib/tools-geo"
 import { DeliveryPicker } from "./delivery-picker"
@@ -569,7 +569,7 @@ export function ProductDetail({
               onCountry={setShipCountry}
               options={shipOptions}
               fallbackOptions={[
-                { id: "standard", name: "Standard", eta: "7–12 days", feeUsd: price * qty >= FREE_SHIP_THRESHOLD_USD ? 0 : 5, source: "store" },
+                { id: "standard", name: "Standard", eta: "7–12 days", feeUsd: standardFee(price * qty), source: "store" },
                 { id: "express", name: "Express", eta: "3–7 days", feeUsd: 19, source: "store" },
               ]}
               value={shipPick}

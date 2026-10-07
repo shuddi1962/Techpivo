@@ -19,7 +19,9 @@ export interface ShipSelection {
 export const SHIP_KEY = "tp_market_ship_v1"
 export const EXPRESS_FLAT_USD = 19
 export const FREE_SHIP_THRESHOLD_USD = 35
-export const STANDARD_FLAT_USD = 5
+// Fallback when live supplier rates are unreachable. Must cover real CJ
+// lane costs (Africa lanes run $8+): never price delivery below cost.
+export const STANDARD_FLAT_USD = 9
 
 // Full ship-to country list (full names, CJ-style) — alphabetical like a
 // worldwide store. Nigeria is NOT first and never the default.

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
 import { createClient as createAdmin } from "@/lib/supabase/admin"
 import { korapayInit } from "@/lib/korapay"
-import { cjGetVariants, MARKET_MARGIN } from "@/lib/cj"
+import { cjGetVariants, withMargin } from "@/lib/cj"
 import { storeShipOptions } from "@/lib/marketplace-shipping"
 import { supplierShipOptions } from "@/lib/marketplace-freight"
 
@@ -72,7 +72,7 @@ export async function POST(request: NextRequest) {
           const match = (variants || []).find((v) => String(v.vid) === wantVid)
           const cost = match ? Number(match.variantSellPrice) : NaN
           if (match && Number.isFinite(cost) && cost > 0) {
-            unit = Math.round(cost * MARKET_MARGIN * 100) / 100
+            unit = withMargin(cost)
             vid = wantVid
           }
         } catch {

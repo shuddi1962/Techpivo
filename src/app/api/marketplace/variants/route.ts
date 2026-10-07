@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createPublicClient } from "@/lib/supabase/server"
 import { fetchWithTimeout } from "@/lib/fetch-timeout"
-import { cjGetVariants, MARKET_MARGIN } from "@/lib/cj"
+import { cjGetVariants, withMargin } from "@/lib/cj"
 import { marketImage } from "@/lib/marketplace-images"
 
 export const dynamic = "force-dynamic"
@@ -63,7 +63,7 @@ export async function GET(request: NextRequest) {
         label: String(v.variantNameEn || "Standard").slice(0, 120),
         price:
           v.variantSellPrice != null && Number.isFinite(Number(v.variantSellPrice))
-            ? Math.round(Number(v.variantSellPrice) * MARKET_MARGIN * 100) / 100
+            ? withMargin(Number(v.variantSellPrice))
             : null,
         image: marketImage(v.variantImage || ""),
         stock: v.variantStock != null && Number.isFinite(Number(v.variantStock)) ? Number(v.variantStock) : null,
