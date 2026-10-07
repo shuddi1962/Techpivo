@@ -368,12 +368,13 @@ export default function AdminMarketplacePage() {
 
           <div className="bg-white border rounded-xl overflow-hidden">
             <div className="overflow-x-auto">
-              <table className="w-full text-sm min-w-[760px]">
+                <table className="w-full text-sm min-w-[880px]">
                 <thead>
                   <tr className="text-left text-xs uppercase tracking-wide text-slate-500 border-b bg-slate-50">
                     <th className="px-4 py-3 font-semibold">Product</th>
                     <th className="px-4 py-3 font-semibold">Vendor</th>
                     <th className="px-4 py-3 font-semibold">Price</th>
+                    <th className="px-4 py-3 font-semibold">Your cut</th>
                     <th className="px-4 py-3 font-semibold">Clicks</th>
                     <th className="px-4 py-3 font-semibold">Status</th>
                     <th className="px-4 py-3 font-semibold text-right">Actions</th>
@@ -402,6 +403,19 @@ export default function AdminMarketplacePage() {
                         {p.original_price != null && p.original_price !== p.sale_price && (
                           <span className="ml-1.5 text-xs font-normal text-slate-400 line-through">${Number(p.original_price).toFixed(2)}</span>
                         )}
+                      </td>
+                      <td className="px-4 py-3 whitespace-nowrap">
+                        {(() => {
+                          if (p.program_key !== "cjdropshipping" || p.sale_price == null || !p.original_price) return <span className="text-slate-400">—</span>
+                          const cost = Number(p.original_price) / 1.5
+                          const margin = Number(p.sale_price) - cost
+                          const good = margin >= 1.5
+                          return (
+                            <span title={`Est. CJ cost $${cost.toFixed(2)}`} className={`text-xs font-bold px-2 py-1 rounded-full ${good ? "bg-emerald-50 text-emerald-700" : margin >= 0 ? "bg-amber-50 text-amber-700" : "bg-red-50 text-red-700"}`}>
+                              {margin >= 0 ? "+" : "−"}${Math.abs(margin).toFixed(2)}{good ? "" : " · thin!"}
+                            </span>
+                          )
+                        })()}
                       </td>
                       <td className="px-4 py-3 text-slate-600">{p.clicks ?? 0}</td>
                       <td className="px-4 py-3">
@@ -432,7 +446,7 @@ export default function AdminMarketplacePage() {
                   ))}
                   {filtered.length === 0 && (
                     <tr>
-                      <td colSpan={6} className="px-4 py-12 text-center text-slate-500">
+                      <td colSpan={7} className="px-4 py-12 text-center text-slate-500">
                         No products found. Click <strong>New product</strong> to add your first TechPivo Market item.
                       </td>
                     </tr>

@@ -44,6 +44,7 @@ export function MarketplaceOrdersTab() {
   const [notice, setNotice] = useState("")
   const [open, setOpen] = useState<Record<string, boolean>>({})
   const [retrying, setRetrying] = useState("")
+  const [cjCost, setCjCost] = useState<Record<string, { loading: boolean; product?: number; postage?: number; total?: number; track?: string | null; error?: string }>>({})
 
   const load = useCallback(async () => {
     const r = await fetch("/admin/marketplace/api?section=orders").then((x) => x.json()).catch(() => null)
@@ -67,6 +68,33 @@ export function MarketplaceOrdersTab() {
       setOrders((prev) => prev.map((o) => (o.id === id ? { ...o, status } : o)))
       setNotice(`Order marked ${status}.`)
       setTimeout(() => setNotice(""), 3000)
+    }
+  }
+
+  const loadCj = async (o: Order) => {
+    if (!o.cj_order_id || !o.paystack_reference) return
+    setCjCost((p) => ({ ...p, [o.id]: { loading: true } }))
+    try {
+      const r = await fetch(
+        `/api/marketplace/orders/track?reference=${encodeURIComponent(o.paystack_reference)}&email=${encodeURIComponent(o.email)}`
+      ).then((x) => x.json())
+      const t = r?.tracking as { productAmount?: number; postageAmount?: number; orderAmount?: number; trackNumber?: string | null } | null
+      if (t && t.orderAmount != null) {
+        setCjCost((p) => ({
+          ...p,
+          [o.id]: {
+            loading: false,
+            product: Number(t.productAmount) || 0,
+            postage: Number(t.postageAmount) || 0,
+            total: Number(t.orderAmount) || 0,
+            track: t.trackNumber || null,
+          },
+        }))
+      } else {
+        setCjCost((p) => ({ ...p, [o.id]: { loading: false, error: "CJ has no bill yet — pay the CJ order in your CJ dashboard first." } }))
+      }
+    } catch {
+      setCjCost((p) => ({ ...p, [o.id]: { loading: false, error: "Could not reach CJ right now." } }))
     }
   }
 
@@ -112,6 +140,14 @@ export function MarketplaceOrdersTab() {
 
   return (
     <div className="space-y-3">
+      <div className="bg-white border rounded-xl p-4">
+        <p className="text-sm font-bold text-slate-900 mb-1">How you make money on every order</p>
+        <p className="text-xs text-slate-600 leading-relaxed">
+          Customer pays <strong>(your price + shipping)</strong> → you pay CJ <strong>(their cost + their postage)</strong> + a small Korapay fee → <strong>you keep the difference</strong>.
+          Three guardrails protect you: shipping is charged at live CJ rates <strong>+35%</strong>; every product carries at least <strong>$1.50</strong> margin;
+          fallback shipping is <strong>$9</strong>. Free shipping over $35 means you absorb postage on big baskets — deliberate, the basket covers it.
+        </p>
+      </div>
       {notice && <p className="text-sm bg-emerald-50 border border-emerald-200 text-emerald-700 rounded-lg px-3 py-2">{notice}</p>}
       {orders.map((o) => {
         const addr = [o.ship_address, [o.ship_city, o.ship_state, o.ship_zip].filter(Boolean).join(" "), o.ship_country].filter(Boolean).join(", ")
@@ -158,6 +194,24 @@ export function MarketplaceOrdersTab() {
                   <span className="font-bold text-slate-800">Breakdown:</span> subtotal ${Number(o.subtotal_usd || 0).toFixed(2)} + shipping ${Number(o.shipping_usd || 0).toFixed(2)} = ${Number(o.total_usd || 0).toFixed(2)} · charged ₦{Number(o.total_ngn || 0).toLocaleString()}
                 </p>
                 <p><span className="font-bold text-slate-800">Fulfillment:</span> {o.cj_order_id ? `CJ order ${o.cj_order_id} (${o.cj_status || "submitted"})` : `not sent to CJ${o.cj_status ? ` (${o.cj_status})` : ""}`}</p>
+                {o.cj_order_id && (
+                  <div>
+                    {!cjCost[o.id] && (
+                      <button onClick={() => loadCj(o)} className="text-xs font-semibold text-amber-700 hover:text-amber-800 underline underline-offset-2">
+                        Show what CJ charged vs what you kept
+                      </button>
+                    )}
+                    {cjCost[o.id]?.loading && <p className="text-slate-500">Asking CJ...</p>}
+                    {cjCost[o.id]?.error && <p className="text-amber-700">{cjCost[o.id].error}</p>}
+                    {cjCost[o.id]?.total != null && (
+                      <p>
+                        <span className="font-bold text-slate-800">CJ bill:</span> product ${cjCost[o.id].product!.toFixed(2)} + postage ${cjCost[o.id].postage!.toFixed(2)} = ${cjCost[o.id].total!.toFixed(2)}
+                        {" "}· you collected ${Number(o.total_usd || 0).toFixed(2)} → <span className={`font-bold ${Number(o.total_usd || 0) - cjCost[o.id].total! >= 0 ? "text-emerald-700" : "text-red-700"}`}>you keep ≈ ${(Number(o.total_usd || 0) - cjCost[o.id].total!).toFixed(2)}</span> <span className="text-slate-400">(before Korapay fee)</span>
+                        {cjCost[o.id].track ? <span className="block mt-0.5">Tracking: <span className="font-semibold text-slate-800">{cjCost[o.id].track}</span></span> : <span className="block mt-0.5 text-slate-400">No tracking yet — CJ issues it after they ship.</span>}
+                      </p>
+                    )}
+                  </div>
+                )}
                 {o.fulfill_error && (
                   <p className="text-red-700 bg-red-50 border border-red-200 rounded-lg px-2 py-1.5"><span className="font-bold">CJ error:</span> {o.fulfill_error}</p>
                 )}
