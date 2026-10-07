@@ -64,7 +64,7 @@ export async function fulfillMarketplaceOrder(supabase: SupabaseClient, order: F
         // keep CJPacket fallback
       }
     }
-    let result: { orderId?: string; id?: string; orderNum?: string } | null = null
+    let result: { orderId?: string; id?: string; orderNum?: string } | string | null = null
     try {
       const countryCode = String(order.ship_country || "NG").toUpperCase().slice(0, 2) || "NG"
       const countryName =
@@ -87,12 +87,17 @@ export async function fulfillMarketplaceOrder(supabase: SupabaseClient, order: F
         fromCountryCode: "CN",
         products: lines.map((l) => ({ vid: l.cj_vid as string, quantity: l.qty })),
         remark: `TechPivo Market ${String(order.id).slice(0, 8)}`,
-      })) as { orderId?: string; id?: string; orderNum?: string } | null
+      })) as { orderId?: string; id?: string; orderNum?: string } | string | null
     } catch (e) {
       const msg = e instanceof Error ? e.message : "CJ order create failed"
       return fail(supabase, order.id, `CJ: ${msg}`)
     }
-    const cjId = result?.orderId || result?.id || result?.orderNum || null
+    // CJ v1 createOrder returns data as a PLAIN STRING (the CJ order id),
+    // not an object — accept a non-empty string directly.
+    const cjId =
+      typeof result === "string"
+        ? result.trim() || null
+        : result?.orderId || result?.id || result?.orderNum || null
     if (!cjId) {
       const keys = result && typeof result === "object" ? Object.keys(result).join(",") : typeof result
       return fail(supabase, order.id, `CJ accepted the request but returned no order id (fields: ${keys}).`)
