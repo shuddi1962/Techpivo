@@ -203,6 +203,22 @@ export function storeShipOptions(subtotalUsd: number): ShipOption[] {
   ]
 }
 
+// Single source of truth for which methods are SHOWN and which is ACTIVE.
+// DeliveryPicker and checkout-page MUST both use these two helpers so the
+// courier the buyer sees is always the courier they are charged for.
+// (The bug was: picker displayed the first live courier while checkout
+// charged the stored "standard" id from the merged list.)
+export function visibleShipOptions(options: ShipOption[], fallbackOptions: ShipOption[]): ShipOption[] {
+  const list = options.length > 0 ? options : fallbackOptions
+  const live = list.filter((o) => o.source === "supplier")
+  return live.length > 0 ? live : list
+}
+
+export function resolveShipActive(shown: ShipOption[], value: ShipSelection | null): ShipOption | undefined {
+  const activeId = value?.id || "standard"
+  return shown.find((o) => o.id === activeId) || shown[0]
+}
+
 // Back-compat for the previous fixed-method flow.
 export type ShipMethodId = "standard" | "express"
 

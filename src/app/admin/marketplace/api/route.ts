@@ -44,7 +44,7 @@ export async function GET(request: NextRequest) {
     if (section === "orders") {
       const { data, error } = await supabase
         .from("marketplace_orders")
-        .select("id,email,items,subtotal_usd,shipping_usd,total_usd,total_ngn,paystack_reference,paystack_status,cj_order_id,cj_status,status,ship_name,ship_phone,ship_city,ship_country,ship_method,ship_eta,created_at")
+        .select("id,email,items,subtotal_usd,shipping_usd,total_usd,total_ngn,paystack_reference,paystack_status,cj_order_id,cj_status,fulfill_error,status,ship_name,ship_phone,ship_address,ship_city,ship_state,ship_zip,ship_country,ship_method,ship_eta,created_at")
         .order("created_at", { ascending: false })
         .limit(200)
       if (error) throw error
@@ -131,6 +131,21 @@ export async function POST(request: NextRequest) {
       const { data, error } = await supabase.from("marketplace_orders").update({ status }).eq("id", id).select("id,status").single()
       if (error) throw error
       return NextResponse.json({ order: data })
+    }
+    // Retry CJ auto-fulfillment for a paid order (uses shared helper, so
+    // the attempt + error capture are identical to verify/webhook).
+    if (body.action === "fulfill-retry") {
+      const id = String(body.id || "")
+      if (!id) return NextResponse.json({ error: "Order id required." }, { status: 400 })
+      const { fulfillMarketplaceOrder } = await import("@/lib/marketplace-fulfill")
+      const { data: order, error: fetchError } = await supabase.from("marketplace_orders").select("*").eq("id", id).maybeSingle()
+      if (fetchError || !order) return NextResponse.json({ error: "Order not found." }, { status: 404 })
+      const o = order as { paystack_status?: string; cj_order_id?: string | null; status?: string }
+      if (o.paystack_status !== "paid") return NextResponse.json({ error: "Only paid orders can be fulfilled." }, { status: 400 })
+      if (o.cj_order_id) return NextResponse.json({ error: "Already sent to CJ.", cj_order_id: o.cj_order_id }, { status: 400 })
+      const result = await fulfillMarketplaceOrder(supabase, order as never)
+      if (result.cj_order_id) return NextResponse.json({ success: true, cj_order_id: result.cj_order_id })
+      return NextResponse.json({ error: result.error || "Fulfillment failed — see order details." }, { status: 502 })
     }
     // Save storefront banners (hero / promo / category default / per-department)
     if (body.action === "banners-save") {

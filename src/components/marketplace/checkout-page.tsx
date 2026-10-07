@@ -10,7 +10,7 @@ import { clearCart, getCart, useMarketCart } from "@/lib/marketplace-cart"
 import { useMarketCurrency, useUsdNgnRate } from "@/lib/marketplace-pricing"
 import { MarketPrice } from "./market-price"
 import {
-  readShipSelection, saveShipSelection, storeShipOptions, SHIP_COUNTRIES, DEFAULT_SHIP_COUNTRY, FREE_SHIP_THRESHOLD_USD,
+  readShipSelection, saveShipSelection, storeShipOptions, visibleShipOptions, resolveShipActive, SHIP_COUNTRIES, DEFAULT_SHIP_COUNTRY, FREE_SHIP_THRESHOLD_USD,
   type ShipOption, type ShipSelection,
 } from "@/lib/marketplace-shipping"
 import { getGeoOnce } from "@/lib/tools-geo"
@@ -91,7 +91,21 @@ export function CheckoutPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loading, lines.length, form.country])
   const effectiveOptions = shipOptions.length > 0 ? shipOptions : storeShipOptions(subtotal)
-  const activePick = effectiveOptions.find((o) => o.id === shipPick?.id) || effectiveOptions[0]
+  // Same visibility rule as the picker: live couriers replace store methods
+  // when present. Auto-sync the stored pick to the DISPLAYED method so the
+  // buyer is always charged for the courier they see (previously the picker
+  // showed the first courier while checkout charged stored "standard").
+  const shownOptions = useMemo(() => visibleShipOptions(effectiveOptions, []), [effectiveOptions])
+  const activePick = resolveShipActive(shownOptions, shipPick)
+  useEffect(() => {
+    if (!activePick) return
+    if ((shipPick?.id || "standard") !== activePick.id) {
+      const sel: ShipSelection = { id: activePick.id, name: activePick.name, eta: activePick.eta, feeUsd: activePick.feeUsd }
+      setShipPick(sel)
+      saveShipSelection(sel)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activePick?.id])
   const shipping = activePick ? activePick.feeUsd : 0
   const totalUsd = subtotal + shipping
   const totalNgn = Math.round(totalUsd * rate)

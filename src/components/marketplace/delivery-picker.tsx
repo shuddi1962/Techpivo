@@ -1,7 +1,7 @@
 "use client"
 
 import { Truck } from "lucide-react"
-import { SHIP_COUNTRIES, type ShipOption, type ShipSelection } from "@/lib/marketplace-shipping"
+import { SHIP_COUNTRIES, visibleShipOptions, resolveShipActive, type ShipOption, type ShipSelection } from "@/lib/marketplace-shipping"
 import { formatMarketPrice, useMarketCurrency, useUsdNgnRate } from "@/lib/marketplace-pricing"
 
 // CJ-style delivery picker: "Ship to [full country name] by [method]"
@@ -28,10 +28,11 @@ export function DeliveryPicker({
   const list = options.length > 0 ? options : fallbackOptions
   // When live supplier couriers exist, they are the ONLY methods — the
   // buyer always pays the real marked-up courier rate, never less.
-  const live = list.filter((o) => o.source === "supplier")
-  const shown = live.length > 0 ? live : list
-  const activeId = value?.id || "standard"
-  const active = shown.find((o) => o.id === activeId) || shown[0]
+  // (visibleShipOptions/resolveShipActive are shared with checkout-page so
+  // displayed === charged.)
+  const shown = visibleShipOptions(list, [])
+  const active = resolveShipActive(shown, value)
+  const live = shown.filter((o) => o.source === "supplier")
   const currency = useMarketCurrency()
   const rate = useUsdNgnRate()
   const feeLabel = (feeUsd: number) =>
