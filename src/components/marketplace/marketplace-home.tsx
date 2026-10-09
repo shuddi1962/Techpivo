@@ -669,7 +669,7 @@ export function MarketplaceHome() {
   })
 
   return (
-    <div className="w-full bg-[#F8FAFC] min-h-screen">
+    <div className="w-full bg-[#F8FAFC] min-h-screen overflow-x-clip">
       <MarketplaceHeader
         cartCount={cartCount}
         cartTotal={`$${cartTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
@@ -746,10 +746,11 @@ export function MarketplaceHome() {
           </div>
         )}
 
-        {/* hero — full-bleed edge to edge on the page background (no band
-            behind it). Side promos always show; your uploaded banner
-            replaces ONLY the main card, shown fully (never cropped). */}
-        <section className="-mx-3 sm:-mx-6 lg:-mx-10 -mt-6 sm:-mt-8 px-0 pt-0">
+        {/* hero — true viewport breakout: spans the full screen width on
+            any laptop, regardless of the page column. No band behind it.
+            Side promos always show; your uploaded banner replaces ONLY the
+            main card, shown fully (never cropped). */}
+        <section className="-mt-6 sm:-mt-8 w-[100vw] ml-[calc(50%-50vw)]">
         <div className="grid w-full grid-cols-1 lg:grid-cols-12 gap-4 items-stretch">
         {!loaded ? (
           <div className="lg:col-span-8 rounded-none border-y lg:border border-[#E2E8F0] bg-white shadow-sm min-h-[420px] animate-pulse" aria-hidden>
