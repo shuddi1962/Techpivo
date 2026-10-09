@@ -61,6 +61,9 @@ function ShowcaseCard({ p, onAdd, added, wished, onWish }: { p: DemoProduct } & 
           <p title={p.name} className="truncate text-[13px] font-semibold text-[#0F172A]">{p.name}</p>
         )}
         <PanelStars value={p.rating} />
+        <span className="text-[11px] font-medium text-slate-400">
+          {p.reviews > 0 ? `${p.rating.toFixed(1)} · ${p.reviews} review${p.reviews === 1 ? "" : "s"}` : "New — no reviews yet"}
+        </span>
         <div className="flex items-baseline gap-1.5">
           <MarketPrice usd={p.price} className="text-[15px] font-extrabold tabular-nums text-[#0F172A]" />
           {p.oldPrice && p.oldPrice > p.price && (

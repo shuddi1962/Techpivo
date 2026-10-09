@@ -2,9 +2,9 @@
 
 import Link from "next/link"
 import { useEffect, useMemo, useRef, useState } from "react"
-import { Check, Heart, Minus, Play, Plus, RotateCcw, ShieldCheck, ShoppingCart, Star, Truck, Zap } from "lucide-react"
+import { Check, Heart, Minus, Play, Plus, RotateCcw, ShieldCheck, ShoppingCart, Star, Truck } from "lucide-react"
 import { addToCart } from "@/lib/marketplace-cart"
-import { openCartPopup, openCheckout } from "@/lib/marketplace-events"
+import { openCartPopup } from "@/lib/marketplace-events"
 import { CompletePurchase } from "./complete-purchase"
 import { marketImage } from "@/lib/marketplace-images"
 import {
@@ -376,11 +376,6 @@ export function ProductDetail({
     setTimeout(() => setAdded(false), 1600)
     openCartPopup(p.id)
   }
-  const buyNow = () => {
-    addToCart(p.id, qty, selected ? { vid: selected.vid, label: selected.label } : null)
-    openCheckout()
-  }
-
   const submitReview = async () => {
     if (!rText.trim() || rSending) return
     setRSending(true)
@@ -475,9 +470,9 @@ export function ProductDetail({
             </p>
           )}
           <div className="flex items-center gap-2 mt-2">
-            <Stars value={avg || 4} />
+            <Stars value={avg} />
             <span className="text-sm text-slate-500">
-              {reviews.length > 0 ? `${avg.toFixed(1)} · ${reviews.length} review${reviews.length === 1 ? "" : "s"}` : "Be the first to review"}
+              {reviews.length > 0 ? `${avg.toFixed(1)} · ${reviews.length} review${reviews.length === 1 ? "" : "s"}` : "No reviews yet"}
             </span>
           </div>
           <div className="flex items-baseline gap-2 mt-3 flex-wrap">
@@ -610,15 +605,15 @@ export function ProductDetail({
             )}
           </div>
 
-          <div className="flex flex-col sm:flex-row gap-2 mt-4">
+          {/* One clear path: bag it here, or pick add-ons below and check
+              out once. Buy Now lives as a single quiet link in the upsell
+              box so shoppers never face five competing buttons. */}
+          <div className="flex gap-2 mt-4">
             <button
               onClick={doAdd}
-              className={`flex-1 text-sm font-bold py-3 rounded-lg transition-colors flex items-center justify-center gap-2 ${added ? "bg-[#10B981] text-white" : "bg-[#F59E0B] hover:bg-[#D97706] text-[#0F172A]"}`}
+              className={`flex-1 text-sm font-bold py-3.5 rounded-xl transition-all flex items-center justify-center gap-2 ${added ? "bg-[#0B0F19] text-white" : "bg-[#F59E0B] hover:bg-[#D97706] text-[#0F172A] active:scale-[0.99]"}`}
             >
-              {added ? <><Check className="h-4 w-4" /> Added to cart</> : <><ShoppingCart className="h-4 w-4" /> Add to Cart</>}
-            </button>
-            <button onClick={buyNow} className="flex-1 bg-[#DC2626] hover:bg-[#B91C1C] text-white text-sm font-bold py-3 rounded-lg transition-colors flex items-center justify-center gap-2">
-              <Zap className="h-4 w-4" /> Buy Now
+              {added ? <><Check className="h-4 w-4" strokeWidth={3} /> Added to bag</> : <><ShoppingCart className="h-4 w-4" /> Add to Bag</>}
             </button>
             <button
               onClick={() => {
@@ -649,6 +644,7 @@ export function ProductDetail({
               productId={p.id}
               mainName={p.product_name}
               mainPrice={price}
+              mainWas={oldPrice != null ? oldPrice * qty : null}
               mainVariant={selected ? { vid: selected.vid, label: selected.label } : null}
               mainQty={qty}
             />

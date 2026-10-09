@@ -27,12 +27,14 @@ export function CompletePurchase({
   productId,
   mainName,
   mainPrice,
+  mainWas,
   mainVariant,
   mainQty,
 }: {
   productId: string
   mainName: string
   mainPrice: number
+  mainWas?: number | null
   mainVariant: CartVariant | null
   mainQty: number
 }) {
@@ -63,7 +65,12 @@ export function CompletePurchase({
 
   const picked = useMemo(() => items.filter((x) => selected[x.id]), [items, selected])
   const pickedTotal = picked.reduce((s, x) => s + Number(x.sale_price ?? x.original_price ?? 0), 0)
-  const grandTotal = mainPrice * mainQty + pickedTotal
+  const pickedWas = picked.reduce((s, x) => s + Number(x.original_price ?? x.sale_price ?? 0), 0)
+  const mainTotal = mainPrice * mainQty
+  const grandTotal = mainTotal + pickedTotal
+  // Genuine savings only: compare-at totals minus what they'd actually pay.
+  const wasTotal = (mainWas != null ? mainWas : mainTotal) + pickedWas
+  const savings = wasTotal > grandTotal ? wasTotal - grandTotal : 0
 
   const toggle = (x: UpsellItem) => {
     setSelected((m) => {
@@ -194,7 +201,7 @@ export function CompletePurchase({
                   <span className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5">
                     <MarketPrice usd={unit} className="text-[15px] font-extrabold tracking-tight text-[#0B0F19]" />
                     {pct > 0 && <span className="text-[11px] font-medium text-[#94A3B8] line-through"><MarketPrice usd={old} /></span>}
-                    {pct > 0 && <span className="rounded-full bg-[#0B0F19] px-1.5 py-px text-[10px] font-bold text-white">−{pct}%</span>}
+                    {pct > 0 && <span className="rounded-full bg-[#FEF3C7] px-1.5 py-px text-[10px] font-bold text-[#B45309]">−{pct}%</span>}
                   </span>
                   <span className="mt-1 flex items-center gap-1.5 text-[11px] font-medium text-[#64748B]">
                     <span className={`h-1.5 w-1.5 rounded-full ${out ? "bg-[#CBD5E1]" : low ? "bg-[#F59E0B]" : "bg-[#0B0F19]"}`} />
@@ -215,19 +222,18 @@ export function CompletePurchase({
         })}
       </ul>
 
-      <div className="mt-4 rounded-2xl bg-[#0B0F19] px-4 py-3.5 text-white">
-        <div className="flex items-center justify-between text-[13px]">
-          <span className="text-white/60">Main item</span>
-          <MarketPrice usd={mainPrice * mainQty} className="font-bold tabular-nums" />
+      <div className="mt-4 rounded-2xl border border-[#FDE9C8] bg-[#FFFBEB] px-4 py-3.5">
+        <div className="flex items-center justify-between text-[13px] text-[#57534E]">
+          <span>Main item{picked.length > 0 ? ` + ${picked.length} add-on${picked.length === 1 ? "" : "s"}` : ""}</span>
+          <MarketPrice usd={grandTotal} className="text-xl font-extrabold tracking-tight tabular-nums text-[#0B0F19]" />
         </div>
-        <div className="mt-1 flex items-center justify-between text-[13px]">
-          <span className="text-white/60">Selected add-ons ({picked.length})</span>
-          <MarketPrice usd={pickedTotal} className="font-bold tabular-nums" />
-        </div>
-        <div className="mt-2 flex items-center justify-between border-t border-white/15 pt-2.5">
-          <span className="text-sm font-bold">Total</span>
-          <MarketPrice usd={grandTotal} className="text-xl font-extrabold tracking-tight tabular-nums text-[#FBBF24]" />
-        </div>
+        {savings > 0 ? (
+          <p className="mt-1 text-xs font-bold text-[#B45309]">
+            You&apos;re saving <MarketPrice usd={savings} /> on this bundle
+          </p>
+        ) : (
+          <p className="mt-1 text-xs text-[#A8A29E]">Tick add-ons above to grow your bundle</p>
+        )}
       </div>
 
       {notice && (
@@ -239,6 +245,7 @@ export function CompletePurchase({
         </p>
       )}
 
+      {/* One action, one quiet fast lane — no button pile-up. */}
       <div className="mt-3">
         <button
           type="button"
@@ -249,25 +256,15 @@ export function CompletePurchase({
           Add {picked.length > 0 ? `${picked.length} selected` : "main item"} to bag
           <ArrowRight className="h-4 w-4" />
         </button>
-        <div className="mt-2 grid grid-cols-2 gap-2">
-          <button
-            type="button"
-            onClick={() => buy(false)}
-            disabled={busy}
-            className="rounded-xl border border-[#E2E6EE] px-4 py-2.5 text-[13px] font-bold text-[#0B0F19] transition-colors hover:border-[#0B0F19] disabled:opacity-60"
-          >
-            Buy main only
-          </button>
-          <button
-            type="button"
-            onClick={() => buy(true)}
-            disabled={busy || picked.length === 0}
-            title={picked.length === 0 ? "Select at least one add-on first" : `Buy main + ${picked.length} add-on${picked.length === 1 ? "" : "s"}`}
-            className="rounded-xl bg-[#F59E0B] px-4 py-2.5 text-[13px] font-bold text-[#0B0F19] transition-colors hover:bg-[#D97706] disabled:opacity-40"
-          >
-            Buy with selected ({picked.length})
-          </button>
-        </div>
+        <button
+          type="button"
+          onClick={() => buy(true)}
+          disabled={busy || picked.length === 0}
+          title={picked.length === 0 ? "Select at least one add-on first" : "Skip the bag and pay for everything now"}
+          className="mt-1.5 w-full py-1 text-center text-[13px] font-semibold text-[#B45309] hover:underline disabled:no-underline disabled:opacity-40"
+        >
+          or skip the bag — buy everything now →
+        </button>
       </div>
     </section>
   )

@@ -118,9 +118,9 @@ function CartPopupBody({ highlightId, onClose }: { highlightId?: string; onClose
   }
 
   return (
-    <div className="space-y-4 p-4 sm:p-5">
+    <div className="p-4 sm:p-5">
       {highlight?.product && (
-        <div className="flex items-center gap-3">
+        <div className="mb-4 flex items-center gap-3">
           <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#0B0F19] text-white">
             <Check className="h-4 w-4" strokeWidth={3} />
           </span>
@@ -154,8 +154,9 @@ function CartPopupBody({ highlightId, onClose }: { highlightId?: string; onClose
           <p className="mt-0.5 text-xs text-[#64748B]">Beautiful things await in the store.</p>
         </div>
       ) : (
-        <>
-          <ul className="max-h-64 divide-y divide-[#EFF1F5] overflow-y-auto">
+        <div className="gap-5 sm:grid sm:grid-cols-[minmax(0,1fr)_250px] sm:items-start">
+          <div className="min-w-0">
+            <ul className="max-h-72 divide-y divide-[#EFF1F5] overflow-y-auto sm:max-h-80">
             {lines.map((l) => {
               const unit = Number(l.product!.sale_price ?? l.product!.original_price ?? 0)
               const key = `${l.id}::${l.variant?.vid || ""}`
@@ -216,7 +217,7 @@ function CartPopupBody({ highlightId, onClose }: { highlightId?: string; onClose
           </div>
 
           {addons.length > 0 && (
-            <div>
+            <div className="mt-3">
               <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-[#B45309]">
                 Complete your setup
               </p>
@@ -254,40 +255,43 @@ function CartPopupBody({ highlightId, onClose }: { highlightId?: string; onClose
               </ul>
             </div>
           )}
-
-          <div className="flex items-center justify-between border-t border-[#EFF1F5] pt-3.5">
-            <span className="text-[13px] text-[#64748B]">Subtotal · {count} item{count === 1 ? "" : "s"}</span>
-            <MarketPrice usd={subtotal} className="text-xl font-extrabold tracking-tight tabular-nums text-[#0B0F19]" />
           </div>
-        </>
-      )}
 
-      <div className="space-y-2">
-        <button
-          type="button"
-          onClick={goCheckout}
-          disabled={lines.length === 0}
-          className="w-full rounded-xl bg-[#0B0F19] py-3.5 text-sm font-bold text-white transition-all hover:bg-black active:scale-[0.99] disabled:opacity-40"
-        >
-          Checkout · <MarketPrice usd={subtotal} />
-        </button>
-        <div className="grid grid-cols-2 gap-2">
-          <button
-            type="button"
-            onClick={onClose}
-            className="rounded-xl border border-[#E2E6EE] py-2.5 text-[13px] font-bold text-[#0B0F19] transition-colors hover:border-[#0B0F19]"
-          >
-            Keep shopping
-          </button>
-          <Link
-            href="/marketplace/cart"
-            onClick={onClose}
-            className="rounded-xl bg-[#F6F7F9] py-2.5 text-center text-[13px] font-bold text-[#0B0F19] transition-colors hover:bg-[#EDEFF3]"
-          >
-            View bag
-          </Link>
+          <aside className="mt-4 rounded-2xl border border-[#E9EBF1] bg-[#F6F7F9] p-4 sm:sticky sm:top-0 sm:mt-0">
+            <div className="flex items-center justify-between">
+              <span className="text-[13px] text-[#64748B]">Subtotal · {count} item{count === 1 ? "" : "s"}</span>
+              <MarketPrice usd={subtotal} className="text-xl font-extrabold tracking-tight tabular-nums text-[#0B0F19]" />
+            </div>
+            <p className="mt-1 text-[11px] text-[#94A3B8]">Delivery + total confirmed at checkout</p>
+            <div className="mt-3 space-y-2">
+              <button
+                type="button"
+                onClick={goCheckout}
+                disabled={lines.length === 0}
+                className="w-full rounded-xl bg-[#0B0F19] py-3.5 text-sm font-bold text-white transition-all hover:bg-black active:scale-[0.99] disabled:opacity-40"
+              >
+                Checkout · <MarketPrice usd={subtotal} />
+              </button>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={onClose}
+                  className="rounded-xl border border-[#E2E6EE] bg-white py-2.5 text-[13px] font-bold text-[#0B0F19] transition-colors hover:border-[#0B0F19]"
+                >
+                  Keep shopping
+                </button>
+                <Link
+                  href="/marketplace/cart"
+                  onClick={onClose}
+                  className="rounded-xl border border-[#E2E6EE] bg-white py-2.5 text-center text-[13px] font-bold text-[#0B0F19] transition-colors hover:border-[#0B0F19]"
+                >
+                  View bag
+                </Link>
+              </div>
+            </div>
+          </aside>
         </div>
-      </div>
+      )}
     </div>
   )
 }
@@ -313,7 +317,7 @@ export function CartPopupProvider() {
 
   if (!open) return null
   return (
-    <ModalShell label="Your bag" onClose={close}>
+    <ModalShell label="Your bag" onClose={close} size="lg">
       <CartPopupBody highlightId={highlightId} onClose={close} />
     </ModalShell>
   )

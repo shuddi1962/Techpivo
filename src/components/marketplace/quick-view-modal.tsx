@@ -289,7 +289,7 @@ export function QuickViewProvider() {
 
   if (!productId) return null
   return (
-    <ModalShell label="Quick view" onClose={close}>
+    <ModalShell label="Quick view" onClose={close} size="lg">
       <QuickViewBody productId={productId} onClose={close} />
     </ModalShell>
   )

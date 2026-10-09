@@ -4,10 +4,21 @@ import { useCallback, useEffect, useState } from "react"
 import { PackageSearch, RefreshCw, RotateCcw } from "lucide-react"
 
 interface OrderItem {
+  id: string
   name: string
   qty: number
   unit_usd: number
   image?: string | null
+  cj_vid?: string | null
+  cj_pid?: string | null
+}
+
+interface VariantOpt {
+  vid: string
+  label: string
+  price: number | null
+  image: string
+  stock: number | null
 }
 
 interface Order {
@@ -45,6 +56,7 @@ export function MarketplaceOrdersTab() {
   const [open, setOpen] = useState<Record<string, boolean>>({})
   const [retrying, setRetrying] = useState("")
   const [cjCost, setCjCost] = useState<Record<string, { loading: boolean; product?: number; postage?: number; total?: number; track?: string | null; error?: string }>>({})
+  const [varPick, setVarPick] = useState<Record<string, { open: boolean; loading: boolean; options: VariantOpt[]; picked: string; saving: boolean; error: string }>>({})
 
   const load = useCallback(async () => {
     const r = await fetch("/admin/marketplace/api?section=orders").then((x) => x.json()).catch(() => null)
@@ -95,6 +107,54 @@ export function MarketplaceOrdersTab() {
       }
     } catch {
       setCjCost((p) => ({ ...p, [o.id]: { loading: false, error: "Could not reach CJ right now." } }))
+    }
+  }
+
+    // Admin variant picker for lines the auto-heal could not resolve
+  // (genuinely ambiguous options like 18Pro vs 18Pro Max). Options load
+  // lazily per line so CJ is never hammered with burst queries.
+  const varKey = (orderId: string, lineId: string) => `${orderId}::${lineId}`
+
+  const toggleVarPicker = async (orderId: string, line: OrderItem) => {
+    const k = varKey(orderId, line.id)
+    const cur = varPick[k]
+    if (cur?.open) {
+      setVarPick((p) => ({ ...p, [k]: { ...cur, open: false } }))
+      return
+    }
+    setVarPick((p) => ({ ...p, [k]: { open: true, loading: true, options: [], picked: "", saving: false, error: "" } }))
+    try {
+      const d = await fetch(`/api/marketplace/variants?product_id=${encodeURIComponent(line.id)}`).then((x) => x.json())
+      const opts = (Array.isArray(d?.variants) ? d.variants : []) as VariantOpt[]
+      setVarPick((p) => ({
+        ...p,
+        [k]: { open: true, loading: false, options: opts, picked: opts.length === 1 ? opts[0].vid : "", saving: false, error: opts.length === 0 ? (d?.error ? `CJ: ${String(d.error).slice(0, 120)}` : "CJ returned no options for this product.") : "" },
+      }))
+    } catch {
+      setVarPick((p) => ({ ...p, [k]: { open: true, loading: false, options: [], picked: "", saving: false, error: "Could not reach CJ right now — try again." } }))
+    }
+  }
+
+  const saveVarPick = async (orderId: string, line: OrderItem) => {
+    const k = varKey(orderId, line.id)
+    const cur = varPick[k]
+    if (!cur?.picked || cur.saving) return
+    setVarPick((p) => ({ ...p, [k]: { ...cur, saving: true, error: "" } }))
+    try {
+      const r = await fetch("/admin/marketplace/api", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "fulfill-set-variant", id: orderId, line_id: line.id, cj_vid: cur.picked }),
+      }).then((x) => x.json())
+      if (r?.success) {
+        setNotice(`Variant saved for "${line.name.slice(0, 40)}" — hit Retry CJ fulfillment.`)
+        setTimeout(() => setNotice(""), 5000)
+        load()
+      } else {
+        setVarPick((p) => ({ ...p, [k]: { ...cur, saving: false, error: r?.error || "Could not save." } }))
+      }
+    } catch {
+      setVarPick((p) => ({ ...p, [k]: { ...cur, saving: false, error: "Could not save. Check your connection." } }))
     }
   }
 
@@ -214,6 +274,55 @@ export function MarketplaceOrdersTab() {
                 )}
                 {o.fulfill_error && (
                   <p className="text-red-700 bg-red-50 border border-red-200 rounded-lg px-2 py-1.5"><span className="font-bold">CJ error:</span> {o.fulfill_error}</p>
+                )}
+                {needsAction && (Array.isArray(o.items) ? o.items : []).some((it) => !(it as OrderItem).cj_vid) && (
+                  <div className="rounded-lg border border-amber-200 bg-amber-50/60 px-2 py-2 space-y-1.5">
+                    <p className="font-bold text-amber-900">Pick the supplier option for each line below, then retry:</p>
+                    {(Array.isArray(o.items) ? o.items : []).map((it, i) => {
+                      const line = it as OrderItem
+                      if (line.cj_vid) return null
+                      const k = varKey(o.id, line.id)
+                      const st = varPick[k]
+                      return (
+                        <div key={`${line.id}-${i}`} className="rounded-md bg-white border border-amber-200 px-2 py-1.5">
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="font-semibold text-slate-800 line-clamp-1">{line.name} × {line.qty}</span>
+                            <button onClick={() => toggleVarPicker(o.id, line)} className="shrink-0 text-[11px] font-bold text-amber-800 underline underline-offset-2 hover:text-amber-900">
+                              {st?.open ? "Hide options" : "Choose option"}
+                            </button>
+                          </div>
+                          {st?.open && (
+                            <div className="mt-1.5 space-y-1.5">
+                              {st.loading && <p className="text-slate-500">Asking CJ for options...</p>}
+                              {st.error && <p className="text-amber-800">{st.error}</p>}
+                              {!st.loading && st.options.length > 0 && (
+                                <div className="flex flex-col sm:flex-row gap-1.5">
+                                  <select
+                                    value={st.picked}
+                                    onChange={(e) => setVarPick((p) => ({ ...p, [k]: { ...st, picked: e.target.value } }))}
+                                    className="flex-1 text-xs border rounded-lg px-2 py-1.5 bg-white"
+                                    aria-label={`Supplier option for ${line.name}`}
+                                  >
+                                    <option value="">Select the exact option...</option>
+                                    {st.options.map((v) => (
+                                      <option key={v.vid} value={v.vid}>{v.label.slice(0, 90)}{v.price != null ? ` — $${Number(v.price).toFixed(2)}` : ""}</option>
+                                    ))}
+                                  </select>
+                                  <button
+                                    onClick={() => saveVarPick(o.id, line)}
+                                    disabled={!st.picked || st.saving}
+                                    className="text-[11px] font-bold bg-slate-900 text-white rounded-lg px-3 py-1.5 disabled:opacity-50"
+                                  >
+                                    {st.saving ? "Saving..." : "Save"}
+                                  </button>
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      )
+                    })}
+                  </div>
                 )}
                 {needsAction && (
                   <button onClick={() => retry(o.id)} disabled={retrying === o.id} className="inline-flex items-center gap-1.5 bg-slate-900 text-white text-xs font-semibold rounded-lg px-3 py-1.5 disabled:opacity-50">

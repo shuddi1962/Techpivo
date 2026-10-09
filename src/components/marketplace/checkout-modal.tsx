@@ -358,7 +358,7 @@ export function CheckoutModalProvider() {
 
   if (!open) return null
   return (
-    <ModalShell label="Checkout" onClose={close} wide fullOnMobile>
+    <ModalShell label="Checkout" onClose={close} size="xl" fullOnMobile>
       <CheckoutModalBody onClose={close} />
     </ModalShell>
   )

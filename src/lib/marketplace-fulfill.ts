@@ -38,6 +38,30 @@ function fail(supabase: SupabaseClient, orderId: string, reason: string) {
     .then(() => ({ fulfilled: false as const, cj_order_id: null as string | null, error: msg }))
 }
 
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
+
+/**
+ * CJ throttles variant lookups (HTTP 429) when several fire at once.
+ * Stagger + retry so a busy supplier API degrades to "try again" rather
+ * than a permanent manual block.
+ */
+async function cjVariantsResilient(pid: string): Promise<Array<{ vid?: string; variantNameEn?: string }>> {
+  let lastErr: unknown = null
+  for (let attempt = 0; attempt < 3; attempt++) {
+    if (attempt > 0) await sleep(900 * attempt)
+    try {
+      return await cjGetVariants(pid)
+    } catch (e) {
+      lastErr = e
+      const msg = e instanceof Error ? e.message : ""
+      // Only rate/throughput errors are worth retrying; auth/config
+      // errors would fail identically on every attempt.
+      if (!/429|rate|throttl|too many|timeout|network|fetch failed/i.test(msg)) break
+    }
+  }
+  throw lastErr instanceof Error ? lastErr : new Error("CJ variant lookup failed")
+}
+
 async function supabaseUpdate(supabase: SupabaseClient, orderId: string, patch: Record<string, unknown>) {
   await supabase.from("marketplace_orders").update(patch).eq("id", orderId)
 }
@@ -74,9 +98,11 @@ async function healMissingVids(
         continue
       }
       if (!row?.cj_pid) continue // not a CJ-supplied product — stays manual
+      // One lookup at a time: CJ rate-limits burst variant queries.
+      if (i > 0) await sleep(600)
       let variants: Array<{ vid?: string; variantNameEn?: string }> = []
       try {
-        variants = await cjGetVariants(row.cj_pid)
+        variants = await cjVariantsResilient(row.cj_pid)
       } catch {
         continue // supplier unreachable — retry later, keep manual for now
       }

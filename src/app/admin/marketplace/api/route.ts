@@ -216,6 +216,33 @@ export async function POST(request: NextRequest) {
       if (result.cj_order_id) return NextResponse.json({ success: true, cj_order_id: result.cj_order_id })
       return NextResponse.json({ error: result.error || "Fulfillment failed — see order details." }, { status: 502 })
     }
+    // Admin picks the supplier variant for an ambiguous order line
+    // (e.g. 18Pro vs 18Pro Max) so Retry CJ fulfillment can succeed.
+    if (body.action === "fulfill-set-variant") {
+      const id = String(body.id || "")
+      const lineId = String(body.line_id || "")
+      const vid = String(body.cj_vid || "").slice(0, 80)
+      if (!/^[0-9a-f-]{36}$/i.test(id) || !/^[0-9a-f-]{36}$/i.test(lineId) || !/^[A-Za-z0-9_-]{4,80}$/.test(vid)) {
+        return NextResponse.json({ error: "Valid order id, line id and variant id are required." }, { status: 400 })
+      }
+      const { data: order, error: fetchError } = await supabase.from("marketplace_orders").select("id,items,cj_order_id").eq("id", id).maybeSingle()
+      if (fetchError || !order) return NextResponse.json({ error: "Order not found." }, { status: 404 })
+      const o = order as { cj_order_id?: string | null; items?: Array<{ id?: string; cj_vid?: string | null }> }
+      if (o.cj_order_id) return NextResponse.json({ error: "Already sent to CJ — variants are locked." }, { status: 400 })
+      const items = Array.isArray(o.items) ? o.items : []
+      let touched = 0
+      const next = items.map((l) => {
+        if (l?.id === lineId) {
+          touched += 1
+          return { ...l, cj_vid: vid }
+        }
+        return l
+      })
+      if (touched === 0) return NextResponse.json({ error: "That product is not on this order." }, { status: 400 })
+      const { error } = await supabase.from("marketplace_orders").update({ items: next }).eq("id", id)
+      if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+      return NextResponse.json({ success: true, updated: touched })
+    }
     // Save storefront banners (hero / promo / category default / per-department)
     if (body.action === "banners-save") {
       const { parseBanners } = await import("@/lib/marketplace-banners")

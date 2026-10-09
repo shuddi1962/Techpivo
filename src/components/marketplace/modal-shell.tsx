@@ -9,14 +9,14 @@ export function ModalShell({
   label,
   onClose,
   children,
-  wide,
+  size,
   fullOnMobile,
 }: {
   label: string
   onClose: () => void
   children: React.ReactNode
-  /** wider panel for the checkout modal on desktop */
-  wide?: boolean
+  /** md = portrait dialog · lg = landscape (cart, quick view) · xl = roomy landscape (checkout) */
+  size?: "md" | "lg" | "xl"
   /** full-screen sheet on mobile (checkout) */
   fullOnMobile?: boolean
 }) {
@@ -57,7 +57,7 @@ export function ModalShell({
             ? "max-h-[96vh] rounded-t-3xl sm:rounded-3xl"
             : "max-h-[92vh] rounded-t-3xl sm:rounded-3xl"
         } flex flex-col overflow-hidden ${
-          wide ? "sm:max-w-3xl" : "sm:max-w-md"
+          size === "xl" ? "sm:max-w-4xl" : size === "lg" ? "sm:max-w-2xl" : "sm:max-w-md"
         } max-w-full focus-visible:ring-2 focus-visible:ring-[#0B0F19]`}
       >
         <div className="flex items-center justify-between px-4 py-3.5 sm:px-5">
