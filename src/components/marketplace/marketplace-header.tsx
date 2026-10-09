@@ -4,7 +4,7 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useEffect, useRef, useState } from "react"
 import {
-  Search, Heart, User, ShoppingBag, Menu, X, ChevronDown,
+  Search, Heart, User, ShoppingBasket, Menu, X, ChevronDown,
   Flame, MapPin, Phone, Mail, Truck, RefreshCcw, Headset, ShieldCheck,
   ArrowLeftRight,
 } from "lucide-react"
@@ -375,17 +375,11 @@ export function MarketplaceHeader({
               </span>
             </Link>
             <div className="h-8 w-px bg-[#E2E8F0] hidden sm:block" />
-            <Link href="/marketplace/cart" aria-label={`Your cart, ${shownCartCount} item${shownCartCount === 1 ? "" : "s"}`} className="flex items-center gap-2 bg-[#F8FAFC] hover:bg-slate-100 px-3 py-2 rounded-lg border border-[#E2E8F0]">
-              <span className="relative flex items-center justify-center">
-                <ShoppingBag className="h-6 w-6 text-[#F59E0B]" />
-                {shownCartCount > 0 && (
-                  <span className="absolute -top-2 -right-2 bg-[#F59E0B] text-[#0F172A] text-[10px] min-w-4 h-4 px-0.5 rounded-full flex items-center justify-center font-bold">{shownCartCount}</span>
-                )}
-              </span>
-              <span className="hidden sm:flex flex-col text-left">
-                <span className="text-[11px] text-slate-400 uppercase leading-none">Cart</span>
-                <span className="text-sm font-bold text-[#0F172A]">{shownCartCount === 0 ? "Empty" : `${shownCartCount} item${shownCartCount === 1 ? "" : "s"}`}</span>
-              </span>
+            <Link href="/marketplace/cart" aria-label={`Your basket, ${shownCartCount} item${shownCartCount === 1 ? "" : "s"}`} className="relative p-2 rounded-full hover:bg-slate-100 flex items-center justify-center">
+              <ShoppingBasket className="h-6 w-6 text-slate-600" />
+              {shownCartCount > 0 && (
+                <span className="absolute -top-0.5 -right-0.5 bg-[#F59E0B] text-[#0F172A] text-[10px] min-w-5 h-5 px-1 rounded-full flex items-center justify-center font-bold tabular-nums">{shownCartCount}</span>
+              )}
             </Link>
             <button
               className="md:hidden p-2 rounded-lg border border-[#E2E8F0] text-[#0F172A]"

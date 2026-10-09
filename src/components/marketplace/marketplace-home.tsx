@@ -683,7 +683,7 @@ export function MarketplaceHome() {
           else router.push("/marketplace")
         }}
       />
-      <main className="mx-auto w-full max-w-[1400px] px-3 sm:px-6 lg:px-10 py-6 sm:py-8 space-y-6 sm:space-y-8">
+      <main className="mx-auto w-full max-w-[1480px] px-3 sm:px-6 lg:px-10 py-6 sm:py-8 space-y-6 sm:space-y-8">
 
         {/* welcome popup — shows on every visit, closable */}
         {showNotice && (
@@ -750,11 +750,11 @@ export function MarketplaceHome() {
             any laptop, regardless of the page column. No band behind it.
             Side promos always show; your uploaded banner replaces ONLY the
             main card, shown fully (never cropped). */}
-        <section className="-mt-6 sm:-mt-8 w-[100vw] ml-[calc(50%-50vw)]">
+        <section className="-mt-6 sm:-mt-8 w-[100vw] ml-[calc(50%-50vw)] pl-3 sm:pl-5">
         <div className="grid w-full grid-cols-1 lg:grid-cols-12 gap-4 items-stretch">
         {!loaded ? (
-          <div className="lg:col-span-8 rounded-none border-y lg:border border-[#E2E8F0] bg-white shadow-sm min-h-[420px] animate-pulse" aria-hidden>
-            <div className="h-full min-h-[420px] w-full bg-slate-100" />
+          <div className="lg:col-span-8 rounded-none border-y lg:border border-[#E2E8F0] bg-white shadow-sm min-h-[320px] animate-pulse" aria-hidden>
+            <div className="h-full min-h-[320px] w-full bg-slate-100" />
           </div>
         ) : banners.hero_image ? (
           <div className="lg:col-span-8 overflow-hidden rounded-none border-y lg:border border-[#E2E8F0] bg-white shadow-sm">
@@ -770,7 +770,7 @@ export function MarketplaceHome() {
             </Link>
           </div>
         ) : (
-          <div className="lg:col-span-8 rounded-none relative overflow-hidden flex flex-col justify-between p-5 md:p-8 text-white min-h-[420px]" style={{ background: MARKETPLACE_BRAND.navy }}>
+          <div className="lg:col-span-8 rounded-none relative overflow-hidden flex flex-col justify-between p-5 md:p-8 text-white min-h-[320px]" style={{ background: MARKETPLACE_BRAND.navy }}>
             <div className="absolute -right-20 -top-20 w-96 h-96 rounded-full bg-[#F59E0B]/10 blur-3xl pointer-events-none" />
             <div className="absolute -left-10 -bottom-10 w-80 h-80 rounded-full bg-[#EF4444]/10 blur-3xl pointer-events-none" />
             <div className="relative z-10 flex items-center justify-between">
