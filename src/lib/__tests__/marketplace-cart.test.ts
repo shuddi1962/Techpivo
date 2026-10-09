@@ -70,3 +70,61 @@ describe("marketplace-cart snapshot stability", () => {
     expect(cartCount(getCart())).toBe(99)
   })
 })
+
+describe("marketplace-cart line merging", () => {
+  beforeEach(() => {
+    vi.resetModules()
+    vi.unstubAllGlobals()
+  })
+
+  it("repeated adds of the same product grow one line instead of forking", async () => {
+    installWindow()
+    const { getCart, addToCart } = await import("@/lib/marketplace-cart")
+    addToCart("p1", 1)
+    addToCart("p1", 1)
+    addToCart("p1", 2)
+    expect(getCart()).toEqual([{ id: "p1", qty: 4, variant: null }])
+  })
+
+  it("same variant merges; different variants stay separate lines", async () => {
+    installWindow()
+    const { getCart, addToCart } = await import("@/lib/marketplace-cart")
+    const black = { vid: "v-black", label: "Black" }
+    const white = { vid: "v-white", label: "White" }
+    addToCart("p1", 1, black)
+    addToCart("p1", 2, { vid: "v-black", label: "Black" })
+    addToCart("p1", 1, white)
+    expect(getCart()).toEqual([
+      { id: "p1", qty: 3, variant: { vid: "v-black", label: "Black", image: null } },
+      { id: "p1", qty: 1, variant: { vid: "v-white", label: "White", image: null } },
+    ])
+  })
+
+  it("empty-vid variants normalize to option-less so they merge", async () => {
+    installWindow()
+    const { getCart, addToCart } = await import("@/lib/marketplace-cart")
+    addToCart("p1", 1, { vid: "", label: "" })
+    addToCart("p1", 1)
+    expect(getCart()).toEqual([{ id: "p1", qty: 2, variant: null }])
+  })
+
+  it("variant images survive storage round-trips for bag thumbnails", async () => {
+    installWindow()
+    const { getCart, addToCart } = await import("@/lib/marketplace-cart")
+    addToCart("p1", 1, { vid: "v1", label: "Black", image: "https://img/x.jpg" })
+    expect(getCart()[0].variant).toEqual({ vid: "v1", label: "Black", image: "https://img/x.jpg" })
+  })
+
+  it("setQty/remove target the exact variant line", async () => {
+    installWindow()
+    const { getCart, addToCart, setQty, removeFromCart } = await import("@/lib/marketplace-cart")
+    addToCart("p1", 1, { vid: "v-black", label: "Black" })
+    addToCart("p1", 1, { vid: "v-white", label: "White" })
+    setQty("p1", 5, { vid: "v-black", label: "Black" })
+    expect(getCart().find((l) => l.variant?.vid === "v-black")?.qty).toBe(5)
+    removeFromCart("p1", { vid: "v-white", label: "White" })
+    expect(getCart()).toEqual([
+      { id: "p1", qty: 5, variant: { vid: "v-black", label: "Black", image: null } },
+    ])
+  })
+})

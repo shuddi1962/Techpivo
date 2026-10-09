@@ -6,10 +6,12 @@ import { useEffect, useRef, useState } from "react"
 import {
   Search, Heart, User, ShoppingBag, Menu, X, ChevronDown,
   Flame, MapPin, Phone, Mail, Truck, RefreshCcw, Headset, ShieldCheck,
+  ArrowLeftRight,
 } from "lucide-react"
 import { MARKET_DEPARTMENTS as DEPARTMENTS } from "@/lib/marketplace-categories"
 import { MARKETPLACE_BRAND } from "@/lib/marketplace"
 import { cartCount as countLines, useMarketCart } from "@/lib/marketplace-cart"
+import { useCompareIds } from "@/lib/marketplace-compare"
 import { SuggestDropdown, useRemoteSuggest } from "./search-suggest"
 import { MarketCommerce } from "./market-commerce"
 import { readMarketCurrency, setMarketCurrency } from "@/lib/marketplace-pricing"
@@ -101,6 +103,7 @@ export function MarketplaceHeader({
 
   // Live wishlist count (same localStorage key the home grid writes).
   const [liveWish, setLiveWish] = useState(0)
+  const compareIds = useCompareIds()
   // Signed-in shopper — same Supabase auth as the general site
   // (profiles.full_name → user_metadata → email prefix, like Header).
   const [acctName, setAcctName] = useState<string | null>(null)
@@ -346,6 +349,12 @@ export function MarketplaceHeader({
               <Heart className="h-6 w-6 text-slate-600" />
               {shownWishCount > 0 && (
                 <span className="absolute -top-0.5 -right-0.5 bg-[#EF4444] text-white text-[10px] min-w-5 h-5 px-1 rounded-full flex items-center justify-center font-bold">{shownWishCount}</span>
+              )}
+            </Link>
+            <Link href="/marketplace/compare" aria-label={compareIds.length > 0 ? `Compare ${compareIds.length} products` : "Compare products"} className="relative p-2 rounded-full hover:bg-slate-100 hidden sm:flex items-center justify-center">
+              <ArrowLeftRight className="h-6 w-6 text-slate-600" />
+              {compareIds.length > 0 && (
+                <span className="absolute -top-0.5 -right-0.5 bg-[#0F172A] text-white text-[10px] min-w-5 h-5 px-1 rounded-full flex items-center justify-center font-bold">{compareIds.length}</span>
               )}
             </Link>
             <div className="h-8 w-px bg-[#E2E8F0] hidden sm:block" />
@@ -731,6 +740,7 @@ export function MarketplaceFooter() {
               <li><Link className="transition-colors hover:text-[#F59E0B]" href="/marketplace/track">Order Tracking</Link></li>
               <li><Link className="transition-colors hover:text-[#F59E0B]" href="/marketplace/cart">Your Cart</Link></li>
               <li><Link className="transition-colors hover:text-[#F59E0B]" href="/marketplace/wishlist">Your Wishlist</Link></li>
+              <li><Link className="transition-colors hover:text-[#F59E0B]" href="/marketplace/compare">Compare Products</Link></li>
               <li><Link className="transition-colors hover:text-[#F59E0B]" href="/marketplace/faq">Returns & Warranty</Link></li>
               <li><Link className="transition-colors hover:text-[#F59E0B]" href="/privacy-policy">Privacy Policy</Link></li>
               <li><Link className="transition-colors hover:text-[#F59E0B]" href="/terms-of-use">Terms of Use</Link></li>

@@ -87,6 +87,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { path: "/marketplace/new-arrivals", priority: 0.7, freq: "daily" },
     { path: "/marketplace/top-stores", priority: 0.6, freq: "weekly" },
     { path: "/marketplace/cart", priority: 0.3, freq: "monthly" },
+    { path: "/marketplace/compare", priority: 0.3, freq: "monthly" },
     { path: "/marketplace/track", priority: 0.3, freq: "monthly" },
     { path: "/marketplace/wishlist", priority: 0.3, freq: "monthly" },
     { path: "/marketplace/help", priority: 0.5, freq: "monthly" },

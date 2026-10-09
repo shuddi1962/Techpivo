@@ -125,9 +125,9 @@ export function CartPage() {
             return (
               <div key={key} className="py-3 flex gap-3">
                 <Link href={`/marketplace/product/${l.id}`} className="w-20 h-20 rounded-lg bg-[#F8FAFC] border border-[#E2E8F0] overflow-hidden shrink-0">
-                  {l.product!.product_image_url ? (
+                  {(l.variant?.image || l.product!.product_image_url) ? (
                     // eslint-disable-next-line @next/next/no-img-element
-                    <img src={marketImage(l.product!.product_image_url)} alt={l.product!.product_name} loading="lazy" decoding="async" className="w-full h-full object-cover" />
+                    <img src={marketImage(l.variant?.image || l.product!.product_image_url || "")} alt={l.variant?.label ? `${l.product!.product_name} — ${l.variant.label}` : l.product!.product_name} loading="lazy" decoding="async" className="w-full h-full object-cover" />
                   ) : null}
                 </Link>
                 <div className="flex-1 min-w-0">

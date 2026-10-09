@@ -6,6 +6,7 @@
 import { CartPopupProvider } from "./cart-popup"
 import { QuickViewProvider } from "./quick-view-modal"
 import { CheckoutModalProvider } from "./checkout-modal"
+import { CompareTray } from "./compare-tray"
 
 export function MarketCommerce() {
   return (
@@ -13,6 +14,7 @@ export function MarketCommerce() {
       <CartPopupProvider />
       <QuickViewProvider />
       <CheckoutModalProvider />
+      <CompareTray />
     </>
   )
 }

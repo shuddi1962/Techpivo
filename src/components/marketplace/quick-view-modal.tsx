@@ -115,7 +115,7 @@ function QuickViewBody({ productId, onClose }: { productId: string; onClose: () 
     if (selected && (selected.stock ?? 1) < qty) return
     setBusy(true)
     try {
-      addLine(product.id, qty, selected ? { vid: selected.vid, label: selected.label } : null)
+      addLine(product.id, qty, selected ? { vid: selected.vid, label: selected.label, image: selected.image || null } : null)
       trackMarket("quickview_add", product.id)
       setAdded(true)
     } finally {
@@ -126,7 +126,7 @@ function QuickViewBody({ productId, onClose }: { productId: string; onClose: () 
 
   const buyNow = () => {
     if (!product || busy || outOfStock) return
-    addLine(product.id, qty, selected ? { vid: selected.vid, label: selected.label } : null)
+    addLine(product.id, qty, selected ? { vid: selected.vid, label: selected.label, image: selected.image || null } : null)
     trackMarket("quickview_add", product.id)
     onClose()
     setTimeout(() => {

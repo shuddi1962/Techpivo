@@ -164,14 +164,18 @@ function CartPopupBody({ highlightId, onClose }: { highlightId?: string; onClose
               return (
                 <li key={key} className={`flex gap-3 py-3 ${isNew ? "rounded-2xl bg-[#F6F7F9] px-2.5" : ""}`}>
                   <span className="h-[60px] w-[60px] shrink-0 overflow-hidden rounded-xl border border-[#EDEFF3] bg-[#F6F7F9]">
-                    {l.product!.product_image_url ? (
+                    {(l.variant?.image || l.product!.product_image_url) ? (
                       // eslint-disable-next-line @next/next/no-img-element
-                      <img src={marketImage(l.product!.product_image_url)} alt="" loading="lazy" decoding="async" className="h-full w-full object-cover" />
+                      <img src={marketImage(l.variant?.image || l.product!.product_image_url || "")} alt="" loading="lazy" decoding="async" className="h-full w-full object-cover" />
                     ) : null}
                   </span>
                   <span className="min-w-0 flex-1">
                     <span className="line-clamp-2 block text-[13px] font-semibold leading-snug text-[#0B0F19]">{l.product!.product_name}</span>
-                    {l.variant?.label && <span className="mt-0.5 block truncate text-[11px] font-medium text-[#94A3B8]">{l.variant.label}</span>}
+                    {l.variant?.label && (
+                      <span className="mt-1 inline-block max-w-full truncate rounded-full bg-[#FFF7ED] border border-[#FED7AA] px-2 py-px text-[11px] font-semibold text-[#B45309]">
+                        {l.variant.label}
+                      </span>
+                    )}
                     <span className="mt-1.5 flex items-center gap-2.5">
                       <span className="flex items-center rounded-full border border-[#E2E6EE]">
                         <button type="button" onClick={() => { setQty(l.id, l.qty - 1, l.variant); trackMarket("cart_qty", l.id) }} className="px-2 py-1.5 text-[#0B0F19] transition-colors hover:text-black" aria-label="Decrease quantity">

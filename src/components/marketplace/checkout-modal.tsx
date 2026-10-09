@@ -294,9 +294,9 @@ function CheckoutModalBody({ onClose }: { onClose: () => void }) {
           {lines.map((l) => (
             <li key={`${l.id}::${l.variant?.vid || ""}`} className="flex items-center gap-2.5">
               <span className="relative h-11 w-11 shrink-0 overflow-hidden rounded-lg border border-[#E2E8F0] bg-white">
-                {l.product!.product_image_url ? (
+                {(l.variant?.image || l.product!.product_image_url) ? (
                   // eslint-disable-next-line @next/next/no-img-element
-                  <img src={marketImage(l.product!.product_image_url)} alt="" loading="lazy" decoding="async" className="h-full w-full object-cover" />
+                  <img src={marketImage(l.variant?.image || l.product!.product_image_url || "")} alt="" loading="lazy" decoding="async" className="h-full w-full object-cover" />
                 ) : null}
                 <span className="absolute right-0 top-0 rounded-bl-lg bg-[#0F172A] px-1 text-[10px] font-bold text-white">{l.qty}</span>
               </span>
