@@ -6,11 +6,12 @@ import { createClient } from "@/lib/supabase/client"
 import {
   Store, Package, Eye, EyeOff, Star, Trash2, Plus, Search, RefreshCw,
   ExternalLink, Pencil, MousePointerClick, ShoppingBag, BadgeCheck, Globe,
-  LayoutGrid, Plug, ReceiptText, CreditCard, ImagePlus,
+  LayoutGrid, Plug, ReceiptText, CreditCard, ImagePlus, TrendingUp,
 } from "lucide-react"
 import { MarketplaceCategoriesTab } from "@/components/admin/marketplace-categories-tab"
 import { MarketplaceBannersTab } from "@/components/admin/marketplace-banners-tab"
 import { MarketplaceCjTab } from "@/components/admin/marketplace-cj-tab"
+import { MarketplaceUpsellsTab } from "@/components/admin/marketplace-upsells-tab"
 import { MarketplaceOrdersTab } from "@/components/admin/marketplace-orders-tab"
 import { MarketplacePaymentsTab } from "@/components/admin/marketplace-payments-tab"
 
@@ -63,7 +64,7 @@ export default function AdminMarketplacePage() {
   const [form, setForm] = useState(emptyForm)
   const [saving, setSaving] = useState(false)
   const [notice, setNotice] = useState("")
-  const [tab, setTab] = useState<"products" | "orders" | "categories" | "banners" | "cj" | "payments" | "visibility">("products")
+  const [tab, setTab] = useState<"products" | "orders" | "categories" | "banners" | "cj" | "payments" | "upsells" | "visibility">("products")
 
   const load = useCallback(async () => {
     const [ov, pr] = await Promise.all([
@@ -288,6 +289,7 @@ export default function AdminMarketplacePage() {
           { id: "categories", label: "Categories", icon: LayoutGrid },
           { id: "banners", label: "Banners", icon: ImagePlus },
           { id: "cj", label: "CJ Import", icon: Plug },
+          { id: "upsells", label: "Upsells", icon: TrendingUp },
           { id: "payments", label: "Payments", icon: CreditCard },
           { id: "visibility", label: "Storefront visibility", icon: Globe },
         ] as const).map((t) => (
@@ -308,6 +310,8 @@ export default function AdminMarketplacePage() {
       {tab === "cj" && <MarketplaceCjTab onImported={load} />}
 
       {tab === "orders" && <MarketplaceOrdersTab />}
+
+      {tab === "upsells" && <MarketplaceUpsellsTab />}
 
       {tab === "payments" && <MarketplacePaymentsTab />}
 

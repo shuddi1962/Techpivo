@@ -4,6 +4,7 @@ import Link from "next/link"
 import { useState } from "react"
 import { ArrowLeftRight, Check, Eye, Heart, Package, ShoppingCart } from "lucide-react"
 import { marketImage } from "@/lib/marketplace-images"
+import { openQuickView } from "@/lib/marketplace-events"
 import { priceOf, discountOf, type StoreProduct } from "@/lib/marketplace-catalog"
 import { MarketPrice } from "./market-price"
 
@@ -105,14 +106,15 @@ export function ProductCard({
           >
             <Heart className={`h-4 w-4 ${wished ? "fill-current" : ""}`} />
           </button>
-          <Link
-            href={href}
+          <button
+            type="button"
+            onClick={() => openQuickView(p.id)}
             aria-label={`Quick view ${p.product_name}`}
             title="Quick view"
             className={railBtn}
           >
             <Eye className="h-4 w-4" />
-          </Link>
+          </button>
           <button
             type="button"
             onClick={toggleCompare}

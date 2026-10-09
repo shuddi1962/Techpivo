@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from "react"
 import { ArrowLeft, Minus, Plus, RotateCcw, ShieldCheck, ShoppingCart, Trash2, Truck } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
 import { getCart, removeFromCart, setQty, useMarketCart } from "@/lib/marketplace-cart"
+import { openCheckout } from "@/lib/marketplace-events"
 import { marketImage } from "@/lib/marketplace-images"
 import { readShipSelection, shippingCost, FREE_SHIP_THRESHOLD_USD } from "@/lib/marketplace-shipping"
 import { useMarketCurrency, useUsdNgnRate } from "@/lib/marketplace-pricing"
@@ -187,8 +188,15 @@ export function CartPage() {
               </span>
             </span>
           </div>
-          <Link href="/marketplace/checkout" className="block text-center bg-[#F59E0B] hover:bg-[#D97706] text-[#0F172A] text-sm font-bold py-3 rounded-lg mt-2">
+          <button
+            type="button"
+            onClick={() => openCheckout()}
+            className="block w-full bg-[#F59E0B] hover:bg-[#D97706] text-[#0F172A] text-sm font-bold py-3 rounded-lg mt-2"
+          >
             Proceed to checkout
+          </button>
+          <Link href="/marketplace/checkout" className="block text-center text-xs text-slate-400 hover:text-slate-600">
+            Or use the full checkout page
           </Link>
           <div className="flex items-center justify-center gap-1.5">
             {["VISA", "MASTERCARD", "VERVE", "PAYSTACK"].map((b) => (

@@ -4,6 +4,7 @@ import Link from "next/link"
 import { useMemo, useState } from "react"
 import { ListFilter, PackageSearch } from "lucide-react"
 import { addToCart as addLine } from "@/lib/marketplace-cart"
+import { openCartPopup } from "@/lib/marketplace-events"
 import { priceOf, discountOf, type StoreProduct } from "@/lib/marketplace-catalog"
 import { ProductCard } from "./product-card"
 import { EMPTY_FILTERS, FilterSidebar, applyFilters, countActiveFilters, type FilterValue } from "./filter-sidebar"
@@ -64,6 +65,7 @@ export function ProductListing({ products }: { products: StoreProduct[] }) {
     addLine(p.id, 1)
     setJustAdded((m) => ({ ...m, [p.id]: true }))
     setTimeout(() => setJustAdded((m) => ({ ...m, [p.id]: false })), 1600)
+    openCartPopup(p.id)
   }
 
   const toggleWish = (id: string) =>

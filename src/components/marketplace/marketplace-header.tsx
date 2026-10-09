@@ -11,6 +11,7 @@ import { MARKET_DEPARTMENTS as DEPARTMENTS } from "@/lib/marketplace-categories"
 import { MARKETPLACE_BRAND } from "@/lib/marketplace"
 import { cartCount as countLines, useMarketCart } from "@/lib/marketplace-cart"
 import { SuggestDropdown, useRemoteSuggest } from "./search-suggest"
+import { MarketCommerce } from "./market-commerce"
 import { readMarketCurrency, setMarketCurrency } from "@/lib/marketplace-pricing"
 import { MARKET_STORE_DEFAULTS } from "@/lib/marketplace-store"
 
@@ -237,6 +238,7 @@ export function MarketplaceHeader({
 
   return (
     <>
+      <MarketCommerce />
       {/* utility bar — static, scrolls away with the page */}
       <div style={{ background: `linear-gradient(90deg, ${MARKETPLACE_BRAND.topbar} 0%, ${MARKETPLACE_BRAND.topbarSoft} 100%)` }} className="relative z-[60] w-full text-white">
         <div className="mx-auto w-full max-w-[1400px] px-3 sm:px-6 lg:px-10 flex items-center justify-between h-10 text-xs gap-2">

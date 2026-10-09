@@ -60,6 +60,75 @@ export async function GET(request: NextRequest) {
       const { sanitizeStore } = await import("@/lib/marketplace-store")
       return NextResponse.json({ store: sanitizeStore((data as { value?: unknown } | null)?.value) })
     }
+    if (section === "recommendations") {
+      // Admin-curated "Complete Your Purchase" overrides (migration 094).
+      try {
+        const { data, error } = await supabase
+          .from("marketplace_recommendations")
+          .select("id,primary_id,recommended_id,position,is_active,created_at")
+          .order("primary_id", { ascending: true })
+          .order("position", { ascending: true })
+          .limit(500)
+        if (error) throw error
+        const rows = (data || []) as Array<{ id: string; primary_id: string; recommended_id: string; position: number; is_active: boolean; created_at: string }>
+        const ids = [...new Set(rows.flatMap((r) => [r.primary_id, r.recommended_id]))]
+        let names: Record<string, string> = {}
+        if (ids.length > 0) {
+          const { data: prods } = await supabase.from("affiliate_products").select("id,product_name").in("id", ids)
+          names = Object.fromEntries(((prods || []) as Array<{ id: string; product_name: string }>).map((p) => [p.id, p.product_name]))
+        }
+        return NextResponse.json({ recommendations: rows, names, migrated: true })
+      } catch {
+        return NextResponse.json({ recommendations: [], names: {}, migrated: false })
+      }
+    }
+    if (section === "upsell-report") {
+      // Conversion report from real events + paid orders (never fabricated).
+      try {
+        const { data: events, error } = await supabase
+          .from("marketplace_events")
+          .select("kind,product_id,created_at")
+          .order("created_at", { ascending: false })
+          .limit(5000)
+        if (error) throw error
+        const list = (events || []) as Array<{ kind: string; product_id: string | null; created_at: string }>
+        const byKind: Record<string, number> = {}
+        const byProduct: Record<string, number> = {}
+        for (const e of list) {
+          byKind[e.kind] = (byKind[e.kind] || 0) + 1
+          if ((e.kind === "recommend_add" || e.kind === "bundle_add" || e.kind === "quickview_add") && e.product_id) {
+            byProduct[e.product_id] = (byProduct[e.product_id] || 0) + 1
+          }
+        }
+        const topIds = Object.entries(byProduct).sort((a, b) => b[1] - a[1]).slice(0, 10).map(([id]) => id)
+        let topNames: Record<string, string> = {}
+        if (topIds.length > 0) {
+          const { data: prods } = await supabase.from("affiliate_products").select("id,product_name").in("id", topIds)
+          topNames = Object.fromEntries(((prods || []) as Array<{ id: string; product_name: string }>).map((p) => [p.id, p.product_name]))
+        }
+        const { data: orders } = await supabase
+          .from("marketplace_orders")
+          .select("items,total_usd")
+          .in("status", ["paid", "fulfilled", "delivered"])
+          .limit(500)
+        const paid = (orders || []) as Array<{ items: Array<{ id?: string; qty?: number }> | null; total_usd: number | null }>
+        const multi = paid.filter((o) => Array.isArray(o.items) && o.items.length > 1).length
+        const aov = paid.length > 0 ? paid.reduce((s, o) => s + (Number(o.total_usd) || 0), 0) / paid.length : 0
+        return NextResponse.json({
+          report: {
+            byKind,
+            totalEvents: list.length,
+            topProducts: Object.entries(byProduct).sort((a, b) => b[1] - a[1]).slice(0, 10).map(([id, n]) => ({ id, name: topNames[id] || id.slice(0, 8), adds: n })),
+            paidOrders: paid.length,
+            multiItemOrders: multi,
+            aovUsd: Math.round(aov * 100) / 100,
+          },
+          migrated: true,
+        })
+      } catch {
+        return NextResponse.json({ report: null, migrated: false })
+      }
+    }
     if (section === "cj-list") {      const key = await resolveCjApiKey()
       if (!key) return NextResponse.json({ demo: true, list: [], message: "CJ API key not set" })
       const list = await cjListProducts({
@@ -157,9 +226,53 @@ export async function POST(request: NextRequest) {
       if (error) throw error
       return NextResponse.json({ success: true, banners })
     }
+    // Curated "Complete Your Purchase" overrides (migration 094 tables).
+    if (body.action === "recommend-add") {
+      const primary = String(body.primary_id || "")
+      const rec = String(body.recommended_id || "")
+      if (!/^[0-9a-f-]{36}$/i.test(primary) || !/^[0-9a-f-]{36}$/i.test(rec) || primary === rec) {
+        return NextResponse.json({ error: "Two different valid product ids are required." }, { status: 400 })
+      }
+      try {
+        const { data: existing } = await supabase
+          .from("marketplace_recommendations")
+          .select("position")
+          .eq("primary_id", primary)
+          .order("position", { ascending: false })
+          .limit(1)
+        const pos = ((existing || []) as Array<{ position: number }>)[0]?.position
+        const { data, error } = await supabase
+          .from("marketplace_recommendations")
+          .upsert({ primary_id: primary, recommended_id: rec, position: (pos ?? -1) + 1, is_active: true }, { onConflict: "primary_id,recommended_id" })
+          .select("id")
+          .single()
+        if (error) throw error
+        return NextResponse.json({ success: true, recommendation: data })
+      } catch {
+        return NextResponse.json({ error: "Recommendations table not migrated yet — apply migration 094 first." }, { status: 500 })
+      }
+    }
+    if (body.action === "recommend-remove") {
+      const id = String(body.id || "")
+      if (!id) return NextResponse.json({ error: "id required" }, { status: 400 })
+      const { error } = await supabase.from("marketplace_recommendations").delete().eq("id", id)
+      if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+      return NextResponse.json({ success: true })
+    }
+    if (body.action === "recommend-toggle") {
+      const id = String(body.id || "")
+      if (!id) return NextResponse.json({ error: "id required" }, { status: 400 })
+      const { data, error } = await supabase
+        .from("marketplace_recommendations")
+        .update({ is_active: body.is_active !== false })
+        .eq("id", id)
+        .select("id,is_active")
+        .single()
+      if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+      return NextResponse.json({ success: true, recommendation: data })
+    }
     // Save store contact info (footer address / phone / email)
-    if (body.action === "store-save") {
-      const { sanitizeStore } = await import("@/lib/marketplace-store")
+    if (body.action === "store-save") {      const { sanitizeStore } = await import("@/lib/marketplace-store")
       const store = sanitizeStore(body.store)
       const { error } = await supabase
         .from("site_settings")

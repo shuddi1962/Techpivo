@@ -10,6 +10,7 @@ import {
 } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
 import { addToCart as addLine, cartCount as countLines, useMarketCart } from "@/lib/marketplace-cart"
+import { openCartPopup, openQuickView } from "@/lib/marketplace-events"
 import {
   MARKETPLACE_BRAND, MARKETPLACE_HERO, supplierDisplayName, type DemoProduct,
 } from "@/lib/marketplace"
@@ -96,9 +97,15 @@ function ProductCard({ p, onAdd, wished, onWish, added, href }: { p: DemoProduct
         <Heart className={`h-4 w-4 ${wished ? "fill-current" : ""}`} />
       </button>
       {href ? (
-        <Link href={href} aria-label={`Quick view ${p.name}`} title="Quick view" className={railBtn}>
+        <button
+          type="button"
+          onClick={() => openQuickView(p.id)}
+          aria-label={`Quick view ${p.name}`}
+          title="Quick view"
+          className={railBtn}
+        >
           <Eye className="h-4 w-4" />
-        </Link>
+        </button>
       ) : (
         <span className={`${railBtn} opacity-50`} aria-hidden>
           <Eye className="h-4 w-4" />
@@ -652,6 +659,7 @@ export function MarketplaceHome() {
     addLine(p.id, 1)
     setJustAdded((m) => ({ ...m, [p.id]: true }))
     setTimeout(() => setJustAdded((m) => ({ ...m, [p.id]: false })), 1600)
+    openCartPopup(p.id)
   }
   const toggleWish = (id: string) =>
     setWishlist((m) => {

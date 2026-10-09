@@ -3,9 +3,10 @@
 import Link from "next/link"
 import { useEffect, useRef, useState } from "react"
 import {
-  ArrowLeftRight, Check, ChevronLeft, ChevronRight, Flame, Heart, ShoppingCart,
+  ArrowLeftRight, Check, ChevronLeft, ChevronRight, Eye, Flame, Heart, ShoppingCart,
 } from "lucide-react"
 import type { DemoProduct } from "@/lib/marketplace"
+import { openQuickView } from "@/lib/marketplace-events"
 import { marketImage } from "@/lib/marketplace-images"
 import { readCompare, toggleCompareStored } from "@/lib/marketplace-compare"
 import { PanelStars, discountPct } from "./feature-panels"
@@ -97,6 +98,17 @@ function ShowcaseCard({ p, onAdd, added, wished, onWish }: { p: DemoProduct } & 
           >
             <ArrowLeftRight className="h-3.5 w-3.5" />
           </button>
+          {href && (
+            <button
+              type="button"
+              onClick={() => openQuickView(p.id)}
+              aria-label={`Quick view ${p.name}`}
+              title="Quick view"
+              className="flex h-8 w-8 items-center justify-center rounded-lg border border-[#E5E7EB] text-slate-500 transition-colors hover:text-[#0F172A]"
+            >
+              <Eye className="h-3.5 w-3.5" />
+            </button>
+          )}
         </div>
       </div>
     </div>

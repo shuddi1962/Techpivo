@@ -1,10 +1,11 @@
 "use client"
 
 import Link from "next/link"
-import { useRouter } from "next/navigation"
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import { Check, Heart, Minus, Play, Plus, RotateCcw, ShieldCheck, ShoppingCart, Star, Truck, Zap } from "lucide-react"
 import { addToCart } from "@/lib/marketplace-cart"
+import { openCartPopup, openCheckout } from "@/lib/marketplace-events"
+import { CompletePurchase } from "./complete-purchase"
 import { marketImage } from "@/lib/marketplace-images"
 import {
   readShipSelection, saveShipSelection, standardFee, SHIP_COUNTRIES, DEFAULT_SHIP_COUNTRY, type ShipOption, type ShipSelection,
@@ -211,11 +212,11 @@ export function ProductDetail({
   sold: number
   hasSupplier: boolean
 }) {
-  const router = useRouter()
   const rate = useUsdNgnRate()
   const currency = useMarketCurrency()
   const [qty, setQty] = useState(1)
   const [added, setAdded] = useState(false)
+  const lastAddRef = useRef(0)
   const [wished, setWished] = useState(false)
   const [reviews, setReviews] = useState<Review[]>(initialReviews)
   const [rName, setRName] = useState("")
@@ -365,13 +366,19 @@ export function ProductDetail({
   )
 
   const doAdd = () => {
+    // Sync localStorage write — guard rapid double-clicks (400ms) so one
+    // tap can never create a duplicate line. Popup opens only on success.
+    const now = Date.now()
+    if (now - lastAddRef.current < 400) return
+    lastAddRef.current = now
     addToCart(p.id, qty, selected ? { vid: selected.vid, label: selected.label } : null)
     setAdded(true)
     setTimeout(() => setAdded(false), 1600)
+    openCartPopup(p.id)
   }
   const buyNow = () => {
     addToCart(p.id, qty, selected ? { vid: selected.vid, label: selected.label } : null)
-    router.push("/marketplace/checkout")
+    openCheckout()
   }
 
   const submitReview = async () => {
@@ -635,6 +642,16 @@ export function ProductDetail({
             >
               <Heart className={`h-5 w-5 ${wished ? "fill-current" : ""}`} />
             </button>
+          </div>
+
+          <div className="mt-4">
+            <CompletePurchase
+              productId={p.id}
+              mainName={p.product_name}
+              mainPrice={price}
+              mainVariant={selected ? { vid: selected.vid, label: selected.label } : null}
+              mainQty={qty}
+            />
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mt-5 text-xs">
