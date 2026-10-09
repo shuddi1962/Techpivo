@@ -746,17 +746,17 @@ export function MarketplaceHome() {
           </div>
         )}
 
-        {/* hero band — full-bleed edge to edge (cancels the page gutters),
-            side promos always show; your uploaded banner replaces ONLY the
-            main navy card, shown fully (never cropped). */}
-        <section className="-mx-3 sm:-mx-6 lg:-mx-10 -mt-6 sm:-mt-8 px-3 py-7 sm:px-6 sm:py-10 lg:px-10" style={{ background: MARKETPLACE_BRAND.navy }}>
-        <div className="mx-auto grid w-full max-w-[1400px] grid-cols-1 lg:grid-cols-12 gap-4 items-stretch">
+        {/* hero — full-bleed edge to edge on the page background (no band
+            behind it). Side promos always show; your uploaded banner
+            replaces ONLY the main card, shown fully (never cropped). */}
+        <section className="-mx-3 sm:-mx-6 lg:-mx-10 -mt-6 sm:-mt-8 px-0 pt-0">
+        <div className="grid w-full grid-cols-1 lg:grid-cols-12 gap-4 items-stretch">
         {!loaded ? (
-          <div className="lg:col-span-8 rounded-3xl border border-white/10 bg-white/5 min-h-[420px] animate-pulse" aria-hidden>
-            <div className="h-full min-h-[420px] w-full rounded-3xl bg-white/5" />
+          <div className="lg:col-span-8 rounded-none border-y lg:border border-[#E2E8F0] bg-white shadow-sm min-h-[420px] animate-pulse" aria-hidden>
+            <div className="h-full min-h-[420px] w-full bg-slate-100" />
           </div>
         ) : banners.hero_image ? (
-          <div className="lg:col-span-8 overflow-hidden rounded-3xl shadow-2xl">
+          <div className="lg:col-span-8 overflow-hidden rounded-none border-y lg:border border-[#E2E8F0] bg-white shadow-sm">
             <Link href="#trending" aria-label="Shop TechPivo Market" className="block">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
@@ -769,7 +769,7 @@ export function MarketplaceHome() {
             </Link>
           </div>
         ) : (
-          <div className="lg:col-span-8 rounded-3xl relative overflow-hidden flex flex-col justify-between p-5 md:p-8 text-white min-h-[420px] border border-white/10 bg-white/[0.04]">
+          <div className="lg:col-span-8 rounded-none relative overflow-hidden flex flex-col justify-between p-5 md:p-8 text-white min-h-[420px]" style={{ background: MARKETPLACE_BRAND.navy }}>
             <div className="absolute -right-20 -top-20 w-96 h-96 rounded-full bg-[#F59E0B]/10 blur-3xl pointer-events-none" />
             <div className="absolute -left-10 -bottom-10 w-80 h-80 rounded-full bg-[#EF4444]/10 blur-3xl pointer-events-none" />
             <div className="relative z-10 flex items-center justify-between">
@@ -831,7 +831,7 @@ export function MarketplaceHome() {
           <div className="lg:col-span-4 flex flex-col gap-4">
             <Link
               href="/marketplace/deals"
-              className="group relative flex-1 overflow-hidden rounded-2xl p-5 text-white shadow-sm transition-shadow hover:shadow-md min-h-[200px] flex flex-col justify-between"
+              className="group relative flex-1 overflow-hidden rounded-none p-5 text-white shadow-sm transition-shadow hover:shadow-md min-h-[200px] flex flex-col justify-between"
               style={{ background: "linear-gradient(150deg, #DC2626 0%, #991B1B 100%)" }}
             >
               <div className="absolute -right-10 -top-10 h-40 w-40 rounded-full bg-white/10 blur-2xl" />
@@ -848,7 +848,7 @@ export function MarketplaceHome() {
             </Link>
             <Link
               href="/marketplace/new-arrivals"
-              className="group relative flex-1 overflow-hidden rounded-2xl p-5 text-[#0F172A] shadow-sm transition-shadow hover:shadow-md min-h-[200px] flex flex-col justify-between"
+              className="group relative flex-1 overflow-hidden rounded-none p-5 text-[#0F172A] shadow-sm transition-shadow hover:shadow-md min-h-[200px] flex flex-col justify-between"
               style={{ background: "linear-gradient(150deg, #F59E0B 0%, #F97316 100%)" }}
             >
               <div className="absolute -right-10 -bottom-10 h-40 w-40 rounded-full bg-white/20 blur-2xl" />
