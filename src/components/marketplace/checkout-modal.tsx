@@ -285,10 +285,10 @@ function CheckoutModalBody({ onClose }: { onClose: () => void }) {
             }}
           />
         </div>
-        {error && <p role="alert" className="rounded-lg border border-[#EF4444]/20 bg-[#FEF2F2] px-3 py-2 text-sm text-[#EF4444]">{error}</p>}
+        {error && <p role="alert" className="rounded-xl border border-[#E9EBF1] bg-[#F6F7F9] px-3 py-2.5 text-[13px] font-semibold text-[#B91C1C]">{error}</p>}
       </div>
 
-      <div className="space-y-3 rounded-2xl border border-[#E2E8F0] bg-[#F8FAFC] p-4">
+      <div className="space-y-3 rounded-2xl border border-[#E9EBF1] bg-[#F6F7F9] p-4">
         <h3 className="text-sm font-extrabold text-[#0F172A]">Order summary · {lines.reduce((s, l) => s + l.qty, 0)} item(s)</h3>
         <ul className="max-h-56 space-y-2 overflow-y-auto">
           {lines.map((l) => (
@@ -331,12 +331,12 @@ function CheckoutModalBody({ onClose }: { onClose: () => void }) {
           type="button"
           onClick={pay}
           disabled={paying || lines.length === 0}
-          className="flex w-full items-center justify-center gap-2 rounded-lg bg-[#10B981] py-3 text-sm font-bold text-white transition-colors hover:bg-[#059669] disabled:opacity-60"
+          className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#0B0F19] py-3.5 text-sm font-bold text-white transition-all hover:bg-black active:scale-[0.99] disabled:opacity-60"
         >
           {paying ? <><Loader2 className="h-4 w-4 animate-spin" /> Starting payment...</> : <><Lock className="h-4 w-4" /> Pay ₦{totalNgn.toLocaleString()}</>}
         </button>
-        <p className="flex items-center justify-center gap-1.5 text-[11px] text-slate-400">
-          <ShieldCheck className="h-3.5 w-3.5 text-[#10B981]" /> Secure Korapay checkout · back to cart keeps your items
+        <p className="flex items-center justify-center gap-1.5 text-[11px] font-medium text-[#94A3B8]">
+          <ShieldCheck className="h-3.5 w-3.5 text-[#0B0F19]" /> Secure Korapay checkout · back to cart keeps your items
         </p>
         <button type="button" onClick={onClose} disabled={paying} className="w-full text-xs text-slate-400 hover:text-slate-600 disabled:opacity-50">
           Return to cart

@@ -4,7 +4,7 @@
 // admin orders tab can show WHY plus a Retry button.
 
 import type { SupabaseClient } from "@supabase/supabase-js"
-import { cjCreateOrder } from "@/lib/cj"
+import { cjCreateOrder, cjGetVariants } from "@/lib/cj"
 import { supplierShipOptions } from "@/lib/marketplace-freight"
 import { SHIP_COUNTRIES } from "@/lib/marketplace-shipping"
 
@@ -42,12 +42,94 @@ async function supabaseUpdate(supabase: SupabaseClient, orderId: string, patch: 
   await supabase.from("marketplace_orders").update(patch).eq("id", orderId)
 }
 
+/**
+ * Fill in missing supplier variant ids where it is safe to do so.
+ * Resolution order per line: product default cj_vid -> the single CJ
+ * variant (nothing to choose between) -> unique match of the stored
+ * variant label ("Name (Label)") against CJ variantNameEn. Anything
+ * ambiguous is left empty for a human. Healed vids are written back to
+ * the order so retries and tracking see the same lines CJ received.
+ */
+async function healMissingVids(
+  supabase: SupabaseClient,
+  orderId: string,
+  lines: OrderLine[]
+): Promise<{ lines: OrderLine[] }> {
+  if (!lines.some((l) => !l.cj_vid)) return { lines }
+  let changed = false
+  const next: OrderLine[] = [...lines]
+  for (let i = 0; i < next.length; i++) {
+    const line = next[i]
+    if (line.cj_vid) continue
+    try {
+      const { data: product } = await supabase
+        .from("affiliate_products")
+        .select("cj_pid,cj_vid")
+        .eq("id", line.id)
+        .maybeSingle()
+      const row = product as { cj_pid?: string | null; cj_vid?: string | null } | null
+      if (row?.cj_vid) {
+        next[i] = { ...line, cj_vid: row.cj_vid }
+        changed = true
+        continue
+      }
+      if (!row?.cj_pid) continue // not a CJ-supplied product — stays manual
+      let variants: Array<{ vid?: string; variantNameEn?: string }> = []
+      try {
+        variants = await cjGetVariants(row.cj_pid)
+      } catch {
+        continue // supplier unreachable — retry later, keep manual for now
+      }
+      const withVid = variants.filter((v) => v.vid)
+      if (withVid.length === 1 && withVid[0].vid) {
+        next[i] = { ...line, cj_vid: withVid[0].vid as string }
+        changed = true
+        continue
+      }
+      // Line names embed the picked option: "Product Name (Option Label)".
+      const labelMatch = /\(([^()]*)\)\s*$/.exec(line.name || "")
+      const label = (labelMatch?.[1] || "").trim().toLowerCase()
+      if (label && withVid.length > 1) {
+        const hits = withVid.filter((v) => {
+          const vn = (v.variantNameEn || "").trim().toLowerCase()
+          return vn.length > 0 && (vn.includes(label) || label.includes(vn))
+        })
+        if (hits.length === 1 && hits[0].vid) {
+          next[i] = { ...line, cj_vid: hits[0].vid as string }
+          changed = true
+        }
+      }
+    } catch {
+      // never let healing break fulfillment — line stays manual
+    }
+  }
+  if (changed) {
+    await supabaseUpdate(supabase, orderId, { items: next })
+  }
+  return { lines: next }
+}
+
 export async function fulfillMarketplaceOrder(supabase: SupabaseClient, order: FulfillOrder) {
   const lines = (order.items || []) as OrderLine[]
-  const fulfillable = lines.length > 0 && lines.every((l) => l.cj_vid)
-  if (!fulfillable) {
-    return fail(supabase, order.id, "Not auto-fulfillable: a line has no supplier variant id.")
+  if (lines.length === 0) {
+    return fail(supabase, order.id, "Not auto-fulfillable: the order has no items.")
   }
+  // Self-heal: upsell add-ons and quick adds often reach checkout without a
+  // picked variant, so lines can arrive with no cj_vid even though the
+  // product is CJ-supplied. Resolve what's safely resolvable (product
+  // default -> single supplier variant -> unique variant-name match) and
+  // persist it, so Retry actually makes progress instead of failing forever.
+  const healed = await healMissingVids(supabase, order.id, lines)
+  const stillMissing = healed.lines.filter((l) => !l.cj_vid)
+  if (stillMissing.length > 0) {
+    const names = [...new Set(stillMissing.map((l) => (l.name || "an item").slice(0, 60)))].slice(0, 3).join("; ")
+    return fail(
+      supabase,
+      order.id,
+      `Not auto-fulfillable: no supplier variant for ${names}. Pick the variant in Admin → Marketplace → CJ Import (or fulfill manually).`
+    )
+  }
+  const fulfillLines = healed.lines
   try {
     let logisticName = "CJPacket"
     const stored = String(order.ship_method || "")
@@ -56,7 +138,7 @@ export async function fulfillMarketplaceOrder(supabase: SupabaseClient, order: F
     } else {
       try {
         const live = await supplierShipOptions(
-          lines.map((l) => ({ product_id: l.id, variant_vid: l.cj_vid || "", qty: l.qty })),
+          fulfillLines.map((l) => ({ product_id: l.id, variant_vid: l.cj_vid || "", qty: l.qty })),
           String(order.ship_country || "NG")
         )
         if (live.length > 0) logisticName = live[0].name
@@ -85,7 +167,7 @@ export async function fulfillMarketplaceOrder(supabase: SupabaseClient, order: F
         shippingZip: String(order.ship_zip || "").slice(0, 20),
         logisticName: logisticName.slice(0, 50),
         fromCountryCode: "CN",
-        products: lines.map((l) => ({ vid: l.cj_vid as string, quantity: l.qty })),
+        products: fulfillLines.map((l) => ({ vid: l.cj_vid as string, quantity: l.qty })),
         remark: `TechPivo Market ${String(order.id).slice(0, 8)}`,
       })) as { orderId?: string; id?: string; orderNum?: string } | string | null
     } catch (e) {

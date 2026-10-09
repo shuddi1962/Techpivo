@@ -4,7 +4,7 @@
 
 import Link from "next/link"
 import { useCallback, useEffect, useMemo, useState } from "react"
-import { Check, Minus, Plus, Trash2, ShoppingCart, Truck } from "lucide-react"
+import { Check, Minus, Plus, Trash2, ShoppingCart } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
 import {
   getCart, removeFromCart, setQty, addToCart as addLine, useMarketCart,
@@ -77,6 +77,8 @@ function CartPopupBody({ highlightId, onClose }: { highlightId?: string; onClose
   const subtotal = lines.reduce((s, l) => s + Number(l.product!.sale_price ?? l.product!.original_price ?? 0) * l.qty, 0)
   const count = lines.reduce((s, l) => s + l.qty, 0)
   const highlight = lines.find((l) => l.id === highlightId) || lines[lines.length - 1]
+  const shipPct = Math.max(0, Math.min(100, (subtotal / FREE_SHIP_THRESHOLD_USD) * 100))
+  const shipLeft = FREE_SHIP_THRESHOLD_USD - subtotal
 
   // One or two compact add-ons tied to the just-added product (never filler).
   useEffect(() => {
@@ -116,57 +118,75 @@ function CartPopupBody({ highlightId, onClose }: { highlightId?: string; onClose
   }
 
   return (
-    <div className="p-4 space-y-4">
+    <div className="space-y-4 p-4 sm:p-5">
       {highlight?.product && (
-        <p className="flex items-center gap-2 rounded-xl bg-[#ECFDF5] border border-[#A7F3D0] px-3 py-2.5 text-sm font-bold text-[#047857]">
-          <span className="flex h-6 w-6 items-center justify-center rounded-full bg-[#10B981] text-white">
-            <Check className="h-4 w-4" />
+        <div className="flex items-center gap-3">
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#0B0F19] text-white">
+            <Check className="h-4 w-4" strokeWidth={3} />
           </span>
-          Added to your cart
-        </p>
+          <div className="min-w-0">
+            <p className="text-sm font-extrabold tracking-tight text-[#0B0F19]">Added to your bag</p>
+            <p className="truncate text-xs text-[#64748B]">
+              {count} item{count === 1 ? "" : "s"} · <MarketPrice usd={subtotal} className="font-bold text-[#0B0F19]" />
+            </p>
+          </div>
+        </div>
       )}
 
       {loading ? (
-        <p className="py-6 text-center text-sm text-slate-500">Loading your cart...</p>
+        <div className="space-y-2.5 py-2" aria-label="Loading your bag">
+          {[0, 1].map((i) => (
+            <div key={i} className="flex animate-pulse gap-3">
+              <div className="h-[60px] w-[60px] shrink-0 rounded-xl bg-[#EDEFF3]" />
+              <div className="flex-1 space-y-2 py-1">
+                <div className="h-3 w-3/4 rounded bg-[#EDEFF3]" />
+                <div className="h-3 w-1/3 rounded bg-[#EDEFF3]" />
+              </div>
+            </div>
+          ))}
+        </div>
       ) : lines.length === 0 ? (
-        <div className="py-6 text-center">
-          <ShoppingCart className="mx-auto mb-2 h-8 w-8 text-slate-300" />
-          <p className="text-sm font-bold text-[#0F172A]">Your cart is empty</p>
+        <div className="py-8 text-center">
+          <span className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-[#F6F7F9]">
+            <ShoppingCart className="h-6 w-6 text-[#94A3B8]" />
+          </span>
+          <p className="mt-3 text-sm font-extrabold tracking-tight text-[#0B0F19]">Your bag is empty</p>
+          <p className="mt-0.5 text-xs text-[#64748B]">Beautiful things await in the store.</p>
         </div>
       ) : (
         <>
-          <ul className="divide-y divide-[#E2E8F0] max-h-64 overflow-y-auto">
+          <ul className="max-h-64 divide-y divide-[#EFF1F5] overflow-y-auto">
             {lines.map((l) => {
               const unit = Number(l.product!.sale_price ?? l.product!.original_price ?? 0)
               const key = `${l.id}::${l.variant?.vid || ""}`
               const isNew = highlightId ? l.id === highlightId : false
               return (
-                <li key={key} className={`flex gap-3 py-2.5 ${isNew ? "rounded-lg bg-[#FFFBEB] px-2" : ""}`}>
-                  <span className="h-14 w-14 shrink-0 overflow-hidden rounded-lg border border-[#E2E8F0] bg-[#F8FAFC]">
+                <li key={key} className={`flex gap-3 py-3 ${isNew ? "rounded-2xl bg-[#F6F7F9] px-2.5" : ""}`}>
+                  <span className="h-[60px] w-[60px] shrink-0 overflow-hidden rounded-xl border border-[#EDEFF3] bg-[#F6F7F9]">
                     {l.product!.product_image_url ? (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img src={marketImage(l.product!.product_image_url)} alt="" loading="lazy" decoding="async" className="h-full w-full object-cover" />
                     ) : null}
                   </span>
                   <span className="min-w-0 flex-1">
-                    <span className="block truncate text-[13px] font-semibold text-[#0F172A]">{l.product!.product_name}</span>
-                    {l.variant?.label && <span className="block truncate text-[11px] text-slate-400">{l.variant.label}</span>}
-                    <span className="mt-1 flex items-center gap-2">
-                      <span className="flex items-center rounded-lg border border-[#CBD5E1] overflow-hidden">
-                        <button type="button" onClick={() => { setQty(l.id, l.qty - 1, l.variant); trackMarket("cart_qty", l.id) }} className="px-2 py-1 hover:bg-slate-100" aria-label="Decrease quantity">
-                          <Minus className="h-3 w-3" />
+                    <span className="line-clamp-2 block text-[13px] font-semibold leading-snug text-[#0B0F19]">{l.product!.product_name}</span>
+                    {l.variant?.label && <span className="mt-0.5 block truncate text-[11px] font-medium text-[#94A3B8]">{l.variant.label}</span>}
+                    <span className="mt-1.5 flex items-center gap-2.5">
+                      <span className="flex items-center rounded-full border border-[#E2E6EE]">
+                        <button type="button" onClick={() => { setQty(l.id, l.qty - 1, l.variant); trackMarket("cart_qty", l.id) }} className="px-2 py-1.5 text-[#0B0F19] transition-colors hover:text-black" aria-label="Decrease quantity">
+                          <Minus className="h-3 w-3" strokeWidth={2.5} />
                         </button>
-                        <span className="w-7 text-center text-xs font-bold tabular-nums">{l.qty}</span>
-                        <button type="button" onClick={() => { setQty(l.id, l.qty + 1, l.variant); trackMarket("cart_qty", l.id) }} className="px-2 py-1 hover:bg-slate-100" aria-label="Increase quantity">
-                          <Plus className="h-3 w-3" />
+                        <span className="w-6 text-center text-xs font-extrabold tabular-nums text-[#0B0F19]">{l.qty}</span>
+                        <button type="button" onClick={() => { setQty(l.id, l.qty + 1, l.variant); trackMarket("cart_qty", l.id) }} className="px-2 py-1.5 text-[#0B0F19] transition-colors hover:text-black" aria-label="Increase quantity">
+                          <Plus className="h-3 w-3" strokeWidth={2.5} />
                         </button>
                       </span>
-                      <button type="button" onClick={() => { removeFromCart(l.id, l.variant); trackMarket("cart_remove", l.id) }} className="inline-flex items-center gap-0.5 text-[11px] text-slate-400 hover:text-[#EF4444]" aria-label={`Remove ${l.product!.product_name}`}>
+                      <button type="button" onClick={() => { removeFromCart(l.id, l.variant); trackMarket("cart_remove", l.id) }} className="inline-flex items-center gap-1 text-[11px] font-medium text-[#94A3B8] transition-colors hover:text-[#0B0F19]" aria-label={`Remove ${l.product!.product_name}`}>
                         <Trash2 className="h-3 w-3" /> Remove
                       </button>
                     </span>
                   </span>
-                  <span className="whitespace-nowrap text-[13px] font-extrabold text-[#0F172A]">
+                  <span className="whitespace-nowrap text-[13px] font-extrabold tabular-nums text-[#0B0F19]">
                     <MarketPrice usd={unit * l.qty} />
                   </span>
                 </li>
@@ -174,33 +194,46 @@ function CartPopupBody({ highlightId, onClose }: { highlightId?: string; onClose
             })}
           </ul>
 
-          {subtotal < FREE_SHIP_THRESHOLD_USD ? (
-            <p className="rounded-xl bg-[#FFFBEB] border border-[#FED7AA] px-3 py-2 text-xs text-slate-600">
-              Add <MarketPrice usd={FREE_SHIP_THRESHOLD_USD - subtotal} className="font-bold text-[#0F172A]" /> more for <strong className="text-[#10B981]">FREE Standard shipping</strong>
-            </p>
-          ) : (
-            <p className="rounded-xl bg-[#ECFDF5] border border-[#A7F3D0] px-3 py-2 text-xs font-semibold text-[#047857]">
-              <Truck className="mr-1 inline h-3.5 w-3.5" />You unlocked FREE Standard shipping.
-            </p>
-          )}
+          <div className="rounded-2xl bg-[#F6F7F9] px-3.5 py-3">
+            {shipLeft > 0 ? (
+              <>
+                <p className="text-xs text-[#475569]">
+                  <MarketPrice usd={shipLeft} className="font-extrabold text-[#0B0F19]" /> away from{" "}
+                  <strong className="font-extrabold text-[#0B0F19]">FREE Standard delivery</strong>
+                </p>
+                <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-[#E2E6EE]" role="progressbar" aria-valuenow={Math.round(shipPct)} aria-valuemin={0} aria-valuemax={100} aria-label="Progress to free delivery">
+                  <div className="h-full rounded-full bg-[#0B0F19] transition-all duration-500" style={{ width: `${shipPct}%` }} />
+                </div>
+              </>
+            ) : (
+              <p className="flex items-center gap-2 text-xs font-bold text-[#0B0F19]">
+                <span className="flex h-5 w-5 items-center justify-center rounded-full bg-[#0B0F19] text-white">
+                  <Check className="h-3 w-3" strokeWidth={3.5} />
+                </span>
+                You&apos;ve unlocked FREE Standard delivery
+              </p>
+            )}
+          </div>
 
           {addons.length > 0 && (
-            <div className="rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] p-3">
-              <p className="text-xs font-bold text-[#0F172A]">Complete your setup with...</p>
+            <div>
+              <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-[#B45309]">
+                Complete your setup
+              </p>
               <ul className="mt-2 space-y-2">
                 {addons.map((a) => (
-                  <li key={a.id} className="flex items-center gap-2.5">
-                    <span className="h-10 w-10 shrink-0 overflow-hidden rounded-lg border border-[#E2E8F0] bg-white">
+                  <li key={a.id} className="flex items-center gap-3 rounded-2xl border border-[#E9EBF1] p-2.5 transition-colors hover:border-[#C3C9D5]">
+                    <span className="h-11 w-11 shrink-0 overflow-hidden rounded-xl border border-[#EDEFF3] bg-[#F6F7F9]">
                       {a.product_image_url ? (
                         // eslint-disable-next-line @next/next/no-img-element
                         <img src={marketImage(a.product_image_url)} alt="" loading="lazy" decoding="async" className="h-full w-full object-cover" />
                       ) : null}
                     </span>
                     <span className="min-w-0 flex-1">
-                      <Link href={`/marketplace/product/${a.id}`} onClick={onClose} className="block truncate text-xs font-semibold text-[#0F172A] hover:text-[#B45309]">
+                      <Link href={`/marketplace/product/${a.id}`} onClick={onClose} className="line-clamp-1 block text-[13px] font-semibold text-[#0B0F19] hover:underline">
                         {a.product_name}
                       </Link>
-                      <span className="text-xs font-bold text-[#0F172A]">
+                      <span className="text-[13px] font-extrabold tabular-nums text-[#0B0F19]">
                         <MarketPrice usd={Number(a.sale_price ?? a.original_price ?? 0)} />
                       </span>
                     </span>
@@ -208,7 +241,11 @@ function CartPopupBody({ highlightId, onClose }: { highlightId?: string; onClose
                       type="button"
                       onClick={() => addAddon(a)}
                       disabled={addingId === a.id}
-                      className="shrink-0 rounded-lg bg-[#0F172A] px-2.5 py-1.5 text-[11px] font-bold text-white transition-colors hover:bg-black disabled:opacity-60"
+                      className={`shrink-0 rounded-full px-3.5 py-1.5 text-xs font-bold transition-all disabled:opacity-60 ${
+                        addingId === a.id
+                          ? "bg-[#0B0F19] text-white"
+                          : "border-[1.5px] border-[#0B0F19] text-[#0B0F19] hover:bg-[#0B0F19] hover:text-white"
+                      }`}
                     >
                       {addingId === a.id ? "Added" : "Add"}
                     </button>
@@ -218,36 +255,36 @@ function CartPopupBody({ highlightId, onClose }: { highlightId?: string; onClose
             </div>
           )}
 
-          <div className="flex items-center justify-between border-t border-[#E2E8F0] pt-3">
-            <span className="text-sm text-slate-500">Subtotal · {count} item{count === 1 ? "" : "s"}</span>
-            <MarketPrice usd={subtotal} className="text-lg font-extrabold text-[#0F172A]" />
+          <div className="flex items-center justify-between border-t border-[#EFF1F5] pt-3.5">
+            <span className="text-[13px] text-[#64748B]">Subtotal · {count} item{count === 1 ? "" : "s"}</span>
+            <MarketPrice usd={subtotal} className="text-xl font-extrabold tracking-tight tabular-nums text-[#0B0F19]" />
           </div>
         </>
       )}
 
-      <div className="grid grid-cols-1 gap-2">
+      <div className="space-y-2">
         <button
           type="button"
           onClick={goCheckout}
           disabled={lines.length === 0}
-          className="w-full rounded-lg bg-[#F59E0B] py-3 text-sm font-bold text-[#0F172A] transition-colors hover:bg-[#D97706] disabled:opacity-50"
+          className="w-full rounded-xl bg-[#0B0F19] py-3.5 text-sm font-bold text-white transition-all hover:bg-black active:scale-[0.99] disabled:opacity-40"
         >
-          Proceed to checkout
+          Checkout · <MarketPrice usd={subtotal} />
         </button>
         <div className="grid grid-cols-2 gap-2">
           <button
             type="button"
             onClick={onClose}
-            className="rounded-lg border border-[#E2E8F0] py-2.5 text-sm font-semibold text-[#0F172A] hover:bg-slate-50"
+            className="rounded-xl border border-[#E2E6EE] py-2.5 text-[13px] font-bold text-[#0B0F19] transition-colors hover:border-[#0B0F19]"
           >
-            Continue shopping
+            Keep shopping
           </button>
           <Link
             href="/marketplace/cart"
             onClick={onClose}
-            className="rounded-lg border border-[#E2E8F0] py-2.5 text-center text-sm font-semibold text-[#0F172A] hover:bg-slate-50"
+            className="rounded-xl bg-[#F6F7F9] py-2.5 text-center text-[13px] font-bold text-[#0B0F19] transition-colors hover:bg-[#EDEFF3]"
           >
-            View cart
+            View bag
           </Link>
         </div>
       </div>
@@ -276,7 +313,7 @@ export function CartPopupProvider() {
 
   if (!open) return null
   return (
-    <ModalShell label="Added to your cart" onClose={close}>
+    <ModalShell label="Your bag" onClose={close}>
       <CartPopupBody highlightId={highlightId} onClose={close} />
     </ModalShell>
   )

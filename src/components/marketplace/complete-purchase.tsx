@@ -5,7 +5,7 @@
 // the customer explicitly opts into every add-on.
 
 import { useEffect, useMemo, useState } from "react"
-import { Check, ShoppingCart, Zap } from "lucide-react"
+import { ArrowRight, Check } from "lucide-react"
 import { getCart, addToCart as addLine } from "@/lib/marketplace-cart"
 import type { CartVariant } from "@/lib/marketplace-cart"
 import { marketImage } from "@/lib/marketplace-images"
@@ -101,9 +101,9 @@ export function CompletePurchase({
       setNotice(
         picked.length === 0
           ? mainAdded
-            ? `${mainName} added to your cart.`
-            : "That item is already in your cart."
-          : `${mainAdded ? "Main item + " : ""}${picked.length} add-on${picked.length === 1 ? "" : "s"} added to your cart.`
+            ? `${mainName} added to your bag.`
+            : "That item is already in your bag."
+          : `${mainAdded ? "Main item + " : ""}${picked.length} add-on${picked.length === 1 ? "" : "s"} added to your bag.`
       )
       openCartPopup(productId)
     } finally {
@@ -133,22 +133,40 @@ export function CompletePurchase({
   if (!loaded || items.length === 0) return null
 
   return (
-    <section aria-label="Complete your purchase" className="rounded-2xl border border-[#FED7AA] bg-gradient-to-b from-[#FFFBEB] to-white p-4 sm:p-5">
-      <h2 className="text-base font-extrabold text-[#0F172A] sm:text-lg">Complete Your Purchase</h2>
-      <p className="mt-0.5 text-[13px] text-slate-500">Get everything you need to make the most of your purchase.</p>
+    <section
+      aria-label="Complete your purchase"
+      className="rounded-3xl border border-[#E9EBF1] bg-white p-5 shadow-[0_12px_40px_rgba(11,15,25,0.07)] sm:p-6"
+    >
+      <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-[#B45309]">
+        Pairs well with your pick
+      </p>
+      <div className="mt-1 flex items-end justify-between gap-3">
+        <h2 className="text-xl font-extrabold tracking-tight text-[#0B0F19]">
+          Complete your purchase
+        </h2>
+        <span className="hidden shrink-0 rounded-full bg-[#F6F7F9] px-2.5 py-1 text-[11px] font-bold text-[#64748B] sm:inline">
+          {picked.length} of {items.length} selected
+        </span>
+      </div>
+      <p className="mt-1 text-[13px] leading-relaxed text-[#64748B]">
+        Everything you need to make the most of it — tick what you want, pay for nothing you don&apos;t.
+      </p>
 
-      <ul className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
+      <ul className="mt-4 grid grid-cols-1 gap-2.5 sm:grid-cols-2">
         {items.map((x) => {
           const on = !!selected[x.id]
           const unit = Number(x.sale_price ?? x.original_price ?? 0)
           const old = x.original_price ? Number(x.original_price) : NaN
           const pct = x.sale_price && Number.isFinite(old) && old > unit ? Math.round((1 - unit / old) * 100) : 0
-          const lowStock = x.stock != null && x.stock > 0 && x.stock <= 5
+          const out = x.stock != null && x.stock <= 0
+          const low = !out && x.stock != null && x.stock <= 5
           return (
             <li key={x.id}>
               <label
-                className={`flex cursor-pointer gap-3 rounded-xl border-2 bg-white p-2.5 transition-colors ${
-                  on ? "border-[#F59E0B] shadow-sm" : "border-[#E2E8F0] hover:border-slate-300"
+                className={`group flex cursor-pointer items-center gap-3 rounded-2xl border bg-white p-3 transition-all duration-200 ${
+                  on
+                    ? "border-[#0B0F19] shadow-[0_8px_24px_rgba(11,15,25,0.12)]"
+                    : "border-[#E9EBF1] hover:border-[#C3C9D5] hover:shadow-[0_6px_18px_rgba(11,15,25,0.08)]"
                 }`}
               >
                 <input
@@ -156,33 +174,40 @@ export function CompletePurchase({
                   checked={on}
                   onChange={() => toggle(x)}
                   aria-label={`Add ${x.product_name} to your order`}
-                  className="mt-1 h-5 w-5 shrink-0 cursor-pointer accent-[#F59E0B]"
+                  className="sr-only"
                 />
-                <span className="h-16 w-16 shrink-0 overflow-hidden rounded-lg border border-[#E2E8F0] bg-[#F8FAFC]">
+                <span className="h-[68px] w-[68px] shrink-0 overflow-hidden rounded-xl border border-[#EDEFF3] bg-[#F6F7F9]">
                   {x.product_image_url ? (
                     // eslint-disable-next-line @next/next/no-img-element
-                    <img src={marketImage(x.product_image_url)} alt="" loading="lazy" decoding="async" className="h-full w-full object-cover" />
+                    <img src={marketImage(x.product_image_url)} alt="" loading="lazy" decoding="async" className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.04]" />
                   ) : null}
                 </span>
                 <span className="min-w-0 flex-1">
-                  <span className="block truncate text-[13px] font-semibold text-[#0F172A]">{x.product_name}</span>
                   {x.recommend_reason && (
-                    <span className="mt-0.5 block truncate text-[11px] font-medium text-[#B45309]">{x.recommend_reason}</span>
+                    <span className="block truncate text-[10px] font-bold uppercase tracking-[0.14em] text-[#B45309]">
+                      {x.recommend_reason}
+                    </span>
                   )}
-                  <span className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5">
-                    <MarketPrice usd={unit} className="text-sm font-extrabold text-[#0F172A]" />
-                    {pct > 0 && <span className="text-[11px] text-slate-400 line-through"><MarketPrice usd={old} /></span>}
-                    {pct > 0 && <span className="rounded-full bg-[#FEF2F2] px-1.5 text-[10px] font-bold text-[#DC2626]">-{pct}%</span>}
+                  <span className="mt-0.5 line-clamp-2 block text-[13px] font-semibold leading-snug text-[#0B0F19]">
+                    {x.product_name}
                   </span>
-                  <span className="mt-0.5 block text-[11px] text-slate-400">
-                    {x.stock != null && x.stock <= 0 ? "Made to order" : lowStock ? `Only ${x.stock} left` : "In stock"}
+                  <span className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5">
+                    <MarketPrice usd={unit} className="text-[15px] font-extrabold tracking-tight text-[#0B0F19]" />
+                    {pct > 0 && <span className="text-[11px] font-medium text-[#94A3B8] line-through"><MarketPrice usd={old} /></span>}
+                    {pct > 0 && <span className="rounded-full bg-[#0B0F19] px-1.5 py-px text-[10px] font-bold text-white">−{pct}%</span>}
+                  </span>
+                  <span className="mt-1 flex items-center gap-1.5 text-[11px] font-medium text-[#64748B]">
+                    <span className={`h-1.5 w-1.5 rounded-full ${out ? "bg-[#CBD5E1]" : low ? "bg-[#F59E0B]" : "bg-[#0B0F19]"}`} />
+                    {out ? "Made to order" : low ? `Only ${x.stock} left` : "In stock"}
                   </span>
                 </span>
                 <span
                   aria-hidden
-                  className={`mt-1 flex h-5 w-5 shrink-0 items-center justify-center rounded-md border-2 ${on ? "border-[#F59E0B] bg-[#F59E0B] text-[#0F172A]" : "border-slate-300 text-transparent"}`}
+                  className={`flex h-[22px] w-[22px] shrink-0 items-center justify-center rounded-full border-[1.5px] transition-all duration-200 ${
+                    on ? "border-[#0B0F19] bg-[#0B0F19] text-white" : "border-[#D4D9E2] text-transparent group-hover:border-[#0B0F19]"
+                  }`}
                 >
-                  <Check className="h-3.5 w-3.5" />
+                  <Check className="h-3 w-3" strokeWidth={3.5} />
                 </span>
               </label>
             </li>
@@ -190,42 +215,59 @@ export function CompletePurchase({
         })}
       </ul>
 
-      <div className="mt-3 rounded-xl bg-white/70 px-3 py-2.5 text-[13px] text-slate-600">
-        <span>Main product: <MarketPrice usd={mainPrice * mainQty} className="font-bold text-[#0F172A]" /></span>
-        <span className="mx-2 text-slate-300">·</span>
-        <span>Selected add-ons ({picked.length}): <MarketPrice usd={pickedTotal} className="font-bold text-[#0F172A]" /></span>
-        <span className="mx-2 text-slate-300">·</span>
-        <span>Total: <MarketPrice usd={grandTotal} className="font-extrabold text-[#0F172A]" /></span>
+      <div className="mt-4 rounded-2xl bg-[#0B0F19] px-4 py-3.5 text-white">
+        <div className="flex items-center justify-between text-[13px]">
+          <span className="text-white/60">Main item</span>
+          <MarketPrice usd={mainPrice * mainQty} className="font-bold tabular-nums" />
+        </div>
+        <div className="mt-1 flex items-center justify-between text-[13px]">
+          <span className="text-white/60">Selected add-ons ({picked.length})</span>
+          <MarketPrice usd={pickedTotal} className="font-bold tabular-nums" />
+        </div>
+        <div className="mt-2 flex items-center justify-between border-t border-white/15 pt-2.5">
+          <span className="text-sm font-bold">Total</span>
+          <MarketPrice usd={grandTotal} className="text-xl font-extrabold tracking-tight tabular-nums text-[#FBBF24]" />
+        </div>
       </div>
 
-      {notice && <p role="status" className="mt-2 text-[13px] font-semibold text-[#047857]">{notice}</p>}
+      {notice && (
+        <p role="status" className="mt-3 flex items-center gap-2 rounded-xl bg-[#F6F7F9] px-3 py-2 text-[13px] font-semibold text-[#0B0F19]">
+          <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#0B0F19] text-white">
+            <Check className="h-3 w-3" strokeWidth={3.5} />
+          </span>
+          {notice}
+        </p>
+      )}
 
-      <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-3">
+      <div className="mt-3">
         <button
           type="button"
           onClick={addSelected}
           disabled={busy}
-          className="flex items-center justify-center gap-2 rounded-lg bg-[#0F172A] px-4 py-2.5 text-sm font-bold text-white transition-colors hover:bg-black disabled:opacity-60 sm:col-span-1"
+          className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#0B0F19] px-4 py-3.5 text-sm font-bold text-white transition-all hover:bg-black active:scale-[0.99] disabled:opacity-60"
         >
-          <ShoppingCart className="h-4 w-4" /> Add selected to cart
+          Add {picked.length > 0 ? `${picked.length} selected` : "main item"} to bag
+          <ArrowRight className="h-4 w-4" />
         </button>
-        <button
-          type="button"
-          onClick={() => buy(false)}
-          disabled={busy}
-          className="flex items-center justify-center gap-2 rounded-lg border border-[#E2E8F0] px-4 py-2.5 text-sm font-bold text-[#0F172A] hover:bg-slate-50 disabled:opacity-60"
-        >
-          <Zap className="h-4 w-4" /> Buy main only
-        </button>
-        <button
-          type="button"
-          onClick={() => buy(true)}
-          disabled={busy || picked.length === 0}
-          title={picked.length === 0 ? "Select at least one add-on first" : `Buy main + ${picked.length} add-on${picked.length === 1 ? "" : "s"}`}
-          className="flex items-center justify-center gap-2 rounded-lg bg-[#DC2626] px-4 py-2.5 text-sm font-bold text-white transition-colors hover:bg-[#B91C1C] disabled:opacity-50"
-        >
-          <Zap className="h-4 w-4" /> Buy with selected ({picked.length})
-        </button>
+        <div className="mt-2 grid grid-cols-2 gap-2">
+          <button
+            type="button"
+            onClick={() => buy(false)}
+            disabled={busy}
+            className="rounded-xl border border-[#E2E6EE] px-4 py-2.5 text-[13px] font-bold text-[#0B0F19] transition-colors hover:border-[#0B0F19] disabled:opacity-60"
+          >
+            Buy main only
+          </button>
+          <button
+            type="button"
+            onClick={() => buy(true)}
+            disabled={busy || picked.length === 0}
+            title={picked.length === 0 ? "Select at least one add-on first" : `Buy main + ${picked.length} add-on${picked.length === 1 ? "" : "s"}`}
+            className="rounded-xl bg-[#F59E0B] px-4 py-2.5 text-[13px] font-bold text-[#0B0F19] transition-colors hover:bg-[#D97706] disabled:opacity-40"
+          >
+            Buy with selected ({picked.length})
+          </button>
+        </div>
       </div>
     </section>
   )

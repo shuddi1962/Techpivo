@@ -160,7 +160,7 @@ function QuickViewBody({ productId, onClose }: { productId: string; onClose: () 
             <span className="flex h-full w-full items-center justify-center text-sm text-slate-300">No image</span>
           )}
           {discount > 0 && (
-            <span className="absolute left-3 top-3 rounded-full bg-[#EF4444] px-2 py-1 text-xs font-bold text-white">-{discount}%</span>
+            <span className="absolute left-3 top-3 rounded-full bg-[#0B0F19] px-2.5 py-1 text-[11px] font-bold tracking-tight text-white">−{discount}%</span>
           )}
         </div>
         {gallery.length > 1 && (
@@ -189,11 +189,12 @@ function QuickViewBody({ productId, onClose }: { productId: string; onClose: () 
           {reviews > 0 ? `${rating.toFixed(1)} · ${reviews} review${reviews === 1 ? "" : "s"}` : "No reviews yet"}
         </span>
         <span className="mt-2 flex items-baseline gap-2">
-          <MarketPrice usd={price} className={`text-2xl font-extrabold ${discount > 0 ? "text-[#EF4444]" : "text-[#0F172A]"}`} />
-          {discount > 0 && <MarketPrice usd={old} className="text-sm text-slate-400 line-through" />}
+          <MarketPrice usd={price} className="text-[26px] font-extrabold tracking-tight text-[#0B0F19]" />
+          {discount > 0 && <MarketPrice usd={old} className="text-sm font-medium text-[#94A3B8] line-through" />}
         </span>
-        <p className={`mt-1 text-xs font-semibold ${outOfStock ? "text-[#EF4444]" : "text-[#10B981]"}`}>
-          {outOfStock ? "Out of stock" : product.stock != null && product.stock > 0 ? `${product.stock} in stock` : "In stock"}
+        <p className={`mt-1.5 flex items-center gap-1.5 text-xs font-semibold ${outOfStock ? "text-[#94A3B8]" : "text-[#0B0F19]"}`}>
+          <span className={`h-1.5 w-1.5 rounded-full ${outOfStock ? "bg-[#CBD5E1]" : "bg-[#0B0F19]"}`} />
+          {outOfStock ? "Out of stock" : product.stock != null && product.stock > 0 && product.stock <= 5 ? `Only ${product.stock} left` : "In stock"}
         </p>
         {product.product_description && (
           <p className="mt-2 line-clamp-3 text-[13px] leading-relaxed text-slate-600">{product.product_description}</p>
@@ -218,8 +219,8 @@ function QuickViewBody({ productId, onClose }: { productId: string; onClose: () 
                       if (x.image) setActiveImg(x.image)
                     }}
                     title={soldOut ? `${x.label} (out of stock)` : x.label}
-                    className={`max-w-full truncate rounded-lg border px-2.5 py-1.5 text-xs font-bold transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${
-                      on ? "border-[#DC2626] bg-[#DC2626] text-white" : "border-[#CBD5E1] bg-white text-slate-600 hover:border-[#DC2626]"
+                    className={`max-w-full truncate rounded-full border px-3 py-1.5 text-xs font-bold transition-all disabled:cursor-not-allowed disabled:opacity-40 ${
+                      on ? "border-[#0B0F19] bg-[#0B0F19] text-white" : "border-[#E2E6EE] bg-white text-[#475569] hover:border-[#0B0F19] hover:text-[#0B0F19]"
                     }`}
                   >
                     {x.label}
@@ -248,15 +249,15 @@ function QuickViewBody({ productId, onClose }: { productId: string; onClose: () 
             type="button"
             onClick={doAdd}
             disabled={busy || outOfStock}
-            className={`flex items-center justify-center gap-1.5 rounded-lg py-2.5 text-sm font-bold transition-colors disabled:opacity-50 ${added ? "bg-[#10B981] text-white" : "bg-[#F59E0B] text-[#0F172A] hover:bg-[#D97706]"}`}
+            className="flex items-center justify-center gap-1.5 rounded-xl bg-[#0B0F19] py-3 text-sm font-bold text-white transition-all hover:bg-black active:scale-[0.99] disabled:opacity-40"
           >
-            {added ? <><Check className="h-4 w-4" /> Added</> : <><ShoppingCart className="h-4 w-4" /> Add to Cart</>}
+            {added ? <><Check className="h-4 w-4" strokeWidth={3} /> Added</> : <><ShoppingCart className="h-4 w-4" /> Add to Bag</>}
           </button>
           <button
             type="button"
             onClick={buyNow}
             disabled={busy || outOfStock}
-            className="flex items-center justify-center gap-1.5 rounded-lg bg-[#DC2626] py-2.5 text-sm font-bold text-white transition-colors hover:bg-[#B91C1C] disabled:opacity-50"
+            className="flex items-center justify-center gap-1.5 rounded-xl bg-[#F59E0B] py-3 text-sm font-bold text-[#0B0F19] transition-colors hover:bg-[#D97706] disabled:opacity-40"
           >
             <Zap className="h-4 w-4" /> Buy Now
           </button>
