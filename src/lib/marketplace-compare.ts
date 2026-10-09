@@ -65,14 +65,34 @@ if (typeof window !== "undefined") {
 
 /** Live compare ids for badges, tray, and the compare page. */
 export function useCompareIds(): string[] {
-  return useSyncExternalStore(
-    (fn) => {
-      cmpListeners.add(fn)
-      return () => {
-        cmpListeners.delete(fn)
-      }
-    },
-    () => Object.keys(readCompare()),
-    () => [] as string[]
-  )
+  return useSyncExternalStore(subscribeCompare, readCompareIds, () => EMPTY_IDS)
+}
+
+const EMPTY_IDS: string[] = []
+
+// Snapshot MUST be referentially stable: useSyncExternalStore re-renders
+// while the snapshot identity keeps changing, and a fresh Object.keys()
+// per call is React error #185 ("Maximum update depth exceeded") — the
+// exact crash this fix resolves. Cache keyed on the raw storage string.
+let idsCache: { raw: string | null; ids: string[] } | null = null
+
+function readCompareIds(): string[] {
+  if (typeof window === "undefined") return EMPTY_IDS
+  let raw: string | null = null
+  try {
+    raw = window.localStorage.getItem(COMPARE_KEY)
+  } catch {
+    return idsCache?.ids ?? EMPTY_IDS
+  }
+  if (idsCache && idsCache.raw === raw) return idsCache.ids
+  const ids = Object.keys(readCompare())
+  idsCache = { raw, ids }
+  return ids
+}
+
+function subscribeCompare(fn: () => void) {
+  cmpListeners.add(fn)
+  return () => {
+    cmpListeners.delete(fn)
+  }
 }

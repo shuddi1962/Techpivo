@@ -746,15 +746,17 @@ export function MarketplaceHome() {
           </div>
         )}
 
-        {/* hero bento — side promos always show; your uploaded banner
-            replaces ONLY the main navy card, shown fully (never cropped). */}
-        <section className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-stretch">
+        {/* hero band — full-bleed edge to edge (cancels the page gutters),
+            side promos always show; your uploaded banner replaces ONLY the
+            main navy card, shown fully (never cropped). */}
+        <section className="-mx-3 sm:-mx-6 lg:-mx-10 -mt-6 sm:-mt-8 px-3 py-7 sm:px-6 sm:py-10 lg:px-10" style={{ background: MARKETPLACE_BRAND.navy }}>
+        <div className="mx-auto grid w-full max-w-[1400px] grid-cols-1 lg:grid-cols-12 gap-4 items-stretch">
         {!loaded ? (
-          <div className="lg:col-span-8 rounded-2xl border border-[#E2E8F0] bg-white shadow-sm min-h-[420px] animate-pulse" aria-hidden>
-            <div className="h-full min-h-[420px] w-full rounded-2xl bg-slate-100" />
+          <div className="lg:col-span-8 rounded-3xl border border-white/10 bg-white/5 min-h-[420px] animate-pulse" aria-hidden>
+            <div className="h-full min-h-[420px] w-full rounded-3xl bg-white/5" />
           </div>
         ) : banners.hero_image ? (
-          <div className="lg:col-span-8 overflow-hidden rounded-2xl border border-[#E2E8F0] bg-white shadow-sm">
+          <div className="lg:col-span-8 overflow-hidden rounded-3xl shadow-2xl">
             <Link href="#trending" aria-label="Shop TechPivo Market" className="block">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
@@ -767,7 +769,7 @@ export function MarketplaceHome() {
             </Link>
           </div>
         ) : (
-          <div className="lg:col-span-8 rounded-2xl relative overflow-hidden flex flex-col justify-between p-5 md:p-8 text-white min-h-[420px]" style={{ background: MARKETPLACE_BRAND.navy }}>
+          <div className="lg:col-span-8 rounded-3xl relative overflow-hidden flex flex-col justify-between p-5 md:p-8 text-white min-h-[420px] border border-white/10 bg-white/[0.04]">
             <div className="absolute -right-20 -top-20 w-96 h-96 rounded-full bg-[#F59E0B]/10 blur-3xl pointer-events-none" />
             <div className="absolute -left-10 -bottom-10 w-80 h-80 rounded-full bg-[#EF4444]/10 blur-3xl pointer-events-none" />
             <div className="relative z-10 flex items-center justify-between">
@@ -862,6 +864,7 @@ export function MarketplaceHome() {
               </span>
             </Link>
           </div>
+        </div>
         </section>
         {/* shop by collections — every real category node */}
         {!loaded ? (
