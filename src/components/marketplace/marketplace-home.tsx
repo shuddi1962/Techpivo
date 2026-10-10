@@ -746,100 +746,80 @@ export function MarketplaceHome() {
           </div>
         )}
 
-        {/* hero — true viewport breakout: spans the full screen width on
-            any laptop, regardless of the page column. No band behind it.
-            Side promos always show; your uploaded banner replaces ONLY the
-            main card, shown fully (never cropped). */}
+        {/* hero — slim full-width strip so Shop By Collections shows
+            immediately. Side promos always show as compact rows; your
+            uploaded banner replaces ONLY the main card (capped, not paged). */}
         <section className="-mt-6 sm:-mt-8 w-[100vw] ml-[calc(50%-50vw)] pl-3 sm:pl-5">
-        <div className="grid w-full grid-cols-1 lg:grid-cols-12 gap-4 items-stretch">
+        <div className="grid w-full grid-cols-1 lg:grid-cols-12 gap-3 items-stretch">
         {!loaded ? (
-          <div className="lg:col-span-8 rounded-none border-y lg:border border-[#E2E8F0] bg-white shadow-sm min-h-[200px] animate-pulse" aria-hidden>
-            <div className="h-full min-h-[200px] w-full bg-slate-100" />
+          <div className="lg:col-span-8 rounded-none bg-white shadow-sm h-[120px] animate-pulse" aria-hidden>
+            <div className="h-full w-full bg-slate-100" />
           </div>
         ) : banners.hero_image ? (
-          <div className="lg:col-span-8 overflow-hidden rounded-none border-y lg:border border-[#E2E8F0] bg-white shadow-sm">
+          <div className="lg:col-span-8 overflow-hidden rounded-none bg-white shadow-sm">
             <Link href="#trending" aria-label="Shop TechPivo Market" className="block">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={marketImage(banners.hero_image)}
                 alt="TechPivo Market — shop the collection"
-                className="block h-auto w-full"
+                className="block h-[120px] w-full object-cover object-center"
                 loading="eager"
                 decoding="async"
               />
             </Link>
           </div>
         ) : (
-          <div className="lg:col-span-8 rounded-none relative overflow-hidden flex flex-col justify-center gap-3 p-5 md:px-8 md:py-5 text-white min-h-[200px]" style={{ background: MARKETPLACE_BRAND.navy }}>
-            <div className="absolute -right-20 -top-20 w-96 h-96 rounded-full bg-[#F59E0B]/10 blur-3xl pointer-events-none" />
-            <div className="absolute -left-10 -bottom-10 w-80 h-80 rounded-full bg-[#EF4444]/10 blur-3xl pointer-events-none" />
-            <div className="relative z-10 grid grid-cols-1 md:grid-cols-2 gap-4 items-center">
-                <div className="space-y-2">
-                  {banners.promo_enabled !== false && (
-                    <span className="inline-block text-[#EF4444] text-xs font-bold tracking-wide uppercase">{MARKETPLACE_HERO.kicker}</span>
-                  )}
-                <h1 className="text-2xl md:text-[28px] font-extrabold tracking-tight leading-tight">
+          <div className="lg:col-span-8 rounded-none relative overflow-hidden text-white min-h-[120px] flex items-center" style={{ background: MARKETPLACE_BRAND.navy }}>
+            <div className="absolute -right-16 -top-16 w-64 h-64 rounded-full bg-[#F59E0B]/10 blur-3xl pointer-events-none" />
+            <div className="relative z-10 flex w-full flex-wrap items-center gap-x-5 gap-y-2 px-5 md:px-8 py-3.5">
+              <div className="hidden sm:block h-16 w-16 shrink-0 overflow-hidden rounded-xl bg-white/5">
+                <img src={heroImg} alt="" loading="eager" decoding="async" className="h-full w-full object-cover" />
+              </div>
+              <div className="min-w-0 flex-1">
+                {banners.promo_enabled !== false && (
+                  <span className="text-[#EF4444] text-[11px] font-bold tracking-wide uppercase">{MARKETPLACE_HERO.kicker}</span>
+                )}
+                <h1 className="truncate text-xl md:text-2xl font-extrabold tracking-tight leading-tight">
                   {MARKETPLACE_HERO.titleA} <span className="text-[#F59E0B]">{MARKETPLACE_HERO.titleB}</span>
                 </h1>
-                <p className="text-[13px] text-slate-300 line-clamp-2">{MARKETPLACE_HERO.copy}</p>
-                <div className="flex flex-wrap items-center gap-2.5 pt-0.5">
-                  <Link href="#trending" className="bg-[#F59E0B] hover:bg-[#D97706] text-[#0F172A] text-[13px] font-bold px-4 py-2.5 rounded-lg transition-colors flex items-center gap-1.5">
-                    Shop the Drop <ArrowRight className="h-4 w-4" />
-                  </Link>
-                  <span className="text-xl font-extrabold">{MARKETPLACE_HERO.price}</span>
-                </div>
               </div>
-              <div className="relative hidden md:flex items-center justify-center">
-                <div className="w-40 h-40 rounded-2xl overflow-hidden bg-white/5 p-2.5 flex items-center justify-center">
-                  <img src={heroImg} alt="TechPivo Market hero product" className="w-full h-full object-cover rounded-xl" loading="eager" decoding="async" />
-                </div>
-                <div className="absolute bottom-1 left-6 bg-white text-[#0F172A] rounded-xl p-2 shadow-xl flex items-center gap-1.5">
-                  <Truck className="h-4 w-4 text-[#10B981]" />
-                  <div>
-                    <p className="text-[9px] text-slate-500 uppercase leading-none">Tracked Delivery</p>
-                    <p className="text-[11px] font-bold leading-tight">Ships in 7–12 Days</p>
-                  </div>
-                </div>
-              </div>
+              <span className="text-lg font-extrabold whitespace-nowrap">{MARKETPLACE_HERO.price}</span>
+              <Link href="#trending" className="bg-[#F59E0B] hover:bg-[#D97706] text-[#0F172A] text-[13px] font-bold px-4 py-2.5 rounded-lg transition-colors inline-flex items-center gap-1.5 shrink-0">
+                Shop the Drop <ArrowRight className="h-4 w-4" />
+              </Link>
             </div>
           </div>
         )}
 
-          {/* hero side banners — always shown */}
-          <div className="lg:col-span-4 flex flex-col gap-4">
+          {/* hero side promos — compact rows, always shown */}
+          <div className="lg:col-span-4 flex flex-col gap-3">
             <Link
               href="/marketplace/deals"
-              className="group relative flex-1 overflow-hidden rounded-none p-4 text-white shadow-sm transition-shadow hover:shadow-md min-h-[96px] flex flex-col justify-between"
+              className="group relative flex-1 overflow-hidden rounded-none p-3 text-white shadow-sm transition-shadow hover:shadow-md min-h-[54px] flex items-center gap-3"
               style={{ background: "linear-gradient(150deg, #DC2626 0%, #991B1B 100%)" }}
             >
-              <div className="absolute -right-10 -top-10 h-40 w-40 rounded-full bg-white/10 blur-2xl" />
-              <div className="relative">
-                <span className="inline-flex items-center gap-1 rounded bg-white/20 px-2 py-0.5 text-[11px] font-bold uppercase backdrop-blur-sm">
-                  <Flame className="h-3 w-3" /> Flash Sale
-                </span>
-                <h3 className="mt-1.5 text-xl font-extrabold leading-tight">Mega Deal<br />Up to 50% Off</h3>
-                <p className="mt-1 text-xs text-white/80">Today only — biggest price drops</p>
-              </div>
-              <span className="relative mt-3 inline-flex w-fit items-center gap-1 rounded-lg bg-white px-4 py-2 text-sm font-bold text-[#991B1B] transition-colors group-hover:bg-[#FEF2F2]">
-                Shop deals <ArrowRight className="h-4 w-4" />
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white/20">
+                <Flame className="h-4 w-4" />
               </span>
+              <span className="min-w-0 flex-1">
+                <span className="block text-sm font-extrabold leading-tight">Mega Deal — Up to 50% Off</span>
+                <span className="block text-[11px] text-white/80">Today only</span>
+              </span>
+              <ArrowRight className="h-4 w-4 shrink-0 transition-transform group-hover:translate-x-0.5" />
             </Link>
             <Link
               href="/marketplace/new-arrivals"
-              className="group relative flex-1 overflow-hidden rounded-none p-4 text-[#0F172A] shadow-sm transition-shadow hover:shadow-md min-h-[96px] flex flex-col justify-between"
+              className="group relative flex-1 overflow-hidden rounded-none p-3 text-white shadow-sm transition-shadow hover:shadow-md min-h-[54px] flex items-center gap-3"
               style={{ background: "linear-gradient(150deg, #F59E0B 0%, #F97316 100%)" }}
             >
-              <div className="absolute -right-10 -bottom-10 h-40 w-40 rounded-full bg-white/20 blur-2xl" />
-              <div className="relative">
-                <span className="inline-flex items-center gap-1 rounded bg-black/20 px-2 py-0.5 text-[11px] font-bold uppercase text-white">
-                  <Zap className="h-3 w-3" /> Just landed
-                </span>
-                <h3 className="mt-1.5 text-xl font-extrabold leading-tight text-white">New Season<br />Tech Drop</h3>
-                <p className="mt-1 text-xs text-white/85">Fresh stock, first to own</p>
-              </div>
-              <span className="relative mt-3 inline-flex w-fit items-center gap-1 rounded-lg bg-[#0F172A] px-4 py-2 text-sm font-bold text-white transition-colors group-hover:bg-black">
-                Shop new <ArrowRight className="h-4 w-4" />
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-black/20">
+                <Zap className="h-4 w-4" />
               </span>
+              <span className="min-w-0 flex-1">
+                <span className="block text-sm font-extrabold leading-tight">New Season Tech Drop</span>
+                <span className="block text-[11px] text-white/85">Fresh stock, first to own</span>
+              </span>
+              <ArrowRight className="h-4 w-4 shrink-0 transition-transform group-hover:translate-x-0.5" />
             </Link>
           </div>
         </div>
