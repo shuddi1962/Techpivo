@@ -121,6 +121,10 @@ export interface MarketBanners {
   strip2_image: string
   category_default: string
   departments: Record<string, string>
+  /** Homepage showcase sidebar banners, keyed by department slug.
+      Shown clean (no SALE overlay) in that department's showcase rail;
+      empty = the built-in SALE design. */
+  sidebar_banners: Record<string, string>
   /** Black Friday promo surfaces (top strip, Specials button, homepage
       promo banner + hero kicker). False = hidden publicly, instantly. */
   promo_enabled: boolean
@@ -168,6 +172,7 @@ export const EMPTY_BANNERS: MarketBanners = {
   strip2_image: "",
   category_default: "",
   departments: {},
+  sidebar_banners: {},
   promo_enabled: true,
   shop_image: "",
   deals_image: "",
@@ -236,7 +241,7 @@ export const BANNER_SLOTS = [
     slider: true,
     label: "In-feed strip — after Trending Now",
     dims: "1600 × 300 px (slim — min 1200 × 220)",
-    hint: "Slim full-width strip between the Trending Now rail and the department showcases. Leave empty to hide it completely. Upload more below to slide.",
+    hint: "Slim full-width strip between the Trending Now rail and the department showcases. Empty = built-in tracked-delivery sample; upload to replace it with your own clean art.",
   },
   {
     id: "strip2_image",
@@ -244,7 +249,7 @@ export const BANNER_SLOTS = [
     slider: true,
     label: "In-feed strip — before Top Stores",
     dims: "1600 × 300 px (slim — min 1200 × 220)",
-    hint: "Slim full-width strip between the department showcases and Top Stores. Leave empty to hide it completely. Upload more below to slide.",
+    hint: "Slim full-width strip between the department showcases and Top Stores. Empty = built-in new-drops sample; upload to replace it with your own clean art.",
   },
   {
     id: "category_default",
@@ -291,6 +296,7 @@ export const BANNER_SLOTS = [
 ] as const
 
 export const DEPT_BANNER_DIMS = "1200 × 600 px"
+export const SIDEBAR_BANNER_DIMS = "600 × 900 px (portrait — min 400 × 600)"
 export const DEPT_TILE_DIMS = "800 × 800 px (square — tiles crop to square)"
 
 export function deptBannerOf(b: MarketBanners | null | undefined, slug: string, fallback: string): string {
@@ -388,14 +394,21 @@ function slotSliderArr(
 }
 
 export function parseBanners(raw: unknown): MarketBanners {
-  if (!raw || typeof raw !== "object") return { ...EMPTY_BANNERS, departments: {}, links: {}, slot_settings: {} }
+  if (!raw || typeof raw !== "object")
+    return { ...EMPTY_BANNERS, departments: {}, sidebar_banners: {}, links: {}, slot_settings: {} }
   const r = raw as Record<string, unknown>
   const str = (v: unknown) => (typeof v === "string" ? v : "")
-  const deps = r.departments && typeof r.departments === "object" ? (r.departments as Record<string, unknown>) : {}
-  const departments: Record<string, string> = {}
-  for (const [k, v] of Object.entries(deps)) {
-    if (typeof v === "string" && v.trim()) departments[k] = v.trim()
+  const strMap = (v: unknown): Record<string, string> => {
+    const out: Record<string, string> = {}
+    if (v && typeof v === "object") {
+      for (const [k, val] of Object.entries(v as Record<string, unknown>)) {
+        if (k.trim() && typeof val === "string" && val.trim()) out[k.trim()] = val.trim()
+      }
+    }
+    return out
   }
+  const departments = strMap(r.departments)
+  const sidebar_banners = strMap(r.sidebar_banners)
   const transitionRaw = str(r.slider_transition).trim().toLowerCase()
   const transition: BannerTransition = (BANNER_TRANSITIONS.some((t) => t.id === transitionRaw)
     ? transitionRaw
@@ -443,6 +456,7 @@ export function parseBanners(raw: unknown): MarketBanners {
     shop_image, deals_image, best_sellers_image,
     new_arrivals_image, top_stores_image, track_image,
     ...Object.values(departments),
+    ...Object.values(sidebar_banners),
     ...hero_slides.map((s) => s.image),
     ...promo_slides.map((s) => s.image),
     ...promo_deals_slides.map((s) => s.image),
@@ -480,6 +494,7 @@ export function parseBanners(raw: unknown): MarketBanners {
     strip1_slides,
     strip2_slides,
     links,
+    sidebar_banners,
     slot_settings: slotSliderArr(r.slot_settings, legacy),
     slider_transition: transition,
     slider_duration: duration,

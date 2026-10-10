@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useRef, useState } from "react"
+import { Fragment, useEffect, useRef, useState } from "react"
 import {
   BadgeCheck, ChevronDown, ChevronUp, ImagePlus, Layers, Link2,
   Loader2, MousePointerClick, Plus, RotateCcw, Save, Settings2, Trash2,
@@ -12,6 +12,7 @@ import {
   BANNER_TRANSITIONS,
   BANNER_TRANSITION_GROUPS,
   DEPT_BANNER_DIMS,
+  SIDEBAR_BANNER_DIMS,
   DEFAULT_SLOT_SLIDER,
   EMPTY_BANNERS,
   SLIDER_EASINGS,
@@ -580,7 +581,7 @@ function slidesKeyOf(slotId: string): SliderSlotKey | null {
 }
 
 export function MarketplaceBannersTab() {
-  const [banners, setBanners] = useState<MarketBanners>({ ...EMPTY_BANNERS, departments: {}, links: {}, slot_settings: {} })
+  const [banners, setBanners] = useState<MarketBanners>({ ...EMPTY_BANNERS, departments: {}, sidebar_banners: {}, links: {}, slot_settings: {} })
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [uploading, setUploading] = useState<string | null>(null)
@@ -602,6 +603,7 @@ export function MarketplaceBannersTab() {
             ...EMPTY_BANNERS,
             ...d.banners,
             departments: d.banners.departments || {},
+            sidebar_banners: d.banners.sidebar_banners || {},
             links: d.banners.links || {},
             slot_settings: d.banners.slot_settings || {},
           })
@@ -652,6 +654,14 @@ export function MarketplaceBannersTab() {
       return { ...b, departments }
     })
 
+  const setSideBanner = (slug: string, url: string) =>
+    setBanners((b) => {
+      const sidebar_banners = { ...(b.sidebar_banners || {}) }
+      if (url.trim()) sidebar_banners[slug] = url.trim()
+      else delete sidebar_banners[slug]
+      return { ...b, sidebar_banners }
+    })
+
   const pickUpload = (target: string) => {
     setUploadTarget(target)
     fileRef.current?.click()
@@ -672,6 +682,8 @@ export function MarketplaceBannersTab() {
       if (!url) throw new Error("Upload returned no URL")
       if (uploadTarget.startsWith("dept:")) {
         setDept(uploadTarget.slice(5), url)
+      } else if (uploadTarget.startsWith("side:")) {
+        setSideBanner(uploadTarget.slice(5), url)
       } else if (uploadTarget.startsWith("slides:")) {
         const [, key] = uploadTarget.split(":") as [string, SliderSlotKey]
         setBanners((b) => {
@@ -706,6 +718,7 @@ export function MarketplaceBannersTab() {
           ...EMPTY_BANNERS,
           ...data.banners,
           departments: data.banners.departments || {},
+          sidebar_banners: data.banners.sidebar_banners || {},
           links: data.banners.links || {},
           slot_settings: data.banners.slot_settings || {},
         })
@@ -750,7 +763,7 @@ export function MarketplaceBannersTab() {
     Object.keys(banners.departments || {}).length
 
   return (
-    <div className="mx-auto w-full max-w-3xl space-y-3">
+    <div className="w-full space-y-3">
       <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/gif,image/webp,image/avif" className="hidden" onChange={onFile} />
 
       {/* Sticky save bar */}
@@ -788,7 +801,7 @@ export function MarketplaceBannersTab() {
         open={section === "home"}
         onToggle={() => setSection(section === "home" ? "" : "home")}
       >
-        <div className="space-y-2.5">
+        <div className="grid gap-2.5 xl:grid-cols-2">
           {HOME_SLOT_IDS.map((id) => {
             const slot = BANNER_SLOTS.find((s) => s.id === id)!
             const key = slidesKeyOf(id)
@@ -829,7 +842,7 @@ export function MarketplaceBannersTab() {
         open={section === "pages"}
         onToggle={() => setSection(section === "pages" ? "" : "pages")}
       >
-        <div className="grid gap-2.5 sm:grid-cols-2">
+        <div className="grid gap-2.5 sm:grid-cols-2 xl:grid-cols-3">
           {PAGE_SLOT_IDS.map((id) => {
             const slot = BANNER_SLOTS.find((s) => s.id === id)!
             const val = slotValue(id)
@@ -857,36 +870,55 @@ export function MarketplaceBannersTab() {
         </p>
       </Section>
 
-      {/* 3 — Category banners */}
+      {/* 3 — Category banners (page banner + showcase sidebar per dept) */}
       <Section
         step="3"
         title="Category banners"
-        desc="One image per department — empty falls back to the default above"
+        desc="Page banner + showcase sidebar per department — empty falls back to defaults"
         open={section === "depts"}
         onToggle={() => setSection(section === "depts" ? "" : "depts")}
       >
-        <div className="grid gap-2.5 sm:grid-cols-2">
+        <div className="grid gap-2.5 sm:grid-cols-2 xl:grid-cols-3">
           {MARKET_DEPARTMENTS.map((d) => {
             const val = banners.departments[d.slug] || ""
             const key = `dept:${d.slug}`
+            const side = banners.sidebar_banners?.[d.slug] || ""
+            const sideKey = `side:${d.slug}`
             return (
-              <SingleBannerRow
-                key={d.slug}
-                label={d.name}
-                sub={`${d.slug} · ${DEPT_BANNER_DIMS}`}
-                value={val}
-                link={val.trim() ? banners.links?.[val.trim()] || "" : ""}
-                uploading={uploading === key}
-                onValue={(v) => setDept(d.slug, v)}
-                onLink={(v) => {
-                  const c = (banners.departments[d.slug] || "").trim()
-                  if (c) setLink(c, v)
-                }}
-                onUpload={() => pickUpload(key)}
-              />
+              <Fragment key={d.slug}>
+                <SingleBannerRow
+                  label={d.name}
+                  sub={`Page banner · ${DEPT_BANNER_DIMS}`}
+                  value={val}
+                  link={val.trim() ? banners.links?.[val.trim()] || "" : ""}
+                  uploading={uploading === key}
+                  onValue={(v) => setDept(d.slug, v)}
+                  onLink={(v) => {
+                    const c = (banners.departments[d.slug] || "").trim()
+                    if (c) setLink(c, v)
+                  }}
+                  onUpload={() => pickUpload(key)}
+                />
+                <SingleBannerRow
+                  label={`${d.name} sidebar`}
+                  sub={`Showcase sidebar · ${SIDEBAR_BANNER_DIMS}`}
+                  value={side}
+                  link={side.trim() ? banners.links?.[side.trim()] || "" : ""}
+                  uploading={uploading === sideKey}
+                  onValue={(v) => setSideBanner(d.slug, v)}
+                  onLink={(v) => {
+                    const c = (banners.sidebar_banners?.[d.slug] || "").trim()
+                    if (c) setLink(c, v)
+                  }}
+                  onUpload={() => pickUpload(sideKey)}
+                />
+              </Fragment>
             )
           })}
         </div>
+        <p className="text-[11px] text-slate-500">
+          The sidebar banner replaces the SALE panel inside that department&apos;s homepage showcase — uploaded art shows clean with no overlay text or button and opens its own link.
+        </p>
       </Section>
 
       {/* 4 — Promo & store */}

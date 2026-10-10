@@ -124,6 +124,8 @@ export function CategoryShowcase({
   nav,
   items,
   promoImage,
+  sideBanner = "",
+  sideLink = "",
   onAdd,
   added,
   wished,
@@ -133,6 +135,11 @@ export function CategoryShowcase({
   deptSlug: string
   nav: ShowcaseNavItem[]
   promoImage: string
+  /** Admin-uploaded sidebar banner for this department: shown clean (no
+      SALE overlay, text or button) and opening sideLink. Empty = the
+      built-in SALE design below. */
+  sideBanner?: string
+  sideLink?: string
   items: Array<DemoProduct & { subSlug?: string | null }>
   onAdd: (p: DemoProduct) => void
   added: Record<string, boolean>
@@ -227,8 +234,25 @@ export function CategoryShowcase({
         ))}
       </nav>
 
-      {/* side promo banner — real photo banner, bigger */}
+      {/* side promo banner — an uploaded banner stands clean (no SALE
+          overlay, text or button) and opens its own link; otherwise the
+          built-in SALE design shows. */}
       <div className="flex gap-3">
+        {sideBanner ? (
+          <Link
+            href={sideLink || `/marketplace/category/${deptSlug}`}
+            aria-label={`Shop ${title}`}
+            className="relative block w-48 shrink-0 self-stretch overflow-hidden rounded-xl sm:w-64"
+          >
+            <img
+              src={marketImage(sideBanner)}
+              alt={`${title} promotion`}
+              loading="lazy"
+              decoding="async"
+              className="absolute inset-0 h-full w-full object-cover"
+            />
+          </Link>
+        ) : (
         <Link
           href="/marketplace/deals"
           className="relative flex w-48 shrink-0 flex-col justify-between self-stretch overflow-hidden rounded-xl p-4 text-white sm:w-64"
@@ -258,6 +282,7 @@ export function CategoryShowcase({
             Shop now
           </span>
         </Link>
+        )}
         <div
           className="showcase-rail flex min-w-0 flex-1 gap-3 overflow-x-auto pb-1 snap-x"
           ref={railRef}

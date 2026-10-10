@@ -176,6 +176,15 @@ describe("parseBanners slider settings", () => {
     expect(b.promo_slides).toHaveLength(10)
   })
 
+  it("parses per-department sidebar banners and prunes their orphan links", () => {
+    const b = parseBanners({
+      sidebar_banners: { phones: "side-img", "": "junk", empty: "  " },
+      links: { "side-img": "/marketplace/deals", orphan: "/marketplace/shop" },
+    })
+    expect(b.sidebar_banners).toEqual({ phones: "side-img" })
+    expect(b.links).toEqual({ "side-img": "/marketplace/deals" })
+  })
+
   it("EMPTY_BANNERS stays a valid single-image config", () => {
     expect(EMPTY_BANNERS.slider_transition).toBe("fade")
     expect(slidesOf(EMPTY_BANNERS.hero_image, EMPTY_BANNERS.hero_slides)).toEqual([])

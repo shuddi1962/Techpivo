@@ -14,7 +14,7 @@ import { openCartPopup, openQuickView } from "@/lib/marketplace-events"
 import {
   MARKETPLACE_BRAND, MARKETPLACE_HERO, supplierDisplayName, type DemoProduct,
 } from "@/lib/marketplace"
-import { EMPTY_BANNERS, parseBanners, slidesOfObjects, slotSliderProps, type MarketBanners } from "@/lib/marketplace-banners"
+import { EMPTY_BANNERS, linkOf, parseBanners, slidesOfObjects, slotSliderProps, type MarketBanners } from "@/lib/marketplace-banners"
 import { MARKET_DEPARTMENTS } from "@/lib/marketplace-categories"
 import { marketImage, cleanSupplierText } from "@/lib/marketplace-images"
 import { readCompare, toggleCompareStored } from "@/lib/marketplace-compare"
@@ -1074,10 +1074,33 @@ export function MarketplaceHome() {
         })()}
 
         {/* in-feed strip 1 — slim full-width banner between Trending Now
-            and the department showcases. Hidden entirely when empty. */}
-        {strip1Slides.length > 0 && (
+            and the department showcases. An upload shows clean on its own;
+            otherwise this sample design shows (upload to replace it). */}
+        {strip1Slides.length > 0 ? (
           <section aria-label="Featured promotion" className="relative h-[92px] sm:h-[120px] overflow-hidden rounded-2xl shadow-sm">
             <BannerSlider slides={strip1Slides} alt="Featured promotion" {...strip1Props} />
+          </section>
+        ) : (
+          <section className="relative overflow-hidden rounded-2xl shadow-sm" style={{ background: "linear-gradient(100deg, #0F172A 0%, #1E3A8A 100%)" }}>
+            <div className="flex h-[92px] sm:h-[120px] items-center gap-3 px-4 sm:gap-4 sm:px-6">
+              <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-white/15 sm:h-14 sm:w-14">
+                <Truck className="h-5 w-5 text-[#F59E0B] sm:h-6 sm:w-6" />
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block truncate text-[15px] font-extrabold tracking-tight text-white sm:text-xl">
+                  Tracked delivery on every order
+                </span>
+                <span className="hidden text-xs text-white/75 sm:block">
+                  Quality-checked products · Secure payment · 7–12 day delivery
+                </span>
+              </span>
+              <Link
+                href="/marketplace/best-sellers"
+                className="shrink-0 rounded-lg bg-[#F59E0B] px-4 py-2.5 text-[13px] font-bold text-[#0F172A] transition-colors hover:bg-[#D97706] sm:px-6 sm:py-3 sm:text-sm"
+              >
+                Shop best sellers
+              </Link>
+            </div>
           </section>
         )}
 
@@ -1091,6 +1114,8 @@ export function MarketplaceHome() {
             nav={nav}
             items={items}
             promoImage={banners.departments[dep.slug] || deptCover.get(dep.slug) || dep.image}
+            sideBanner={banners.sidebar_banners[dep.slug] || ""}
+            sideLink={linkOf(banners, banners.sidebar_banners[dep.slug] || "") || `/marketplace/category/${dep.slug}`}
             onAdd={addToCart}
             added={justAdded}
             wished={wishlist}
@@ -1099,10 +1124,33 @@ export function MarketplaceHome() {
         )) : null}
 
         {/* in-feed strip 2 — slim full-width banner between the department
-            showcases and Top Stores. Hidden entirely when empty. */}
-        {strip2Slides.length > 0 && (
+            showcases and Top Stores. An upload shows clean on its own;
+            otherwise this sample design shows (upload to replace it). */}
+        {strip2Slides.length > 0 ? (
           <section aria-label="Special offer" className="relative h-[92px] sm:h-[120px] overflow-hidden rounded-2xl shadow-sm">
             <BannerSlider slides={strip2Slides} alt="Special offer" {...strip2Props} />
+          </section>
+        ) : (
+          <section className="relative overflow-hidden rounded-2xl shadow-sm" style={{ background: "linear-gradient(100deg, #F59E0B 0%, #EA580C 60%, #DC2626 100%)" }}>
+            <div className="flex h-[92px] sm:h-[120px] items-center gap-3 px-4 sm:gap-4 sm:px-6">
+              <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-black/20 sm:h-14 sm:w-14">
+                <Zap className="h-5 w-5 text-white sm:h-6 sm:w-6" />
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block truncate text-[15px] font-extrabold tracking-tight text-white sm:text-xl">
+                  Fresh tech drops every week
+                </span>
+                <span className="hidden text-xs text-white/85 sm:block">
+                  New arrivals land weekly — be the first to own them
+                </span>
+              </span>
+              <Link
+                href="/marketplace/new-arrivals"
+                className="shrink-0 rounded-lg bg-[#0F172A] px-4 py-2.5 text-[13px] font-bold text-white transition-colors hover:bg-black sm:px-6 sm:py-3 sm:text-sm"
+              >
+                See new arrivals
+              </Link>
+            </div>
           </section>
         )}
 
