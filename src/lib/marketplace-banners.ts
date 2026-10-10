@@ -3,15 +3,19 @@
 //   { hero_image, promo_image, category_default, departments: {...},
 //     shop_image, deals_image, best_sellers_image, new_arrivals_image,
 //     top_stores_image, track_image }
-// Empty string = use the built-in default. Homepage + collection-page
-// banners render FULL (never cropped) so any aspect ratio fits; category
-// banners render with object-cover under a text scrim.
+// Empty string = use the built-in default. The homepage hero + both
+// side promos render FILL (object-cover, edge to edge — odd ratios are
+// cropped, never letterboxed); other collection/utility page banners
+// render in FULL (never cropped); category banners render with
+// object-cover under a text scrim.
 
 export const MARKETPLACE_BANNERS_KEY = "marketplace_banners"
 
 export interface MarketBanners {
   hero_image: string
   promo_image: string
+  promo_deals_image: string
+  promo_new_image: string
   category_default: string
   departments: Record<string, string>
   /** Black Friday promo surfaces (top strip, Specials button, homepage
@@ -28,6 +32,8 @@ export interface MarketBanners {
 export const EMPTY_BANNERS: MarketBanners = {
   hero_image: "",
   promo_image: "",
+  promo_deals_image: "",
+  promo_new_image: "",
   category_default: "",
   departments: {},
   promo_enabled: true,
@@ -43,15 +49,27 @@ export const EMPTY_BANNERS: MarketBanners = {
 export const BANNER_SLOTS = [
   {
     id: "hero_image",
-    label: "Homepage hero",
-    dims: "1920 × 640 px (3:1 wide — min 1200 × 400)",
-    hint: "Replaces ONLY the main card — side promos stay. Your image shows in FULL at natural ratio (never cropped, no backdrop): a 3:1-wide banner fills the frame edge to edge. Clear it to bring the default hero back.",
+    label: "Homepage hero (main left banner)",
+    dims: "1600 × 640 px (2.5:1 wide — min 1200 × 480)",
+    hint: "Fills the full left 2/3 banner edge to edge (desktop ~935 × 400, object-cover: crops sides on odd ratios, never leaves gaps). Use a 2.5:1-wide image. Clear it to bring the default hero back.",
   },
   {
     id: "promo_image",
     label: "Promo banner",
     dims:  "1600 × 500 px",
     hint: "Wide strip above the brand row. Text overlays the left side — use a calm right edge.",
+  },
+  {
+    id: "promo_deals_image",
+    label: "Hero side promo — Deals (red, top right)",
+    dims: "900 × 390 px (2.3:1 wide — min 600 × 260)",
+    hint: "Fills the red 'Mega Deal' box (top half of the right 1/3 column, desktop ~450 × 192). Image is cropped to fill — text stays readable over a dark scrim.",
+  },
+  {
+    id: "promo_new_image",
+    label: "Hero side promo — New arrivals (orange, bottom right)",
+    dims: "900 × 390 px (2.3:1 wide — min 600 × 260)",
+    hint: "Fills the orange 'New Season' box (bottom half of the right 1/3 column, desktop ~450 × 192). Image is cropped to fill — text stays readable over a dark scrim.",
   },
   {
     id: "category_default",
@@ -136,6 +154,8 @@ export function parseBanners(raw: unknown): MarketBanners {
   return {
     hero_image: str(r.hero_image).trim(),
     promo_image: str(r.promo_image).trim(),
+    promo_deals_image: str(r.promo_deals_image).trim(),
+    promo_new_image: str(r.promo_new_image).trim(),
     category_default: str(r.category_default).trim(),
     promo_enabled: typeof r.promo_enabled === "boolean" ? r.promo_enabled : true,
     shop_image: str(r.shop_image).trim(),

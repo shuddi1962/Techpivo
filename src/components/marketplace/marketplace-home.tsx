@@ -746,30 +746,31 @@ export function MarketplaceHome() {
           </div>
         )}
 
-        {/* hero — roomy landscape strip: full-width presence at ~180px
-            so Shop By Collections follows right below. Side promos always
-            show as rows; your uploaded banner replaces ONLY the main card. */}
-        <section className="-mt-6 sm:-mt-8 w-[100vw] ml-[calc(50%-50vw)] pl-3 sm:pl-5">
-        <div className="grid w-full grid-cols-1 lg:grid-cols-12 gap-4 items-stretch">
+        {/* hero — left main banner (2/3) + two stacked side promos (1/3).
+            Fixed row height on desktop so all three boxes share exact top
+            and bottom edges; the main image fills its box edge to edge
+            (display block, 100% x 100%, object-cover) with no white gap. */}
+        <section className="w-full">
+        <div className="grid w-full grid-cols-1 lg:grid-cols-3 gap-4 items-stretch lg:h-[360px] xl:h-[400px]">
         {!loaded ? (
-          <div className="lg:col-span-8 rounded-none bg-white shadow-sm h-[400px] animate-pulse" aria-hidden>
+          <div className="lg:col-span-2 overflow-hidden rounded-none bg-white shadow-sm aspect-[16/10] sm:aspect-[21/9] lg:aspect-auto lg:h-full animate-pulse" aria-hidden>
             <div className="h-full w-full bg-slate-100" />
           </div>
         ) : banners.hero_image ? (
-          <div className="lg:col-span-8 overflow-hidden rounded-none bg-white shadow-sm">
-            <Link href="#trending" aria-label="Shop TechPivo Market" className="block">
+          <div className="lg:col-span-2 overflow-hidden rounded-none bg-white shadow-sm aspect-[16/10] sm:aspect-[21/9] lg:aspect-auto lg:h-full">
+            <Link href="#trending" aria-label="Shop TechPivo Market" className="block h-full w-full">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={marketImage(banners.hero_image)}
                 alt="TechPivo Market — shop the collection"
-                className="block h-auto w-full"
+                className="block h-full w-full object-cover"
                 loading="eager"
                 decoding="async"
               />
             </Link>
           </div>
         ) : (
-          <div className="lg:col-span-8 rounded-none relative overflow-hidden text-white min-h-[400px] flex items-center" style={{ background: MARKETPLACE_BRAND.navy }}>
+          <div className="lg:col-span-2 rounded-none relative overflow-hidden text-white min-h-[280px] lg:min-h-0 lg:h-full flex items-center" style={{ background: MARKETPLACE_BRAND.navy }}>
             <div className="absolute -right-16 -top-16 w-72 h-72 rounded-full bg-[#F59E0B]/10 blur-3xl pointer-events-none" />
             <div className="relative z-10 flex w-full flex-wrap items-center gap-x-5 gap-y-2 px-5 md:px-8 py-4">
               <div className="hidden sm:block h-40 w-40 shrink-0 overflow-hidden rounded-xl bg-white/5">
@@ -791,35 +792,46 @@ export function MarketplaceHome() {
           </div>
         )}
 
-          {/* hero side promos — rows, always shown */}
-          <div className="lg:col-span-4 flex flex-col gap-4">
+          {/* hero side promos — two equal boxes that together match the
+              main banner height exactly (flex-1 pair, shared gap). */}
+          <div className="lg:col-span-1 flex flex-col gap-4 lg:h-full lg:min-h-0">
             <Link
               href="/marketplace/deals"
-              className="group relative flex-1 overflow-hidden rounded-none p-4 text-white shadow-sm transition-shadow hover:shadow-md min-h-[192px] flex items-center gap-3"
+              className="group relative flex-1 min-h-[140px] lg:min-h-0 overflow-hidden rounded-none p-4 text-white shadow-sm transition-shadow hover:shadow-md flex items-center gap-3"
               style={{ background: "linear-gradient(150deg, #DC2626 0%, #991B1B 100%)" }}
             >
-              <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-white/20">
+              {banners.promo_deals_image ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={marketImage(banners.promo_deals_image)} alt="" aria-hidden loading="lazy" decoding="async" className="absolute inset-0 h-full w-full object-cover" />
+              ) : null}
+              {banners.promo_deals_image ? <span aria-hidden className="absolute inset-0 bg-black/45" /> : null}
+              <span className="relative flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-white/20">
                 <Flame className="h-5 w-5" />
               </span>
-              <span className="min-w-0 flex-1">
+              <span className="relative min-w-0 flex-1">
                 <span className="block text-[15px] font-extrabold leading-tight">Mega Deal — Up to 50% Off</span>
                 <span className="block text-xs text-white/80">Today only — biggest price drops</span>
               </span>
-              <ArrowRight className="h-4 w-4 shrink-0 transition-transform group-hover:translate-x-0.5" />
+              <ArrowRight className="relative h-4 w-4 shrink-0 transition-transform group-hover:translate-x-0.5" />
             </Link>
             <Link
               href="/marketplace/new-arrivals"
-              className="group relative flex-1 overflow-hidden rounded-none p-4 text-white shadow-sm transition-shadow hover:shadow-md min-h-[192px] flex items-center gap-3"
+              className="group relative flex-1 min-h-[140px] lg:min-h-0 overflow-hidden rounded-none p-4 text-white shadow-sm transition-shadow hover:shadow-md flex items-center gap-3"
               style={{ background: "linear-gradient(150deg, #F59E0B 0%, #F97316 100%)" }}
             >
-              <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-black/20">
+              {banners.promo_new_image ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={marketImage(banners.promo_new_image)} alt="" aria-hidden loading="lazy" decoding="async" className="absolute inset-0 h-full w-full object-cover" />
+              ) : null}
+              {banners.promo_new_image ? <span aria-hidden className="absolute inset-0 bg-black/45" /> : null}
+              <span className="relative flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-black/20">
                 <Zap className="h-5 w-5" />
               </span>
-              <span className="min-w-0 flex-1">
+              <span className="relative min-w-0 flex-1">
                 <span className="block text-[15px] font-extrabold leading-tight">New Season Tech Drop</span>
                 <span className="block text-xs text-white/85">Fresh stock, first to own</span>
               </span>
-              <ArrowRight className="h-4 w-4 shrink-0 transition-transform group-hover:translate-x-0.5" />
+              <ArrowRight className="relative h-4 w-4 shrink-0 transition-transform group-hover:translate-x-0.5" />
             </Link>
           </div>
         </div>

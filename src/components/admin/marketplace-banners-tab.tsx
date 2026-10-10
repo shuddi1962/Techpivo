@@ -226,10 +226,12 @@ export function MarketplaceBannersTab() {
       <div className="bg-white border rounded-xl p-5">
         <h2 className="font-bold text-slate-900">Storefront banners</h2>
         <p className="text-sm text-slate-500 mt-1">
-          Upload your own banners or paste image URLs. Empty = built-in default. Page heroes
-          (Shop, Deals, Best Sellers, New Arrivals, Top Stores, Track Order, homepage) show in{" "}
-          <strong>FULL</strong> — never cropped, any ratio fits. Category / department banners render with{" "}
-          <code>object-cover</code> under a text scrim.
+          Upload your own banners or paste image URLs. Empty = built-in default. The homepage
+          hero (left 2/3) and both side promos (right 1/3) render{" "}
+          <strong>FILL</strong> — edge to edge with <code>object-cover</code> (upload the exact
+          recommended size to avoid cropping). Shop, Deals, Best Sellers, New Arrivals, Top Stores
+          and Track Order page heroes show in <strong>FULL</strong> — never cropped, any ratio fits.
+          Category / department banners render with <code>object-cover</code> under a text scrim.
         </p>
 
         <div className="grid gap-4 mt-4">
