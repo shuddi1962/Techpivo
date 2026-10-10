@@ -207,6 +207,21 @@ body { position: relative; }
 /* Modal */
 .modal-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,.5); backdrop-filter: blur(8px); z-index: 1000; display: flex; align-items: center; justify-content: center; padding: 20px; animation: fadeIn .2s; }
 @keyframes fadeIn { from{opacity:0} to{opacity:1} }
+
+/* Banner slider engine (marketplace) — GPU-friendly keyframes.
+   WAAPI-driven tile/particle overlays live in banner-slider.tsx. */
+@keyframes bpKenburns { from{transform:scale(1) translate(0,0)} to{transform:scale(1.14) translate(-1.5%,1%)} }
+.bp-kenburns { animation: bpKenburns 9s ease-in-out infinite alternate; will-change: transform; }
+@keyframes bpProgress { from{transform:scaleX(0)} to{transform:scaleX(1)} }
+@keyframes bpGlitchShift {
+  0%{transform:translateX(0);filter:none}
+  15%{transform:translateX(-12px);filter:hue-rotate(90deg) saturate(2)}
+  30%{transform:translateX(9px);filter:none}
+  45%{transform:translateX(-6px);filter:hue-rotate(-60deg)}
+  60%{transform:translateX(5px);filter:none}
+  80%{transform:translateX(-2px)}
+  100%{transform:translateX(0);filter:none}
+}
 .modal-box { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 32px; width: 100%; max-width: 400px; position: relative; animation: slideUp .3s; box-shadow: 0 20px 60px rgba(0,0,0,.15); }
 .dark .modal-box { box-shadow: 0 20px 60px rgba(0,0,0,.5); }
 @keyframes slideUp { from{transform:translateY(30px);opacity:0} to{transform:translateY(0);opacity:1} }

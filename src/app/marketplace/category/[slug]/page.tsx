@@ -61,23 +61,23 @@ export default async function MarketplaceCategoryPage({ params }: { params: { sl
           : [{ label: title }]
       }
     >
-      {/* category hero — uploaded banner, else this category's own
-          live product photos as the banner, else gradient only */}
+      {/* category hero — an uploaded banner stands clean (no overlay
+          text, scrim or pills over the artwork; title band sits beneath),
+          else this category's own live product photos, else gradient only */}
       {uploadedBanner ? (
-      <section className="relative overflow-hidden rounded-2xl">
+      <section className="overflow-hidden rounded-2xl border border-[#E2E8F0] bg-white shadow-sm">
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={uploadedBanner} alt={title} loading="eager" decoding="async" className="absolute inset-0 h-full w-full object-cover" />
-        <div className="absolute inset-0" style={{ background: "linear-gradient(100deg, rgba(20,23,28,0.94) 20%, rgba(20,23,28,0.55) 55%, rgba(20,23,28,0.15) 100%)" }} />
-        <div className="relative z-10 max-w-2xl space-y-2 p-6 sm:p-8">
+        <img src={uploadedBanner} alt={title} loading="eager" decoding="async" className="block h-auto w-full" />
+        <div className="p-6 sm:p-8 text-white" style={{ background: "linear-gradient(120deg, #23272E 0%, #14171C 100%)" }}>
           <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-[#F59E0B]">
             {found.kind === "sub" ? found.dept.name : "Department"}
           </p>
-          <h1 className="text-2xl font-extrabold tracking-tight text-white sm:text-3xl">{title}</h1>
-          <p className="text-sm text-white/80">
+          <h1 className="mt-1 text-2xl font-extrabold tracking-tight sm:text-3xl">{title}</h1>
+          <p className="mt-1 text-sm text-white/80">
             Quality-checked, securely paid, delivered with tracking.
           </p>
           {found.kind === "dept" && (
-            <div className="flex flex-wrap gap-1.5 pt-1">
+            <div className="flex flex-wrap gap-1.5 pt-2">
               {found.dept.subs.map((s) => (
                 <Link
                   key={s.slug}

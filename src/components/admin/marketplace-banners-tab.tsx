@@ -1,14 +1,33 @@
 "use client"
 
 import { useEffect, useRef, useState } from "react"
-import { BadgeCheck, ImagePlus, Loader2, RotateCcw, Save } from "lucide-react"
+import { BadgeCheck, ChevronDown, ChevronUp, ImagePlus, Loader2, Plus, RotateCcw, Save, Trash2 } from "lucide-react"
 import { MARKET_DEPARTMENTS } from "@/lib/marketplace-categories"
 import {
   BANNER_SLOTS,
+  BANNER_TRANSITIONS,
+  BANNER_TRANSITION_GROUPS,
   DEPT_BANNER_DIMS,
   EMPTY_BANNERS,
+  SLIDER_EASINGS,
+  easingCss,
+  type BannerTransition,
   type MarketBanners,
+  type SliderEasing,
 } from "@/lib/marketplace-banners"
+import { BannerSlider } from "@/components/marketplace/banner-slider"
+
+// Two built-in artworks so the transition preview plays even before any
+// upload (real uploads preview with your own images once added).
+function sampleSlide(bg1: string, bg2: string, label: string): string {
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="800" height="320"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${bg1}"/><stop offset="1" stop-color="${bg2}"/></linearGradient></defs><rect width="800" height="320" fill="url(#g)"/><text x="400" y="175" font-family="Arial" font-size="52" font-weight="bold" fill="#ffffff" text-anchor="middle">${label}</text></svg>`
+  return `data:image/svg+xml,${encodeURIComponent(svg)}`
+}
+const PREVIEW_SLIDES = [
+  sampleSlide("#DC2626", "#7F1D1D", "Mega Deal"),
+  sampleSlide("#F59E0B", "#EA580C", "New Drop"),
+  sampleSlide("#0F172A", "#1E3A8A", "TechPivo"),
+]
 import { MARKET_STORE_DEFAULTS } from "@/lib/marketplace-store"
 
 function isUrl(v: string): boolean {
@@ -51,6 +70,31 @@ export function MarketplaceBannersTab() {
   const setSlot = (id: string, url: string) =>
     setBanners((b) => ({ ...b, [id]: url } as MarketBanners))
 
+  // Extra slider images per slot (cover field above = slide 1).
+  const [extraUrl, setExtraUrl] = useState<Record<string, string>>({})
+  const slidesOf = (key: string): string[] => {
+    const v = (banners as unknown as Record<string, unknown>)[key]
+    return Array.isArray(v) ? v.filter((x): x is string => typeof x === "string") : []
+  }
+  const setSlides = (key: string, list: string[]) =>
+    setBanners((b) => ({ ...b, [key]: list } as MarketBanners))
+  const moveSlide = (key: string, i: number, dir: -1 | 1) => {
+    const list = slidesOf(key)
+    const j = i + dir
+    if (j < 0 || j >= list.length) return
+    const next = [...list]
+    ;[next[i], next[j]] = [next[j], next[i]]
+    setSlides(key, next)
+  }
+  const removeSlide = (key: string, i: number) =>
+    setSlides(key, slidesOf(key).filter((_, x) => x !== i))
+  const addSlideUrl = (key: string) => {
+    const url = (extraUrl[key] || "").trim()
+    if (!url) return
+    setSlides(key, [...slidesOf(key), url])
+    setExtraUrl((m) => ({ ...m, [key]: "" }))
+  }
+
   const setDept = (slug: string, url: string) =>
     setBanners((b) => {
       const departments = { ...b.departments }
@@ -78,6 +122,13 @@ export function MarketplaceBannersTab() {
       const url = String(data?.url || data?.path || "")
       if (!url) throw new Error("Upload returned no URL")
       if (uploadTarget.startsWith("dept:")) setDept(uploadTarget.slice(5), url)
+      else if (uploadTarget.startsWith("slides:")) {
+        const [, key, pos] = uploadTarget.split(":")
+        const list = [...slidesOf(key)]
+        if (pos === "new") list.push(url)
+        else list[Number(pos)] = url
+        setSlides(key, list.slice(0, 10))
+      }
       else setSlot(uploadTarget, url)
       flash("Image uploaded — hit Save banners to go live")
     } catch (err) {
@@ -166,6 +217,155 @@ export function MarketplaceBannersTab() {
       </div>
 
       <div className="bg-white border rounded-xl p-5">
+        <h2 className="font-bold text-slate-900">Banner slider — transitions & animation</h2>
+        <p className="text-sm text-slate-500 mt-1">
+          One setting drives <strong>every</strong> banner slider on the storefront (homepage hero, both
+          side promos, promo strip). A slot with a single image stays static; upload 2 or more and it
+          slides with the transition you pick here — live on the site the moment you hit{" "}
+          <strong>Save banners</strong>.
+        </p>
+        <div className="grid gap-3 mt-4 sm:grid-cols-2">
+          <label className="block">
+            <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Transition style</span>
+            <select
+              value={banners.slider_transition}
+              onChange={(e) =>
+                setBanners((b) => ({ ...b, slider_transition: e.target.value as BannerTransition }))
+              }
+              className="mt-1 w-full border rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:border-amber-500"
+            >
+              {BANNER_TRANSITION_GROUPS.map((g) => (
+                <optgroup key={g.id} label={g.label}>
+                  {BANNER_TRANSITIONS.filter((t) => t.group === g.id).map((t) => (
+                    <option key={t.id} value={t.id}>
+                      {t.label} — {t.hint}
+                    </option>
+                  ))}
+                </optgroup>
+              ))}
+            </select>
+          </label>
+          <label className="block">
+            <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Easing curve</span>
+            <select
+              value={banners.slider_easing}
+              onChange={(e) =>
+                setBanners((b) => ({ ...b, slider_easing: e.target.value as SliderEasing }))
+              }
+              className="mt-1 w-full border rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:border-amber-500"
+            >
+              {SLIDER_EASINGS.map((e) => (
+                <option key={e.id} value={e.id}>
+                  {e.label}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="block">
+            <span className="text-xs font-bold uppercase tracking-wider text-slate-500">
+              Transition duration — {banners.slider_duration} ms
+            </span>
+            <input
+              type="range"
+              min={300}
+              max={3000}
+              step={50}
+              value={banners.slider_duration}
+              onChange={(e) => setBanners((b) => ({ ...b, slider_duration: Number(e.target.value) }))}
+              className="mt-2 w-full accent-[#F59E0B]"
+            />
+            <span className="text-[11px] text-slate-400">300 ms (snappy) → 3000 ms (cinematic)</span>
+          </label>
+          <label className="block">
+            <span className="text-xs font-bold uppercase tracking-wider text-slate-500">
+              Auto-slide every (seconds)
+            </span>
+            <input
+              type="number"
+              min={2}
+              max={30}
+              value={banners.slider_interval}
+              onChange={(e) => {
+                const n = Number(e.target.value)
+                setBanners((b) => ({
+                  ...b,
+                  slider_interval: Number.isFinite(n) ? Math.min(30, Math.max(2, Math.round(n))) : 5,
+                }))
+              }}
+              className="mt-1 w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-amber-500"
+            />
+          </label>
+        </div>
+        <div className="flex flex-wrap gap-5 mt-3">
+          <label className="inline-flex cursor-pointer items-center gap-2 text-sm font-semibold text-slate-700">
+            <input
+              type="checkbox"
+              checked={banners.slider_autoplay !== false}
+              onChange={(e) => setBanners((b) => ({ ...b, slider_autoplay: e.target.checked }))}
+              className="h-4 w-4 accent-[#F59E0B]"
+            />
+            Autoplay
+          </label>
+          <label className="inline-flex cursor-pointer items-center gap-2 text-sm font-semibold text-slate-700">
+            <input
+              type="checkbox"
+              checked={banners.slider_arrows !== false}
+              onChange={(e) => setBanners((b) => ({ ...b, slider_arrows: e.target.checked }))}
+              className="h-4 w-4 accent-[#F59E0B]"
+            />
+            Show ‹ › arrows
+          </label>
+          <label className="inline-flex cursor-pointer items-center gap-2 text-sm font-semibold text-slate-700">
+            <input
+              type="checkbox"
+              checked={banners.slider_dots !== false}
+              onChange={(e) => setBanners((b) => ({ ...b, slider_dots: e.target.checked }))}
+              className="h-4 w-4 accent-[#F59E0B]"
+            />
+            Show dot indicators
+          </label>
+          <label className="inline-flex cursor-pointer items-center gap-2 text-sm font-semibold text-slate-700">
+            <input
+              type="checkbox"
+              checked={banners.slider_progress !== false}
+              onChange={(e) => setBanners((b) => ({ ...b, slider_progress: e.target.checked }))}
+              className="h-4 w-4 accent-[#F59E0B]"
+            />
+            Show progress bar
+          </label>
+          <label className="inline-flex cursor-pointer items-center gap-2 text-sm font-semibold text-slate-700">
+            <input
+              type="checkbox"
+              checked={banners.slider_thumbs === true}
+              onChange={(e) => setBanners((b) => ({ ...b, slider_thumbs: e.target.checked }))}
+              className="h-4 w-4 accent-[#F59E0B]"
+            />
+            Show thumbnails
+          </label>
+        </div>
+        <div className="mt-4">
+          <p className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-2">
+            Live preview — plays exactly as the storefront will
+          </p>
+          <div className="relative aspect-[16/5] overflow-hidden rounded-xl border bg-slate-900">
+            <BannerSlider
+              slides={PREVIEW_SLIDES}
+              alt="Transition preview"
+              transition={banners.slider_transition}
+              durationMs={banners.slider_duration}
+              easingCss={easingCss(banners.slider_easing)}
+              autoplay={banners.slider_autoplay !== false}
+              intervalSec={banners.slider_interval}
+              showArrows={banners.slider_arrows !== false}
+              showDots={banners.slider_dots !== false}
+              showProgress={banners.slider_progress !== false}
+              showThumbs={banners.slider_thumbs === true}
+            />
+          </div>
+        </div>
+      </div>
+
+      <div className="bg-white border rounded-xl p-5">
         <h2 className="font-bold text-slate-900">Store contact info</h2>
         <p className="text-sm text-slate-500 mt-1">
           The address, phone and email shown in the storefront footer. Save here and it reflects publicly right away.
@@ -229,9 +429,12 @@ export function MarketplaceBannersTab() {
           Upload your own banners or paste image URLs. Empty = built-in default. The homepage
           hero (left 2/3) and both side promos (right 1/3) render{" "}
           <strong>FILL</strong> — edge to edge with <code>object-cover</code> (upload the exact
-          recommended size to avoid cropping). Shop, Deals, Best Sellers, New Arrivals, Top Stores
-          and Track Order page heroes show in <strong>FULL</strong> — never cropped, any ratio fits.
-          Category / department banners render with <code>object-cover</code> under a text scrim.
+          recommended size to avoid cropping). Upload <strong>more than one image</strong> in any of
+          the first four slots and that space becomes a slider, playing with the transition style,
+          speed, arrows and dots picked in the card above. Shop, Deals, Best Sellers, New Arrivals,
+          Top Stores and Track Order page heroes show in <strong>FULL</strong> — never cropped, any
+          ratio fits. Category / department banners render with <code>object-cover</code> under a
+          text scrim.
         </p>
 
         <div className="grid gap-4 mt-4">
@@ -279,6 +482,85 @@ export function MarketplaceBannersTab() {
                 {val && isUrl(val) && (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img src={val} alt={`${slot.label} preview`} className="mt-3 w-full max-h-44 object-cover rounded-lg border" loading="lazy" />
+                )}
+                {"slidesKey" in slot && (
+                  <div className="mt-3 rounded-lg border bg-slate-50 p-3">
+                    <p className="text-xs font-bold text-slate-700">
+                      Slider images — {(() => {
+                        const n = slidesOf(slot.slidesKey).length + (val.trim() ? 1 : 0)
+                        return n === 0 ? "none yet (default design shows)" : `${n} total (cover above = slide 1)`
+                      })()}
+                    </p>
+                    <p className="text-[11px] text-slate-500 mt-0.5">
+                      Add more images to slide in this exact space. Plays with the transition picked above.
+                    </p>
+                    {slidesOf(slot.slidesKey).map((s, i) => (
+                      <div key={`${i}-${s}`} className="mt-2 flex items-center gap-2">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={s} alt="" className="h-10 w-16 shrink-0 rounded border object-cover" loading="lazy" />
+                        <input
+                          value={s}
+                          onChange={(e) => {
+                            const next = [...slidesOf(slot.slidesKey)]
+                            next[i] = e.target.value
+                            setSlides(slot.slidesKey, next)
+                          }}
+                          placeholder="https://..."
+                          className="min-w-0 flex-1 border rounded-lg px-2.5 py-1.5 text-xs bg-white focus:outline-none focus:border-amber-500"
+                        />
+                        <button
+                          type="button"
+                          title="Move up"
+                          onClick={() => moveSlide(slot.slidesKey, i, -1)}
+                          disabled={i === 0}
+                          className="rounded-md border bg-white p-1.5 text-slate-500 hover:bg-slate-100 disabled:opacity-30"
+                        >
+                          <ChevronUp className="h-3.5 w-3.5" />
+                        </button>
+                        <button
+                          type="button"
+                          title="Move down"
+                          onClick={() => moveSlide(slot.slidesKey, i, 1)}
+                          disabled={i === slidesOf(slot.slidesKey).length - 1}
+                          className="rounded-md border bg-white p-1.5 text-slate-500 hover:bg-slate-100 disabled:opacity-30"
+                        >
+                          <ChevronDown className="h-3.5 w-3.5" />
+                        </button>
+                        <button
+                          type="button"
+                          title="Remove slide"
+                          onClick={() => removeSlide(slot.slidesKey, i)}
+                          className="rounded-md border bg-white p-1.5 text-red-500 hover:bg-red-50"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                    ))}
+                    <div className="mt-2 flex items-center gap-2">
+                      <input
+                        value={extraUrl[slot.slidesKey] || ""}
+                        onChange={(e) => setExtraUrl((m) => ({ ...m, [slot.slidesKey]: e.target.value }))}
+                        placeholder="Paste image URL, then Add"
+                        className="min-w-0 flex-1 border rounded-lg px-2.5 py-1.5 text-xs bg-white focus:outline-none focus:border-amber-500"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => addSlideUrl(slot.slidesKey)}
+                        className="inline-flex shrink-0 items-center gap-1 rounded-lg border bg-white px-2.5 py-1.5 text-xs font-bold hover:bg-slate-100"
+                      >
+                        <Plus className="h-3.5 w-3.5" /> Add
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => pickUpload(`slides:${slot.slidesKey}:new`)}
+                        disabled={uploading === `slides:${slot.slidesKey}:new`}
+                        className="inline-flex shrink-0 items-center gap-1 rounded-lg border bg-white px-2.5 py-1.5 text-xs font-bold hover:bg-slate-100 disabled:opacity-60"
+                      >
+                        {uploading === `slides:${slot.slidesKey}:new` ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <ImagePlus className="h-3.5 w-3.5" />}
+                        Upload
+                      </button>
+                    </div>
+                  </div>
                 )}
               </div>
             )

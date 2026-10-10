@@ -14,11 +14,12 @@ import { openCartPopup, openQuickView } from "@/lib/marketplace-events"
 import {
   MARKETPLACE_BRAND, MARKETPLACE_HERO, supplierDisplayName, type DemoProduct,
 } from "@/lib/marketplace"
-import { EMPTY_BANNERS, parseBanners, type MarketBanners } from "@/lib/marketplace-banners"
+import { EMPTY_BANNERS, parseBanners, slidesOf, easingCss, type MarketBanners } from "@/lib/marketplace-banners"
 import { MARKET_DEPARTMENTS } from "@/lib/marketplace-categories"
 import { marketImage, cleanSupplierText } from "@/lib/marketplace-images"
 import { readCompare, toggleCompareStored } from "@/lib/marketplace-compare"
 import { MarketplaceHeader, MarketplaceFooter } from "./marketplace-header"
+import { BannerSlider } from "./banner-slider"
 import { FeaturePanels } from "./feature-panels"
 import { CategoryShowcase } from "./category-showcase"
 import { ShopCollections, type CollectionItem } from "./shop-collections"
@@ -341,6 +342,8 @@ export function MarketplaceHome() {
     const ch = supabase
       .channel(`market_home_${Date.now()}_${Math.random().toString(36).slice(2)}`)
       .on("postgres_changes", { event: "*", schema: "public", table: "affiliate_products" }, () => load())
+      // Banner/slider saves in Admin go live instantly (no 30s wait).
+      .on("postgres_changes", { event: "*", schema: "public", table: "site_settings", filter: "key=eq.marketplace_banners" }, () => load())
       .subscribe()
     const poll = setInterval(load, 30000)
     const onFocus = () => {
@@ -488,7 +491,23 @@ export function MarketplaceHome() {
   }, [dbProducts, deptOf])
 
   const heroImg = banners.hero_image || MARKETPLACE_HERO.image
-  const promoImg = banners.promo_image || ""
+  // Banner slides per slot: cover first, then extra admin uploads.
+  // Any save in Admin re-renders these instantly (realtime).
+  const sliderProps = {
+    transition: banners.slider_transition,
+    durationMs: banners.slider_duration,
+    easingCss: easingCss(banners.slider_easing),
+    autoplay: banners.slider_autoplay !== false,
+    intervalSec: banners.slider_interval,
+    showArrows: banners.slider_arrows !== false,
+    showDots: banners.slider_dots !== false,
+    showProgress: banners.slider_progress !== false,
+    showThumbs: banners.slider_thumbs === true,
+  }
+  const heroSlides = slidesOf(banners.hero_image, banners.hero_slides)
+  const promoStripSlides = slidesOf(banners.promo_image, banners.promo_slides)
+  const dealsSlides = slidesOf(banners.promo_deals_image, banners.promo_deals_slides)
+  const newSlides = slidesOf(banners.promo_new_image, banners.promo_new_slides)
 
   // Shop By Collections: a curated 12 — the 5 departments plus the 7
   // subcategories closest to a classic marketplace mix. Real nodes only.
@@ -756,17 +775,10 @@ export function MarketplaceHome() {
           <div className="lg:col-span-2 overflow-hidden rounded-none bg-white shadow-sm aspect-[16/10] sm:aspect-[21/9] lg:aspect-auto lg:h-full animate-pulse" aria-hidden>
             <div className="h-full w-full bg-slate-100" />
           </div>
-        ) : banners.hero_image ? (
+        ) : heroSlides.length > 0 ? (
           <div className="lg:col-span-2 overflow-hidden rounded-none bg-white shadow-sm aspect-[16/10] sm:aspect-[21/9] lg:aspect-auto lg:h-full">
-            <Link href="#trending" aria-label="Shop TechPivo Market" className="block h-full w-full">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={marketImage(banners.hero_image)}
-                alt="TechPivo Market — shop the collection"
-                className="block h-full w-full object-cover"
-                loading="eager"
-                decoding="async"
-              />
+            <Link href="#trending" aria-label="Shop TechPivo Market" className="relative block h-full w-full">
+              <BannerSlider slides={heroSlides} alt="TechPivo Market — shop the collection" {...sliderProps} />
             </Link>
           </div>
         ) : (
@@ -797,41 +809,51 @@ export function MarketplaceHome() {
           <div className="lg:col-span-1 flex flex-col gap-4 lg:h-full lg:min-h-0">
             <Link
               href="/marketplace/deals"
+              aria-label="Mega Deal — up to 50% off"
               className="group relative flex-1 min-h-[140px] lg:min-h-0 overflow-hidden rounded-none p-4 text-white shadow-sm transition-shadow hover:shadow-md flex items-center gap-3"
               style={{ background: "linear-gradient(150deg, #DC2626 0%, #991B1B 100%)" }}
             >
-              {banners.promo_deals_image ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={marketImage(banners.promo_deals_image)} alt="" aria-hidden loading="lazy" decoding="async" className="absolute inset-0 h-full w-full object-cover" />
-              ) : null}
-              {banners.promo_deals_image ? <span aria-hidden className="absolute inset-0 bg-black/45" /> : null}
-              <span className="relative flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-white/20">
-                <Flame className="h-5 w-5" />
-              </span>
-              <span className="relative min-w-0 flex-1">
-                <span className="block text-[15px] font-extrabold leading-tight">Mega Deal — Up to 50% Off</span>
-                <span className="block text-xs text-white/80">Today only — biggest price drops</span>
-              </span>
-              <ArrowRight className="relative h-4 w-4 shrink-0 transition-transform group-hover:translate-x-0.5" />
+              {dealsSlides.length > 0 ? (
+                // Uploaded banner(s) show clean — no overlay text, icons or
+                // buttons. Multiple uploads auto-slide with the transition
+                // picked in Admin → Marketplace → Banners.
+                <BannerSlider slides={dealsSlides} alt="Mega Deal — up to 50% off" {...sliderProps} />
+              ) : (
+                <>
+                  <span className="relative flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-white/20">
+                    <Flame className="h-5 w-5" />
+                  </span>
+                  <span className="relative min-w-0 flex-1">
+                    <span className="block text-[15px] font-extrabold leading-tight">Mega Deal — Up to 50% Off</span>
+                    <span className="block text-xs text-white/80">Today only — biggest price drops</span>
+                  </span>
+                  <ArrowRight className="relative h-4 w-4 shrink-0 transition-transform group-hover:translate-x-0.5" />
+                </>
+              )}
             </Link>
             <Link
               href="/marketplace/new-arrivals"
+              aria-label="New Season Tech Drop"
               className="group relative flex-1 min-h-[140px] lg:min-h-0 overflow-hidden rounded-none p-4 text-white shadow-sm transition-shadow hover:shadow-md flex items-center gap-3"
               style={{ background: "linear-gradient(150deg, #F59E0B 0%, #F97316 100%)" }}
             >
-              {banners.promo_new_image ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={marketImage(banners.promo_new_image)} alt="" aria-hidden loading="lazy" decoding="async" className="absolute inset-0 h-full w-full object-cover" />
-              ) : null}
-              {banners.promo_new_image ? <span aria-hidden className="absolute inset-0 bg-black/45" /> : null}
-              <span className="relative flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-black/20">
-                <Zap className="h-5 w-5" />
-              </span>
-              <span className="relative min-w-0 flex-1">
-                <span className="block text-[15px] font-extrabold leading-tight">New Season Tech Drop</span>
-                <span className="block text-xs text-white/85">Fresh stock, first to own</span>
-              </span>
-              <ArrowRight className="relative h-4 w-4 shrink-0 transition-transform group-hover:translate-x-0.5" />
+              {newSlides.length > 0 ? (
+                // Uploaded banner(s) show clean — no overlay text, icons or
+                // buttons. Multiple uploads auto-slide with the transition
+                // picked in Admin → Marketplace → Banners.
+                <BannerSlider slides={newSlides} alt="New Season Tech Drop" {...sliderProps} />
+              ) : (
+                <>
+                  <span className="relative flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-black/20">
+                    <Zap className="h-5 w-5" />
+                  </span>
+                  <span className="relative min-w-0 flex-1">
+                    <span className="block text-[15px] font-extrabold leading-tight">New Season Tech Drop</span>
+                    <span className="block text-xs text-white/85">Fresh stock, first to own</span>
+                  </span>
+                  <ArrowRight className="relative h-4 w-4 shrink-0 transition-transform group-hover:translate-x-0.5" />
+                </>
+              )}
             </Link>
           </div>
         </div>
@@ -1130,14 +1152,20 @@ export function MarketplaceHome() {
           </section>
         )}
 
-        {/* promo banner — admin-custom image or default gradient.
+        {/* promo banner — uploaded image shows clean (no overlay text or
+            button); default gradient with writeups only when no upload.
             Hidden publicly while the admin's Black Friday promo toggle is OFF. */}
         {banners.promo_enabled !== false && (
+        promoStripSlides.length > 0 ? (
+        <section className="relative aspect-[16/5] overflow-hidden rounded-2xl shadow-sm">
+          <Link href="/marketplace/category/home-appliances" aria-label="TechPivo Home Essentials promo" className="relative block h-full w-full">
+            <BannerSlider slides={promoStripSlides} alt="TechPivo Home Essentials promo" {...sliderProps} />
+          </Link>
+        </section>
+        ) : (
         <section
           className="rounded-2xl overflow-hidden p-6 md:p-8 text-[#0F172A] relative"
-          style={promoImg
-            ? { background: `linear-gradient(100deg, rgba(15,23,42,0.88) 20%, rgba(15,23,42,0.45) 60%, rgba(15,23,42,0.15) 100%), url(${promoImg}) center/cover no-repeat` }
-            : { background: "linear-gradient(120deg, #F59E0B 0%, #F97316 55%, #EF4444 100%)" }}
+          style={{ background: "linear-gradient(120deg, #F59E0B 0%, #F97316 55%, #EF4444 100%)" }}
         >
           <div className="grid grid-cols-1 md:grid-cols-12 gap-5 items-center">
             <div className="md:col-span-3 flex items-center justify-center">
@@ -1161,7 +1189,7 @@ export function MarketplaceHome() {
             </div>
           </div>
         </section>
-        )}
+        ))}
 
         {/* brands — live catalog brands only, with loading skeleton */}
         {!loaded ? (
