@@ -30,27 +30,73 @@ function ShowcaseCard({ p, onAdd, added, wished, onWish }: { p: DemoProduct } & 
   const href = /^[0-9a-f-]{36}$/i.test(p.id) ? `/marketplace/product/${p.id}` : undefined
   const flipCompare = () => setCompared((m) => ({ ...m, [p.id]: toggleCompareStored(p.id) }))
 
+  const iconBtn =
+    "flex h-9 w-9 items-center justify-center rounded-full bg-white/95 text-slate-500 shadow-[0_4px_16px_rgba(15,23,42,0.18)] backdrop-blur-sm transition-all hover:scale-105 hover:text-[#0F172A] focus-visible:outline-2 focus-visible:outline-[#F59E0B] active:scale-95"
   return (
-    <div className="flex w-44 shrink-0 snap-start flex-col bg-white rounded-xl border border-[#E5E7EB] p-3 sm:w-52">
+    <div className="group flex w-44 shrink-0 snap-start flex-col bg-white rounded-xl border border-[#E5E7EB] p-3 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_12px_32px_-12px_rgba(15,23,42,0.25)] sm:w-52">
       <div className="relative aspect-square w-full overflow-hidden rounded-lg bg-white">
         {href ? (
           <Link href={href} aria-label={p.name} className="block h-full w-full p-3">
             {p.image ? (
-              <img src={marketImage(p.image)} alt={p.name} loading="lazy" decoding="async" className="h-full w-full object-contain" />
+              <img src={marketImage(p.image)} alt={p.name} loading="lazy" decoding="async" className="h-full w-full object-contain transition-transform duration-500 group-hover:scale-105" />
             ) : null}
           </Link>
         ) : (
           <div className="h-full w-full p-3">
             {p.image ? (
-              <img src={marketImage(p.image)} alt={p.name} loading="lazy" decoding="async" className="h-full w-full object-contain" />
+              <img src={marketImage(p.image)} alt={p.name} loading="lazy" decoding="async" className="h-full w-full object-contain transition-transform duration-500 group-hover:scale-105" />
             ) : null}
           </div>
         )}
         {pct > 0 && (
-          <span className="absolute right-1.5 top-1.5 flex h-10 w-10 items-center justify-center rounded-full bg-[#F59E0B] text-[11px] font-extrabold text-[#0F172A] shadow-sm">
+          <span className="absolute left-1.5 top-1.5 flex h-10 w-10 items-center justify-center rounded-full bg-[#F59E0B] text-[11px] font-extrabold text-[#0F172A] shadow-sm">
             -{pct}%
           </span>
         )}
+        {/* hover icon rail — wishlist / quick view / compare */}
+        <div className="absolute right-1.5 top-1.5 z-10 flex flex-col gap-1.5 opacity-0 translate-y-1 transition-all duration-300 group-hover:translate-y-0 group-hover:opacity-100 group-focus-within:translate-y-0 group-focus-within:opacity-100 max-md:translate-y-0 max-md:opacity-100">
+          <button
+            type="button"
+            onClick={() => onWish(p.id)}
+            aria-label={wished[p.id] ? "Remove from wishlist" : "Add to wishlist"}
+            aria-pressed={!!wished[p.id]}
+            title="Wishlist"
+            className={`${iconBtn} ${wished[p.id] ? "!bg-[#EF4444] !text-white" : "hover:!text-[#EF4444]"}`}
+          >
+            <Heart className={`h-4 w-4 ${wished[p.id] ? "fill-current" : ""}`} />
+          </button>
+          {href && (
+            <button
+              type="button"
+              onClick={() => openQuickView(p.id)}
+              aria-label={`Quick view ${p.name}`}
+              title="Quick view"
+              className={iconBtn}
+            >
+              <Eye className="h-4 w-4" />
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={flipCompare}
+            aria-label={compared[p.id] ? "Remove from compare" : "Add to compare"}
+            aria-pressed={!!compared[p.id]}
+            title="Compare"
+            className={`${iconBtn} ${compared[p.id] ? "!bg-[#0F172A] !text-white" : ""}`}
+          >
+            <ArrowLeftRight className="h-4 w-4" />
+          </button>
+        </div>
+        {/* slide-up add to cart (desktop hover) */}
+        <div className="absolute inset-x-2 bottom-2 z-10 translate-y-[130%] transition-transform duration-300 ease-out group-hover:translate-y-0 group-focus-within:translate-y-0 max-md:hidden">
+          <button
+            type="button"
+            onClick={() => onAdd(p)}
+            className={`flex w-full items-center justify-center gap-1.5 rounded-lg py-2.5 text-xs font-bold shadow-[0_8px_24px_rgba(15,23,42,0.3)] backdrop-blur-sm transition-colors active:scale-[0.99] ${added[p.id] ? "bg-[#0B0F19]/95 text-white" : "bg-[#0F172A]/95 text-white hover:bg-[#F59E0B] hover:text-[#0F172A]"}`}
+          >
+            {added[p.id] ? <><Check className="h-3.5 w-3.5" strokeWidth={3} /> Added</> : <><ShoppingCart className="h-3.5 w-3.5" /> Add to Cart</>}
+          </button>
+        </div>
       </div>
       <div className="mt-2 flex flex-1 flex-col gap-1">
         {href ? (
@@ -70,49 +116,15 @@ function ShowcaseCard({ p, onAdd, added, wished, onWish }: { p: DemoProduct } & 
             <MarketPrice usd={p.oldPrice} className="text-xs tabular-nums text-slate-400 line-through" />
           )}
         </div>
-        <div className="mt-1.5 flex items-center gap-1.5">
-          <button
-            type="button"
-            onClick={() => onAdd(p)}
-            aria-label={added[p.id] ? "Added to cart" : `Add ${p.name} to cart`}
-            title={added[p.id] ? "Added to cart" : "Add to cart"}
-            className={`flex flex-1 items-center justify-center gap-1 rounded-lg py-2 text-xs font-bold transition-colors ${added[p.id] ? "bg-[#10B981] text-white" : "bg-slate-100 text-[#0F172A] hover:bg-[#F59E0B]"}`}
-          >
-            {added[p.id] ? <Check className="h-3.5 w-3.5" /> : <ShoppingCart className="h-3.5 w-3.5" />}
-            <span className="hidden sm:inline">{added[p.id] ? "Added" : "Add to cart"}</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => onWish(p.id)}
-            aria-label={wished[p.id] ? "Remove from wishlist" : "Add to wishlist"}
-            aria-pressed={!!wished[p.id]}
-            title="Wishlist"
-            className={`flex h-8 w-8 items-center justify-center rounded-lg border transition-colors ${wished[p.id] ? "border-[#EF4444] bg-[#EF4444] text-white" : "border-[#E5E7EB] text-slate-500 hover:text-[#EF4444]"}`}
-          >
-            <Heart className={`h-3.5 w-3.5 ${wished[p.id] ? "fill-current" : ""}`} />
-          </button>
-          <button
-            type="button"
-            onClick={flipCompare}
-            aria-label={compared[p.id] ? "Remove from compare" : "Add to compare"}
-            aria-pressed={!!compared[p.id]}
-            title="Compare"
-            className={`flex h-8 w-8 items-center justify-center rounded-lg border transition-colors ${compared[p.id] ? "border-[#0F172A] bg-[#0F172A] text-white" : "border-[#E5E7EB] text-slate-500 hover:text-[#0F172A]"}`}
-          >
-            <ArrowLeftRight className="h-3.5 w-3.5" />
-          </button>
-          {href && (
-            <button
-              type="button"
-              onClick={() => openQuickView(p.id)}
-              aria-label={`Quick view ${p.name}`}
-              title="Quick view"
-              className="flex h-8 w-8 items-center justify-center rounded-lg border border-[#E5E7EB] text-slate-500 transition-colors hover:text-[#0F172A]"
-            >
-              <Eye className="h-3.5 w-3.5" />
-            </button>
-          )}
-        </div>
+        {/* mobile add to cart — the slide-up button covers desktop */}
+        <button
+          type="button"
+          onClick={() => onAdd(p)}
+          aria-label={added[p.id] ? "Added to cart" : `Add ${p.name} to cart`}
+          className={`mt-2 flex w-full items-center justify-center gap-1.5 rounded-lg py-2 text-xs font-bold transition-colors active:scale-[0.99] md:hidden ${added[p.id] ? "bg-[#0B0F19] text-white" : "bg-[#F6F7F9] text-[#0F172A] active:bg-[#F59E0B]"}`}
+        >
+          {added[p.id] ? <><Check className="h-3.5 w-3.5" strokeWidth={3} /> Added</> : <><ShoppingCart className="h-3.5 w-3.5" /> Add to Cart</>}
+        </button>
       </div>
     </div>
   )
