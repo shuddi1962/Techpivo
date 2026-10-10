@@ -357,6 +357,12 @@ export function MarketplaceHeader({
                 <span className="absolute -top-0.5 -right-0.5 bg-[#0F172A] text-white text-[10px] min-w-5 h-5 px-1 rounded-full flex items-center justify-center font-bold">{compareIds.length}</span>
               )}
             </Link>
+            <Link href="/marketplace/cart" aria-label={`Your basket, ${shownCartCount} item${shownCartCount === 1 ? "" : "s"}`} className="relative p-2 rounded-full hover:bg-slate-100 flex items-center justify-center">
+              <ShoppingBasket className="h-6 w-6 text-slate-600" />
+              {shownCartCount > 0 && (
+                <span className="absolute -top-0.5 -right-0.5 bg-[#F59E0B] text-[#0F172A] text-[10px] min-w-5 h-5 px-1 rounded-full flex items-center justify-center font-bold tabular-nums">{shownCartCount}</span>
+              )}
+            </Link>
             <div className="h-8 w-px bg-[#E2E8F0] hidden sm:block" />
             <Link href={acctName ? "/marketplace/account" : "/login"} className="hidden sm:flex items-center gap-2 hover:opacity-90 p-1" aria-label={acctName ? `My marketplace account (${acctName})` : "Sign in"}>
               <span className="w-8 h-8 rounded-full bg-[#23272E] flex items-center justify-center shrink-0 overflow-hidden">
@@ -375,12 +381,6 @@ export function MarketplaceHeader({
               </span>
             </Link>
             <div className="h-8 w-px bg-[#E2E8F0] hidden sm:block" />
-            <Link href="/marketplace/cart" aria-label={`Your basket, ${shownCartCount} item${shownCartCount === 1 ? "" : "s"}`} className="relative p-2 rounded-full hover:bg-slate-100 flex items-center justify-center">
-              <ShoppingBasket className="h-6 w-6 text-slate-600" />
-              {shownCartCount > 0 && (
-                <span className="absolute -top-0.5 -right-0.5 bg-[#F59E0B] text-[#0F172A] text-[10px] min-w-5 h-5 px-1 rounded-full flex items-center justify-center font-bold tabular-nums">{shownCartCount}</span>
-              )}
-            </Link>
             <button
               className="md:hidden p-2 rounded-lg border border-[#E2E8F0] text-[#0F172A]"
               onClick={() => setOpen((v) => !v)}
