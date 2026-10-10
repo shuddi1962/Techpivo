@@ -752,7 +752,7 @@ export function MarketplaceHome() {
         <section className="-mt-6 sm:-mt-8 w-[100vw] ml-[calc(50%-50vw)] pl-3 sm:pl-5">
         <div className="grid w-full grid-cols-1 lg:grid-cols-12 gap-4 items-stretch">
         {!loaded ? (
-          <div className="lg:col-span-8 rounded-none bg-white shadow-sm h-[400px] animate-pulse" aria-hidden>
+          <div className="lg:col-span-8 rounded-none bg-white shadow-sm h-[320px] animate-pulse" aria-hidden>
             <div className="h-full w-full bg-slate-100" />
           </div>
         ) : banners.hero_image ? (
@@ -769,10 +769,10 @@ export function MarketplaceHome() {
             </Link>
           </div>
         ) : (
-          <div className="lg:col-span-8 rounded-none relative overflow-hidden text-white min-h-[400px] flex items-center" style={{ background: MARKETPLACE_BRAND.navy }}>
+          <div className="lg:col-span-8 rounded-none relative overflow-hidden text-white min-h-[320px] flex items-center" style={{ background: MARKETPLACE_BRAND.navy }}>
             <div className="absolute -right-16 -top-16 w-72 h-72 rounded-full bg-[#F59E0B]/10 blur-3xl pointer-events-none" />
             <div className="relative z-10 flex w-full flex-wrap items-center gap-x-6 gap-y-3 px-5 md:px-8 py-6">
-              <div className="hidden sm:block h-48 w-48 shrink-0 overflow-hidden rounded-2xl bg-white/5">
+              <div className="hidden sm:block h-40 w-40 shrink-0 overflow-hidden rounded-2xl bg-white/5">
                 <img src={heroImg} alt="" loading="eager" decoding="async" className="h-full w-full object-cover" />
               </div>
               <div className="min-w-0 flex-1">
@@ -796,7 +796,7 @@ export function MarketplaceHome() {
           <div className="lg:col-span-4 flex flex-col gap-4">
             <Link
               href="/marketplace/deals"
-              className="group relative flex-1 overflow-hidden rounded-none p-4 text-white shadow-sm transition-shadow hover:shadow-md min-h-[192px] flex items-center gap-3"
+              className="group relative flex-1 overflow-hidden rounded-none p-4 text-white shadow-sm transition-shadow hover:shadow-md min-h-[152px] flex items-center gap-3"
               style={{ background: "linear-gradient(150deg, #DC2626 0%, #991B1B 100%)" }}
             >
               <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-white/20">
@@ -810,7 +810,7 @@ export function MarketplaceHome() {
             </Link>
             <Link
               href="/marketplace/new-arrivals"
-              className="group relative flex-1 overflow-hidden rounded-none p-4 text-white shadow-sm transition-shadow hover:shadow-md min-h-[192px] flex items-center gap-3"
+              className="group relative flex-1 overflow-hidden rounded-none p-4 text-white shadow-sm transition-shadow hover:shadow-md min-h-[152px] flex items-center gap-3"
               style={{ background: "linear-gradient(150deg, #F59E0B 0%, #F97316 100%)" }}
             >
               <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-black/20">
