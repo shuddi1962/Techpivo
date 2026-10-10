@@ -152,6 +152,11 @@ export interface MarketBanners {
   /** Visual theme + card width. */
   popup_style: PopupStyle
   popup_size: PopupSize
+  /** card = writeup card; banner = uploaded image only (no text). */
+  popup_mode: PopupMode
+  /** How often a shopper sees it: every visit, once per tab session,
+      once a day, or once a week (remembered on their device). */
+  popup_frequency: PopupFrequency
   shop_image: string
   deals_image: string
   best_sellers_image: string
@@ -220,6 +225,8 @@ export const EMPTY_BANNERS: MarketBanners = {
   popup_show_dismiss: true,
   popup_style: "dark",
   popup_size: "md",
+  popup_mode: "card",
+  popup_frequency: "every",
   shop_image: "",
   deals_image: "",
   best_sellers_image: "",
@@ -554,6 +561,8 @@ export function parseBanners(raw: unknown): MarketBanners {
     popup_show_dismiss: typeof r.popup_show_dismiss === "boolean" ? r.popup_show_dismiss : true,
     popup_style: (POPUP_STYLES.some((s) => s.id === r.popup_style) ? r.popup_style : "dark") as PopupStyle,
     popup_size: (POPUP_SIZES.some((s) => s.id === r.popup_size) ? r.popup_size : "md") as PopupSize,
+    popup_mode: (POPUP_MODES.some((m) => m.id === r.popup_mode) ? r.popup_mode : "card") as PopupMode,
+    popup_frequency: (POPUP_FREQUENCIES.some((f) => f.id === r.popup_frequency) ? r.popup_frequency : "every") as PopupFrequency,
     shop_image,
     deals_image,
     best_sellers_image,
@@ -685,6 +694,22 @@ export const POPUP_SIZES = [
 ] as const
 
 export type PopupSize = (typeof POPUP_SIZES)[number]["id"]
+
+export const POPUP_MODES = [
+  { id: "card", label: "Card — image + writeup + buttons" },
+  { id: "banner", label: "Banner — your uploaded image only" },
+] as const
+
+export type PopupMode = (typeof POPUP_MODES)[number]["id"]
+
+export const POPUP_FREQUENCIES = [
+  { id: "every", label: "Every visit" },
+  { id: "session", label: "Once per session (per tab)" },
+  { id: "daily", label: "Once a day" },
+  { id: "weekly", label: "Once a week" },
+] as const
+
+export type PopupFrequency = (typeof POPUP_FREQUENCIES)[number]["id"]
 
 // Where-can-a-banner-point presets (admin picker; custom URLs allowed).
 export const BANNER_LINK_PRESETS: Array<{ value: string; label: string }> = [

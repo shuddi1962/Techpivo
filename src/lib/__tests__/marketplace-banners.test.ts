@@ -218,6 +218,17 @@ describe("parseBanners slider settings", () => {
     expect(b.popup_size).toBe("md")
   })
 
+  it("parses popup mode and frequency with safe fallbacks", () => {
+    expect(parseBanners({}).popup_mode).toBe("card")
+    expect(parseBanners({}).popup_frequency).toBe("every")
+    const b = parseBanners({ popup_mode: "banner", popup_frequency: "daily" })
+    expect(b.popup_mode).toBe("banner")
+    expect(b.popup_frequency).toBe("daily")
+    const bad = parseBanners({ popup_mode: "video", popup_frequency: "hourly" })
+    expect(bad.popup_mode).toBe("card")
+    expect(bad.popup_frequency).toBe("every")
+  })
+
   it("EMPTY_BANNERS stays a valid single-image config", () => {
     expect(EMPTY_BANNERS.slider_transition).toBe("fade")
     expect(slidesOf(EMPTY_BANNERS.hero_image, EMPTY_BANNERS.hero_slides)).toEqual([])

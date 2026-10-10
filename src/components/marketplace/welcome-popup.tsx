@@ -56,6 +56,37 @@ export function WelcomePopupCard({
   const t = THEMES[b.popup_style] || THEMES.dark
   const size = b.popup_size === "sm" ? "max-w-sm" : b.popup_size === "lg" ? "max-w-lg" : "max-w-md"
   const hasImage = b.popup_image.trim().length > 0
+  // Banner mode: the uploaded image IS the popup — no writeup, no
+  // buttons. The whole banner opens the button link; X closes it.
+  if (b.popup_mode === "banner" && hasImage) {
+    const body = (
+      <>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={b.popup_image.trim()} alt={b.popup_title || "Special offer"} className="block w-full object-cover" />
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label="Close popup"
+          className="absolute right-3 top-3 flex h-8 w-8 items-center justify-center rounded-full bg-black/45 text-white backdrop-blur-sm transition-colors hover:bg-black/70"
+        >
+          <X className="h-4 w-4" />
+        </button>
+      </>
+    )
+    return (
+      <div className={`relative w-full ${size} overflow-hidden rounded-2xl bg-white shadow-2xl`}>
+        {preview ? (
+          <div onClick={onClose} role="button" tabIndex={0} aria-label={b.popup_title || "Special offer"} className="block w-full cursor-pointer">
+            {body}
+          </div>
+        ) : (
+          <Link href={b.popup_cta_link} onClick={onClose} aria-label={b.popup_title || "Special offer"} className="block">
+            {body}
+          </Link>
+        )}
+      </div>
+    )
+  }
   const showHeader =
     (b.popup_show_kicker && b.popup_kicker.trim()) || (b.popup_show_title && b.popup_title) || (b.popup_show_message && b.popup_message)
   const showPoints = b.popup_show_points && b.popup_points.length > 0

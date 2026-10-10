@@ -15,6 +15,8 @@ import {
   SIDEBAR_BANNER_DIMS,
   DEFAULT_SLOT_SLIDER,
   EMPTY_BANNERS,
+  POPUP_FREQUENCIES,
+  POPUP_MODES,
   POPUP_SIZES,
   POPUP_STYLES,
   SLIDER_EASINGS,
@@ -25,6 +27,8 @@ import {
   type BannerSlide,
   type BannerTransition,
   type MarketBanners,
+  type PopupFrequency,
+  type PopupMode,
   type PopupSize,
   type PopupStyle,
   type SliderEasing,
@@ -947,8 +951,39 @@ export function MarketplaceBannersTab() {
           </span>
         </label>
         <div className="rounded-xl border bg-white p-4">
-          <p className="text-sm font-bold text-slate-900">Popup image (optional)</p>
-          <p className="text-[11px] text-slate-500">Wide art shown above the title — 800 × 320 px. Empty = gradient header only.</p>
+          <p className="text-sm font-bold text-slate-900">Popup style — two ways to show it</p>
+          <div className="mt-2 grid gap-2 sm:grid-cols-2">
+            {POPUP_MODES.map((m) => {
+              const active = banners.popup_mode === m.id
+              return (
+                <button
+                  key={m.id}
+                  type="button"
+                  onClick={() => setBanners((b) => ({ ...b, popup_mode: m.id as PopupMode }))}
+                  aria-pressed={active}
+                  className={`rounded-xl border-2 p-3 text-left transition-colors ${active ? "border-[#F59E0B] bg-amber-50/60" : "border-[#E2E8F0] hover:border-slate-300"}`}
+                >
+                  <span className="block text-sm font-extrabold text-slate-900">
+                    {m.id === "card" ? "Card popup" : "Banner popup"}
+                  </span>
+                  <span className="mt-0.5 block text-[11px] leading-snug text-slate-500">
+                    {m.id === "card"
+                      ? "Image (optional) + badge, title, message, points + buttons."
+                      : "Your uploaded banner fills the whole popup — no text, no buttons. It opens the button link."}
+                  </span>
+                </button>
+              )
+            })}
+          </div>
+          {banners.popup_mode === "banner" && !banners.popup_image.trim() && (
+            <p className="mt-2 rounded-lg bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-700">
+              Upload a banner image below — banner mode falls back to the card until an image is set.
+            </p>
+          )}
+        </div>
+        <div className="rounded-xl border bg-white p-4">
+          <p className="text-sm font-bold text-slate-900">Popup image {banners.popup_mode === "banner" ? "(required for banner mode)" : "(optional)"}</p>
+          <p className="text-[11px] text-slate-500">Wide art — 800 × 320 px for the card header, any portrait or square art for banner mode. Empty = gradient header only.</p>
           <div className="mt-2 flex gap-2">
             <input
               value={banners.popup_image}
@@ -1111,8 +1146,21 @@ export function MarketplaceBannersTab() {
           )}
         </div>
         <div className="rounded-xl border bg-white p-4">
-          <p className="text-sm font-bold text-slate-900">Timing</p>
-          <div className="mt-2 grid gap-2.5 sm:grid-cols-2">
+          <p className="text-sm font-bold text-slate-900">Timing — don&apos;t bore the shopper</p>
+          <label className="mt-2 block">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Show it…</span>
+            <select
+              value={banners.popup_frequency}
+              onChange={(e) => setBanners((b) => ({ ...b, popup_frequency: e.target.value as PopupFrequency }))}
+              className={`${inputCls} mt-1 text-xs`}
+            >
+              {POPUP_FREQUENCIES.map((f) => (
+                <option key={f.id} value={f.id}>{f.label}</option>
+              ))}
+            </select>
+            <span className="text-[11px] text-slate-400">Daily/weekly is remembered on the shopper&apos;s device after they close it.</span>
+          </label>
+          <div className="mt-2.5 grid gap-2.5 sm:grid-cols-2">
             <label className="block">
               <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Show after (seconds)</span>
               <input

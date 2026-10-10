@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { useEffect, useMemo, useRef, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import {
   ArrowLeftRight, ArrowRight, Check, ChevronLeft, ChevronRight, Eye, Flame,
   Heart, Package, ShoppingCart, ShieldCheck, X, Zap,
@@ -188,6 +188,31 @@ function PromoBox({
   )
 }
 
+const POP_FREQ_KEY = "tp_market_popup_v1"
+
+// Frequency cap so shoppers don't see the popup on every refresh:
+// every visit, once per tab session, once a day, or once a week.
+function popupDue(freq: string): boolean {
+  try {
+    if (freq === "every") return true
+    if (freq === "session") return !window.sessionStorage.getItem(POP_FREQ_KEY)
+    const last = Number(window.localStorage.getItem(POP_FREQ_KEY) || 0)
+    const gap = freq === "weekly" ? 7 * 86400000 : 86400000
+    return Date.now() - last > gap
+  } catch {
+    return true
+  }
+}
+
+function stampPopup(freq: string) {
+  try {
+    if (freq === "session") window.sessionStorage.setItem(POP_FREQ_KEY, "1")
+    else window.localStorage.setItem(POP_FREQ_KEY, String(Date.now()))
+  } catch {
+    // private mode — popup simply shows again next visit
+  }
+}
+
 function useCountdown() {
   // Single countdown value — never call setState inside another setState
   // updater (impure updaters cascade extra renders under StrictMode).
@@ -291,32 +316,36 @@ export function MarketplaceHome() {
   // intentionally not persisted). Fully driven by Admin → Banners →
   // Welcome popup (on/off, text, image, link, delay + auto-close).
   const [showNotice, setShowNotice] = useState(false)
+  const closeNotice = useCallback(() => {
+    stampPopup(banners.popup_frequency)
+    setShowNotice(false)
+  }, [banners.popup_frequency])
   useEffect(() => {
-    if (banners.popup_enabled === false) return
+    if (banners.popup_enabled === false || !popupDue(banners.popup_frequency)) return
     const t = setTimeout(
       () => setShowNotice(true),
       Math.min(30, Math.max(0, banners.popup_delay_sec)) * 1000
     )
     return () => clearTimeout(t)
-  }, [banners.popup_enabled, banners.popup_delay_sec, bannersReady])
+  }, [banners.popup_enabled, banners.popup_delay_sec, banners.popup_frequency, bannersReady])
   useEffect(() => {
     if (!showNotice) return
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setShowNotice(false)
+      if (e.key === "Escape") closeNotice()
     }
     document.addEventListener("keydown", onKey)
     const prev = document.body.style.overflow
     document.body.style.overflow = "hidden"
     let auto: ReturnType<typeof setTimeout> | null = null
     if (banners.popup_autoclose_sec > 0) {
-      auto = setTimeout(() => setShowNotice(false), banners.popup_autoclose_sec * 1000)
+      auto = setTimeout(() => closeNotice(), banners.popup_autoclose_sec * 1000)
     }
     return () => {
       document.removeEventListener("keydown", onKey)
       document.body.style.overflow = prev
       if (auto) clearTimeout(auto)
     }
-  }, [showNotice, banners.popup_autoclose_sec])
+  }, [showNotice, banners.popup_autoclose_sec, closeNotice])
   // Collection-cover rotation: every 30s the tiles re-deal from each
   // node's own live photos, so covers change on their own over time.
   const [rot, setRot] = useState(0)
@@ -768,10 +797,10 @@ export function MarketplaceHome() {
             <button
               type="button"
               aria-label="Dismiss notice"
-              onClick={() => setShowNotice(false)}
+              onClick={closeNotice}
               className="absolute inset-0 bg-[#0F172A]/60 backdrop-blur-[2px]"
             />
-            <WelcomePopupCard b={banners} onClose={() => setShowNotice(false)} />
+            <WelcomePopupCard b={banners} onClose={closeNotice} />
           </div>
         )}
 
