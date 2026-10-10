@@ -23,6 +23,7 @@ export default async function MarketplaceNewArrivalsPage() {
         title="New Arrivals"
         copy="The newest products to land in the store — be the first to own them."
         image={pageBannerOf(banners, "new_arrivals_image")}
+        links={banners.links}
       />
       <ProductListing products={products} />
     </StorePageShell>

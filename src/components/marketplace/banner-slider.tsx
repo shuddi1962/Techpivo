@@ -1,12 +1,14 @@
 "use client"
 
-import { useCallback, useEffect, useRef, useState, type CSSProperties, type KeyboardEvent } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent } from "react"
 import { ChevronLeft, ChevronRight } from "lucide-react"
 import { marketImage } from "@/lib/marketplace-images"
-import { FX_TRANSITIONS, type BannerTransition } from "@/lib/marketplace-banners"
+import { FX_TRANSITIONS, type BannerSlide, type BannerTransition } from "@/lib/marketplace-banners"
 
 interface BannerSliderProps {
-  slides: string[]
+  // Plain image URLs (legacy) or { image, link } objects — a slide with a
+  // link opens it when clicked; arrows/dots never follow the link.
+  slides: Array<string | BannerSlide>
   alt: string
   transition: BannerTransition
   durationMs: number
@@ -50,7 +52,20 @@ export function BannerSlider({
   fill = "fill",
   className = "",
 }: BannerSliderProps) {
-  const count = slides.length
+  // Normalise once: every slide is { image, link } from here on.
+  const norm = useMemo<BannerSlide[]>(
+    () =>
+      slides
+        .map((s) =>
+          typeof s === "string"
+            ? { image: s.trim(), link: "" }
+            : { image: (s?.image || "").trim(), link: typeof s?.link === "string" ? s.link : "" }
+        )
+        .filter((s) => !!s.image),
+    [slides]
+  )
+  const images = useMemo(() => norm.map((s) => s.image), [norm])
+  const count = norm.length
   const dur = clampDur(durationMs)
   const [reduced, setReduced] = useState(false)
   useEffect(() => {
@@ -107,10 +122,10 @@ export function BannerSlider({
         const from = idxRef.current
         setIdx(t)
         if ((IN_FX as string[]).includes(eff)) {
-          setFx({ out: slides[from], target: t, kind: eff })
+          setFx({ out: images[from], target: t, kind: eff })
         } else {
           setShown(t)
-          setFx({ out: slides[from], target: t, kind: eff })
+          setFx({ out: images[from], target: t, kind: eff })
         }
       } else {
         setExiting(idxRef.current)
@@ -119,7 +134,7 @@ export function BannerSlider({
         exitTimer.current = window.setTimeout(() => setExiting(null), dur)
       }
     },
-    [count, eff, slides, dur]
+    [count, eff, images, dur]
   )
   const goRef = useRef(go)
   goRef.current = go
@@ -142,8 +157,8 @@ export function BannerSlider({
   useEffect(() => {
     if (count < 2) return
     const im = new Image()
-    im.src = marketImage(slides[(shown + 1) % count])
-  }, [shown, slides, count])
+    im.src = marketImage(images[(shown + 1) % count])
+  }, [shown, images, count])
 
   if (count === 0) return null
 
@@ -220,7 +235,7 @@ export function BannerSlider({
     }
   }
 
-  const onKey = (e: KeyboardEvent<HTMLDivElement>) => {
+  const onKey = (e: KeyboardEvent<HTMLElement>) => {
     if (e.key === "ArrowLeft") go(idx - 1)
     else if (e.key === "ArrowRight") go(idx + 1)
     else if (e.key === "Home") go(0)
@@ -234,12 +249,12 @@ export function BannerSlider({
     touch.current = { x: e.touches[0].clientX, y: e.touches[0].clientY }
   }
 
-  // Single image: static banner, no chrome at all.
+  // Single image: static banner, no chrome at all (clickable when linked).
   if (count === 1) {
-    return (
+    const img = (
       // eslint-disable-next-line @next/next/no-img-element
       <img
-        src={marketImage(slides[0])}
+        src={marketImage(images[0])}
         alt={alt}
         loading="eager"
         decoding="async"
@@ -251,37 +266,40 @@ export function BannerSlider({
         }
       />
     )
+    if (!norm[0].link) return img
+    const external = /^https?:\/\//i.test(norm[0].link)
+    return (
+      <a
+        href={norm[0].link}
+        aria-label={alt}
+        className={fill === "fill" ? `absolute inset-0 block ${className}` : `block w-full ${className}`}
+        {...(external ? { target: "_blank", rel: "noopener sponsored" } : {})}
+      >
+        {img}
+      </a>
+    )
   }
 
   const inFxActive = fx && (IN_FX as string[]).includes(fx.kind)
-  const baseSrc = inFxActive && fx ? fx.out : slides[shown]
+  const baseSrc = inFxActive && fx ? fx.out : images[shown]
+  // The whole banner links to the incoming slide's destination ("" =
+  // plain div, not clickable). Controls stop() so they never follow it.
+  const activeLink = norm[idx]?.link || ""
+  const external = /^https?:\/\//i.test(activeLink)
+  const frameProps = {
+    className: fill === "fill" ? `absolute inset-0 ${className}` : `relative w-full ${className}`,
+    role: "region" as const,
+    "aria-roledescription": "carousel",
+    "aria-label": `${alt} — banner ${idx + 1} of ${count}`,
+    tabIndex: 0,
+    onKeyDown: onKey,
+    onMouseEnter: () => setPaused(true),
+    onMouseLeave: () => setPaused(false),
+    onTouchStart: touchStart,
+  }
 
-  return (
-    <div
-      className={fill === "fill" ? `absolute inset-0 ${className}` : `relative w-full ${className}`}
-      role="region"
-      aria-roledescription="carousel"
-      aria-label={`${alt} — banner ${idx + 1} of ${count}`}
-      tabIndex={0}
-      onKeyDown={onKey}
-      onMouseEnter={() => setPaused(true)}
-      onMouseLeave={() => setPaused(false)}
-      onTouchStart={touchStart}
-      onTouchMove={(e) => {
-        const s = touch.current
-        if (!s) return
-        const dx = e.touches[0].clientX - s.x
-        const dy = e.touches[0].clientY - s.y
-        if (Math.abs(dx) > 40 && Math.abs(dx) > Math.abs(dy)) {
-          go(idx + (dx < 0 ? 1 : -1))
-          touch.current = null
-        }
-      }}
-      onTouchEnd={() => {
-        touch.current = null
-        setPaused(false)
-      }}
-    >
+  const frameBody = (
+    <>
       {fx ? (
         // Overlay transition running: one static base + the fx layer.
         // eslint-disable-next-line @next/next/no-img-element
@@ -293,11 +311,11 @@ export function BannerSlider({
           className="absolute inset-0 block h-full w-full object-cover"
         />
       ) : (
-        slides.map((src, i) => (
+        norm.map((s, i) => (
           // eslint-disable-next-line @next/next/no-img-element
           <img
-            key={`${i}-${src}`}
-            src={marketImage(src)}
+            key={`${i}-${s.image}`}
+            src={marketImage(s.image)}
             alt={i === 0 ? alt : ""}
             aria-hidden={i === 0 ? undefined : true}
             loading={i <= 1 ? "eager" : "lazy"}
@@ -314,13 +332,19 @@ export function BannerSlider({
         <FxOverlay
           key={`${fx.target}-${fx.kind}`}
           outSrc={fx.out}
-          inSrc={slides[fx.target]}
+          inSrc={images[fx.target]}
           kind={fx.kind}
           durationMs={dur}
           easingCss={easingCss}
           onDone={commitFx}
         />
       )}
+    </>
+  )
+
+  // Controls + indicators (shared by the linked and plain frames).
+  const chrome = (
+    <>
       <span className="sr-only" aria-live="polite">
         Banner {idx + 1} of {count}
       </span>
@@ -356,9 +380,9 @@ export function BannerSlider({
             thumbs ? "right-2 top-2" : "bottom-2 left-1/2 -translate-x-1/2"
           }`}
         >
-          {slides.map((src, i) => (
+          {norm.map((s, i) => (
             <button
-              key={`${i}-${src}`}
+              key={`${i}-${s.image}`}
               type="button"
               aria-label={`Go to banner ${i + 1}`}
               aria-current={i === idx}
@@ -375,9 +399,9 @@ export function BannerSlider({
       )}
       {thumbs && (
         <div className="absolute bottom-2 left-1/2 z-30 flex max-w-[90%] -translate-x-1/2 items-center gap-1 overflow-hidden">
-          {slides.map((src, i) => (
+          {norm.map((s, i) => (
             <button
-              key={`${i}-${src}`}
+              key={`${i}-${s.image}`}
               type="button"
               aria-label={`Go to banner ${i + 1}`}
               aria-current={i === idx}
@@ -390,7 +414,7 @@ export function BannerSlider({
               }`}
             >
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={marketImage(src)} alt="" aria-hidden draggable={false} className="block h-full w-full object-cover" />
+              <img src={marketImage(s.image)} alt="" aria-hidden draggable={false} className="block h-full w-full object-cover" />
             </button>
           ))}
         </div>
@@ -406,6 +430,44 @@ export function BannerSlider({
           }}
         />
       )}
+    </>
+  )
+
+  const swipeProps = {
+    onTouchMove: (e: React.TouchEvent) => {
+      const s = touch.current
+      if (!s) return
+      const dx = e.touches[0].clientX - s.x
+      const dy = e.touches[0].clientY - s.y
+      if (Math.abs(dx) > 40 && Math.abs(dx) > Math.abs(dy)) {
+        go(idx + (dx < 0 ? 1 : -1))
+        touch.current = null
+      }
+    },
+    onTouchEnd: () => {
+      touch.current = null
+      setPaused(false)
+    },
+  }
+
+  if (activeLink) {
+    return (
+      <a
+        href={activeLink}
+        {...(external ? { target: "_blank", rel: "noopener sponsored" } : {})}
+        {...frameProps}
+        {...swipeProps}
+        className={`${frameProps.className} block`}
+      >
+        {frameBody}
+        {chrome}
+      </a>
+    )
+  }
+  return (
+    <div {...frameProps} {...swipeProps}>
+      {frameBody}
+      {chrome}
     </div>
   )
 }

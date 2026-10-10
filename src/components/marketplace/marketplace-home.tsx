@@ -14,7 +14,7 @@ import { openCartPopup, openQuickView } from "@/lib/marketplace-events"
 import {
   MARKETPLACE_BRAND, MARKETPLACE_HERO, supplierDisplayName, type DemoProduct,
 } from "@/lib/marketplace"
-import { EMPTY_BANNERS, parseBanners, slidesOf, easingCss, type MarketBanners } from "@/lib/marketplace-banners"
+import { EMPTY_BANNERS, parseBanners, slidesOfObjects, slotSliderProps, type MarketBanners } from "@/lib/marketplace-banners"
 import { MARKET_DEPARTMENTS } from "@/lib/marketplace-categories"
 import { marketImage, cleanSupplierText } from "@/lib/marketplace-images"
 import { readCompare, toggleCompareStored } from "@/lib/marketplace-compare"
@@ -491,23 +491,22 @@ export function MarketplaceHome() {
   }, [dbProducts, deptOf])
 
   const heroImg = banners.hero_image || MARKETPLACE_HERO.image
-  // Banner slides per slot: cover first, then extra admin uploads.
-  // Any save in Admin re-renders these instantly (realtime).
-  const sliderProps = {
-    transition: banners.slider_transition,
-    durationMs: banners.slider_duration,
-    easingCss: easingCss(banners.slider_easing),
-    autoplay: banners.slider_autoplay !== false,
-    intervalSec: banners.slider_interval,
-    showArrows: banners.slider_arrows !== false,
-    showDots: banners.slider_dots !== false,
-    showProgress: banners.slider_progress !== false,
-    showThumbs: banners.slider_thumbs === true,
-  }
-  const heroSlides = slidesOf(banners.hero_image, banners.hero_slides)
-  const promoStripSlides = slidesOf(banners.promo_image, banners.promo_slides)
-  const dealsSlides = slidesOf(banners.promo_deals_image, banners.promo_deals_slides)
-  const newSlides = slidesOf(banners.promo_new_image, banners.promo_new_slides)
+  // Banner slides per slot: cover first, then extra admin uploads, each
+  // with its own destination link. Every slot slides with its OWN
+  // animation settings (Admin → Marketplace → Banners). Any save there
+  // re-renders these instantly (realtime).
+  const heroSlides = slidesOfObjects(banners.hero_image, banners.hero_slides, banners.links)
+  const promoStripSlides = slidesOfObjects(banners.promo_image, banners.promo_slides, banners.links)
+  const dealsSlides = slidesOfObjects(banners.promo_deals_image, banners.promo_deals_slides, banners.links)
+  const newSlides = slidesOfObjects(banners.promo_new_image, banners.promo_new_slides, banners.links)
+  const strip1Slides = slidesOfObjects(banners.strip1_image, banners.strip1_slides, banners.links)
+  const strip2Slides = slidesOfObjects(banners.strip2_image, banners.strip2_slides, banners.links)
+  const heroProps = slotSliderProps(banners, "hero_slides")
+  const promoStripProps = slotSliderProps(banners, "promo_slides")
+  const dealsProps = slotSliderProps(banners, "promo_deals_slides")
+  const newProps = slotSliderProps(banners, "promo_new_slides")
+  const strip1Props = slotSliderProps(banners, "strip1_slides")
+  const strip2Props = slotSliderProps(banners, "strip2_slides")
 
   // Shop By Collections: a curated 12 — the 5 departments plus the 7
   // subcategories closest to a classic marketplace mix. Real nodes only.
@@ -777,9 +776,9 @@ export function MarketplaceHome() {
           </div>
         ) : heroSlides.length > 0 ? (
           <div className="lg:col-span-2 overflow-hidden rounded-none bg-white shadow-sm aspect-[16/10] sm:aspect-[21/9] lg:aspect-auto lg:h-full">
-            <Link href="#trending" aria-label="Shop TechPivo Market" className="relative block h-full w-full">
-              <BannerSlider slides={heroSlides} alt="TechPivo Market — shop the collection" {...sliderProps} />
-            </Link>
+            <div className="relative block h-full w-full">
+              <BannerSlider slides={heroSlides} alt="TechPivo Market — shop the collection" {...heroProps} />
+            </div>
           </div>
         ) : (
           <div className="lg:col-span-2 rounded-none relative overflow-hidden text-white min-h-[280px] lg:min-h-0 lg:h-full flex items-center" style={{ background: MARKETPLACE_BRAND.navy }}>
@@ -815,9 +814,9 @@ export function MarketplaceHome() {
             >
               {dealsSlides.length > 0 ? (
                 // Uploaded banner(s) show clean — no overlay text, icons or
-                // buttons. Multiple uploads auto-slide with the transition
-                // picked in Admin → Marketplace → Banners.
-                <BannerSlider slides={dealsSlides} alt="Mega Deal — up to 50% off" {...sliderProps} />
+                // buttons — each opening its own link. Multiple uploads
+                // slide with this slot's own settings (Admin → Banners).
+                <BannerSlider slides={dealsSlides} alt="Mega Deal — up to 50% off" {...dealsProps} />
               ) : (
                 <>
                   <span className="relative flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-white/20">
@@ -839,9 +838,9 @@ export function MarketplaceHome() {
             >
               {newSlides.length > 0 ? (
                 // Uploaded banner(s) show clean — no overlay text, icons or
-                // buttons. Multiple uploads auto-slide with the transition
-                // picked in Admin → Marketplace → Banners.
-                <BannerSlider slides={newSlides} alt="New Season Tech Drop" {...sliderProps} />
+                // buttons — each opening its own link. Multiple uploads
+                // slide with this slot's own settings (Admin → Banners).
+                <BannerSlider slides={newSlides} alt="New Season Tech Drop" {...newProps} />
               ) : (
                 <>
                   <span className="relative flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-black/20">
@@ -1074,6 +1073,14 @@ export function MarketplaceHome() {
           )
         })()}
 
+        {/* in-feed strip 1 — slim full-width banner between Trending Now
+            and the department showcases. Hidden entirely when empty. */}
+        {strip1Slides.length > 0 && (
+          <section aria-label="Featured promotion" className="relative h-[92px] sm:h-[120px] overflow-hidden rounded-2xl shadow-sm">
+            <BannerSlider slides={strip1Slides} alt="Featured promotion" {...strip1Props} />
+          </section>
+        )}
+
         {/* department showcases — top departments by live stock, each with
             subcategory pills, a photo promo banner, and its own distinct products */}
         {loaded ? showcases.map(({ dep, nav, items }) => (
@@ -1090,6 +1097,14 @@ export function MarketplaceHome() {
             onWish={toggleWish}
           />
         )) : null}
+
+        {/* in-feed strip 2 — slim full-width banner between the department
+            showcases and Top Stores. Hidden entirely when empty. */}
+        {strip2Slides.length > 0 && (
+          <section aria-label="Special offer" className="relative h-[92px] sm:h-[120px] overflow-hidden rounded-2xl shadow-sm">
+            <BannerSlider slides={strip2Slides} alt="Special offer" {...strip2Props} />
+          </section>
+        )}
 
         {/* top stores — same card style as collections, as a slider */}
         {vendors.length > 0 && (
@@ -1158,9 +1173,9 @@ export function MarketplaceHome() {
         {banners.promo_enabled !== false && (
         promoStripSlides.length > 0 ? (
         <section className="relative aspect-[16/5] overflow-hidden rounded-2xl shadow-sm">
-          <Link href="/marketplace/category/home-appliances" aria-label="TechPivo Home Essentials promo" className="relative block h-full w-full">
-            <BannerSlider slides={promoStripSlides} alt="TechPivo Home Essentials promo" {...sliderProps} />
-          </Link>
+          <div className="relative block h-full w-full">
+            <BannerSlider slides={promoStripSlides} alt="TechPivo Home Essentials promo" {...promoStripProps} />
+          </div>
         </section>
         ) : (
         <section

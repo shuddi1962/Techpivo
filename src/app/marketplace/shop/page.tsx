@@ -23,6 +23,7 @@ export default async function MarketplaceShopPage() {
         title="Shop All Products"
         copy="Every product in one place — use the filters to narrow by price, color, size, rating and features."
         image={pageBannerOf(banners, "shop_image")}
+        links={banners.links}
       />
       <ProductListing products={products} />
     </StorePageShell>

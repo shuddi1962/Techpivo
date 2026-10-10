@@ -69,11 +69,56 @@ export function easingCss(id: string | null | undefined): string {
   return SLIDER_EASINGS.find((e) => e.id === id)?.css || "cubic-bezier(0.22, 1, 0.36, 1)"
 }
 
+export interface BannerSlide {
+  image: string
+  /** Destination the banner opens (internal path, #anchor or https URL).
+      Empty = the banner is not clickable. */
+  link: string
+}
+
+export interface SlotSlider {
+  transition: BannerTransition
+  duration: number
+  easing: SliderEasing
+  autoplay: boolean
+  interval: number
+  arrows: boolean
+  dots: boolean
+  progress: boolean
+  thumbs: boolean
+}
+
+export const DEFAULT_SLOT_SLIDER: SlotSlider = {
+  transition: "fade",
+  duration: 700,
+  easing: "swift",
+  autoplay: true,
+  interval: 5,
+  arrows: true,
+  dots: true,
+  progress: true,
+  thumbs: false,
+}
+
+/** Slots that can hold several sliding images, each with its own settings. */
+export const SLIDER_SLOT_KEYS = [
+  "hero_slides",
+  "promo_slides",
+  "promo_deals_slides",
+  "promo_new_slides",
+  "strip1_slides",
+  "strip2_slides",
+] as const
+
+export type SliderSlotKey = (typeof SLIDER_SLOT_KEYS)[number]
+
 export interface MarketBanners {
   hero_image: string
   promo_image: string
   promo_deals_image: string
   promo_new_image: string
+  strip1_image: string
+  strip2_image: string
   category_default: string
   departments: Record<string, string>
   /** Black Friday promo surfaces (top strip, Specials button, homepage
@@ -86,12 +131,23 @@ export interface MarketBanners {
   top_stores_image: string
   track_image: string
   /** Extra slider images per slot (cover field above = slide 1).
-      Upload as many as you want per space — the storefront auto-slides. */
-  hero_slides: string[]
-  promo_slides: string[]
-  promo_deals_slides: string[]
-  promo_new_slides: string[]
-  /** Slider behaviour (one setting drives every banner slider, live). */
+      Upload as many as you want per space — each slot slides with its
+      OWN settings below (autoplay off = swipe through them manually). */
+  hero_slides: BannerSlide[]
+  promo_slides: BannerSlide[]
+  promo_deals_slides: BannerSlide[]
+  promo_new_slides: BannerSlide[]
+  strip1_slides: BannerSlide[]
+  strip2_slides: BannerSlide[]
+  /** Destination per uploaded image, keyed by exact image URL. Covers
+      single-image banners (page / department / category banners) and
+      every slider image. */
+  links: Record<string, string>
+  /** Per-slot slider settings. A slot with no entry uses the legacy
+      global slider_* fields (first save migrates everything across). */
+  slot_settings: Partial<Record<SliderSlotKey, SlotSlider>>
+  /** Legacy global slider behaviour (kept for old rows; the admin now
+      writes per-slot settings instead). */
   slider_transition: BannerTransition
   slider_duration: number
   slider_easing: SliderEasing
@@ -108,6 +164,8 @@ export const EMPTY_BANNERS: MarketBanners = {
   promo_image: "",
   promo_deals_image: "",
   promo_new_image: "",
+  strip1_image: "",
+  strip2_image: "",
   category_default: "",
   departments: {},
   promo_enabled: true,
@@ -121,6 +179,10 @@ export const EMPTY_BANNERS: MarketBanners = {
   promo_slides: [],
   promo_deals_slides: [],
   promo_new_slides: [],
+  strip1_slides: [],
+  strip2_slides: [],
+  links: {},
+  slot_settings: {},
   slider_transition: "fade",
   slider_duration: 700,
   slider_easing: "swift",
@@ -133,12 +195,13 @@ export const EMPTY_BANNERS: MarketBanners = {
 }
 
 // Recommended upload dimensions — shown in Admin so uploads fit well.
-// Slots with a slidesKey accept MULTIPLE images (cover + extra slides)
-// that auto-slide on the storefront with the chosen transition.
+// Slots with a slidesKey accept MULTIPLE images (cover + extra slides),
+// each with its own link, sliding with that slot's OWN settings.
 export const BANNER_SLOTS = [
   {
     id: "hero_image",
     slidesKey: "hero_slides",
+    slider: true,
     label: "Homepage hero (main left banner)",
     dims: "1600 × 640 px (2.5:1 wide — min 1200 × 480)",
     hint: "Fills the full left 2/3 banner edge to edge (desktop ~935 × 400, object-cover: crops sides on odd ratios, never leaves gaps). Upload more below to slide. Clear it to bring the default hero back.",
@@ -146,6 +209,7 @@ export const BANNER_SLOTS = [
   {
     id: "promo_image",
     slidesKey: "promo_slides",
+    slider: true,
     label: "Promo banner",
     dims:  "1600 × 500 px",
     hint: "Wide strip above the brand row. Shows clean with no text or button — design all words into the image. Upload more below to slide.",
@@ -153,6 +217,7 @@ export const BANNER_SLOTS = [
   {
     id: "promo_deals_image",
     slidesKey: "promo_deals_slides",
+    slider: true,
     label: "Hero side promo — Deals (red, top right)",
     dims: "900 × 390 px (2.3:1 wide — min 600 × 260)",
     hint: "Shows clean with no overlay text, icons or buttons — design all words into the image. Upload more below to slide.",
@@ -160,9 +225,26 @@ export const BANNER_SLOTS = [
   {
     id: "promo_new_image",
     slidesKey: "promo_new_slides",
+    slider: true,
     label: "Hero side promo — New arrivals (orange, bottom right)",
     dims: "900 × 390 px (2.3:1 wide — min 600 × 260)",
     hint: "Shows clean with no overlay text, icons or buttons — design all words into the image. Upload more below to slide.",
+  },
+  {
+    id: "strip1_image",
+    slidesKey: "strip1_slides",
+    slider: true,
+    label: "In-feed strip — after Trending Now",
+    dims: "1600 × 300 px (slim — min 1200 × 220)",
+    hint: "Slim full-width strip between the Trending Now rail and the department showcases. Leave empty to hide it completely. Upload more below to slide.",
+  },
+  {
+    id: "strip2_image",
+    slidesKey: "strip2_slides",
+    slider: true,
+    label: "In-feed strip — before Top Stores",
+    dims: "1600 × 300 px (slim — min 1200 × 220)",
+    hint: "Slim full-width strip between the department showcases and Top Stores. Leave empty to hide it completely. Upload more below to slide.",
   },
   {
     id: "category_default",
@@ -235,18 +317,80 @@ export function pageBannerOf(b: MarketBanners | null | undefined, key: PageBanne
   return typeof v === "string" ? v.trim() : ""
 }
 
+// Destination allowlist: in-store paths, #anchors and https links.
+// Anything else (javascript:, data:, whitespace …) is dropped.
+export function cleanBannerLink(v: unknown): string {
+  if (typeof v !== "string") return ""
+  const t = v.trim().slice(0, 500)
+  if (!t || /\s/.test(t)) return ""
+  if (t === "/" || t.startsWith("#")) return t
+  if (t.startsWith("/") && !t.startsWith("//")) return t
+  if (/^https?:\/\//i.test(t)) return t
+  return ""
+}
+
+function slideArr(v: unknown): BannerSlide[] {
+  if (!Array.isArray(v)) return []
+  const out: BannerSlide[] = []
+  const seen = new Set<string>()
+  for (const x of v) {
+    if (out.length >= 10) break
+    if (typeof x === "string") {
+      const t = x.trim()
+      if (t && !seen.has(t)) {
+        seen.add(t)
+        out.push({ image: t, link: "" })
+      }
+    } else if (x && typeof x === "object") {
+      // New { image, link } shape (legacy plain strings still accepted).
+      const o = x as Record<string, unknown>
+      const img = typeof o.image === "string" ? o.image.trim() : ""
+      if (img && !seen.has(img)) {
+        seen.add(img)
+        out.push({ image: img, link: cleanBannerLink(o.link) })
+      }
+    }
+  }
+  return out
+}
+
+function slotSliderArr(
+  v: unknown,
+  fallback: SlotSlider
+): Partial<Record<SliderSlotKey, SlotSlider>> {
+  const out: Partial<Record<SliderSlotKey, SlotSlider>> = {}
+  if (!v || typeof v !== "object") return out
+  const r = v as Record<string, unknown>
+  for (const key of SLIDER_SLOT_KEYS) {
+    const s = r[key]
+    if (!s || typeof s !== "object") continue
+    const o = s as Record<string, unknown>
+    const tRaw = typeof o.transition === "string" ? o.transition.trim().toLowerCase() : ""
+    out[key] = {
+      transition: (BANNER_TRANSITIONS.some((t) => t.id === tRaw) ? tRaw : fallback.transition) as BannerTransition,
+      duration:
+        Number.isFinite(Number(o.duration))
+          ? Math.min(3000, Math.max(300, Math.round(Number(o.duration))))
+          : fallback.duration,
+      easing: (SLIDER_EASINGS.some((e) => e.id === o.easing) ? o.easing : fallback.easing) as SliderEasing,
+      autoplay: typeof o.autoplay === "boolean" ? o.autoplay : fallback.autoplay,
+      interval:
+        Number.isFinite(Number(o.interval))
+          ? Math.min(30, Math.max(2, Math.round(Number(o.interval))))
+          : fallback.interval,
+      arrows: typeof o.arrows === "boolean" ? o.arrows : fallback.arrows,
+      dots: typeof o.dots === "boolean" ? o.dots : fallback.dots,
+      progress: typeof o.progress === "boolean" ? o.progress : fallback.progress,
+      thumbs: o.thumbs === true,
+    }
+  }
+  return out
+}
+
 export function parseBanners(raw: unknown): MarketBanners {
-  if (!raw || typeof raw !== "object") return { ...EMPTY_BANNERS, departments: {} }
+  if (!raw || typeof raw !== "object") return { ...EMPTY_BANNERS, departments: {}, links: {}, slot_settings: {} }
   const r = raw as Record<string, unknown>
   const str = (v: unknown) => (typeof v === "string" ? v : "")
-  const arr = (v: unknown): string[] => {
-    if (!Array.isArray(v)) return []
-    const out: string[] = []
-    for (const x of v) {
-      if (typeof x === "string" && x.trim() && !out.includes(x.trim()) && out.length < 10) out.push(x.trim())
-    }
-    return out
-  }
   const deps = r.departments && typeof r.departments === "object" ? (r.departments as Record<string, unknown>) : {}
   const departments: Record<string, string> = {}
   for (const [k, v] of Object.entries(deps)) {
@@ -262,45 +406,197 @@ export function parseBanners(raw: unknown): MarketBanners {
   const duration = Number.isFinite(durationRaw) ? Math.min(3000, Math.max(300, Math.round(durationRaw))) : 700
   const easingRaw = str(r.slider_easing).trim().toLowerCase()
   const easing: SliderEasing = (SLIDER_EASINGS.some((e) => e.id === easingRaw) ? easingRaw : "swift") as SliderEasing
+  const legacy: SlotSlider = {
+    transition,
+    duration,
+    easing,
+    autoplay: typeof r.slider_autoplay === "boolean" ? r.slider_autoplay : true,
+    interval,
+    arrows: typeof r.slider_arrows === "boolean" ? r.slider_arrows : true,
+    dots: typeof r.slider_dots === "boolean" ? r.slider_dots : true,
+    progress: typeof r.slider_progress === "boolean" ? r.slider_progress : true,
+    thumbs: r.slider_thumbs === true,
+  }
+  const hero_slides = slideArr(r.hero_slides)
+  const promo_slides = slideArr(r.promo_slides)
+  const promo_deals_slides = slideArr(r.promo_deals_slides)
+  const promo_new_slides = slideArr(r.promo_new_slides)
+  const strip1_slides = slideArr(r.strip1_slides)
+  const strip2_slides = slideArr(r.strip2_slides)
+  const hero_image = str(r.hero_image).trim()
+  const promo_image = str(r.promo_image).trim()
+  const promo_deals_image = str(r.promo_deals_image).trim()
+  const promo_new_image = str(r.promo_new_image).trim()
+  const strip1_image = str(r.strip1_image).trim()
+  const strip2_image = str(r.strip2_image).trim()
+  const category_default = str(r.category_default).trim()
+  const shop_image = str(r.shop_image).trim()
+  const deals_image = str(r.deals_image).trim()
+  const best_sellers_image = str(r.best_sellers_image).trim()
+  const new_arrivals_image = str(r.new_arrivals_image).trim()
+  const top_stores_image = str(r.top_stores_image).trim()
+  const track_image = str(r.track_image).trim()
+  // Keep only links that point at an image still in use (kills orphans).
+  const live = new Set<string>([
+    hero_image, promo_image, promo_deals_image, promo_new_image,
+    strip1_image, strip2_image, category_default,
+    shop_image, deals_image, best_sellers_image,
+    new_arrivals_image, top_stores_image, track_image,
+    ...Object.values(departments),
+    ...hero_slides.map((s) => s.image),
+    ...promo_slides.map((s) => s.image),
+    ...promo_deals_slides.map((s) => s.image),
+    ...promo_new_slides.map((s) => s.image),
+    ...strip1_slides.map((s) => s.image),
+    ...strip2_slides.map((s) => s.image),
+  ].filter(Boolean))
+  const links: Record<string, string> = {}
+  if (r.links && typeof r.links === "object") {
+    for (const [k, v] of Object.entries(r.links as Record<string, unknown>)) {
+      const url = k.trim()
+      const dest = cleanBannerLink(v)
+      if (url && dest && live.has(url) && Object.keys(links).length < 200) links[url] = dest
+    }
+  }
   return {
-    hero_image: str(r.hero_image).trim(),
-    promo_image: str(r.promo_image).trim(),
-    promo_deals_image: str(r.promo_deals_image).trim(),
-    promo_new_image: str(r.promo_new_image).trim(),
-    category_default: str(r.category_default).trim(),
+    hero_image,
+    promo_image,
+    promo_deals_image,
+    promo_new_image,
+    strip1_image,
+    strip2_image,
+    category_default,
     promo_enabled: typeof r.promo_enabled === "boolean" ? r.promo_enabled : true,
-    shop_image: str(r.shop_image).trim(),
-    deals_image: str(r.deals_image).trim(),
-    best_sellers_image: str(r.best_sellers_image).trim(),
-    new_arrivals_image: str(r.new_arrivals_image).trim(),
-    top_stores_image: str(r.top_stores_image).trim(),
-    track_image: str(r.track_image).trim(),
-    hero_slides: arr(r.hero_slides),
-    promo_slides: arr(r.promo_slides),
-    promo_deals_slides: arr(r.promo_deals_slides),
-    promo_new_slides: arr(r.promo_new_slides),
+    shop_image,
+    deals_image,
+    best_sellers_image,
+    new_arrivals_image,
+    top_stores_image,
+    track_image,
+    hero_slides,
+    promo_slides,
+    promo_deals_slides,
+    promo_new_slides,
+    strip1_slides,
+    strip2_slides,
+    links,
+    slot_settings: slotSliderArr(r.slot_settings, legacy),
     slider_transition: transition,
     slider_duration: duration,
     slider_easing: easing,
-    slider_autoplay: typeof r.slider_autoplay === "boolean" ? r.slider_autoplay : true,
+    slider_autoplay: legacy.autoplay,
     slider_interval: interval,
-    slider_arrows: typeof r.slider_arrows === "boolean" ? r.slider_arrows : true,
-    slider_dots: typeof r.slider_dots === "boolean" ? r.slider_dots : true,
-    slider_progress: typeof r.slider_progress === "boolean" ? r.slider_progress : true,
-    slider_thumbs: typeof r.slider_thumbs === "boolean" ? r.slider_thumbs : false,
+    slider_arrows: legacy.arrows,
+    slider_dots: legacy.dots,
+    slider_progress: legacy.progress,
+    slider_thumbs: legacy.thumbs,
     departments,
   }
 }
 
-// Every image for a slot: cover first, then extra slides — deduped.
+// Every image for a slot: cover first, then extra slides — deduped,
+// each carrying its destination link (own link wins, links map fills in).
 // Empty array = no upload (the default design shows instead).
-export function slidesOf(single: string | null | undefined, multi: string[] | null | undefined): string[] {
-  const out: string[] = []
-  const push = (v: string | null | undefined) => {
-    const t = typeof v === "string" ? v.trim() : ""
-    if (t && !out.includes(t)) out.push(t)
+export function slidesOfObjects(
+  single: string | null | undefined,
+  multi: BannerSlide[] | Array<string | BannerSlide> | null | undefined,
+  links?: Record<string, string> | null
+): BannerSlide[] {
+  const out: BannerSlide[] = []
+  const seen = new Set<string>()
+  const linkOf = (img: string, own: string) => own || (links?.[img] || "")
+  const cover = typeof single === "string" ? single.trim() : ""
+  if (cover && !seen.has(cover)) {
+    seen.add(cover)
+    out.push({ image: cover, link: linkOf(cover, "") })
   }
-  push(single)
-  if (Array.isArray(multi)) multi.forEach(push)
+  if (Array.isArray(multi)) {
+    for (const x of multi) {
+      if (out.length >= 11) break
+      if (typeof x === "string") {
+        const t = x.trim()
+        if (t && !seen.has(t)) {
+          seen.add(t)
+          out.push({ image: t, link: linkOf(t, "") })
+        }
+      } else if (x && typeof (x as BannerSlide).image === "string") {
+        const t = (x as BannerSlide).image.trim()
+        if (t && !seen.has(t)) {
+          seen.add(t)
+          out.push({ image: t, link: linkOf(t, cleanBannerLink((x as BannerSlide).link)) })
+        }
+      }
+    }
+  }
   return out
+}
+
+// Legacy helper kept for callers that only need raw image URLs.
+export function slidesOf(
+  single: string | null | undefined,
+  multi: BannerSlide[] | Array<string | BannerSlide> | string[] | null | undefined
+): string[] {
+  return slidesOfObjects(single, multi as BannerSlide[] | null | undefined).map((s) => s.image)
+}
+
+// Effective slider settings for one slot (per-slot override, else the
+// legacy global values carried over from before the upgrade).
+export function slotSliderOf(b: MarketBanners | null | undefined, key: SliderSlotKey): SlotSlider {
+  const over = b?.slot_settings?.[key]
+  if (!over) {
+    return {
+      transition: b?.slider_transition || "fade",
+      duration: b?.slider_duration || 700,
+      easing: b?.slider_easing || "swift",
+      autoplay: b?.slider_autoplay !== false,
+      interval: b?.slider_interval || 5,
+      arrows: b?.slider_arrows !== false,
+      dots: b?.slider_dots !== false,
+      progress: b?.slider_progress !== false,
+      thumbs: b?.slider_thumbs === true,
+    }
+  }
+  return { ...DEFAULT_SLOT_SLIDER, ...over }
+}
+
+// Slider props object for <BannerSlider> from one slot's settings.
+export function slotSliderProps(b: MarketBanners | null | undefined, key: SliderSlotKey) {
+  const s = slotSliderOf(b, key)
+  return {
+    transition: s.transition,
+    durationMs: s.duration,
+    easingCss: easingCss(s.easing),
+    autoplay: s.autoplay,
+    intervalSec: s.interval,
+    showArrows: s.arrows,
+    showDots: s.dots,
+    showProgress: s.progress,
+    showThumbs: s.thumbs,
+  }
+}
+
+// Destination for any uploaded banner image ("" = not clickable).
+export function linkOf(b: MarketBanners | null | undefined, image: string | null | undefined): string {
+  if (!image) return ""
+  return b?.links?.[image.trim()] || ""
+}
+
+// Where-can-a-banner-point presets (admin picker; custom URLs allowed).
+export const BANNER_LINK_PRESETS: Array<{ value: string; label: string }> = [
+  { value: "", label: "No link — banner is not clickable" },
+  { value: "/marketplace", label: "Market home" },
+  { value: "/marketplace/shop", label: "Shop all products" },
+  { value: "/marketplace/deals", label: "Deals of the Day" },
+  { value: "/marketplace/new-arrivals", label: "New Arrivals" },
+  { value: "/marketplace/best-sellers", label: "Best Sellers" },
+  { value: "/marketplace/top-stores", label: "Top Stores" },
+  { value: "/marketplace/track", label: "Track Order" },
+  { value: "/marketplace/wishlist", label: "Wishlist" },
+  { value: "/marketplace/cart", label: "Cart" },
+]
+
+export function bannerLinkLabel(value: string | null | undefined): string {
+  if (!value) return "No link"
+  const hit = BANNER_LINK_PRESETS.find((p) => p.value === value)
+  return hit ? hit.label : value
 }

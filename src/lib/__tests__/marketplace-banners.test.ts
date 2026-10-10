@@ -3,9 +3,13 @@ import {
   BANNER_TRANSITIONS,
   BANNER_TRANSITION_GROUPS,
   EMPTY_BANNERS,
+  cleanBannerLink,
   easingCss,
+  linkOf,
   parseBanners,
   slidesOf,
+  slidesOfObjects,
+  slotSliderOf,
 } from "@/lib/marketplace-banners"
 
 describe("banner transition registry", () => {
@@ -41,14 +45,57 @@ describe("easingCss", () => {
   })
 })
 
-describe("slidesOf", () => {
+describe("slidesOf (legacy url helper)", () => {
   it("puts the cover first, then extras, deduped", () => {
     expect(slidesOf("a", ["b", "a", "c"])).toEqual(["a", "b", "c"])
+  })
+
+  it("accepts the new object shape too", () => {
+    expect(
+      slidesOf("a", [{ image: "b", link: "/x" }, "a", { image: "c", link: "" }])
+    ).toEqual(["a", "b", "c"])
   })
 
   it("returns [] when nothing uploaded", () => {
     expect(slidesOf("", [])).toEqual([])
     expect(slidesOf(undefined, undefined)).toEqual([])
+  })
+})
+
+describe("slidesOfObjects", () => {
+  it("attaches links from the links map to cover and extras", () => {
+    const out = slidesOfObjects("cover", ["two"], { cover: "/deals", two: "/shop" })
+    expect(out).toEqual([
+      { image: "cover", link: "/deals" },
+      { image: "two", link: "/shop" },
+    ])
+  })
+
+  it("a slide's own link wins over the map", () => {
+    const out = slidesOfObjects("", [{ image: "a", link: "/own" }], { a: "/map" })
+    expect(out).toEqual([{ image: "a", link: "/own" }])
+  })
+
+  it("dedupes cover vs extras", () => {
+    expect(slidesOfObjects("a", ["a", "b"], {})).toEqual([
+      { image: "a", link: "" },
+      { image: "b", link: "" },
+    ])
+  })
+})
+
+describe("cleanBannerLink", () => {
+  it("allows store paths, anchors and https urls", () => {
+    expect(cleanBannerLink("/marketplace/deals")).toBe("/marketplace/deals")
+    expect(cleanBannerLink("#trending")).toBe("#trending")
+    expect(cleanBannerLink("https://example.com/x")).toBe("https://example.com/x")
+  })
+
+  it("drops javascript:, protocol-relative and gappy values", () => {
+    expect(cleanBannerLink("javascript:alert(1)")).toBe("")
+    expect(cleanBannerLink("//evil.com")).toBe("")
+    expect(cleanBannerLink("/has space")).toBe("")
+    expect(cleanBannerLink(42)).toBe("")
   })
 })
 
@@ -62,9 +109,11 @@ describe("parseBanners slider settings", () => {
     expect(b.slider_progress).toBe(true)
     expect(b.slider_thumbs).toBe(false)
     expect(b.hero_slides).toEqual([])
+    expect(b.links).toEqual({})
+    expect(b.slot_settings).toEqual({})
   })
 
-  it("accepts valid settings and clamps out-of-range numbers", () => {
+  it("accepts legacy string slide arrays and clamps out-of-range numbers", () => {
     const b = parseBanners({
       slider_transition: "cube",
       slider_duration: 99999,
@@ -80,7 +129,42 @@ describe("parseBanners slider settings", () => {
     expect(b.slider_easing).toBe("spring")
     expect(b.slider_autoplay).toBe(false)
     expect(b.slider_thumbs).toBe(true)
-    expect(b.hero_slides).toEqual(["a", "b"])
+    expect(b.hero_slides).toEqual([
+      { image: "a", link: "" },
+      { image: "b", link: "" },
+    ])
+  })
+
+  it("seeds per-slot settings from legacy globals", () => {
+    const b = parseBanners({ slider_transition: "zoom-in", slider_autoplay: false })
+    const s = slotSliderOf(b, "hero_slides")
+    expect(s.transition).toBe("zoom-in")
+    expect(s.autoplay).toBe(false)
+  })
+
+  it("per-slot overrides win and clamp safely", () => {
+    const b = parseBanners({
+      slider_transition: "fade",
+      slot_settings: {
+        hero_slides: { transition: "tiles", duration: 99999, autoplay: false },
+        strip1_slides: { transition: "nope" },
+      },
+    })
+    expect(slotSliderOf(b, "hero_slides").transition).toBe("tiles")
+    expect(slotSliderOf(b, "hero_slides").duration).toBe(3000)
+    expect(slotSliderOf(b, "hero_slides").autoplay).toBe(false)
+    // unknown transition falls back to the legacy global
+    expect(slotSliderOf(b, "strip1_slides").transition).toBe("fade")
+  })
+
+  it("keeps links only for images still in use", () => {
+    const b = parseBanners({
+      hero_image: "keep",
+      links: { keep: "/marketplace/deals", gone: "/marketplace/shop", bad: "javascript:x" },
+    })
+    expect(b.links).toEqual({ keep: "/marketplace/deals" })
+    expect(linkOf(b, "keep")).toBe("/marketplace/deals")
+    expect(linkOf(b, "gone")).toBe("")
   })
 
   it("rejects unknown transitions and caps slide counts", () => {

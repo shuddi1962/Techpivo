@@ -41,12 +41,14 @@ export function CollectionHero({
   copy,
   theme = "dark",
   image = "",
+  links = {},
 }: {
   kicker: string
   title: string
   copy: string
   theme?: "dark" | "red" | "orange"
   image?: string
+  links?: Record<string, string>
 }) {
   const bg =
     theme === "red"
@@ -57,10 +59,16 @@ export function CollectionHero({
   // Uploaded banner: shown in FULL like the homepage hero (h-auto w-full,
   // never cropped) with the title band beneath — any ratio fits.
   if (image.trim()) {
+    const dest = links[image.trim()] || ""
+    const heroImg = (
+      // eslint-disable-next-line @next/next/no-img-element
+      <img src={image.trim()} alt={title} loading="eager" decoding="async" className="block h-auto w-full" />
+    )
     return (
       <section className="overflow-hidden rounded-2xl border border-[#E2E8F0] bg-white shadow-sm">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={image.trim()} alt={title} loading="eager" decoding="async" className="block h-auto w-full" />
+        {dest ? (
+          <Link href={dest} aria-label={title} className="block">{heroImg}</Link>
+        ) : heroImg}
         <div className="p-6 sm:p-8 text-white" style={{ background: bg }}>
           <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-[#F59E0B]">{kicker}</p>
           <h1 className="mt-1 text-2xl font-extrabold tracking-tight sm:text-3xl">{title}</h1>

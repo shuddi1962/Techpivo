@@ -31,6 +31,7 @@ export default async function MarketplaceTrackRoute() {
           title="Track Your Order"
           copy="Enter your payment reference and email to see your order and live delivery status."
           image={pageBannerOf(banners, "track_image")}
+          links={banners.links}
         />
         <Suspense fallback={<div className="bg-white rounded-2xl border p-10 text-center text-sm text-slate-500">Loading...</div>}>
           <TrackPage />

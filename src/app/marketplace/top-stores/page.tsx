@@ -41,6 +41,7 @@ export default async function MarketplaceTopStoresPage() {
         copy="Pick a store to browse its full range — every product quality-checked with tracked delivery."
         theme="orange"
         image={pageBannerOf(banners, "top_stores_image")}
+        links={banners.links}
       />
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {MARKET_DEPARTMENTS.map((d) => {

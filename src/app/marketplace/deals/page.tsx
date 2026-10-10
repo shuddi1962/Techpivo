@@ -28,6 +28,7 @@ export default async function MarketplaceDealsPage() {
         copy="The biggest discounts in the store right now — when the price drops, it goes fast."
         theme="red"
         image={pageBannerOf(banners, "deals_image")}
+        links={banners.links}
       />
       <ProductListing products={products} />
     </StorePageShell>

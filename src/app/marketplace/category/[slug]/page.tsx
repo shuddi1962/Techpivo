@@ -2,7 +2,7 @@ import type { Metadata } from "next"
 import Link from "next/link"
 import { notFound } from "next/navigation"
 import { MARKET_DEPARTMENTS } from "@/lib/marketplace-categories"
-import { deptBannerOf } from "@/lib/marketplace-banners"
+import { deptBannerOf, linkOf } from "@/lib/marketplace-banners"
 import { fetchStoreProducts, fetchMarketBanners } from "@/lib/marketplace-products"
 import { ProductListing } from "@/components/marketplace/product-listing"
 import { StorePageShell } from "@/components/marketplace/store-shell"
@@ -66,8 +66,16 @@ export default async function MarketplaceCategoryPage({ params }: { params: { sl
           else this category's own live product photos, else gradient only */}
       {uploadedBanner ? (
       <section className="overflow-hidden rounded-2xl border border-[#E2E8F0] bg-white shadow-sm">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={uploadedBanner} alt={title} loading="eager" decoding="async" className="block h-auto w-full" />
+        {(() => {
+          const dest = linkOf(banners, uploadedBanner)
+          const img = (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={uploadedBanner} alt={title} loading="eager" decoding="async" className="block h-auto w-full" />
+          )
+          return dest ? (
+            <Link href={dest} aria-label={title} className="block">{img}</Link>
+          ) : img
+        })()}
         <div className="p-6 sm:p-8 text-white" style={{ background: "linear-gradient(120deg, #23272E 0%, #14171C 100%)" }}>
           <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-[#F59E0B]">
             {found.kind === "sub" ? found.dept.name : "Department"}

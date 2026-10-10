@@ -24,6 +24,7 @@ export default async function MarketplaceBestSellersPage() {
         copy="Ranked by real shopper interest — the products everyone keeps coming back for."
         theme="orange"
         image={pageBannerOf(banners, "best_sellers_image")}
+        links={banners.links}
       />
       <ProductListing products={products} />
     </StorePageShell>
