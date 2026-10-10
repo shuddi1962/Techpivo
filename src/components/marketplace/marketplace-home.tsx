@@ -753,8 +753,8 @@ export function MarketplaceHome() {
         <section className="-mt-6 sm:-mt-8 w-[100vw] ml-[calc(50%-50vw)] pl-3 sm:pl-5">
         <div className="grid w-full grid-cols-1 lg:grid-cols-12 gap-4 items-stretch">
         {!loaded ? (
-          <div className="lg:col-span-8 rounded-none border-y lg:border border-[#E2E8F0] bg-white shadow-sm min-h-[320px] animate-pulse" aria-hidden>
-            <div className="h-full min-h-[320px] w-full bg-slate-100" />
+          <div className="lg:col-span-8 rounded-none border-y lg:border border-[#E2E8F0] bg-white shadow-sm min-h-[260px] animate-pulse" aria-hidden>
+            <div className="h-full min-h-[260px] w-full bg-slate-100" />
           </div>
         ) : banners.hero_image ? (
           <div className="lg:col-span-8 overflow-hidden rounded-none border-y lg:border border-[#E2E8F0] bg-white shadow-sm">
@@ -770,7 +770,7 @@ export function MarketplaceHome() {
             </Link>
           </div>
         ) : (
-          <div className="lg:col-span-8 rounded-none relative overflow-hidden flex flex-col justify-between p-5 md:p-8 text-white min-h-[320px]" style={{ background: MARKETPLACE_BRAND.navy }}>
+          <div className="lg:col-span-8 rounded-none relative overflow-hidden flex flex-col justify-between p-5 md:px-8 md:py-6 text-white min-h-[260px]" style={{ background: MARKETPLACE_BRAND.navy }}>
             <div className="absolute -right-20 -top-20 w-96 h-96 rounded-full bg-[#F59E0B]/10 blur-3xl pointer-events-none" />
             <div className="absolute -left-10 -bottom-10 w-80 h-80 rounded-full bg-[#EF4444]/10 blur-3xl pointer-events-none" />
             <div className="relative z-10 flex items-center justify-between">
@@ -785,7 +785,7 @@ export function MarketplaceHome() {
                   {banners.promo_enabled !== false && (
                     <span className="inline-block text-[#EF4444] text-sm font-bold tracking-wide uppercase">{MARKETPLACE_HERO.kicker}</span>
                   )}
-                <h1 className="text-4xl md:text-5xl font-extrabold tracking-tight leading-none">
+                <h1 className="text-3xl md:text-4xl font-extrabold tracking-tight leading-none">
                   {MARKETPLACE_HERO.titleA} <span className="text-[#F59E0B]">{MARKETPLACE_HERO.titleB}</span>
                 </h1>
                 <p className="text-sm md:text-base text-slate-300">{MARKETPLACE_HERO.copy}</p>
@@ -832,7 +832,7 @@ export function MarketplaceHome() {
           <div className="lg:col-span-4 flex flex-col gap-4">
             <Link
               href="/marketplace/deals"
-              className="group relative flex-1 overflow-hidden rounded-none p-5 text-white shadow-sm transition-shadow hover:shadow-md min-h-[200px] flex flex-col justify-between"
+              className="group relative flex-1 overflow-hidden rounded-none p-5 text-white shadow-sm transition-shadow hover:shadow-md min-h-[140px] flex flex-col justify-between"
               style={{ background: "linear-gradient(150deg, #DC2626 0%, #991B1B 100%)" }}
             >
               <div className="absolute -right-10 -top-10 h-40 w-40 rounded-full bg-white/10 blur-2xl" />
@@ -840,7 +840,7 @@ export function MarketplaceHome() {
                 <span className="inline-flex items-center gap-1 rounded bg-white/20 px-2 py-0.5 text-[11px] font-bold uppercase backdrop-blur-sm">
                   <Flame className="h-3 w-3" /> Flash Sale
                 </span>
-                <h3 className="mt-2 text-2xl font-extrabold leading-tight">Mega Deal<br />Up to 50% Off</h3>
+                <h3 className="mt-1.5 text-xl font-extrabold leading-tight">Mega Deal<br />Up to 50% Off</h3>
                 <p className="mt-1 text-xs text-white/80">Today only — biggest price drops</p>
               </div>
               <span className="relative mt-3 inline-flex w-fit items-center gap-1 rounded-lg bg-white px-4 py-2 text-sm font-bold text-[#991B1B] transition-colors group-hover:bg-[#FEF2F2]">
@@ -849,7 +849,7 @@ export function MarketplaceHome() {
             </Link>
             <Link
               href="/marketplace/new-arrivals"
-              className="group relative flex-1 overflow-hidden rounded-none p-5 text-[#0F172A] shadow-sm transition-shadow hover:shadow-md min-h-[200px] flex flex-col justify-between"
+              className="group relative flex-1 overflow-hidden rounded-none p-5 text-[#0F172A] shadow-sm transition-shadow hover:shadow-md min-h-[140px] flex flex-col justify-between"
               style={{ background: "linear-gradient(150deg, #F59E0B 0%, #F97316 100%)" }}
             >
               <div className="absolute -right-10 -bottom-10 h-40 w-40 rounded-full bg-white/20 blur-2xl" />
@@ -857,7 +857,7 @@ export function MarketplaceHome() {
                 <span className="inline-flex items-center gap-1 rounded bg-black/20 px-2 py-0.5 text-[11px] font-bold uppercase text-white">
                   <Zap className="h-3 w-3" /> Just landed
                 </span>
-                <h3 className="mt-2 text-2xl font-extrabold leading-tight text-white">New Season<br />Tech Drop</h3>
+                <h3 className="mt-1.5 text-xl font-extrabold leading-tight text-white">New Season<br />Tech Drop</h3>
                 <p className="mt-1 text-xs text-white/85">Fresh stock, first to own</p>
               </div>
               <span className="relative mt-3 inline-flex w-fit items-center gap-1 rounded-lg bg-[#0F172A] px-4 py-2 text-sm font-bold text-white transition-colors group-hover:bg-black">
