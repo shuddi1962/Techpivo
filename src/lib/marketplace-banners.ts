@@ -44,8 +44,8 @@ export const BANNER_SLOTS = [
   {
     id: "hero_image",
     label: "Homepage hero",
-    dims: "1600 × 900 px (min 1200 × 630)",
-    hint: "Replaces ONLY the main navy card — the two side promos stay. Your image shows in FULL (never cropped); any ratio fits, the card height adapts. Clear it to bring the default hero back.",
+    dims: "1920 × 640 px (3:1 wide — min 1200 × 400)",
+    hint: "Replaces ONLY the main card — side promos stay. Your image shows in FULL at natural ratio (never cropped, no backdrop): a 3:1-wide banner fills the frame edge to edge. Clear it to bring the default hero back.",
   },
   {
     id: "promo_image",

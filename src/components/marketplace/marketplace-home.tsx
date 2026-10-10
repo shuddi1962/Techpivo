@@ -756,13 +756,13 @@ export function MarketplaceHome() {
             <div className="h-full w-full bg-slate-100" />
           </div>
         ) : banners.hero_image ? (
-          <div className="lg:col-span-8 overflow-hidden rounded-none shadow-sm" style={{ background: MARKETPLACE_BRAND.navy }}>
+          <div className="lg:col-span-8 overflow-hidden rounded-none bg-white shadow-sm">
             <Link href="#trending" aria-label="Shop TechPivo Market" className="block">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={marketImage(banners.hero_image)}
                 alt="TechPivo Market — shop the collection"
-                className="block h-[400px] w-full object-contain"
+                className="block h-auto w-full"
                 loading="eager"
                 decoding="async"
               />
