@@ -15,10 +15,13 @@ import {
   SIDEBAR_BANNER_DIMS,
   DEFAULT_SLOT_SLIDER,
   EMPTY_BANNERS,
+  MAX_POPUP_CAMPAIGNS,
   POPUP_FREQUENCIES,
   POPUP_MODES,
   POPUP_SIZES,
   POPUP_STYLES,
+  campaignView,
+  defaultPopupCampaign,
   SLIDER_EASINGS,
   bannerLinkLabel,
   cleanBannerLink,
@@ -27,6 +30,7 @@ import {
   type BannerSlide,
   type BannerTransition,
   type MarketBanners,
+  type PopupCampaign,
   type PopupFrequency,
   type PopupMode,
   type PopupSize,
@@ -581,6 +585,307 @@ function Section({
 // ---------------------------------------------------------------------------
 // Main tab
 // ---------------------------------------------------------------------------
+function campaignStatus(c: PopupCampaign, rank: number): { dot: string; text: string } {
+  const now = Date.now()
+  if (!c.enabled) return { dot: "bg-slate-300", text: "Off" }
+  if (c.start_at && now < Date.parse(c.start_at)) {
+    const d = new Date(c.start_at).toLocaleDateString(undefined, { month: "short", day: "numeric" })
+    return { dot: "bg-sky-400", text: `Starts ${d}` }
+  }
+  if (c.end_at && now > Date.parse(c.end_at)) return { dot: "bg-slate-300", text: "Ended" }
+  return {
+    dot: "bg-emerald-500",
+    text: `#${rank} · ${c.mode === "banner" ? "Banner" : "Card"} · ${POPUP_FREQUENCIES.find((f) => f.id === c.frequency)?.label || c.frequency}`,
+  }
+}
+
+// Full editor for one popup campaign: mode, image, wording, button,
+// design, schedule + timing, and a live preview. Module-level so inputs
+// never lose focus while typing.
+function CampaignEditor({
+  c,
+  onChange,
+  onUploadImage,
+  uploading,
+}: {
+  c: PopupCampaign
+  onChange: (patch: Partial<PopupCampaign>) => void
+  onUploadImage: () => void
+  uploading: boolean
+}) {
+  const [previewOn, setPreviewOn] = useState(true)
+  const view = campaignView(c)
+  return (
+    <div className="space-y-3 border-t bg-slate-50/60 p-3 sm:p-4">
+      <div className="rounded-xl border bg-white p-4">
+        <p className="text-sm font-bold text-slate-900">Popup style — two ways to show it</p>
+        <div className="mt-2 grid gap-2 sm:grid-cols-2">
+          {POPUP_MODES.map((m) => {
+            const active = c.mode === m.id
+            return (
+              <button
+                key={m.id}
+                type="button"
+                onClick={() => onChange({ mode: m.id as PopupMode })}
+                aria-pressed={active}
+                className={`rounded-xl border-2 p-3 text-left transition-colors ${active ? "border-[#F59E0B] bg-amber-50/60" : "border-[#E2E8F0] hover:border-slate-300"}`}
+              >
+                <span className="block text-sm font-extrabold text-slate-900">
+                  {m.id === "card" ? "Card popup" : "Banner popup"}
+                </span>
+                <span className="mt-0.5 block text-[11px] leading-snug text-slate-500">
+                  {m.id === "card"
+                    ? "Image (optional) + badge, title, message, points + buttons."
+                    : "Your uploaded banner fills the whole popup — no text, no buttons. It opens the button link."}
+                </span>
+              </button>
+            )
+          })}
+        </div>
+        {c.mode === "banner" && !c.image.trim() && (
+          <p className="mt-2 rounded-lg bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-700">
+            Upload a banner image below — banner mode falls back to the card until an image is set.
+          </p>
+        )}
+      </div>
+      <div className="rounded-xl border bg-white p-4">
+        <p className="text-sm font-bold text-slate-900">Popup image {c.mode === "banner" ? "(the popup itself)" : "(optional header art)"}</p>
+        <p className="text-[11px] text-slate-500">800 × 320 px or any portrait/square art. Empty in card mode = gradient header.</p>
+        <div className="mt-2 flex gap-2">
+          <input
+            value={c.image}
+            onChange={(e) => onChange({ image: e.target.value })}
+            placeholder="https://… (empty = no image)"
+            className={`${inputCls} min-w-0 flex-1 text-xs`}
+          />
+          <button type="button" onClick={onUploadImage} disabled={uploading} className={miniBtn}>
+            {uploading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <ImagePlus className="h-3.5 w-3.5" />}
+            {uploading ? "…" : "Upload"}
+          </button>
+        </div>
+        {c.image.trim() && isUrl(c.image) && (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={c.image.trim()} alt="Popup preview" className="mt-2 h-32 w-full rounded-lg border object-cover" loading="lazy" />
+        )}
+      </div>
+      <div className="rounded-xl border bg-white p-4">
+        <p className="text-sm font-bold text-slate-900">Wording + button</p>
+        <div className="mt-2 grid gap-2.5">
+          <div className="grid gap-2.5 sm:grid-cols-2">
+            <label className="block">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Campaign name (admin only)</span>
+              <input
+                value={c.name}
+                onChange={(e) => onChange({ name: e.target.value.slice(0, 60) })}
+                className={`${inputCls} mt-1 text-xs`}
+              />
+            </label>
+            <label className="block">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Badge text</span>
+              <input
+                value={c.kicker}
+                onChange={(e) => onChange({ kicker: e.target.value })}
+                placeholder="Welcome Offer"
+                className={`${inputCls} mt-1 text-xs`}
+              />
+            </label>
+          </div>
+          <label className="block">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Title</span>
+            <input
+              value={c.title}
+              onChange={(e) => onChange({ title: e.target.value })}
+              className={`${inputCls} mt-1 text-xs`}
+            />
+          </label>
+          <label className="block">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Message</span>
+            <textarea
+              value={c.message}
+              onChange={(e) => onChange({ message: e.target.value })}
+              rows={2}
+              className={`${inputCls} mt-1 text-xs`}
+            />
+          </label>
+          {[0, 1, 2].map((i) => (
+            <label key={i} className="block">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Point {i + 1}</span>
+              <input
+                value={c.points[i] || ""}
+                onChange={(e) => {
+                  const next = [...c.points, "", "", ""].slice(0, 3)
+                  next[i] = e.target.value
+                  onChange({ points: next })
+                }}
+                className={`${inputCls} mt-1 text-xs`}
+              />
+            </label>
+          ))}
+          <div className="grid gap-2.5 sm:grid-cols-2">
+            <label className="block">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Button text</span>
+              <input
+                value={c.cta_text}
+                onChange={(e) => onChange({ cta_text: e.target.value })}
+                className={`${inputCls} mt-1 text-xs`}
+              />
+            </label>
+            <label className="block">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Dismiss text</span>
+              <input
+                value={c.dismiss_text}
+                onChange={(e) => onChange({ dismiss_text: e.target.value })}
+                className={`${inputCls} mt-1 text-xs`}
+              />
+            </label>
+          </div>
+          <div>
+            <p className="mb-1.5 text-[11px] font-bold uppercase tracking-wider text-slate-500">Button opens</p>
+            <LinkField value={c.cta_link} onChange={(v) => onChange({ cta_link: v || "#flash-deals" })} />
+          </div>
+        </div>
+      </div>
+      <div className="rounded-xl border bg-white p-4">
+        <p className="text-sm font-bold text-slate-900">Design</p>
+        <div className="mt-2 grid gap-2.5 sm:grid-cols-2">
+          <label className="block">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Style</span>
+            <select
+              value={c.style}
+              onChange={(e) => onChange({ style: e.target.value as PopupStyle })}
+              className={`${inputCls} mt-1 text-xs`}
+            >
+              {POPUP_STYLES.map((s) => (
+                <option key={s.id} value={s.id}>{s.label}</option>
+              ))}
+            </select>
+          </label>
+          <label className="block">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Size</span>
+            <select
+              value={c.size}
+              onChange={(e) => onChange({ size: e.target.value as PopupSize })}
+              className={`${inputCls} mt-1 text-xs`}
+            >
+              {POPUP_SIZES.map((s) => (
+                <option key={s.id} value={s.id}>{s.label}</option>
+              ))}
+            </select>
+          </label>
+        </div>
+        <div className="mt-2.5 flex flex-wrap gap-x-5 gap-y-2">
+          {(
+            [
+              ["show_kicker", "Badge"],
+              ["show_title", "Title"],
+              ["show_message", "Message"],
+              ["show_points", "Points"],
+              ["show_dismiss", "Dismiss button"],
+            ] as Array<[keyof PopupCampaign, string]>
+          ).map(([key, label]) => (
+            <label key={key} className="inline-flex cursor-pointer items-center gap-1.5 text-xs font-semibold text-slate-700">
+              <input
+                type="checkbox"
+                checked={!!c[key]}
+                onChange={(e) => onChange({ [key]: e.target.checked } as Partial<PopupCampaign>)}
+                className="h-3.5 w-3.5 accent-[#F59E0B]"
+              />
+              {label}
+            </label>
+          ))}
+        </div>
+      </div>
+      <div className="rounded-xl border bg-white p-4">
+        <p className="text-sm font-bold text-slate-900">Schedule + timing</p>
+        <div className="mt-2 grid gap-2.5 sm:grid-cols-2">
+          <label className="block">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Starts (optional)</span>
+            <input
+              type="datetime-local"
+              value={c.start_at ? c.start_at.slice(0, 16) : ""}
+              onChange={(e) => onChange({ start_at: e.target.value ? new Date(e.target.value).toISOString() : "" })}
+              className={`${inputCls} mt-1 text-xs`}
+            />
+          </label>
+          <label className="block">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Ends (optional)</span>
+            <input
+              type="datetime-local"
+              value={c.end_at ? c.end_at.slice(0, 16) : ""}
+              onChange={(e) => onChange({ end_at: e.target.value ? new Date(e.target.value).toISOString() : "" })}
+              className={`${inputCls} mt-1 text-xs`}
+            />
+          </label>
+          <label className="block">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Show it…</span>
+            <select
+              value={c.frequency}
+              onChange={(e) => onChange({ frequency: e.target.value as PopupFrequency })}
+              className={`${inputCls} mt-1 text-xs`}
+            >
+              {POPUP_FREQUENCIES.map((f) => (
+                <option key={f.id} value={f.id}>{f.label}</option>
+              ))}
+            </select>
+          </label>
+          <div className="grid grid-cols-2 gap-2.5">
+            <label className="block">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Delay (s)</span>
+              <input
+                type="number"
+                min={0}
+                max={30}
+                value={c.delay_sec}
+                onChange={(e) => {
+                  const n = Number(e.target.value)
+                  onChange({ delay_sec: Number.isFinite(n) ? Math.min(30, Math.max(0, Math.round(n))) : 1 })
+                }}
+                className={`${inputCls} mt-1 text-xs`}
+              />
+            </label>
+            <label className="block">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Auto-close (s)</span>
+              <input
+                type="number"
+                min={0}
+                max={120}
+                value={c.autoclose_sec}
+                onChange={(e) => {
+                  const n = Number(e.target.value)
+                  onChange({ autoclose_sec: Number.isFinite(n) ? Math.min(120, Math.max(0, Math.round(n))) : 0 })
+                }}
+                className={`${inputCls} mt-1 text-xs`}
+              />
+            </label>
+          </div>
+        </div>
+        <p className="mt-2 text-[11px] text-slate-400">0 delay = immediately · 0 auto-close = stays until dismissed.</p>
+      </div>
+      <div className="rounded-xl border bg-white p-4">
+        <div className="mb-2 flex items-center justify-between">
+          <p className="text-sm font-bold text-slate-900">Live preview — exactly as shoppers see it</p>
+          <button
+            type="button"
+            onClick={() => setPreviewOn(true)}
+            className="rounded-lg border px-2.5 py-1.5 text-xs font-bold hover:bg-slate-50"
+          >
+            Replay
+          </button>
+        </div>
+        {previewOn ? (
+          <div className="flex justify-center rounded-xl bg-slate-900/[0.04] p-4">
+            <WelcomePopupCard b={view} onClose={() => setPreviewOn(false)} preview />
+          </div>
+        ) : (
+          <p className="rounded-xl bg-slate-50 px-3 py-6 text-center text-xs text-slate-500">
+            Preview dismissed — hit Replay to see it again.
+          </p>
+        )}
+      </div>
+    </div>
+  )
+}
+
 const HOME_SLOT_IDS = ["hero_image", "promo_image", "promo_deals_image", "promo_new_image", "strip1_image", "strip2_image"]
 const PAGE_SLOT_IDS = ["category_default", "shop_image", "deals_image", "best_sellers_image", "new_arrivals_image", "top_stores_image", "track_image"]
 
@@ -596,7 +901,7 @@ export function MarketplaceBannersTab() {
   const [uploading, setUploading] = useState<string | null>(null)
   const [notice, setNotice] = useState("")
   const [section, setSection] = useState<string>("home")
-  const [previewOn, setPreviewOn] = useState(true)
+  const [openCampaign, setOpenCampaign] = useState<string | null>(null)
   const [openSlot, setOpenSlot] = useState<string>("hero_image")
   const [openSlider, setOpenSlider] = useState<string | null>(null)
   const fileRef = useRef<HTMLInputElement>(null)
@@ -656,6 +961,26 @@ export function MarketplaceBannersTab() {
       },
     }))
 
+  const patchCampaign = (id: string, patch: Partial<PopupCampaign>) =>
+    setBanners((b) => ({
+      ...b,
+      popup_campaigns: (b.popup_campaigns || []).map((c) => (c.id === id ? { ...c, ...patch } : c)),
+    }))
+  const moveCampaign = (id: string, dir: -1 | 1) =>
+    setBanners((b) => {
+      const list = [...(b.popup_campaigns || [])]
+      const i = list.findIndex((c) => c.id === id)
+      const j = i + dir
+      if (i < 0 || j < 0 || j >= list.length) return b
+      ;[list[i], list[j]] = [list[j], list[i]]
+      return { ...b, popup_campaigns: list }
+    })
+  const removeCampaign = (id: string) => {
+    if (!window.confirm("Delete this popup campaign? Shoppers stop seeing it on next save.")) return
+    if (openCampaign === id) setOpenCampaign(null)
+    setBanners((b) => ({ ...b, popup_campaigns: (b.popup_campaigns || []).filter((c) => c.id !== id) }))
+  }
+
   const setDept = (slug: string, url: string) =>
     setBanners((b) => {
       const departments = { ...b.departments }
@@ -692,6 +1017,8 @@ export function MarketplaceBannersTab() {
       if (!url) throw new Error("Upload returned no URL")
       if (uploadTarget.startsWith("dept:")) {
         setDept(uploadTarget.slice(5), url)
+      } else if (uploadTarget.startsWith("popupimg:")) {
+        patchCampaign(uploadTarget.slice(9), { image: url })
       } else if (uploadTarget.startsWith("side:")) {
         setSideBanner(uploadTarget.slice(5), url)
       } else if (uploadTarget.startsWith("slides:")) {
@@ -931,268 +1258,77 @@ export function MarketplaceBannersTab() {
         </p>
       </Section>
 
-      {/* 4 — Welcome popup */}
+      {/* 4 — Welcome popups (multi-campaign) */}
       <Section
         step="4"
-        title="Welcome popup"
-        desc="On/off, image, wording, button link, show delay + auto-close"
+        title="Welcome popups"
+        desc="Run several campaigns at once — top of the list wins, one shows per visit"
         open={section === "popup"}
         onToggle={() => setSection(section === "popup" ? "" : "popup")}
       >
-        <label className="flex cursor-pointer items-center gap-3 rounded-xl border bg-white px-4 py-3">
-          <input
-            type="checkbox"
-            checked={banners.popup_enabled !== false}
-            onChange={(e) => setBanners((b) => ({ ...b, popup_enabled: e.target.checked }))}
-            className="h-5 w-5 accent-[#F59E0B]"
-          />
-          <span className="text-sm font-bold text-slate-900">
-            {banners.popup_enabled !== false ? "Popup is ON — shows once per visit" : "Popup is OFF — never shows"}
-          </span>
-        </label>
-        <div className="rounded-xl border bg-white p-4">
-          <p className="text-sm font-bold text-slate-900">Popup style — two ways to show it</p>
-          <div className="mt-2 grid gap-2 sm:grid-cols-2">
-            {POPUP_MODES.map((m) => {
-              const active = banners.popup_mode === m.id
-              return (
-                <button
-                  key={m.id}
-                  type="button"
-                  onClick={() => setBanners((b) => ({ ...b, popup_mode: m.id as PopupMode }))}
-                  aria-pressed={active}
-                  className={`rounded-xl border-2 p-3 text-left transition-colors ${active ? "border-[#F59E0B] bg-amber-50/60" : "border-[#E2E8F0] hover:border-slate-300"}`}
-                >
-                  <span className="block text-sm font-extrabold text-slate-900">
-                    {m.id === "card" ? "Card popup" : "Banner popup"}
-                  </span>
-                  <span className="mt-0.5 block text-[11px] leading-snug text-slate-500">
-                    {m.id === "card"
-                      ? "Image (optional) + badge, title, message, points + buttons."
-                      : "Your uploaded banner fills the whole popup — no text, no buttons. It opens the button link."}
-                  </span>
-                </button>
-              )
-            })}
-          </div>
-          {banners.popup_mode === "banner" && !banners.popup_image.trim() && (
-            <p className="mt-2 rounded-lg bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-700">
-              Upload a banner image below — banner mode falls back to the card until an image is set.
-            </p>
-          )}
+        <p className="rounded-xl border border-sky-200 bg-sky-50 px-3 py-2 text-[11px] leading-relaxed text-sky-800">
+          Campaigns never fight: shoppers see <strong>one</strong> popup per visit — the highest campaign that is
+          switched on, inside its dates, and due under its own frequency cap. Reorder with ↑ ↓ to set priority.
+        </p>
+        <div className="space-y-2.5">
+          {(banners.popup_campaigns || []).map((c, i) => {
+            const st = campaignStatus(c, i + 1)
+            const expanded = openCampaign === c.id
+            return (
+              <div key={c.id} className={`overflow-hidden rounded-xl border bg-white ${expanded ? "border-amber-300 shadow-sm" : ""}`}>
+                <div className="flex items-center gap-2.5 p-3">
+                  <span className={`h-2.5 w-2.5 shrink-0 rounded-full ${st.dot}`} title={st.text} />
+                  <button type="button" onClick={() => setOpenCampaign(expanded ? null : c.id)} aria-expanded={expanded} className="min-w-0 flex-1 text-left">
+                    <span className="block truncate text-sm font-bold text-slate-900">{c.name || "Untitled"}</span>
+                    <span className="block truncate text-[11px] text-slate-500">{st.text}</span>
+                  </button>
+                  <label className="inline-flex shrink-0 cursor-pointer items-center gap-1.5 text-[11px] font-bold text-slate-600">
+                    <input
+                      type="checkbox"
+                      checked={c.enabled}
+                      onChange={(e) => patchCampaign(c.id, { enabled: e.target.checked })}
+                      className="h-4 w-4 accent-[#F59E0B]"
+                    />
+                    {c.enabled ? "On" : "Off"}
+                  </label>
+                  <button type="button" title="Higher priority" onClick={() => moveCampaign(c.id, -1)} disabled={i === 0} className="rounded-md border p-1.5 text-slate-500 hover:bg-slate-100 disabled:opacity-30">
+                    <ChevronUp className="h-3.5 w-3.5" />
+                  </button>
+                  <button type="button" title="Lower priority" onClick={() => moveCampaign(c.id, 1)} disabled={i === (banners.popup_campaigns || []).length - 1} className="rounded-md border p-1.5 text-slate-500 hover:bg-slate-100 disabled:opacity-30">
+                    <ChevronDown className="h-3.5 w-3.5" />
+                  </button>
+                  <button type="button" title="Delete campaign" onClick={() => removeCampaign(c.id)} className="rounded-md border p-1.5 text-red-500 hover:bg-red-50">
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+                {expanded && (
+                  <CampaignEditor
+                    c={c}
+                    onChange={(p) => patchCampaign(c.id, p)}
+                    onUploadImage={() => pickUpload(`popupimg:${c.id}`)}
+                    uploading={uploading === `popupimg:${c.id}`}
+                  />
+                )}
+              </div>
+            )
+          })}
         </div>
-        <div className="rounded-xl border bg-white p-4">
-          <p className="text-sm font-bold text-slate-900">Popup image {banners.popup_mode === "banner" ? "(required for banner mode)" : "(optional)"}</p>
-          <p className="text-[11px] text-slate-500">Wide art — 800 × 320 px for the card header, any portrait or square art for banner mode. Empty = gradient header only.</p>
-          <div className="mt-2 flex gap-2">
-            <input
-              value={banners.popup_image}
-              onChange={(e) => setBanners((b) => ({ ...b, popup_image: e.target.value }))}
-              placeholder="https://… (empty = no image)"
-              className={`${inputCls} min-w-0 flex-1 text-xs`}
-            />
-            <button type="button" onClick={() => pickUpload("popup_image")} disabled={uploading === "popup_image"} className={miniBtn}>
-              {uploading === "popup_image" ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <ImagePlus className="h-3.5 w-3.5" />}
-              {uploading === "popup_image" ? "…" : "Upload"}
-            </button>
-          </div>
-          {banners.popup_image.trim() && isUrl(banners.popup_image) && (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={banners.popup_image.trim()} alt="Popup preview" className="mt-2 h-32 w-full rounded-lg border object-cover" loading="lazy" />
-          )}
-        </div>
-        <div className="rounded-xl border bg-white p-4">
-          <p className="text-sm font-bold text-slate-900">Wording</p>
-          <div className="mt-2 grid gap-2.5">
-            <label className="block">
-              <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Title</span>
-              <input
-                value={banners.popup_title}
-                onChange={(e) => setBanners((b) => ({ ...b, popup_title: e.target.value }))}
-                className={`${inputCls} mt-1 text-xs`}
-              />
-            </label>
-            <label className="block">
-              <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Message</span>
-              <textarea
-                value={banners.popup_message}
-                onChange={(e) => setBanners((b) => ({ ...b, popup_message: e.target.value }))}
-                rows={2}
-                className={`${inputCls} mt-1 text-xs`}
-              />
-            </label>
-            {[0, 1, 2].map((i) => (
-              <label key={i} className="block">
-                <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Point {i + 1}</span>
-                <input
-                  value={banners.popup_points[i] || ""}
-                  onChange={(e) =>
-                    setBanners((b) => {
-                      const next = [...(b.popup_points || []), "", "", ""].slice(0, 3)
-                      next[i] = e.target.value
-                      return { ...b, popup_points: next }
-                    })
-                  }
-                  className={`${inputCls} mt-1 text-xs`}
-                />
-              </label>
-            ))}
-            <div className="grid gap-2.5 sm:grid-cols-2">
-              <label className="block">
-                <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Button text</span>
-                <input
-                  value={banners.popup_cta_text}
-                  onChange={(e) => setBanners((b) => ({ ...b, popup_cta_text: e.target.value }))}
-                  className={`${inputCls} mt-1 text-xs`}
-                />
-              </label>
-              <label className="block">
-                <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Dismiss text</span>
-                <input
-                  value={banners.popup_dismiss_text}
-                  onChange={(e) => setBanners((b) => ({ ...b, popup_dismiss_text: e.target.value }))}
-                  className={`${inputCls} mt-1 text-xs`}
-                />
-              </label>
-            </div>
-            <div>
-              <p className="mb-1.5 text-[11px] font-bold uppercase tracking-wider text-slate-500">Button opens</p>
-              <LinkField value={banners.popup_cta_link} onChange={(v) => setBanners((b) => ({ ...b, popup_cta_link: v || "#flash-deals" }))} />
-            </div>
-          </div>
-        </div>
-        <div className="rounded-xl border bg-white p-4">
-          <p className="text-sm font-bold text-slate-900">Design — make it yours</p>
-          <p className="text-[11px] text-slate-500">Hide any block for a banner-only marketing look, or restyle the whole card.</p>
-          <div className="mt-2 grid gap-2.5 sm:grid-cols-2">
-            <label className="block">
-              <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Style</span>
-              <select
-                value={banners.popup_style}
-                onChange={(e) => setBanners((b) => ({ ...b, popup_style: e.target.value as PopupStyle })) }
-                className={`${inputCls} mt-1 text-xs`}
-              >
-                {POPUP_STYLES.map((s) => (
-                  <option key={s.id} value={s.id}>{s.label}</option>
-                ))}
-              </select>
-            </label>
-            <label className="block">
-              <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Size</span>
-              <select
-                value={banners.popup_size}
-                onChange={(e) => setBanners((b) => ({ ...b, popup_size: e.target.value as PopupSize })) }
-                className={`${inputCls} mt-1 text-xs`}
-              >
-                {POPUP_SIZES.map((s) => (
-                  <option key={s.id} value={s.id}>{s.label}</option>
-                ))}
-              </select>
-            </label>
-          </div>
-          <label className="mt-2.5 block">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Badge text</span>
-            <input
-              value={banners.popup_kicker}
-              onChange={(e) => setBanners((b) => ({ ...b, popup_kicker: e.target.value }))}
-              placeholder="Welcome Offer"
-              className={`${inputCls} mt-1 text-xs`}
-            />
-          </label>
-          <div className="mt-2.5 flex flex-wrap gap-x-5 gap-y-2">
-            {(
-              [
-                ["popup_show_kicker", "Badge"],
-                ["popup_show_title", "Title"],
-                ["popup_show_message", "Message"],
-                ["popup_show_points", "Points"],
-                ["popup_show_dismiss", "Dismiss button"],
-              ] as Array<[keyof MarketBanners, string]>
-            ).map(([key, label]) => (
-              <label key={key} className="inline-flex cursor-pointer items-center gap-1.5 text-xs font-semibold text-slate-700">
-                <input
-                  type="checkbox"
-                  checked={banners[key] !== false}
-                  onChange={(e) => setBanners((b) => ({ ...b, [key]: e.target.checked }))}
-                  className="h-3.5 w-3.5 accent-[#F59E0B]"
-                />
-                {label}
-              </label>
-            ))}
-          </div>
-          <p className="mt-2 text-[11px] text-slate-500">
-            Tip: image ON + title/message/points OFF = banner + buttons only. All writeups OFF + light style = clean marketing card.
-          </p>
-        </div>
-        <div className="rounded-xl border bg-white p-4">
-          <div className="mb-2 flex items-center justify-between">
-            <p className="text-sm font-bold text-slate-900">Live preview — exactly as shoppers see it</p>
-            <button
-              type="button"
-              onClick={() => setPreviewOn(true)}
-              className="rounded-lg border px-2.5 py-1.5 text-xs font-bold hover:bg-slate-50"
-            >
-              Replay
-            </button>
-          </div>
-          {previewOn ? (
-            <div className="flex justify-center rounded-xl bg-slate-900/[0.04] p-4">
-              <WelcomePopupCard b={banners} onClose={() => setPreviewOn(false)} preview />
-            </div>
-          ) : (
-            <p className="rounded-xl bg-slate-50 px-3 py-6 text-center text-xs text-slate-500">
-              Preview dismissed — hit Replay to see it again.
-            </p>
-          )}
-        </div>
-        <div className="rounded-xl border bg-white p-4">
-          <p className="text-sm font-bold text-slate-900">Timing — don&apos;t bore the shopper</p>
-          <label className="mt-2 block">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Show it…</span>
-            <select
-              value={banners.popup_frequency}
-              onChange={(e) => setBanners((b) => ({ ...b, popup_frequency: e.target.value as PopupFrequency }))}
-              className={`${inputCls} mt-1 text-xs`}
-            >
-              {POPUP_FREQUENCIES.map((f) => (
-                <option key={f.id} value={f.id}>{f.label}</option>
-              ))}
-            </select>
-            <span className="text-[11px] text-slate-400">Daily/weekly is remembered on the shopper&apos;s device after they close it.</span>
-          </label>
-          <div className="mt-2.5 grid gap-2.5 sm:grid-cols-2">
-            <label className="block">
-              <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Show after (seconds)</span>
-              <input
-                type="number"
-                min={0}
-                max={30}
-                value={banners.popup_delay_sec}
-                onChange={(e) => {
-                  const n = Number(e.target.value)
-                  setBanners((b) => ({ ...b, popup_delay_sec: Number.isFinite(n) ? Math.min(30, Math.max(0, Math.round(n))) : 1 }))
-                }}
-                className={`${inputCls} mt-1 text-xs`}
-              />
-              <span className="text-[11px] text-slate-400">0 = immediately</span>
-            </label>
-            <label className="block">
-              <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Auto-close after (seconds)</span>
-              <input
-                type="number"
-                min={0}
-                max={120}
-                value={banners.popup_autoclose_sec}
-                onChange={(e) => {
-                  const n = Number(e.target.value)
-                  setBanners((b) => ({ ...b, popup_autoclose_sec: Number.isFinite(n) ? Math.min(120, Math.max(0, Math.round(n))) : 0 }))
-                }}
-                className={`${inputCls} mt-1 text-xs`}
-              />
-              <span className="text-[11px] text-slate-400">0 = stays until dismissed</span>
-            </label>
-          </div>
-        </div>
+        {(banners.popup_campaigns || []).length < MAX_POPUP_CAMPAIGNS ? (
+          <button
+            type="button"
+            onClick={() => {
+              const c = defaultPopupCampaign(`Campaign ${(banners.popup_campaigns || []).length + 1}`)
+              setBanners((b) => ({ ...b, popup_campaigns: [...(b.popup_campaigns || []), c] }))
+              setOpenCampaign(c.id)
+              flash("Campaign added — expand it to design, then Save banners")
+            }}
+            className="inline-flex items-center gap-1.5 rounded-lg border border-dashed border-slate-300 bg-white px-4 py-2.5 text-xs font-bold text-slate-600 hover:border-[#F59E0B] hover:text-[#0F172A]"
+          >
+            <Plus className="h-3.5 w-3.5" /> Add popup campaign
+          </button>
+        ) : (
+          <p className="text-xs text-slate-500">Maximum {MAX_POPUP_CAMPAIGNS} campaigns — delete one to add another.</p>
+        )}
       </Section>
 
       {/* 5 — Promo & store */}

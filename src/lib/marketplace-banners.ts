@@ -157,6 +157,10 @@ export interface MarketBanners {
   /** How often a shopper sees it: every visit, once per tab session,
       once a day, or once a week (remembered on their device). */
   popup_frequency: PopupFrequency
+  /** Ordered popup campaigns (top wins, one shows per visit). Empty with
+      the key present = no popup at all. Absent (legacy rows) = migrated
+      from the flat popup_* fields above. */
+  popup_campaigns: PopupCampaign[]
   shop_image: string
   deals_image: string
   best_sellers_image: string
@@ -227,6 +231,7 @@ export const EMPTY_BANNERS: MarketBanners = {
   popup_size: "md",
   popup_mode: "card",
   popup_frequency: "every",
+  popup_campaigns: [],
   shop_image: "",
   deals_image: "",
   best_sellers_image: "",
@@ -448,7 +453,14 @@ function slotSliderArr(
 
 export function parseBanners(raw: unknown): MarketBanners {
   if (!raw || typeof raw !== "object")
-    return { ...EMPTY_BANNERS, departments: {}, sidebar_banners: {}, links: {}, slot_settings: {} }
+    return {
+      ...EMPTY_BANNERS,
+      departments: {},
+      sidebar_banners: {},
+      links: {},
+      slot_settings: {},
+      popup_campaigns: [{ ...defaultPopupCampaign("Welcome popup"), id: "default" }],
+    }
   const r = raw as Record<string, unknown>
   const str = (v: unknown) => (typeof v === "string" ? v : "")
   const strMap = (v: unknown): Record<string, string> => {
@@ -467,10 +479,6 @@ export function parseBanners(raw: unknown): MarketBanners {
     .filter((x): x is string => typeof x === "string" && x.trim().length > 0)
     .map((x) => x.trim().slice(0, 120))
     .slice(0, 3)
-  const clampSec = (v: unknown, lo: number, hi: number, fb: number) => {
-    const n = Number(v)
-    return Number.isFinite(n) ? Math.min(hi, Math.max(lo, Math.round(n))) : fb
-  }
   const transitionRaw = str(r.slider_transition).trim().toLowerCase()
   const transition: BannerTransition = (BANNER_TRANSITIONS.some((t) => t.id === transitionRaw)
     ? transitionRaw
@@ -563,6 +571,39 @@ export function parseBanners(raw: unknown): MarketBanners {
     popup_size: (POPUP_SIZES.some((s) => s.id === r.popup_size) ? r.popup_size : "md") as PopupSize,
     popup_mode: (POPUP_MODES.some((m) => m.id === r.popup_mode) ? r.popup_mode : "card") as PopupMode,
     popup_frequency: (POPUP_FREQUENCIES.some((f) => f.id === r.popup_frequency) ? r.popup_frequency : "every") as PopupFrequency,
+    // New list wins; legacy rows (no key yet) migrate the flat popup_*
+    // fields into a single "Welcome popup" campaign on first read.
+    popup_campaigns:
+      r.popup_campaigns === undefined
+        ? [
+            {
+              ...defaultPopupCampaign("Welcome popup"),
+              id: "default",
+              enabled: typeof r.popup_enabled === "boolean" ? r.popup_enabled : true,
+              mode: (POPUP_MODES.some((m) => m.id === r.popup_mode) ? r.popup_mode : "card") as PopupMode,
+              image: str(r.popup_image).trim(),
+              kicker: str(r.popup_kicker).trim().slice(0, 40) || EMPTY_BANNERS.popup_kicker,
+              show_kicker: typeof r.popup_show_kicker === "boolean" ? r.popup_show_kicker : true,
+              title: str(r.popup_title).trim().slice(0, 80) || EMPTY_BANNERS.popup_title,
+              show_title: typeof r.popup_show_title === "boolean" ? r.popup_show_title : true,
+              message: str(r.popup_message).trim().slice(0, 200) || EMPTY_BANNERS.popup_message,
+              show_message: typeof r.popup_show_message === "boolean" ? r.popup_show_message : true,
+              points: popup_points.length > 0 ? popup_points : [...EMPTY_BANNERS.popup_points],
+              show_points: typeof r.popup_show_points === "boolean" ? r.popup_show_points : true,
+              cta_text: str(r.popup_cta_text).trim().slice(0, 40) || EMPTY_BANNERS.popup_cta_text,
+              cta_link: cleanBannerLink(r.popup_cta_link) || "#flash-deals",
+              dismiss_text: str(r.popup_dismiss_text).trim().slice(0, 40) || EMPTY_BANNERS.popup_dismiss_text,
+              show_dismiss: typeof r.popup_show_dismiss === "boolean" ? r.popup_show_dismiss : true,
+              style: (POPUP_STYLES.some((s) => s.id === r.popup_style) ? r.popup_style : "dark") as PopupStyle,
+              size: (POPUP_SIZES.some((s) => s.id === r.popup_size) ? r.popup_size : "md") as PopupSize,
+              frequency: (POPUP_FREQUENCIES.some((f) => f.id === r.popup_frequency) ? r.popup_frequency : "every") as PopupFrequency,
+              delay_sec: clampSec(r.popup_delay_sec, 0, 30, 1),
+              autoclose_sec: clampSec(r.popup_autoclose_sec, 0, 120, 0),
+              start_at: "",
+              end_at: "",
+            },
+          ]
+        : parsePopupCampaigns(r.popup_campaigns),
     shop_image,
     deals_image,
     best_sellers_image,
@@ -710,6 +751,207 @@ export const POPUP_FREQUENCIES = [
 ] as const
 
 export type PopupFrequency = (typeof POPUP_FREQUENCIES)[number]["id"]
+
+export interface PopupCampaign {
+  id: string
+  name: string
+  enabled: boolean
+  mode: PopupMode
+  image: string
+  kicker: string
+  show_kicker: boolean
+  title: string
+  show_title: boolean
+  message: string
+  show_message: boolean
+  points: string[]
+  show_points: boolean
+  cta_text: string
+  cta_link: string
+  dismiss_text: string
+  show_dismiss: boolean
+  style: PopupStyle
+  size: PopupSize
+  frequency: PopupFrequency
+  delay_sec: number
+  autoclose_sec: number
+  /** ISO datetimes; "" = no bound. Lets campaigns run on schedule. */
+  start_at: string
+  end_at: string
+}
+
+export const MAX_POPUP_CAMPAIGNS = 10
+
+export function defaultPopupCampaign(name = "New popup"): PopupCampaign {
+  return {
+    id: `c${Date.now().toString(36)}${Math.random().toString(36).slice(2, 7)}`,
+    name: name.slice(0, 60) || "New popup",
+    enabled: true,
+    mode: "card",
+    image: "",
+    kicker: EMPTY_BANNERS.popup_kicker,
+    show_kicker: true,
+    title: EMPTY_BANNERS.popup_title,
+    show_title: true,
+    message: EMPTY_BANNERS.popup_message,
+    show_message: true,
+    points: [...EMPTY_BANNERS.popup_points],
+    show_points: true,
+    cta_text: EMPTY_BANNERS.popup_cta_text,
+    cta_link: "#flash-deals",
+    dismiss_text: EMPTY_BANNERS.popup_dismiss_text,
+    show_dismiss: true,
+    style: "dark",
+    size: "md",
+    frequency: "daily",
+    delay_sec: 1,
+    autoclose_sec: 0,
+    start_at: "",
+    end_at: "",
+  }
+}
+
+function cleanIsoDate(v: unknown): string {
+  if (typeof v !== "string" || !v.trim()) return ""
+  const ms = Date.parse(v.trim())
+  return Number.isFinite(ms) ? new Date(ms).toISOString() : ""
+}
+
+const clampSec = (v: unknown, lo: number, hi: number, fb: number) => {
+  const n = Number(v)
+  return Number.isFinite(n) ? Math.min(hi, Math.max(lo, Math.round(n))) : fb
+}
+
+function parsePopupCampaign(v: unknown): PopupCampaign | null {
+  if (!v || typeof v !== "object") return null
+  const r = v as Record<string, unknown>
+  const str = (x: unknown) => (typeof x === "string" ? x : "")
+  const pts = Array.isArray(r.points) ? r.points : []
+  const points = pts
+    .filter((x): x is string => typeof x === "string" && x.trim().length > 0)
+    .map((x) => x.trim().slice(0, 120))
+    .slice(0, 3)
+  const c = defaultPopupCampaign(str(r.name) || "Popup")
+  const bool = (x: unknown, fb: boolean) => (typeof x === "boolean" ? x : fb)
+  return {
+    ...c,
+    id: /^[A-Za-z0-9_-]{1,40}$/.test(str(r.id)) ? str(r.id) : c.id,
+    name: str(r.name).trim().slice(0, 60) || "Popup",
+    enabled: bool(r.enabled, true),
+    mode: (POPUP_MODES.some((m) => m.id === r.mode) ? r.mode : "card") as PopupMode,
+    image: str(r.image).trim(),
+    kicker: str(r.kicker).trim().slice(0, 40) || EMPTY_BANNERS.popup_kicker,
+    show_kicker: bool(r.show_kicker, true),
+    title: str(r.title).trim().slice(0, 80) || EMPTY_BANNERS.popup_title,
+    show_title: bool(r.show_title, true),
+    message: str(r.message).trim().slice(0, 200) || EMPTY_BANNERS.popup_message,
+    show_message: bool(r.show_message, true),
+    points: points.length > 0 ? points : [...EMPTY_BANNERS.popup_points],
+    show_points: bool(r.show_points, true),
+    cta_text: str(r.cta_text).trim().slice(0, 40) || EMPTY_BANNERS.popup_cta_text,
+    cta_link: cleanBannerLink(r.cta_link) || "#flash-deals",
+    dismiss_text: str(r.dismiss_text).trim().slice(0, 40) || EMPTY_BANNERS.popup_dismiss_text,
+    show_dismiss: bool(r.show_dismiss, true),
+    style: (POPUP_STYLES.some((s) => s.id === r.style) ? r.style : "dark") as PopupStyle,
+    size: (POPUP_SIZES.some((s) => s.id === r.size) ? r.size : "md") as PopupSize,
+    frequency: (POPUP_FREQUENCIES.some((f) => f.id === r.frequency) ? r.frequency : "daily") as PopupFrequency,
+    delay_sec: clampSec(r.delay_sec, 0, 30, 1),
+    autoclose_sec: clampSec(r.autoclose_sec, 0, 120, 0),
+    start_at: cleanIsoDate(r.start_at),
+    end_at: cleanIsoDate(r.end_at),
+  }
+}
+
+export function parsePopupCampaigns(v: unknown): PopupCampaign[] {
+  if (!Array.isArray(v)) return []
+  const out: PopupCampaign[] = []
+  const seen = new Set<string>()
+  for (const x of v) {
+    if (out.length >= MAX_POPUP_CAMPAIGNS) break
+    const c = parsePopupCampaign(x)
+    if (c && !seen.has(c.id)) {
+      seen.add(c.id)
+      out.push(c)
+    }
+  }
+  return out
+}
+
+const POP_FREQ_PREFIX = "tp_market_popup_v1"
+
+// Frequency cap so shoppers don't see a popup on every refresh.
+// Remembered per campaign on the shopper's device (session tab or
+// local day/week stamp). Server-safe: returns true without storage.
+export function popupDue(frequency: string, id: string): boolean {
+  try {
+    if (typeof window === "undefined") return true
+    if (frequency === "every") return true
+    const key = `${POP_FREQ_PREFIX}:${id}`
+    if (frequency === "session") return !window.sessionStorage.getItem(key)
+    const last = Number(window.localStorage.getItem(key) || 0)
+    const gap = frequency === "weekly" ? 7 * 86400000 : 86400000
+    return Date.now() - last > gap
+  } catch {
+    return true
+  }
+}
+
+export function stampPopup(frequency: string, id: string) {
+  try {
+    if (typeof window === "undefined") return
+    const key = `${POP_FREQ_PREFIX}:${id}`
+    if (frequency === "session") window.sessionStorage.setItem(key, "1")
+    else window.localStorage.setItem(key, String(Date.now()))
+  } catch {
+    // private mode — popup simply shows again next visit
+  }
+}
+
+// Conflict-free selection: the first campaign (top of the admin list
+// wins) that is enabled, inside its schedule window, and due under its
+// own frequency cap. Only ever one popup per visit — never stacked.
+export function pickPopupCampaign(list: PopupCampaign[], now = Date.now()): PopupCampaign | null {
+  for (const c of list) {
+    if (!c.enabled) continue
+    if (c.start_at && now < Date.parse(c.start_at)) continue
+    if (c.end_at && now > Date.parse(c.end_at)) continue
+    if (!popupDue(c.frequency, c.id)) continue
+    return c
+  }
+  return null
+}
+
+// Adapter: a campaign viewed through the legacy flat popup fields,
+// so the shared card component needs no changes.
+export function campaignView(c: PopupCampaign): MarketBanners {
+  return {
+    ...EMPTY_BANNERS,
+    departments: {},
+    sidebar_banners: {},
+    links: {},
+    slot_settings: {},
+    popup_enabled: c.enabled,
+    popup_image: c.image,
+    popup_title: c.title,
+    popup_message: c.message,
+    popup_points: [...c.points],
+    popup_cta_text: c.cta_text,
+    popup_cta_link: c.cta_link,
+    popup_dismiss_text: c.dismiss_text,
+    popup_delay_sec: c.delay_sec,
+    popup_autoclose_sec: c.autoclose_sec,
+    popup_kicker: c.kicker,
+    popup_show_kicker: c.show_kicker,
+    popup_show_title: c.show_title,
+    popup_show_message: c.show_message,
+    popup_show_points: c.show_points,
+    popup_show_dismiss: c.show_dismiss,
+    popup_style: c.style,
+    popup_size: c.size,
+    popup_mode: c.mode,
+    popup_frequency: c.frequency,
+  }
+}
 
 // Where-can-a-banner-point presets (admin picker; custom URLs allowed).
 export const BANNER_LINK_PRESETS: Array<{ value: string; label: string }> = [

@@ -3,13 +3,19 @@ import {
   BANNER_TRANSITIONS,
   BANNER_TRANSITION_GROUPS,
   EMPTY_BANNERS,
+  campaignView,
   cleanBannerLink,
+  defaultPopupCampaign,
   easingCss,
   linkOf,
   parseBanners,
+  parsePopupCampaigns,
+  pickPopupCampaign,
+  popupDue,
   slidesOf,
   slidesOfObjects,
   slotSliderOf,
+  type PopupCampaign,
 } from "@/lib/marketplace-banners"
 
 describe("banner transition registry", () => {
@@ -227,6 +233,62 @@ describe("parseBanners slider settings", () => {
     const bad = parseBanners({ popup_mode: "video", popup_frequency: "hourly" })
     expect(bad.popup_mode).toBe("card")
     expect(bad.popup_frequency).toBe("every")
+  })
+
+  it("migrates legacy flat popup fields into one campaign", () => {
+    const b = parseBanners({ popup_title: "Hello", popup_enabled: false })
+    expect(b.popup_campaigns).toHaveLength(1)
+    expect(b.popup_campaigns[0].id).toBe("default")
+    expect(b.popup_campaigns[0].title).toBe("Hello")
+    expect(b.popup_campaigns[0].enabled).toBe(false)
+  })
+
+  it("an explicit empty campaign list means no popup", () => {
+    expect(parseBanners({ popup_campaigns: [] }).popup_campaigns).toEqual([])
+    expect(parseBanners({}).popup_campaigns).toHaveLength(1)
+  })
+
+  it("parses, dedupes and caps campaign lists", () => {
+    const many = Array.from({ length: 12 }, (_, i) => ({ id: `c${i}`, name: `C${i}` }))
+    const b = parseBanners({ popup_campaigns: [...many, { id: "c1", name: "Dup" }, 42] })
+    expect(b.popup_campaigns).toHaveLength(10)
+    expect(new Set(b.popup_campaigns.map((c) => c.id)).size).toBe(10)
+  })
+})
+
+describe("pickPopupCampaign", () => {
+  const base = (over: Partial<PopupCampaign>): PopupCampaign => ({ ...defaultPopupCampaign("T"), id: "t", ...over })
+
+  it("returns null when every campaign is off or out of window", () => {
+    expect(pickPopupCampaign([])).toBeNull()
+    expect(pickPopupCampaign([base({ enabled: false })])).toBeNull()
+    expect(
+      pickPopupCampaign([base({ start_at: new Date(Date.now() + 86400000).toISOString() })])
+    ).toBeNull()
+    expect(
+      pickPopupCampaign([base({ end_at: new Date(Date.now() - 86400000).toISOString() })])
+    ).toBeNull()
+  })
+
+  it("top of the list wins and skips disabled/capped campaigns", () => {
+    const off = base({ id: "off", enabled: false })
+    const live = base({ id: "live", frequency: "every" })
+    const second = base({ id: "second", frequency: "every" })
+    expect(pickPopupCampaign([off, live, second])?.id).toBe("live")
+    expect(pickPopupCampaign([second, live])?.id).toBe("second")
+  })
+
+  it("popupDue honors session/daily/weekly caps without storage", () => {
+    // no window in tests → fail-open so popups still work in SSR/prerender
+    expect(popupDue("daily", "x")).toBe(true)
+    expect(popupDue("every", "x")).toBe(true)
+  })
+
+  it("campaignView adapts a campaign to the shared card", () => {
+    const v = campaignView(base({ id: "v", title: "Sale", mode: "banner", image: "img" }))
+    expect(v.popup_title).toBe("Sale")
+    expect(v.popup_mode).toBe("banner")
+    expect(v.popup_image).toBe("img")
   })
 
   it("EMPTY_BANNERS stays a valid single-image config", () => {

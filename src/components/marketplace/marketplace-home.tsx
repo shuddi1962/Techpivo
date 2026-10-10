@@ -14,7 +14,7 @@ import { openCartPopup, openQuickView } from "@/lib/marketplace-events"
 import {
   MARKETPLACE_BRAND, MARKETPLACE_HERO, supplierDisplayName, type DemoProduct,
 } from "@/lib/marketplace"
-import { EMPTY_BANNERS, linkOf, parseBanners, slidesOfObjects, slotSliderProps, type MarketBanners } from "@/lib/marketplace-banners"
+import { EMPTY_BANNERS, campaignView, linkOf, parseBanners, pickPopupCampaign, slidesOfObjects, slotSliderProps, stampPopup, type MarketBanners } from "@/lib/marketplace-banners"
 import { MARKET_DEPARTMENTS } from "@/lib/marketplace-categories"
 import { marketImage, cleanSupplierText } from "@/lib/marketplace-images"
 import { readCompare, toggleCompareStored } from "@/lib/marketplace-compare"
@@ -188,31 +188,6 @@ function PromoBox({
   )
 }
 
-const POP_FREQ_KEY = "tp_market_popup_v1"
-
-// Frequency cap so shoppers don't see the popup on every refresh:
-// every visit, once per tab session, once a day, or once a week.
-function popupDue(freq: string): boolean {
-  try {
-    if (freq === "every") return true
-    if (freq === "session") return !window.sessionStorage.getItem(POP_FREQ_KEY)
-    const last = Number(window.localStorage.getItem(POP_FREQ_KEY) || 0)
-    const gap = freq === "weekly" ? 7 * 86400000 : 86400000
-    return Date.now() - last > gap
-  } catch {
-    return true
-  }
-}
-
-function stampPopup(freq: string) {
-  try {
-    if (freq === "session") window.sessionStorage.setItem(POP_FREQ_KEY, "1")
-    else window.localStorage.setItem(POP_FREQ_KEY, String(Date.now()))
-  } catch {
-    // private mode — popup simply shows again next visit
-  }
-}
-
 function useCountdown() {
   // Single countdown value — never call setState inside another setState
   // updater (impure updaters cascade extra renders under StrictMode).
@@ -316,18 +291,24 @@ export function MarketplaceHome() {
   // intentionally not persisted). Fully driven by Admin → Banners →
   // Welcome popup (on/off, text, image, link, delay + auto-close).
   const [showNotice, setShowNotice] = useState(false)
+  // Multi-campaign popup: the topmost due campaign wins — only ever one
+  // popup per visit, each with its own schedule + frequency cap.
+  const campaign = useMemo(
+    () => (bannersReady ? pickPopupCampaign(banners.popup_campaigns) : null),
+    [banners, bannersReady]
+  )
   const closeNotice = useCallback(() => {
-    stampPopup(banners.popup_frequency)
+    if (campaign) stampPopup(campaign.frequency, campaign.id)
     setShowNotice(false)
-  }, [banners.popup_frequency])
+  }, [campaign])
   useEffect(() => {
-    if (banners.popup_enabled === false || !popupDue(banners.popup_frequency)) return
+    if (!campaign) return
     const t = setTimeout(
       () => setShowNotice(true),
-      Math.min(30, Math.max(0, banners.popup_delay_sec)) * 1000
+      Math.min(30, Math.max(0, campaign.delay_sec)) * 1000
     )
     return () => clearTimeout(t)
-  }, [banners.popup_enabled, banners.popup_delay_sec, banners.popup_frequency, bannersReady])
+  }, [campaign, bannersReady])
   useEffect(() => {
     if (!showNotice) return
     const onKey = (e: KeyboardEvent) => {
@@ -337,15 +318,15 @@ export function MarketplaceHome() {
     const prev = document.body.style.overflow
     document.body.style.overflow = "hidden"
     let auto: ReturnType<typeof setTimeout> | null = null
-    if (banners.popup_autoclose_sec > 0) {
-      auto = setTimeout(() => closeNotice(), banners.popup_autoclose_sec * 1000)
+    if (campaign && campaign.autoclose_sec > 0) {
+      auto = setTimeout(() => closeNotice(), campaign.autoclose_sec * 1000)
     }
     return () => {
       document.removeEventListener("keydown", onKey)
       document.body.style.overflow = prev
       if (auto) clearTimeout(auto)
     }
-  }, [showNotice, banners.popup_autoclose_sec, closeNotice])
+  }, [showNotice, campaign, closeNotice])
   // Collection-cover rotation: every 30s the tiles re-deal from each
   // node's own live photos, so covers change on their own over time.
   const [rot, setRot] = useState(0)
@@ -792,15 +773,15 @@ export function MarketplaceHome() {
 
         {/* welcome popup — once per visit, fully driven by Admin →
             Banners → Welcome popup (layout, style, text, link, timing). */}
-        {showNotice && banners.popup_enabled !== false && (
-          <div className="fixed inset-0 z-[80] flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-label={banners.popup_title || "Special offer"}>
+        {showNotice && campaign && (
+          <div className="fixed inset-0 z-[80] flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-label={campaign.title || "Special offer"}>
             <button
               type="button"
               aria-label="Dismiss notice"
               onClick={closeNotice}
               className="absolute inset-0 bg-[#0F172A]/60 backdrop-blur-[2px]"
             />
-            <WelcomePopupCard b={banners} onClose={closeNotice} />
+            <WelcomePopupCard b={campaignView(campaign)} onClose={closeNotice} />
           </div>
         )}
 
