@@ -921,9 +921,145 @@ export function MarketplaceBannersTab() {
         </p>
       </Section>
 
-      {/* 4 — Promo & store */}
+      {/* 4 — Welcome popup */}
       <Section
         step="4"
+        title="Welcome popup"
+        desc="On/off, image, wording, button link, show delay + auto-close"
+        open={section === "popup"}
+        onToggle={() => setSection(section === "popup" ? "" : "popup")}
+      >
+        <label className="flex cursor-pointer items-center gap-3 rounded-xl border bg-white px-4 py-3">
+          <input
+            type="checkbox"
+            checked={banners.popup_enabled !== false}
+            onChange={(e) => setBanners((b) => ({ ...b, popup_enabled: e.target.checked }))}
+            className="h-5 w-5 accent-[#F59E0B]"
+          />
+          <span className="text-sm font-bold text-slate-900">
+            {banners.popup_enabled !== false ? "Popup is ON — shows once per visit" : "Popup is OFF — never shows"}
+          </span>
+        </label>
+        <div className="rounded-xl border bg-white p-4">
+          <p className="text-sm font-bold text-slate-900">Popup image (optional)</p>
+          <p className="text-[11px] text-slate-500">Wide art shown above the title — 800 × 320 px. Empty = gradient header only.</p>
+          <div className="mt-2 flex gap-2">
+            <input
+              value={banners.popup_image}
+              onChange={(e) => setBanners((b) => ({ ...b, popup_image: e.target.value }))}
+              placeholder="https://… (empty = no image)"
+              className={`${inputCls} min-w-0 flex-1 text-xs`}
+            />
+            <button type="button" onClick={() => pickUpload("popup_image")} disabled={uploading === "popup_image"} className={miniBtn}>
+              {uploading === "popup_image" ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <ImagePlus className="h-3.5 w-3.5" />}
+              {uploading === "popup_image" ? "…" : "Upload"}
+            </button>
+          </div>
+          {banners.popup_image.trim() && isUrl(banners.popup_image) && (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={banners.popup_image.trim()} alt="Popup preview" className="mt-2 h-32 w-full rounded-lg border object-cover" loading="lazy" />
+          )}
+        </div>
+        <div className="rounded-xl border bg-white p-4">
+          <p className="text-sm font-bold text-slate-900">Wording</p>
+          <div className="mt-2 grid gap-2.5">
+            <label className="block">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Title</span>
+              <input
+                value={banners.popup_title}
+                onChange={(e) => setBanners((b) => ({ ...b, popup_title: e.target.value }))}
+                className={`${inputCls} mt-1 text-xs`}
+              />
+            </label>
+            <label className="block">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Message</span>
+              <textarea
+                value={banners.popup_message}
+                onChange={(e) => setBanners((b) => ({ ...b, popup_message: e.target.value }))}
+                rows={2}
+                className={`${inputCls} mt-1 text-xs`}
+              />
+            </label>
+            {[0, 1, 2].map((i) => (
+              <label key={i} className="block">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Point {i + 1}</span>
+                <input
+                  value={banners.popup_points[i] || ""}
+                  onChange={(e) =>
+                    setBanners((b) => {
+                      const next = [...(b.popup_points || []), "", "", ""].slice(0, 3)
+                      next[i] = e.target.value
+                      return { ...b, popup_points: next }
+                    })
+                  }
+                  className={`${inputCls} mt-1 text-xs`}
+                />
+              </label>
+            ))}
+            <div className="grid gap-2.5 sm:grid-cols-2">
+              <label className="block">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Button text</span>
+                <input
+                  value={banners.popup_cta_text}
+                  onChange={(e) => setBanners((b) => ({ ...b, popup_cta_text: e.target.value }))}
+                  className={`${inputCls} mt-1 text-xs`}
+                />
+              </label>
+              <label className="block">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Dismiss text</span>
+                <input
+                  value={banners.popup_dismiss_text}
+                  onChange={(e) => setBanners((b) => ({ ...b, popup_dismiss_text: e.target.value }))}
+                  className={`${inputCls} mt-1 text-xs`}
+                />
+              </label>
+            </div>
+            <div>
+              <p className="mb-1.5 text-[11px] font-bold uppercase tracking-wider text-slate-500">Button opens</p>
+              <LinkField value={banners.popup_cta_link} onChange={(v) => setBanners((b) => ({ ...b, popup_cta_link: v || "#flash-deals" }))} />
+            </div>
+          </div>
+        </div>
+        <div className="rounded-xl border bg-white p-4">
+          <p className="text-sm font-bold text-slate-900">Timing</p>
+          <div className="mt-2 grid gap-2.5 sm:grid-cols-2">
+            <label className="block">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Show after (seconds)</span>
+              <input
+                type="number"
+                min={0}
+                max={30}
+                value={banners.popup_delay_sec}
+                onChange={(e) => {
+                  const n = Number(e.target.value)
+                  setBanners((b) => ({ ...b, popup_delay_sec: Number.isFinite(n) ? Math.min(30, Math.max(0, Math.round(n))) : 1 }))
+                }}
+                className={`${inputCls} mt-1 text-xs`}
+              />
+              <span className="text-[11px] text-slate-400">0 = immediately</span>
+            </label>
+            <label className="block">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Auto-close after (seconds)</span>
+              <input
+                type="number"
+                min={0}
+                max={120}
+                value={banners.popup_autoclose_sec}
+                onChange={(e) => {
+                  const n = Number(e.target.value)
+                  setBanners((b) => ({ ...b, popup_autoclose_sec: Number.isFinite(n) ? Math.min(120, Math.max(0, Math.round(n))) : 0 }))
+                }}
+                className={`${inputCls} mt-1 text-xs`}
+              />
+              <span className="text-[11px] text-slate-400">0 = stays until dismissed</span>
+            </label>
+          </div>
+        </div>
+      </Section>
+
+      {/* 5 — Promo & store */}
+      <Section
+        step="5"
         title="Promo & store info"
         desc="Black Friday surfaces + footer contact details"
         open={section === "more"}

@@ -128,6 +128,19 @@ export interface MarketBanners {
   /** Black Friday promo surfaces (top strip, Specials button, homepage
       promo banner + hero kicker). False = hidden publicly, instantly. */
   promo_enabled: boolean
+  /** Welcome popup (homepage, once per visit). False = never shows. */
+  popup_enabled: boolean
+  popup_image: string
+  popup_title: string
+  popup_message: string
+  popup_points: string[]
+  popup_cta_text: string
+  popup_cta_link: string
+  popup_dismiss_text: string
+  /** Seconds to wait before popping (0 = immediately). */
+  popup_delay_sec: number
+  /** Seconds before it closes itself (0 = stays until dismissed). */
+  popup_autoclose_sec: number
   shop_image: string
   deals_image: string
   best_sellers_image: string
@@ -174,6 +187,20 @@ export const EMPTY_BANNERS: MarketBanners = {
   departments: {},
   sidebar_banners: {},
   promo_enabled: true,
+  popup_enabled: true,
+  popup_image: "",
+  popup_title: "Welcome to TechPivo Market",
+  popup_message: "Quality-checked products, secure payment and tracked delivery.",
+  popup_points: [
+    "Secure payment on every order",
+    "Quality-checked products",
+    "Tracked 7–12 day delivery",
+  ],
+  popup_cta_text: "Explore Now",
+  popup_cta_link: "#flash-deals",
+  popup_dismiss_text: "Browse",
+  popup_delay_sec: 1,
+  popup_autoclose_sec: 0,
   shop_image: "",
   deals_image: "",
   best_sellers_image: "",
@@ -409,6 +436,15 @@ export function parseBanners(raw: unknown): MarketBanners {
   }
   const departments = strMap(r.departments)
   const sidebar_banners = strMap(r.sidebar_banners)
+  const pointsRaw = Array.isArray(r.popup_points) ? r.popup_points : []
+  const popup_points = pointsRaw
+    .filter((x): x is string => typeof x === "string" && x.trim().length > 0)
+    .map((x) => x.trim().slice(0, 120))
+    .slice(0, 3)
+  const clampSec = (v: unknown, lo: number, hi: number, fb: number) => {
+    const n = Number(v)
+    return Number.isFinite(n) ? Math.min(hi, Math.max(lo, Math.round(n))) : fb
+  }
   const transitionRaw = str(r.slider_transition).trim().toLowerCase()
   const transition: BannerTransition = (BANNER_TRANSITIONS.some((t) => t.id === transitionRaw)
     ? transitionRaw
@@ -481,6 +517,16 @@ export function parseBanners(raw: unknown): MarketBanners {
     strip2_image,
     category_default,
     promo_enabled: typeof r.promo_enabled === "boolean" ? r.promo_enabled : true,
+    popup_enabled: typeof r.popup_enabled === "boolean" ? r.popup_enabled : true,
+    popup_image: str(r.popup_image).trim(),
+    popup_title: str(r.popup_title).trim().slice(0, 80) || EMPTY_BANNERS.popup_title,
+    popup_message: str(r.popup_message).trim().slice(0, 200) || EMPTY_BANNERS.popup_message,
+    popup_points: popup_points.length > 0 ? popup_points : [...EMPTY_BANNERS.popup_points],
+    popup_cta_text: str(r.popup_cta_text).trim().slice(0, 40) || EMPTY_BANNERS.popup_cta_text,
+    popup_cta_link: cleanBannerLink(r.popup_cta_link) || "#flash-deals",
+    popup_dismiss_text: str(r.popup_dismiss_text).trim().slice(0, 40) || EMPTY_BANNERS.popup_dismiss_text,
+    popup_delay_sec: clampSec(r.popup_delay_sec, 0, 30, 1),
+    popup_autoclose_sec: clampSec(r.popup_autoclose_sec, 0, 120, 0),
     shop_image,
     deals_image,
     best_sellers_image,

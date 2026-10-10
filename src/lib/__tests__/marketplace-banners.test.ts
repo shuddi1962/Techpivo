@@ -185,6 +185,25 @@ describe("parseBanners slider settings", () => {
     expect(b.links).toEqual({ "side-img": "/marketplace/deals" })
   })
 
+  it("parses the welcome popup with clamping and safe fallbacks", () => {
+    const b = parseBanners({
+      popup_enabled: false,
+      popup_title: "  ",
+      popup_message: "Hi there",
+      popup_points: ["One", "", 7, "Two", "Three", "Four"],
+      popup_cta_link: "javascript:evil()",
+      popup_delay_sec: 99,
+      popup_autoclose_sec: -5,
+    })
+    expect(b.popup_enabled).toBe(false)
+    expect(b.popup_title).toBe(EMPTY_BANNERS.popup_title)
+    expect(b.popup_message).toBe("Hi there")
+    expect(b.popup_points).toEqual(["One", "Two", "Three"])
+    expect(b.popup_cta_link).toBe("#flash-deals")
+    expect(b.popup_delay_sec).toBe(30)
+    expect(b.popup_autoclose_sec).toBe(0)
+  })
+
   it("EMPTY_BANNERS stays a valid single-image config", () => {
     expect(EMPTY_BANNERS.slider_transition).toBe("fade")
     expect(slidesOf(EMPTY_BANNERS.hero_image, EMPTY_BANNERS.hero_slides)).toEqual([])

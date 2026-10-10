@@ -155,6 +155,38 @@ function ProductCard({ p, onAdd, wished, onWish, added, href }: { p: DemoProduct
   )
 }
 
+// Side-promo frame: a real link to the section page while no slide carries
+// its own destination; a plain box once slides link individually (avoids
+// nested anchors — the slider renders its own link per slide).
+function PromoBox({
+  href,
+  linked,
+  label,
+  className,
+  style,
+  children,
+}: {
+  href: string
+  linked: boolean
+  label: string
+  className: string
+  style?: React.CSSProperties
+  children: React.ReactNode
+}) {
+  if (linked) {
+    return (
+      <div aria-label={label} className={className} style={style}>
+        {children}
+      </div>
+    )
+  }
+  return (
+    <Link href={href} aria-label={label} className={`group ${className}`} style={style}>
+      {children}
+    </Link>
+  )
+}
+
 function useCountdown() {
   // Single countdown value — never call setState inside another setState
   // updater (impure updaters cascade extra renders under StrictMode).
@@ -245,13 +277,27 @@ export function MarketplaceHome() {
     return () => clearInterval(t)
   }, [])
   const [query, setQuery] = useState("")
+  const [banners, setBanners] = useState<MarketBanners>({ ...EMPTY_BANNERS, departments: {} })
+  // First-paint gate: while the live catalog hasn't arrived yet, render
+  // neutral skeletons instead of fallback/empty designs — so visitors
+  // never see a previous design flash before the current one paints.
+  const [loaded, setLoaded] = useState(false)
+  // Banner gate: banner-driven sections stay skeleton until the live
+  // banner settings arrive, so a refresh never flashes stale defaults
+  // before the current uploads paint.
+  const [bannersReady, setBannersReady] = useState(false)
   // Per-visit welcome popup — shows on every visit (dismissal is
-  // intentionally not persisted). Closable via X, backdrop or Escape.
+  // intentionally not persisted). Fully driven by Admin → Banners →
+  // Welcome popup (on/off, text, image, link, delay + auto-close).
   const [showNotice, setShowNotice] = useState(false)
   useEffect(() => {
-    const t = setTimeout(() => setShowNotice(true), 1000)
+    if (banners.popup_enabled === false) return
+    const t = setTimeout(
+      () => setShowNotice(true),
+      Math.min(30, Math.max(0, banners.popup_delay_sec)) * 1000
+    )
     return () => clearTimeout(t)
-  }, [])
+  }, [banners.popup_enabled, banners.popup_delay_sec, bannersReady])
   useEffect(() => {
     if (!showNotice) return
     const onKey = (e: KeyboardEvent) => {
@@ -260,16 +306,16 @@ export function MarketplaceHome() {
     document.addEventListener("keydown", onKey)
     const prev = document.body.style.overflow
     document.body.style.overflow = "hidden"
+    let auto: ReturnType<typeof setTimeout> | null = null
+    if (banners.popup_autoclose_sec > 0) {
+      auto = setTimeout(() => setShowNotice(false), banners.popup_autoclose_sec * 1000)
+    }
     return () => {
       document.removeEventListener("keydown", onKey)
       document.body.style.overflow = prev
+      if (auto) clearTimeout(auto)
     }
-  }, [showNotice])
-  const [banners, setBanners] = useState<MarketBanners>({ ...EMPTY_BANNERS, departments: {} })
-  // First-paint gate: while the live catalog hasn't arrived yet, render
-  // neutral skeletons instead of fallback/empty designs — so visitors
-  // never see a previous design flash before the current one paints.
-  const [loaded, setLoaded] = useState(false)
+  }, [showNotice, banners.popup_autoclose_sec])
   // Collection-cover rotation: every 30s the tiles re-deal from each
   // node's own live photos, so covers change on their own over time.
   const [rot, setRot] = useState(0)
@@ -334,11 +380,21 @@ export function MarketplaceHome() {
         .select("value")
         .eq("key", "marketplace_banners")
         .maybeSingle()
-        .then(({ data }) => {
-          if (alive && data) setBanners(parseBanners((data as { value?: unknown }).value))
-        })
+        .then(
+          ({ data }) => {
+            if (!alive) return
+            if (data) setBanners(parseBanners((data as { value?: unknown }).value))
+            setBannersReady(true)
+          },
+          () => {
+            if (alive) setBannersReady(true)
+          }
+        )
     }
     load()
+    // Backstop: never leave banner sections skeletonised if the
+    // settings request hangs — fall back to defaults after 8s.
+    const readyBackstop = setTimeout(() => setBannersReady(true), 8000)
     const ch = supabase
       .channel(`market_home_${Date.now()}_${Math.random().toString(36).slice(2)}`)
       .on("postgres_changes", { event: "*", schema: "public", table: "affiliate_products" }, () => load())
@@ -354,6 +410,7 @@ export function MarketplaceHome() {
     return () => {
       alive = false
       clearInterval(poll)
+      clearTimeout(readyBackstop)
       window.removeEventListener("focus", onFocus)
       supabase.removeChannel(ch)
     }
@@ -703,9 +760,10 @@ export function MarketplaceHome() {
       />
       <main className="mx-auto w-full max-w-[1480px] px-3 sm:px-6 lg:px-10 py-6 sm:py-8 space-y-6 sm:space-y-8">
 
-        {/* welcome popup — shows on every visit, closable */}
-        {showNotice && (
-          <div className="fixed inset-0 z-[80] flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-label="Welcome offer">
+        {/* welcome popup — once per visit, fully driven by Admin →
+            Banners → Welcome popup (on/off, image, text, link, timing). */}
+        {showNotice && banners.popup_enabled !== false && (
+          <div className="fixed inset-0 z-[80] flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-label={banners.popup_title}>
             <button
               type="button"
               aria-label="Dismiss notice"
@@ -713,50 +771,65 @@ export function MarketplaceHome() {
               className="absolute inset-0 bg-[#0F172A]/60 backdrop-blur-[2px]"
             />
             <div className="relative w-full max-w-md overflow-hidden rounded-2xl bg-white shadow-2xl">
+              {banners.popup_image.trim() ? (
+                <div className="relative">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={banners.popup_image.trim()} alt="" className="block h-40 w-full object-cover" />
+                  <button
+                    type="button"
+                    onClick={() => setShowNotice(false)}
+                    aria-label="Close popup"
+                    className="absolute right-3 top-3 flex h-8 w-8 items-center justify-center rounded-full bg-black/45 text-white backdrop-blur-sm transition-colors hover:bg-black/70"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+              ) : null}
               <div className="relative p-6 text-white" style={{ background: "linear-gradient(140deg, #0F172A 0%, #7F1D1D 100%)" }}>
                 <div className="absolute -right-12 -top-12 h-48 w-48 rounded-full bg-[#F59E0B]/20 blur-2xl" />
-                <button
-                  type="button"
-                  onClick={() => setShowNotice(false)}
-                  aria-label="Close popup"
-                  className="absolute right-3 top-3 flex h-8 w-8 items-center justify-center rounded-full bg-white/10 text-white transition-colors hover:bg-white/25"
-                >
-                  <X className="h-4 w-4" />
-                </button>
+                {!banners.popup_image.trim() && (
+                  <button
+                    type="button"
+                    onClick={() => setShowNotice(false)}
+                    aria-label="Close popup"
+                    className="absolute right-3 top-3 flex h-8 w-8 items-center justify-center rounded-full bg-white/10 text-white transition-colors hover:bg-white/25"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                )}
                 <span className="inline-block bg-[#DC2626] text-white text-[11px] font-bold uppercase px-2.5 py-1 rounded-md">
                   Welcome Offer
                 </span>
                 <h2 className="mt-3 text-2xl font-extrabold tracking-tight">
-                  Welcome to <span className="text-[#F59E0B]">TechPivo Market</span>
+                  {banners.popup_title}
                 </h2>
                 <p className="mt-1 text-sm text-white/80">
-                  Quality-checked products, secure payment and tracked delivery.
+                  {banners.popup_message}
                 </p>
               </div>
               <div className="space-y-2 p-6">
-                <div className="flex items-center gap-2.5 text-sm text-slate-600">
-                  <ShieldCheck className="h-4 w-4 shrink-0 text-[#10B981]" /> Secure payment on every order
-                </div>
-                <div className="flex items-center gap-2.5 text-sm text-slate-600">
-                  <BadgeCheck className="h-4 w-4 shrink-0 text-[#F59E0B]" /> Quality-checked products
-                </div>
-                <div className="flex items-center gap-2.5 text-sm text-slate-600">
-                  <Truck className="h-4 w-4 shrink-0 text-[#0F172A]" /> Tracked 7–12 day delivery
-                </div>
+                {banners.popup_points.map((pt, i) => (
+                  <div key={i} className="flex items-center gap-2.5 text-sm text-slate-600">
+                    {i === 0 ? <ShieldCheck className="h-4 w-4 shrink-0 text-[#10B981]" />
+                    : i === 1 ? <BadgeCheck className="h-4 w-4 shrink-0 text-[#F59E0B]" />
+                    : <Truck className="h-4 w-4 shrink-0 text-[#0F172A]" />}
+                    {pt}
+                  </div>
+                ))}
                 <div className="flex items-center gap-2 pt-3">
                   <Link
-                    href="#flash-deals"
+                    href={banners.popup_cta_link}
                     onClick={() => setShowNotice(false)}
                     className="flex flex-1 items-center justify-center gap-1.5 rounded-lg bg-[#F59E0B] px-4 py-2.5 text-sm font-bold text-[#0F172A] transition-colors hover:bg-[#D97706]"
                   >
-                    Explore Now <ArrowRight className="h-4 w-4" />
+                    {banners.popup_cta_text} <ArrowRight className="h-4 w-4" />
                   </Link>
                   <button
                     type="button"
                     onClick={() => setShowNotice(false)}
                     className="rounded-lg px-4 py-2.5 text-sm font-semibold text-slate-500 transition-colors hover:bg-slate-100 hover:text-[#0F172A]"
                   >
-                    Browse
+                    {banners.popup_dismiss_text}
                   </button>
                 </div>
               </div>
@@ -770,7 +843,7 @@ export function MarketplaceHome() {
             (display block, 100% x 100%, object-cover) with no white gap. */}
         <section className="w-full">
         <div className="grid w-full grid-cols-1 lg:grid-cols-3 gap-4 items-stretch lg:h-[360px] xl:h-[400px]">
-        {!loaded ? (
+        {!loaded || !bannersReady ? (
           <div className="lg:col-span-2 overflow-hidden rounded-none bg-white shadow-sm aspect-[16/10] sm:aspect-[21/9] lg:aspect-auto lg:h-full animate-pulse" aria-hidden>
             <div className="h-full w-full bg-slate-100" />
           </div>
@@ -804,12 +877,25 @@ export function MarketplaceHome() {
         )}
 
           {/* hero side promos — two equal boxes that together match the
-              main banner height exactly (flex-1 pair, shared gap). */}
+              main banner height exactly (flex-1 pair, shared gap).
+              Skeleton until live banner settings arrive (no stale flash). */}
           <div className="lg:col-span-1 flex flex-col gap-4 lg:h-full lg:min-h-0">
-            <Link
+            {!bannersReady ? (
+              <>
+                <div className="flex-1 min-h-[140px] lg:min-h-0 overflow-hidden rounded-none bg-white shadow-sm animate-pulse" aria-hidden>
+                  <div className="h-full w-full bg-slate-100" />
+                </div>
+                <div className="flex-1 min-h-[140px] lg:min-h-0 overflow-hidden rounded-none bg-white shadow-sm animate-pulse" aria-hidden>
+                  <div className="h-full w-full bg-slate-100" />
+                </div>
+              </>
+            ) : (
+              <>
+            <PromoBox
               href="/marketplace/deals"
-              aria-label="Mega Deal — up to 50% off"
-              className="group relative flex-1 min-h-[140px] lg:min-h-0 overflow-hidden rounded-none p-4 text-white shadow-sm transition-shadow hover:shadow-md flex items-center gap-3"
+              linked={dealsSlides.some((s) => !!s.link)}
+              label="Mega Deal — up to 50% off"
+              className="relative flex-1 min-h-[140px] lg:min-h-0 overflow-hidden rounded-none p-4 text-white shadow-sm transition-shadow hover:shadow-md flex items-center gap-3"
               style={{ background: "linear-gradient(150deg, #DC2626 0%, #991B1B 100%)" }}
             >
               {dealsSlides.length > 0 ? (
@@ -829,11 +915,12 @@ export function MarketplaceHome() {
                   <ArrowRight className="relative h-4 w-4 shrink-0 transition-transform group-hover:translate-x-0.5" />
                 </>
               )}
-            </Link>
-            <Link
+            </PromoBox>
+            <PromoBox
               href="/marketplace/new-arrivals"
-              aria-label="New Season Tech Drop"
-              className="group relative flex-1 min-h-[140px] lg:min-h-0 overflow-hidden rounded-none p-4 text-white shadow-sm transition-shadow hover:shadow-md flex items-center gap-3"
+              linked={newSlides.some((s) => !!s.link)}
+              label="New Season Tech Drop"
+              className="relative flex-1 min-h-[140px] lg:min-h-0 overflow-hidden rounded-none p-4 text-white shadow-sm transition-shadow hover:shadow-md flex items-center gap-3"
               style={{ background: "linear-gradient(150deg, #F59E0B 0%, #F97316 100%)" }}
             >
               {newSlides.length > 0 ? (
@@ -853,7 +940,9 @@ export function MarketplaceHome() {
                   <ArrowRight className="relative h-4 w-4 shrink-0 transition-transform group-hover:translate-x-0.5" />
                 </>
               )}
-            </Link>
+            </PromoBox>
+              </>
+            )}
           </div>
         </div>
         </section>
@@ -1076,7 +1165,11 @@ export function MarketplaceHome() {
         {/* in-feed strip 1 — slim full-width banner between Trending Now
             and the department showcases. An upload shows clean on its own;
             otherwise this sample design shows (upload to replace it). */}
-        {strip1Slides.length > 0 ? (
+        {!bannersReady ? (
+          <section aria-hidden className="h-[92px] sm:h-[120px] overflow-hidden rounded-2xl bg-white shadow-sm animate-pulse">
+            <div className="h-full w-full bg-slate-100" />
+          </section>
+        ) : strip1Slides.length > 0 ? (
           <section aria-label="Featured promotion" className="relative h-[92px] sm:h-[120px] overflow-hidden rounded-2xl shadow-sm">
             <BannerSlider slides={strip1Slides} alt="Featured promotion" {...strip1Props} />
           </section>
@@ -1113,7 +1206,7 @@ export function MarketplaceHome() {
             deptSlug={dep.slug}
             nav={nav}
             items={items}
-            promoImage={banners.departments[dep.slug] || deptCover.get(dep.slug) || dep.image}
+            promoImage={deptCover.get(dep.slug) || dep.image}
             sideBanner={banners.sidebar_banners[dep.slug] || ""}
             sideLink={linkOf(banners, banners.sidebar_banners[dep.slug] || "") || `/marketplace/category/${dep.slug}`}
             onAdd={addToCart}
@@ -1126,7 +1219,11 @@ export function MarketplaceHome() {
         {/* in-feed strip 2 — slim full-width banner between the department
             showcases and Top Stores. An upload shows clean on its own;
             otherwise this sample design shows (upload to replace it). */}
-        {strip2Slides.length > 0 ? (
+        {!bannersReady ? (
+          <section aria-hidden className="h-[92px] sm:h-[120px] overflow-hidden rounded-2xl bg-white shadow-sm animate-pulse">
+            <div className="h-full w-full bg-slate-100" />
+          </section>
+        ) : strip2Slides.length > 0 ? (
           <section aria-label="Special offer" className="relative h-[92px] sm:h-[120px] overflow-hidden rounded-2xl shadow-sm">
             <BannerSlider slides={strip2Slides} alt="Special offer" {...strip2Props} />
           </section>
@@ -1218,7 +1315,11 @@ export function MarketplaceHome() {
         {/* promo banner — uploaded image shows clean (no overlay text or
             button); default gradient with writeups only when no upload.
             Hidden publicly while the admin's Black Friday promo toggle is OFF. */}
-        {banners.promo_enabled !== false && (
+        {!bannersReady ? (
+        <section aria-hidden className="relative aspect-[16/5] overflow-hidden rounded-2xl bg-white shadow-sm animate-pulse">
+          <div className="h-full w-full bg-slate-100" />
+        </section>
+        ) : banners.promo_enabled !== false && (
         promoStripSlides.length > 0 ? (
         <section className="relative aspect-[16/5] overflow-hidden rounded-2xl shadow-sm">
           <div className="relative block h-full w-full">
