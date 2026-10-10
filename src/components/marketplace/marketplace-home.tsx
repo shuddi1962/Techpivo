@@ -753,8 +753,8 @@ export function MarketplaceHome() {
         <section className="-mt-6 sm:-mt-8 w-[100vw] ml-[calc(50%-50vw)] pl-3 sm:pl-5">
         <div className="grid w-full grid-cols-1 lg:grid-cols-12 gap-4 items-stretch">
         {!loaded ? (
-          <div className="lg:col-span-8 rounded-none border-y lg:border border-[#E2E8F0] bg-white shadow-sm min-h-[260px] animate-pulse" aria-hidden>
-            <div className="h-full min-h-[260px] w-full bg-slate-100" />
+          <div className="lg:col-span-8 rounded-none border-y lg:border border-[#E2E8F0] bg-white shadow-sm min-h-[200px] animate-pulse" aria-hidden>
+            <div className="h-full min-h-[200px] w-full bg-slate-100" />
           </div>
         ) : banners.hero_image ? (
           <div className="lg:col-span-8 overflow-hidden rounded-none border-y lg:border border-[#E2E8F0] bg-white shadow-sm">
@@ -770,59 +770,36 @@ export function MarketplaceHome() {
             </Link>
           </div>
         ) : (
-          <div className="lg:col-span-8 rounded-none relative overflow-hidden flex flex-col justify-between p-5 md:px-8 md:py-6 text-white min-h-[260px]" style={{ background: MARKETPLACE_BRAND.navy }}>
+          <div className="lg:col-span-8 rounded-none relative overflow-hidden flex flex-col justify-center gap-3 p-5 md:px-8 md:py-5 text-white min-h-[200px]" style={{ background: MARKETPLACE_BRAND.navy }}>
             <div className="absolute -right-20 -top-20 w-96 h-96 rounded-full bg-[#F59E0B]/10 blur-3xl pointer-events-none" />
             <div className="absolute -left-10 -bottom-10 w-80 h-80 rounded-full bg-[#EF4444]/10 blur-3xl pointer-events-none" />
-            <div className="relative z-10 flex items-center justify-between">
-              <div className="flex items-center gap-2 bg-white/10 backdrop-blur-md px-3 py-1.5 rounded-full">
-                <BadgeCheck className="h-4 w-4 text-[#F59E0B]" />
-                <span className="text-[11px] tracking-widest text-slate-300 uppercase">{MARKETPLACE_HERO.pill}</span>
-              </div>
-              <span className="text-slate-500 text-[11px] font-bold">EST. 2025</span>
-            </div>
-            <div className="relative z-10 grid grid-cols-1 md:grid-cols-2 gap-6 items-center my-4">
-                <div className="space-y-3">
+            <div className="relative z-10 grid grid-cols-1 md:grid-cols-2 gap-4 items-center">
+                <div className="space-y-2">
                   {banners.promo_enabled !== false && (
-                    <span className="inline-block text-[#EF4444] text-sm font-bold tracking-wide uppercase">{MARKETPLACE_HERO.kicker}</span>
+                    <span className="inline-block text-[#EF4444] text-xs font-bold tracking-wide uppercase">{MARKETPLACE_HERO.kicker}</span>
                   )}
-                <h1 className="text-3xl md:text-4xl font-extrabold tracking-tight leading-none">
+                <h1 className="text-2xl md:text-[28px] font-extrabold tracking-tight leading-tight">
                   {MARKETPLACE_HERO.titleA} <span className="text-[#F59E0B]">{MARKETPLACE_HERO.titleB}</span>
                 </h1>
-                <p className="text-sm md:text-base text-slate-300">{MARKETPLACE_HERO.copy}</p>
-                <div className="flex flex-wrap items-center gap-3 pt-1">
-                  <Link href="#trending" className="bg-[#F59E0B] hover:bg-[#D97706] text-[#0F172A] text-sm font-bold px-5 py-3 rounded-lg transition-colors flex items-center gap-2">
+                <p className="text-[13px] text-slate-300 line-clamp-2">{MARKETPLACE_HERO.copy}</p>
+                <div className="flex flex-wrap items-center gap-2.5 pt-0.5">
+                  <Link href="#trending" className="bg-[#F59E0B] hover:bg-[#D97706] text-[#0F172A] text-[13px] font-bold px-4 py-2.5 rounded-lg transition-colors flex items-center gap-1.5">
                     Shop the Drop <ArrowRight className="h-4 w-4" />
                   </Link>
-                  <span className="text-2xl font-extrabold">{MARKETPLACE_HERO.price}</span>
-                </div>
-                <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 pt-2 text-xs text-slate-300">
-                  <span className="inline-flex items-center gap-1.5"><ShieldCheck className="h-3.5 w-3.5 text-[#F59E0B]" /> Secure payment</span>
-                  <span className="inline-flex items-center gap-1.5"><BadgeCheck className="h-3.5 w-3.5 text-[#F59E0B]" /> Quality-checked products</span>
-                  <span className="inline-flex items-center gap-1.5"><Truck className="h-3.5 w-3.5 text-[#F59E0B]" /> Tracked 7–12 day delivery</span>
+                  <span className="text-xl font-extrabold">{MARKETPLACE_HERO.price}</span>
                 </div>
               </div>
-              <div className="relative flex items-center justify-center">
-                <div className="w-60 h-60 sm:w-72 sm:h-72 rounded-2xl overflow-hidden bg-white/5 p-4 flex items-center justify-center">
+              <div className="relative hidden md:flex items-center justify-center">
+                <div className="w-40 h-40 rounded-2xl overflow-hidden bg-white/5 p-2.5 flex items-center justify-center">
                   <img src={heroImg} alt="TechPivo Market hero product" className="w-full h-full object-cover rounded-xl" loading="eager" decoding="async" />
                 </div>
-                <div className="absolute -bottom-2 -left-2 bg-white text-[#0F172A] rounded-xl p-2.5 shadow-xl flex items-center gap-2">
-                  <Truck className="h-5 w-5 text-[#10B981]" />
+                <div className="absolute bottom-1 left-6 bg-white text-[#0F172A] rounded-xl p-2 shadow-xl flex items-center gap-1.5">
+                  <Truck className="h-4 w-4 text-[#10B981]" />
                   <div>
-                    <p className="text-[10px] text-slate-500 uppercase leading-none">Tracked Delivery</p>
-                    <p className="text-xs font-bold leading-tight">Ships in 7–12 Days</p>
+                    <p className="text-[9px] text-slate-500 uppercase leading-none">Tracked Delivery</p>
+                    <p className="text-[11px] font-bold leading-tight">Ships in 7–12 Days</p>
                   </div>
                 </div>
-              </div>
-            </div>
-            <div className="relative z-10 flex items-center justify-between pt-2">
-              <div className="flex items-center gap-2" aria-hidden>
-                <span className="w-8 h-2 rounded-full bg-[#F59E0B]" />
-                <span className="w-2 h-2 rounded-full bg-white/30" />
-                <span className="w-2 h-2 rounded-full bg-white/30" />
-              </div>
-              <div className="flex items-center gap-2 text-slate-300">
-                <span className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center"><ChevronLeft className="h-4 w-4" /></span>
-                <span className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center"><ChevronRight className="h-4 w-4" /></span>
               </div>
             </div>
           </div>
@@ -832,7 +809,7 @@ export function MarketplaceHome() {
           <div className="lg:col-span-4 flex flex-col gap-4">
             <Link
               href="/marketplace/deals"
-              className="group relative flex-1 overflow-hidden rounded-none p-5 text-white shadow-sm transition-shadow hover:shadow-md min-h-[140px] flex flex-col justify-between"
+              className="group relative flex-1 overflow-hidden rounded-none p-4 text-white shadow-sm transition-shadow hover:shadow-md min-h-[96px] flex flex-col justify-between"
               style={{ background: "linear-gradient(150deg, #DC2626 0%, #991B1B 100%)" }}
             >
               <div className="absolute -right-10 -top-10 h-40 w-40 rounded-full bg-white/10 blur-2xl" />
@@ -849,7 +826,7 @@ export function MarketplaceHome() {
             </Link>
             <Link
               href="/marketplace/new-arrivals"
-              className="group relative flex-1 overflow-hidden rounded-none p-5 text-[#0F172A] shadow-sm transition-shadow hover:shadow-md min-h-[140px] flex flex-col justify-between"
+              className="group relative flex-1 overflow-hidden rounded-none p-4 text-[#0F172A] shadow-sm transition-shadow hover:shadow-md min-h-[96px] flex flex-col justify-between"
               style={{ background: "linear-gradient(150deg, #F59E0B 0%, #F97316 100%)" }}
             >
               <div className="absolute -right-10 -bottom-10 h-40 w-40 rounded-full bg-white/20 blur-2xl" />
