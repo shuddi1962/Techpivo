@@ -746,13 +746,13 @@ export function MarketplaceHome() {
           </div>
         )}
 
-        {/* hero — slim full-width strip so Shop By Collections shows
-            immediately. Side promos always show as compact rows; your
-            uploaded banner replaces ONLY the main card (capped, not paged). */}
+        {/* hero — roomy landscape strip: full-width presence at ~180px
+            so Shop By Collections follows right below. Side promos always
+            show as rows; your uploaded banner replaces ONLY the main card. */}
         <section className="-mt-6 sm:-mt-8 w-[100vw] ml-[calc(50%-50vw)] pl-3 sm:pl-5">
-        <div className="grid w-full grid-cols-1 lg:grid-cols-12 gap-3 items-stretch">
+        <div className="grid w-full grid-cols-1 lg:grid-cols-12 gap-4 items-stretch">
         {!loaded ? (
-          <div className="lg:col-span-8 rounded-none bg-white shadow-sm h-[120px] animate-pulse" aria-hidden>
+          <div className="lg:col-span-8 rounded-none bg-white shadow-sm h-[180px] animate-pulse" aria-hidden>
             <div className="h-full w-full bg-slate-100" />
           </div>
         ) : banners.hero_image ? (
@@ -762,62 +762,63 @@ export function MarketplaceHome() {
               <img
                 src={marketImage(banners.hero_image)}
                 alt="TechPivo Market — shop the collection"
-                className="block h-[120px] w-full object-cover object-center"
+                className="block h-[180px] w-full object-cover object-center"
                 loading="eager"
                 decoding="async"
               />
             </Link>
           </div>
         ) : (
-          <div className="lg:col-span-8 rounded-none relative overflow-hidden text-white min-h-[120px] flex items-center" style={{ background: MARKETPLACE_BRAND.navy }}>
-            <div className="absolute -right-16 -top-16 w-64 h-64 rounded-full bg-[#F59E0B]/10 blur-3xl pointer-events-none" />
-            <div className="relative z-10 flex w-full flex-wrap items-center gap-x-5 gap-y-2 px-5 md:px-8 py-3.5">
-              <div className="hidden sm:block h-16 w-16 shrink-0 overflow-hidden rounded-xl bg-white/5">
+          <div className="lg:col-span-8 rounded-none relative overflow-hidden text-white min-h-[180px] flex items-center" style={{ background: MARKETPLACE_BRAND.navy }}>
+            <div className="absolute -right-16 -top-16 w-72 h-72 rounded-full bg-[#F59E0B]/10 blur-3xl pointer-events-none" />
+            <div className="relative z-10 flex w-full flex-wrap items-center gap-x-6 gap-y-3 px-5 md:px-8 py-5">
+              <div className="hidden sm:block h-24 w-24 shrink-0 overflow-hidden rounded-2xl bg-white/5">
                 <img src={heroImg} alt="" loading="eager" decoding="async" className="h-full w-full object-cover" />
               </div>
               <div className="min-w-0 flex-1">
                 {banners.promo_enabled !== false && (
-                  <span className="text-[#EF4444] text-[11px] font-bold tracking-wide uppercase">{MARKETPLACE_HERO.kicker}</span>
+                  <span className="text-[#EF4444] text-xs font-bold tracking-wide uppercase">{MARKETPLACE_HERO.kicker}</span>
                 )}
-                <h1 className="truncate text-xl md:text-2xl font-extrabold tracking-tight leading-tight">
+                <h1 className="text-2xl md:text-[28px] font-extrabold tracking-tight leading-tight">
                   {MARKETPLACE_HERO.titleA} <span className="text-[#F59E0B]">{MARKETPLACE_HERO.titleB}</span>
                 </h1>
+                <p className="mt-0.5 text-[13px] text-slate-300 line-clamp-1">{MARKETPLACE_HERO.copy}</p>
               </div>
-              <span className="text-lg font-extrabold whitespace-nowrap">{MARKETPLACE_HERO.price}</span>
-              <Link href="#trending" className="bg-[#F59E0B] hover:bg-[#D97706] text-[#0F172A] text-[13px] font-bold px-4 py-2.5 rounded-lg transition-colors inline-flex items-center gap-1.5 shrink-0">
+              <span className="text-2xl font-extrabold whitespace-nowrap">{MARKETPLACE_HERO.price}</span>
+              <Link href="#trending" className="bg-[#F59E0B] hover:bg-[#D97706] text-[#0F172A] text-sm font-bold px-5 py-3 rounded-lg transition-colors inline-flex items-center gap-1.5 shrink-0">
                 Shop the Drop <ArrowRight className="h-4 w-4" />
               </Link>
             </div>
           </div>
         )}
 
-          {/* hero side promos — compact rows, always shown */}
-          <div className="lg:col-span-4 flex flex-col gap-3">
+          {/* hero side promos — rows, always shown */}
+          <div className="lg:col-span-4 flex flex-col gap-4">
             <Link
               href="/marketplace/deals"
-              className="group relative flex-1 overflow-hidden rounded-none p-3 text-white shadow-sm transition-shadow hover:shadow-md min-h-[54px] flex items-center gap-3"
+              className="group relative flex-1 overflow-hidden rounded-none p-4 text-white shadow-sm transition-shadow hover:shadow-md min-h-[82px] flex items-center gap-3"
               style={{ background: "linear-gradient(150deg, #DC2626 0%, #991B1B 100%)" }}
             >
-              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white/20">
-                <Flame className="h-4 w-4" />
+              <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-white/20">
+                <Flame className="h-5 w-5" />
               </span>
               <span className="min-w-0 flex-1">
-                <span className="block text-sm font-extrabold leading-tight">Mega Deal — Up to 50% Off</span>
-                <span className="block text-[11px] text-white/80">Today only</span>
+                <span className="block text-[15px] font-extrabold leading-tight">Mega Deal — Up to 50% Off</span>
+                <span className="block text-xs text-white/80">Today only — biggest price drops</span>
               </span>
               <ArrowRight className="h-4 w-4 shrink-0 transition-transform group-hover:translate-x-0.5" />
             </Link>
             <Link
               href="/marketplace/new-arrivals"
-              className="group relative flex-1 overflow-hidden rounded-none p-3 text-white shadow-sm transition-shadow hover:shadow-md min-h-[54px] flex items-center gap-3"
+              className="group relative flex-1 overflow-hidden rounded-none p-4 text-white shadow-sm transition-shadow hover:shadow-md min-h-[82px] flex items-center gap-3"
               style={{ background: "linear-gradient(150deg, #F59E0B 0%, #F97316 100%)" }}
             >
-              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-black/20">
-                <Zap className="h-4 w-4" />
+              <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-black/20">
+                <Zap className="h-5 w-5" />
               </span>
               <span className="min-w-0 flex-1">
-                <span className="block text-sm font-extrabold leading-tight">New Season Tech Drop</span>
-                <span className="block text-[11px] text-white/85">Fresh stock, first to own</span>
+                <span className="block text-[15px] font-extrabold leading-tight">New Season Tech Drop</span>
+                <span className="block text-xs text-white/85">Fresh stock, first to own</span>
               </span>
               <ArrowRight className="h-4 w-4 shrink-0 transition-transform group-hover:translate-x-0.5" />
             </Link>
