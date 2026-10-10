@@ -204,6 +204,20 @@ describe("parseBanners slider settings", () => {
     expect(b.popup_autoclose_sec).toBe(0)
   })
 
+  it("parses popup design flags with safe fallbacks", () => {
+    const b = parseBanners({
+      popup_kicker: "",
+      popup_show_title: false,
+      popup_style: "neon",
+      popup_size: "xl",
+    })
+    expect(b.popup_kicker).toBe(EMPTY_BANNERS.popup_kicker)
+    expect(b.popup_show_title).toBe(false)
+    expect(b.popup_show_message).toBe(true)
+    expect(b.popup_style).toBe("dark")
+    expect(b.popup_size).toBe("md")
+  })
+
   it("EMPTY_BANNERS stays a valid single-image config", () => {
     expect(EMPTY_BANNERS.slider_transition).toBe("fade")
     expect(slidesOf(EMPTY_BANNERS.hero_image, EMPTY_BANNERS.hero_slides)).toEqual([])

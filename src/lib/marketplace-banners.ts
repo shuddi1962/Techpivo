@@ -141,6 +141,17 @@ export interface MarketBanners {
   popup_delay_sec: number
   /** Seconds before it closes itself (0 = stays until dismissed). */
   popup_autoclose_sec: number
+  /** Badge line above the title ("Welcome Offer") + whether it shows. */
+  popup_kicker: string
+  popup_show_kicker: boolean
+  /** Per-block visibility — turn any writeup off for a banner-only look. */
+  popup_show_title: boolean
+  popup_show_message: boolean
+  popup_show_points: boolean
+  popup_show_dismiss: boolean
+  /** Visual theme + card width. */
+  popup_style: PopupStyle
+  popup_size: PopupSize
   shop_image: string
   deals_image: string
   best_sellers_image: string
@@ -201,6 +212,14 @@ export const EMPTY_BANNERS: MarketBanners = {
   popup_dismiss_text: "Browse",
   popup_delay_sec: 1,
   popup_autoclose_sec: 0,
+  popup_kicker: "Welcome Offer",
+  popup_show_kicker: true,
+  popup_show_title: true,
+  popup_show_message: true,
+  popup_show_points: true,
+  popup_show_dismiss: true,
+  popup_style: "dark",
+  popup_size: "md",
   shop_image: "",
   deals_image: "",
   best_sellers_image: "",
@@ -527,6 +546,14 @@ export function parseBanners(raw: unknown): MarketBanners {
     popup_dismiss_text: str(r.popup_dismiss_text).trim().slice(0, 40) || EMPTY_BANNERS.popup_dismiss_text,
     popup_delay_sec: clampSec(r.popup_delay_sec, 0, 30, 1),
     popup_autoclose_sec: clampSec(r.popup_autoclose_sec, 0, 120, 0),
+    popup_kicker: str(r.popup_kicker).trim().slice(0, 40) || EMPTY_BANNERS.popup_kicker,
+    popup_show_kicker: typeof r.popup_show_kicker === "boolean" ? r.popup_show_kicker : true,
+    popup_show_title: typeof r.popup_show_title === "boolean" ? r.popup_show_title : true,
+    popup_show_message: typeof r.popup_show_message === "boolean" ? r.popup_show_message : true,
+    popup_show_points: typeof r.popup_show_points === "boolean" ? r.popup_show_points : true,
+    popup_show_dismiss: typeof r.popup_show_dismiss === "boolean" ? r.popup_show_dismiss : true,
+    popup_style: (POPUP_STYLES.some((s) => s.id === r.popup_style) ? r.popup_style : "dark") as PopupStyle,
+    popup_size: (POPUP_SIZES.some((s) => s.id === r.popup_size) ? r.popup_size : "md") as PopupSize,
     shop_image,
     deals_image,
     best_sellers_image,
@@ -641,6 +668,23 @@ export function linkOf(b: MarketBanners | null | undefined, image: string | null
   if (!image) return ""
   return b?.links?.[image.trim()] || ""
 }
+
+export const POPUP_STYLES = [
+  { id: "dark", label: "Midnight deal (navy + red)" },
+  { id: "crimson", label: "Crimson sale (red)" },
+  { id: "amber", label: "Amber promo (orange)" },
+  { id: "light", label: "Clean light (white)" },
+] as const
+
+export type PopupStyle = (typeof POPUP_STYLES)[number]["id"]
+
+export const POPUP_SIZES = [
+  { id: "sm", label: "Compact" },
+  { id: "md", label: "Standard" },
+  { id: "lg", label: "Wide" },
+] as const
+
+export type PopupSize = (typeof POPUP_SIZES)[number]["id"]
 
 // Where-can-a-banner-point presets (admin picker; custom URLs allowed).
 export const BANNER_LINK_PRESETS: Array<{ value: string; label: string }> = [

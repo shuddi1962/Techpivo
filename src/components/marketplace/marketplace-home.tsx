@@ -20,6 +20,7 @@ import { marketImage, cleanSupplierText } from "@/lib/marketplace-images"
 import { readCompare, toggleCompareStored } from "@/lib/marketplace-compare"
 import { MarketplaceHeader, MarketplaceFooter } from "./marketplace-header"
 import { BannerSlider } from "./banner-slider"
+import { WelcomePopupCard } from "./welcome-popup"
 import { FeaturePanels } from "./feature-panels"
 import { CategoryShowcase } from "./category-showcase"
 import { ShopCollections, type CollectionItem } from "./shop-collections"
@@ -761,79 +762,16 @@ export function MarketplaceHome() {
       <main className="mx-auto w-full max-w-[1480px] px-3 sm:px-6 lg:px-10 py-6 sm:py-8 space-y-6 sm:space-y-8">
 
         {/* welcome popup — once per visit, fully driven by Admin →
-            Banners → Welcome popup (on/off, image, text, link, timing). */}
+            Banners → Welcome popup (layout, style, text, link, timing). */}
         {showNotice && banners.popup_enabled !== false && (
-          <div className="fixed inset-0 z-[80] flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-label={banners.popup_title}>
+          <div className="fixed inset-0 z-[80] flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-label={banners.popup_title || "Special offer"}>
             <button
               type="button"
               aria-label="Dismiss notice"
               onClick={() => setShowNotice(false)}
               className="absolute inset-0 bg-[#0F172A]/60 backdrop-blur-[2px]"
             />
-            <div className="relative w-full max-w-md overflow-hidden rounded-2xl bg-white shadow-2xl">
-              {banners.popup_image.trim() ? (
-                <div className="relative">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={banners.popup_image.trim()} alt="" className="block h-40 w-full object-cover" />
-                  <button
-                    type="button"
-                    onClick={() => setShowNotice(false)}
-                    aria-label="Close popup"
-                    className="absolute right-3 top-3 flex h-8 w-8 items-center justify-center rounded-full bg-black/45 text-white backdrop-blur-sm transition-colors hover:bg-black/70"
-                  >
-                    <X className="h-4 w-4" />
-                  </button>
-                </div>
-              ) : null}
-              <div className="relative p-6 text-white" style={{ background: "linear-gradient(140deg, #0F172A 0%, #7F1D1D 100%)" }}>
-                <div className="absolute -right-12 -top-12 h-48 w-48 rounded-full bg-[#F59E0B]/20 blur-2xl" />
-                {!banners.popup_image.trim() && (
-                  <button
-                    type="button"
-                    onClick={() => setShowNotice(false)}
-                    aria-label="Close popup"
-                    className="absolute right-3 top-3 flex h-8 w-8 items-center justify-center rounded-full bg-white/10 text-white transition-colors hover:bg-white/25"
-                  >
-                    <X className="h-4 w-4" />
-                  </button>
-                )}
-                <span className="inline-block bg-[#DC2626] text-white text-[11px] font-bold uppercase px-2.5 py-1 rounded-md">
-                  Welcome Offer
-                </span>
-                <h2 className="mt-3 text-2xl font-extrabold tracking-tight">
-                  {banners.popup_title}
-                </h2>
-                <p className="mt-1 text-sm text-white/80">
-                  {banners.popup_message}
-                </p>
-              </div>
-              <div className="space-y-2 p-6">
-                {banners.popup_points.map((pt, i) => (
-                  <div key={i} className="flex items-center gap-2.5 text-sm text-slate-600">
-                    {i === 0 ? <ShieldCheck className="h-4 w-4 shrink-0 text-[#10B981]" />
-                    : i === 1 ? <BadgeCheck className="h-4 w-4 shrink-0 text-[#F59E0B]" />
-                    : <Truck className="h-4 w-4 shrink-0 text-[#0F172A]" />}
-                    {pt}
-                  </div>
-                ))}
-                <div className="flex items-center gap-2 pt-3">
-                  <Link
-                    href={banners.popup_cta_link}
-                    onClick={() => setShowNotice(false)}
-                    className="flex flex-1 items-center justify-center gap-1.5 rounded-lg bg-[#F59E0B] px-4 py-2.5 text-sm font-bold text-[#0F172A] transition-colors hover:bg-[#D97706]"
-                  >
-                    {banners.popup_cta_text} <ArrowRight className="h-4 w-4" />
-                  </Link>
-                  <button
-                    type="button"
-                    onClick={() => setShowNotice(false)}
-                    className="rounded-lg px-4 py-2.5 text-sm font-semibold text-slate-500 transition-colors hover:bg-slate-100 hover:text-[#0F172A]"
-                  >
-                    {banners.popup_dismiss_text}
-                  </button>
-                </div>
-              </div>
-            </div>
+            <WelcomePopupCard b={banners} onClose={() => setShowNotice(false)} />
           </div>
         )}
 

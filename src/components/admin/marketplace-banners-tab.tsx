@@ -15,6 +15,8 @@ import {
   SIDEBAR_BANNER_DIMS,
   DEFAULT_SLOT_SLIDER,
   EMPTY_BANNERS,
+  POPUP_SIZES,
+  POPUP_STYLES,
   SLIDER_EASINGS,
   bannerLinkLabel,
   cleanBannerLink,
@@ -23,11 +25,14 @@ import {
   type BannerSlide,
   type BannerTransition,
   type MarketBanners,
+  type PopupSize,
+  type PopupStyle,
   type SliderEasing,
   type SliderSlotKey,
   type SlotSlider,
 } from "@/lib/marketplace-banners"
 import { BannerSlider } from "@/components/marketplace/banner-slider"
+import { WelcomePopupCard } from "@/components/marketplace/welcome-popup"
 import { MARKET_STORE_DEFAULTS } from "@/lib/marketplace-store"
 
 // Sample artworks so a transition preview plays even before any upload.
@@ -587,6 +592,7 @@ export function MarketplaceBannersTab() {
   const [uploading, setUploading] = useState<string | null>(null)
   const [notice, setNotice] = useState("")
   const [section, setSection] = useState<string>("home")
+  const [previewOn, setPreviewOn] = useState(true)
   const [openSlot, setOpenSlot] = useState<string>("hero_image")
   const [openSlider, setOpenSlider] = useState<string | null>(null)
   const fileRef = useRef<HTMLInputElement>(null)
@@ -1019,6 +1025,90 @@ export function MarketplaceBannersTab() {
               <LinkField value={banners.popup_cta_link} onChange={(v) => setBanners((b) => ({ ...b, popup_cta_link: v || "#flash-deals" }))} />
             </div>
           </div>
+        </div>
+        <div className="rounded-xl border bg-white p-4">
+          <p className="text-sm font-bold text-slate-900">Design — make it yours</p>
+          <p className="text-[11px] text-slate-500">Hide any block for a banner-only marketing look, or restyle the whole card.</p>
+          <div className="mt-2 grid gap-2.5 sm:grid-cols-2">
+            <label className="block">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Style</span>
+              <select
+                value={banners.popup_style}
+                onChange={(e) => setBanners((b) => ({ ...b, popup_style: e.target.value as PopupStyle })) }
+                className={`${inputCls} mt-1 text-xs`}
+              >
+                {POPUP_STYLES.map((s) => (
+                  <option key={s.id} value={s.id}>{s.label}</option>
+                ))}
+              </select>
+            </label>
+            <label className="block">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Size</span>
+              <select
+                value={banners.popup_size}
+                onChange={(e) => setBanners((b) => ({ ...b, popup_size: e.target.value as PopupSize })) }
+                className={`${inputCls} mt-1 text-xs`}
+              >
+                {POPUP_SIZES.map((s) => (
+                  <option key={s.id} value={s.id}>{s.label}</option>
+                ))}
+              </select>
+            </label>
+          </div>
+          <label className="mt-2.5 block">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Badge text</span>
+            <input
+              value={banners.popup_kicker}
+              onChange={(e) => setBanners((b) => ({ ...b, popup_kicker: e.target.value }))}
+              placeholder="Welcome Offer"
+              className={`${inputCls} mt-1 text-xs`}
+            />
+          </label>
+          <div className="mt-2.5 flex flex-wrap gap-x-5 gap-y-2">
+            {(
+              [
+                ["popup_show_kicker", "Badge"],
+                ["popup_show_title", "Title"],
+                ["popup_show_message", "Message"],
+                ["popup_show_points", "Points"],
+                ["popup_show_dismiss", "Dismiss button"],
+              ] as Array<[keyof MarketBanners, string]>
+            ).map(([key, label]) => (
+              <label key={key} className="inline-flex cursor-pointer items-center gap-1.5 text-xs font-semibold text-slate-700">
+                <input
+                  type="checkbox"
+                  checked={banners[key] !== false}
+                  onChange={(e) => setBanners((b) => ({ ...b, [key]: e.target.checked }))}
+                  className="h-3.5 w-3.5 accent-[#F59E0B]"
+                />
+                {label}
+              </label>
+            ))}
+          </div>
+          <p className="mt-2 text-[11px] text-slate-500">
+            Tip: image ON + title/message/points OFF = banner + buttons only. All writeups OFF + light style = clean marketing card.
+          </p>
+        </div>
+        <div className="rounded-xl border bg-white p-4">
+          <div className="mb-2 flex items-center justify-between">
+            <p className="text-sm font-bold text-slate-900">Live preview — exactly as shoppers see it</p>
+            <button
+              type="button"
+              onClick={() => setPreviewOn(true)}
+              className="rounded-lg border px-2.5 py-1.5 text-xs font-bold hover:bg-slate-50"
+            >
+              Replay
+            </button>
+          </div>
+          {previewOn ? (
+            <div className="flex justify-center rounded-xl bg-slate-900/[0.04] p-4">
+              <WelcomePopupCard b={banners} onClose={() => setPreviewOn(false)} preview />
+            </div>
+          ) : (
+            <p className="rounded-xl bg-slate-50 px-3 py-6 text-center text-xs text-slate-500">
+              Preview dismissed — hit Replay to see it again.
+            </p>
+          )}
         </div>
         <div className="rounded-xl border bg-white p-4">
           <p className="text-sm font-bold text-slate-900">Timing</p>
