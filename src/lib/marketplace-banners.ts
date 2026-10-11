@@ -907,18 +907,58 @@ export function stampPopup(frequency: string, id: string) {
   }
 }
 
-// Conflict-free selection: the first campaign (top of the admin list
-// wins) that is enabled, inside its schedule window, and due under its
-// own frequency cap. Only ever one popup per visit — never stacked.
-export function pickPopupCampaign(list: PopupCampaign[], now = Date.now()): PopupCampaign | null {
-  for (const c of list) {
-    if (!c.enabled) continue
-    if (c.start_at && now < Date.parse(c.start_at)) continue
-    if (c.end_at && now > Date.parse(c.end_at)) continue
-    if (!popupDue(c.frequency, c.id)) continue
-    return c
+const POP_LAST_KEY = "tp_market_popup_last_v1"
+
+function readLastShown(): string | null {
+  try {
+    if (typeof window === "undefined") return null
+    return window.localStorage.getItem(POP_LAST_KEY)
+  } catch {
+    return null
   }
-  return null
+}
+
+// Remembered when a popup is actually SHOWN (not on every pick, so
+// background data refreshes can never advance the rotation). Exported
+// for the storefront; tests pass lastShown explicitly instead.
+export function markPopupShown(id: string) {
+  try {
+    if (typeof window === "undefined") return
+    window.localStorage.setItem(POP_LAST_KEY, id)
+  } catch {
+    // private mode — rotation simply restarts next visit
+  }
+}
+
+// Conflict-free selection with fair rotation: among the campaigns that
+// are enabled, inside their schedule window, and due under their own
+// frequency cap, walk the admin order starting AFTER the one shown last
+// (wrapping around). So several always-due campaigns take turns instead
+// of the top one shadowing the rest forever. Only ever one popup per
+// visit — never stacked.
+export function pickPopupCampaign(
+  list: PopupCampaign[],
+  now = Date.now(),
+  lastShown?: string | null
+): PopupCampaign | null {
+  const inWindow = list.filter((c) => {
+    if (!c.enabled) return false
+    if (c.start_at && now < Date.parse(c.start_at)) return false
+    if (c.end_at && now > Date.parse(c.end_at)) return false
+    return true
+  })
+  const due = inWindow.filter((c) => popupDue(c.frequency, c.id))
+  if (due.length === 0) return null
+  if (due.length === 1) return due[0]
+  const last = lastShown !== undefined ? lastShown : readLastShown()
+  const order = list.map((c) => c.id)
+  const startIdx = last ? order.indexOf(last) : -1
+  for (let k = 1; k <= order.length; k++) {
+    const id = order[(startIdx + k + order.length) % order.length]
+    const hit = due.find((c) => c.id === id)
+    if (hit) return hit
+  }
+  return due[0]
 }
 
 // Adapter: a campaign viewed through the legacy flat popup fields,

@@ -1267,8 +1267,9 @@ export function MarketplaceBannersTab() {
         onToggle={() => setSection(section === "popup" ? "" : "popup")}
       >
         <p className="rounded-xl border border-sky-200 bg-sky-50 px-3 py-2 text-[11px] leading-relaxed text-sky-800">
-          Campaigns never fight: shoppers see <strong>one</strong> popup per visit — the highest campaign that is
-          switched on, inside its dates, and due under its own frequency cap. Reorder with ↑ ↓ to set priority.
+          Campaigns never fight: shoppers see <strong>one</strong> popup per visit, and it never re-pops on
+          background refreshes. When several campaigns are due at once they <strong>take turns</strong> visit by
+          visit (starting at the top) — reorder with ↑ ↓ to set who goes first.
         </p>
         <div className="space-y-2.5">
           {(banners.popup_campaigns || []).map((c, i) => {

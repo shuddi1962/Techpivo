@@ -274,8 +274,32 @@ describe("pickPopupCampaign", () => {
     const off = base({ id: "off", enabled: false })
     const live = base({ id: "live", frequency: "every" })
     const second = base({ id: "second", frequency: "every" })
-    expect(pickPopupCampaign([off, live, second])?.id).toBe("live")
-    expect(pickPopupCampaign([second, live])?.id).toBe("second")
+    expect(pickPopupCampaign([off, live, second], Date.now(), null)?.id).toBe("live")
+    expect(pickPopupCampaign([second, live], Date.now(), null)?.id).toBe("second")
+  })
+
+  it("due campaigns take turns instead of the top one shadowing the rest", () => {
+    const a = base({ id: "a", frequency: "every" })
+    const b = base({ id: "b", frequency: "every" })
+    const c = base({ id: "c", frequency: "every" })
+    const list = [a, b, c]
+    expect(pickPopupCampaign(list, Date.now(), null)?.id).toBe("a")
+    expect(pickPopupCampaign(list, Date.now(), "a")?.id).toBe("b")
+    expect(pickPopupCampaign(list, Date.now(), "b")?.id).toBe("c")
+    expect(pickPopupCampaign(list, Date.now(), "c")?.id).toBe("a")
+    // unknown last-shown (deleted campaign) restarts at the top
+    expect(pickPopupCampaign(list, Date.now(), "gone")?.id).toBe("a")
+  })
+
+  it("rotation skips campaigns that are off or out of window", () => {
+    const a = base({ id: "a", frequency: "every" })
+    const off = base({ id: "off", enabled: false })
+    const future = base({ id: "future", frequency: "every", start_at: new Date(Date.now() + 86400000).toISOString() })
+    const b = base({ id: "b", frequency: "every" })
+    const list = [a, off, future, b]
+    expect(pickPopupCampaign(list, Date.now(), null)?.id).toBe("a")
+    expect(pickPopupCampaign(list, Date.now(), "a")?.id).toBe("b")
+    expect(pickPopupCampaign(list, Date.now(), "b")?.id).toBe("a")
   })
 
   it("popupDue honors session/daily/weekly caps without storage", () => {

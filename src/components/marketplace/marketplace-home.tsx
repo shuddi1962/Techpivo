@@ -14,7 +14,7 @@ import { openCartPopup, openQuickView } from "@/lib/marketplace-events"
 import {
   MARKETPLACE_BRAND, MARKETPLACE_HERO, supplierDisplayName, type DemoProduct,
 } from "@/lib/marketplace"
-import { EMPTY_BANNERS, campaignView, linkOf, parseBanners, pickPopupCampaign, slidesOfObjects, slotSliderProps, stampPopup, type MarketBanners } from "@/lib/marketplace-banners"
+import { EMPTY_BANNERS, campaignView, linkOf, markPopupShown, parseBanners, pickPopupCampaign, slidesOfObjects, slotSliderProps, stampPopup, type MarketBanners } from "@/lib/marketplace-banners"
 import { MARKET_DEPARTMENTS } from "@/lib/marketplace-categories"
 import { marketImage, cleanSupplierText } from "@/lib/marketplace-images"
 import { readCompare, toggleCompareStored } from "@/lib/marketplace-compare"
@@ -291,8 +291,13 @@ export function MarketplaceHome() {
   // intentionally not persisted). Fully driven by Admin → Banners →
   // Welcome popup (on/off, text, image, link, delay + auto-close).
   const [showNotice, setShowNotice] = useState(false)
-  // Multi-campaign popup: the topmost due campaign wins — only ever one
-  // popup per visit, each with its own schedule + frequency cap.
+  // Campaigns already shown this visit — background data refreshes (30s
+  // poll, window focus, realtime events) rebuild the campaign object and
+  // must NEVER re-arm the popup timer. One popup per visit, period.
+  const firedRef = useRef<Set<string>>(new Set())
+  // Multi-campaign popup: due campaigns take turns (round-robin from the
+  // admin order), each with its own schedule + frequency cap. Only ever
+  // one popup per visit — never stacked.
   const campaign = useMemo(
     () => (bannersReady ? pickPopupCampaign(banners.popup_campaigns) : null),
     [banners, bannersReady]
@@ -302,9 +307,15 @@ export function MarketplaceHome() {
     setShowNotice(false)
   }, [campaign])
   useEffect(() => {
-    if (!campaign) return
+    if (!campaign || firedRef.current.size > 0) return
     const t = setTimeout(
-      () => setShowNotice(true),
+      () => {
+        if (firedRef.current.has(campaign.id)) return
+        firedRef.current.add(campaign.id)
+        markPopupShown(campaign.id)
+        stampPopup(campaign.frequency, campaign.id)
+        setShowNotice(true)
+      },
       Math.min(30, Math.max(0, campaign.delay_sec)) * 1000
     )
     return () => clearTimeout(t)
