@@ -848,6 +848,7 @@ function CampaignEditor({
                 <option key={f.id} value={f.id}>{f.label}</option>
               ))}
             </select>
+            <span className="text-[11px] text-slate-400">Twice-daily, daily and weekly are remembered on the shopper&apos;s device.</span>
           </label>
           <div className="grid grid-cols-2 gap-2.5">
             <label className="block">

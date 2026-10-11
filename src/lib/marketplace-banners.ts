@@ -746,6 +746,7 @@ export type PopupMode = (typeof POPUP_MODES)[number]["id"]
 export const POPUP_FREQUENCIES = [
   { id: "every", label: "Every visit" },
   { id: "session", label: "Once per session (per tab)" },
+  { id: "twice", label: "Twice a day" },
   { id: "daily", label: "Once a day" },
   { id: "weekly", label: "Once a week" },
 ] as const
@@ -894,6 +895,14 @@ export function parsePopupCampaigns(v: unknown): PopupCampaign[] {
 
 const POP_FREQ_PREFIX = "tp_market_popup_v1"
 
+// Shopper-local calendar day (YYYY-MM-DD) — twice-daily caps reset at
+// local midnight, matching how a shopper experiences "per day".
+function todayKey(): string {
+  const d = new Date()
+  const p = (n: number) => String(n).padStart(2, "0")
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`
+}
+
 // Frequency cap so shoppers don't see a popup on every refresh.
 // Remembered per campaign on the shopper's device (session tab or
 // local day/week stamp). Server-safe: returns true without storage.
@@ -903,6 +912,19 @@ export function popupDue(frequency: string, id: string): boolean {
     if (frequency === "every") return true
     const key = `${POP_FREQ_PREFIX}:${id}`
     if (frequency === "session") return !window.sessionStorage.getItem(key)
+    if (frequency === "twice") {
+      const raw = window.localStorage.getItem(key)
+      if (!raw) return true
+      try {
+        const o = JSON.parse(raw) as { d?: string; n?: number }
+        // Legacy plain-timestamp stamps (or any other shape) count as a
+        // fresh day — the next stamp rewrites them in the new shape.
+        if (!o || o.d !== todayKey()) return true
+        return (o.n || 0) < 2
+      } catch {
+        return true
+      }
+    }
     const last = Number(window.localStorage.getItem(key) || 0)
     const gap = frequency === "weekly" ? 7 * 86400000 : 86400000
     return Date.now() - last > gap
@@ -915,8 +937,26 @@ export function stampPopup(frequency: string, id: string) {
   try {
     if (typeof window === "undefined") return
     const key = `${POP_FREQ_PREFIX}:${id}`
-    if (frequency === "session") window.sessionStorage.setItem(key, "1")
-    else window.localStorage.setItem(key, String(Date.now()))
+    if (frequency === "session") {
+      window.sessionStorage.setItem(key, "1")
+      return
+    }
+    if (frequency === "twice") {
+      const today = todayKey()
+      let n = 1
+      try {
+        const raw = window.localStorage.getItem(key)
+        if (raw) {
+          const o = JSON.parse(raw) as { d?: string; n?: number }
+          if (o && o.d === today) n = (o.n || 0) + 1
+        }
+      } catch {
+        // corrupted stamp — restart the count
+      }
+      window.localStorage.setItem(key, JSON.stringify({ d: today, n }))
+      return
+    }
+    window.localStorage.setItem(key, String(Date.now()))
   } catch {
     // private mode — popup simply shows again next visit
   }

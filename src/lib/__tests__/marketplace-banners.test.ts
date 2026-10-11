@@ -376,6 +376,39 @@ describe("pickPopupCampaign", () => {
     expect(Math.abs(back - Date.parse(iso))).toBeLessThan(60000)
   })
 
+  it("twice-daily caps at two shows per calendar day", () => {
+    const mem: Record<string, string> = {}
+    ;(globalThis as unknown as { window: unknown }).window = {
+      localStorage: {
+        getItem: (k: string) => (k in mem ? mem[k] : null),
+        setItem: (k: string, v: string) => {
+          mem[k] = v
+        },
+        removeItem: (k: string) => {
+          delete mem[k]
+        },
+      },
+      sessionStorage: {
+        getItem: () => null,
+        setItem: () => {},
+        removeItem: () => {},
+      },
+    }
+    try {
+      const id = "twice-camp"
+      expect(popupDue("twice", id)).toBe(true)
+      stampPopup("twice", id)
+      expect(popupDue("twice", id)).toBe(true) // 1 of 2 used
+      stampPopup("twice", id)
+      expect(popupDue("twice", id)).toBe(false) // 2 of 2 used
+      // A legacy plain-timestamp stamp counts as a fresh day, not a crash.
+      mem["tp_market_popup_v1:legacy"] = String(Date.now())
+      expect(popupDue("twice", "legacy")).toBe(true)
+    } finally {
+      delete (globalThis as unknown as { window?: unknown }).window
+    }
+  })
+
   it("campaignView adapts a campaign to the shared card", () => {
     const v = campaignView(base({ id: "v", title: "Sale", mode: "banner", image: "img" }))
     expect(v.popup_title).toBe("Sale")
