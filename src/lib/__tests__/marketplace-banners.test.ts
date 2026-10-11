@@ -8,6 +8,7 @@ import {
   summarizePopupStats,
   defaultPopupCampaign,
   easingCss,
+  isoToLocalInput,
   linkOf,
   markPopupShown,
   parseBanners,
@@ -363,6 +364,16 @@ describe("pickPopupCampaign", () => {
     expect(s.a).toEqual({ views: 2, clicks: 1, closes: 1, ctr: 50, lastShownAt: "2026-10-02T10:00:00Z" })
     expect(s.b).toEqual({ views: 0, clicks: 1, closes: 0, ctr: 0, lastShownAt: null })
     expect(s[""]).toBeUndefined()
+  })
+
+  it("isoToLocalInput round-trips UTC ISO through local wall time", () => {
+    expect(isoToLocalInput("")).toBe("")
+    expect(isoToLocalInput("not-a-date")).toBe("")
+    // Whatever the machine timezone, parsing the produced wall time must
+    // land back on the same minute (no drift on view/save round-trips).
+    const iso = "2026-10-11T01:43:00.000Z"
+    const back = new Date(isoToLocalInput(iso)).getTime()
+    expect(Math.abs(back - Date.parse(iso))).toBeLessThan(60000)
   })
 
   it("campaignView adapts a campaign to the shared card", () => {

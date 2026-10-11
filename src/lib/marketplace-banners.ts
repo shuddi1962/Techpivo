@@ -815,6 +815,17 @@ export function defaultPopupCampaign(name = "New popup"): PopupCampaign {
   }
 }
 
+// datetime-local inputs speak LOCAL wall time while we store UTC ISO.
+// Format stored UTC -> local "YYYY-MM-DDTHH:MM" for display so the shown
+// time never drifts by the timezone offset on every view/save round-trip.
+export function isoToLocalInput(iso: string): string {
+  if (!iso) return ""
+  const d = new Date(iso)
+  if (!Number.isFinite(d.getTime())) return ""
+  const p = (n: number) => String(n).padStart(2, "0")
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`
+}
+
 function cleanIsoDate(v: unknown): string {
   if (typeof v !== "string" || !v.trim()) return ""
   const ms = Date.parse(v.trim())

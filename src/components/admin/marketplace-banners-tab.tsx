@@ -22,6 +22,7 @@ import {
   POPUP_STYLES,
   campaignView,
   defaultPopupCampaign,
+  isoToLocalInput,
   SLIDER_EASINGS,
   bannerLinkLabel,
   cleanBannerLink,
@@ -590,8 +591,8 @@ function campaignStatus(c: PopupCampaign, rank: number): { dot: string; text: st
   const now = Date.now()
   if (!c.enabled) return { dot: "bg-slate-300", text: "Off" }
   if (c.start_at && now < Date.parse(c.start_at)) {
-    const d = new Date(c.start_at).toLocaleDateString(undefined, { month: "short", day: "numeric" })
-    return { dot: "bg-sky-400", text: `Starts ${d}` }
+    const d = new Date(c.start_at).toLocaleString(undefined, { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })
+    return { dot: "bg-sky-400", text: `Scheduled — starts ${d} (hidden until then)` }
   }
   if (c.end_at && now > Date.parse(c.end_at)) return { dot: "bg-slate-300", text: "Ended" }
   return {
@@ -819,19 +820,19 @@ function CampaignEditor({
         <p className="text-sm font-bold text-slate-900">Schedule + timing</p>
         <div className="mt-2 grid gap-2.5 sm:grid-cols-2">
           <label className="block">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Starts (optional)</span>
+            <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Starts — your time (optional)</span>
             <input
               type="datetime-local"
-              value={c.start_at ? c.start_at.slice(0, 16) : ""}
+              value={isoToLocalInput(c.start_at)}
               onChange={(e) => onChange({ start_at: e.target.value ? new Date(e.target.value).toISOString() : "" })}
               className={`${inputCls} mt-1 text-xs`}
             />
           </label>
           <label className="block">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Ends (optional)</span>
+            <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Ends — your time (optional)</span>
             <input
               type="datetime-local"
-              value={c.end_at ? c.end_at.slice(0, 16) : ""}
+              value={isoToLocalInput(c.end_at)}
               onChange={(e) => onChange({ end_at: e.target.value ? new Date(e.target.value).toISOString() : "" })}
               className={`${inputCls} mt-1 text-xs`}
             />
@@ -1303,7 +1304,9 @@ export function MarketplaceBannersTab() {
           <p className="min-w-0 flex-1">
             Campaigns never fight: shoppers see <strong>one</strong> popup per visit, and it never re-pops on
             background refreshes. When several campaigns are due at once they <strong>take turns</strong> visit by
-            visit (starting at the top) — reorder with ↑ ↓ to set who goes first.
+            visit (starting at the top) — reorder with ↑ ↓ to set who goes first. Testing? Use an incognito window:
+            closing a daily/weekly popup hides it on that device until its cap lifts, and a future start date hides
+            it until then (the row says Scheduled).
           </p>
           <button
             type="button"
