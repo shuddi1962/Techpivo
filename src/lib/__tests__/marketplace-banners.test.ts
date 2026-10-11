@@ -8,6 +8,7 @@ import {
   defaultPopupCampaign,
   easingCss,
   linkOf,
+  markPopupShown,
   parseBanners,
   parsePopupCampaigns,
   pickPopupCampaign,
@@ -15,6 +16,7 @@ import {
   slidesOf,
   slidesOfObjects,
   slotSliderOf,
+  stampPopup,
   type PopupCampaign,
 } from "@/lib/marketplace-banners"
 
@@ -306,6 +308,45 @@ describe("pickPopupCampaign", () => {
     // no window in tests → fail-open so popups still work in SSR/prerender
     expect(popupDue("daily", "x")).toBe(true)
     expect(popupDue("every", "x")).toBe(true)
+  })
+
+  it("full multi-visit simulation: rotation + daily caps with mocked storage", () => {
+    // In-memory browser storage so popupDue/stamps/rotation behave live.
+    const mem: Record<string, string> = {}
+    const store = {
+      getItem: (k: string) => (k in mem ? mem[k] : null),
+      setItem: (k: string, v: string) => {
+        mem[k] = v
+      },
+      removeItem: (k: string) => {
+        delete mem[k]
+      },
+    }
+    ;(globalThis as unknown as { window: unknown }).window = {
+      localStorage: store,
+      sessionStorage: store,
+    }
+    try {
+      const welcome = base({ id: "welcome", frequency: "every" })
+      const promo = base({ id: "promo", frequency: "daily", mode: "banner", image: "img" })
+      const list = [welcome, promo]
+      // Visit 1: top campaign shows.
+      expect(pickPopupCampaign(list)?.id).toBe("welcome")
+      markPopupShown("welcome")
+      stampPopup("every", "welcome")
+      // Visit 2: rotation hands the turn to the banner campaign.
+      expect(pickPopupCampaign(list)?.id).toBe("promo")
+      markPopupShown("promo")
+      stampPopup("daily", "promo")
+      // Visit 3 (same day): daily promo is capped, welcome returns.
+      expect(pickPopupCampaign(list)?.id).toBe("welcome")
+      markPopupShown("welcome")
+      // Visit 4: rotation alternates back to promo once its cap lifts.
+      delete mem["tp_market_popup_v1:promo"]
+      expect(pickPopupCampaign(list)?.id).toBe("promo")
+    } finally {
+      delete (globalThis as unknown as { window?: unknown }).window
+    }
   })
 
   it("campaignView adapts a campaign to the shared card", () => {

@@ -306,20 +306,27 @@ export function MarketplaceHome() {
     if (campaign) stampPopup(campaign.frequency, campaign.id)
     setShowNotice(false)
   }, [campaign])
+  // Keyed on the campaign ID (a stable string), NOT the campaign object:
+  // background data refreshes rebuild that object every 30s and must not
+  // restart — or starve — the countdown.
+  const campaignId = campaign?.id ?? null
   useEffect(() => {
-    if (!campaign || firedRef.current.size > 0) return
+    if (!campaign || !campaignId || firedRef.current.size > 0) return
+    if (firedRef.current.has(campaignId)) return
+    const c = campaign
     const t = setTimeout(
       () => {
-        if (firedRef.current.has(campaign.id)) return
-        firedRef.current.add(campaign.id)
-        markPopupShown(campaign.id)
-        stampPopup(campaign.frequency, campaign.id)
+        if (firedRef.current.has(c.id)) return
+        firedRef.current.add(c.id)
+        markPopupShown(c.id)
+        stampPopup(c.frequency, c.id)
         setShowNotice(true)
       },
-      Math.min(30, Math.max(0, campaign.delay_sec)) * 1000
+      Math.min(30, Math.max(0, c.delay_sec)) * 1000
     )
     return () => clearTimeout(t)
-  }, [campaign, bannersReady])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [campaignId, bannersReady])
   useEffect(() => {
     if (!showNotice) return
     const onKey = (e: KeyboardEvent) => {

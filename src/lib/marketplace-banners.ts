@@ -803,7 +803,11 @@ export function defaultPopupCampaign(name = "New popup"): PopupCampaign {
     show_dismiss: true,
     style: "dark",
     size: "md",
-    frequency: "daily",
+    // New campaigns show every visit by default so they are immediately
+    // visible (and rotate fairly with the rest). Switch to daily/weekly
+    // per campaign to pace them — otherwise a single test-close hides a
+    // daily campaign for 24h and looks "broken".
+    frequency: "every",
     delay_sec: 1,
     autoclose_sec: 0,
     start_at: "",
@@ -854,7 +858,7 @@ function parsePopupCampaign(v: unknown): PopupCampaign | null {
     show_dismiss: bool(r.show_dismiss, true),
     style: (POPUP_STYLES.some((s) => s.id === r.style) ? r.style : "dark") as PopupStyle,
     size: (POPUP_SIZES.some((s) => s.id === r.size) ? r.size : "md") as PopupSize,
-    frequency: (POPUP_FREQUENCIES.some((f) => f.id === r.frequency) ? r.frequency : "daily") as PopupFrequency,
+    frequency: (POPUP_FREQUENCIES.some((f) => f.id === r.frequency) ? r.frequency : "every") as PopupFrequency,
     delay_sec: clampSec(r.delay_sec, 0, 30, 1),
     autoclose_sec: clampSec(r.autoclose_sec, 0, 120, 0),
     start_at: cleanIsoDate(r.start_at),
