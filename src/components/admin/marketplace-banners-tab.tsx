@@ -31,6 +31,7 @@ import {
   type BannerTransition,
   type MarketBanners,
   type PopupCampaign,
+  type PopupStatSummary,
   type PopupFrequency,
   type PopupMode,
   type PopupSize,
@@ -604,11 +605,13 @@ function campaignStatus(c: PopupCampaign, rank: number): { dot: string; text: st
 // never lose focus while typing.
 function CampaignEditor({
   c,
+  stat,
   onChange,
   onUploadImage,
   uploading,
 }: {
   c: PopupCampaign
+  stat?: PopupStatSummary | null
   onChange: (patch: Partial<PopupCampaign>) => void
   onUploadImage: () => void
   uploading: boolean
@@ -617,6 +620,23 @@ function CampaignEditor({
   const view = campaignView(c)
   return (
     <div className="space-y-3 border-t bg-slate-50/60 p-3 sm:p-4">
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 rounded-xl border border-sky-200 bg-sky-50 px-3 py-2 text-[11px] font-semibold text-sky-900">
+        {stat && stat.views > 0 ? (
+          <>
+            <span>👁 {stat.views} views (30d)</span>
+            <span>🖱 {stat.clicks} clicks</span>
+            <span>✕ {stat.closes} closes</span>
+            <span className="font-extrabold">CTR {stat.ctr}%</span>
+            {stat.lastShownAt && (
+              <span className="text-sky-700">
+                last shown {new Date(stat.lastShownAt).toLocaleString(undefined, { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
+              </span>
+            )}
+          </>
+        ) : (
+          <span className="text-sky-700">No views yet — numbers appear here once shoppers see this popup.</span>
+        )}
+      </div>
       <div className="rounded-xl border bg-white p-4">
         <p className="text-sm font-bold text-slate-900">Popup style — two ways to show it</p>
         <div className="mt-2 grid gap-2 sm:grid-cols-2">
@@ -902,6 +922,16 @@ export function MarketplaceBannersTab() {
   const [notice, setNotice] = useState("")
   const [section, setSection] = useState<string>("home")
   const [openCampaign, setOpenCampaign] = useState<string | null>(null)
+  const [stats, setStats] = useState<Record<string, PopupStatSummary>>({})
+  const loadStats = async () => {
+    try {
+      const r = await fetch("/admin/marketplace/api?section=popup-stats")
+      const d = await r.json().catch(() => null)
+      if (r.ok && d?.stats) setStats(d.stats as Record<string, PopupStatSummary>)
+    } catch {
+      // stats simply stay empty until the next refresh
+    }
+  }
   const [openSlot, setOpenSlot] = useState<string>("hero_image")
   const [openSlider, setOpenSlider] = useState<string | null>(null)
   const fileRef = useRef<HTMLInputElement>(null)
@@ -932,6 +962,9 @@ export function MarketplaceBannersTab() {
         if (d?.store) setStore({ ...MARKET_STORE_DEFAULTS, ...d.store })
       })
       .catch(() => {})
+    loadStats()
+    const poll = setInterval(loadStats, 60000)
+    return () => clearInterval(poll)
   }, [])
 
   const flash = (msg: string) => {
@@ -1266,22 +1299,34 @@ export function MarketplaceBannersTab() {
         open={section === "popup"}
         onToggle={() => setSection(section === "popup" ? "" : "popup")}
       >
-        <p className="rounded-xl border border-sky-200 bg-sky-50 px-3 py-2 text-[11px] leading-relaxed text-sky-800">
-          Campaigns never fight: shoppers see <strong>one</strong> popup per visit, and it never re-pops on
-          background refreshes. When several campaigns are due at once they <strong>take turns</strong> visit by
-          visit (starting at the top) — reorder with ↑ ↓ to set who goes first.
-        </p>
+        <div className="flex flex-wrap items-center gap-2 rounded-xl border border-sky-200 bg-sky-50 px-3 py-2 text-[11px] leading-relaxed text-sky-800">
+          <p className="min-w-0 flex-1">
+            Campaigns never fight: shoppers see <strong>one</strong> popup per visit, and it never re-pops on
+            background refreshes. When several campaigns are due at once they <strong>take turns</strong> visit by
+            visit (starting at the top) — reorder with ↑ ↓ to set who goes first.
+          </p>
+          <button
+            type="button"
+            onClick={loadStats}
+            className="inline-flex shrink-0 items-center gap-1 rounded-lg border border-sky-300 bg-white px-2.5 py-1.5 text-[11px] font-bold text-sky-800 hover:bg-sky-100"
+          >
+            <RotateCcw className="h-3 w-3" /> Refresh stats
+          </button>
+        </div>
         <div className="space-y-2.5">
           {(banners.popup_campaigns || []).map((c, i) => {
             const st = campaignStatus(c, i + 1)
             const expanded = openCampaign === c.id
+            const s = stats[c.id]
             return (
               <div key={c.id} className={`overflow-hidden rounded-xl border bg-white ${expanded ? "border-amber-300 shadow-sm" : ""}`}>
                 <div className="flex items-center gap-2.5 p-3">
                   <span className={`h-2.5 w-2.5 shrink-0 rounded-full ${st.dot}`} title={st.text} />
                   <button type="button" onClick={() => setOpenCampaign(expanded ? null : c.id)} aria-expanded={expanded} className="min-w-0 flex-1 text-left">
                     <span className="block truncate text-sm font-bold text-slate-900">{c.name || "Untitled"}</span>
-                    <span className="block truncate text-[11px] text-slate-500">{st.text}</span>
+                    <span className="block truncate text-[11px] text-slate-500">
+                      {st.text}{s && s.views > 0 ? ` · 👁 ${s.views} · 🖱 ${s.clicks} · CTR ${s.ctr}%` : ""}
+                    </span>
                   </button>
                   <label className="inline-flex shrink-0 cursor-pointer items-center gap-1.5 text-[11px] font-bold text-slate-600">
                     <input
@@ -1305,6 +1350,7 @@ export function MarketplaceBannersTab() {
                 {expanded && (
                   <CampaignEditor
                     c={c}
+                    stat={stats[c.id] || null}
                     onChange={(p) => patchCampaign(c.id, p)}
                     onUploadImage={() => pickUpload(`popupimg:${c.id}`)}
                     uploading={uploading === `popupimg:${c.id}`}

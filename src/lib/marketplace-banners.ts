@@ -965,6 +965,42 @@ export function pickPopupCampaign(
   return due[0]
 }
 
+export interface PopupStatRow {
+  campaign_id: string
+  event: "view" | "click" | "close"
+  created_at: string
+}
+
+export interface PopupStatSummary {
+  views: number
+  clicks: number
+  closes: number
+  ctr: number
+  lastShownAt: string | null
+}
+
+// Pure aggregation for the admin analytics view: totals + CTR per
+// campaign over any set of raw stat rows.
+export function summarizePopupStats(rows: PopupStatRow[]): Record<string, PopupStatSummary> {
+  const out: Record<string, PopupStatSummary> = {}
+  for (const r of rows) {
+    if (!r || typeof r.campaign_id !== "string" || !r.campaign_id) continue
+    const s = out[r.campaign_id] || { views: 0, clicks: 0, closes: 0, ctr: 0, lastShownAt: null }
+    if (r.event === "view") s.views += 1
+    else if (r.event === "click") s.clicks += 1
+    else if (r.event === "close") s.closes += 1
+    else continue
+    if (r.event === "view" && typeof r.created_at === "string") {
+      if (!s.lastShownAt || r.created_at > s.lastShownAt) s.lastShownAt = r.created_at
+    }
+    out[r.campaign_id] = s
+  }
+  for (const s of Object.values(out)) {
+    s.ctr = s.views > 0 ? Math.round((s.clicks / s.views) * 1000) / 10 : 0
+  }
+  return out
+}
+
 // Adapter: a campaign viewed through the legacy flat popup fields,
 // so the shared card component needs no changes.
 export function campaignView(c: PopupCampaign): MarketBanners {

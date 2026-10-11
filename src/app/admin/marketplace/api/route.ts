@@ -55,6 +55,18 @@ export async function GET(request: NextRequest) {
       const { parseBanners } = await import("@/lib/marketplace-banners")
       return NextResponse.json({ banners: parseBanners((data as { value?: unknown } | null)?.value) })
     }
+    if (section === "popup-stats") {
+      const { summarizePopupStats } = await import("@/lib/marketplace-banners")
+      const since = new Date(Date.now() - 30 * 86400000).toISOString()
+      const { data, error } = await supabase
+        .from("marketplace_popup_stats")
+        .select("campaign_id,event,created_at")
+        .gte("created_at", since)
+        .order("created_at", { ascending: false })
+        .limit(10000)
+      if (error) throw error
+      return NextResponse.json({ stats: summarizePopupStats((data || []) as Array<{ campaign_id: string; event: "view" | "click" | "close"; created_at: string }>) })
+    }
     if (section === "store") {
       const { data } = await supabase.from("site_settings").select("value").eq("key", "marketplace_store").maybeSingle()
       const { sanitizeStore } = await import("@/lib/marketplace-store")

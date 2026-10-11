@@ -46,10 +46,13 @@ const POINT_COLORS = ["text-[#10B981]", "text-[#F59E0B]", "text-[#0F172A]"]
 export function WelcomePopupCard({
   b,
   onClose,
+  onCta,
   preview = false,
 }: {
   b: MarketBanners
   onClose: () => void
+  /** Fired when the shopper clicks the main action (never in preview). */
+  onCta?: () => void
   /** Preview mode (admin): the button just closes the preview, never navigates. */
   preview?: boolean
 }) {
@@ -80,7 +83,15 @@ export function WelcomePopupCard({
             {body}
           </div>
         ) : (
-          <Link href={b.popup_cta_link} onClick={onClose} aria-label={b.popup_title || "Special offer"} className="block">
+          <Link
+            href={b.popup_cta_link}
+            onClick={() => {
+              onCta?.()
+              onClose()
+            }}
+            aria-label={b.popup_title || "Special offer"}
+            className="block"
+          >
             {body}
           </Link>
         )}
@@ -174,7 +185,10 @@ export function WelcomePopupCard({
           ) : (
             <Link
               href={b.popup_cta_link}
-              onClick={onClose}
+              onClick={() => {
+                onCta?.()
+                onClose()
+              }}
               className={`flex flex-1 items-center justify-center gap-1.5 rounded-lg px-4 py-2.5 text-sm font-bold transition-colors ${t.cta}`}
             >
               {b.popup_cta_text} <ArrowRight className="h-4 w-4" />

@@ -5,6 +5,7 @@ import {
   EMPTY_BANNERS,
   campaignView,
   cleanBannerLink,
+  summarizePopupStats,
   defaultPopupCampaign,
   easingCss,
   linkOf,
@@ -347,6 +348,21 @@ describe("pickPopupCampaign", () => {
     } finally {
       delete (globalThis as unknown as { window?: unknown }).window
     }
+  })
+
+  it("summarizePopupStats totals views/clicks/closes + CTR per campaign", () => {
+    expect(summarizePopupStats([])).toEqual({})
+    const s = summarizePopupStats([
+      { campaign_id: "a", event: "view", created_at: "2026-10-01T10:00:00Z" },
+      { campaign_id: "a", event: "view", created_at: "2026-10-02T10:00:00Z" },
+      { campaign_id: "a", event: "click", created_at: "2026-10-02T10:01:00Z" },
+      { campaign_id: "a", event: "close", created_at: "2026-10-02T10:02:00Z" },
+      { campaign_id: "b", event: "click", created_at: "2026-10-02T11:00:00Z" },
+      { campaign_id: "", event: "view", created_at: "2026-10-02T11:00:00Z" },
+    ])
+    expect(s.a).toEqual({ views: 2, clicks: 1, closes: 1, ctr: 50, lastShownAt: "2026-10-02T10:00:00Z" })
+    expect(s.b).toEqual({ views: 0, clicks: 1, closes: 0, ctr: 0, lastShownAt: null })
+    expect(s[""]).toBeUndefined()
   })
 
   it("campaignView adapts a campaign to the shared card", () => {

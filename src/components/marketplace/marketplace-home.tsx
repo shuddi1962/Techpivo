@@ -188,6 +188,20 @@ function PromoBox({
   )
 }
 
+// Fire-and-forget popup analytics (view / click / close per campaign).
+function logPopup(campaignId: string, event: "view" | "click" | "close") {
+  try {
+    fetch("/api/marketplace/popup-stats", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ campaign_id: campaignId, event }),
+      keepalive: true,
+    }).catch(() => {})
+  } catch {
+    // analytics must never break shopping
+  }
+}
+
 function useCountdown() {
   // Single countdown value — never call setState inside another setState
   // updater (impure updaters cascade extra renders under StrictMode).
@@ -303,8 +317,14 @@ export function MarketplaceHome() {
     [banners, bannersReady]
   )
   const closeNotice = useCallback(() => {
-    if (campaign) stampPopup(campaign.frequency, campaign.id)
+    if (campaign) {
+      stampPopup(campaign.frequency, campaign.id)
+      logPopup(campaign.id, "close")
+    }
     setShowNotice(false)
+  }, [campaign])
+  const trackPopupClick = useCallback(() => {
+    if (campaign) logPopup(campaign.id, "click")
   }, [campaign])
   // Keyed on the campaign ID (a stable string), NOT the campaign object:
   // background data refreshes rebuild that object every 30s and must not
@@ -320,6 +340,7 @@ export function MarketplaceHome() {
         firedRef.current.add(c.id)
         markPopupShown(c.id)
         stampPopup(c.frequency, c.id)
+        logPopup(c.id, "view")
         setShowNotice(true)
       },
       Math.min(30, Math.max(0, c.delay_sec)) * 1000
@@ -799,7 +820,7 @@ export function MarketplaceHome() {
               onClick={closeNotice}
               className="absolute inset-0 bg-[#0F172A]/60 backdrop-blur-[2px]"
             />
-            <WelcomePopupCard b={campaignView(campaign)} onClose={closeNotice} />
+            <WelcomePopupCard b={campaignView(campaign)} onClose={closeNotice} onCta={trackPopupClick} />
           </div>
         )}
 
