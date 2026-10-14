@@ -3,17 +3,21 @@
 import Link from "next/link"
 import { useEffect, useRef, useState } from "react"
 import {
-  Check, ChevronLeft, ChevronRight, Flame, ShoppingCart,
+  ArrowLeftRight, Check, ChevronLeft, ChevronRight, Eye, Flame, Heart, ShoppingCart,
 } from "lucide-react"
 import type { DemoProduct } from "@/lib/marketplace"
+import { openQuickView } from "@/lib/marketplace-events"
 import { marketImage } from "@/lib/marketplace-images"
-import { PanelStars, discountPct } from "./feature-panels"
+import { readCompare, toggleCompareStored } from "@/lib/marketplace-compare"
+import { discountPct } from "./feature-panels"
 import { MarketPrice } from "./market-price"
 import { SaleCountdown, useSaleEnd } from "./sale-countdown"
 
 interface ShowcaseActions {
   onAdd: (p: DemoProduct) => void
   added: Record<string, boolean>
+  wished: Record<string, boolean>
+  onWish: (id: string) => void
 }
 
 export interface ShowcaseNavItem {
@@ -21,10 +25,15 @@ export interface ShowcaseNavItem {
   slug: string
 }
 
-function ShowcaseCard({ p, onAdd, added }: { p: DemoProduct } & ShowcaseActions) {
+function ShowcaseCard({ p, onAdd, added, wished, onWish }: { p: DemoProduct } & ShowcaseActions) {
+  const [compared, setCompared] = useState<Record<string, boolean>>(() => readCompare())
   const pct = discountPct(p.price, p.oldPrice)
   const href = /^[0-9a-f-]{36}$/i.test(p.id) ? `/marketplace/product/${p.id}` : undefined
   const saleEnd = useSaleEnd(p.id)
+  const flipCompare = () => setCompared((m) => ({ ...m, [p.id]: toggleCompareStored(p.id) }))
+
+  const iconBtn =
+    "flex h-9 w-9 items-center justify-center rounded-full bg-white/95 text-slate-500 shadow-[0_4px_16px_rgba(15,23,42,0.18)] backdrop-blur-sm transition-all hover:scale-105 hover:text-[#0F172A] focus-visible:outline-2 focus-visible:outline-[#F59E0B] active:scale-95"
   return (
     <div className="group relative flex w-44 shrink-0 snap-start flex-col bg-white rounded-xl border border-[#E5E7EB] p-3 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_12px_32px_-12px_rgba(15,23,42,0.25)] focus-within:ring-2 focus-within:ring-[#F59E0B] sm:w-52">
       <div className="relative aspect-square w-full overflow-hidden rounded-lg bg-white">
@@ -38,6 +47,40 @@ function ShowcaseCard({ p, onAdd, added }: { p: DemoProduct } & ShowcaseActions)
             -{pct}%
           </span>
         )}
+        {/* hover icon rail — wishlist / quick view / compare */}
+        <div className="absolute right-1.5 top-1.5 z-10 flex flex-col gap-1.5 opacity-0 translate-y-1 transition-all duration-300 group-hover:translate-y-0 group-hover:opacity-100 group-focus-within:translate-y-0 group-focus-within:opacity-100 max-md:translate-y-0 max-md:opacity-100">
+          <button
+            type="button"
+            onClick={() => onWish(p.id)}
+            aria-label={wished[p.id] ? "Remove from wishlist" : "Add to wishlist"}
+            aria-pressed={!!wished[p.id]}
+            title="Wishlist"
+            className={`${iconBtn} ${wished[p.id] ? "!bg-[#EF4444] !text-white" : "hover:!text-[#EF4444]"}`}
+          >
+            <Heart className={`h-4 w-4 ${wished[p.id] ? "fill-current" : ""}`} />
+          </button>
+          {href && (
+            <button
+              type="button"
+              onClick={() => openQuickView(p.id)}
+              aria-label={`Quick view ${p.name}`}
+              title="Quick view"
+              className={iconBtn}
+            >
+              <Eye className="h-4 w-4" />
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={flipCompare}
+            aria-label={compared[p.id] ? "Remove from compare" : "Add to compare"}
+            aria-pressed={!!compared[p.id]}
+            title="Compare"
+            className={`${iconBtn} ${compared[p.id] ? "!bg-[#0F172A] !text-white" : ""}`}
+          >
+            <ArrowLeftRight className="h-4 w-4" />
+          </button>
+        </div>
         {/* slide-up add to cart (desktop hover, above the stretched link) */}
         {href && (
         <div className="absolute inset-x-2 bottom-2 z-10 hidden translate-y-[130%] transition-transform duration-300 ease-out group-hover:translate-y-0 group-focus-within:translate-y-0 md:block">
@@ -53,10 +96,6 @@ function ShowcaseCard({ p, onAdd, added }: { p: DemoProduct } & ShowcaseActions)
       </div>
       <div className="mt-2 flex flex-1 flex-col gap-1">
         <p title={p.name} className="truncate text-[13px] font-semibold text-[#0F172A] transition-colors group-hover:text-[#B45309]">{p.name}</p>
-        <PanelStars value={p.rating} />
-        <span className="text-[11px] font-medium text-slate-400">
-          {p.reviews > 0 ? `${p.rating.toFixed(1)} · ${p.reviews} review${p.reviews === 1 ? "" : "s"}` : "New — no reviews yet"}
-        </span>
         <div className="flex items-baseline gap-1.5">
           <MarketPrice usd={p.price} className="text-[15px] font-extrabold tabular-nums text-[#0F172A]" />
           {p.oldPrice && p.oldPrice > p.price && (
@@ -98,6 +137,8 @@ export function CategoryShowcase({
   sideLink = "",
   onAdd,
   added,
+  wished,
+  onWish,
 }: {
   title: string
   deptSlug: string
@@ -111,6 +152,8 @@ export function CategoryShowcase({
   items: Array<DemoProduct & { subSlug?: string | null }>
   onAdd: (p: DemoProduct) => void
   added: Record<string, boolean>
+  wished: Record<string, boolean>
+  onWish: (id: string) => void
 }) {
   const [active, setActive] = useState<string | null>(null)
   const railRef = useRef<HTMLDivElement>(null)
@@ -258,7 +301,7 @@ export function CategoryShowcase({
           onTouchEnd={() => { pauseRef.current = false }}
         >
           {shown.map((p) => (
-            <ShowcaseCard key={p.id} p={p} onAdd={onAdd} added={added} />
+            <ShowcaseCard key={p.id} p={p} onAdd={onAdd} added={added} wished={wished} onWish={onWish} />
           ))}
           {shown.length === 0 && (
             <p className="flex items-center px-4 text-sm text-slate-500">No products in this category yet.</p>

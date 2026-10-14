@@ -4,19 +4,20 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import {
-  ArrowRight, Check, ChevronLeft, ChevronRight, Flame,
-  Package, ShoppingCart, ShieldCheck, X, Zap,
+  ArrowLeftRight, ArrowRight, Check, ChevronLeft, ChevronRight, Eye, Flame,
+  Heart, Package, ShoppingCart, ShieldCheck, X, Zap,
   BadgeCheck, Truck,
 } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
 import { addToCart as addLine, cartCount as countLines, useMarketCart } from "@/lib/marketplace-cart"
-import { openCartPopup } from "@/lib/marketplace-events"
+import { openCartPopup, openQuickView } from "@/lib/marketplace-events"
 import {
   MARKETPLACE_BRAND, MARKETPLACE_HERO, supplierDisplayName, type DemoProduct,
 } from "@/lib/marketplace"
 import { EMPTY_BANNERS, campaignView, flashSecondsLeft, linkOf, markPopupShown, parseBanners, pickPopupCampaign, slidesOfObjects, slotSliderProps, splitCountdown, stampPopup, type MarketBanners } from "@/lib/marketplace-banners"
 import { MARKET_DEPARTMENTS } from "@/lib/marketplace-categories"
 import { marketImage, cleanSupplierText } from "@/lib/marketplace-images"
+import { readCompare, toggleCompareStored } from "@/lib/marketplace-compare"
 import { MarketplaceHeader, MarketplaceFooter } from "./marketplace-header"
 import { BannerSlider } from "./banner-slider"
 import { WelcomePopupCard } from "./welcome-popup"
@@ -44,11 +45,16 @@ interface DbProduct {
 }
 
 // Calm-at-rest storefront card: the whole card (image + name + price)
-// opens the product page via a stretched link; the only button is Add
-// to Bag. No floating icon overlays.
-function ProductCard({ p, onAdd, added, href }: { p: DemoProduct; onAdd: () => void; added: boolean; href?: string }) {
+// opens the product page via a stretched link; hover rail (wishlist /
+// quick view / compare) sits above it, plus Add to Bag. No review stars
+// on the card.
+function ProductCard({ p, onAdd, wished, onWish, added, href }: { p: DemoProduct; onAdd: () => void; wished: boolean; onWish: () => void; added: boolean; href?: string }) {
   const discount = p.oldPrice ? Math.round((1 - p.price / p.oldPrice) * 100) : 0
   const saleEnd = useSaleEnd(p.id)
+  const [compared, setCompared] = useState(() => !!readCompare()[p.id])
+  const toggleCompare = () => setCompared(toggleCompareStored(p.id))
+  const iconBtn =
+    "flex h-10 w-10 items-center justify-center rounded-full bg-white/95 text-slate-600 shadow-[0_4px_16px_rgba(15,23,42,0.15)] backdrop-blur-sm transition-all hover:scale-105 hover:text-[#0F172A] focus-visible:outline-2 focus-visible:outline-[#F59E0B] active:scale-95"
   return (
     <div className="group relative flex flex-col overflow-hidden rounded-2xl border border-[#E2E8F0] bg-white shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_16px_40px_-16px_rgba(15,23,42,0.25)] focus-within:ring-2 focus-within:ring-[#F59E0B]">
       <div className="relative aspect-square w-full overflow-hidden bg-[#F8FAFC]">
@@ -62,6 +68,44 @@ function ProductCard({ p, onAdd, added, href }: { p: DemoProduct; onAdd: () => v
         {discount > 0 && (
           <span className="absolute left-3 top-3 z-10 rounded-full bg-[#DC2626] px-2.5 py-1 text-[11px] font-extrabold tracking-wide text-white shadow-sm">-{discount}%</span>
         )}
+        {/* top-right icon stack — wishlist / quick view / compare */}
+        <div className="absolute right-3 top-3 z-10 flex flex-col gap-2.5 opacity-0 translate-y-1 transition-all duration-300 group-hover:translate-y-0 group-hover:opacity-100 group-focus-within:translate-y-0 group-focus-within:opacity-100 max-md:translate-y-0 max-md:opacity-100">
+          <button
+            type="button"
+            onClick={onWish}
+            aria-label={wished ? "Remove from wishlist" : "Add to wishlist"}
+            aria-pressed={wished}
+            title="Wishlist"
+            className={`${iconBtn} ${wished ? "!bg-[#EF4444] !text-white" : "hover:!text-[#EF4444]"}`}
+          >
+            <Heart className={`h-[18px] w-[18px] ${wished ? "fill-current" : ""}`} />
+          </button>
+          {href ? (
+            <button
+              type="button"
+              onClick={() => openQuickView(p.id)}
+              aria-label={`Quick view ${p.name}`}
+              title="Quick view"
+              className={iconBtn}
+            >
+              <Eye className="h-[18px] w-[18px]" />
+            </button>
+          ) : (
+            <span className={`${iconBtn} opacity-50`} aria-hidden>
+              <Eye className="h-[18px] w-[18px]" />
+            </span>
+          )}
+          <button
+            type="button"
+            onClick={toggleCompare}
+            aria-label={compared ? "Remove from compare" : "Add to compare"}
+            aria-pressed={compared}
+            title="Compare"
+            className={`${iconBtn} ${compared ? "!bg-[#0F172A] !text-white" : ""}`}
+          >
+            <ArrowLeftRight className="h-[18px] w-[18px]" />
+          </button>
+        </div>
         {href && (
         <div className="absolute inset-x-3 bottom-3 z-10 hidden translate-y-[130%] transition-transform duration-300 ease-out group-hover:translate-y-0 group-focus-within:translate-y-0 md:block">
           <button
@@ -748,6 +792,8 @@ export function MarketplaceHome() {
   const cardProps = (p: DemoProduct) => ({
     p,
     onAdd: () => addToCart(p),
+    wished: !!wishlist[p.id],
+    onWish: () => toggleWish(p.id),
     added: !!justAdded[p.id],
     href: liveHref(p),
   })
@@ -1159,6 +1205,8 @@ export function MarketplaceHome() {
             sideLink={linkOf(banners, banners.sidebar_banners[dep.slug] || "") || `/marketplace/category/${dep.slug}`}
             onAdd={addToCart}
             added={justAdded}
+            wished={wishlist}
+            onWish={toggleWish}
           />
         )) : null}
 

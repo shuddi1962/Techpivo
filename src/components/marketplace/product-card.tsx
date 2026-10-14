@@ -1,22 +1,29 @@
 "use client"
 
 import Link from "next/link"
-import { Check, Package, ShoppingCart } from "lucide-react"
+import { useState } from "react"
+import { ArrowLeftRight, Check, Eye, Heart, Package, ShoppingCart } from "lucide-react"
 import { marketImage } from "@/lib/marketplace-images"
+import { openQuickView } from "@/lib/marketplace-events"
+import { readCompare, toggleCompareStored } from "@/lib/marketplace-compare"
 import { priceOf, discountOf, type StoreProduct } from "@/lib/marketplace-catalog"
 import { MarketPrice } from "./market-price"
 import { SaleCountdown, useSaleEnd } from "./sale-countdown"
 
-// Calm storefront card: the whole card (image + name + price) opens the
-// product page via a stretched link; the only buttons are Add to Bag.
-// No floating icon overlays.
+// Storefront card: the whole card (image + name + price) opens the product
+// page via a stretched link; hover rail (wishlist / quick view / compare)
+// sits above it, plus Add to Bag. No review stars on the card.
 export function ProductCard({
   p,
   onAdd,
+  wished,
+  onWish,
   added,
 }: {
   p: StoreProduct
   onAdd: () => void
+  wished: boolean
+  onWish: () => void
   added: boolean
 }) {
   const price = priceOf(p)
@@ -24,6 +31,12 @@ export function ProductCard({
   const old = p.original_price ? Number(p.original_price) : NaN
   const href = `/marketplace/product/${p.id}`
   const saleEnd = useSaleEnd(p.id)
+  const [compared, setCompared] = useState(() => !!readCompare()[p.id])
+
+  const toggleCompare = () => setCompared(toggleCompareStored(p.id))
+
+  const iconBtn =
+    "flex h-10 w-10 items-center justify-center rounded-full bg-white/95 text-slate-600 shadow-[0_4px_16px_rgba(15,23,42,0.15)] backdrop-blur-sm transition-all hover:scale-105 hover:text-[#0F172A] focus-visible:outline-2 focus-visible:outline-[#F59E0B] active:scale-95"
 
   return (
     <div className="group relative flex flex-col overflow-hidden rounded-2xl border border-[#E2E8F0] bg-white shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_16px_40px_-16px_rgba(15,23,42,0.25)] focus-within:ring-2 focus-within:ring-[#F59E0B]">
@@ -46,6 +59,38 @@ export function ProductCard({
             -{Math.round(discount * 100)}%
           </span>
         )}
+        {/* top-right icon stack — wishlist / quick view / compare */}
+        <div className="absolute right-3 top-3 z-10 flex flex-col gap-2.5 opacity-0 translate-y-1 transition-all duration-300 group-hover:translate-y-0 group-hover:opacity-100 group-focus-within:translate-y-0 group-focus-within:opacity-100 max-md:translate-y-0 max-md:opacity-100">
+          <button
+            type="button"
+            onClick={onWish}
+            aria-label={wished ? "Remove from wishlist" : "Add to wishlist"}
+            aria-pressed={wished}
+            title="Wishlist"
+            className={`${iconBtn} ${wished ? "!bg-[#EF4444] !text-white" : "hover:!text-[#EF4444]"}`}
+          >
+            <Heart className={`h-[18px] w-[18px] ${wished ? "fill-current" : ""}`} />
+          </button>
+          <button
+            type="button"
+            onClick={() => openQuickView(p.id)}
+            aria-label={`Quick view ${p.product_name}`}
+            title="Quick view"
+            className={iconBtn}
+          >
+            <Eye className="h-[18px] w-[18px]" />
+          </button>
+          <button
+            type="button"
+            onClick={toggleCompare}
+            aria-label={compared ? "Remove from compare" : "Add to compare"}
+            aria-pressed={compared}
+            title="Compare"
+            className={`${iconBtn} ${compared ? "!bg-[#0F172A] !text-white" : ""}`}
+          >
+            <ArrowLeftRight className="h-[18px] w-[18px]" />
+          </button>
+        </div>
         {/* desktop hover: slide-up add-to-bag bar (above the stretched link) */}
         <div className="absolute inset-x-3 bottom-3 z-10 hidden translate-y-[130%] transition-transform duration-300 ease-out group-hover:translate-y-0 group-focus-within:translate-y-0 md:block">
           <button
@@ -84,7 +129,7 @@ export function ProductCard({
           {added ? <><Check className="h-4 w-4" strokeWidth={3} /> Added</> : <><ShoppingCart className="h-4 w-4" /> Add</>}
         </button>
       </div>
-      {/* stretched link — the whole card opens the product page */}
+      {/* stretched link — the whole card (image + name + price) opens the product page */}
       <Link
         href={href}
         aria-label={p.product_name}
