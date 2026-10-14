@@ -20,24 +20,10 @@ const SORTS: Array<{ id: Sort; label: string }> = [
   { id: "rating", label: "Top Rated" },
 ]
 
-const WISH_KEY = "tp_market_wish_v1"
-
-function readWish(): Record<string, boolean> {
-  if (typeof window === "undefined") return {}
-  try {
-    const raw = window.localStorage.getItem(WISH_KEY)
-    const arr = raw ? (JSON.parse(raw) as string[]) : []
-    return Object.fromEntries((Array.isArray(arr) ? arr : []).map((id) => [id, true]))
-  } catch {
-    return {}
-  }
-}
-
 export function ProductListing({ products }: { products: StoreProduct[] }) {
   const [filters, setFilters] = useState<FilterValue>(EMPTY_FILTERS)
   const [sort, setSort] = useState<Sort>("popular")
   const [drawer, setDrawer] = useState(false)
-  const [wishlist, setWishlist] = useState<Record<string, boolean>>(() => readWish())
   const [justAdded, setJustAdded] = useState<Record<string, boolean>>({})
 
   const filtered = useMemo(() => applyFilters(products, filters), [products, filters])
@@ -67,18 +53,6 @@ export function ProductListing({ products }: { products: StoreProduct[] }) {
     setTimeout(() => setJustAdded((m) => ({ ...m, [p.id]: false })), 1600)
     openCartPopup(p.id)
   }
-
-  const toggleWish = (id: string) =>
-    setWishlist((m) => {
-      const next = { ...m, [id]: !m[id] }
-      if (!next[id]) delete next[id]
-      try {
-        window.localStorage.setItem(WISH_KEY, JSON.stringify(Object.keys(next)))
-      } catch {
-        // ignore
-      }
-      return next
-    })
 
   const active = countActiveFilters(filters)
 
@@ -123,8 +97,6 @@ export function ProductListing({ products }: { products: StoreProduct[] }) {
                 key={p.id}
                 p={p}
                 onAdd={() => addToCart(p)}
-                wished={!!wishlist[p.id]}
-                onWish={() => toggleWish(p.id)}
                 added={!!justAdded[p.id]}
               />
             ))}

@@ -1,8 +1,8 @@
-// TechPivo Market checkout modal (CLIENT) — the SAME checkout + Korapay
-// flow as /marketplace/checkout, presented as a responsive modal (desktop)
+// TechPivo Market checkout modal (CLIENT) — the SAME checkout flow as
+// /marketplace/checkout, presented as a responsive modal (desktop)
 // / full-screen sheet (mobile) instead of a page redirect. Server prices,
-// validates stock, creates the order, and initializes Korapay; the
-// customer completes payment on Korapay's authorized hosted flow (required
+// validates stock, creates the order, and initializes payment; the
+// customer completes payment on the hosted payment page (required
 // external step — never simulated), then returns to checkout/success.
 
 import { useCallback, useEffect, useMemo, useState } from "react"
@@ -175,7 +175,7 @@ function CheckoutModalBody({ onClose }: { onClose: () => void }) {
           // ignore
         }
         trackMarket("checkout_success")
-        // Korapay's authorized hosted payment step (required external flow).
+        // Hosted payment step (required external flow).
         window.location.href = data.authorization_url as string
       } else {
         trackMarket("checkout_fail")
@@ -336,7 +336,7 @@ function CheckoutModalBody({ onClose }: { onClose: () => void }) {
           {paying ? <><Loader2 className="h-4 w-4 animate-spin" /> Starting payment...</> : <><Lock className="h-4 w-4" /> Pay ₦{totalNgn.toLocaleString()}</>}
         </button>
         <p className="flex items-center justify-center gap-1.5 text-[11px] font-medium text-[#94A3B8]">
-          <ShieldCheck className="h-3.5 w-3.5 text-[#0B0F19]" /> Secure Korapay checkout · back to cart keeps your items
+          <ShieldCheck className="h-3.5 w-3.5 text-[#0B0F19]" /> Secure checkout · back to cart keeps your items
         </p>
         <button type="button" onClick={onClose} disabled={paying} className="w-full text-xs text-slate-400 hover:text-slate-600 disabled:opacity-50">
           Return to cart

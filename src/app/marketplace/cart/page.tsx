@@ -6,7 +6,7 @@ import { MarketplaceHeader, MarketplaceFooter } from "@/components/marketplace/m
 
 export const metadata: Metadata = {
   title: "Your Cart — TechPivo Market",
-  description: "Review your TechPivo Market cart and check out securely with Paystack.",
+  description: "Review your TechPivo Market cart and check out securely.",
 }
 
 export default function MarketplaceCartRoute() {

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
 import { createClient as createAdmin } from "@/lib/supabase/admin"
-import { korapayInit } from "@/lib/korapay"
+import { flutterwaveInit } from "@/lib/flutterwave"
 import { cjGetVariants, withMargin } from "@/lib/cj"
 import { storeShipOptions } from "@/lib/marketplace-shipping"
 import { supplierShipOptions } from "@/lib/marketplace-freight"
@@ -15,7 +15,7 @@ interface CheckoutItem {
 }
 
 // POST /api/marketplace/checkout — validate cart server-side, create a
-// pending order, and initialize a Korapay checkout (NGN).
+// pending order, and initialize a gateway checkout (NGN).
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json().catch(() => null)
@@ -127,7 +127,7 @@ export async function POST(request: NextRequest) {
     }
     const totalUsd = Math.round((subtotal + shippingUsd) * 100) / 100
 
-    // NGN total via live FX (fallback 1600) — Korapay charges naira units
+    // NGN total via live FX (fallback 1600) — the gateway charges naira units
     let usdNgn = 1600
     try {
       const fx = await fetch(`${new URL(request.url).origin}/api/tools/fx?from=USD&to=NGN&amount=1`, { signal: AbortSignal.timeout(8000) }).then((r) => r.json())
@@ -169,14 +169,15 @@ export async function POST(request: NextRequest) {
 
     try {
       const origin = new URL(request.url).origin
-      const init = await korapayInit({
+      const init = await flutterwaveInit({
         email,
         name: ship.name,
+        phone: ship.phone,
         amountNgn: totalNgn,
         reference,
         redirectUrl: `${origin}/marketplace/checkout/success`,
-        notificationUrl: `${origin}/api/marketplace/webhook`,
-        narration: `TechPivo Market order ${reference}`,
+        title: "TechPivo Market",
+        description: `TechPivo Market order ${reference}`,
         metadata: { order_id: order.id },
       })
       return NextResponse.json({

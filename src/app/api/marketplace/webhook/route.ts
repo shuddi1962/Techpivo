@@ -1,35 +1,35 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/admin"
-import { resolveKorapaySecret, verifyKorapaySignature } from "@/lib/korapay"
+import { resolveFlutterwaveWebhookHash, verifyFlutterwaveSignature } from "@/lib/flutterwave"
 import { fulfillMarketplaceOrder } from "@/lib/marketplace-fulfill"
 import { notifyMarketplacePaid } from "@/lib/marketplace-email"
 
 export const dynamic = "force-dynamic"
 
-// POST /api/marketplace/webhook — Korapay server webhook.
-// Verifies x-korapay-signature (HMAC-SHA256 of the `data` object), marks the
+// POST /api/marketplace/webhook — payment gateway server webhook.
+// Verifies the `verif-hash` header against the secret hash, marks the
 // matching order paid, and triggers CJ auto-fulfillment. Always 200s (after
-// signature check) so Korapay stops retrying.
+// signature check) so the gateway stops retrying.
 export async function POST(request: NextRequest) {
   try {
     const raw = await request.text().catch(() => "")
     const body = (raw ? JSON.parse(raw) : null) as {
       event?: string
-      data?: { reference?: string; payment_reference?: string; status?: string }
+      data?: { tx_ref?: string; txRef?: string; status?: string; id?: number }
     } | null
     if (!body?.data) return NextResponse.json({ received: false }, { status: 200 })
 
-    const secret = await resolveKorapaySecret()
-    const signature = request.headers.get("x-korapay-signature")
-    if (!secret || !verifyKorapaySignature(body.data, signature, secret)) {
+    const secretHash = await resolveFlutterwaveWebhookHash()
+    const signature = request.headers.get("verif-hash")
+    if (!secretHash || !verifyFlutterwaveSignature(signature, secretHash)) {
       return NextResponse.json({ received: false }, { status: 200 })
     }
 
-    if (body.event !== "charge.success" && body.data.status !== "success") {
+    if (body.event !== "charge.completed" && body.data.status !== "successful") {
       return NextResponse.json({ received: true }, { status: 200 })
     }
 
-    const refs = [body.data.payment_reference, body.data.reference].map((r) => String(r || "").trim()).filter(Boolean)
+    const refs = [body.data.tx_ref, body.data.txRef].map((r) => String(r || "").trim()).filter(Boolean)
     if (refs.length === 0) return NextResponse.json({ received: true }, { status: 200 })
 
     const supabase = createClient()

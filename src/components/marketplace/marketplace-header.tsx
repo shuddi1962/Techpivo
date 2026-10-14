@@ -10,6 +10,7 @@ import {
 } from "lucide-react"
 import { MARKET_DEPARTMENTS as DEPARTMENTS } from "@/lib/marketplace-categories"
 import { MARKETPLACE_BRAND } from "@/lib/marketplace"
+import type { MarketBanners } from "@/lib/marketplace-banners"
 import { cartCount as countLines, useMarketCart } from "@/lib/marketplace-cart"
 import { useCompareIds } from "@/lib/marketplace-compare"
 import { SuggestDropdown, useRemoteSuggest } from "./search-suggest"
@@ -142,9 +143,11 @@ export function MarketplaceHeader({
   }, [])
   const acctFirst = acctName ? acctName.split(" ")[0] : null
   const [deptCovers, setDeptCovers] = useState<Record<string, string>>({})
-  // Admin Black Friday promo switch — hides the promo strip + Specials
-  // button publicly (default ON).
-  const [promoOn, setPromoOn] = useState(true)
+  // Admin Black Friday promo switch + promo-bar / flash-sale copy —
+  // editable in Admin → Marketplace → Banners (public site_settings
+  // read; promo switch hides promo surfaces publicly, default ON).
+  const [promoBanners, setPromoBanners] = useState<MarketBanners | null>(null)
+  const promoOn = promoBanners?.promo_enabled !== false
   useEffect(() => {
     setLiveWish(readWishCount())
     setCurrency(readCurrency())
@@ -169,7 +172,7 @@ export function MarketplaceHeader({
           .maybeSingle()
         const b = parseBanners((data as { value?: unknown } | null)?.value)
         if (b.departments) setDeptCovers(b.departments)
-        setPromoOn(b.promo_enabled !== false)
+        setPromoBanners(b)
       } catch {
         // banners unavailable — built-in photos stay, promo stays on
       }
@@ -242,17 +245,17 @@ export function MarketplaceHeader({
   return (
     <>
       <MarketCommerce />
-      {/* utility bar — static, scrolls away with the page */}
-      <div style={{ background: `linear-gradient(90deg, ${MARKETPLACE_BRAND.topbar} 0%, ${MARKETPLACE_BRAND.topbarSoft} 100%)` }} className="relative z-[60] w-full text-white">
+      {/* utility bar — promo copy + colors editable in Admin → Marketplace → Banners */}
+      <div style={{ background: `linear-gradient(90deg, ${promoBanners?.promo_bar_from || MARKETPLACE_BRAND.topbar} 0%, ${promoBanners?.promo_bar_to || MARKETPLACE_BRAND.topbarSoft} 100%)` }} className="relative z-[60] w-full text-white">
         <div className="mx-auto w-full max-w-[1400px] px-3 sm:px-6 lg:px-10 flex items-center justify-between h-10 text-xs gap-2">
           <div className="flex items-center gap-2 min-w-0">
             {promoOn ? (
             <>
-            <span className="bg-[#EF4444] text-white px-2 py-0.5 rounded font-bold text-[10px] uppercase tracking-wide shrink-0">
-              Limited Deal
+            <span style={{ background: promoBanners?.promo_badge_bg || "#EF4444" }} className="text-white px-2 py-0.5 rounded font-bold text-[10px] uppercase tracking-wide shrink-0">
+              {promoBanners?.promo_badge_text || "Limited Deal"}
             </span>
-            <p className="text-slate-300 hidden sm:block truncate">Black Friday Sale! Special offers up to 50% Off at TechPivo Market</p>
-            <p className="text-slate-300 sm:hidden truncate">Up to 50% Off at TechPivo Market</p>
+            <p className="text-slate-300 hidden sm:block truncate">{promoBanners?.promo_message || "Black Friday Sale! Special offers up to 50% Off at TechPivo Market"}</p>
+            <p className="text-slate-300 sm:hidden truncate">{promoBanners?.promo_message_mobile || "Up to 50% Off at TechPivo Market"}</p>
             </>
             ) : (
             <p className="text-slate-300 truncate">Quality-checked tech, tracked delivery</p>
@@ -498,14 +501,14 @@ export function MarketplaceHeader({
                         ))}
                         <div
                           className="flex min-h-[280px] flex-col justify-between overflow-hidden rounded-xl p-5 text-white"
-                          style={{ background: `linear-gradient(160deg, #DC2626 0%, #7F1D1D 100%)` }}
+                          style={{ background: `linear-gradient(160deg, ${promoBanners?.flash_bg_from || "#DC2626"} 0%, ${promoBanners?.flash_bg_to || "#7F1D1D"} 100%)` }}
                         >
                           <div>
                             <span className="inline-flex items-center gap-1 rounded bg-[#EF4444] px-2 py-0.5 text-[11px] font-bold uppercase">
-                              <Flame className="h-3 w-3" /> Flash Sale
+                              <Flame className="h-3 w-3" /> {promoBanners?.flash_badge || "Flash Sale"}
                             </span>
-                            <p className="mt-3 text-2xl font-extrabold leading-tight">Up to<br />50% Off</p>
-                            <p className="mt-1 text-xs text-blue-100">Verified supplier picks, tracked delivery.</p>
+                            <p className="mt-3 text-2xl font-extrabold leading-tight line-clamp-3">{promoBanners?.flash_title || "Up to 50% Off"}</p>
+                            <p className="mt-1 text-xs text-blue-100">{promoBanners?.flash_subtitle || "Verified supplier picks, tracked delivery."}</p>
                           </div>
                           <Link
                             href="/marketplace#flash-deals"
@@ -556,7 +559,7 @@ export function MarketplaceHeader({
             className="flex items-center gap-2 bg-[#FEF2F2] text-[#EF4444] border border-[#EF4444]/20 px-3 py-1.5 rounded-full text-sm font-semibold hover:bg-[#FEE2E2] shrink-0"
           >
             <Flame className="h-4 w-4" />
-            <span className="hidden xl:inline">Black Friday Specials</span>
+            <span className="hidden xl:inline">{promoBanners?.flash_badge || "Flash Sale"} Specials</span>
             <span className="xl:hidden">Specials</span>
           </Link>
           )}

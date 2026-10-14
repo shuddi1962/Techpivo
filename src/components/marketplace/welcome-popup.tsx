@@ -3,6 +3,7 @@
 import Link from "next/link"
 import { ArrowRight, BadgeCheck, ShieldCheck, Truck, X } from "lucide-react"
 import type { MarketBanners } from "@/lib/marketplace-banners"
+import { SaleCountdown } from "./sale-countdown"
 
 // Theme map: header background, header text tones, badge + button styles.
 const THEMES: Record<string, { header: string; title: string; msg: string; badge: string; cta: string }> = {
@@ -48,6 +49,7 @@ export function WelcomePopupCard({
   onClose,
   onCta,
   preview = false,
+  countdownEndAt = "",
 }: {
   b: MarketBanners
   onClose: () => void
@@ -55,6 +57,8 @@ export function WelcomePopupCard({
   onCta?: () => void
   /** Preview mode (admin): the button just closes the preview, never navigates. */
   preview?: boolean
+  /** Optional urgency timer (ISO end datetime, "" = none). */
+  countdownEndAt?: string
 }) {
   const t = THEMES[b.popup_style] || THEMES.dark
   const size = b.popup_size === "sm" ? "max-w-sm" : b.popup_size === "lg" ? "max-w-lg" : "max-w-md"
@@ -149,6 +153,11 @@ export function WelcomePopupCard({
             <p className={`mt-1 text-sm ${t.msg}`}>
               {b.popup_message}
             </p>
+          )}
+          {countdownEndAt.trim() && (
+            <div className="mt-3">
+              <SaleCountdown endAt={countdownEndAt} />
+            </div>
           )}
         </div>
       )}

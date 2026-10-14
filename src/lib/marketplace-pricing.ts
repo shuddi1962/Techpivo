@@ -1,6 +1,6 @@
 "use client"
 
-// TechPivo Market — dual USD/NGN pricing (Paystack charges NGN; CJ costs USD)
+// TechPivo Market — dual USD/NGN pricing (gateway charges NGN; CJ costs USD)
 // Rate source: /api/tools/fx (live) with 6h localStorage cache, 1600 fallback.
 
 import { useEffect, useState } from "react"
@@ -124,14 +124,14 @@ export function useUsdNgnRate(): number {
   return rate
 }
 
-/** Dual display: "$4.92 · ₦7,872". NGN has no kobo (Paystack minimums are whole kobo anyway). */
+/** Dual display: "$4.92 · ₦7,872". NGN has no kobo (gateway minimums are whole kobo anyway). */
 export function dualPrice(usd: number | null | undefined, rate: number): string {
   const u = Number(usd ?? 0)
   if (!Number.isFinite(u) || u <= 0) return "—"
   return `${fxFormat(u, "USD")} · ${fxFormat(Math.round(u * rate), "NGN", { maxFrac: 0 })}`
 }
 
-/** NGN whole-naira amount for a USD value (Paystack charges kobo = naira * 100). */
+/** NGN whole-naira amount for a USD value (gateway charges kobo = naira * 100). */
 export function usdToNgn(usd: number, rate: number): number {
   return Math.max(1, Math.round(Number(usd || 0) * rate))
 }

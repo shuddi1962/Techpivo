@@ -37,9 +37,16 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ status })
     }
     if (section === "pay-status") {
-      const { data } = await supabase.from("site_settings").select("key").in("key", ["korapay_secret_key", "korapay_public_key", "korapay_encryption_key"])
+      const { data } = await supabase.from("site_settings").select("key").in("key", ["flutterwave_secret_key", "flutterwave_public_key", "flutterwave_encryption_key", "flutterwave_secret_hash"])
       const keys = new Set(((data || []) as Array<{ key: string }>).map((r) => r.key))
-      return NextResponse.json({ status: { secret: keys.has("korapay_secret_key"), public: keys.has("korapay_public_key"), encryption: keys.has("korapay_encryption_key") } })
+      const secretKey = keys.has("flutterwave_secret_key")
+      let testMode: boolean | null = null
+      if (secretKey) {
+        const { data: sv } = await supabase.from("site_settings").select("value").eq("key", "flutterwave_secret_key").maybeSingle()
+        const v = (sv as { value?: unknown } | null)?.value
+        if (typeof v === "string" && v.trim()) testMode = v.includes("_TEST")
+      }
+      return NextResponse.json({ status: { secret: secretKey, public: keys.has("flutterwave_public_key"), encryption: keys.has("flutterwave_encryption_key"), webhook: keys.has("flutterwave_secret_hash"), testMode } })
     }
     if (section === "orders") {
       const { data, error } = await supabase
@@ -50,10 +57,31 @@ export async function GET(request: NextRequest) {
       if (error) throw error
       return NextResponse.json({ orders: data || [] })
     }
+    if (section === "reviews") {
+      const { data, error } = await supabase
+        .from("marketplace_reviews")
+        .select("id,product_id,author_name,rating,title,comment,created_at")
+        .order("created_at", { ascending: false })
+        .limit(300)
+      if (error) throw error
+      const rows = (data || []) as Array<{ id: string; product_id: string; author_name: string; rating: number; title: string | null; comment: string | null; created_at: string }>
+      const ids = [...new Set(rows.map((r) => r.product_id))]
+      let names: Record<string, string> = {}
+      if (ids.length > 0) {
+        const { data: prods } = await supabase.from("affiliate_products").select("id,product_name").in("id", ids)
+        names = Object.fromEntries(((prods || []) as Array<{ id: string; product_name: string }>).map((p) => [p.id, p.product_name]))
+      }
+      return NextResponse.json({ reviews: rows.map((r) => ({ ...r, product_name: names[r.product_id] || "Unknown product" })) })
+    }
     if (section === "banners") {
       const { data } = await supabase.from("site_settings").select("value").eq("key", "marketplace_banners").maybeSingle()
       const { parseBanners } = await import("@/lib/marketplace-banners")
       return NextResponse.json({ banners: parseBanners((data as { value?: unknown } | null)?.value) })
+    }
+    if (section === "sales") {
+      const { data } = await supabase.from("site_settings").select("value").eq("key", "marketplace_sales").maybeSingle()
+      const { parseMarketSales } = await import("@/lib/marketplace-sales")
+      return NextResponse.json({ sales: parseMarketSales((data as { value?: unknown } | null)?.value) })
     }
     if (section === "popup-stats") {
       const { summarizePopupStats } = await import("@/lib/marketplace-banners")
@@ -186,17 +214,19 @@ export async function POST(request: NextRequest) {
       const status = await cjStatus()
       return NextResponse.json({ success: true, status })
     }
-    // Save Korapay keys to site_settings
+    // Save payment gateway keys to site_settings
     if (body.action === "pay-save-keys") {
       const secret = String(body.secret || "").trim()
       const pub = String(body.public || "").trim()
       const encryption = String(body.encryption || "").trim()
-      if (secret && !secret.startsWith("sk_")) return NextResponse.json({ error: "Secret key should start with sk_." }, { status: 400 })
-      if (pub && !pub.startsWith("pk_")) return NextResponse.json({ error: "Public key should start with pk_." }, { status: 400 })
+      const webhook = String(body.webhook || "").trim()
+      if (secret && !secret.startsWith("FLWSECK")) return NextResponse.json({ error: "That secret key looks invalid — check and retry." }, { status: 400 })
+      if (pub && !pub.startsWith("FLWPUBK")) return NextResponse.json({ error: "That public key looks invalid — check and retry." }, { status: 400 })
       const rows = []
-      if (secret) rows.push({ key: "korapay_secret_key", value: secret as unknown as never })
-      if (pub) rows.push({ key: "korapay_public_key", value: pub as unknown as never })
-      if (encryption) rows.push({ key: "korapay_encryption_key", value: encryption as unknown as never })
+      if (secret) rows.push({ key: "flutterwave_secret_key", value: secret as unknown as never })
+      if (pub) rows.push({ key: "flutterwave_public_key", value: pub as unknown as never })
+      if (encryption) rows.push({ key: "flutterwave_encryption_key", value: encryption as unknown as never })
+      if (webhook) rows.push({ key: "flutterwave_secret_hash", value: webhook as unknown as never })
       if (rows.length === 0) return NextResponse.json({ error: "Paste at least one key." }, { status: 400 })
       const { error } = await supabase.from("site_settings").upsert(rows, { onConflict: "key" })
       if (error) throw error
@@ -264,6 +294,24 @@ export async function POST(request: NextRequest) {
         .upsert({ key: "marketplace_banners", value: banners as unknown as never }, { onConflict: "key" })
       if (error) throw error
       return NextResponse.json({ success: true, banners })
+    }
+    // Save per-product sale countdowns (productId → ISO end)
+    if (body.action === "sales-save") {
+      const { parseMarketSales } = await import("@/lib/marketplace-sales")
+      const sales = parseMarketSales(body.sales)
+      const { error } = await supabase
+        .from("site_settings")
+        .upsert({ key: "marketplace_sales", value: sales as unknown as never }, { onConflict: "key" })
+      if (error) throw error
+      return NextResponse.json({ success: true, sales })
+    }
+    // Delete a customer review (spam / abuse moderation)
+    if (body.action === "review-delete") {
+      const id = String(body.id || "")
+      if (!/^[0-9a-f-]{36}$/i.test(id)) return NextResponse.json({ error: "Valid review id required." }, { status: 400 })
+      const { error } = await supabase.from("marketplace_reviews").delete().eq("id", id)
+      if (error) throw error
+      return NextResponse.json({ success: true })
     }
     // Curated "Complete Your Purchase" overrides (migration 094 tables).
     if (body.action === "recommend-add") {

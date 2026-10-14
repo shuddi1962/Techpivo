@@ -1,6 +1,6 @@
 // Marketplace order emails (server-side only).
 // Buyer confirmation + admin alert, sent fire-and-forget right after an
-// order flips to paid (verify endpoint + Korapay webhook). Failures never
+// order flips to paid (verify endpoint + payment webhook). Failures never
 // break the payment flow — they only log.
 
 import { sendBrandedEmail } from "@/lib/email"

@@ -128,6 +128,25 @@ export interface MarketBanners {
   /** Black Friday promo surfaces (top strip, Specials button, homepage
       promo banner + hero kicker). False = hidden publicly, instantly. */
   promo_enabled: boolean
+  /** Top utility bar — editable in Admin → Marketplace → Banners
+      ("Promo bar"). Badge + messages + bar gradient. */
+  promo_badge_text: string
+  promo_message: string
+  promo_message_mobile: string
+  promo_bar_from: string
+  promo_bar_to: string
+  promo_badge_bg: string
+  /** Flash Sale section (homepage #flash-deals) — editable in Admin →
+      Marketplace → Banners ("Flash sale"). False = hidden publicly. */
+  flash_enabled: boolean
+  flash_badge: string
+  flash_title: string
+  flash_subtitle: string
+  flash_bg_from: string
+  flash_bg_to: string
+  /** ISO datetime the flash countdown runs to. "" = rolling 2-day
+      countdown from when the shopper opens the page. */
+  flash_end_at: string
   /** Welcome popup (homepage, once per visit). False = never shows. */
   popup_enabled: boolean
   popup_image: string
@@ -207,6 +226,19 @@ export const EMPTY_BANNERS: MarketBanners = {
   departments: {},
   sidebar_banners: {},
   promo_enabled: true,
+  promo_badge_text: "Limited Deal",
+  promo_message: "Black Friday Sale! Special offers up to 50% Off at TechPivo Market",
+  promo_message_mobile: "Up to 50% Off at TechPivo Market",
+  promo_bar_from: "#1668DC",
+  promo_bar_to: "#0F4FB3",
+  promo_badge_bg: "#EF4444",
+  flash_enabled: true,
+  flash_badge: "Flash Sale",
+  flash_title: "Special Offer — Up to 50% Off",
+  flash_subtitle: "Hurry — discounted stock goes fast",
+  flash_bg_from: "#DC2626",
+  flash_bg_to: "#991B1B",
+  flash_end_at: "",
   popup_enabled: true,
   popup_image: "",
   popup_title: "Welcome to TechPivo Market",
@@ -551,6 +583,19 @@ export function parseBanners(raw: unknown): MarketBanners {
     strip2_image,
     category_default,
     promo_enabled: typeof r.promo_enabled === "boolean" ? r.promo_enabled : true,
+    promo_badge_text: str(r.promo_badge_text).trim().slice(0, 40) || EMPTY_BANNERS.promo_badge_text,
+    promo_message: str(r.promo_message).trim().slice(0, 140) || EMPTY_BANNERS.promo_message,
+    promo_message_mobile: str(r.promo_message_mobile).trim().slice(0, 80) || EMPTY_BANNERS.promo_message_mobile,
+    promo_bar_from: cleanHex(r.promo_bar_from, EMPTY_BANNERS.promo_bar_from),
+    promo_bar_to: cleanHex(r.promo_bar_to, EMPTY_BANNERS.promo_bar_to),
+    promo_badge_bg: cleanHex(r.promo_badge_bg, EMPTY_BANNERS.promo_badge_bg),
+    flash_enabled: typeof r.flash_enabled === "boolean" ? r.flash_enabled : true,
+    flash_badge: str(r.flash_badge).trim().slice(0, 40) || EMPTY_BANNERS.flash_badge,
+    flash_title: str(r.flash_title).trim().slice(0, 80) || EMPTY_BANNERS.flash_title,
+    flash_subtitle: str(r.flash_subtitle).trim().slice(0, 140) || EMPTY_BANNERS.flash_subtitle,
+    flash_bg_from: cleanHex(r.flash_bg_from, EMPTY_BANNERS.flash_bg_from),
+    flash_bg_to: cleanHex(r.flash_bg_to, EMPTY_BANNERS.flash_bg_to),
+    flash_end_at: cleanIsoDate(r.flash_end_at),
     popup_enabled: typeof r.popup_enabled === "boolean" ? r.popup_enabled : true,
     popup_image: str(r.popup_image).trim(),
     popup_title: str(r.popup_title).trim().slice(0, 80) || EMPTY_BANNERS.popup_title,
@@ -601,6 +646,7 @@ export function parseBanners(raw: unknown): MarketBanners {
               autoclose_sec: clampSec(r.popup_autoclose_sec, 0, 120, 0),
               start_at: "",
               end_at: "",
+              countdown_end_at: cleanIsoDate(r.countdown_end_at),
             },
           ]
         : parsePopupCampaigns(r.popup_campaigns),
@@ -779,6 +825,9 @@ export interface PopupCampaign {
   /** ISO datetimes; "" = no bound. Lets campaigns run on schedule. */
   start_at: string
   end_at: string
+  /** Optional urgency timer shown inside the popup ("Ends in 04:12:33",
+      like big-brand sale popups). "" = no timer. */
+  countdown_end_at: string
 }
 
 export const MAX_POPUP_CAMPAIGNS = 10
@@ -813,6 +862,7 @@ export function defaultPopupCampaign(name = "New popup"): PopupCampaign {
     autoclose_sec: 0,
     start_at: "",
     end_at: "",
+    countdown_end_at: "",
   }
 }
 
@@ -831,6 +881,14 @@ function cleanIsoDate(v: unknown): string {
   if (typeof v !== "string" || !v.trim()) return ""
   const ms = Date.parse(v.trim())
   return Number.isFinite(ms) ? new Date(ms).toISOString() : ""
+}
+
+// #RGB / #RRGGBB only — anything else falls back (never inject raw
+// admin text into a style attribute).
+function cleanHex(v: unknown, fb: string): string {
+  if (typeof v !== "string") return fb
+  const t = v.trim()
+  return /^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/.test(t) ? t : fb
 }
 
 const clampSec = (v: unknown, lo: number, hi: number, fb: number) => {
@@ -875,6 +933,7 @@ function parsePopupCampaign(v: unknown): PopupCampaign | null {
     autoclose_sec: clampSec(r.autoclose_sec, 0, 120, 0),
     start_at: cleanIsoDate(r.start_at),
     end_at: cleanIsoDate(r.end_at),
+    countdown_end_at: cleanIsoDate(r.countdown_end_at),
   }
 }
 
@@ -1102,4 +1161,24 @@ export function bannerLinkLabel(value: string | null | undefined): string {
   if (!value) return "No link"
   const hit = BANNER_LINK_PRESETS.find((p) => p.value === value)
   return hit ? hit.label : value
+}
+
+// Flash-sale countdown: seconds left until the admin's end datetime.
+// Past / invalid / empty end = 0 (caller falls back to a rolling window).
+export function flashSecondsLeft(endAt: string | null | undefined, now = Date.now()): number {
+  if (!endAt) return 0
+  const ms = Date.parse(endAt)
+  if (!Number.isFinite(ms)) return 0
+  return Math.max(0, Math.floor((ms - now) / 1000))
+}
+
+export function splitCountdown(totalSec: number): { days: string; hrs: string; mins: string; secs: string } {
+  const s = Math.max(0, Math.floor(totalSec))
+  const p = (n: number) => String(n).padStart(2, "0")
+  return {
+    days: p(Math.floor(s / 86400)),
+    hrs: p(Math.floor((s % 86400) / 3600)),
+    mins: p(Math.floor((s % 3600) / 60)),
+    secs: p(s % 60),
+  }
 }

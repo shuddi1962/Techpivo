@@ -1,5 +1,5 @@
 // Shared CJ auto-fulfillment for marketplace orders (server-side only).
-// Used by the verify endpoint (redirect flow), the Korapay webhook, and the
+// Used by the verify endpoint (redirect flow), the payment webhook, and the
 // admin fulfill-retry action. Failures are recorded in fulfill_error so the
 // admin orders tab can show WHY plus a Retry button.
 

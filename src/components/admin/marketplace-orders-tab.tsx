@@ -193,7 +193,7 @@ export function MarketplaceOrdersTab() {
       <div className="bg-white border rounded-xl p-10 text-center">
         <PackageSearch className="h-8 w-8 text-slate-300 mx-auto mb-2" />
         <p className="font-bold text-slate-900">No orders yet</p>
-        <p className="text-sm text-slate-500 mt-1">Paid checkouts appear here instantly with Korapay + CJ fulfillment status.</p>
+        <p className="text-sm text-slate-500 mt-1">Paid checkouts appear here instantly with payment + fulfillment status.</p>
       </div>
     )
   }
@@ -203,7 +203,7 @@ export function MarketplaceOrdersTab() {
       <div className="bg-white border rounded-xl p-4">
         <p className="text-sm font-bold text-slate-900 mb-1">How you make money on every order</p>
         <p className="text-xs text-slate-600 leading-relaxed">
-          Customer pays <strong>(your price + shipping)</strong> → you pay CJ <strong>(their cost + their postage)</strong> + a small Korapay fee → <strong>you keep the difference</strong>.
+          Customer pays <strong>(your price + shipping)</strong> → you pay CJ <strong>(their cost + their postage)</strong> + a small gateway fee → <strong>you keep the difference</strong>.
           Three guardrails protect you: shipping is charged at live CJ rates <strong>+35%</strong>; every product carries at least <strong>$1.50</strong> margin;
           fallback shipping is <strong>$9</strong>. Free shipping over $35 means you absorb postage on big baskets — deliberate, the basket covers it.
         </p>
@@ -266,7 +266,7 @@ export function MarketplaceOrdersTab() {
                     {cjCost[o.id]?.total != null && (
                       <p>
                         <span className="font-bold text-slate-800">CJ bill:</span> product ${cjCost[o.id].product!.toFixed(2)} + postage ${cjCost[o.id].postage!.toFixed(2)} = ${cjCost[o.id].total!.toFixed(2)}
-                        {" "}· you collected ${Number(o.total_usd || 0).toFixed(2)} → <span className={`font-bold ${Number(o.total_usd || 0) - cjCost[o.id].total! >= 0 ? "text-emerald-700" : "text-red-700"}`}>you keep ≈ ${(Number(o.total_usd || 0) - cjCost[o.id].total!).toFixed(2)}</span> <span className="text-slate-400">(before Korapay fee)</span>
+                        {" "}· you collected ${Number(o.total_usd || 0).toFixed(2)} → <span className={`font-bold ${Number(o.total_usd || 0) - cjCost[o.id].total! >= 0 ? "text-emerald-700" : "text-red-700"}`}>you keep ≈ ${(Number(o.total_usd || 0) - cjCost[o.id].total!).toFixed(2)}</span> <span className="text-slate-400">(before gateway fee)</span>
                         {cjCost[o.id].track ? <span className="block mt-0.5">Tracking: <span className="font-semibold text-slate-800">{cjCost[o.id].track}</span></span> : <span className="block mt-0.5 text-slate-400">No tracking yet — CJ issues it after they ship.</span>}
                       </p>
                     )}

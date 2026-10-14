@@ -8,7 +8,9 @@ import { clearCart } from "@/lib/marketplace-cart"
 
 function Inner() {
   const params = useSearchParams()
-  const reference = params.get("reference") || params.get("trxref") || ""
+  // Gateway redirect appends status + tx_ref + transaction_id to our URL.
+  const reference = params.get("tx_ref") || params.get("reference") || params.get("trxref") || ""
+  const transactionId = params.get("transaction_id") || ""
   const [state, setState] = useState<"verifying" | "paid" | "failed" | "noref">("noref")
   const [detail, setDetail] = useState("")
 
@@ -21,7 +23,7 @@ function Inner() {
     fetch("/api/marketplace/verify", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ reference }),
+      body: JSON.stringify({ reference, transaction_id: transactionId }),
     })
       .then((r) => r.json())
       .then((j) => {
@@ -47,7 +49,7 @@ function Inner() {
         setState("failed")
         setDetail("Could not confirm your payment. Use Track Order with your reference.")
       })
-  }, [reference])
+  }, [reference, transactionId])
 
   return (
     <div className="bg-white rounded-2xl border border-[#E2E8F0] p-8 sm:p-12 text-center max-w-xl mx-auto">

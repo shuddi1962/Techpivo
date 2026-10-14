@@ -57,7 +57,7 @@ export function TrackPage() {
         <h1 className="text-xl font-extrabold text-[#0F172A] flex items-center gap-2">
           <PackageSearch className="h-5 w-5 text-[#F59E0B]" /> Track your order
         </h1>
-        <p className="text-sm text-slate-500 mt-1">Use the Paystack reference (e.g. TPM-...) and your payment email.</p>
+        <p className="text-sm text-slate-500 mt-1">Use the payment reference (e.g. TPM-...) and your payment email.</p>
         <div className="grid gap-2 mt-4">
           <input value={reference} onChange={(e) => setReference(e.target.value)} placeholder="Order reference (TPM-...)" className="border rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:border-[#F59E0B]" />
           <input value={email} onChange={(e) => setEmail(e.target.value)} type="email" placeholder="Payment email" className="border rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:border-[#F59E0B]" />

@@ -22,13 +22,13 @@ const TOPICS = [
   {
     icon: ShoppingCart,
     title: "How to order",
-    body: "Browse any category, tap a product to see full details and variants, choose Add to cart, then head to checkout. Fill in your email, name, phone and delivery address, pick a shipping method, and pay securely with Paystack. You get a payment reference instantly — keep it, it is also your tracking ID.",
+    body: "Browse any category, tap a product to see full details and variants, choose Add to cart, then head to checkout. Fill in your email, name, phone and delivery address, pick a shipping method, and pay securely by card, transfer or USSD. You get a payment reference instantly — keep it, it is also your tracking ID.",
     link: { label: "Start shopping", href: "/marketplace/shop" },
   },
   {
     icon: CreditCard,
     title: "Payments",
-    body: "Checkout totals are shown in US dollars with the live naira equivalent. Paystack charges your card or transfer in Nigerian naira at the live rate — the exact naira amount is shown on the green Pay button before you confirm. Every payment is encrypted and verified before your order is confirmed.",
+    body: "Checkout totals are shown in US dollars with the live naira equivalent. Your card or transfer is charged in Nigerian naira at the live rate — the exact naira amount is shown on the green Pay button before you confirm. Every payment is encrypted and verified before your order is confirmed.",
     link: { label: "Go to cart", href: "/marketplace/cart" },
   },
   {
@@ -40,7 +40,7 @@ const TOPICS = [
   {
     icon: PackageSearch,
     title: "Track your order",
-    body: "Open Track Order and enter your Paystack payment reference plus the email you checked out with. You will see your payment status, fulfillment status and CJ logistics tracking while your parcel moves. Lost your reference? Check your email receipt from Paystack first.",
+    body: "Open Track Order and enter your payment reference plus the email you checked out with. You will see your payment status, fulfillment status and CJ logistics tracking while your parcel moves. Lost your reference? Check your email receipt first.",
     link: { label: "Track now", href: "/marketplace/track" },
   },
   {

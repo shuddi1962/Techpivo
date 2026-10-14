@@ -6,7 +6,7 @@ import { createClient } from "@/lib/supabase/client"
 import {
   Store, Package, Eye, EyeOff, Star, Trash2, Plus, Search, RefreshCw,
   ExternalLink, Pencil, MousePointerClick, ShoppingBag, BadgeCheck, Globe,
-  LayoutGrid, Plug, ReceiptText, CreditCard, ImagePlus, TrendingUp,
+  LayoutGrid, Plug, ReceiptText, CreditCard, ImagePlus, TrendingUp, MessageSquare,
 } from "lucide-react"
 import { MarketplaceCategoriesTab } from "@/components/admin/marketplace-categories-tab"
 import { MarketplaceBannersTab } from "@/components/admin/marketplace-banners-tab"
@@ -14,6 +14,8 @@ import { MarketplaceCjTab } from "@/components/admin/marketplace-cj-tab"
 import { MarketplaceUpsellsTab } from "@/components/admin/marketplace-upsells-tab"
 import { MarketplaceOrdersTab } from "@/components/admin/marketplace-orders-tab"
 import { MarketplacePaymentsTab } from "@/components/admin/marketplace-payments-tab"
+import { MarketplaceReviewsTab } from "@/components/admin/marketplace-reviews-tab"
+import { isoToLocalInput } from "@/lib/marketplace-banners"
 
 interface Product {
   id: string
@@ -49,6 +51,7 @@ const emptyForm = {
   product_image_url: "",
   original_price: "",
   sale_price: "",
+  sale_end_at: "",
   is_active: true,
   is_featured: false,
 }
@@ -64,15 +67,19 @@ export default function AdminMarketplacePage() {
   const [form, setForm] = useState(emptyForm)
   const [saving, setSaving] = useState(false)
   const [notice, setNotice] = useState("")
-  const [tab, setTab] = useState<"products" | "orders" | "categories" | "banners" | "cj" | "payments" | "upsells" | "visibility">("products")
+  const [tab, setTab] = useState<"products" | "orders" | "reviews" | "categories" | "banners" | "cj" | "payments" | "upsells" | "visibility">("products")
+  // Per-product sale countdowns (productId → ISO end). Loaded with the list.
+  const [sales, setSales] = useState<Record<string, string>>({})
 
   const load = useCallback(async () => {
-    const [ov, pr] = await Promise.all([
+    const [ov, pr, sa] = await Promise.all([
       fetch("/admin/marketplace/api?section=overview").then((r) => r.json()).catch(() => null),
       fetch("/admin/marketplace/api?section=products").then((r) => r.json()).catch(() => null),
+      fetch("/admin/marketplace/api?section=sales").then((r) => r.json()).catch(() => null),
     ])
     if (ov?.overview) setOverview(ov.overview)
     if (pr?.products) setProducts(pr.products)
+    if (sa?.sales && typeof sa.sales === "object") setSales(sa.sales as Record<string, string>)
     setLoading(false)
   }, [])
 
@@ -141,10 +148,27 @@ export default function AdminMarketplacePage() {
       product_image_url: p.product_image_url || "",
       original_price: p.original_price != null ? String(p.original_price) : "",
       sale_price: p.sale_price != null ? String(p.sale_price) : "",
+      sale_end_at: sales[p.id] || "",
       is_active: p.is_active,
       is_featured: !!p.is_featured,
     })
     setShowForm(true)
+  }
+
+  const saveSaleEnd = async (productId: string, iso: string) => {
+    const next = { ...sales }
+    if (iso) next[productId] = iso
+    else delete next[productId]
+    setSales(next)
+    try {
+      await fetch("/admin/marketplace/api", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "sales-save", sales: next }),
+      })
+    } catch {
+      // product save already succeeded — timer sync retries on next load
+    }
   }
 
   const save = async () => {
@@ -174,6 +198,9 @@ export default function AdminMarketplacePage() {
         const data = await res.json()
         if (res.ok) {
           setProducts((prev) => prev.map((x) => (x.id === editing.id ? data.product : x)))
+          if ((form.sale_end_at || "") !== (sales[editing.id] || "")) {
+            void saveSaleEnd(editing.id, form.sale_end_at.trim())
+          }
           setShowForm(false)
           flash("Product updated — live on TechPivo Market")
         } else flash(data.error || "Update failed")
@@ -186,6 +213,9 @@ export default function AdminMarketplacePage() {
         const data = await res.json()
         if (res.ok) {
           setProducts((prev) => [data.product, ...prev])
+          if (form.sale_end_at.trim() && data.product?.id) {
+            void saveSaleEnd(String(data.product.id), form.sale_end_at.trim())
+          }
           setShowForm(false)
           flash("Product added — live on TechPivo Market")
         } else flash(data.error || "Create failed")
@@ -281,18 +311,10 @@ export default function AdminMarketplacePage() {
         ))}
       </div>
 
-      {/* tabs */}
-      <div className="flex gap-1 mb-4 border-b overflow-x-auto">
-        {([
-          { id: "products", label: "Products", icon: Package },
-          { id: "orders", label: "Orders", icon: ReceiptText },
-          { id: "categories", label: "Categories", icon: LayoutGrid },
-          { id: "banners", label: "Banners", icon: ImagePlus },
-          { id: "cj", label: "CJ Import", icon: Plug },
-          { id: "upsells", label: "Upsells", icon: TrendingUp },
-          { id: "payments", label: "Payments", icon: CreditCard },
-          { id: "visibility", label: "Storefront visibility", icon: Globe },
-        ] as const).map((t) => (
+      {/* marketplace sub-sidebar — every section gets the full content width */}
+      {/* mobile: horizontal pills */}
+      <div className="flex gap-1 mb-4 border-b overflow-x-auto lg:hidden">
+        {SECTIONS.map((t) => (
           <button
             key={t.id}
             onClick={() => setTab(t.id)}
@@ -303,6 +325,30 @@ export default function AdminMarketplacePage() {
         ))}
       </div>
 
+      <div className="lg:grid lg:grid-cols-[260px_minmax(0,1fr)] lg:gap-5 lg:items-start">
+        {/* desktop sidebar */}
+        <aside className="hidden lg:block sticky top-4 rounded-xl border bg-white p-2">
+          <p className="px-3 pt-2 pb-1 text-[11px] font-bold uppercase tracking-wider text-slate-400">Marketplace</p>
+          <nav className="grid gap-0.5" aria-label="Marketplace sections">
+            {SECTIONS.map((t) => (
+              <button
+                key={t.id}
+                onClick={() => setTab(t.id)}
+                aria-current={tab === t.id ? "page" : undefined}
+                className={`flex items-start gap-3 rounded-lg px-3 py-2.5 text-left transition-colors ${tab === t.id ? "bg-slate-900 text-white" : "text-slate-600 hover:bg-slate-100"}`}
+              >
+                <t.icon className={`h-4 w-4 mt-0.5 shrink-0 ${tab === t.id ? "text-amber-400" : "text-slate-400"}`} />
+                <span className="min-w-0">
+                  <span className="block text-sm font-bold leading-tight">{t.label}</span>
+                  <span className={`block truncate text-[11px] leading-tight mt-0.5 ${tab === t.id ? "text-slate-300" : "text-slate-400"}`}>{t.desc}</span>
+                </span>
+              </button>
+            ))}
+          </nav>
+        </aside>
+
+        {/* full-width section content */}
+        <div className="min-w-0">
       {tab === "categories" && <MarketplaceCategoriesTab />}
 
       {tab === "banners" && <MarketplaceBannersTab />}
@@ -310,6 +356,8 @@ export default function AdminMarketplacePage() {
       {tab === "cj" && <MarketplaceCjTab onImported={load} />}
 
       {tab === "orders" && <MarketplaceOrdersTab />}
+
+      {tab === "reviews" && <MarketplaceReviewsTab />}
 
       {tab === "upsells" && <MarketplaceUpsellsTab />}
 
@@ -407,6 +455,11 @@ export default function AdminMarketplacePage() {
                         {p.original_price != null && p.original_price !== p.sale_price && (
                           <span className="ml-1.5 text-xs font-normal text-slate-400 line-through">${Number(p.original_price).toFixed(2)}</span>
                         )}
+                        {sales[p.id] && Date.parse(sales[p.id]) > Date.now() && (
+                          <span className="ml-1.5 text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-red-50 text-red-600">
+                            ⏳ ends {new Date(sales[p.id]).toLocaleString(undefined, { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
+                          </span>
+                        )}
                       </td>
                       <td className="px-4 py-3 whitespace-nowrap">
                         {(() => {
@@ -501,6 +554,16 @@ export default function AdminMarketplacePage() {
                   <input value={form.original_price} onChange={(e) => setForm({ ...form, original_price: e.target.value })} type="number" min="0" step="0.01" className="mt-1 w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-amber-500" />
                 </div>
               </div>
+              <div>
+                <label className="text-xs font-semibold text-slate-600">Sale ends — your time (optional)</label>
+                <input
+                  value={isoToLocalInput(form.sale_end_at)}
+                  onChange={(e) => setForm({ ...form, sale_end_at: e.target.value ? new Date(e.target.value).toISOString() : "" })}
+                  type="datetime-local"
+                  className="mt-1 w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-amber-500"
+                />
+                <p className="text-[11px] text-slate-500 mt-1">Shows a live “Sale ends in …” urgency timer on this product&apos;s card and page. Empty = no timer. Set a sale price above for the discount badge.</p>
+              </div>
               <div className="flex gap-4">
                 <label className="flex items-center gap-2 text-sm text-slate-700">
                   <input type="checkbox" checked={form.is_active} onChange={(e) => setForm({ ...form, is_active: e.target.checked })} className="accent-[#F59E0B]" /> Active
@@ -519,6 +582,20 @@ export default function AdminMarketplacePage() {
           </div>
         </div>
       )}
+        </div>
+      </div>
     </div>
   )
 }
+
+const SECTIONS = [
+  { id: "products", label: "Products", desc: "Catalog, prices & sale timers", icon: Package },
+  { id: "orders", label: "Orders", desc: "Payments & fulfillment", icon: ReceiptText },
+  { id: "reviews", label: "Reviews", desc: "Ratings & moderation", icon: MessageSquare },
+  { id: "categories", label: "Categories", desc: "Departments & mapping", icon: LayoutGrid },
+  { id: "banners", label: "Banners & promos", desc: "Hero, promo bar, flash sale, popups", icon: ImagePlus },
+  { id: "cj", label: "CJ Import", desc: "Supplier catalog sync", icon: Plug },
+  { id: "upsells", label: "Upsells", desc: "Complete-your-purchase", icon: TrendingUp },
+  { id: "payments", label: "Payments", desc: "Gateway keys & mode", icon: CreditCard },
+  { id: "visibility", label: "Visibility", desc: "Storefront publish switch", icon: Globe },
+] as const

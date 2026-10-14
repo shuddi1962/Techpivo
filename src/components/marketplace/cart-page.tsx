@@ -199,12 +199,12 @@ export function CartPage() {
             Or use the full checkout page
           </Link>
           <div className="flex items-center justify-center gap-1.5">
-            {["VISA", "MASTERCARD", "VERVE", "PAYSTACK"].map((b) => (
+            {["VISA", "MASTERCARD", "VERVE"].map((b) => (
               <span key={b} className="rounded border border-[#E2E8F0] bg-[#F8FAFC] px-2 py-0.5 text-[10px] font-bold text-slate-500">{b}</span>
             ))}
           </div>
           <p className="text-[11px] text-slate-400 flex items-center gap-1 justify-center pt-1">
-            <ShieldCheck className="h-3.5 w-3.5" /> Secure Paystack checkout · pay in naira
+            <ShieldCheck className="h-3.5 w-3.5" /> Secure checkout · pay in naira
           </p>
           <div className="flex items-center justify-center gap-3 pt-1 text-[11px] text-slate-400">
             <span className="inline-flex items-center gap-1"><Truck className="h-3.5 w-3.5 text-[#F59E0B]" /> Tracked delivery</span>

@@ -7,21 +7,21 @@ export const revalidate = 60
 export const metadata: Metadata = {
   title: "Frequently Asked Questions — TechPivo Market",
   description:
-    "Answers about ordering, Paystack payments, tracked delivery, returns and warranty on TechPivo Market.",
+    "Answers about ordering, secure payments, tracked delivery, returns and warranty on TechPivo Market.",
 }
 
 const FAQS: Array<{ q: string; a: string }> = [
   {
     q: "How do I place an order?",
-    a: "Add products to your cart, go to checkout, enter your email, name, phone and delivery address, choose a shipping method and pay with Paystack. Your order is confirmed the moment Paystack verifies the payment, and your receipt email doubles as proof of purchase.",
+    a: "Add products to your cart, go to checkout, enter your email, name, phone and delivery address, choose a shipping method and pay securely. Your order is confirmed the moment the payment is verified, and your receipt email doubles as proof of purchase.",
   },
   {
     q: "Which payment methods do you accept?",
-    a: "All Paystack-supported methods: cards (Visa, Mastercard, Verve), bank transfers and USSD. Prices are listed in US dollars with the live naira equivalent — Paystack always charges the exact naira amount shown on the green Pay button.",
+    a: "Cards (Visa, Mastercard, Verve), bank transfers and USSD. Prices are listed in US dollars with the live naira equivalent — you are always charged the exact naira amount shown on the green Pay button.",
   },
   {
     q: "How long does delivery take?",
-    a: "7–12 days with tracking on every order. You can follow your parcel from Track Order using your Paystack payment reference and checkout email.",
+    a: "7–12 days with tracking on every order. You can follow your parcel from Track Order using your payment reference and checkout email.",
   },
   {
     q: "Is shipping really free over $35?",

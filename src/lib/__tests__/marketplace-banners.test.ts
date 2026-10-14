@@ -420,4 +420,62 @@ describe("pickPopupCampaign", () => {
     expect(EMPTY_BANNERS.slider_transition).toBe("fade")
     expect(slidesOf(EMPTY_BANNERS.hero_image, EMPTY_BANNERS.hero_slides)).toEqual([])
   })
+
+  it("parses promo bar + flash sale copy with safe fallbacks", () => {
+    const b = parseBanners({
+      promo_badge_text: "  ",
+      promo_message: "Mega Sale is live",
+      promo_bar_from: "not-a-color",
+      promo_badge_bg: "#123abc",
+      flash_title: "",
+      flash_bg_to: "#GGGGGG",
+      flash_end_at: "not-a-date",
+    })
+    expect(b.promo_badge_text).toBe(EMPTY_BANNERS.promo_badge_text)
+    expect(b.promo_message).toBe("Mega Sale is live")
+    expect(b.promo_bar_from).toBe(EMPTY_BANNERS.promo_bar_from)
+    expect(b.promo_badge_bg).toBe("#123abc")
+    expect(b.flash_title).toBe(EMPTY_BANNERS.flash_title)
+    expect(b.flash_bg_to).toBe(EMPTY_BANNERS.flash_bg_to)
+    expect(b.flash_end_at).toBe("")
+    expect(b.flash_enabled).toBe(true)
+  })
+
+  it("keeps valid promo colors + flash end dates", () => {
+    const end = new Date(Date.now() + 86400000).toISOString()
+    const b = parseBanners({
+      promo_enabled: false,
+      promo_bar_from: "#111111",
+      promo_bar_to: "#222",
+      flash_enabled: false,
+      flash_end_at: end,
+    })
+    expect(b.promo_enabled).toBe(false)
+    expect(b.promo_bar_from).toBe("#111111")
+    expect(b.promo_bar_to).toBe("#222")
+    expect(b.flash_enabled).toBe(false)
+    expect(b.flash_end_at).toBe(end)
+  })
+
+  it("parses popup countdown end dates", () => {
+    const end = new Date(Date.now() + 3600000).toISOString()
+    const b = parseBanners({ popup_campaigns: [{ id: "c1", name: "C", countdown_end_at: end }] })
+    expect(b.popup_campaigns[0].countdown_end_at).toBe(end)
+    const bad = parseBanners({ popup_campaigns: [{ id: "c2", name: "C", countdown_end_at: "soon" }] })
+    expect(bad.popup_campaigns[0].countdown_end_at).toBe("")
+    expect(defaultPopupCampaign("X").countdown_end_at).toBe("")
+  })
+})
+
+describe("flash countdown helpers", () => {
+  it("flashSecondsLeft counts to a future end, 0 otherwise", async () => {
+    const { flashSecondsLeft, splitCountdown } = await import("@/lib/marketplace-banners")
+    const now = Date.now()
+    expect(flashSecondsLeft(new Date(now + 90000).toISOString(), now)).toBeGreaterThan(80)
+    expect(flashSecondsLeft(new Date(now - 1000).toISOString(), now)).toBe(0)
+    expect(flashSecondsLeft("", now)).toBe(0)
+    expect(flashSecondsLeft("nope", now)).toBe(0)
+    expect(splitCountdown(93784)).toEqual({ days: "01", hrs: "02", mins: "03", secs: "04" })
+    expect(splitCountdown(0)).toEqual({ days: "00", hrs: "00", mins: "00", secs: "00" })
+  })
 })

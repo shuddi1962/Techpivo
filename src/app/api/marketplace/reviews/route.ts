@@ -23,6 +23,7 @@ export async function POST(request: NextRequest) {
     const productId = typeof body?.product_id === "string" ? body.product_id : ""
     const rating = Math.max(1, Math.min(5, Math.floor(Number(body?.rating) || 0)))
     const comment = String(body?.comment || "").trim().slice(0, 1000)
+    const title = String(body?.title || "").trim().slice(0, 120)
     const author = String(body?.author_name || "Verified buyer").trim().slice(0, 60) || "Verified buyer"
     if (!productId || !comment || !rating) {
       return NextResponse.json({ error: "Product, rating and review text are required." }, { status: 400 })
@@ -32,7 +33,7 @@ export async function POST(request: NextRequest) {
     if (!product) return NextResponse.json({ error: "Product not found." }, { status: 404 })
     const { data, error } = await supabase
       .from("marketplace_reviews")
-      .insert({ product_id: productId, author_name: author, rating, comment })
+      .insert({ product_id: productId, author_name: author, rating, title: title || null, comment })
       .select("id,author_name,rating,title,comment,created_at")
       .single()
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })

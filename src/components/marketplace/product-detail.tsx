@@ -8,12 +8,13 @@ import { openCartPopup, openCheckout } from "@/lib/marketplace-events"
 import { CompletePurchase } from "./complete-purchase"
 import { marketImage } from "@/lib/marketplace-images"
 import {
-  readShipSelection, saveShipSelection, standardFee, SHIP_COUNTRIES, DEFAULT_SHIP_COUNTRY, type ShipOption, type ShipSelection,
+  readShipSelection, saveShipSelection, standardFee, STANDARD_FLAT_USD, EXPRESS_FLAT_USD, FREE_SHIP_THRESHOLD_USD, SHIP_COUNTRIES, DEFAULT_SHIP_COUNTRY, type ShipOption, type ShipSelection,
 } from "@/lib/marketplace-shipping"
 import { getGeoOnce } from "@/lib/tools-geo"
 import { DeliveryPicker } from "./delivery-picker"
 import { useMarketCurrency, useUsdNgnRate } from "@/lib/marketplace-pricing"
 import { MarketPrice } from "./market-price"
+import { SaleCountdown, useSaleEnd } from "./sale-countdown"
 
 interface Review {
   id: string
@@ -185,8 +186,8 @@ function ProductDetailsTabs({
         </div>
       ) : (
         <div className="space-y-3 pt-4 text-sm text-slate-600">
-          <p><strong className="text-[#0F172A]">Standard (7–12 days):</strong> tracked delivery — $5, free on orders over $35.</p>
-          <p><strong className="text-[#0F172A]">Express (3–7 days):</strong> priority tracked delivery — $19 flat.</p>
+          <p><strong className="text-[#0F172A]">Standard (7–12 days):</strong> tracked delivery — <MarketPrice usd={STANDARD_FLAT_USD} />, free on orders over <MarketPrice usd={FREE_SHIP_THRESHOLD_USD} />.</p>
+          <p><strong className="text-[#0F172A]">Express (3–7 days):</strong> priority tracked delivery — <MarketPrice usd={EXPRESS_FLAT_USD} /> flat.</p>
           <p><strong className="text-[#0F172A]">Courier options:</strong> live courier rates with tracking are shown above when available for your country.</p>
           <p><strong className="text-[#0F172A]">Returns:</strong> 30-day easy returns on every order. Need help? <Link href="/contact" className="font-semibold text-[#B45309] hover:underline">Contact us</Link>.</p>
         </div>
@@ -214,16 +215,59 @@ export function ProductDetail({
 }) {
   const rate = useUsdNgnRate()
   const currency = useMarketCurrency()
+  const saleEnd = useSaleEnd(p.id)
   const [qty, setQty] = useState(1)
   const [added, setAdded] = useState(false)
   const lastAddRef = useRef(0)
   const [wished, setWished] = useState(false)
   const [reviews, setReviews] = useState<Review[]>(initialReviews)
   const [rName, setRName] = useState("")
-  const [rRating, setRRating] = useState(5)
+  const [rTitle, setRTitle] = useState("")
+  // No pre-selected stars — the shopper must tap an honest rating.
+  const [rRating, setRRating] = useState(0)
   const [rText, setRText] = useState("")
   const [rSending, setRSending] = useState(false)
   const [rNotice, setRNotice] = useState("")
+
+  // Live reviews: other shoppers' reviews appear without a reload.
+  useEffect(() => {
+    let alive = true
+    let cleanup: (() => void) | null = null
+    const reload = () => {
+      fetch(`/api/marketplace/reviews?product_id=${encodeURIComponent(p.id)}`)
+        .then((r) => r.json())
+        .then((d) => {
+          if (alive && Array.isArray(d?.reviews)) setReviews(d.reviews as Review[])
+        })
+        .catch(() => {})
+    }
+    ;(async () => {
+      try {
+        const { createClient } = await import("@/lib/supabase/client")
+        const supabase = createClient()
+        const ch = supabase
+          .channel(`market_reviews_${p.id}_${Date.now()}`)
+          .on("postgres_changes", { event: "*", schema: "public", table: "marketplace_reviews", filter: `product_id=eq.${p.id}` }, () => reload())
+          .subscribe()
+        cleanup = () => {
+          supabase.removeChannel(ch)
+        }
+      } catch {
+        // realtime unavailable — form still posts, list refreshes on focus
+      }
+    })()
+    const onFocus = () => reload()
+    window.addEventListener("focus", onFocus)
+    return () => {
+      alive = false
+      window.removeEventListener("focus", onFocus)
+      try {
+        cleanup?.()
+      } catch {
+        // ignore
+      }
+    }
+  }, [p.id])
   const [variants, setVariants] = useState<VariantOpt[]>([])
   const [attrs, setAttrs] = useState<Array<{ name: string; values: string[] }>>([])
   const [picked, setPicked] = useState<Record<string, string>>({})
@@ -383,20 +427,25 @@ export function ProductDetail({
 
   const submitReview = async () => {
     if (!rText.trim() || rSending) return
+    if (rRating < 1) {
+      setRNotice("Please tap a star rating first.")
+      return
+    }
     setRSending(true)
     setRNotice("")
     try {
       const res = await fetch("/api/marketplace/reviews", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ product_id: p.id, author_name: rName.trim() || "Verified buyer", rating: rRating, comment: rText.trim() }),
+        body: JSON.stringify({ product_id: p.id, author_name: rName.trim() || "Verified buyer", rating: rRating, title: rTitle.trim(), comment: rText.trim() }),
       })
       const data = await res.json()
       if (res.ok && data?.review) {
         setReviews((prev) => [data.review, ...prev])
         setRName("")
+        setRTitle("")
         setRText("")
-        setRRating(5)
+        setRRating(0)
         setRNotice("Thanks — your review is live.")
       } else {
         setRNotice(data?.error || "Could not submit your review.")
@@ -483,6 +532,7 @@ export function ProductDetail({
           <div className="flex items-baseline gap-2 mt-3 flex-wrap">
             <MarketPrice usd={price} className={`text-3xl font-extrabold ${discount > 0 ? "text-[#EF4444]" : "text-[#0F172A]"}`} />
             {oldPrice && <MarketPrice usd={oldPrice} className="text-lg text-slate-400 line-through" />}
+            {discount > 0 && saleEnd.trim() && <SaleCountdown endAt={saleEnd} prefix="Sale ends in" />}
           </div>
           <p className="text-sm font-semibold text-slate-600 mt-1">
             {currency === "NGN"
@@ -669,7 +719,7 @@ export function ProductDetail({
             </div>
             <div className="flex items-center gap-2 bg-[#F8FAFC] border border-[#E2E8F0] rounded-lg px-3 py-2.5">
               <ShieldCheck className="h-4 w-4 text-[#0F172A] shrink-0" />
-              <span className="text-slate-600">Secure Paystack checkout</span>
+              <span className="text-slate-600">Secure checkout</span>
             </div>
           </div>
         </div>
@@ -710,12 +760,13 @@ export function ProductDetail({
             <input value={rName} onChange={(e) => setRName(e.target.value)} placeholder="Your name (optional)" className="border rounded-lg px-3 py-2 text-sm flex-1 focus:outline-none focus:border-[#F59E0B]" maxLength={60} />
             <div className="flex items-center gap-1 border rounded-lg px-3 py-2" role="radiogroup" aria-label="Rating">
               {[1, 2, 3, 4, 5].map((n) => (
-                <button key={n} onClick={() => setRRating(n)} aria-label={`${n} star${n === 1 ? "" : "s"}`} aria-pressed={rRating === n}>
+                <button key={n} type="button" onClick={() => setRRating(n)} aria-label={`${n} star${n === 1 ? "" : "s"}`} aria-pressed={rRating === n}>
                   <Star className={`h-5 w-5 ${n <= rRating ? "fill-[#F59E0B] text-[#F59E0B]" : "text-slate-300"}`} />
                 </button>
               ))}
             </div>
           </div>
+          <input value={rTitle} onChange={(e) => setRTitle(e.target.value)} placeholder="Review headline (optional)" className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#F59E0B]" maxLength={120} />
           <textarea value={rText} onChange={(e) => setRText(e.target.value)} placeholder="What did you like about this product?" rows={3} maxLength={1000} className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#F59E0B]" />
           {rNotice && <p className="text-xs text-slate-600">{rNotice}</p>}
           <button onClick={submitReview} disabled={rSending || !rText.trim()} className="bg-[#F59E0B] hover:bg-[#D97706] text-[#0F172A] text-sm font-bold px-5 py-2.5 rounded-lg disabled:opacity-50">

@@ -4,20 +4,19 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import {
-  ArrowLeftRight, ArrowRight, Check, ChevronLeft, ChevronRight, Eye, Flame,
-  Heart, Package, ShoppingCart, ShieldCheck, X, Zap,
+  ArrowRight, Check, ChevronLeft, ChevronRight, Flame,
+  Package, ShoppingCart, ShieldCheck, X, Zap,
   BadgeCheck, Truck,
 } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
 import { addToCart as addLine, cartCount as countLines, useMarketCart } from "@/lib/marketplace-cart"
-import { openCartPopup, openQuickView } from "@/lib/marketplace-events"
+import { openCartPopup } from "@/lib/marketplace-events"
 import {
   MARKETPLACE_BRAND, MARKETPLACE_HERO, supplierDisplayName, type DemoProduct,
 } from "@/lib/marketplace"
-import { EMPTY_BANNERS, campaignView, linkOf, markPopupShown, parseBanners, pickPopupCampaign, slidesOfObjects, slotSliderProps, stampPopup, type MarketBanners } from "@/lib/marketplace-banners"
+import { EMPTY_BANNERS, campaignView, flashSecondsLeft, linkOf, markPopupShown, parseBanners, pickPopupCampaign, slidesOfObjects, slotSliderProps, splitCountdown, stampPopup, type MarketBanners } from "@/lib/marketplace-banners"
 import { MARKET_DEPARTMENTS } from "@/lib/marketplace-categories"
 import { marketImage, cleanSupplierText } from "@/lib/marketplace-images"
-import { readCompare, toggleCompareStored } from "@/lib/marketplace-compare"
 import { MarketplaceHeader, MarketplaceFooter } from "./marketplace-header"
 import { BannerSlider } from "./banner-slider"
 import { WelcomePopupCard } from "./welcome-popup"
@@ -26,6 +25,7 @@ import { CategoryShowcase } from "./category-showcase"
 import { ShopCollections, type CollectionItem } from "./shop-collections"
 import { BrandRail } from "./brand-rail"
 import { MarketPrice } from "./market-price"
+import { SaleCountdown, useSaleEnd } from "./sale-countdown"
 
 interface DbProduct {
   id: string
@@ -43,115 +43,64 @@ interface DbProduct {
   subcategory_slug?: string | null
 }
 
-// Calm-at-rest storefront card: image, short title, price.
-// Cart / wishlist / quick-view / compare icons reveal on hover
-// (always visible on touch screens where hover doesn't exist).
-function ProductCard({ p, onAdd, wished, onWish, added, href }: { p: DemoProduct; onAdd: () => void; wished: boolean; onWish: () => void; added: boolean; href?: string }) {
+// Calm-at-rest storefront card: the whole card (image + name + price)
+// opens the product page via a stretched link; the only button is Add
+// to Bag. No floating icon overlays.
+function ProductCard({ p, onAdd, added, href }: { p: DemoProduct; onAdd: () => void; added: boolean; href?: string }) {
   const discount = p.oldPrice ? Math.round((1 - p.price / p.oldPrice) * 100) : 0
-  const [compared, setCompared] = useState(() => !!readCompare()[p.id])
-  const toggleCompare = () => setCompared(toggleCompareStored(p.id))
-  const iconBtn =
-    "flex h-10 w-10 items-center justify-center rounded-full bg-white/95 text-slate-600 shadow-[0_4px_16px_rgba(15,23,42,0.15)] backdrop-blur-sm transition-all hover:scale-105 hover:text-[#0F172A] focus-visible:outline-2 focus-visible:outline-[#F59E0B] active:scale-95"
-  const rail = (
-    <div className="absolute right-3 top-3 z-10 flex flex-col gap-2.5 opacity-0 translate-y-1 transition-all duration-300 group-hover:translate-y-0 group-hover:opacity-100 group-focus-within:translate-y-0 group-focus-within:opacity-100 max-md:translate-y-0 max-md:opacity-100">
-      <button
-        type="button"
-        onClick={onWish}
-        aria-label={wished ? "Remove from wishlist" : "Add to wishlist"}
-        aria-pressed={wished}
-        title="Wishlist"
-        className={`${iconBtn} ${wished ? "!bg-[#EF4444] !text-white" : "hover:!text-[#EF4444]"}`}
-      >
-        <Heart className={`h-[18px] w-[18px] ${wished ? "fill-current" : ""}`} />
-      </button>
-      {href ? (
-        <button
-          type="button"
-          onClick={() => openQuickView(p.id)}
-          aria-label={`Quick view ${p.name}`}
-          title="Quick view"
-          className={iconBtn}
-        >
-          <Eye className="h-[18px] w-[18px]" />
-        </button>
-      ) : (
-        <span className={`${iconBtn} opacity-50`} aria-hidden>
-          <Eye className="h-[18px] w-[18px]" />
-        </span>
-      )}
-      <button
-        type="button"
-        onClick={toggleCompare}
-        aria-label={compared ? "Remove from compare" : "Add to compare"}
-        aria-pressed={compared}
-        title="Compare"
-        className={`${iconBtn} ${compared ? "!bg-[#0F172A] !text-white" : ""}`}
-      >
-        <ArrowLeftRight className="h-[18px] w-[18px]" />
-      </button>
-    </div>
-  )
-  const slideUpAdd = (
-    <div className="absolute inset-x-3 bottom-3 z-10 translate-y-[130%] transition-transform duration-300 ease-out group-hover:translate-y-0 group-focus-within:translate-y-0 max-md:hidden">
-      <button
-        type="button"
-        onClick={onAdd}
-        className={`flex w-full items-center justify-center gap-2 rounded-xl py-3 text-sm font-bold shadow-[0_8px_24px_rgba(15,23,42,0.3)] backdrop-blur-sm transition-colors active:scale-[0.99] ${added ? "bg-[#0B0F19]/95 text-white" : "bg-white/95 text-[#0F172A] hover:bg-[#F59E0B]"}`}
-      >
-        {added ? <><Check className="h-4 w-4" strokeWidth={3} /> Added to bag</> : <><ShoppingCart className="h-4 w-4" /> Add to Bag</>}
-      </button>
-    </div>
-  )
+  const saleEnd = useSaleEnd(p.id)
   return (
-    <div className="group relative flex flex-col overflow-hidden rounded-2xl border border-[#E2E8F0] bg-white shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_16px_40px_-16px_rgba(15,23,42,0.25)]">
+    <div className="group relative flex flex-col overflow-hidden rounded-2xl border border-[#E2E8F0] bg-white shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_16px_40px_-16px_rgba(15,23,42,0.25)] focus-within:ring-2 focus-within:ring-[#F59E0B]">
       <div className="relative aspect-square w-full overflow-hidden bg-[#F8FAFC]">
-        {href ? (
-          <Link href={href} aria-label={p.name} className="block h-full w-full">
-            {p.image ? (
-              <img src={marketImage(p.image)} alt={p.name} loading="lazy" decoding="async" className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110" />
-            ) : (
-              <span className="flex h-full w-full items-center justify-center" aria-hidden>
-                <Package className="h-12 w-12 text-slate-200" />
-              </span>
-            )}
-          </Link>
+        {p.image ? (
+          <img src={marketImage(p.image)} alt={p.name} loading="lazy" decoding="async" className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110" />
         ) : (
-          <div className="h-full w-full">
-            {p.image ? (
-              <img src={marketImage(p.image)} alt={p.name} loading="lazy" decoding="async" className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110" />
-            ) : (
-              <span className="flex h-full w-full items-center justify-center" aria-hidden>
-                <Package className="h-12 w-12 text-slate-200" />
-              </span>
-            )}
-          </div>
+          <span className="flex h-full w-full items-center justify-center" aria-hidden>
+            <Package className="h-12 w-12 text-slate-200" />
+          </span>
         )}
         {discount > 0 && (
           <span className="absolute left-3 top-3 z-10 rounded-full bg-[#DC2626] px-2.5 py-1 text-[11px] font-extrabold tracking-wide text-white shadow-sm">-{discount}%</span>
         )}
-        {rail}
-        {slideUpAdd}
+        {href && (
+        <div className="absolute inset-x-3 bottom-3 z-10 hidden translate-y-[130%] transition-transform duration-300 ease-out group-hover:translate-y-0 group-focus-within:translate-y-0 md:block">
+          <button
+            type="button"
+            onClick={onAdd}
+            className={`flex w-full items-center justify-center gap-2 rounded-xl py-3 text-sm font-bold shadow-[0_8px_24px_rgba(15,23,42,0.3)] backdrop-blur-sm transition-colors active:scale-[0.99] ${added ? "bg-[#0B0F19]/95 text-white" : "bg-white/95 text-[#0F172A] hover:bg-[#F59E0B]"}`}
+          >
+            {added ? <><Check className="h-4 w-4" strokeWidth={3} /> Added to bag</> : <><ShoppingCart className="h-4 w-4" /> Add to Bag</>}
+          </button>
+        </div>
+        )}
       </div>
       <div className="flex flex-1 flex-col gap-1 p-3">
-        {href ? (
-          <Link href={href} title={p.name} className="block min-w-0">
-            <h5 className="truncate text-[13px] font-semibold leading-snug text-[#0F172A] transition-colors group-hover:text-[#B45309]">{p.name}</h5>
-          </Link>
-        ) : (
-          <h5 title={p.name} className="truncate text-[13px] font-semibold leading-snug text-[#0F172A]">{p.name}</h5>
-        )}
+        <h5 className="truncate text-[13px] font-semibold leading-snug text-[#0F172A] transition-colors group-hover:text-[#B45309]">{p.name}</h5>
         <div className="flex items-baseline gap-1.5">
           <MarketPrice usd={p.price} className={`text-[15px] font-extrabold tabular-nums ${discount > 0 ? "text-[#DC2626]" : "text-[#0F172A]"}`} />
           {p.oldPrice && <MarketPrice usd={p.oldPrice} className="text-[11px] tabular-nums text-slate-400 line-through" />}
         </div>
+        {discount > 0 && saleEnd.trim() && (
+          <SaleCountdown endAt={saleEnd} prefix="Sale ends in" className="mt-0.5 w-fit" />
+        )}
+      </div>
+      <div className="relative z-10 px-3 pb-3 md:hidden">
         <button
           type="button"
           onClick={onAdd}
-          className={`mt-1.5 flex w-full items-center justify-center gap-1.5 rounded-xl py-2.5 text-[13px] font-bold transition-colors active:scale-[0.99] md:hidden ${added ? "bg-[#0B0F19] text-white" : "bg-[#F6F7F9] text-[#0F172A] active:bg-[#F59E0B]"}`}
+          className={`flex w-full items-center justify-center gap-1.5 rounded-xl py-2.5 text-[13px] font-bold transition-colors active:scale-[0.99] ${added ? "bg-[#0B0F19] text-white" : "bg-[#F6F7F9] text-[#0F172A] active:bg-[#F59E0B]"}`}
         >
           {added ? <><Check className="h-4 w-4" strokeWidth={3} /> Added</> : <><ShoppingCart className="h-4 w-4" /> Add</>}
         </button>
       </div>
+      {/* stretched link — the whole card (image + name + price) opens the product page */}
+      {href ? (
+        <Link
+          href={href}
+          aria-label={p.name}
+          className="absolute inset-0 z-0 rounded-2xl focus:outline-none"
+        />
+      ) : null}
     </div>
   )
 }
@@ -202,18 +151,30 @@ function logPopup(campaignId: string, event: "view" | "click" | "close") {
   }
 }
 
-function useCountdown() {
-  // Single countdown value — never call setState inside another setState
-  // updater (impure updaters cascade extra renders under StrictMode).
-  const [left, setLeft] = useState(9 * 3600 + 52 * 60 + 59)
+// Live flash-sale countdown. Counts down to the admin's end datetime
+// (Admin → Marketplace → Banners → Flash sale); with no end date set it
+// runs a rolling 2-day window so the section never sits at 00.
+const ROLLING_FLASH_SEC = 2 * 86400 + 9 * 3600 + 51 * 60
+function useCountdown(endAt?: string) {
+  const trimmed = (endAt || "").trim()
+  const valid = trimmed.length > 0 && Number.isFinite(Date.parse(trimmed))
+  const [left, setLeft] = useState(() => (valid ? flashSecondsLeft(trimmed) : ROLLING_FLASH_SEC))
   useEffect(() => {
+    setLeft(valid ? flashSecondsLeft(trimmed) : ROLLING_FLASH_SEC)
     const t = setInterval(() => {
-      setLeft((v) => (v > 0 ? v - 1 : 9 * 3600 + 52 * 60 + 59))
+      if (valid) {
+        // Re-resolve against the wall clock so background-throttled
+        // tabs snap back to the true remaining time; holds 00 once the
+        // sale ends (admin sets a new date to re-arm).
+        setLeft(flashSecondsLeft(trimmed))
+      } else {
+        setLeft((v) => (v > 1 ? v - 1 : ROLLING_FLASH_SEC))
+      }
     }, 1000)
     return () => clearInterval(t)
-  }, [])
-  const pad = (n: number) => String(n).padStart(2, "0")
-  return { days: "02", hrs: pad(Math.floor(left / 3600)), mins: pad(Math.floor((left % 3600) / 60)), secs: pad(left % 60) }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [trimmed, valid])
+  return splitCountdown(left)
 }
 
 const WISH_KEY = "tp_market_wish_v1"
@@ -375,7 +336,7 @@ export function MarketplaceHome() {
     }, 30000)
     return () => clearInterval(t)
   }, [])
-  const t = useCountdown()
+  const t = useCountdown(banners.flash_end_at)
 
   useEffect(() => {
     setWishlist(readWish())
@@ -787,8 +748,6 @@ export function MarketplaceHome() {
   const cardProps = (p: DemoProduct) => ({
     p,
     onAdd: () => addToCart(p),
-    wished: !!wishlist[p.id],
-    onWish: () => toggleWish(p.id),
     added: !!justAdded[p.id],
     href: liveHref(p),
   })
@@ -820,7 +779,7 @@ export function MarketplaceHome() {
               onClick={closeNotice}
               className="absolute inset-0 bg-[#0F172A]/60 backdrop-blur-[2px]"
             />
-            <WelcomePopupCard b={campaignView(campaign)} onClose={closeNotice} onCta={trackPopupClick} />
+            <WelcomePopupCard b={campaignView(campaign)} countdownEndAt={campaign.countdown_end_at} onClose={closeNotice} onCta={trackPopupClick} />
           </div>
         )}
 
@@ -950,20 +909,22 @@ export function MarketplaceHome() {
           <ShopCollections collections={collections} />
         )}
 
-        {/* flash deals — 4 live discounted products under a countdown banner */}
-        {flashItems.length > 0 && (
+        {/* flash deals — live discounted products under an editable countdown banner.
+            Copy + colors + end date: Admin → Marketplace → Banners → Flash sale.
+            Hidden publicly while the flash toggle is OFF. */}
+        {banners.flash_enabled !== false && flashItems.length > 0 && (
           <section id="flash-deals" className="overflow-hidden rounded-2xl border border-[#E2E8F0] bg-white shadow-sm scroll-mt-4">
             <div
               className="flex flex-col gap-3 p-5 sm:flex-row sm:items-center sm:justify-between md:px-6"
-              style={{ background: "linear-gradient(100deg, #DC2626 0%, #991B1B 100%)" }}
+              style={{ background: `linear-gradient(100deg, ${banners.flash_bg_from || "#DC2626"} 0%, ${banners.flash_bg_to || "#991B1B"} 100%)` }}
             >
               <div className="flex items-center gap-3">
                 <span className="inline-flex items-center gap-1.5 rounded bg-white px-2.5 py-1 text-[11px] font-bold uppercase text-[#991B1B]">
-                  <Flame className="h-3.5 w-3.5" /> Flash Sale
+                  <Flame className="h-3.5 w-3.5" /> {banners.flash_badge || "Flash Sale"}
                 </span>
                 <div>
-                  <h3 className="text-xl font-extrabold tracking-tight text-white sm:text-2xl">Special Offer — Up to 50% Off</h3>
-                  <p className="text-xs text-white/80">Hurry — discounted stock goes fast</p>
+                  <h3 className="text-xl font-extrabold tracking-tight text-white sm:text-2xl">{banners.flash_title || "Special Offer — Up to 50% Off"}</h3>
+                  <p className="text-xs text-white/80">{banners.flash_subtitle || "Hurry — discounted stock goes fast"}</p>
                 </div>
               </div>
               <div className="flex items-center gap-1.5" aria-label="Offer countdown">
@@ -1198,8 +1159,6 @@ export function MarketplaceHome() {
             sideLink={linkOf(banners, banners.sidebar_banners[dep.slug] || "") || `/marketplace/category/${dep.slug}`}
             onAdd={addToCart}
             added={justAdded}
-            wished={wishlist}
-            onWish={toggleWish}
           />
         )) : null}
 

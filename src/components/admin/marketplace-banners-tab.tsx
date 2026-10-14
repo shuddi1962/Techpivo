@@ -837,6 +837,16 @@ function CampaignEditor({
               className={`${inputCls} mt-1 text-xs`}
             />
           </label>
+          <label className="block sm:col-span-2">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Sale countdown ends — your time (optional)</span>
+            <input
+              type="datetime-local"
+              value={isoToLocalInput(c.countdown_end_at)}
+              onChange={(e) => onChange({ countdown_end_at: e.target.value ? new Date(e.target.value).toISOString() : "" })}
+              className={`${inputCls} mt-1 text-xs`}
+            />
+            <span className="text-[11px] text-slate-400">Shows a live “Ends in …” urgency timer inside the popup, like big-brand sale popups. Empty = no timer.</span>
+          </label>
           <label className="block">
             <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Show it…</span>
             <select
@@ -896,7 +906,7 @@ function CampaignEditor({
         </div>
         {previewOn ? (
           <div className="flex justify-center rounded-xl bg-slate-900/[0.04] p-4">
-            <WelcomePopupCard b={view} onClose={() => setPreviewOn(false)} preview />
+            <WelcomePopupCard b={view} countdownEndAt={c.countdown_end_at} onClose={() => setPreviewOn(false)} preview />
           </div>
         ) : (
           <p className="rounded-xl bg-slate-50 px-3 py-6 text-center text-xs text-slate-500">
@@ -1386,7 +1396,7 @@ export function MarketplaceBannersTab() {
       <Section
         step="5"
         title="Promo & store info"
-        desc="Black Friday surfaces + footer contact details"
+        desc="Top promo bar, flash sale + footer contact details"
         open={section === "more"}
         onToggle={() => setSection(section === "more" ? "" : "more")}
       >
@@ -1401,6 +1411,123 @@ export function MarketplaceBannersTab() {
             {banners.promo_enabled !== false ? "Promo is ON — showing publicly" : "Promo is OFF — hidden publicly"}
           </span>
         </label>
+        <div className="rounded-xl border bg-white p-4">
+          <p className="text-sm font-bold text-slate-900">Top promo bar</p>
+          <p className="text-xs text-slate-500">The strip above the store header — badge, messages and bar color. Live instantly on save.</p>
+          <div className="mt-2 grid gap-2.5">
+            <div className="grid gap-2.5 sm:grid-cols-2">
+              <input
+                value={banners.promo_badge_text}
+                onChange={(e) => setBanners((b) => ({ ...b, promo_badge_text: e.target.value }))}
+                placeholder="Badge — e.g. Limited Deal"
+                maxLength={40}
+                className={`${inputCls} text-xs`}
+              />
+              <input
+                value={banners.promo_message_mobile}
+                onChange={(e) => setBanners((b) => ({ ...b, promo_message_mobile: e.target.value }))}
+                placeholder="Short message (mobile)"
+                maxLength={80}
+                className={`${inputCls} text-xs`}
+              />
+            </div>
+            <input
+              value={banners.promo_message}
+              onChange={(e) => setBanners((b) => ({ ...b, promo_message: e.target.value }))}
+              placeholder="Message (desktop) — e.g. Black Friday Sale! Special offers up to 50% Off at TechPivo Market"
+              maxLength={140}
+              className={`${inputCls} text-xs`}
+            />
+            <div className="grid gap-2.5 sm:grid-cols-3">
+              {([
+                { k: "promo_bar_from", label: "Bar color (from)" },
+                { k: "promo_bar_to", label: "Bar color (to)" },
+                { k: "promo_badge_bg", label: "Badge color" },
+              ] as const).map((f) => (
+                <label key={f.k} className="flex items-center gap-2 text-xs font-semibold text-slate-600">
+                  <input
+                    type="color"
+                    value={/^#[0-9a-fA-F]{6}$/.test(banners[f.k]) ? banners[f.k] : "#1668DC"}
+                    onChange={(e) => setBanners((b) => ({ ...b, [f.k]: e.target.value }) as MarketBanners)}
+                    className="h-8 w-10 cursor-pointer rounded border"
+                    aria-label={f.label}
+                  />
+                  {f.label}
+                </label>
+              ))}
+            </div>
+          </div>
+        </div>
+        <div className="rounded-xl border bg-white p-4">
+          <div className="flex items-center justify-between gap-2">
+            <div>
+              <p className="text-sm font-bold text-slate-900">Flash sale section</p>
+              <p className="text-xs text-slate-500">Homepage countdown banner — badge, headline, colors and end date. Live instantly on save.</p>
+            </div>
+            <label className="flex cursor-pointer items-center gap-2 text-xs font-bold text-slate-700">
+              <input
+                type="checkbox"
+                checked={banners.flash_enabled !== false}
+                onChange={(e) => setBanners((b) => ({ ...b, flash_enabled: e.target.checked }))}
+                className="h-4 w-4 accent-[#F59E0B]"
+              />
+              Show
+            </label>
+          </div>
+          <div className="mt-2 grid gap-2.5">
+            <div className="grid gap-2.5 sm:grid-cols-2">
+              <input
+                value={banners.flash_badge}
+                onChange={(e) => setBanners((b) => ({ ...b, flash_badge: e.target.value }))}
+                placeholder="Badge — e.g. Flash Sale"
+                maxLength={40}
+                className={`${inputCls} text-xs`}
+              />
+              <input
+                value={banners.flash_title}
+                onChange={(e) => setBanners((b) => ({ ...b, flash_title: e.target.value }))}
+                placeholder="Headline — e.g. Special Offer — Up to 50% Off"
+                maxLength={80}
+                className={`${inputCls} text-xs`}
+              />
+            </div>
+            <input
+              value={banners.flash_subtitle}
+              onChange={(e) => setBanners((b) => ({ ...b, flash_subtitle: e.target.value }))}
+              placeholder="Sub-line — e.g. Hurry — discounted stock goes fast"
+              maxLength={140}
+              className={`${inputCls} text-xs`}
+            />
+            <div className="grid gap-2.5 sm:grid-cols-3">
+              {([
+                { k: "flash_bg_from", label: "Banner color (from)" },
+                { k: "flash_bg_to", label: "Banner color (to)" },
+              ] as const).map((f) => (
+                <label key={f.k} className="flex items-center gap-2 text-xs font-semibold text-slate-600">
+                  <input
+                    type="color"
+                    value={/^#[0-9a-fA-F]{6}$/.test(banners[f.k]) ? banners[f.k] : "#DC2626"}
+                    onChange={(e) => setBanners((b) => ({ ...b, [f.k]: e.target.value }) as MarketBanners)}
+                    className="h-8 w-10 cursor-pointer rounded border"
+                    aria-label={f.label}
+                  />
+                  {f.label}
+                </label>
+              ))}
+              <label className="text-xs font-semibold text-slate-600">
+                <span className="mb-1 block">Countdown ends</span>
+                <input
+                  type="datetime-local"
+                  value={isoToLocalInput(banners.flash_end_at)}
+                  onChange={(e) => setBanners((b) => ({ ...b, flash_end_at: e.target.value ? new Date(e.target.value).toISOString() : "" }))}
+                  className={`${inputCls} text-xs`}
+                  aria-label="Countdown end date"
+                />
+              </label>
+            </div>
+            <p className="text-[11px] text-slate-500">End date empty = rolling 2-day countdown. Ended = timer holds at 00 until you set a new date.</p>
+          </div>
+        </div>
         <div className="rounded-xl border bg-white p-4">
           <p className="text-sm font-bold text-slate-900">Footer contact</p>
           <div className="mt-2 grid gap-2.5">

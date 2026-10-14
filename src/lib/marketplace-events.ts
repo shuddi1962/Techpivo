@@ -23,7 +23,7 @@ export function openQuickView(productId: string) {
   dispatch<{ productId: string }>(TPM_QUICKVIEW, { productId })
 }
 
-/** Open the checkout modal (uses the existing cart + Korapay flow). */
+/** Open the checkout modal (uses the existing cart + payment flow). */
 export function openCheckout() {
   dispatch(TPM_CHECKOUT)
 }
