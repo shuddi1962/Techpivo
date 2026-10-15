@@ -1143,6 +1143,9 @@ export function MarketplaceBannersTab() {
   const slotValue = (id: string) => (banners as unknown as Record<string, string>)[id] || ""
   const liveCount = [...HOME_SLOT_IDS, ...PAGE_SLOT_IDS].filter((id) => slotValue(id).trim()).length +
     Object.keys(banners.departments || {}).length
+  // Homepage banner image ON = the whole text header (badge / headline /
+  // colors / countdown) is hidden on the store — image shows alone.
+  const flashImgOn = (banners.flash_banner_image || "").trim().length > 0
 
   return (
     <div className="w-full space-y-3">
@@ -1462,7 +1465,7 @@ export function MarketplaceBannersTab() {
           <div className="flex items-center justify-between gap-2">
             <div>
               <p className="text-sm font-bold text-slate-900">Flash sale section</p>
-              <p className="text-xs text-slate-500">Homepage countdown banner — badge, headline, colors and end date. Live instantly on save.</p>
+              <p className="text-xs text-slate-500">Homepage countdown banner — badge, headline, colors and end date. Upload a banner image below to replace that whole header with the image only (text + countdown hide). Live instantly on save.</p>
             </div>
             <label className="flex cursor-pointer items-center gap-2 text-xs font-bold text-slate-700">
               <input
@@ -1475,30 +1478,69 @@ export function MarketplaceBannersTab() {
             </label>
           </div>
           <div className="mt-2 grid gap-2.5">
-            <div className="grid gap-2.5 sm:grid-cols-2">
-              <input
-                value={banners.flash_badge}
-                onChange={(e) => setBanners((b) => ({ ...b, flash_badge: e.target.value }))}
-                placeholder="Badge — e.g. Flash Sale"
-                maxLength={40}
-                className={`${inputCls} text-xs`}
-              />
-              <input
-                value={banners.flash_title}
-                onChange={(e) => setBanners((b) => ({ ...b, flash_title: e.target.value }))}
-                placeholder="Headline — e.g. Special Offer — Up to 50% Off"
-                maxLength={80}
-                className={`${inputCls} text-xs`}
-              />
+            <div className={`rounded-lg border p-3 ${flashImgOn ? "border-slate-200 bg-slate-50 opacity-60" : "border-slate-200 bg-slate-50"}`}>
+              <p className="text-xs font-bold text-slate-700">Text banner <span className="font-semibold text-slate-400">(default — shows when no homepage image is set)</span></p>
+              {flashImgOn && (
+                <p className="mt-1 rounded-md bg-amber-100 px-2 py-1 text-[11px] font-bold text-amber-800">Hidden on the store while the homepage banner image below is set — clear the image to use this text again.</p>
+              )}
+              <fieldset disabled={flashImgOn} className="mt-2 grid gap-2.5">
+                <div className="grid gap-2.5 sm:grid-cols-2">
+                  <input
+                    value={banners.flash_badge}
+                    onChange={(e) => setBanners((b) => ({ ...b, flash_badge: e.target.value }))}
+                    placeholder="Badge — e.g. Flash Sale"
+                    maxLength={40}
+                    className={`${inputCls} text-xs disabled:opacity-70`}
+                  />
+                  <input
+                    value={banners.flash_title}
+                    onChange={(e) => setBanners((b) => ({ ...b, flash_title: e.target.value }))}
+                    placeholder="Headline — e.g. Special Offer — Up to 50% Off"
+                    maxLength={80}
+                    className={`${inputCls} text-xs disabled:opacity-70`}
+                  />
+                </div>
+                <input
+                  value={banners.flash_subtitle}
+                  onChange={(e) => setBanners((b) => ({ ...b, flash_subtitle: e.target.value }))}
+                  placeholder="Sub-line — e.g. Hurry — discounted stock goes fast"
+                  maxLength={140}
+                  className={`${inputCls} text-xs disabled:opacity-70`}
+                />
+                <div className="grid gap-2.5 sm:grid-cols-3">
+                  {([
+                    { k: "flash_bg_from", label: "Banner color (from)" },
+                    { k: "flash_bg_to", label: "Banner color (to)" },
+                    { k: "flash_text_bg", label: "Text block color" },
+                  ] as const).map((f) => (
+                    <label key={f.k} className="flex items-center gap-2 text-xs font-semibold text-slate-600">
+                      <input
+                        type="color"
+                        value={/^#[0-9a-fA-F]{6}$/.test(banners[f.k] || "") ? (banners[f.k] as string) : "#DC2626"}
+                        onChange={(e) => setBanners((b) => ({ ...b, [f.k]: e.target.value }) as MarketBanners)}
+                        className="h-8 w-10 cursor-pointer rounded border disabled:cursor-not-allowed"
+                        aria-label={f.label}
+                      />
+                      {f.label}
+                    </label>
+                  ))}
+                  <label className="text-xs font-semibold text-slate-600">
+                    <span className="mb-1 block">Countdown ends</span>
+                    <input
+                      type="datetime-local"
+                      value={isoToLocalInput(banners.flash_end_at)}
+                      onChange={(e) => setBanners((b) => ({ ...b, flash_end_at: e.target.value ? new Date(e.target.value).toISOString() : "" }))}
+                      className={`${inputCls} text-xs disabled:opacity-70`}
+                      aria-label="Countdown end date"
+                    />
+                  </label>
+                </div>
+                <p className="text-[11px] text-slate-500">End date empty = rolling 2-day countdown. Ended = timer holds at 00 until you set a new date.</p>
+              </fieldset>
             </div>
-            <input
-              value={banners.flash_subtitle}
-              onChange={(e) => setBanners((b) => ({ ...b, flash_subtitle: e.target.value }))}
-              placeholder="Sub-line — e.g. Hurry — discounted stock goes fast"
-              maxLength={140}
-              className={`${inputCls} text-xs`}
-            />
-            <div>
+            <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
+              <p className="text-xs font-bold text-slate-700">Departments-menu card <span className="font-semibold text-slate-400">(inside the Departments dropdown — not the homepage)</span></p>
+            <div className="mt-2">
               <div className="flex gap-2">
                 <input
                   value={banners.flash_image || ""}
@@ -1522,7 +1564,10 @@ export function MarketplaceBannersTab() {
               )}
               <p className="mt-1 text-[11px] text-slate-400">Dropdown card — square works best (600 × 600).</p>
             </div>
-            <div>
+            </div>
+            <div className="rounded-lg border border-amber-200 bg-amber-50/50 p-3">
+              <p className="text-xs font-bold text-slate-700">Homepage banner <span className="font-semibold text-slate-400">(the big header on the homepage flash section)</span></p>
+            <div className="mt-2">
               <div className="flex gap-2">
                 <input
                   value={banners.flash_banner_image || ""}
@@ -1544,37 +1589,9 @@ export function MarketplaceBannersTab() {
                 // eslint-disable-next-line @next/next/no-img-element
                 <img src={(banners.flash_banner_image || "").trim()} alt="Flash banner preview" className="mt-2 h-20 w-full rounded-lg border object-cover" loading="lazy" />
               )}
-              <p className="mt-1 text-[11px] text-slate-400">Homepage banner — wide works best (1600 × 500). Links to the Specials destination.</p>
+              <p className="mt-1 text-[11px] text-slate-400">Homepage banner — wide works best (1600 × 500). Links to the Specials destination. While set, the badge / headline / colors / countdown in the text box above are hidden on the store.</p>
             </div>
-            <div className="grid gap-2.5 sm:grid-cols-3">
-              {([
-                { k: "flash_bg_from", label: "Banner color (from)" },
-                { k: "flash_bg_to", label: "Banner color (to)" },
-                { k: "flash_text_bg", label: "Text block color" },
-              ] as const).map((f) => (
-                <label key={f.k} className="flex items-center gap-2 text-xs font-semibold text-slate-600">
-                  <input
-                    type="color"
-                    value={/^#[0-9a-fA-F]{6}$/.test(banners[f.k] || "") ? (banners[f.k] as string) : "#DC2626"}
-                    onChange={(e) => setBanners((b) => ({ ...b, [f.k]: e.target.value }) as MarketBanners)}
-                    className="h-8 w-10 cursor-pointer rounded border"
-                    aria-label={f.label}
-                  />
-                  {f.label}
-                </label>
-              ))}
-              <label className="text-xs font-semibold text-slate-600">
-                <span className="mb-1 block">Countdown ends</span>
-                <input
-                  type="datetime-local"
-                  value={isoToLocalInput(banners.flash_end_at)}
-                  onChange={(e) => setBanners((b) => ({ ...b, flash_end_at: e.target.value ? new Date(e.target.value).toISOString() : "" }))}
-                  className={`${inputCls} text-xs`}
-                  aria-label="Countdown end date"
-                />
-              </label>
             </div>
-            <p className="text-[11px] text-slate-500">End date empty = rolling 2-day countdown. Ended = timer holds at 00 until you set a new date.</p>
           </div>
         </div>
         <div className="rounded-xl border bg-white p-4">
