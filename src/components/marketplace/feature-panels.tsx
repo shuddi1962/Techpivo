@@ -103,7 +103,6 @@ function FeaturePanel({ title, items, onAdd, added, wished, onWish }: { title: s
             ) : (
               <p title={current.name} className="truncate text-sm font-semibold text-[#0F172A]">{current.name}</p>
             )}
-            <PanelStars value={current.rating} />
             <div className="flex items-baseline gap-2">
               <MarketPrice usd={current.price} className="text-base font-extrabold tabular-nums text-[#0F172A]" />
               {current.oldPrice && current.oldPrice > current.price && (
