@@ -970,10 +970,17 @@ export function MarketplaceHome() {
         )}
 
         {/* flash deals — live discounted products under an editable countdown banner.
-            Copy + colors + end date: Admin → Marketplace → Banners → Flash sale.
+            Admin → Marketplace → Banners → Flash sale. A banner image hides
+            the badge + headline + countdown block (image links to Specials).
             Hidden publicly while the flash toggle is OFF. */}
         {banners.flash_enabled !== false && flashItems.length > 0 && (
           <section id="flash-deals" className="overflow-hidden rounded-2xl border border-[#E2E8F0] bg-white shadow-sm scroll-mt-4">
+            {banners.flash_banner_image?.trim() ? (
+              <Link href={banners.specials_link || "/marketplace#flash-deals"} aria-label={banners.flash_title || "Flash Sale"}>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={banners.flash_banner_image.trim()} alt={banners.flash_title || "Flash Sale"} loading="lazy" decoding="async" className="block h-auto w-full" />
+              </Link>
+            ) : (
             <div
               className="flex flex-col gap-3 p-5 sm:flex-row sm:items-center sm:justify-between md:px-6"
               style={{ background: `linear-gradient(100deg, ${banners.flash_bg_from || "#DC2626"} 0%, ${banners.flash_bg_to || "#991B1B"} 100%)` }}
@@ -982,7 +989,10 @@ export function MarketplaceHome() {
                 <span className="inline-flex items-center gap-1.5 rounded bg-white px-2.5 py-1 text-[11px] font-bold uppercase text-[#991B1B]">
                   <Flame className="h-3.5 w-3.5" /> {banners.flash_badge || "Flash Sale"}
                 </span>
-                <div>
+                <div
+                  className={banners.flash_text_bg?.trim() ? "rounded-xl px-3 py-1.5" : undefined}
+                  style={banners.flash_text_bg?.trim() ? { background: banners.flash_text_bg.trim() } : undefined}
+                >
                   <h3 className="text-xl font-extrabold tracking-tight text-white sm:text-2xl">{banners.flash_title || "Special Offer — Up to 50% Off"}</h3>
                   <p className="text-xs text-white/80">{banners.flash_subtitle || "Hurry — discounted stock goes fast"}</p>
                 </div>
@@ -1004,6 +1014,7 @@ export function MarketplaceHome() {
                 ))}
               </div>
             </div>
+            )}
             <div className="grid grid-cols-2 gap-3 p-4 sm:p-5 lg:grid-cols-4">
               {flashItems.map((p) => (
                 <ProductCard key={p.id} {...cardProps(p)} />

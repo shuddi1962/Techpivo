@@ -1,7 +1,19 @@
 import { NextRequest, NextResponse } from "next/server"
+import { revalidatePath } from "next/cache"
 import { requireAdminRole } from "@/lib/admin-auth"
 import { createClient } from "@/lib/supabase/server"
 import { cjListProducts, cjStatus, mapCjToAffiliate, resolveCjApiKey } from "@/lib/cj"
+
+// Bust the storefront ISR cache after every admin write, so the next
+// refresh renders the new state — never the previous page first.
+// Best-effort: the DB write already succeeded even if this throws.
+function revalidateStore() {
+  try {
+    revalidatePath("/marketplace", "layout")
+  } catch {
+    // ignore — background regen is a bonus, not the write itself
+  }
+}
 
 export async function GET(request: NextRequest) {
   const auth = await requireAdminRole(["admin", "editor"], request)
@@ -386,6 +398,7 @@ export async function POST(request: NextRequest) {
       }
       const { data, error } = await supabase.from("marketplace_orders").update({ status }).eq("id", id).select("id,status").single()
       if (error) throw error
+      revalidateStore()
       return NextResponse.json({ order: data })
     }
     // Retry CJ auto-fulfillment for a paid order (uses shared helper, so
@@ -428,6 +441,7 @@ export async function POST(request: NextRequest) {
       if (touched === 0) return NextResponse.json({ error: "That product is not on this order." }, { status: 400 })
       const { error } = await supabase.from("marketplace_orders").update({ items: next }).eq("id", id)
       if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+      revalidateStore()
       return NextResponse.json({ success: true, updated: touched })
     }
     // Save storefront banners (hero / promo / category default / per-department)
@@ -438,6 +452,7 @@ export async function POST(request: NextRequest) {
         .from("site_settings")
         .upsert({ key: "marketplace_banners", value: banners as unknown as never }, { onConflict: "key" })
       if (error) throw error
+      revalidateStore()
       return NextResponse.json({ success: true, banners })
     }
     // Save per-product sale countdowns (productId → ISO end)
@@ -448,6 +463,7 @@ export async function POST(request: NextRequest) {
         .from("site_settings")
         .upsert({ key: "marketplace_sales", value: sales as unknown as never }, { onConflict: "key" })
       if (error) throw error
+      revalidateStore()
       return NextResponse.json({ success: true, sales })
     }
     // Delete a customer review (spam / abuse moderation)
@@ -456,6 +472,7 @@ export async function POST(request: NextRequest) {
       if (!/^[0-9a-f-]{36}$/i.test(id)) return NextResponse.json({ error: "Valid review id required." }, { status: 400 })
       const { error } = await supabase.from("marketplace_reviews").delete().eq("id", id)
       if (error) throw error
+      revalidateStore()
       return NextResponse.json({ success: true })
     }
     // Save per-product merchandising flags (sale/new/bestseller) and/or the
@@ -481,6 +498,7 @@ export async function POST(request: NextRequest) {
         .from("site_settings")
         .upsert({ key: "marketplace_merch", value: out as unknown as never }, { onConflict: "key" })
       if (error) throw error
+      revalidateStore()
       return NextResponse.json({ success: true, merch: parseMarketMerch(out), sale_badges: parseMarketMerchGlobal(out) })
     }
     // Replace the whole coupon list (validated item by item)
@@ -491,6 +509,7 @@ export async function POST(request: NextRequest) {
         .from("site_settings")
         .upsert({ key: "marketplace_coupons", value: coupons as unknown as never }, { onConflict: "key" })
       if (error) throw error
+      revalidateStore()
       return NextResponse.json({ success: true, coupons })
     }
     // Curated "Complete Your Purchase" overrides (migration 094 tables).
@@ -514,6 +533,7 @@ export async function POST(request: NextRequest) {
           .select("id")
           .single()
         if (error) throw error
+        revalidateStore()
         return NextResponse.json({ success: true, recommendation: data })
       } catch {
         return NextResponse.json({ error: "Recommendations table not migrated yet — apply migration 094 first." }, { status: 500 })
@@ -524,6 +544,7 @@ export async function POST(request: NextRequest) {
       if (!id) return NextResponse.json({ error: "id required" }, { status: 400 })
       const { error } = await supabase.from("marketplace_recommendations").delete().eq("id", id)
       if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+      revalidateStore()
       return NextResponse.json({ success: true })
     }
     if (body.action === "recommend-toggle") {
@@ -536,6 +557,7 @@ export async function POST(request: NextRequest) {
         .select("id,is_active")
         .single()
       if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+      revalidateStore()
       return NextResponse.json({ success: true, recommendation: data })
     }
     // Save store contact info (footer address / phone / email)
@@ -545,6 +567,7 @@ export async function POST(request: NextRequest) {
         .from("site_settings")
         .upsert({ key: "marketplace_store", value: store as unknown as never }, { onConflict: "key" })
       if (error) throw error
+      revalidateStore()
       return NextResponse.json({ success: true, store })
     }
     if (body.action === "cj-import") {
@@ -562,6 +585,7 @@ export async function POST(request: NextRequest) {
       if (fresh.length === 0) return NextResponse.json({ imported: 0, skipped: rows.length })
       const { data, error } = await supabase.from("affiliate_products").insert(fresh).select("id")
       if (error) throw error
+      revalidateStore()
       return NextResponse.json({ imported: data?.length ?? 0, skipped: rows.length - fresh.length })
     }
     const { data, error } = await supabase
@@ -584,6 +608,7 @@ export async function POST(request: NextRequest) {
       .select()
       .single()
     if (error) throw error
+    revalidateStore()
     return NextResponse.json({ product: data })
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : "Failed to create product"
@@ -605,6 +630,7 @@ export async function PATCH(request: NextRequest) {
     }
     const { data, error } = await supabase.from("affiliate_products").update(allowed).eq("id", id).select().single()
     if (error) throw error
+    revalidateStore()
     return NextResponse.json({ product: data })
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : "Failed to update product"
@@ -621,6 +647,7 @@ export async function DELETE(request: NextRequest) {
     if (!body?.id) return NextResponse.json({ error: "id required" }, { status: 400 })
     const { error } = await supabase.from("affiliate_products").delete().eq("id", body.id)
     if (error) throw error
+    revalidateStore()
     return NextResponse.json({ success: true })
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : "Failed to delete product"
@@ -647,6 +674,7 @@ export async function PUT(request: NextRequest) {
       { onConflict: "slug" }
     )
     if (error) throw error
+    revalidateStore()
     return NextResponse.json({ success: true, is_published })
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : "Failed to update page"

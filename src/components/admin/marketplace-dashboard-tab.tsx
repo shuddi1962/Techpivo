@@ -35,19 +35,82 @@ interface Analytics {
 
 const STATUS_COLORS = ["#10B981", "#F59E0B", "#3B82F6", "#8B5CF6", "#EF4444", "#64748B"]
 
-const cardCls = "bg-white border rounded-xl p-4"
+const cardCls = "bg-white border border-slate-200/80 rounded-2xl p-4 shadow-[0_1px_2px_rgba(15,23,42,0.04)]"
 
-function Kpi({ label, value, sub, icon: Icon, tint }: { label: string; value: string; sub: string; icon: typeof Banknote; tint: string }) {
+function Spark({ data, color }: { data: number[]; color: string }) {
+  if (data.length < 2) return null
   return (
-    <div className={`${cardCls} transition-shadow hover:shadow-md`}>
-      <div className={`w-9 h-9 rounded-xl flex items-center justify-center mb-2.5 ${tint}`}>
-        <Icon className="h-4 w-4" />
-      </div>
-      <div className="text-2xl font-extrabold tabular-nums text-slate-900">{value}</div>
-      <div className="text-xs font-semibold text-slate-500">{label}</div>
-      <div className="text-[11px] text-slate-400 mt-0.5">{sub}</div>
+    <div className="h-9 -mb-1 mt-1">
+      <ResponsiveContainer width="100%" height="100%">
+        <AreaChart data={data.map((v, i) => ({ i, v }))} margin={{ top: 2, right: 0, left: 0, bottom: 0 }}>
+          <defs>
+            <linearGradient id={`mkSpark-${color.replace("#", "")}`} x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor={color} stopOpacity={0.35} />
+              <stop offset="100%" stopColor={color} stopOpacity={0.02} />
+            </linearGradient>
+          </defs>
+          <Area type="monotone" dataKey="v" stroke={color} strokeWidth={1.5} fill={`url(#mkSpark-${color.replace("#", "")})`} isAnimationActive={false} />
+        </AreaChart>
+      </ResponsiveContainer>
     </div>
   )
+}
+
+function Delta({ value }: { value: number | null }) {
+  if (value === null || !Number.isFinite(value)) return null
+  const up = value >= 0
+  return (
+    <span className={`inline-flex items-center gap-0.5 rounded-full px-1.5 py-0.5 text-[10px] font-extrabold tabular-nums ${up ? "bg-emerald-50 text-emerald-600" : "bg-red-50 text-red-600"}`}>
+      <TrendingUp className={`h-3 w-3 ${up ? "" : "rotate-180"}`} />
+      {up ? "+" : ""}{value.toFixed(1)}%
+    </span>
+  )
+}
+
+function Kpi({ label, value, sub, icon: Icon, tint, spark, sparkColor, delta }: {
+  label: string
+  value: string
+  sub: string
+  icon: typeof Banknote
+  tint: string
+  spark?: number[]
+  sparkColor?: string
+  delta?: number | null
+}) {
+  return (
+    <div className={`${cardCls} transition-all hover:shadow-md hover:-translate-y-px`}>
+      <div className="flex items-center justify-between">
+        <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${tint}`}>
+          <Icon className="h-4 w-4" />
+        </div>
+        {delta !== undefined && <Delta value={delta} />}
+      </div>
+      <div className="mt-2.5 text-[26px] leading-none font-extrabold tabular-nums tracking-tight text-slate-900">{value}</div>
+      <div className="mt-1 text-xs font-bold text-slate-600">{label}</div>
+      <div className="text-[11px] text-slate-400 mt-0.5">{sub}</div>
+      {spark && sparkColor && <Spark data={spark} color={sparkColor} />}
+    </div>
+  )
+}
+
+function ChartTip({ active, payload, label, money }: { active?: boolean; payload?: Array<{ value?: number | string }>; label?: string; money?: boolean }) {
+  if (!active || !payload?.length) return null
+  const v = Number(payload[0]?.value) || 0
+  return (
+    <div className="rounded-xl border border-slate-200 bg-white/95 px-3 py-2 shadow-lg backdrop-blur">
+      <p className="text-[11px] font-bold text-slate-400">{label}</p>
+      <p className="text-sm font-extrabold tabular-nums text-slate-900">{money ? `$${v.toFixed(2)}` : v}</p>
+    </div>
+  )
+}
+
+/** % change of the last 7 days vs the previous 7 (null when no baseline). */
+function weekDelta(series: Array<{ revenue: number; orders: number }>, key: "revenue" | "orders"): number | null {
+  if (series.length < 14) return null
+  const last = series.slice(-7).reduce((s, d) => s + d[key], 0)
+  const prev = series.slice(-14, -7).reduce((s, d) => s + d[key], 0)
+  if (prev <= 0) return last > 0 ? 100 : null
+  return Math.round(((last - prev) / prev) * 1000) / 10
 }
 
 export function MarketplaceDashboardTab() {
@@ -92,13 +155,18 @@ export function MarketplaceDashboardTab() {
 
   const t = data?.totals
   const hasOrders = (t?.orders || 0) > 0
+  const series = data?.series || []
+  const revSpark = series.map((d) => d.revenue)
+  const ordSpark = series.map((d) => d.orders)
+  const revDelta = weekDelta(series, "revenue")
+  const ordDelta = weekDelta(series, "orders")
 
   return (
     <div className="space-y-4">
       {/* KPI row */}
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
-        <Kpi label="Revenue (paid)" value={`$${(t?.revenueUsd || 0).toLocaleString()}`} sub={`₦${(t?.revenueNgn || 0).toLocaleString()} collected`} icon={Banknote} tint="text-emerald-600 bg-emerald-50" />
-        <Kpi label="Paid orders" value={String(t?.paid || 0)} sub={`${t?.orders || 0} orders total · avg $${t?.avgOrder || 0}`} icon={ShoppingBag} tint="text-blue-600 bg-blue-50" />
+        <Kpi label="Revenue (paid)" value={`$${(t?.revenueUsd || 0).toLocaleString()}`} sub={`₦${(t?.revenueNgn || 0).toLocaleString()} collected`} icon={Banknote} tint="text-emerald-600 bg-emerald-50" spark={revSpark} sparkColor="#10B981" delta={revDelta} />
+        <Kpi label="Paid orders" value={String(t?.paid || 0)} sub={`${t?.orders || 0} orders total · avg $${t?.avgOrder || 0}`} icon={ShoppingBag} tint="text-blue-600 bg-blue-50" spark={ordSpark} sparkColor="#3B82F6" delta={ordDelta} />
         <Kpi label="Product clicks" value={(t?.clicks || 0).toLocaleString()} sub={`${t?.clickToOrder || 0}% click → paid`} icon={MousePointerClick} tint="text-violet-600 bg-violet-50" />
         <Kpi label="Coupon savings" value={`$${t?.couponGiven || 0}`} sub={`${t?.couponUses || 0} orders used a code`} icon={BadgePercent} tint="text-amber-600 bg-amber-50" />
         <Kpi label="Vendors" value={String(t?.vendors || 0)} sub="Supplier programs live" icon={TrendingUp} tint="text-sky-600 bg-sky-50" />
@@ -129,11 +197,11 @@ export function MarketplaceDashboardTab() {
                     <stop offset="100%" stopColor="#10B981" stopOpacity={0.02} />
                   </linearGradient>
                 </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" />
-                <XAxis dataKey="label" tick={{ fontSize: 10, fill: "#94A3B8" }} interval={4} />
-                <YAxis tick={{ fontSize: 10, fill: "#94A3B8" }} />
-                <Tooltip formatter={(v) => [`$${Number(v).toFixed(2)}`, "Revenue"]} labelStyle={{ color: "#0F172A" }} />
-                <Area type="monotone" dataKey="revenue" stroke="#10B981" strokeWidth={2} fill="url(#mkRev)" />
+                <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" vertical={false} />
+                <XAxis dataKey="label" tick={{ fontSize: 10, fill: "#94A3B8" }} interval={4} tickLine={false} axisLine={{ stroke: "#E2E8F0" }} />
+                <YAxis tick={{ fontSize: 10, fill: "#94A3B8" }} tickLine={false} axisLine={false} />
+                <Tooltip content={<ChartTip money />} cursor={{ stroke: "#CBD5E1", strokeDasharray: "4 4" }} />
+                <Area type="monotone" dataKey="revenue" stroke="#10B981" strokeWidth={2.5} fill="url(#mkRev)" dot={false} activeDot={{ r: 4, fill: "#10B981", stroke: "#fff", strokeWidth: 2 }} />
               </AreaChart>
             </ResponsiveContainer>
           </div>
@@ -144,11 +212,11 @@ export function MarketplaceDashboardTab() {
           <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={data?.series || []} margin={{ top: 8, right: 8, left: -18, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" />
-                <XAxis dataKey="label" tick={{ fontSize: 10, fill: "#94A3B8" }} interval={4} />
-                <YAxis tick={{ fontSize: 10, fill: "#94A3B8" }} allowDecimals={false} />
-                <Tooltip labelStyle={{ color: "#0F172A" }} />
-                <Bar dataKey="orders" fill="#F59E0B" radius={[4, 4, 0, 0]} />
+                <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" vertical={false} />
+                <XAxis dataKey="label" tick={{ fontSize: 10, fill: "#94A3B8" }} interval={4} tickLine={false} axisLine={{ stroke: "#E2E8F0" }} />
+                <YAxis tick={{ fontSize: 10, fill: "#94A3B8" }} allowDecimals={false} tickLine={false} axisLine={false} />
+                <Tooltip content={<ChartTip />} cursor={{ fill: "#F8FAFC" }} />
+                <Bar dataKey="orders" fill="#F59E0B" radius={[5, 5, 0, 0]} maxBarSize={22} />
               </BarChart>
             </ResponsiveContainer>
           </div>

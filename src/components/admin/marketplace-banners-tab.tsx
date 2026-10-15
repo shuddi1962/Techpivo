@@ -1520,16 +1520,42 @@ export function MarketplaceBannersTab() {
                 // eslint-disable-next-line @next/next/no-img-element
                 <img src={(banners.flash_image || "").trim()} alt="Flash card preview" className="mt-2 h-20 w-full rounded-lg border object-cover" loading="lazy" />
               )}
+              <p className="mt-1 text-[11px] text-slate-400">Dropdown card — square works best (600 × 600).</p>
+            </div>
+            <div>
+              <div className="flex gap-2">
+                <input
+                  value={banners.flash_banner_image || ""}
+                  onChange={(e) => setBanners((b) => ({ ...b, flash_banner_image: e.target.value }))}
+                  placeholder="Homepage banner image URL — set = image only (text + countdown hide)"
+                  className={`${inputCls} min-w-0 flex-1 text-xs`}
+                />
+                <button type="button" onClick={() => pickUpload("flash_banner_image")} disabled={uploading === "flash_banner_image"} className={miniBtn}>
+                  {uploading === "flash_banner_image" ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <ImagePlus className="h-3.5 w-3.5" />}
+                  {uploading === "flash_banner_image" ? "…" : "Upload"}
+                </button>
+                {(banners.flash_banner_image || "").trim() && (
+                  <button type="button" onClick={() => setBanners((b) => ({ ...b, flash_banner_image: "" }))} title="Back to text banner" className="rounded-lg border p-2 text-slate-400 hover:bg-slate-50">
+                    <RotateCcw className="h-3.5 w-3.5" />
+                  </button>
+                )}
+              </div>
+              {(banners.flash_banner_image || "").trim() && isUrl(banners.flash_banner_image || "") && (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={(banners.flash_banner_image || "").trim()} alt="Flash banner preview" className="mt-2 h-20 w-full rounded-lg border object-cover" loading="lazy" />
+              )}
+              <p className="mt-1 text-[11px] text-slate-400">Homepage banner — wide works best (1600 × 500). Links to the Specials destination.</p>
             </div>
             <div className="grid gap-2.5 sm:grid-cols-3">
               {([
                 { k: "flash_bg_from", label: "Banner color (from)" },
                 { k: "flash_bg_to", label: "Banner color (to)" },
+                { k: "flash_text_bg", label: "Text block color" },
               ] as const).map((f) => (
                 <label key={f.k} className="flex items-center gap-2 text-xs font-semibold text-slate-600">
                   <input
                     type="color"
-                    value={/^#[0-9a-fA-F]{6}$/.test(banners[f.k]) ? banners[f.k] : "#DC2626"}
+                    value={/^#[0-9a-fA-F]{6}$/.test(banners[f.k] || "") ? (banners[f.k] as string) : "#DC2626"}
                     onChange={(e) => setBanners((b) => ({ ...b, [f.k]: e.target.value }) as MarketBanners)}
                     className="h-8 w-10 cursor-pointer rounded border"
                     aria-label={f.label}

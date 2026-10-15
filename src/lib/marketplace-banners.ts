@@ -150,6 +150,14 @@ export interface MarketBanners {
   /** Optional artwork for the Flash Sale card inside the Departments
       dropdown. Empty = the built-in gradient card with badge + headline. */
   flash_image: string
+  /** Optional full-width artwork for the homepage flash banner. When set,
+      the badge + headline + countdown block is hidden and the image alone
+      shows (linked to the Specials destination). Empty = gradient banner
+      with text. */
+  flash_banner_image: string
+  /** Background behind the flash headline block (gradient mode only).
+      Empty = transparent over the banner gradient. */
+  flash_text_bg: string
   /** "Specials" menu pill (storefront header, next to Departments).
       Fully admin-editable: full label text, destination (any in-store
       path, #anchor, category page or https link) and on/off switch.
@@ -250,6 +258,8 @@ export const EMPTY_BANNERS: MarketBanners = {
   flash_bg_to: "#991B1B",
   flash_end_at: "",
   flash_image: "",
+  flash_banner_image: "",
+  flash_text_bg: "",
   specials_enabled: true,
   specials_label: "Flash Sale Specials",
   specials_link: "/marketplace#flash-deals",
@@ -611,6 +621,8 @@ export function parseBanners(raw: unknown): MarketBanners {
     flash_bg_to: cleanHex(r.flash_bg_to, EMPTY_BANNERS.flash_bg_to),
     flash_end_at: cleanIsoDate(r.flash_end_at),
     flash_image: str(r.flash_image).trim().slice(0, 500),
+    flash_banner_image: str(r.flash_banner_image).trim().slice(0, 500),
+    flash_text_bg: cleanHex(r.flash_text_bg, ""),
     specials_enabled: typeof r.specials_enabled === "boolean" ? r.specials_enabled : true,
     specials_label: str(r.specials_label).trim().slice(0, 40) || EMPTY_BANNERS.specials_label,
     specials_link: cleanBannerLink(r.specials_link) || EMPTY_BANNERS.specials_link,

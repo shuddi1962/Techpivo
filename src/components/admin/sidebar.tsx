@@ -302,9 +302,9 @@ export function AdminSidebar() {
           collapsed ? (
             <MarketplaceSidebarRail />
           ) : (
-            <ScrollArea className="flex-1">
+            <div className="min-h-0 flex-1">
               <MarketplaceSidebarNav />
-            </ScrollArea>
+            </div>
           )
         ) : collapsed ? (
           <IconRail pathname={pathname} />

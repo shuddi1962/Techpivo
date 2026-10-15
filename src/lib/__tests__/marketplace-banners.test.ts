@@ -458,6 +458,11 @@ describe("pickPopupCampaign", () => {
     // Dropdown card artwork is optional, gradient card when empty.
     expect(parseBanners({}).flash_image).toBe("")
     expect(parseBanners({ flash_image: "https://img/u.jpg" }).flash_image).toBe("https://img/u.jpg")
+    // Homepage banner image hides the text block; text bg defaults clear.
+    expect(parseBanners({}).flash_banner_image).toBe("")
+    expect(parseBanners({}).flash_text_bg).toBe("")
+    expect(parseBanners({ flash_text_bg: "#123abc" }).flash_text_bg).toBe("#123abc")
+    expect(parseBanners({ flash_text_bg: "nope" }).flash_text_bg).toBe("")
   })
 
   it("keeps valid promo colors + flash end dates", () => {
