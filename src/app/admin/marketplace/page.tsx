@@ -6,7 +6,7 @@ import { createClient } from "@/lib/supabase/client"
 import {
   Store, Package, Eye, EyeOff, Star, Trash2, Plus, Search, RefreshCw,
   ExternalLink, Pencil, MousePointerClick, ShoppingBag, BadgeCheck, Globe,
-  LayoutGrid, Plug, ReceiptText, CreditCard, ImagePlus, TrendingUp, MessageSquare,
+  LayoutGrid, Plug, ReceiptText, CreditCard, ImagePlus, TrendingUp, MessageSquare, BadgePercent,
 } from "lucide-react"
 import { MarketplaceCategoriesTab } from "@/components/admin/marketplace-categories-tab"
 import { MarketplaceBannersTab } from "@/components/admin/marketplace-banners-tab"
@@ -15,6 +15,7 @@ import { MarketplaceUpsellsTab } from "@/components/admin/marketplace-upsells-ta
 import { MarketplaceOrdersTab } from "@/components/admin/marketplace-orders-tab"
 import { MarketplacePaymentsTab } from "@/components/admin/marketplace-payments-tab"
 import { MarketplaceReviewsTab } from "@/components/admin/marketplace-reviews-tab"
+import { MarketplacePromotionsTab } from "@/components/admin/marketplace-promotions-tab"
 import { isoToLocalInput } from "@/lib/marketplace-banners"
 
 interface Product {
@@ -52,6 +53,9 @@ const emptyForm = {
   original_price: "",
   sale_price: "",
   sale_end_at: "",
+  merch_sale: true,
+  merch_new: false,
+  merch_bestseller: false,
   is_active: true,
   is_featured: false,
 }
@@ -67,19 +71,23 @@ export default function AdminMarketplacePage() {
   const [form, setForm] = useState(emptyForm)
   const [saving, setSaving] = useState(false)
   const [notice, setNotice] = useState("")
-  const [tab, setTab] = useState<"products" | "orders" | "reviews" | "categories" | "banners" | "cj" | "payments" | "upsells" | "visibility">("products")
+  const [tab, setTab] = useState<"products" | "orders" | "reviews" | "promotions" | "categories" | "banners" | "cj" | "payments" | "upsells" | "visibility">("products")
   // Per-product sale countdowns (productId → ISO end). Loaded with the list.
   const [sales, setSales] = useState<Record<string, string>>({})
+  // Per-product merchandising flags. Loaded with the list.
+  const [merch, setMerch] = useState<Record<string, { sale?: boolean; is_new?: boolean; bestseller?: boolean }>>({})
 
   const load = useCallback(async () => {
-    const [ov, pr, sa] = await Promise.all([
+    const [ov, pr, sa, me] = await Promise.all([
       fetch("/admin/marketplace/api?section=overview").then((r) => r.json()).catch(() => null),
       fetch("/admin/marketplace/api?section=products").then((r) => r.json()).catch(() => null),
       fetch("/admin/marketplace/api?section=sales").then((r) => r.json()).catch(() => null),
+      fetch("/admin/marketplace/api?section=merch").then((r) => r.json()).catch(() => null),
     ])
     if (ov?.overview) setOverview(ov.overview)
     if (pr?.products) setProducts(pr.products)
     if (sa?.sales && typeof sa.sales === "object") setSales(sa.sales as Record<string, string>)
+    if (me?.merch && typeof me.merch === "object") setMerch(me.merch as Record<string, { sale?: boolean; is_new?: boolean; bestseller?: boolean }>)
     setLoading(false)
   }, [])
 
@@ -140,6 +148,7 @@ export default function AdminMarketplacePage() {
 
   const openEdit = (p: Product) => {
     setEditing(p)
+    const f = merch[p.id] || {}
     setForm({
       product_name: p.product_name,
       program_key: p.program_key || "",
@@ -149,10 +158,33 @@ export default function AdminMarketplacePage() {
       original_price: p.original_price != null ? String(p.original_price) : "",
       sale_price: p.sale_price != null ? String(p.sale_price) : "",
       sale_end_at: sales[p.id] || "",
+      merch_sale: f.sale !== false,
+      merch_new: f.is_new === true,
+      merch_bestseller: f.bestseller === true,
       is_active: p.is_active,
       is_featured: !!p.is_featured,
     })
     setShowForm(true)
+  }
+
+  const saveMerch = async (productId: string, flags: { sale?: boolean; is_new?: boolean; bestseller?: boolean }) => {
+    const next = { ...merch }
+    const clean: { sale?: boolean; is_new?: boolean; bestseller?: boolean } = {}
+    if (flags.sale === false) clean.sale = false
+    if (flags.is_new) clean.is_new = true
+    if (flags.bestseller) clean.bestseller = true
+    if (Object.keys(clean).length > 0) next[productId] = clean
+    else delete next[productId]
+    setMerch(next)
+    try {
+      await fetch("/admin/marketplace/api", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "merch-save", merch: next }),
+      })
+    } catch {
+      // product save already succeeded — flags sync retries on next load
+    }
   }
 
   const saveSaleEnd = async (productId: string, iso: string) => {
@@ -201,6 +233,7 @@ export default function AdminMarketplacePage() {
           if ((form.sale_end_at || "") !== (sales[editing.id] || "")) {
             void saveSaleEnd(editing.id, form.sale_end_at.trim())
           }
+          void saveMerch(editing.id, { sale: form.merch_sale !== false ? undefined : false, is_new: form.merch_new, bestseller: form.merch_bestseller })
           setShowForm(false)
           flash("Product updated — live on TechPivo Market")
         } else flash(data.error || "Update failed")
@@ -215,6 +248,9 @@ export default function AdminMarketplacePage() {
           setProducts((prev) => [data.product, ...prev])
           if (form.sale_end_at.trim() && data.product?.id) {
             void saveSaleEnd(String(data.product.id), form.sale_end_at.trim())
+          }
+          if (data.product?.id && (!form.merch_sale || form.merch_new || form.merch_bestseller)) {
+            void saveMerch(String(data.product.id), { sale: form.merch_sale !== false ? undefined : false, is_new: form.merch_new, bestseller: form.merch_bestseller })
           }
           setShowForm(false)
           flash("Product added — live on TechPivo Market")
@@ -359,6 +395,8 @@ export default function AdminMarketplacePage() {
 
       {tab === "reviews" && <MarketplaceReviewsTab />}
 
+      {tab === "promotions" && <MarketplacePromotionsTab />}
+
       {tab === "upsells" && <MarketplaceUpsellsTab />}
 
       {tab === "payments" && <MarketplacePaymentsTab />}
@@ -484,6 +522,15 @@ export default function AdminMarketplacePage() {
                         {!!p.is_featured && (
                           <span className="ml-1.5 text-[11px] font-bold px-2 py-1 rounded-full bg-amber-50 text-amber-700">Featured</span>
                         )}
+                        {merch[p.id]?.is_new && (
+                          <span className="ml-1.5 text-[11px] font-bold px-2 py-1 rounded-full bg-sky-50 text-sky-700">New</span>
+                        )}
+                        {merch[p.id]?.bestseller && (
+                          <span className="ml-1.5 text-[11px] font-bold px-2 py-1 rounded-full bg-violet-50 text-violet-700">Best</span>
+                        )}
+                        {merch[p.id]?.sale === false && (
+                          <span className="ml-1.5 text-[11px] font-bold px-2 py-1 rounded-full bg-slate-100 text-slate-500">No badge</span>
+                        )}
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex justify-end gap-1">
@@ -564,13 +611,27 @@ export default function AdminMarketplacePage() {
                 />
                 <p className="text-[11px] text-slate-500 mt-1">Shows a live “Sale ends in …” urgency timer on this product&apos;s card and page. Empty = no timer. Set a sale price above for the discount badge.</p>
               </div>
-              <div className="flex gap-4">
+              <div className="flex gap-4 flex-wrap">
                 <label className="flex items-center gap-2 text-sm text-slate-700">
                   <input type="checkbox" checked={form.is_active} onChange={(e) => setForm({ ...form, is_active: e.target.checked })} className="accent-[#F59E0B]" /> Active
                 </label>
                 <label className="flex items-center gap-2 text-sm text-slate-700">
                   <input type="checkbox" checked={form.is_featured} onChange={(e) => setForm({ ...form, is_featured: e.target.checked })} className="accent-[#F59E0B]" /> Featured
                 </label>
+              </div>
+              <div className="rounded-lg border border-dashed p-3">
+                <p className="text-xs font-bold text-slate-700 mb-2">Promote this product</p>
+                <div className="flex gap-4 flex-wrap">
+                  <label className="flex items-center gap-2 text-sm text-slate-700" title="Show the -% discount badge + strikethrough when a sale price is set">
+                    <input type="checkbox" checked={form.merch_sale !== false} onChange={(e) => setForm({ ...form, merch_sale: e.target.checked })} className="accent-[#DC2626]" /> Discount badge
+                  </label>
+                  <label className="flex items-center gap-2 text-sm text-slate-700" title="Pin to the front of New Arrivals">
+                    <input type="checkbox" checked={!!form.merch_new} onChange={(e) => setForm({ ...form, merch_new: e.target.checked })} className="accent-[#F59E0B]" /> New arrival
+                  </label>
+                  <label className="flex items-center gap-2 text-sm text-slate-700" title="Pin to the front of Best Sellers">
+                    <input type="checkbox" checked={!!form.merch_bestseller} onChange={(e) => setForm({ ...form, merch_bestseller: e.target.checked })} className="accent-[#F59E0B]" /> Best seller
+                  </label>
+                </div>
               </div>
             </div>
             <div className="flex gap-2 mt-5">
@@ -592,6 +653,7 @@ const SECTIONS = [
   { id: "products", label: "Products", desc: "Catalog, prices & sale timers", icon: Package },
   { id: "orders", label: "Orders", desc: "Payments & fulfillment", icon: ReceiptText },
   { id: "reviews", label: "Reviews", desc: "Ratings & moderation", icon: MessageSquare },
+  { id: "promotions", label: "Promotions", desc: "Coupons & discounts", icon: BadgePercent },
   { id: "categories", label: "Categories", desc: "Departments & mapping", icon: LayoutGrid },
   { id: "banners", label: "Banners & promos", desc: "Hero, promo bar, flash sale, popups", icon: ImagePlus },
   { id: "cj", label: "CJ Import", desc: "Supplier catalog sync", icon: Plug },

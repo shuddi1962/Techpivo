@@ -55,7 +55,28 @@ export async function GET(request: NextRequest) {
         .order("created_at", { ascending: false })
         .limit(200)
       if (error) throw error
-      return NextResponse.json({ orders: data || [] })
+      const orders = (data || []) as Array<Record<string, unknown>>
+      // Coupon itemization (graceful until migration 096 is applied live).
+      try {
+        const ids = orders.map((o) => o.id as string).filter(Boolean)
+        if (ids.length > 0) {
+          const { data: extra } = await supabase
+            .from("marketplace_orders")
+            .select("id,coupon_code,discount_usd")
+            .in("id", ids)
+          const byId = new Map(((extra || []) as Array<{ id: string; coupon_code?: string | null; discount_usd?: number | null }>).map((r) => [r.id, r]))
+          for (const o of orders) {
+            const hit = byId.get(o.id as string)
+            if (hit) {
+              o.coupon_code = hit.coupon_code || null
+              o.discount_usd = Number(hit.discount_usd) || 0
+            }
+          }
+        }
+      } catch {
+        // columns not migrated yet — orders still list fine
+      }
+      return NextResponse.json({ orders })
     }
     if (section === "reviews") {
       const { data, error } = await supabase
@@ -82,6 +103,16 @@ export async function GET(request: NextRequest) {
       const { data } = await supabase.from("site_settings").select("value").eq("key", "marketplace_sales").maybeSingle()
       const { parseMarketSales } = await import("@/lib/marketplace-sales")
       return NextResponse.json({ sales: parseMarketSales((data as { value?: unknown } | null)?.value) })
+    }
+    if (section === "merch") {
+      const { data } = await supabase.from("site_settings").select("value").eq("key", "marketplace_merch").maybeSingle()
+      const { parseMarketMerch } = await import("@/lib/marketplace-merch")
+      return NextResponse.json({ merch: parseMarketMerch((data as { value?: unknown } | null)?.value) })
+    }
+    if (section === "coupons") {
+      const { data } = await supabase.from("site_settings").select("value").eq("key", "marketplace_coupons").maybeSingle()
+      const { parseMarketCoupons } = await import("@/lib/marketplace-coupons")
+      return NextResponse.json({ coupons: parseMarketCoupons((data as { value?: unknown } | null)?.value) })
     }
     if (section === "popup-stats") {
       const { summarizePopupStats } = await import("@/lib/marketplace-banners")
@@ -312,6 +343,26 @@ export async function POST(request: NextRequest) {
       const { error } = await supabase.from("marketplace_reviews").delete().eq("id", id)
       if (error) throw error
       return NextResponse.json({ success: true })
+    }
+    // Save per-product merchandising flags (sale/new/bestseller)
+    if (body.action === "merch-save") {
+      const { parseMarketMerch } = await import("@/lib/marketplace-merch")
+      const merch = parseMarketMerch(body.merch)
+      const { error } = await supabase
+        .from("site_settings")
+        .upsert({ key: "marketplace_merch", value: merch as unknown as never }, { onConflict: "key" })
+      if (error) throw error
+      return NextResponse.json({ success: true, merch })
+    }
+    // Replace the whole coupon list (validated item by item)
+    if (body.action === "coupons-save") {
+      const { parseMarketCoupons } = await import("@/lib/marketplace-coupons")
+      const coupons = parseMarketCoupons(body.coupons)
+      const { error } = await supabase
+        .from("site_settings")
+        .upsert({ key: "marketplace_coupons", value: coupons as unknown as never }, { onConflict: "key" })
+      if (error) throw error
+      return NextResponse.json({ success: true, coupons })
     }
     // Curated "Complete Your Purchase" overrides (migration 094 tables).
     if (body.action === "recommend-add") {

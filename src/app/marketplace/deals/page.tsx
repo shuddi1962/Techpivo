@@ -1,7 +1,8 @@
 import type { Metadata } from "next"
-import { fetchStoreProducts, fetchMarketBanners } from "@/lib/marketplace-products"
+import { fetchStoreProducts, fetchMarketBanners, fetchMarketMerch } from "@/lib/marketplace-products"
 import { pageBannerOf } from "@/lib/marketplace-banners"
 import { discountOf } from "@/lib/marketplace-catalog"
+import { saleBadgeOn } from "@/lib/marketplace-merch"
 import { ProductListing } from "@/components/marketplace/product-listing"
 import { StorePageShell, CollectionHero } from "@/components/marketplace/store-shell"
 
@@ -13,12 +14,14 @@ export const metadata: Metadata = {
 }
 
 export default async function MarketplaceDealsPage() {
-  const [all, banners] = await Promise.all([
+  const [all, banners, merch] = await Promise.all([
     fetchStoreProducts({ limit: 150 }),
     fetchMarketBanners(),
+    fetchMarketMerch(),
   ])
+  // Only admin-approved discounts appear as deals.
   const products = all
-    .filter((p) => discountOf(p) > 0)
+    .filter((p) => discountOf(p) > 0 && saleBadgeOn(merch, p.id))
     .sort((a, b) => discountOf(b) - discountOf(a))
   return (
     <StorePageShell trail={[{ label: "Deals of the Day" }]}>

@@ -88,6 +88,22 @@ export async function fetchStoreProducts(opts?: {
   })
 }
 
+// Admin merchandising flags (public site_settings read). Never throws —
+// pages fall back to defaults (sale badges on, no pins) instead.
+export async function fetchMarketMerch(): Promise<import("@/lib/marketplace-merch").MarketMerch> {
+  const { parseMarketMerch } = await import("@/lib/marketplace-merch")
+  try {
+    const supabase = createPublicClient()
+    const res = (await fetchWithTimeout(
+      supabase.from("site_settings").select("value").eq("key", "marketplace_merch").maybeSingle(),
+      8000
+    )) as { data: { value?: unknown } | null } | null
+    return parseMarketMerch(res?.data?.value)
+  } catch {
+    return {}
+  }
+}
+
 // Admin-custom storefront banners (public site_settings read). Never
 // throws — pages fall back to EMPTY_BANNERS (gradient heroes) instead.
 export async function fetchMarketBanners(): Promise<MarketBanners> {

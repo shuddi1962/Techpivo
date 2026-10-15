@@ -43,6 +43,11 @@ export function CheckoutPage() {
   }, [form.country, dialTouched])
   const [shipOptions, setShipOptions] = useState<ShipOption[]>([])
   const [shipPick, setShipPick] = useState<ShipSelection | null>(null)
+  // Coupon (validated live; the server re-validates before charging).
+  const [couponInput, setCouponInput] = useState("")
+  const [coupon, setCoupon] = useState<{ code: string; discountUsd: number } | null>(null)
+  const [couponMsg, setCouponMsg] = useState("")
+  const [couponBusy, setCouponBusy] = useState(false)
 
   useEffect(() => {
     const ids = getCart().map((l) => l.id)
@@ -107,8 +112,35 @@ export function CheckoutPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activePick?.id])
   const shipping = activePick ? activePick.feeUsd : 0
-  const totalUsd = subtotal + shipping
+  const discountUsd = coupon ? Math.min(subtotal, coupon.discountUsd) : 0
+  const totalUsd = Math.max(0, subtotal - discountUsd + shipping)
   const totalNgn = Math.round(totalUsd * rate)
+
+  const applyCoupon = async () => {
+    const code = couponInput.trim().toUpperCase()
+    if (!code || couponBusy) return
+    setCouponBusy(true)
+    setCouponMsg("")
+    try {
+      const res = await fetch("/api/marketplace/coupons", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code, subtotal }),
+      })
+      const data = await res.json().catch(() => null)
+      if (data?.ok) {
+        setCoupon({ code: String(data.code || code), discountUsd: Number(data.discount_usd) || 0 })
+        setCouponMsg("Coupon applied.")
+      } else {
+        setCoupon(null)
+        setCouponMsg(data?.message || "That code is not valid.")
+      }
+    } catch {
+      setCouponMsg("Could not check that code.")
+    } finally {
+      setCouponBusy(false)
+    }
+  }
 
   // Default country follows the shopper's real location (worldwide store).
   useEffect(() => {
@@ -155,6 +187,7 @@ export function CheckoutPage() {
           ship_country: form.country,
           items: lines.map((l) => ({ id: l.id, qty: l.qty, variant: l.variant ? { vid: l.variant.vid, label: l.variant.label } : null })),
           shipping_id: activePick?.id || "standard",
+          coupon_code: coupon?.code || "",
         }),
       })
       const data = await res.json()
@@ -306,6 +339,40 @@ export function CheckoutPage() {
             <span>Subtotal</span>
             <MarketPrice usd={subtotal} className="font-semibold text-[#0F172A]" />
           </div>
+          {/* coupon */}
+          <div>
+            {coupon ? (
+              <div className="flex items-center justify-between gap-2 rounded-xl bg-[#ECFDF5] border border-[#A7F3D0] px-3 py-2">
+                <span className="text-xs font-bold text-[#047857] font-mono tracking-wide">{coupon.code} applied</span>
+                <button
+                  type="button"
+                  onClick={() => { setCoupon(null); setCouponInput(""); setCouponMsg("") }}
+                  className="text-xs font-semibold text-slate-500 hover:text-[#EF4444]"
+                >
+                  Remove
+                </button>
+              </div>
+            ) : (
+              <div className="flex gap-2">
+                <input
+                  value={couponInput}
+                  onChange={(e) => setCouponInput(e.target.value.toUpperCase().replace(/[^A-Z0-9-]/g, "").slice(0, 24))}
+                  placeholder="Coupon code"
+                  aria-label="Coupon code"
+                  className="min-w-0 flex-1 rounded-lg border border-[#E2E8F0] px-3 py-2 text-sm font-mono uppercase placeholder:font-sans placeholder:normal-case focus:border-[#F59E0B] focus:outline-none"
+                />
+                <button
+                  type="button"
+                  onClick={applyCoupon}
+                  disabled={couponBusy || !couponInput.trim()}
+                  className="shrink-0 rounded-lg bg-[#0F172A] px-4 py-2 text-sm font-bold text-white transition-colors hover:bg-black disabled:opacity-50"
+                >
+                  {couponBusy ? "Checking..." : "Apply"}
+                </button>
+              </div>
+            )}
+            {couponMsg && <p className={`mt-1 text-xs ${coupon ? "text-[#047857]" : "text-[#EF4444]"}`}>{couponMsg}</p>}
+          </div>
           <div className="flex justify-between text-sm text-slate-600">
             <span>Shipping{activePick ? ` (${activePick.name})` : ""}</span>
             {shipping === 0 ? (
@@ -314,6 +381,12 @@ export function CheckoutPage() {
               <MarketPrice usd={shipping} className="font-semibold text-[#0F172A]" />
             )}
           </div>
+          {discountUsd > 0 && (
+            <div className="flex justify-between text-sm text-[#047857]">
+              <span>Coupon{coupon ? ` (${coupon.code})` : ""}</span>
+              <span className="font-semibold">−<MarketPrice usd={discountUsd} /></span>
+            </div>
+          )}
           {lines.length > 1 && (
             <p className="text-[11px] leading-relaxed text-slate-500">
               Items may ship in separate parcels and arrive on different days — one delivery fee covers the whole order, and every parcel is tracked.

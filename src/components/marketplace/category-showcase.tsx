@@ -12,6 +12,8 @@ import { readCompare, toggleCompareStored } from "@/lib/marketplace-compare"
 import { discountPct } from "./feature-panels"
 import { MarketPrice } from "./market-price"
 import { SaleCountdown, useSaleEnd } from "./sale-countdown"
+import { saleBadgeOn } from "@/lib/marketplace-merch"
+import { useMarketMerch } from "./market-flags"
 
 interface ShowcaseActions {
   onAdd: (p: DemoProduct) => void
@@ -30,6 +32,8 @@ function ShowcaseCard({ p, onAdd, added, wished, onWish }: { p: DemoProduct } & 
   const pct = discountPct(p.price, p.oldPrice)
   const href = /^[0-9a-f-]{36}$/i.test(p.id) ? `/marketplace/product/${p.id}` : undefined
   const saleEnd = useSaleEnd(p.id)
+  const merch = useMarketMerch()
+  const showSale = pct > 0 && saleBadgeOn(merch, p.id)
   const flipCompare = () => setCompared((m) => ({ ...m, [p.id]: toggleCompareStored(p.id) }))
 
   const iconBtn =
@@ -42,7 +46,7 @@ function ShowcaseCard({ p, onAdd, added, wished, onWish }: { p: DemoProduct } & 
             <img src={marketImage(p.image)} alt={p.name} loading="lazy" decoding="async" className="h-full w-full object-contain transition-transform duration-500 group-hover:scale-105" />
           ) : null}
         </div>
-        {pct > 0 && (
+        {showSale && (
           <span className="absolute left-1.5 top-1.5 z-10 flex h-10 w-10 items-center justify-center rounded-full bg-[#F59E0B] text-[11px] font-extrabold text-[#0F172A] shadow-sm">
             -{pct}%
           </span>
@@ -98,11 +102,11 @@ function ShowcaseCard({ p, onAdd, added, wished, onWish }: { p: DemoProduct } & 
         <p title={p.name} className="truncate text-[13px] font-semibold text-[#0F172A] transition-colors group-hover:text-[#B45309]">{p.name}</p>
         <div className="flex items-baseline gap-1.5">
           <MarketPrice usd={p.price} className="text-[15px] font-extrabold tabular-nums text-[#0F172A]" />
-          {p.oldPrice && p.oldPrice > p.price && (
+          {showSale && p.oldPrice && p.oldPrice > p.price && (
             <MarketPrice usd={p.oldPrice} className="text-xs tabular-nums text-slate-400 line-through" />
           )}
         </div>
-        {pct > 0 && saleEnd.trim() && (
+        {showSale && saleEnd.trim() && (
           <SaleCountdown endAt={saleEnd} prefix="Sale ends in" className="mt-0.5 w-fit" />
         )}
         {/* mobile add to cart — the slide-up button covers desktop */}

@@ -9,6 +9,8 @@ import { readCompare, toggleCompareStored } from "@/lib/marketplace-compare"
 import { priceOf, discountOf, type StoreProduct } from "@/lib/marketplace-catalog"
 import { MarketPrice } from "./market-price"
 import { SaleCountdown, useSaleEnd } from "./sale-countdown"
+import { saleBadgeOn } from "@/lib/marketplace-merch"
+import { useMarketMerch } from "./market-flags"
 
 // Storefront card: the whole card (image + name + price) opens the product
 // page via a stretched link; hover rail (wishlist / quick view / compare)
@@ -31,6 +33,9 @@ export function ProductCard({
   const old = p.original_price ? Number(p.original_price) : NaN
   const href = `/marketplace/product/${p.id}`
   const saleEnd = useSaleEnd(p.id)
+  const merch = useMarketMerch()
+  // Admin decides per product whether the discount shows at all.
+  const showSale = discount > 0 && saleBadgeOn(merch, p.id)
   const [compared, setCompared] = useState(() => !!readCompare()[p.id])
 
   const toggleCompare = () => setCompared(toggleCompareStored(p.id))
@@ -54,7 +59,7 @@ export function ProductCard({
             <Package className="h-12 w-12 text-slate-200" />
           </span>
         )}
-        {discount > 0 && (
+        {showSale && (
           <span className="absolute left-3 top-3 z-10 rounded-full bg-[#DC2626] px-2.5 py-1 text-[11px] font-extrabold tracking-wide text-white shadow-sm">
             -{Math.round(discount * 100)}%
           </span>
@@ -109,13 +114,13 @@ export function ProductCard({
         <div className="flex items-baseline gap-1.5">
           <MarketPrice
             usd={price}
-            className={`text-[15px] font-extrabold tabular-nums ${discount > 0 ? "text-[#DC2626]" : "text-[#0F172A]"}`}
+            className={`text-[15px] font-extrabold tabular-nums ${showSale ? "text-[#DC2626]" : "text-[#0F172A]"}`}
           />
-          {discount > 0 && Number.isFinite(old) && (
+          {showSale && Number.isFinite(old) && (
             <MarketPrice usd={old} className="text-[11px] tabular-nums text-slate-400 line-through" />
           )}
         </div>
-        {discount > 0 && saleEnd.trim() && (
+        {showSale && saleEnd.trim() && (
           <SaleCountdown endAt={saleEnd} prefix="Sale ends in" className="mt-1 w-fit" />
         )}
       </div>

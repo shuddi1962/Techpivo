@@ -95,6 +95,31 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "None of those products are available anymore." }, { status: 400 })
     }
 
+    // Coupon: validated server-side (never trusted from the client preview).
+    let couponCode: string | null = null
+    let discountUsd = 0
+    const wantCoupon = String(body?.coupon_code || "").trim().toUpperCase().slice(0, 24)
+    if (wantCoupon) {
+      try {
+        const admin0 = createAdmin()
+        const { data: cdata } = await admin0.from("site_settings").select("value").eq("key", "marketplace_coupons").maybeSingle()
+        const { parseMarketCoupons, validateCoupon } = await import("@/lib/marketplace-coupons")
+        const check = validateCoupon(parseMarketCoupons((cdata as { value?: unknown } | null)?.value), wantCoupon, subtotal)
+        if (!check.ok) {
+          return NextResponse.json({ error: check.reason }, { status: 400 })
+        }
+        couponCode = check.coupon!.code
+        discountUsd = check.discountUsd
+      } catch (e) {
+        if (e instanceof Error && /minimum|expired|limit|active|valid|live/i.test(e.message)) {
+          return NextResponse.json({ error: e.message }, { status: 400 })
+        }
+        // coupon store unreadable — proceed without the discount
+        couponCode = null
+        discountUsd = 0
+      }
+    }
+
     // Delivery: buyer's chosen option, re-resolved server-side (never trusted
     // from the client). Supplier courier rates carry store markup. The
     // resolved method name + ETA are stored for fulfillment + tracking.
@@ -125,7 +150,7 @@ export async function POST(request: NextRequest) {
       shippingUsd = opt?.feeUsd ?? 5
       shipEta = opt?.eta || shipEta
     }
-    const totalUsd = Math.round((subtotal + shippingUsd) * 100) / 100
+    const totalUsd = Math.max(0, Math.round((subtotal - discountUsd + shippingUsd) * 100) / 100)
 
     // NGN total via live FX (fallback 1600) — the gateway charges naira units
     let usdNgn = 1600
@@ -140,32 +165,65 @@ export async function POST(request: NextRequest) {
     const reference = `TPM-${Date.now().toString(36).toUpperCase()}${Math.random().toString(36).slice(2, 6).toUpperCase()}`
 
     const admin = createAdmin()
-    const { data: order, error: orderError } = await admin
-      .from("marketplace_orders")
-      .insert({
-        email,
-        items: lines,
-        subtotal_usd: Math.round(subtotal * 100) / 100,
-        shipping_usd: shippingUsd,
-        total_usd: totalUsd,
-        total_ngn: totalNgn,
-        currency: "NGN",
-        paystack_reference: reference,
-        paystack_status: "pending",
-        status: "pending",
-        ship_name: ship.name,
-        ship_phone: ship.phone,
-        ship_address: ship.address,
-        ship_city: ship.city,
-        ship_state: ship.state || null,
-        ship_zip: ship.zip || null,
-        ship_country: ship.country,
-        ship_method: shipMethodName,
-        ship_eta: shipEta,
-      })
-      .select("id")
-      .single()
+    const baseRow = {
+      email,
+      items: lines,
+      subtotal_usd: Math.round(subtotal * 100) / 100,
+      shipping_usd: shippingUsd,
+      total_usd: totalUsd,
+      total_ngn: totalNgn,
+      currency: "NGN",
+      paystack_reference: reference,
+      paystack_status: "pending",
+      status: "pending",
+      ship_name: ship.name,
+      ship_phone: ship.phone,
+      ship_address: ship.address,
+      ship_city: ship.city,
+      ship_state: ship.state || null,
+      ship_zip: ship.zip || null,
+      ship_country: ship.country,
+      ship_method: shipMethodName,
+      ship_eta: shipEta,
+    }
+    // Coupon itemization needs migration 096 live — degrade gracefully
+    // (totals already reflect the discount) until it is applied.
+    let order: { id: string } | null = null
+    let orderError: { message?: string } | null = null
+    {
+      const withCoupon = couponCode
+        ? { ...baseRow, coupon_code: couponCode, discount_usd: discountUsd }
+        : { ...baseRow }
+      const res = await admin
+        .from("marketplace_orders")
+        .insert(withCoupon)
+        .select("id")
+        .single()
+      order = res.data as { id: string } | null
+      orderError = (res.error as { message?: string } | null) || null
+      if (orderError && couponCode && /coupon|discount_usd/i.test(orderError.message || "")) {
+        const retry = await admin.from("marketplace_orders").insert(baseRow).select("id").single()
+        order = retry.data as { id: string } | null
+        orderError = (retry.error as { message?: string } | null) || null
+      }
+    }
     if (orderError || !order) return NextResponse.json({ error: "Could not create your order." }, { status: 500 })
+
+    // Best-effort coupon usage counting (for admin limits display).
+    if (couponCode) {
+      try {
+        const { data: cdata } = await admin.from("site_settings").select("value").eq("key", "marketplace_coupons").maybeSingle()
+        const { parseMarketCoupons } = await import("@/lib/marketplace-coupons")
+        const list = parseMarketCoupons((cdata as { value?: unknown } | null)?.value)
+        const hit = list.find((c) => c.code === couponCode)
+        if (hit) {
+          hit.uses += 1
+          await admin.from("site_settings").upsert({ key: "marketplace_coupons", value: list }, { onConflict: "key" })
+        }
+      } catch {
+        // counting must never break checkout
+      }
+    }
 
     try {
       const origin = new URL(request.url).origin
@@ -186,6 +244,8 @@ export async function POST(request: NextRequest) {
         authorization_url: init.checkout_url,
         total_ngn: totalNgn,
         total_usd: totalUsd,
+        coupon_code: couponCode,
+        discount_usd: discountUsd,
       })
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Payment could not start."

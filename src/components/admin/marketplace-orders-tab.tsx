@@ -44,6 +44,8 @@ interface Order {
   ship_country: string | null
   ship_method: string | null
   ship_eta: string | null
+  coupon_code?: string | null
+  discount_usd?: number | null
   created_at: string
 }
 
@@ -216,7 +218,10 @@ export function MarketplaceOrdersTab() {
           <div key={o.id} className="bg-white border rounded-xl p-4">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div>
-                <p className="text-sm font-bold text-slate-900">{o.paystack_reference || o.id.slice(0, 8)}</p>
+                    <p className="text-sm font-bold text-slate-900">{o.paystack_reference || o.id.slice(0, 8)}</p>
+                    {o.coupon_code && (
+                      <p className="text-[11px] font-bold text-emerald-700">Coupon {o.coupon_code}{Number(o.discount_usd) > 0 && ` · −$${Number(o.discount_usd).toFixed(2)}`}</p>
+                    )}
                 <p className="text-xs text-slate-500">{o.email} · {o.ship_name || ""}{o.ship_city ? ` · ${o.ship_city}` : ""} · {new Date(o.created_at).toLocaleString()}</p>
               </div>
               <span className="text-[11px] font-bold uppercase px-2 py-1 rounded-full bg-amber-50 text-amber-700">{o.status}</span>

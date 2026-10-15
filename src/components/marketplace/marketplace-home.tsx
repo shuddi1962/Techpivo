@@ -27,6 +27,8 @@ import { ShopCollections, type CollectionItem } from "./shop-collections"
 import { BrandRail } from "./brand-rail"
 import { MarketPrice } from "./market-price"
 import { SaleCountdown, useSaleEnd } from "./sale-countdown"
+import { saleBadgeOn, isNewPick, isBestsellerPick } from "@/lib/marketplace-merch"
+import { useMarketMerch } from "./market-flags"
 
 interface DbProduct {
   id: string
@@ -51,6 +53,8 @@ interface DbProduct {
 function ProductCard({ p, onAdd, wished, onWish, added, href }: { p: DemoProduct; onAdd: () => void; wished: boolean; onWish: () => void; added: boolean; href?: string }) {
   const discount = p.oldPrice ? Math.round((1 - p.price / p.oldPrice) * 100) : 0
   const saleEnd = useSaleEnd(p.id)
+  const merch = useMarketMerch()
+  const showSale = discount > 0 && saleBadgeOn(merch, p.id)
   const [compared, setCompared] = useState(() => !!readCompare()[p.id])
   const toggleCompare = () => setCompared(toggleCompareStored(p.id))
   const iconBtn =
@@ -65,7 +69,7 @@ function ProductCard({ p, onAdd, wished, onWish, added, href }: { p: DemoProduct
             <Package className="h-12 w-12 text-slate-200" />
           </span>
         )}
-        {discount > 0 && (
+        {showSale && (
           <span className="absolute left-3 top-3 z-10 rounded-full bg-[#DC2626] px-2.5 py-1 text-[11px] font-extrabold tracking-wide text-white shadow-sm">-{discount}%</span>
         )}
         {/* top-right icon stack — wishlist / quick view / compare */}
@@ -121,10 +125,10 @@ function ProductCard({ p, onAdd, wished, onWish, added, href }: { p: DemoProduct
       <div className="flex flex-1 flex-col gap-1 p-3">
         <h5 className="truncate text-[13px] font-semibold leading-snug text-[#0F172A] transition-colors group-hover:text-[#B45309]">{p.name}</h5>
         <div className="flex items-baseline gap-1.5">
-          <MarketPrice usd={p.price} className={`text-[15px] font-extrabold tabular-nums ${discount > 0 ? "text-[#DC2626]" : "text-[#0F172A]"}`} />
-          {p.oldPrice && <MarketPrice usd={p.oldPrice} className="text-[11px] tabular-nums text-slate-400 line-through" />}
+          <MarketPrice usd={p.price} className={`text-[15px] font-extrabold tabular-nums ${showSale ? "text-[#DC2626]" : "text-[#0F172A]"}`} />
+          {p.oldPrice && showSale && <MarketPrice usd={p.oldPrice} className="text-[11px] tabular-nums text-slate-400 line-through" />}
         </div>
-        {discount > 0 && saleEnd.trim() && (
+        {showSale && saleEnd.trim() && (
           <SaleCountdown endAt={saleEnd} prefix="Sale ends in" className="mt-0.5 w-fit" />
         )}
       </div>
@@ -495,6 +499,9 @@ export function MarketplaceHome() {
   )
 
   const grid: DemoProduct[] = liveProducts
+  // Admin merchandising: discount badges show only where enabled, and
+  // pinned New/Best products lead their rails.
+  const merch = useMarketMerch()
   // Homepage allocation — every product appears in ONE section only.
   // Order: flash → featured → new → best → trending, each skipping IDs
   // already taken, so rails never repeat each other. (The tabbed grid
@@ -506,7 +513,9 @@ export function MarketplaceHome() {
   )
   const usedIds = new Set<string>()
   const flashItems = takeFresh(
-    [...grid].sort((a, b) => discountRateOf(b) - discountRateOf(a)),
+    [...grid]
+      .filter((p) => discountRateOf(p) > 0 && saleBadgeOn(merch, p.id))
+      .sort((a, b) => discountRateOf(b) - discountRateOf(a)),
     usedIds,
     4
   )
@@ -515,9 +524,14 @@ export function MarketplaceHome() {
     usedIds,
     6
   )
-  const newArrivals = takeFresh(grid, usedIds, 6)
+  const newArrivals = takeFresh(
+    [...grid].sort((a, b) => Number(isNewPick(merch, b.id)) - Number(isNewPick(merch, a.id))),
+    usedIds,
+    6
+  )
   const bestPool = [...grid].sort(
     (a, b) =>
+      Number(isBestsellerPick(merch, b.id)) - Number(isBestsellerPick(merch, a.id)) ||
       b.reviews - a.reviews ||
       (clicksById.get(b.id) || 0) - (clicksById.get(a.id) || 0) ||
       discountRateOf(b) - discountRateOf(a) ||

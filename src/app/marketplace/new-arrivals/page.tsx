@@ -1,6 +1,7 @@
 import type { Metadata } from "next"
-import { fetchStoreProducts, fetchMarketBanners } from "@/lib/marketplace-products"
+import { fetchStoreProducts, fetchMarketBanners, fetchMarketMerch } from "@/lib/marketplace-products"
 import { pageBannerOf } from "@/lib/marketplace-banners"
+import { isNewPick } from "@/lib/marketplace-merch"
 import { ProductListing } from "@/components/marketplace/product-listing"
 import { StorePageShell, CollectionHero } from "@/components/marketplace/store-shell"
 
@@ -12,10 +13,15 @@ export const metadata: Metadata = {
 }
 
 export default async function MarketplaceNewArrivalsPage() {
-  const [products, banners] = await Promise.all([
+  const [all, banners, merch] = await Promise.all([
     fetchStoreProducts({ order: "newest", limit: 100 }),
     fetchMarketBanners(),
+    fetchMarketMerch(),
   ])
+  // Admin-pinned New arrivals lead, then the genuinely newest.
+  const products = [...all].sort(
+    (a, b) => Number(isNewPick(merch, b.id)) - Number(isNewPick(merch, a.id))
+  )
   return (
     <StorePageShell trail={[{ label: "New Arrivals" }]}>
       <CollectionHero

@@ -26,10 +26,12 @@ export function TrackPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
   const [order, setOrder] = useState<TrackedOrder | null>(null)
+  const [coupon, setCoupon] = useState<{ coupon_code: string | null; discount_usd: number } | null>(null)
 
   const lookup = async () => {
     setError("")
     setOrder(null)
+    setCoupon(null)
     if (!reference.trim() || !email.trim()) {
       setError("Enter your order reference and the email you paid with.")
       return
@@ -40,7 +42,12 @@ export function TrackPage() {
         `/api/marketplace/orders/track?reference=${encodeURIComponent(reference.trim())}&email=${encodeURIComponent(email.trim())}`
       )
       const data = await res.json()
-      if (res.ok && data?.order) setOrder(data.order as TrackedOrder)
+      if (res.ok && data?.order) {
+        setOrder(data.order as TrackedOrder)
+        if (data?.coupon?.coupon_code || Number(data?.coupon?.discount_usd) > 0) {
+          setCoupon({ coupon_code: data.coupon.coupon_code || null, discount_usd: Number(data.coupon.discount_usd) || 0 })
+        }
+      }
       else setError(data?.error || "Order not found.")
     } catch {
       setError("Lookup failed. Check your connection and try again.")
@@ -98,6 +105,11 @@ export function TrackPage() {
               <span>Total paid</span>
               <span>₦{Number(order.total_ngn || 0).toLocaleString()} (≈ ${Number(order.total_usd || 0).toFixed(2)})</span>
             </div>
+            {coupon && coupon.discount_usd > 0 && (
+              <p className="text-xs font-semibold text-[#047857]">
+                Includes coupon{coupon.coupon_code ? ` ${coupon.coupon_code}` : ""} savings of ${coupon.discount_usd.toFixed(2)}
+              </p>
+            )}
             <p className="text-xs text-slate-400">Ordered {new Date(order.created_at).toLocaleString()}{order.ship_city ? ` · delivering to ${order.ship_city}` : ""}</p>
             {order.cj_order_id && <p className="text-xs text-slate-400">Fulfillment ID: {order.cj_order_id}</p>}
             {(Array.isArray(order.items) ? order.items : []).length > 1 && (
