@@ -9,6 +9,7 @@ import type { DemoProduct } from "@/lib/marketplace"
 import { marketImage } from "@/lib/marketplace-images"
 import { readCompare, toggleCompareStored } from "@/lib/marketplace-compare"
 import { MarketPrice } from "./market-price"
+import { useSaleBadge } from "./market-flags"
 
 export function PanelStars({ value }: { value: number }) {
   return (
@@ -40,10 +41,15 @@ function FeaturePanel({ title, items, onAdd, added, wished, onWish }: { title: s
   const [compared, setCompared] = useState<Record<string, boolean>>(() => readCompare())
   const thumbsRef = useRef<HTMLDivElement>(null)
 
+  // Same rule as every other card: the store-wide switch + the per-product
+  // flag decide whether any discount shows at all. (Hook sits before the
+  // empty-list early return — hooks must run unconditionally.)
+  const safe = items.length === 0 ? 0 : Math.min(index, items.length - 1)
+  const saleBadgeAllowed = useSaleBadge(items.length > 0 ? items[safe].id : "")
   if (items.length === 0) return null
-  const safe = Math.min(index, items.length - 1)
   const current = items[safe]
   const pct = discountPct(current.price, current.oldPrice)
+  const showSale = pct > 0 && saleBadgeAllowed
   const href = /^[0-9a-f-]{36}$/i.test(current.id) ? `/marketplace/product/${current.id}` : undefined
 
   const select = (i: number) => {
@@ -89,7 +95,7 @@ function FeaturePanel({ title, items, onAdd, added, wished, onWish }: { title: s
                 ) : null}
               </div>
             )}
-            {pct > 0 && (
+            {showSale && (
               <span className="absolute left-2 top-2 flex h-11 w-11 items-center justify-center rounded-full bg-[#F59E0B] text-xs font-extrabold text-[#0F172A] shadow-sm">
                 -{pct}%
               </span>
@@ -105,7 +111,7 @@ function FeaturePanel({ title, items, onAdd, added, wished, onWish }: { title: s
             )}
             <div className="flex items-baseline gap-2">
               <MarketPrice usd={current.price} className="text-base font-extrabold tabular-nums text-[#0F172A]" />
-              {current.oldPrice && current.oldPrice > current.price && (
+              {showSale && current.oldPrice && current.oldPrice > current.price && (
                 <MarketPrice usd={current.oldPrice} className="text-sm tabular-nums text-slate-400 line-through" />
               )}
             </div>

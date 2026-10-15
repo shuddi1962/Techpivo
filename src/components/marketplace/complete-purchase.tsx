@@ -10,6 +10,7 @@ import { getCart, addToCart as addLine } from "@/lib/marketplace-cart"
 import type { CartVariant } from "@/lib/marketplace-cart"
 import { marketImage } from "@/lib/marketplace-images"
 import { MarketPrice } from "./market-price"
+import { useSaleBadge } from "./market-flags"
 import { TPM_CHECKOUT, openCartPopup, openCheckout, trackMarket } from "@/lib/marketplace-events"
 
 interface UpsellItem {
@@ -21,6 +22,69 @@ interface UpsellItem {
   stock: number | null
   recommend_reason?: string
   bought_together?: number
+}
+
+function UpsellRow({ x, on, toggle }: { x: UpsellItem; on: boolean; toggle: (x: UpsellItem) => void }) {
+  // Same discount rule as every other surface: global switch + per-product flag.
+  const saleBadgeAllowed = useSaleBadge(x.id)
+  const unit = Number(x.sale_price ?? x.original_price ?? 0)
+  const old = x.original_price ? Number(x.original_price) : NaN
+  const pct = x.sale_price && Number.isFinite(old) && old > unit ? Math.round((1 - unit / old) * 100) : 0
+  const showSale = pct > 0 && saleBadgeAllowed
+  const out = x.stock != null && x.stock <= 0
+  const low = !out && x.stock != null && x.stock <= 5
+  return (
+    <li>
+      <label
+        className={`group flex cursor-pointer items-center gap-3 rounded-2xl border bg-white p-3 transition-all duration-200 ${
+          on
+            ? "border-[#0B0F19] shadow-[0_8px_24px_rgba(11,15,25,0.12)]"
+            : "border-[#E9EBF1] hover:border-[#C3C9D5] hover:shadow-[0_6px_18px_rgba(11,15,25,0.08)]"
+        }`}
+      >
+        <input
+          type="checkbox"
+          checked={on}
+          onChange={() => toggle(x)}
+          aria-label={`Add ${x.product_name} to your order`}
+          className="sr-only"
+        />
+        <span className="h-[68px] w-[68px] shrink-0 overflow-hidden rounded-xl border border-[#EDEFF3] bg-[#F6F7F9]">
+          {x.product_image_url ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={marketImage(x.product_image_url)} alt="" loading="lazy" decoding="async" className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.04]" />
+          ) : null}
+        </span>
+        <span className="min-w-0 flex-1">
+          {x.recommend_reason && (
+            <span className="block truncate text-[10px] font-bold uppercase tracking-[0.14em] text-[#B45309]">
+              {x.recommend_reason}
+            </span>
+          )}
+          <span className="mt-0.5 line-clamp-2 block text-[13px] font-semibold leading-snug text-[#0B0F19]">
+            {x.product_name}
+          </span>
+          <span className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5">
+            <MarketPrice usd={unit} className="text-[15px] font-extrabold tracking-tight text-[#0B0F19]" />
+            {showSale && <span className="text-[11px] font-medium text-[#94A3B8] line-through"><MarketPrice usd={old} /></span>}
+            {showSale && <span className="rounded-full bg-[#FEF3C7] px-1.5 py-px text-[10px] font-bold text-[#B45309]">−{pct}%</span>}
+          </span>
+          <span className="mt-1 flex items-center gap-1.5 text-[11px] font-medium text-[#64748B]">
+            <span className={`h-1.5 w-1.5 rounded-full ${out ? "bg-[#CBD5E1]" : low ? "bg-[#F59E0B]" : "bg-[#0B0F19]"}`} />
+            {out ? "Made to order" : low ? `Only ${x.stock} left` : "In stock"}
+          </span>
+        </span>
+        <span
+          aria-hidden
+          className={`flex h-[22px] w-[22px] shrink-0 items-center justify-center rounded-full border-[1.5px] transition-all duration-200 ${
+            on ? "border-[#0B0F19] bg-[#0B0F19] text-white" : "border-[#D4D9E2] text-transparent group-hover:border-[#0B0F19]"
+          }`}
+        >
+          <Check className="h-3 w-3" strokeWidth={3.5} />
+        </span>
+      </label>
+    </li>
+  )
 }
 
 export function CompletePurchase({
@@ -160,66 +224,9 @@ export function CompletePurchase({
       </p>
 
       <ul className="mt-4 grid grid-cols-1 gap-2.5 sm:grid-cols-2">
-        {items.map((x) => {
-          const on = !!selected[x.id]
-          const unit = Number(x.sale_price ?? x.original_price ?? 0)
-          const old = x.original_price ? Number(x.original_price) : NaN
-          const pct = x.sale_price && Number.isFinite(old) && old > unit ? Math.round((1 - unit / old) * 100) : 0
-          const out = x.stock != null && x.stock <= 0
-          const low = !out && x.stock != null && x.stock <= 5
-          return (
-            <li key={x.id}>
-              <label
-                className={`group flex cursor-pointer items-center gap-3 rounded-2xl border bg-white p-3 transition-all duration-200 ${
-                  on
-                    ? "border-[#0B0F19] shadow-[0_8px_24px_rgba(11,15,25,0.12)]"
-                    : "border-[#E9EBF1] hover:border-[#C3C9D5] hover:shadow-[0_6px_18px_rgba(11,15,25,0.08)]"
-                }`}
-              >
-                <input
-                  type="checkbox"
-                  checked={on}
-                  onChange={() => toggle(x)}
-                  aria-label={`Add ${x.product_name} to your order`}
-                  className="sr-only"
-                />
-                <span className="h-[68px] w-[68px] shrink-0 overflow-hidden rounded-xl border border-[#EDEFF3] bg-[#F6F7F9]">
-                  {x.product_image_url ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={marketImage(x.product_image_url)} alt="" loading="lazy" decoding="async" className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.04]" />
-                  ) : null}
-                </span>
-                <span className="min-w-0 flex-1">
-                  {x.recommend_reason && (
-                    <span className="block truncate text-[10px] font-bold uppercase tracking-[0.14em] text-[#B45309]">
-                      {x.recommend_reason}
-                    </span>
-                  )}
-                  <span className="mt-0.5 line-clamp-2 block text-[13px] font-semibold leading-snug text-[#0B0F19]">
-                    {x.product_name}
-                  </span>
-                  <span className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5">
-                    <MarketPrice usd={unit} className="text-[15px] font-extrabold tracking-tight text-[#0B0F19]" />
-                    {pct > 0 && <span className="text-[11px] font-medium text-[#94A3B8] line-through"><MarketPrice usd={old} /></span>}
-                    {pct > 0 && <span className="rounded-full bg-[#FEF3C7] px-1.5 py-px text-[10px] font-bold text-[#B45309]">−{pct}%</span>}
-                  </span>
-                  <span className="mt-1 flex items-center gap-1.5 text-[11px] font-medium text-[#64748B]">
-                    <span className={`h-1.5 w-1.5 rounded-full ${out ? "bg-[#CBD5E1]" : low ? "bg-[#F59E0B]" : "bg-[#0B0F19]"}`} />
-                    {out ? "Made to order" : low ? `Only ${x.stock} left` : "In stock"}
-                  </span>
-                </span>
-                <span
-                  aria-hidden
-                  className={`flex h-[22px] w-[22px] shrink-0 items-center justify-center rounded-full border-[1.5px] transition-all duration-200 ${
-                    on ? "border-[#0B0F19] bg-[#0B0F19] text-white" : "border-[#D4D9E2] text-transparent group-hover:border-[#0B0F19]"
-                  }`}
-                >
-                  <Check className="h-3 w-3" strokeWidth={3.5} />
-                </span>
-              </label>
-            </li>
-          )
-        })}
+        {items.map((x) => (
+          <UpsellRow key={x.id} x={x} on={!!selected[x.id]} toggle={toggle} />
+        ))}
       </ul>
 
       <div className="mt-4 rounded-2xl border border-[#FDE9C8] bg-[#FFFBEB] px-4 py-3.5">
