@@ -2,11 +2,11 @@
 
 import Link from "next/link"
 import { Suspense, useCallback, useEffect, useState } from "react"
-import { useRouter, useSearchParams } from "next/navigation"
+import { useSearchParams } from "next/navigation"
 import { createClient } from "@/lib/supabase/client"
 import {
   Store, Package, Eye, EyeOff, Star, Trash2, Plus, Search, RefreshCw,
-  ExternalLink, Pencil, MousePointerClick, ShoppingBag, BadgeCheck, Globe,
+  ExternalLink, Pencil, BadgeCheck, BadgePercent, Globe,
 } from "lucide-react"
 import { MarketplaceCategoriesTab } from "@/components/admin/marketplace-categories-tab"
 import { MarketplaceBannersTab } from "@/components/admin/marketplace-banners-tab"
@@ -16,7 +16,8 @@ import { MarketplaceOrdersTab } from "@/components/admin/marketplace-orders-tab"
 import { MarketplacePaymentsTab } from "@/components/admin/marketplace-payments-tab"
 import { MarketplaceReviewsTab } from "@/components/admin/marketplace-reviews-tab"
 import { MarketplacePromotionsTab } from "@/components/admin/marketplace-promotions-tab"
-import { MARKET_SECTIONS, isMarketSection, sectionHref } from "@/components/admin/marketplace-nav"
+import { MarketplaceDashboardTab } from "@/components/admin/marketplace-dashboard-tab"
+import { isMarketSection } from "@/components/admin/marketplace-nav"
 import { isoToLocalInput } from "@/lib/marketplace-banners"
 
 interface Product {
@@ -69,10 +70,9 @@ export default function AdminMarketplacePage() {
   )
 }
 
-type MarketTab = "products" | "orders" | "reviews" | "promotions" | "categories" | "banners" | "cj" | "payments" | "upsells" | "visibility"
+type MarketTab = "dashboard" | "products" | "orders" | "reviews" | "promotions" | "categories" | "banners" | "cj" | "payments" | "upsells" | "visibility"
 
 function AdminMarketplacePageInner() {
-  const router = useRouter()
   const searchParams = useSearchParams()
   const sectionParam = searchParams.get("section")
   const [overview, setOverview] = useState<Overview | null>(null)
@@ -86,20 +86,17 @@ function AdminMarketplacePageInner() {
   const [saving, setSaving] = useState(false)
   const [notice, setNotice] = useState("")
   const [tab, setTabState] = useState<MarketTab>(
-    isMarketSection(sectionParam) ? (sectionParam as MarketTab) : "products"
+    isMarketSection(sectionParam) ? (sectionParam as MarketTab) : "dashboard"
   )
-  // Tabs are URL-driven (?section=) so the global admin sidebar — which swaps
-  // to the Marketplace nav on this page — links straight into each section.
+  // Tabs are URL-driven (?section=) — the global admin sidebar (which
+  // shows the Marketplace nav on this page) links straight into each
+  // section, so there is exactly one nav and never a duplicated copy.
   useEffect(() => {
     if (isMarketSection(sectionParam) && sectionParam !== tab) {
       setTabState(sectionParam as MarketTab)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sectionParam])
-  const setTab = (id: MarketTab) => {
-    setTabState(id)
-    router.replace(sectionHref(id), { scroll: false })
-  }
   // Per-product sale countdowns (productId → ISO end). Loaded with the list.
   const [sales, setSales] = useState<Record<string, string>>({})
   // Per-product merchandising flags. Loaded with the list.
@@ -342,31 +339,36 @@ function AdminMarketplacePageInner() {
 
   return (
     <div className="p-4 sm:p-6 max-w-[1400px] mx-auto">
-      {/* header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5">
-        <div className="flex items-center gap-3">
-          <span className="flex h-11 w-11 items-center justify-center rounded-xl text-white text-xl" style={{ background: "#0F172A" }}>
-            <Store className="h-5 w-5 text-[#F59E0B]" />
-          </span>
-          <div>
-            <h1 className="text-xl sm:text-2xl font-bold text-slate-900 m-0 flex items-center gap-2">
-              TechPivo Market
-              <span className="text-[10px] font-bold bg-red-500 text-white rounded-full px-2 py-0.5">LIVE</span>
-            </h1>
-            <p className="text-sm text-slate-500 mt-0.5">Marketplace dashboard — products, vendors, visibility & live storefront</p>
+      {/* header band */}
+      <div className="relative overflow-hidden rounded-2xl mb-5 text-white" style={{ background: "linear-gradient(120deg, #0F172A 0%, #1E293B 55%, #451A03 100%)" }}>
+        <div className="absolute inset-0 opacity-20" style={{ background: "radial-gradient(circle at 85% 20%, #F59E0B 0%, transparent 45%)" }} />
+        <div className="relative flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-5 sm:p-6">
+          <div className="flex items-center gap-3">
+            <span className="flex h-12 w-12 items-center justify-center rounded-xl bg-[#F59E0B] shadow-lg shadow-amber-500/30">
+              <Store className="h-6 w-6 text-[#0F172A]" />
+            </span>
+            <div>
+              <h1 className="text-xl sm:text-2xl font-extrabold tracking-tight m-0 flex items-center gap-2">
+                TechPivo Market
+                <span className="inline-flex items-center gap-1 text-[10px] font-bold bg-red-500 text-white rounded-full px-2 py-0.5">
+                  <span className="h-1.5 w-1.5 rounded-full bg-white animate-pulse" /> LIVE
+                </span>
+              </h1>
+              <p className="text-sm text-slate-300 mt-0.5">Sales, products, vendors & storefront — everything live</p>
+            </div>
           </div>
-        </div>
-        <div className="flex items-center gap-2 flex-wrap">
-          <Link
-            href="/marketplace"
-            target="_blank"
-            className="inline-flex items-center gap-1.5 text-sm font-medium border rounded-lg px-3 py-2 hover:bg-slate-50"
-          >
-            <ExternalLink className="h-4 w-4" /> View store
-          </Link>
-          <button onClick={openCreate} className="inline-flex items-center gap-1.5 text-sm font-bold bg-[#F59E0B] hover:bg-[#D97706] text-[#0F172A] rounded-lg px-3 py-2">
-            <Plus className="h-4 w-4" /> New product
-          </button>
+          <div className="flex items-center gap-2 flex-wrap">
+            <Link
+              href="/marketplace"
+              target="_blank"
+              className="inline-flex items-center gap-1.5 text-sm font-semibold border border-white/25 rounded-lg px-3 py-2 hover:bg-white/10 transition-colors"
+            >
+              <ExternalLink className="h-4 w-4" /> View store
+            </Link>
+            <button onClick={openCreate} className="inline-flex items-center gap-1.5 text-sm font-bold bg-[#F59E0B] hover:bg-[#D97706] text-[#0F172A] rounded-lg px-3 py-2 transition-colors">
+              <Plus className="h-4 w-4" /> New product
+            </button>
+          </div>
         </div>
       </div>
 
@@ -376,42 +378,12 @@ function AdminMarketplacePageInner() {
         </div>
       )}
 
-      {/* KPIs */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mb-5">
-        {[
-          { label: "Products", value: overview?.total ?? 0, icon: Package, color: "text-amber-600 bg-amber-50" },
-          { label: "Active", value: overview?.active ?? 0, icon: Eye, color: "text-emerald-600 bg-emerald-50" },
-          { label: "Featured", value: overview?.featured ?? 0, icon: Star, color: "text-amber-600 bg-amber-50" },
-          { label: "Vendors", value: overview?.vendors ?? 0, icon: ShoppingBag, color: "text-blue-600 bg-blue-50" },
-          { label: "Clicks", value: overview?.clicks ?? 0, icon: MousePointerClick, color: "text-violet-600 bg-violet-50" },
-          { label: "Conversions", value: overview?.conversions ?? 0, icon: BadgeCheck, color: "text-emerald-600 bg-emerald-50" },
-        ].map((k) => (
-          <div key={k.label} className="bg-white border rounded-xl p-3.5">
-            <div className={`w-8 h-8 rounded-lg flex items-center justify-center mb-2 ${k.color}`}>
-              <k.icon className="h-4 w-4" />
-            </div>
-            <div className="text-2xl font-bold text-slate-900">{k.value.toLocaleString()}</div>
-            <div className="text-xs text-slate-500">{k.label}</div>
-          </div>
-        ))}
-      </div>
-
-      {/* section pills — the global admin sidebar carries this same nav on desktop */}
-      <div className="flex gap-1 mb-4 border-b overflow-x-auto">
-        {MARKET_SECTIONS.map((t) => (
-          <button
-            key={t.id}
-            onClick={() => setTab(t.id as MarketTab)}
-            className={`px-4 py-2.5 text-sm font-medium whitespace-nowrap border-b-2 -mb-px inline-flex items-center gap-1.5 ${tab === t.id ? "text-amber-600 border-amber-500" : "text-slate-500 border-transparent hover:text-slate-700"}`}
-          >
-            <t.icon className="h-4 w-4" /> {t.label}
-          </button>
-        ))}
-      </div>
-
-      {/* full-width section content (the in-page sidebar was removed — the
-          global admin sidebar now shows these same Marketplace sections) */}
+      {/* full-width section content — section switching lives in the
+          global admin sidebar (which shows the Marketplace nav on this
+          page), so there is exactly one nav, never a duplicated copy */}
       <div className="min-w-0">
+      {tab === "dashboard" && <MarketplaceDashboardTab />}
+
       {tab === "categories" && <MarketplaceCategoriesTab />}
 
       {tab === "banners" && <MarketplaceBannersTab />}
@@ -429,27 +401,33 @@ function AdminMarketplacePageInner() {
       {tab === "payments" && <MarketplacePaymentsTab />}
 
       {tab === "visibility" && (
-        <div className="bg-white border rounded-xl p-5 max-w-2xl">
-          <div className="flex items-center gap-2 mb-2">
-            <Globe className="h-5 w-5 text-amber-600" />
-            <h2 className="font-bold text-slate-900">Marketplace page (Pages module)</h2>
+        <div className="bg-white border rounded-2xl p-5 sm:p-6 max-w-2xl shadow-sm">
+          <div className="flex items-center gap-2.5 mb-2">
+            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-amber-50">
+              <Globe className="h-4 w-4 text-amber-600" />
+            </span>
+            <div>
+              <h2 className="font-bold text-slate-900">Storefront visibility</h2>
+              <p className="text-xs text-slate-500">Admin → Pages → Marketplace</p>
+            </div>
+            <span className={`ml-auto inline-flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1 rounded-full ${overview?.pagePublished ? "bg-emerald-50 text-emerald-700" : "bg-slate-100 text-slate-500"}`}>
+              <span className={`h-1.5 w-1.5 rounded-full ${overview?.pagePublished ? "bg-emerald-500 animate-pulse" : "bg-slate-400"}`} />
+              {overview?.pagePublished ? "Published (live)" : "Hidden"}
+            </span>
           </div>
           <p className="text-sm text-slate-500 mb-4">
-            The <strong>Marketplace</strong> entry in Admin → Pages controls whether <code>/marketplace</code> is
+            Controls whether <code className="bg-slate-100 rounded px-1">/marketplace</code> is
             published. This switch activates it instantly — no redeploy.
           </p>
-          <div className="flex items-center justify-between bg-slate-50 border rounded-lg px-4 py-3">
-            <div>
-              <p className="text-sm font-semibold text-slate-900">Status: {overview?.pagePublished ? "Published (live)" : "Hidden"}</p>
-              <p className="text-xs text-slate-500">Also editable in Admin → Pages → Marketplace</p>
-            </div>
+          <div className="flex flex-wrap items-center justify-between gap-2 bg-slate-50 border rounded-xl px-4 py-3">
+            <p className="text-xs text-slate-500">Also editable in Admin → Pages → Marketplace</p>
             <div className="flex gap-2">
-              <Link href="/admin/pages/marketplace" className="text-xs font-medium border rounded-lg px-3 py-2 hover:bg-white inline-flex items-center gap-1">
+              <Link href="/admin/pages/marketplace" className="text-xs font-semibold border border-slate-200 bg-white rounded-lg px-3 py-2 hover:bg-slate-50 inline-flex items-center gap-1 transition-colors">
                 <Pencil className="h-3.5 w-3.5" /> Edit page
               </Link>
               <button
                 onClick={() => setPagePublished(!overview?.pagePublished)}
-                className={`text-xs font-bold rounded-lg px-3 py-2 ${overview?.pagePublished ? "bg-slate-900 text-white" : "bg-[#F59E0B] text-[#0F172A]"}`}
+                className={`text-xs font-bold rounded-lg px-4 py-2 transition-colors ${overview?.pagePublished ? "bg-slate-900 text-white hover:bg-slate-700" : "bg-[#F59E0B] text-[#0F172A] hover:bg-[#D97706]"}`}
               >
                 {overview?.pagePublished ? "Hide store" : "Publish store"}
               </button>
@@ -462,12 +440,17 @@ function AdminMarketplacePageInner() {
         <>
           {/* store-wide discount badge switch — one flip hides every -% badge,
               strikethrough and sale countdown in the whole store */}
-          <div className="flex flex-wrap items-center justify-between gap-2 bg-white border rounded-xl px-4 py-3 mb-4">
-            <div>
-              <p className="text-sm font-bold text-slate-900">
-                Discount badges: {saleBadges ? <span className="text-emerald-600">ON</span> : <span className="text-slate-400">OFF</span>}
-              </p>
-              <p className="text-xs text-slate-500">Hides every discount badge, strikethrough price and sale countdown store-wide. Per-product flags still apply when back on.</p>
+          <div className={`flex flex-wrap items-center justify-between gap-2 bg-white border rounded-xl px-4 py-3 mb-4 shadow-sm transition-colors ${saleBadges ? "border-emerald-200" : ""}`}>
+            <div className="flex items-center gap-3">
+              <span className={`flex h-9 w-9 items-center justify-center rounded-xl shrink-0 ${saleBadges ? "bg-emerald-50" : "bg-slate-100"}`}>
+                <BadgePercent className={`h-4 w-4 ${saleBadges ? "text-emerald-600" : "text-slate-400"}`} />
+              </span>
+              <div>
+                <p className="text-sm font-bold text-slate-900">
+                  Discount badges: {saleBadges ? <span className="text-emerald-600">ON</span> : <span className="text-slate-400">OFF</span>}
+                </p>
+                <p className="text-xs text-slate-500">Hides every discount badge, strikethrough price and sale countdown store-wide. Per-product flags still apply when back on.</p>
+              </div>
             </div>
             <button
               role="switch"
@@ -502,10 +485,10 @@ function AdminMarketplacePageInner() {
             </div>
           </div>
 
-          <div className="bg-white border rounded-xl overflow-hidden">
-            <div className="overflow-x-auto">
+          <div className="bg-white border rounded-xl overflow-hidden shadow-sm">
+            <div className="overflow-x-auto max-h-[70vh]">
                 <table className="w-full text-sm min-w-[880px]">
-                <thead>
+                <thead className="sticky top-0 z-10">
                   <tr className="text-left text-xs uppercase tracking-wide text-slate-500 border-b bg-slate-50">
                     <th className="px-4 py-3 font-semibold">Product</th>
                     <th className="px-4 py-3 font-semibold">Vendor</th>
@@ -540,8 +523,9 @@ function AdminMarketplacePageInner() {
                           <span className="ml-1.5 text-xs font-normal text-slate-400 line-through">${Number(p.original_price).toFixed(2)}</span>
                         )}
                         {sales[p.id] && Date.parse(sales[p.id]) > Date.now() && (
-                          <span className="ml-1.5 text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-red-50 text-red-600">
-                            ⏳ ends {new Date(sales[p.id]).toLocaleString(undefined, { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
+                          <span className="ml-1.5 inline-flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-red-50 text-red-600 whitespace-nowrap">
+                            <span className="h-1 w-1 rounded-full bg-red-500 animate-pulse" />
+                            ends {new Date(sales[p.id]).toLocaleString(undefined, { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
                           </span>
                         )}
                       </td>

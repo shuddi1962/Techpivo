@@ -78,8 +78,121 @@ export async function GET(request: NextRequest) {
       }
       return NextResponse.json({ orders })
     }
-    if (section === "reviews") {
-      const { data, error } = await supabase
+    // Dashboard analytics — aggregated from real orders + products only.
+    // Nothing here is fabricated: empty store = zeros, not sample data.
+    if (section === "analytics") {
+      const { data: orders } = await supabase
+        .from("marketplace_orders")
+        .select("id,total_usd,total_ngn,status,paystack_status,items,coupon_code,discount_usd,created_at")
+        .order("created_at", { ascending: false })
+        .limit(500)
+      const { data: products } = await supabase
+        .from("affiliate_products")
+        .select("id,product_name,product_image_url,clicks,conversions,category_slug,program_key,is_active")
+        .order("clicks", { ascending: false, nullsFirst: false })
+        .limit(200)
+      const list = ((orders || []) as Array<Record<string, unknown>>)
+      const paid = list.filter((o) => ["paid", "fulfilled", "delivered"].includes(String(o.status || "")))
+      const revenueUsd = paid.reduce((s, o) => s + (Number(o.total_usd) || 0), 0)
+      const revenueNgn = paid.reduce((s, o) => s + (Number(o.total_ngn) || 0), 0)
+      const couponGiven = list.reduce((s, o) => s + (Number(o.discount_usd) || 0), 0)
+      const couponUses = list.filter((o) => o.coupon_code).length
+      // 30-day daily series (revenue + orders), oldest → newest.
+      const days: Array<{ date: string; label: string; revenue: number; orders: number }> = []
+      const byDay = new Map<string, { revenue: number; orders: number }>()
+      for (let i = 29; i >= 0; i--) {
+        const d = new Date(Date.now() - i * 86400000)
+        const key = d.toISOString().slice(0, 10)
+        byDay.set(key, { revenue: 0, orders: 0 })
+        days.push({ date: key, label: d.toLocaleDateString("en-US", { month: "short", day: "numeric" }), revenue: 0, orders: 0 })
+      }
+      for (const o of paid) {
+        const key = String(o.created_at || "").slice(0, 10)
+        const hit = byDay.get(key)
+        if (hit) {
+          hit.revenue = Math.round((hit.revenue + (Number(o.total_usd) || 0)) * 100) / 100
+          hit.orders += 1
+        }
+      }
+      for (const d of days) {
+        const hit = byDay.get(d.date)
+        if (hit) { d.revenue = hit.revenue; d.orders = hit.orders }
+      }
+      // Status breakdown.
+      const statusCount: Record<string, number> = {}
+      for (const o of list) {
+        const s = String(o.status || "unknown")
+        statusCount[s] = (statusCount[s] || 0) + 1
+      }
+      // Revenue per product from paid order line items.
+      const revById = new Map<string, { qty: number; revenue: number }>()
+      for (const o of paid) {
+        const items = Array.isArray(o.items) ? (o.items as Array<{ id?: string; qty?: number; price?: number }>) : []
+        for (const it of items) {
+          if (!it?.id) continue
+          const hit = revById.get(it.id) || { qty: 0, revenue: 0 }
+          hit.qty += Math.max(0, Math.floor(Number(it.qty) || 0))
+          hit.revenue = Math.round((hit.revenue + (Number(it.price) || 0) * (Number(it.qty) || 0)) * 100) / 100
+          revById.set(it.id, hit)
+        }
+      }
+      const prods = ((products || []) as Array<{ id: string; product_name: string; product_image_url: string | null; clicks: number | null; conversions: number | null; category_slug: string | null; program_key: string | null; is_active: boolean }>)
+      const names = new Map(prods.map((p) => [p.id, p.product_name]))
+      const topRevenue = [...revById.entries()]
+        .map(([id, v]) => ({ id, name: names.get(id) || id.slice(0, 8), ...v }))
+        .sort((a, b) => b.revenue - a.revenue)
+        .slice(0, 6)
+      const topClicked = prods.slice(0, 6).map((p) => ({ id: p.id, name: p.product_name, clicks: Number(p.clicks) || 0, conversions: Number(p.conversions) || 0 }))
+      const totalClicks = prods.reduce((s, p) => s + (Number(p.clicks) || 0), 0)
+      const totalConversions = prods.reduce((s, p) => s + (Number(p.conversions) || 0), 0)
+      const vendors = new Set(prods.map((p) => p.program_key).filter(Boolean)).size
+      // Products per department.
+      const catCount: Record<string, number> = {}
+      for (const p of prods) {
+        const c = p.category_slug || "uncategorized"
+        catCount[c] = (catCount[c] || 0) + 1
+      }
+      const categories = Object.entries(catCount)
+        .map(([slug, count]) => ({ slug, count }))
+        .sort((a, b) => b.count - a.count)
+        .slice(0, 8)
+      // Coupon leaderboard from the coupon store.
+      let topCoupons: Array<{ code: string; uses: number; max_uses: number }> = []
+      try {
+        const { data: cdata } = await supabase.from("site_settings").select("value").eq("key", "marketplace_coupons").maybeSingle()
+        const { parseMarketCoupons } = await import("@/lib/marketplace-coupons")
+        topCoupons = parseMarketCoupons((cdata as { value?: unknown } | null)?.value)
+          .sort((a, b) => b.uses - a.uses)
+          .slice(0, 5)
+          .map((c) => ({ code: c.code, uses: c.uses, max_uses: c.max_uses }))
+      } catch {
+        topCoupons = []
+      }
+      return NextResponse.json({
+        analytics: {
+          totals: {
+            revenueUsd: Math.round(revenueUsd * 100) / 100,
+            revenueNgn: Math.round(revenueNgn),
+            orders: list.length,
+            paid: paid.length,
+            avgOrder: paid.length > 0 ? Math.round((revenueUsd / paid.length) * 100) / 100 : 0,
+            couponGiven: Math.round(couponGiven * 100) / 100,
+            couponUses,
+            clicks: totalClicks,
+            conversions: totalConversions,
+            vendors,
+            clickToOrder: totalClicks > 0 ? Math.round((paid.length / totalClicks) * 1000) / 10 : 0,
+          },
+          series: days,
+          statuses: Object.entries(statusCount).map(([status, count]) => ({ status, count })),
+          topRevenue,
+          topClicked,
+          categories,
+          topCoupons,
+        },
+      })
+    }
+    if (section === "reviews") {      const { data, error } = await supabase
         .from("marketplace_reviews")
         .select("id,product_id,author_name,rating,title,comment,created_at")
         .order("created_at", { ascending: false })

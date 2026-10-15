@@ -500,10 +500,17 @@ export function MarketplaceHeader({
                           </div>
                         ))}
                         <div
-                          className="flex min-h-[280px] flex-col justify-between overflow-hidden rounded-xl p-5 text-white"
-                          style={{ background: `linear-gradient(160deg, ${promoBanners?.flash_bg_from || "#DC2626"} 0%, ${promoBanners?.flash_bg_to || "#7F1D1D"} 100%)` }}
+                          className="flex min-h-[280px] flex-col justify-between overflow-hidden rounded-xl p-5 text-white relative"
+                          style={promoBanners?.flash_image?.trim() ? undefined : { background: `linear-gradient(160deg, ${promoBanners?.flash_bg_from || "#DC2626"} 0%, ${promoBanners?.flash_bg_to || "#7F1D1D"} 100%)` }}
                         >
-                          <div>
+                          {promoBanners?.flash_image?.trim() ? (
+                            <>
+                              {/* eslint-disable-next-line @next/next/no-img-element */}
+                              <img src={promoBanners.flash_image.trim()} alt="" aria-hidden className="absolute inset-0 h-full w-full object-cover" loading="lazy" />
+                              <span className="absolute inset-0" style={{ background: "linear-gradient(180deg, rgba(0,0,0,0.15) 0%, rgba(0,0,0,0.72) 100%)" }} />
+                            </>
+                          ) : null}
+                          <div className="relative">
                             <span className="inline-flex items-center gap-1 rounded bg-[#EF4444] px-2 py-0.5 text-[11px] font-bold uppercase">
                               <Flame className="h-3 w-3" /> {promoBanners?.flash_badge || "Flash Sale"}
                             </span>
@@ -511,9 +518,9 @@ export function MarketplaceHeader({
                             <p className="mt-1 text-xs text-blue-100">{promoBanners?.flash_subtitle || "Verified supplier picks, tracked delivery."}</p>
                           </div>
                           <Link
-                            href="/marketplace#flash-deals"
+                            href={promoBanners?.specials_link || "/marketplace#flash-deals"}
                             onClick={() => setDeptOpen(false)}
-                            className="mt-4 rounded-lg bg-[#F59E0B] py-2.5 text-center text-sm font-bold text-[#0F172A] transition-colors hover:bg-[#D97706]"
+                            className="relative mt-4 rounded-lg bg-[#F59E0B] py-2.5 text-center text-sm font-bold text-[#0F172A] transition-colors hover:bg-[#D97706]"
                           >
                             Shop deals
                           </Link>
@@ -553,14 +560,14 @@ export function MarketplaceHeader({
               ))}
             </nav>
           </div>
-          {promoOn && (
+          {promoBanners?.specials_enabled !== false && (
           <Link
-            href="/marketplace#flash-deals"
+            href={promoBanners?.specials_link || "/marketplace#flash-deals"}
             className="flex items-center gap-2 bg-[#FEF2F2] text-[#EF4444] border border-[#EF4444]/20 px-3 py-1.5 rounded-full text-sm font-semibold hover:bg-[#FEE2E2] shrink-0"
           >
             <Flame className="h-4 w-4" />
-            <span className="hidden xl:inline">{promoBanners?.flash_badge || "Flash Sale"} Specials</span>
-            <span className="xl:hidden">Specials</span>
+            <span className="hidden xl:inline">{promoBanners?.specials_label || "Flash Sale Specials"}</span>
+            <span className="xl:hidden truncate max-w-[110px]">{promoBanners?.specials_label || "Specials"}</span>
           </Link>
           )}
         </div>

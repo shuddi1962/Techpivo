@@ -441,6 +441,25 @@ describe("pickPopupCampaign", () => {
     expect(b.flash_enabled).toBe(true)
   })
 
+  it("parses the Specials menu button with safe fallbacks", () => {    const b = parseBanners({})
+    expect(b.specials_enabled).toBe(true)
+    expect(b.specials_label).toBe("Flash Sale Specials")
+    expect(b.specials_link).toBe("/marketplace#flash-deals")
+    const custom = parseBanners({
+      specials_enabled: false,
+      specials_label: "Deals",
+      specials_link: "/marketplace/category/phones",
+    })
+    expect(custom.specials_enabled).toBe(false)
+    expect(custom.specials_label).toBe("Deals")
+    expect(custom.specials_link).toBe("/marketplace/category/phones")
+    // Bad links fall back to the flash deals.
+    expect(parseBanners({ specials_link: "javascript:alert(1)" }).specials_link).toBe("/marketplace#flash-deals")
+    // Dropdown card artwork is optional, gradient card when empty.
+    expect(parseBanners({}).flash_image).toBe("")
+    expect(parseBanners({ flash_image: "https://img/u.jpg" }).flash_image).toBe("https://img/u.jpg")
+  })
+
   it("keeps valid promo colors + flash end dates", () => {
     const end = new Date(Date.now() + 86400000).toISOString()
     const b = parseBanners({

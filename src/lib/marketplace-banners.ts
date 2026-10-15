@@ -147,6 +147,16 @@ export interface MarketBanners {
   /** ISO datetime the flash countdown runs to. "" = rolling 2-day
       countdown from when the shopper opens the page. */
   flash_end_at: string
+  /** Optional artwork for the Flash Sale card inside the Departments
+      dropdown. Empty = the built-in gradient card with badge + headline. */
+  flash_image: string
+  /** "Specials" menu pill (storefront header, next to Departments).
+      Fully admin-editable: full label text, destination (any in-store
+      path, #anchor, category page or https link) and on/off switch.
+      False = hidden publicly, instantly. */
+  specials_enabled: boolean
+  specials_label: string
+  specials_link: string
   /** Welcome popup (homepage, once per visit). False = never shows. */
   popup_enabled: boolean
   popup_image: string
@@ -239,6 +249,10 @@ export const EMPTY_BANNERS: MarketBanners = {
   flash_bg_from: "#DC2626",
   flash_bg_to: "#991B1B",
   flash_end_at: "",
+  flash_image: "",
+  specials_enabled: true,
+  specials_label: "Flash Sale Specials",
+  specials_link: "/marketplace#flash-deals",
   popup_enabled: true,
   popup_image: "",
   popup_title: "Welcome to TechPivo Market",
@@ -596,6 +610,10 @@ export function parseBanners(raw: unknown): MarketBanners {
     flash_bg_from: cleanHex(r.flash_bg_from, EMPTY_BANNERS.flash_bg_from),
     flash_bg_to: cleanHex(r.flash_bg_to, EMPTY_BANNERS.flash_bg_to),
     flash_end_at: cleanIsoDate(r.flash_end_at),
+    flash_image: str(r.flash_image).trim().slice(0, 500),
+    specials_enabled: typeof r.specials_enabled === "boolean" ? r.specials_enabled : true,
+    specials_label: str(r.specials_label).trim().slice(0, 40) || EMPTY_BANNERS.specials_label,
+    specials_link: cleanBannerLink(r.specials_link) || EMPTY_BANNERS.specials_link,
     popup_enabled: typeof r.popup_enabled === "boolean" ? r.popup_enabled : true,
     popup_image: str(r.popup_image).trim(),
     popup_title: str(r.popup_title).trim().slice(0, 80) || EMPTY_BANNERS.popup_title,

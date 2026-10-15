@@ -6,7 +6,7 @@ import { useSearchParams } from "next/navigation"
 import {
   Package, ReceiptText, MessageSquare, BadgePercent, LayoutGrid,
   ImagePlus, Plug, TrendingUp, CreditCard, Globe, ArrowLeft,
-  ExternalLink, type LucideIcon,
+  ExternalLink, LayoutDashboard, type LucideIcon,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 
@@ -21,6 +21,7 @@ export interface MarketSection {
 }
 
 export const MARKET_SECTIONS: MarketSection[] = [
+  { id: "dashboard", label: "Dashboard", desc: "Sales, charts & analytics", icon: LayoutDashboard },
   { id: "products", label: "Products", desc: "Catalog, prices & sale timers", icon: Package },
   { id: "orders", label: "Orders", desc: "Payments & fulfillment", icon: ReceiptText },
   { id: "reviews", label: "Reviews", desc: "Ratings & moderation", icon: MessageSquare },
@@ -44,7 +45,7 @@ export function sectionHref(id: string): string {
 function MarketplaceLinks({ onNavClick }: { onNavClick?: () => void }) {
   const searchParams = useSearchParams()
   const active = searchParams.get("section")
-  const current = isMarketSection(active) ? active : "products"
+  const current = isMarketSection(active) ? active : "dashboard"
   return (
     <nav className="grid gap-0.5" aria-label="Marketplace sections">
       {MARKET_SECTIONS.map((t) => {
@@ -78,7 +79,7 @@ function MarketplaceLinks({ onNavClick }: { onNavClick?: () => void }) {
 function MarketplaceRail() {
   const searchParams = useSearchParams()
   const active = searchParams.get("section")
-  const current = isMarketSection(active) ? active : "products"
+  const current = isMarketSection(active) ? active : "dashboard"
   return (
     <div className="flex flex-1 flex-col items-center gap-1 overflow-y-auto py-4 [scrollbar-width:none]">
       {MARKET_SECTIONS.map((t) => {

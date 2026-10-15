@@ -1498,6 +1498,29 @@ export function MarketplaceBannersTab() {
               maxLength={140}
               className={`${inputCls} text-xs`}
             />
+            <div>
+              <div className="flex gap-2">
+                <input
+                  value={banners.flash_image || ""}
+                  onChange={(e) => setBanners((b) => ({ ...b, flash_image: e.target.value }))}
+                  placeholder="Dropdown card image URL — empty = gradient card"
+                  className={`${inputCls} min-w-0 flex-1 text-xs`}
+                />
+                <button type="button" onClick={() => pickUpload("flash_image")} disabled={uploading === "flash_image"} className={miniBtn}>
+                  {uploading === "flash_image" ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <ImagePlus className="h-3.5 w-3.5" />}
+                  {uploading === "flash_image" ? "…" : "Upload"}
+                </button>
+                {(banners.flash_image || "").trim() && (
+                  <button type="button" onClick={() => setBanners((b) => ({ ...b, flash_image: "" }))} title="Back to gradient card" className="rounded-lg border p-2 text-slate-400 hover:bg-slate-50">
+                    <RotateCcw className="h-3.5 w-3.5" />
+                  </button>
+                )}
+              </div>
+              {(banners.flash_image || "").trim() && isUrl(banners.flash_image || "") && (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={(banners.flash_image || "").trim()} alt="Flash card preview" className="mt-2 h-20 w-full rounded-lg border object-cover" loading="lazy" />
+              )}
+            </div>
             <div className="grid gap-2.5 sm:grid-cols-3">
               {([
                 { k: "flash_bg_from", label: "Banner color (from)" },
@@ -1527,6 +1550,40 @@ export function MarketplaceBannersTab() {
             </div>
             <p className="text-[11px] text-slate-500">End date empty = rolling 2-day countdown. Ended = timer holds at 00 until you set a new date.</p>
           </div>
+        </div>
+        <div className="rounded-xl border bg-white p-4">
+          <div className="flex items-center justify-between gap-2">
+            <div>
+              <p className="text-sm font-bold text-slate-900">Specials menu button</p>
+              <p className="text-xs text-slate-500">The pill in the store header next to Departments — any text, any destination, on/off. Live instantly on save.</p>
+            </div>
+            <label className="flex cursor-pointer items-center gap-2 text-xs font-bold text-slate-700">
+              <input
+                type="checkbox"
+                checked={banners.specials_enabled !== false}
+                onChange={(e) => setBanners((b) => ({ ...b, specials_enabled: e.target.checked }))}
+                className="h-4 w-4 accent-[#F59E0B]"
+              />
+              Show
+            </label>
+          </div>
+          <div className="mt-2 grid gap-2.5 sm:grid-cols-2">
+            <input
+              value={banners.specials_label}
+              onChange={(e) => setBanners((b) => ({ ...b, specials_label: e.target.value }))}
+              placeholder="Label — e.g. Flash Sale Specials"
+              maxLength={40}
+              className={`${inputCls} text-xs`}
+            />
+            <input
+              value={banners.specials_link}
+              onChange={(e) => setBanners((b) => ({ ...b, specials_link: e.target.value }))}
+              placeholder="Link — e.g. /marketplace/deals or /marketplace/category/phones"
+              maxLength={500}
+              className={`${inputCls} text-xs`}
+            />
+          </div>
+          <p className="mt-1.5 text-[11px] text-slate-500">Accepts any store page (/marketplace/deals, /marketplace/category/…), an #anchor, or a full https link. Bad links fall back to the flash deals.</p>
         </div>
         <div className="rounded-xl border bg-white p-4">
           <p className="text-sm font-bold text-slate-900">Footer contact</p>
