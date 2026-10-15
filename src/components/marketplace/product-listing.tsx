@@ -8,6 +8,7 @@ import { openCartPopup } from "@/lib/marketplace-events"
 import { priceOf, discountOf, type StoreProduct } from "@/lib/marketplace-catalog"
 import { ProductCard } from "./product-card"
 import { EMPTY_FILTERS, FilterSidebar, applyFilters, countActiveFilters, type FilterValue } from "./filter-sidebar"
+import { MarketMerchProvider, type MarketMerchState } from "./market-flags"
 
 type Sort = "popular" | "newest" | "price-asc" | "price-desc" | "discount" | "rating"
 
@@ -33,7 +34,15 @@ function readWish(): Record<string, boolean> {
   }
 }
 
-export function ProductListing({ products }: { products: StoreProduct[] }) {
+export function ProductListing({ products, initialMerch }: { products: StoreProduct[]; initialMerch?: MarketMerchState }) {
+  const body = <ListingBody products={products} />
+  // Server-seeded flags kill the stale flash: first paint already matches
+  // the admin's latest change; the provider re-validates live after mount.
+  if (initialMerch) return <MarketMerchProvider initial={initialMerch}>{body}</MarketMerchProvider>
+  return body
+}
+
+function ListingBody({ products }: { products: StoreProduct[] }) {
   const [filters, setFilters] = useState<FilterValue>(EMPTY_FILTERS)
   const [sort, setSort] = useState<Sort>("popular")
   const [drawer, setDrawer] = useState(false)

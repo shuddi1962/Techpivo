@@ -9,6 +9,8 @@ import { marketImage, cleanSupplierText } from "@/lib/marketplace-images"
 import { supplierDisplayName } from "@/lib/marketplace"
 import { MarketplaceHeader, MarketplaceFooter } from "@/components/marketplace/marketplace-header"
 import { ProductDetail, type ProductDetailData } from "@/components/marketplace/product-detail"
+import { MarketMerchProvider } from "@/components/marketplace/market-flags"
+import { fetchMarketMerch } from "@/lib/marketplace-products"
 
 export const revalidate = 60
 
@@ -127,6 +129,10 @@ export default async function MarketplaceProductPage({ params }: { params: { id:
     )?.slug ?? null
   const deptName = deptNameFor(p.subcategory_slug || p.category_slug)
 
+  // Seed merch flags at render so the first paint already matches the
+  // admin's latest change (no stale badges flashing before the live fetch).
+  const initialMerch = await fetchMarketMerch()
+
   // Real units sold across completed buyer payments.
   let sold = 0
   try {
@@ -174,7 +180,9 @@ export default async function MarketplaceProductPage({ params }: { params: { id:
           ) : null}
           <span className="text-[#0F172A] font-medium line-clamp-1 max-w-[60vw]">{p.product_name}</span>
         </nav>
-        <ProductDetail product={p} reviews={reviews || []} related={related || []} deptSlug={deptSlug} detail={detail} sold={sold} hasSupplier={!!p.cj_pid} />
+        <MarketMerchProvider initial={initialMerch}>
+          <ProductDetail product={p} reviews={reviews || []} related={related || []} deptSlug={deptSlug} detail={detail} sold={sold} hasSupplier={!!p.cj_pid} />
+        </MarketMerchProvider>
         <p className="text-center text-[11px] text-slate-400 px-4">
           Every order is quality-checked, securely paid and delivered with tracking — shop with confidence on TechPivo Market.
         </p>

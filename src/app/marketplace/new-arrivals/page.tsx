@@ -13,11 +13,12 @@ export const metadata: Metadata = {
 }
 
 export default async function MarketplaceNewArrivalsPage() {
-  const [all, banners, merch] = await Promise.all([
+  const [all, banners, merchState] = await Promise.all([
     fetchStoreProducts({ order: "newest", limit: 100 }),
     fetchMarketBanners(),
     fetchMarketMerch(),
   ])
+  const { merch } = merchState
   // Admin-pinned New arrivals lead, then the genuinely newest.
   const products = [...all].sort(
     (a, b) => Number(isNewPick(merch, b.id)) - Number(isNewPick(merch, a.id))
@@ -31,7 +32,7 @@ export default async function MarketplaceNewArrivalsPage() {
         image={pageBannerOf(banners, "new_arrivals_image")}
         links={banners.links}
       />
-      <ProductListing products={products} />
+      <ProductListing products={products} initialMerch={merchState} />
     </StorePageShell>
   )
 }

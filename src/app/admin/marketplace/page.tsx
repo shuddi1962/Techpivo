@@ -1,12 +1,12 @@
 "use client"
 
 import Link from "next/link"
-import { useCallback, useEffect, useState } from "react"
+import { Suspense, useCallback, useEffect, useState } from "react"
+import { useRouter, useSearchParams } from "next/navigation"
 import { createClient } from "@/lib/supabase/client"
 import {
   Store, Package, Eye, EyeOff, Star, Trash2, Plus, Search, RefreshCw,
   ExternalLink, Pencil, MousePointerClick, ShoppingBag, BadgeCheck, Globe,
-  LayoutGrid, Plug, ReceiptText, CreditCard, ImagePlus, TrendingUp, MessageSquare, BadgePercent,
 } from "lucide-react"
 import { MarketplaceCategoriesTab } from "@/components/admin/marketplace-categories-tab"
 import { MarketplaceBannersTab } from "@/components/admin/marketplace-banners-tab"
@@ -16,6 +16,7 @@ import { MarketplaceOrdersTab } from "@/components/admin/marketplace-orders-tab"
 import { MarketplacePaymentsTab } from "@/components/admin/marketplace-payments-tab"
 import { MarketplaceReviewsTab } from "@/components/admin/marketplace-reviews-tab"
 import { MarketplacePromotionsTab } from "@/components/admin/marketplace-promotions-tab"
+import { MARKET_SECTIONS, isMarketSection, sectionHref } from "@/components/admin/marketplace-nav"
 import { isoToLocalInput } from "@/lib/marketplace-banners"
 
 interface Product {
@@ -61,6 +62,19 @@ const emptyForm = {
 }
 
 export default function AdminMarketplacePage() {
+  return (
+    <Suspense fallback={<div className="min-h-[60vh] flex items-center justify-center text-amber-600 font-medium">Loading TechPivo Market dashboard...</div>}>
+      <AdminMarketplacePageInner />
+    </Suspense>
+  )
+}
+
+type MarketTab = "products" | "orders" | "reviews" | "promotions" | "categories" | "banners" | "cj" | "payments" | "upsells" | "visibility"
+
+function AdminMarketplacePageInner() {
+  const router = useRouter()
+  const searchParams = useSearchParams()
+  const sectionParam = searchParams.get("section")
   const [overview, setOverview] = useState<Overview | null>(null)
   const [products, setProducts] = useState<Product[]>([])
   const [loading, setLoading] = useState(true)
@@ -71,23 +85,42 @@ export default function AdminMarketplacePage() {
   const [form, setForm] = useState(emptyForm)
   const [saving, setSaving] = useState(false)
   const [notice, setNotice] = useState("")
-  const [tab, setTab] = useState<"products" | "orders" | "reviews" | "promotions" | "categories" | "banners" | "cj" | "payments" | "upsells" | "visibility">("products")
+  const [tab, setTabState] = useState<MarketTab>(
+    isMarketSection(sectionParam) ? (sectionParam as MarketTab) : "products"
+  )
+  // Tabs are URL-driven (?section=) so the global admin sidebar — which swaps
+  // to the Marketplace nav on this page — links straight into each section.
+  useEffect(() => {
+    if (isMarketSection(sectionParam) && sectionParam !== tab) {
+      setTabState(sectionParam as MarketTab)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sectionParam])
+  const setTab = (id: MarketTab) => {
+    setTabState(id)
+    router.replace(sectionHref(id), { scroll: false })
+  }
   // Per-product sale countdowns (productId → ISO end). Loaded with the list.
   const [sales, setSales] = useState<Record<string, string>>({})
   // Per-product merchandising flags. Loaded with the list.
   const [merch, setMerch] = useState<Record<string, { sale?: boolean; is_new?: boolean; bestseller?: boolean }>>({})
+  // Store-wide discount-badge kill-switch (default ON). Never cached on
+  // load — a refresh must show the latest saved value, not the old one.
+  const [saleBadges, setSaleBadges] = useState(true)
 
   const load = useCallback(async () => {
+    const noStore = { cache: "no-store" as RequestCache }
     const [ov, pr, sa, me] = await Promise.all([
-      fetch("/admin/marketplace/api?section=overview").then((r) => r.json()).catch(() => null),
-      fetch("/admin/marketplace/api?section=products").then((r) => r.json()).catch(() => null),
-      fetch("/admin/marketplace/api?section=sales").then((r) => r.json()).catch(() => null),
-      fetch("/admin/marketplace/api?section=merch").then((r) => r.json()).catch(() => null),
+      fetch("/admin/marketplace/api?section=overview", noStore).then((r) => r.json()).catch(() => null),
+      fetch("/admin/marketplace/api?section=products", noStore).then((r) => r.json()).catch(() => null),
+      fetch("/admin/marketplace/api?section=sales", noStore).then((r) => r.json()).catch(() => null),
+      fetch("/admin/marketplace/api?section=merch", noStore).then((r) => r.json()).catch(() => null),
     ])
     if (ov?.overview) setOverview(ov.overview)
     if (pr?.products) setProducts(pr.products)
     if (sa?.sales && typeof sa.sales === "object") setSales(sa.sales as Record<string, string>)
     if (me?.merch && typeof me.merch === "object") setMerch(me.merch as Record<string, { sale?: boolean; is_new?: boolean; bestseller?: boolean }>)
+    if (typeof me?.sale_badges === "boolean") setSaleBadges(me.sale_badges)
     setLoading(false)
   }, [])
 
@@ -184,6 +217,22 @@ export default function AdminMarketplacePage() {
       })
     } catch {
       // product save already succeeded — flags sync retries on next load
+    }
+  }
+
+  const saveSaleBadges = async (on: boolean) => {
+    setSaleBadges(on)
+    try {
+      const res = await fetch("/admin/marketplace/api", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "merch-save", sale_badges: on }),
+      })
+      const data = await res.json().catch(() => null)
+      if (typeof data?.sale_badges === "boolean") setSaleBadges(data.sale_badges)
+      flash(on ? "Discount badges ON — live across the whole store" : "Discount badges OFF — hidden across the whole store")
+    } catch {
+      // state already flipped locally — refresh retries the sync
     }
   }
 
@@ -347,13 +396,12 @@ export default function AdminMarketplacePage() {
         ))}
       </div>
 
-      {/* marketplace sub-sidebar — every section gets the full content width */}
-      {/* mobile: horizontal pills */}
-      <div className="flex gap-1 mb-4 border-b overflow-x-auto lg:hidden">
-        {SECTIONS.map((t) => (
+      {/* section pills — the global admin sidebar carries this same nav on desktop */}
+      <div className="flex gap-1 mb-4 border-b overflow-x-auto">
+        {MARKET_SECTIONS.map((t) => (
           <button
             key={t.id}
-            onClick={() => setTab(t.id)}
+            onClick={() => setTab(t.id as MarketTab)}
             className={`px-4 py-2.5 text-sm font-medium whitespace-nowrap border-b-2 -mb-px inline-flex items-center gap-1.5 ${tab === t.id ? "text-amber-600 border-amber-500" : "text-slate-500 border-transparent hover:text-slate-700"}`}
           >
             <t.icon className="h-4 w-4" /> {t.label}
@@ -361,30 +409,9 @@ export default function AdminMarketplacePage() {
         ))}
       </div>
 
-      <div className="lg:grid lg:grid-cols-[260px_minmax(0,1fr)] lg:gap-5 lg:items-start">
-        {/* desktop sidebar */}
-        <aside className="hidden lg:block sticky top-4 rounded-xl border bg-white p-2">
-          <p className="px-3 pt-2 pb-1 text-[11px] font-bold uppercase tracking-wider text-slate-400">Marketplace</p>
-          <nav className="grid gap-0.5" aria-label="Marketplace sections">
-            {SECTIONS.map((t) => (
-              <button
-                key={t.id}
-                onClick={() => setTab(t.id)}
-                aria-current={tab === t.id ? "page" : undefined}
-                className={`flex items-start gap-3 rounded-lg px-3 py-2.5 text-left transition-colors ${tab === t.id ? "bg-slate-900 text-white" : "text-slate-600 hover:bg-slate-100"}`}
-              >
-                <t.icon className={`h-4 w-4 mt-0.5 shrink-0 ${tab === t.id ? "text-amber-400" : "text-slate-400"}`} />
-                <span className="min-w-0">
-                  <span className="block text-sm font-bold leading-tight">{t.label}</span>
-                  <span className={`block truncate text-[11px] leading-tight mt-0.5 ${tab === t.id ? "text-slate-300" : "text-slate-400"}`}>{t.desc}</span>
-                </span>
-              </button>
-            ))}
-          </nav>
-        </aside>
-
-        {/* full-width section content */}
-        <div className="min-w-0">
+      {/* full-width section content (the in-page sidebar was removed — the
+          global admin sidebar now shows these same Marketplace sections) */}
+      <div className="min-w-0">
       {tab === "categories" && <MarketplaceCategoriesTab />}
 
       {tab === "banners" && <MarketplaceBannersTab />}
@@ -433,6 +460,25 @@ export default function AdminMarketplacePage() {
 
       {tab === "products" && (
         <>
+          {/* store-wide discount badge switch — one flip hides every -% badge,
+              strikethrough and sale countdown in the whole store */}
+          <div className="flex flex-wrap items-center justify-between gap-2 bg-white border rounded-xl px-4 py-3 mb-4">
+            <div>
+              <p className="text-sm font-bold text-slate-900">
+                Discount badges: {saleBadges ? <span className="text-emerald-600">ON</span> : <span className="text-slate-400">OFF</span>}
+              </p>
+              <p className="text-xs text-slate-500">Hides every discount badge, strikethrough price and sale countdown store-wide. Per-product flags still apply when back on.</p>
+            </div>
+            <button
+              role="switch"
+              aria-checked={saleBadges}
+              onClick={() => void saveSaleBadges(!saleBadges)}
+              className={`relative h-6 w-11 shrink-0 rounded-full transition-colors ${saleBadges ? "bg-emerald-500" : "bg-slate-300"}`}
+              title={saleBadges ? "Turn all discount badges off" : "Turn all discount badges on"}
+            >
+              <span className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-all ${saleBadges ? "left-[22px]" : "left-0.5"}`} />
+            </button>
+          </div>
           <div className="flex flex-col sm:flex-row gap-2 mb-4">
             <div className="relative flex-1">
               <Search className="h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
@@ -632,6 +678,21 @@ export default function AdminMarketplacePage() {
                     <input type="checkbox" checked={!!form.merch_bestseller} onChange={(e) => setForm({ ...form, merch_bestseller: e.target.checked })} className="accent-[#F59E0B]" /> Best seller
                   </label>
                 </div>
+                <div className="mt-3 pt-3 border-t border-dashed flex flex-wrap items-center justify-between gap-2">
+                  <p className="text-xs text-slate-500" title="One flip hides every discount badge, strikethrough and sale countdown in the whole store">
+                    Store-wide badges: <strong className={saleBadges ? "text-emerald-600" : "text-slate-400"}>{saleBadges ? "ON" : "OFF"}</strong>
+                  </p>
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked={saleBadges}
+                    onClick={() => void saveSaleBadges(!saleBadges)}
+                    className={`relative h-6 w-11 shrink-0 rounded-full transition-colors ${saleBadges ? "bg-emerald-500" : "bg-slate-300"}`}
+                    title={saleBadges ? "Turn all discount badges off" : "Turn all discount badges on"}
+                  >
+                    <span className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-all ${saleBadges ? "left-[22px]" : "left-0.5"}`} />
+                  </button>
+                </div>
               </div>
             </div>
             <div className="flex gap-2 mt-5">
@@ -644,20 +705,6 @@ export default function AdminMarketplacePage() {
         </div>
       )}
         </div>
-      </div>
     </div>
   )
 }
-
-const SECTIONS = [
-  { id: "products", label: "Products", desc: "Catalog, prices & sale timers", icon: Package },
-  { id: "orders", label: "Orders", desc: "Payments & fulfillment", icon: ReceiptText },
-  { id: "reviews", label: "Reviews", desc: "Ratings & moderation", icon: MessageSquare },
-  { id: "promotions", label: "Promotions", desc: "Coupons & discounts", icon: BadgePercent },
-  { id: "categories", label: "Categories", desc: "Departments & mapping", icon: LayoutGrid },
-  { id: "banners", label: "Banners & promos", desc: "Hero, promo bar, flash sale, popups", icon: ImagePlus },
-  { id: "cj", label: "CJ Import", desc: "Supplier catalog sync", icon: Plug },
-  { id: "upsells", label: "Upsells", desc: "Complete-your-purchase", icon: TrendingUp },
-  { id: "payments", label: "Payments", desc: "Gateway keys & mode", icon: CreditCard },
-  { id: "visibility", label: "Visibility", desc: "Storefront publish switch", icon: Globe },
-] as const

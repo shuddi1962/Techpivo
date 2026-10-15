@@ -17,6 +17,13 @@ import {
 } from "lucide-react"
 import { Sheet, SheetContent } from "@/components/ui/sheet"
 import { useSidebar } from "./sidebar-context"
+import { MarketplaceSidebarNav, MarketplaceSidebarRail } from "./marketplace-nav"
+
+// Inside the Marketplace admin area the global site-admin nav is replaced by
+// the Marketplace sections nav (products, orders, reviews, ...).
+function isMarketplaceArea(pathname: string): boolean {
+  return pathname === "/admin/marketplace" || pathname.startsWith("/admin/marketplace/")
+}
 
 interface NavLink {
   href: string
@@ -262,6 +269,7 @@ function Footer() {
 export function AdminSidebar() {
   const { collapsed, toggleCollapsed, mobileOpen, setMobileOpen } = useSidebar()
   const pathname = usePathname()
+  const inMarketplace = isMarketplaceArea(pathname || "")
 
   return (
     <>
@@ -290,7 +298,15 @@ export function AdminSidebar() {
           )}
         </div>
 
-        {collapsed ? (
+        {inMarketplace ? (
+          collapsed ? (
+            <MarketplaceSidebarRail />
+          ) : (
+            <ScrollArea className="flex-1">
+              <MarketplaceSidebarNav />
+            </ScrollArea>
+          )
+        ) : collapsed ? (
           <IconRail pathname={pathname} />
         ) : (
           <NavList pathname={pathname} />
@@ -318,7 +334,11 @@ export function AdminSidebar() {
             <Brand />
           </div>
           <div className="min-h-0 flex-1 overflow-y-auto">
-            <NavList pathname={pathname} onNavClick={() => setMobileOpen(false)} />
+            {inMarketplace ? (
+              <MarketplaceSidebarNav onNavClick={() => setMobileOpen(false)} />
+            ) : (
+              <NavList pathname={pathname} onNavClick={() => setMobileOpen(false)} />
+            )}
           </div>
           <div className="shrink-0">
             <Footer />

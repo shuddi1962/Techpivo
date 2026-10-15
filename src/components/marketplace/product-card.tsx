@@ -9,8 +9,7 @@ import { readCompare, toggleCompareStored } from "@/lib/marketplace-compare"
 import { priceOf, discountOf, type StoreProduct } from "@/lib/marketplace-catalog"
 import { MarketPrice } from "./market-price"
 import { SaleCountdown, useSaleEnd } from "./sale-countdown"
-import { saleBadgeOn } from "@/lib/marketplace-merch"
-import { useMarketMerch } from "./market-flags"
+import { useSaleBadge } from "./market-flags"
 
 // Storefront card: the whole card (image + name + price) opens the product
 // page via a stretched link; hover rail (wishlist / quick view / compare)
@@ -33,9 +32,9 @@ export function ProductCard({
   const old = p.original_price ? Number(p.original_price) : NaN
   const href = `/marketplace/product/${p.id}`
   const saleEnd = useSaleEnd(p.id)
-  const merch = useMarketMerch()
-  // Admin decides per product whether the discount shows at all.
-  const showSale = discount > 0 && saleBadgeOn(merch, p.id)
+  // Store-wide switch + per-product flag decide if the discount shows at all.
+  const saleBadgeAllowed = useSaleBadge(p.id)
+  const showSale = discount > 0 && saleBadgeAllowed
   const [compared, setCompared] = useState(() => !!readCompare()[p.id])
 
   const toggleCompare = () => setCompared(toggleCompareStored(p.id))

@@ -3,7 +3,7 @@ import Link from "next/link"
 import { notFound } from "next/navigation"
 import { MARKET_DEPARTMENTS } from "@/lib/marketplace-categories"
 import { deptBannerOf, linkOf } from "@/lib/marketplace-banners"
-import { fetchStoreProducts, fetchMarketBanners } from "@/lib/marketplace-products"
+import { fetchStoreProducts, fetchMarketBanners, fetchMarketMerch } from "@/lib/marketplace-products"
 import { ProductListing } from "@/components/marketplace/product-listing"
 import { StorePageShell } from "@/components/marketplace/store-shell"
 
@@ -36,9 +36,10 @@ export default async function MarketplaceCategoryPage({ params }: { params: { sl
     found.kind === "dept"
       ? [found.dept.slug, ...found.dept.subs.map((s) => s.slug)]
       : [found.sub!.slug]
-  const [products, banners] = await Promise.all([
+  const [products, banners, merchState] = await Promise.all([
     fetchStoreProducts({ slugs, limit: 150 }),
     fetchMarketBanners(),
+    fetchMarketMerch(),
   ])
   const title = found.kind === "dept" ? found.dept.name : found.sub!.name
 
@@ -144,7 +145,7 @@ export default async function MarketplaceCategoryPage({ params }: { params: { sl
       </section>
       )}
 
-      <ProductListing products={products} />
+      <ProductListing products={products} initialMerch={merchState} />
     </StorePageShell>
   )
 }

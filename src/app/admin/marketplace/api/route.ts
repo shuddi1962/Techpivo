@@ -106,8 +106,9 @@ export async function GET(request: NextRequest) {
     }
     if (section === "merch") {
       const { data } = await supabase.from("site_settings").select("value").eq("key", "marketplace_merch").maybeSingle()
-      const { parseMarketMerch } = await import("@/lib/marketplace-merch")
-      return NextResponse.json({ merch: parseMarketMerch((data as { value?: unknown } | null)?.value) })
+      const { parseMarketMerch, parseMarketMerchGlobal } = await import("@/lib/marketplace-merch")
+      const raw = (data as { value?: unknown } | null)?.value
+      return NextResponse.json({ merch: parseMarketMerch(raw), sale_badges: parseMarketMerchGlobal(raw) })
     }
     if (section === "coupons") {
       const { data } = await supabase.from("site_settings").select("value").eq("key", "marketplace_coupons").maybeSingle()
@@ -344,15 +345,30 @@ export async function POST(request: NextRequest) {
       if (error) throw error
       return NextResponse.json({ success: true })
     }
-    // Save per-product merchandising flags (sale/new/bestseller)
+    // Save per-product merchandising flags (sale/new/bestseller) and/or the
+    // store-wide sale_badges switch. Read-modify-write so a flags-only save
+    // never wipes the global switch and vice versa.
     if (body.action === "merch-save") {
-      const { parseMarketMerch } = await import("@/lib/marketplace-merch")
-      const merch = parseMarketMerch(body.merch)
+      const { parseMarketMerch, parseMarketMerchGlobal, MARKET_MERCH_GLOBAL_KEY } = await import("@/lib/marketplace-merch")
+      const { data: current } = await supabase.from("site_settings").select("value").eq("key", "marketplace_merch").maybeSingle()
+      const raw = ((current as { value?: unknown } | null)?.value ?? {}) as Record<string, unknown>
+      const next: Record<string, unknown> = { ...raw }
+      if (body.merch !== undefined) {
+        const merch = parseMarketMerch(body.merch)
+        for (const k of Object.keys(next)) {
+          if (k !== MARKET_MERCH_GLOBAL_KEY) delete next[k]
+        }
+        Object.assign(next, merch)
+      }
+      if (typeof body.sale_badges === "boolean") {
+        next[MARKET_MERCH_GLOBAL_KEY] = { sale_badges: body.sale_badges }
+      }
+      const out = { ...next }
       const { error } = await supabase
         .from("site_settings")
-        .upsert({ key: "marketplace_merch", value: merch as unknown as never }, { onConflict: "key" })
+        .upsert({ key: "marketplace_merch", value: out as unknown as never }, { onConflict: "key" })
       if (error) throw error
-      return NextResponse.json({ success: true, merch })
+      return NextResponse.json({ success: true, merch: parseMarketMerch(out), sale_badges: parseMarketMerchGlobal(out) })
     }
     // Replace the whole coupon list (validated item by item)
     if (body.action === "coupons-save") {

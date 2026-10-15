@@ -88,19 +88,20 @@ export async function fetchStoreProducts(opts?: {
   })
 }
 
-// Admin merchandising flags (public site_settings read). Never throws —
-// pages fall back to defaults (sale badges on, no pins) instead.
-export async function fetchMarketMerch(): Promise<import("@/lib/marketplace-merch").MarketMerch> {
-  const { parseMarketMerch } = await import("@/lib/marketplace-merch")
+// Admin merchandising flags + store-wide sale-badge switch (public
+// site_settings read). Never throws — pages fall back to defaults
+// (sale badges on, no pins) instead.
+export async function fetchMarketMerch(): Promise<{ merch: import("@/lib/marketplace-merch").MarketMerch; saleBadges: boolean }> {
+  const { parseMarketMerch, parseMarketMerchGlobal } = await import("@/lib/marketplace-merch")
   try {
     const supabase = createPublicClient()
     const res = (await fetchWithTimeout(
       supabase.from("site_settings").select("value").eq("key", "marketplace_merch").maybeSingle(),
       8000
     )) as { data: { value?: unknown } | null } | null
-    return parseMarketMerch(res?.data?.value)
+    return { merch: parseMarketMerch(res?.data?.value), saleBadges: parseMarketMerchGlobal(res?.data?.value) }
   } catch {
-    return {}
+    return { merch: {}, saleBadges: true }
   }
 }
 

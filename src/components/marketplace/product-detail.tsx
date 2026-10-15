@@ -15,8 +15,7 @@ import { DeliveryPicker } from "./delivery-picker"
 import { useMarketCurrency, useUsdNgnRate } from "@/lib/marketplace-pricing"
 import { MarketPrice } from "./market-price"
 import { SaleCountdown, useSaleEnd } from "./sale-countdown"
-import { saleBadgeOn } from "@/lib/marketplace-merch"
-import { useMarketMerch } from "./market-flags"
+import { useSaleBadge } from "./market-flags"
 
 interface Review {
   id: string
@@ -218,7 +217,8 @@ export function ProductDetail({
   const rate = useUsdNgnRate()
   const currency = useMarketCurrency()
   const saleEnd = useSaleEnd(p.id)
-  const merch = useMarketMerch()
+  // Store-wide switch + per-product flag decide if the discount shows at all.
+  const saleBadgeAllowed = useSaleBadge(p.id)
   const [qty, setQty] = useState(1)
   const [added, setAdded] = useState(false)
   const lastAddRef = useRef(0)
@@ -407,6 +407,7 @@ export function ProductDetail({
   const price = selected?.price ?? basePrice
   const oldPrice = p.original_price && p.sale_price ? Number(p.original_price) : null
   const discount = oldPrice && oldPrice > price ? Math.round((1 - price / oldPrice) * 100) : 0
+  const showSale = discount > 0 && saleBadgeAllowed
   const avg = useMemo(
     () => (reviews.length ? reviews.reduce((s, r) => s + r.rating, 0) / reviews.length : 0),
     [reviews]
@@ -503,7 +504,7 @@ export function ProductDetail({
               ) : (
                 <div className="w-full h-full flex items-center justify-center text-slate-300 text-sm">No image</div>
               )}
-              {discount > 0 && saleBadgeOn(merch, p.id) && (
+              {showSale && (
                 <span className="absolute top-3 left-3 bg-[#EF4444] text-white text-xs font-bold px-2 py-1 rounded-full">-{discount}%</span>
               )}
             </div>
@@ -533,9 +534,9 @@ export function ProductDetail({
             </span>
           </div>
           <div className="flex items-baseline gap-2 mt-3 flex-wrap">
-            <MarketPrice usd={price} className={`text-3xl font-extrabold ${discount > 0 && saleBadgeOn(merch, p.id) ? "text-[#EF4444]" : "text-[#0F172A]"}`} />
-            {oldPrice && saleBadgeOn(merch, p.id) && <MarketPrice usd={oldPrice} className="text-lg text-slate-400 line-through" />}
-            {discount > 0 && saleBadgeOn(merch, p.id) && saleEnd.trim() && <SaleCountdown endAt={saleEnd} prefix="Sale ends in" />}
+            <MarketPrice usd={price} className={`text-3xl font-extrabold ${showSale ? "text-[#EF4444]" : "text-[#0F172A]"}`} />
+            {oldPrice && showSale && <MarketPrice usd={oldPrice} className="text-lg text-slate-400 line-through" />}
+            {showSale && saleEnd.trim() && <SaleCountdown endAt={saleEnd} prefix="Sale ends in" />}
           </div>
           <p className="text-sm font-semibold text-slate-600 mt-1">
             {currency === "NGN"

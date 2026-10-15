@@ -12,8 +12,7 @@ import { readCompare, toggleCompareStored } from "@/lib/marketplace-compare"
 import { discountPct } from "./feature-panels"
 import { MarketPrice } from "./market-price"
 import { SaleCountdown, useSaleEnd } from "./sale-countdown"
-import { saleBadgeOn } from "@/lib/marketplace-merch"
-import { useMarketMerch } from "./market-flags"
+import { useSaleBadge } from "./market-flags"
 
 interface ShowcaseActions {
   onAdd: (p: DemoProduct) => void
@@ -32,8 +31,8 @@ function ShowcaseCard({ p, onAdd, added, wished, onWish }: { p: DemoProduct } & 
   const pct = discountPct(p.price, p.oldPrice)
   const href = /^[0-9a-f-]{36}$/i.test(p.id) ? `/marketplace/product/${p.id}` : undefined
   const saleEnd = useSaleEnd(p.id)
-  const merch = useMarketMerch()
-  const showSale = pct > 0 && saleBadgeOn(merch, p.id)
+  const saleBadgeAllowed = useSaleBadge(p.id)
+  const showSale = pct > 0 && saleBadgeAllowed
   const flipCompare = () => setCompared((m) => ({ ...m, [p.id]: toggleCompareStored(p.id) }))
 
   const iconBtn =

@@ -13,11 +13,12 @@ export const metadata: Metadata = {
 }
 
 export default async function MarketplaceBestSellersPage() {
-  const [all, banners, merch] = await Promise.all([
+  const [all, banners, merchState] = await Promise.all([
     fetchStoreProducts({ order: "popular", limit: 100 }),
     fetchMarketBanners(),
     fetchMarketMerch(),
   ])
+  const { merch } = merchState
   // Admin-pinned Best sellers lead, then real popularity.
   const products = [...all].sort(
     (a, b) => Number(isBestsellerPick(merch, b.id)) - Number(isBestsellerPick(merch, a.id))
@@ -32,7 +33,7 @@ export default async function MarketplaceBestSellersPage() {
         image={pageBannerOf(banners, "best_sellers_image")}
         links={banners.links}
       />
-      <ProductListing products={products} />
+      <ProductListing products={products} initialMerch={merchState} />
     </StorePageShell>
   )
 }

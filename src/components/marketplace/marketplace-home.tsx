@@ -27,8 +27,8 @@ import { ShopCollections, type CollectionItem } from "./shop-collections"
 import { BrandRail } from "./brand-rail"
 import { MarketPrice } from "./market-price"
 import { SaleCountdown, useSaleEnd } from "./sale-countdown"
-import { saleBadgeOn, isNewPick, isBestsellerPick } from "@/lib/marketplace-merch"
-import { useMarketMerch } from "./market-flags"
+import { isNewPick, isBestsellerPick, showSaleBadge } from "@/lib/marketplace-merch"
+import { useMarketMerch, useSaleBadge } from "./market-flags"
 
 interface DbProduct {
   id: string
@@ -53,8 +53,8 @@ interface DbProduct {
 function ProductCard({ p, onAdd, wished, onWish, added, href }: { p: DemoProduct; onAdd: () => void; wished: boolean; onWish: () => void; added: boolean; href?: string }) {
   const discount = p.oldPrice ? Math.round((1 - p.price / p.oldPrice) * 100) : 0
   const saleEnd = useSaleEnd(p.id)
-  const merch = useMarketMerch()
-  const showSale = discount > 0 && saleBadgeOn(merch, p.id)
+  const saleBadgeAllowed = useSaleBadge(p.id)
+  const showSale = discount > 0 && saleBadgeAllowed
   const [compared, setCompared] = useState(() => !!readCompare()[p.id])
   const toggleCompare = () => setCompared(toggleCompareStored(p.id))
   const iconBtn =
@@ -501,7 +501,7 @@ export function MarketplaceHome() {
   const grid: DemoProduct[] = liveProducts
   // Admin merchandising: discount badges show only where enabled, and
   // pinned New/Best products lead their rails.
-  const merch = useMarketMerch()
+  const { merch, saleBadges } = useMarketMerch()
   // Homepage allocation — every product appears in ONE section only.
   // Order: flash → featured → new → best → trending, each skipping IDs
   // already taken, so rails never repeat each other. (The tabbed grid
@@ -514,7 +514,7 @@ export function MarketplaceHome() {
   const usedIds = new Set<string>()
   const flashItems = takeFresh(
     [...grid]
-      .filter((p) => discountRateOf(p) > 0 && saleBadgeOn(merch, p.id))
+      .filter((p) => discountRateOf(p) > 0 && showSaleBadge(saleBadges, merch, p.id))
       .sort((a, b) => discountRateOf(b) - discountRateOf(a)),
     usedIds,
     4

@@ -1,5 +1,5 @@
 import type { Metadata } from "next"
-import { fetchStoreProducts, fetchMarketBanners } from "@/lib/marketplace-products"
+import { fetchStoreProducts, fetchMarketBanners, fetchMarketMerch } from "@/lib/marketplace-products"
 import { pageBannerOf } from "@/lib/marketplace-banners"
 import { ProductListing } from "@/components/marketplace/product-listing"
 import { StorePageShell, CollectionHero } from "@/components/marketplace/store-shell"
@@ -12,9 +12,10 @@ export const metadata: Metadata = {
 }
 
 export default async function MarketplaceShopPage() {
-  const [products, banners] = await Promise.all([
+  const [products, banners, merchState] = await Promise.all([
     fetchStoreProducts({ limit: 150 }),
     fetchMarketBanners(),
+    fetchMarketMerch(),
   ])
   return (
     <StorePageShell trail={[{ label: "Shop" }]}>
@@ -25,7 +26,7 @@ export default async function MarketplaceShopPage() {
         image={pageBannerOf(banners, "shop_image")}
         links={banners.links}
       />
-      <ProductListing products={products} />
+      <ProductListing products={products} initialMerch={merchState} />
     </StorePageShell>
   )
 }
