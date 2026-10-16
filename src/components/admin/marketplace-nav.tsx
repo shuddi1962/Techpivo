@@ -13,6 +13,9 @@ import { cn } from "@/lib/utils"
 // Single source of truth for the Marketplace admin sections — shared by the
 // global admin sidebar (which swaps to this nav on /admin/marketplace*) and
 // the marketplace page itself (tabs are URL-driven via ?section=).
+//
+// Layout budget: the whole nav must fit a normal laptop viewport with NO
+// inner scroll — slim strip header, compact two-line rows, slim footer.
 export interface MarketSection {
   id: string
   label: string
@@ -62,10 +65,11 @@ function SectionLink({
       href={sectionHref(t.id)}
       onClick={onNavClick}
       aria-current={isActive ? "page" : undefined}
-      title={compact ? `${t.label} — ${t.desc}` : undefined}
+      title={`${t.label} — ${t.desc}`}
+      aria-label={`${t.label} — ${t.desc}`}
       className={cn(
-        "group relative flex items-center gap-3 rounded-xl px-2.5 transition-all duration-150",
-        compact ? "justify-center py-2" : "py-2 text-left",
+        "group relative flex items-center gap-2 rounded-lg transition-all duration-150",
+        compact ? "justify-center px-0 py-1.5" : "px-1.5 py-1 text-left",
         isActive
           ? "bg-slate-900 text-white shadow-[0_10px_24px_-10px_rgba(15,23,42,0.55)]"
           : "text-slate-600 hover:bg-slate-100/90 hover:text-slate-900 active:scale-[0.99]"
@@ -73,18 +77,18 @@ function SectionLink({
     >
       <span
         className={cn(
-          "flex h-9 w-9 shrink-0 items-center justify-center rounded-xl transition-all",
+          "flex h-7 w-7 shrink-0 items-center justify-center rounded-lg transition-all",
           isActive
             ? "bg-[#F59E0B] text-slate-900 shadow-sm"
             : "bg-slate-100 text-slate-500 group-hover:bg-white group-hover:text-amber-600 group-hover:shadow-sm"
         )}
       >
-        <Icon className="h-[18px] w-[18px]" />
+        <Icon className="h-3.5 w-3.5" />
       </span>
       {!compact && (
-        <span className="min-w-0 flex-1 leading-tight">
-          <span className="block truncate text-[13px] font-bold">{t.label}</span>
-          <span className={cn("block truncate text-[11px]", isActive ? "text-slate-300" : "text-slate-400")}>
+        <span className="min-w-0 flex-1 leading-none">
+          <span className="block truncate text-xs font-bold">{t.label}</span>
+          <span className={cn("mt-0.5 block truncate text-[10px]", isActive ? "text-slate-300" : "text-slate-400")}>
             {t.desc}
           </span>
         </span>
@@ -99,7 +103,7 @@ function SectionLink({
         />
       )}
       {isActive && (
-        <span aria-hidden className="absolute left-0 top-1/2 h-6 w-1 -translate-y-1/2 rounded-r-full bg-[#F59E0B]" />
+        <span aria-hidden className="absolute left-0 top-1/2 h-5 w-[3px] -translate-y-1/2 rounded-r-full bg-[#F59E0B]" />
       )}
     </Link>
   )
@@ -124,7 +128,7 @@ function MarketplaceLinks({ onNavClick, mini = false }: { onNavClick?: () => voi
 
   if (mini) {
     return (
-      <div className="flex flex-1 flex-col items-center gap-1.5 overflow-y-auto py-4 [scrollbar-width:none]">
+      <div className="flex flex-1 flex-col items-center gap-1 overflow-y-auto py-3 [scrollbar-width:none]">
         {MARKET_SECTIONS.map((t) => (
           <SectionLink key={t.id} t={t} isActive={current === t.id} onNavClick={onNavClick} compact />
         ))}
@@ -138,24 +142,28 @@ function MarketplaceLinks({ onNavClick, mini = false }: { onNavClick?: () => voi
   })).filter((g) => g.items.length > 0)
 
   return (
-    <div className="flex h-full flex-col">
-      <div className="relative px-1 pb-2">
-        <Search className="pointer-events-none absolute left-3.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
-        <input
-          value={q}
-          onChange={(e) => setQ(e.target.value)}
-          placeholder="Search sections…"
-          aria-label="Search marketplace sections"
-          className="w-full rounded-xl border border-slate-200 bg-slate-50 py-2 pl-9 pr-3 text-[13px] text-slate-700 placeholder:text-slate-400 focus:border-amber-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-amber-100"
-        />
+    <div className="flex h-full min-h-0 flex-col">
+      <div className="shrink-0 px-0.5 pb-1.5">
+        <div className="relative">
+          <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3 w-3 -translate-y-1/2 text-slate-400" />
+          <input
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            placeholder="Search sections…"
+            aria-label="Search marketplace sections"
+            className="h-8 w-full rounded-lg border border-slate-200 bg-slate-50 pl-8 pr-2 text-xs text-slate-700 placeholder:text-slate-400 focus:border-amber-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-amber-100"
+          />
+        </div>
       </div>
-      <nav className="grid gap-3 overflow-y-auto pb-1" aria-label="Marketplace sections">
+      {/* Overflow is a safety net for very short viewports only — at normal
+          laptop heights every section is visible with no scrolling. */}
+      <nav className="grid min-h-0 flex-1 content-start gap-2 overflow-y-auto pb-0.5 [scrollbar-width:thin]" aria-label="Marketplace sections">
         {grouped.map((g) => (
           <div key={g.name}>
-            <p className="px-2.5 pb-1 text-[10px] font-extrabold uppercase tracking-[0.12em] text-slate-400">
+            <p className="px-2 pb-0.5 text-[9px] font-extrabold uppercase tracking-[0.14em] text-slate-400">
               {g.name}
             </p>
-            <div className="grid gap-1">
+            <div className="grid gap-px">
               {g.items.map((t) => (
                 <SectionLink key={t.id} t={t} isActive={current === t.id} onNavClick={onNavClick} />
               ))}
@@ -163,7 +171,7 @@ function MarketplaceLinks({ onNavClick, mini = false }: { onNavClick?: () => voi
           </div>
         ))}
         {grouped.length === 0 && (
-          <p className="rounded-xl bg-slate-50 px-3 py-6 text-center text-xs text-slate-400">
+          <p className="rounded-lg bg-slate-50 px-3 py-5 text-center text-xs text-slate-400">
             No sections match “{q}”.
           </p>
         )}
@@ -186,11 +194,11 @@ export function MarketplaceBackLink({ mini = false, onNavClick }: { mini?: boole
       <Link
         href="/admin"
         onClick={onNavClick}
-        title="Back to admin"
-        aria-label="Back to admin"
-        className="flex h-10 w-10 items-center justify-center rounded-xl text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700"
+        title="Back to Admin"
+        aria-label="Back to Admin"
+        className="flex h-9 w-9 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700"
       >
-        <ArrowLeft className="h-[18px] w-[18px]" />
+        <ArrowLeft className="h-4 w-4" />
       </Link>
     )
   }
@@ -198,9 +206,11 @@ export function MarketplaceBackLink({ mini = false, onNavClick }: { mini?: boole
     <Link
       href="/admin"
       onClick={onNavClick}
-      className="group flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-[13px] font-bold text-slate-600 shadow-sm transition-all hover:border-slate-300 hover:text-slate-900 hover:shadow"
+      title="Back to Admin"
+      aria-label="Back to Admin"
+      className="group flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-xs font-bold text-slate-600 shadow-sm transition-all hover:border-slate-300 hover:text-slate-900 hover:shadow"
     >
-      <ArrowLeft className="h-4 w-4 shrink-0 transition-transform group-hover:-translate-x-0.5" />
+      <ArrowLeft className="h-3.5 w-3.5 shrink-0 transition-transform group-hover:-translate-x-0.5" />
       <span className="flex-1 truncate">Back to Admin</span>
     </Link>
   )
@@ -213,56 +223,62 @@ export function MarketplaceStoreLink({ onNavClick }: { onNavClick?: () => void }
       target="_blank"
       rel="noopener noreferrer"
       onClick={onNavClick}
-      className="group flex items-center gap-2.5 rounded-xl bg-[#F59E0B] px-3 py-2.5 text-[13px] font-bold text-slate-900 shadow-[0_8px_20px_-8px_rgba(245,158,11,0.7)] transition-all hover:bg-[#D97706] active:scale-[0.99]"
+      title="Open the live storefront — changes publish instantly"
+      className="group flex items-center gap-2 rounded-lg bg-[#F59E0B] px-2.5 py-2 text-xs font-bold text-slate-900 shadow-[0_8px_20px_-8px_rgba(245,158,11,0.7)] transition-all hover:bg-[#D97706] active:scale-[0.99]"
     >
-      <Store className="h-4 w-4 shrink-0" />
+      <Store className="h-3.5 w-3.5 shrink-0" />
       <span className="flex-1 truncate">View store</span>
-      <ExternalLink className="h-3.5 w-3.5 shrink-0 opacity-60 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
+      <ExternalLink className="h-3 w-3 shrink-0 opacity-60 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
     </Link>
   )
 }
 
 // Full sidebar body for the marketplace area (desktop expanded + mobile
-// drawer). The Suspense wrappers are required because the links read ?section=.
+// drawer): slim dark identity strip with Back-to-Admin, compact grouped
+// sections, slim View-store footer. Fits a normal laptop viewport with no
+// inner scroll. The Suspense wrappers are required for ?section=.
 export function MarketplaceSidebarNav({ onNavClick }: { onNavClick?: () => void }) {
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <div className="shrink-0 px-3 pt-4">
-        <div className="rounded-2xl border border-amber-200/70 bg-gradient-to-br from-amber-50 via-white to-white p-3 shadow-sm">
-          <div className="flex items-center gap-2.5">
-            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-slate-900 shadow-sm">
-              <Store className="h-[18px] w-[18px] text-[#F59E0B]" />
+      <div className="shrink-0 px-2.5 pt-2.5">
+        <div className="flex items-center gap-2 rounded-xl bg-slate-900 px-2 py-1.5 shadow-sm">
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[#F59E0B]">
+            <Store className="h-4 w-4 text-slate-900" />
+          </span>
+          <span className="min-w-0 flex-1 leading-none">
+            <span className="block truncate text-xs font-extrabold tracking-tight text-white">
+              TechPivo Market
             </span>
-            <div className="min-w-0 flex-1 leading-tight">
-              <p className="truncate text-[13px] font-extrabold tracking-tight text-slate-900">TechPivo Market</p>
-              <p className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                <span className="relative flex h-1.5 w-1.5">
-                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-400 opacity-75" />
-                  <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-red-500" />
-                </span>
-                Live store
-              </p>
-            </div>
-          </div>
-          <div className="mt-2.5 grid gap-2">
-            <Suspense fallback={null}>
-              <MarketplaceBackLink onNavClick={onNavClick} />
-            </Suspense>
-          </div>
+            <span className="mt-1 flex items-center gap-1 text-[9px] font-bold uppercase tracking-[0.14em] text-slate-400">
+              <span className="relative flex h-1.5 w-1.5">
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-400 opacity-75" />
+                <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-red-500" />
+              </span>
+              Live store
+            </span>
+          </span>
+          <Suspense fallback={null}>
+            <Link
+              href="/admin"
+              onClick={onNavClick}
+              title="Back to Admin"
+              aria-label="Back to Admin"
+              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-white/10 text-slate-300 transition-colors hover:bg-white/20 hover:text-white"
+            >
+              <ArrowLeft className="h-4 w-4" />
+            </Link>
+          </Suspense>
         </div>
       </div>
-      <div className="min-h-0 flex-1 px-3 py-3">
-        <Suspense fallback={<div className="px-3 py-2 text-[13px] text-slate-400">Loading…</div>}>
+      <div className="min-h-0 flex-1 px-2.5 py-2">
+        <Suspense fallback={<div className="px-3 py-2 text-xs text-slate-400">Loading…</div>}>
           <MarketplaceLinks onNavClick={onNavClick} />
         </Suspense>
       </div>
-      <div className="shrink-0 border-t border-slate-100 bg-white/80 p-3 backdrop-blur">
+      <div className="shrink-0 border-t border-slate-100 bg-white/80 px-2.5 py-2 backdrop-blur">
         <Suspense fallback={null}>
           <MarketplaceStoreLink onNavClick={onNavClick} />
         </Suspense>
-        <p className="mt-2 px-1 text-center text-[10px] font-medium text-slate-400">
-          Changes publish to the storefront instantly
-        </p>
       </div>
     </div>
   )
@@ -271,7 +287,7 @@ export function MarketplaceSidebarNav({ onNavClick }: { onNavClick?: () => void 
 // Collapsed icon rail for the marketplace area.
 export function MarketplaceSidebarRail() {
   return (
-    <div className="flex min-h-0 flex-1 flex-col items-center py-3">
+    <div className="flex min-h-0 flex-1 flex-col items-center py-2.5">
       <Suspense fallback={<div className="flex-1" />}>
         <MarketplaceBackLink mini />
         <MarketplaceRail />
