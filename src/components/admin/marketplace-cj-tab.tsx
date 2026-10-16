@@ -3,6 +3,17 @@
 import { useEffect, useState } from "react"
 import { CheckCircle2, Download, KeyRound, Plug, RefreshCw, Search, XCircle } from "lucide-react"
 import { MARKET_DEPARTMENTS } from "@/lib/marketplace-categories"
+import {
+  marketBtnDarkCls,
+  marketBtnPrimaryCls,
+  marketCardCls,
+  MarketEmpty,
+  MarketHeader,
+  marketIconInputCls,
+  marketIconInputWrapCls,
+  MarketNotice,
+} from "@/components/admin/marketplace-ui"
+import { cn } from "@/lib/utils"
 
 interface CjItem {
   pid: string
@@ -104,110 +115,146 @@ export function MarketplaceCjTab({ onImported }: { onImported: () => void }) {
   }
 
   return (
-    <div className="grid gap-4">
+    <div>
+      <MarketHeader
+        icon={Plug}
+        title="CJ Import"
+        desc="Supplier catalog sync — search CJ live, then import into your catalog"
+        actions={
+          status ? (
+            <span
+              className={cn(
+                "inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-extrabold",
+                status.connected ? "bg-emerald-100 text-emerald-800" : "bg-slate-100 text-slate-500"
+              )}
+            >
+              {status.connected ? <CheckCircle2 className="h-3.5 w-3.5" /> : <XCircle className="h-3.5 w-3.5" />}
+              {status.connected ? "CONNECTED" : "NOT CONNECTED"}
+            </span>
+          ) : undefined
+        }
+      />
+
       {/* connection card */}
-      <div className="bg-white border rounded-xl p-4 sm:p-5">
-        <div className="flex items-center gap-2 mb-1">
-          <Plug className="h-5 w-5 text-amber-600" />
-          <h2 className="font-bold text-slate-900">CJDropshipping connection</h2>
-        </div>
+      <div className={marketCardCls + " p-4 sm:p-5 mb-3"}>
+        <p className="mb-1 text-xs font-extrabold uppercase tracking-[0.12em] text-slate-400">Connection</p>
         {status ? (
-          <p className={`text-sm flex items-center gap-1.5 mb-3 ${status.connected ? "text-emerald-600" : "text-slate-500"}`}>
+          <p className={`mb-3 flex items-center gap-1.5 text-sm font-semibold ${status.connected ? "text-emerald-700" : "text-slate-500"}`}>
             {status.connected ? <CheckCircle2 className="h-4 w-4" /> : <XCircle className="h-4 w-4" />}
             {status.message}
           </p>
         ) : (
-          <p className="text-sm text-slate-500 mb-3">Checking connection...</p>
+          <p className="mb-3 text-sm text-slate-500">Checking connection...</p>
         )}
-        <div className="flex flex-col sm:flex-row gap-2">
-          <div className="relative flex-1">
-            <KeyRound className="h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+        <div className="flex flex-col gap-2 sm:flex-row">
+          <div className={marketIconInputWrapCls + " flex-1"}>
+            <KeyRound className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
             <input
               value={apiKey}
               onChange={(e) => setApiKey(e.target.value)}
               type="password"
               placeholder="Paste CJ API key (developers.cjdropshipping.com)"
-              className="w-full border rounded-lg pl-9 pr-3 py-2 text-sm focus:outline-none focus:border-amber-500"
+              autoComplete="off"
+              className={marketIconInputCls}
             />
           </div>
           <button
             onClick={saveKey}
             disabled={savingKey || !apiKey.trim()}
-            className="bg-slate-900 text-white text-sm font-semibold rounded-lg px-4 py-2 disabled:opacity-50"
+            className={marketBtnDarkCls}
           >
             {savingKey ? "Connecting..." : "Save & connect"}
           </button>
         </div>
-        <p className="text-xs text-slate-500 mt-2">
-          Get your key from CJDropshipping → My CJ → API. Stored in <code>site_settings.cj_api_key</code> (server-only reads).
+        <p className="mt-2 text-xs text-slate-500">
+          Get your key from CJDropshipping → My CJ → API. Stored in <code className="rounded bg-slate-100 px-1">site_settings.cj_api_key</code> (server-only reads).
         </p>
       </div>
 
       {/* search + import */}
-      <div className="bg-white border rounded-xl p-4 sm:p-5">
-        <div className="flex flex-col lg:flex-row gap-2 mb-3">
-          <div className="relative flex-1">
-            <Search className="h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+      <div className={marketCardCls + " p-4 sm:p-5"}>
+        <p className="mb-3 text-xs font-extrabold uppercase tracking-[0.12em] text-slate-400">Catalog search</p>
+        <div className="mb-3 flex flex-col gap-2 lg:flex-row">
+          <div className={marketIconInputWrapCls + " flex-1"}>
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
             <input
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && search()}
               placeholder='Search CJ, e.g. "smart watch", "camera drone", "power bank"...'
-              className="w-full border rounded-lg pl-9 pr-3 py-2 text-sm focus:outline-none focus:border-amber-500"
+              aria-label="Search CJ catalog"
+              className={marketIconInputCls}
             />
           </div>
-          <select value={categorySlug} onChange={(e) => { setCategorySlug(e.target.value); const d = MARKET_DEPARTMENTS.find((x) => x.slug === e.target.value); if (d) setSubcategorySlug(d.subs[0].slug) }} className="border rounded-lg px-3 py-2 text-sm bg-white" aria-label="Department">
-            {MARKET_DEPARTMENTS.map((d) => (
-              <option key={d.slug} value={d.slug}>{d.name}</option>
-            ))}
-          </select>
-          <select value={subcategorySlug} onChange={(e) => setSubcategorySlug(e.target.value)} className="border rounded-lg px-3 py-2 text-sm bg-white" aria-label="Subcategory">
-            {dept.subs.map((s) => (
-              <option key={s.slug} value={s.slug}>{s.name}</option>
-            ))}
-          </select>
-          <button onClick={search} disabled={loading} className="bg-[#F59E0B] hover:bg-[#D97706] text-[#0F172A] text-sm font-bold rounded-lg px-4 py-2 disabled:opacity-60 inline-flex items-center gap-1.5 justify-center">
+          <div className="grid grid-cols-2 gap-2 lg:flex">
+            <select value={categorySlug} onChange={(e) => { setCategorySlug(e.target.value); const d = MARKET_DEPARTMENTS.find((x) => x.slug === e.target.value); if (d) setSubcategorySlug(d.subs[0].slug) }} className="cursor-pointer rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm focus:border-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-100" aria-label="Department">
+              {MARKET_DEPARTMENTS.map((d) => (
+                <option key={d.slug} value={d.slug}>{d.name}</option>
+              ))}
+            </select>
+            <select value={subcategorySlug} onChange={(e) => setSubcategorySlug(e.target.value)} className="cursor-pointer rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm focus:border-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-100" aria-label="Subcategory">
+              {dept.subs.map((s) => (
+                <option key={s.slug} value={s.slug}>{s.name}</option>
+              ))}
+            </select>
+          </div>
+          <button onClick={search} disabled={loading} className={marketBtnPrimaryCls + " justify-center"}>
             {loading ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
             Search CJ
           </button>
         </div>
 
-        {notice && <p className="text-sm text-slate-600 bg-slate-50 border rounded-lg px-3 py-2 mb-3">{notice}</p>}
+        {notice && <MarketNotice tone="info">{notice}</MarketNotice>}
+        {!demo && total !== null && list.length > 0 && (
+          <p className="mb-2 text-xs font-semibold text-slate-500">
+            {total.toLocaleString()} result{total === 1 ? "" : "s"} — showing first {list.length} · tick to select, then import
+          </p>
+        )}
 
         {chosen.length > 0 && (
-          <div className="flex items-center justify-between bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 mb-3">
-            <span className="text-sm font-semibold text-amber-800">{chosen.length} selected → {dept.name} / {dept.subs.find((s) => s.slug === subcategorySlug)?.name}</span>
-            <button onClick={importChosen} disabled={importing} className="bg-slate-900 text-white text-sm font-semibold rounded-lg px-4 py-2 disabled:opacity-60 inline-flex items-center gap-1.5">
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2">
+            <span className="text-sm font-bold text-amber-800">{chosen.length} selected → {dept.name} / {dept.subs.find((s) => s.slug === subcategorySlug)?.name}</span>
+            <button onClick={importChosen} disabled={importing} className={marketBtnDarkCls}>
               <Download className="h-4 w-4" /> {importing ? "Importing..." : "Import to store"}
             </button>
           </div>
         )}
 
         {demo ? (
-          <p className="text-sm text-slate-500 text-center py-8">Connect your CJ API key to browse live products here.</p>
+          <MarketEmpty
+            icon={Plug}
+            title="Connect CJ to browse"
+            desc="Paste your CJ API key above — the live supplier catalog appears here for one-click import."
+          />
         ) : list.length > 0 ? (
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+          <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 sm:gap-3 lg:grid-cols-4">
             {list.map((item) => (
-              <label key={item.pid} className={`border rounded-xl overflow-hidden cursor-pointer transition-colors ${selected[item.pid] ? "border-amber-500 ring-2 ring-amber-500/20" : "hover:border-slate-300"}`}>
-                <div className="aspect-square bg-slate-100 relative">
+              <label key={item.pid} className={cn("cursor-pointer overflow-hidden rounded-2xl border bg-white transition-all", selected[item.pid] ? "border-amber-500 shadow-md ring-2 ring-amber-500/20" : "border-slate-200/80 hover:border-slate-300 hover:shadow-sm")}>
+                <div className="relative aspect-square bg-slate-100">
                   {item.productImage ? (
                     // eslint-disable-next-line @next/next/no-img-element
-                    <img src={item.productImage} alt={item.productNameEn || item.pid} className="w-full h-full object-cover" loading="lazy" />
+                    <img src={item.productImage} alt={item.productNameEn || item.pid} className="h-full w-full object-cover" loading="lazy" />
                   ) : null}
-                  <input type="checkbox" checked={!!selected[item.pid]} onChange={() => toggle(item.pid)} className="absolute top-2 right-2 h-5 w-5 accent-[#F59E0B]" aria-label={`Select ${item.pid}`} />
+                  <input type="checkbox" checked={!!selected[item.pid]} onChange={() => toggle(item.pid)} className="absolute right-2 top-2 h-5 w-5 rounded accent-[#F59E0B]" aria-label={`Select ${item.productNameEn || item.pid}`} />
                 </div>
                 <div className="p-2.5">
-                  <p className="text-xs font-semibold text-slate-900 line-clamp-2 min-h-[2em]">{item.productNameEn || item.pid}</p>
-                  <p className="text-sm font-bold text-slate-900 mt-1">{item.sellPrice != null ? `$${Number(item.sellPrice).toFixed(2)}` : "—"}</p>
-                  <p className="text-[11px] text-slate-400 truncate">{[item.categoryFirstName, item.categorySecondName].filter(Boolean).join(" / ") || item.pid}</p>
+                  <p className="line-clamp-2 min-h-[2em] text-xs font-semibold text-slate-900">{item.productNameEn || item.pid}</p>
+                  <p className="mt-1 text-sm font-extrabold tabular-nums text-slate-900">{item.sellPrice != null ? `$${Number(item.sellPrice).toFixed(2)}` : "—"}</p>
+                  <p className="truncate text-[11px] text-slate-400">{[item.categoryFirstName, item.categorySecondName].filter(Boolean).join(" / ") || item.pid}</p>
                 </div>
               </label>
             ))}
           </div>
         ) : (
-          <p className="text-sm text-slate-500 text-center py-8">
-            {total === null ? "Search CJ to find products from your categories, then import them in one click." : "No results."}
-          </p>
+          <MarketEmpty
+            icon={Search}
+            title={total === null ? "Search the supplier catalog" : "No results"}
+            desc={
+              total === null
+                ? "Find products in your departments above, tick them, and import in one click."
+                : "Try a different keyword — CJ names vary by supplier."
+            }
+          />
         )}
       </div>
     </div>

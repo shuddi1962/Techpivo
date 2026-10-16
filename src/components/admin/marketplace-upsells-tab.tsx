@@ -5,6 +5,13 @@
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { createClient } from "@/lib/supabase/client"
 import { Plus, Trash2, Eye, EyeOff, RefreshCw, TrendingUp } from "lucide-react"
+import {
+  marketCardCls,
+  MarketHeader,
+  MarketNotice,
+  MarketStat,
+  MarketStatStrip,
+} from "@/components/admin/marketplace-ui"
 
 interface Rec {
   id: string
@@ -163,16 +170,30 @@ export function MarketplaceUpsellsTab() {
 
   if (loading) return <p className="py-8 text-center text-sm text-slate-500">Loading upsells...</p>
 
+  const attachRate = report && report.paidOrders > 0 ? Math.round((report.multiItemOrders / report.paidOrders) * 1000) / 10 : 0
+
   return (
-    <div className="space-y-6">
+    <div>
+      <MarketHeader
+        icon={TrendingUp}
+        title="Upsells"
+        desc="Complete-your-purchase — curated picks plus live conversion data"
+      />
       {!migrated && (
-        <p className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-          Recommendations table not migrated yet — apply <code>supabase/migrations/094_marketplace_upsells.sql</code> in the
+        <MarketNotice tone="warn">
+          Recommendations table not migrated yet — apply <code className="rounded bg-amber-100/60 px-1">supabase/migrations/094_marketplace_upsells.sql</code> in the
           Supabase SQL Editor. The storefront keeps working on automatic category recommendations meanwhile.
-        </p>
+        </MarketNotice>
+      )}
+      {report && report.totalEvents > 0 && (
+        <MarketStatStrip>
+          <MarketStat label="Upsell adds" value={String(report.byKind.recommend_add ?? 0)} sub="from Complete Your Purchase" />
+          <MarketStat label="Multi-item orders" value={String(report.multiItemOrders)} sub={`${attachRate}% of paid orders`} />
+          <MarketStat label="Avg order value" value={`$${report.aovUsd.toFixed(2)}`} sub={`${report.paidOrders} paid orders`} />
+        </MarketStatStrip>
       )}
 
-      <section className="rounded-2xl border border-[#E2E8F0] bg-white p-4 sm:p-5">
+      <section className={marketCardCls + " p-4 sm:p-5 mb-3"}>
         <h3 className="font-bold text-[#0F172A]">Curated recommendations</h3>
         <p className="mt-0.5 text-[13px] text-slate-500">
           Pin specific add-ons to a product. Curated picks always outrank automatic ones on “Complete Your Purchase”.
@@ -228,7 +249,7 @@ export function MarketplaceUpsellsTab() {
             type="button"
             onClick={add}
             disabled={!primaryId || !recId || saving}
-            className="inline-flex items-center gap-1.5 rounded-lg bg-[#0F172A] px-4 py-2 text-sm font-bold text-white hover:bg-black disabled:opacity-50"
+            className="inline-flex items-center gap-1.5 rounded-xl bg-slate-900 px-4 py-2 text-sm font-bold text-white transition-all hover:bg-slate-700 active:scale-[0.98] disabled:opacity-50"
           >
             <Plus className="h-4 w-4" /> {saving ? "Saving..." : "Add recommendation"}
           </button>
@@ -269,7 +290,7 @@ export function MarketplaceUpsellsTab() {
         </div>
       </section>
 
-      <section className="rounded-2xl border border-[#E2E8F0] bg-white p-4 sm:p-5">
+      <section className={marketCardCls + " p-4 sm:p-5"}>
         <div className="flex items-center justify-between">
           <h3 className="inline-flex items-center gap-1.5 font-bold text-[#0F172A]">
             <TrendingUp className="h-4 w-4 text-amber-600" /> Conversion report

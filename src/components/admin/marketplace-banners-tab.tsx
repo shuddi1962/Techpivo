@@ -44,6 +44,8 @@ import {
 import { BannerSlider } from "@/components/marketplace/banner-slider"
 import { WelcomePopupCard } from "@/components/marketplace/welcome-popup"
 import { MARKET_STORE_DEFAULTS } from "@/lib/marketplace-store"
+import { marketCardCls, MarketLoading } from "@/components/admin/marketplace-ui"
+import { cn } from "@/lib/utils"
 
 // Sample artworks so a transition preview plays even before any upload.
 function sampleSlide(bg1: string, bg2: string, label: string): BannerSlide {
@@ -568,18 +570,20 @@ function Section({
   children: React.ReactNode
 }) {
   return (
-    <div className="overflow-hidden rounded-xl border bg-white">
-      <button type="button" onClick={onToggle} aria-expanded={open} className="flex w-full items-center gap-3 p-4 text-left sm:p-5">
-        <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#0F172A] text-xs font-extrabold text-white">
+    <div className={cn(marketCardCls, "overflow-hidden")}>
+      <button type="button" onClick={onToggle} aria-expanded={open} className="flex w-full items-center gap-3 p-4 text-left transition-colors hover:bg-slate-50/60 sm:px-5">
+        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-slate-900 text-xs font-extrabold text-[#F59E0B]">
           {step}
         </span>
-        <span className="min-w-0 flex-1">
-          <span className="block text-sm font-extrabold text-slate-900 sm:text-[15px]">{title}</span>
-          <span className="block truncate text-xs text-slate-500">{desc}</span>
+        <span className="min-w-0 flex-1 leading-tight">
+          <span className="block truncate text-sm font-extrabold text-slate-900 sm:text-[15px]">{title}</span>
+          <span className="mt-0.5 block truncate text-xs text-slate-500">{desc}</span>
         </span>
-        {open ? <ChevronUp className="h-4 w-4 shrink-0 text-slate-400" /> : <ChevronDown className="h-4 w-4 shrink-0 text-slate-400" />}
+        <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-slate-500">
+          {open ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+        </span>
       </button>
-      {open && <div className="space-y-3 border-t bg-slate-50/60 p-3 sm:p-4">{children}</div>}
+      {open && <div className="space-y-3 border-t border-slate-100 bg-slate-50/60 p-3 sm:p-4">{children}</div>}
     </div>
   )
 }
@@ -1133,11 +1137,7 @@ export function MarketplaceBannersTab() {
   }
 
   if (loading) {
-    return (
-      <div className="bg-white border rounded-xl p-10 text-center text-sm text-slate-500">
-        <Loader2 className="h-5 w-5 animate-spin mx-auto mb-2 text-amber-600" /> Loading banners...
-      </div>
-    )
+    return <MarketLoading label="Loading banners..." />
   }
 
   const slotValue = (id: string) => (banners as unknown as Record<string, string>)[id] || ""
@@ -1152,10 +1152,13 @@ export function MarketplaceBannersTab() {
       <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/gif,image/webp,image/avif" className="hidden" onChange={onFile} />
 
       {/* Sticky save bar */}
-      <div className="sticky top-0 z-10 rounded-xl border bg-[#0F172A] p-3 text-white shadow-md sm:p-4">
+      <div className="sticky top-0 z-10 rounded-2xl border border-slate-900 bg-[#0F172A] p-3 text-white shadow-[0_18px_45px_-20px_rgba(15,23,42,0.7)] sm:p-4">
         <div className="flex flex-wrap items-center gap-2.5">
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#F59E0B]">
+            <ImagePlus className="h-5 w-5 text-[#0F172A]" />
+          </span>
           <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-extrabold sm:text-[15px]">Banners & Sliders</p>
+            <p className="truncate text-sm font-extrabold sm:text-[15px]">Banners & promos</p>
             <p className="truncate text-[11px] text-white/60">
               <span className="mr-1 inline-block h-1.5 w-1.5 rounded-full bg-emerald-400 align-middle" />
               {liveCount} custom banner{liveCount === 1 ? "" : "s"} live · saves go public instantly
@@ -1165,7 +1168,7 @@ export function MarketplaceBannersTab() {
             type="button"
             onClick={save}
             disabled={saving}
-            className="inline-flex items-center gap-2 rounded-lg bg-[#F59E0B] px-5 py-2.5 text-sm font-extrabold text-[#0F172A] transition-colors hover:bg-[#D97706] disabled:opacity-60"
+            className="inline-flex items-center gap-2 rounded-xl bg-[#F59E0B] px-5 py-2.5 text-sm font-extrabold text-[#0F172A] transition-all hover:bg-[#D97706] active:scale-[0.98] disabled:opacity-60"
           >
             {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
             {saving ? "Saving…" : "Save banners"}

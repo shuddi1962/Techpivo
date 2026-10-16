@@ -2,8 +2,21 @@
 
 import { useCallback, useEffect, useState } from "react"
 import Link from "next/link"
-import { ExternalLink, RefreshCw, Search, Star, Trash2 } from "lucide-react"
+import { ExternalLink, MessageSquare, Search, Star, Trash2 } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
+import {
+  marketCardCls,
+  marketIconBtnDangerCls,
+  marketIconInputCls,
+  marketIconInputWrapCls,
+  MarketEmpty,
+  MarketHeader,
+  MarketLoading,
+  MarketNotice,
+  MarketStat,
+  MarketStatStrip,
+} from "@/components/admin/marketplace-ui"
+import { cn } from "@/lib/utils"
 
 interface ReviewRow {
   id: string
@@ -78,62 +91,79 @@ export function MarketplaceReviewsTab() {
   )
   const avg = reviews.length > 0 ? reviews.reduce((s, r) => s + r.rating, 0) / reviews.length : 0
 
+  const lowCount = reviews.filter((r) => r.rating <= 2).length
+
   if (loading) {
-    return (
-      <div className="bg-white border rounded-xl p-10 text-center text-sm text-slate-500">
-        <RefreshCw className="h-5 w-5 animate-spin mx-auto mb-2 text-amber-600" /> Loading reviews...
-      </div>
-    )
+    return <MarketLoading label="Loading reviews..." />
   }
 
   return (
     <div>
-      {notice && (
-        <div className="mb-3 text-sm bg-emerald-50 border border-emerald-200 text-emerald-700 rounded-lg px-3 py-2">{notice}</div>
-      )}
-      <div className="bg-white border rounded-xl p-4 mb-4 flex flex-wrap items-center gap-3">
-        <div>
-          <p className="text-2xl font-bold text-slate-900">{reviews.length}</p>
-          <p className="text-xs text-slate-500">Total reviews</p>
+      <MarketHeader
+        icon={MessageSquare}
+        title="Reviews"
+        desc="Ratings & moderation — new reviews land here live for approval or removal"
+      />
+      {notice && <MarketNotice>{notice}</MarketNotice>}
+      <MarketStatStrip>
+        <MarketStat label="Total reviews" value={String(reviews.length)} />
+        <MarketStat
+          label="Average rating"
+          value={reviews.length > 0 ? avg.toFixed(1) : "—"}
+          sub={reviews.length > 0 ? "across all products" : "no ratings yet"}
+        />
+        <MarketStat
+          label="Needs attention"
+          value={String(lowCount)}
+          sub="1–2 star reviews"
+        />
+        <div className="ml-auto flex w-full flex-wrap items-center gap-2 sm:w-auto">
+          <div className={cn(marketIconInputWrapCls, "min-w-0 flex-1 sm:w-56 sm:flex-none")}>
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+            <input
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Search product, author, text..."
+              aria-label="Search reviews"
+              className={marketIconInputCls}
+            />
+          </div>
+          <select
+            value={minRating}
+            onChange={(e) => setMinRating(Number(e.target.value))}
+            aria-label="Filter by rating"
+            className="cursor-pointer rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm focus:border-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-100"
+          >
+            <option value={0}>All ratings</option>
+            <option value={1}>1 star only</option>
+            <option value={2}>2 stars & below</option>
+            <option value={3}>3 stars & below</option>
+          </select>
         </div>
-        <div className="h-8 w-px bg-slate-200" />
-        <div>
-          <p className="text-2xl font-bold text-slate-900 flex items-center gap-1">
-            {avg.toFixed(1)} <Star className="h-4 w-4 fill-amber-400 text-amber-400" />
-          </p>
-          <p className="text-xs text-slate-500">Average rating</p>
-        </div>
-        <div className="flex-1" />
-        <div className="relative">
-          <Search className="h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-          <input
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search product, author, text..."
-            className="border rounded-lg pl-9 pr-3 py-2 text-sm focus:outline-none focus:border-amber-500 w-56"
-          />
-        </div>
-        <select
-          value={minRating}
-          onChange={(e) => setMinRating(Number(e.target.value))}
-          aria-label="Filter by rating"
-          className="border rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-amber-500 cursor-pointer"
-        >
-          <option value={0}>All ratings</option>
-          <option value={1}>1 star only</option>
-          <option value={2}>2 stars & below</option>
-          <option value={3}>3 stars & below</option>
-        </select>
-      </div>
+      </MarketStatStrip>
       {shown.length === 0 ? (
-        <div className="bg-white border rounded-xl p-10 text-center text-sm text-slate-500">
-          {reviews.length === 0 ? "No customer reviews yet — they appear here live as shoppers post them." : "No reviews match your filters."}
-        </div>
+        <MarketEmpty
+          icon={MessageSquare}
+          title={reviews.length === 0 ? "No customer reviews yet" : "No reviews match your filters"}
+          desc={
+            reviews.length === 0
+              ? "They appear here live as shoppers post them — nothing to moderate until then."
+              : "Try a different search term or rating filter."
+          }
+        />
       ) : (
-        <div className="grid gap-3">
+        <div className="grid gap-2.5">
           {shown.map((r) => (
-            <div key={r.id} className="bg-white border rounded-xl p-4">
+            <div key={r.id} className={marketCardCls + " p-4"}>
               <div className="flex items-start gap-2">
+                <span
+                  className={cn(
+                    "flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-sm font-extrabold",
+                    r.rating >= 4 ? "bg-emerald-50 text-emerald-600" : r.rating === 3 ? "bg-amber-50 text-amber-600" : "bg-red-50 text-red-600"
+                  )}
+                >
+                  {r.rating}
+                </span>
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
                     <span className="flex items-center gap-0.5" aria-label={`${r.rating} out of 5 stars`}>
@@ -151,13 +181,14 @@ export function MarketplaceReviewsTab() {
                   >
                     {r.product_name} <ExternalLink className="h-3 w-3" />
                   </Link>
-                  {r.title && <p className="text-sm font-semibold text-slate-800 mt-1">{r.title}</p>}
-                  {r.comment && <p className="text-sm text-slate-600 mt-0.5">{r.comment}</p>}
+                  {r.title && <p className="mt-1 text-sm font-semibold text-slate-800">{r.title}</p>}
+                  {r.comment && <p className="mt-0.5 text-sm leading-relaxed text-slate-600">{r.comment}</p>}
                 </div>
                 <button
                   title="Delete review"
+                  aria-label={`Delete review by ${r.author_name}`}
                   onClick={() => remove(r)}
-                  className="p-2 rounded-lg hover:bg-red-50 text-slate-400 hover:text-red-500 shrink-0"
+                  className={marketIconBtnDangerCls + " shrink-0"}
                 >
                   <Trash2 className="h-4 w-4" />
                 </button>
@@ -165,6 +196,11 @@ export function MarketplaceReviewsTab() {
             </div>
           ))}
         </div>
+      )}
+      {shown.length > 0 && (
+        <p className="mt-3 text-center text-[11px] text-slate-400">
+          List refreshes live · every 30s · on window focus
+        </p>
       )}
     </div>
   )

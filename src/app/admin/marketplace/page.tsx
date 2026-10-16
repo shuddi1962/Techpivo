@@ -18,6 +18,18 @@ import { MarketplaceReviewsTab } from "@/components/admin/marketplace-reviews-ta
 import { MarketplacePromotionsTab } from "@/components/admin/marketplace-promotions-tab"
 import { MarketplaceDashboardTab } from "@/components/admin/marketplace-dashboard-tab"
 import { isMarketSection, MarketplaceSectionPills, MARKET_SECTIONS } from "@/components/admin/marketplace-nav"
+import {
+  marketBtnGhostCls,
+  marketCardCls,
+  MarketHeader,
+  marketIconBtnCls,
+  marketIconBtnDangerCls,
+  MarketNotice,
+  marketThCls,
+  MarketStat,
+  MarketStatStrip,
+} from "@/components/admin/marketplace-ui"
+import { cn } from "@/lib/utils"
 import { isoToLocalInput } from "@/lib/marketplace-banners"
 
 interface Product {
@@ -420,9 +432,11 @@ function AdminMarketplacePageInner() {
       </div>
 
       {notice && (
-        <div className="mb-4 text-sm bg-emerald-50 border border-emerald-200 text-emerald-700 rounded-lg px-3 py-2 flex items-center gap-2">
-          <BadgeCheck className="h-4 w-4" /> {notice}
-        </div>
+        <MarketNotice>
+          <span className="flex items-center gap-2">
+            <BadgeCheck className="h-4 w-4 shrink-0" /> {notice}
+          </span>
+        </MarketNotice>
       )}
 
       {/* full-width section content — section switching lives in the
@@ -448,36 +462,42 @@ function AdminMarketplacePageInner() {
       {tab === "payments" && <MarketplacePaymentsTab />}
 
       {tab === "visibility" && (
-        <div className="bg-white border rounded-2xl p-5 sm:p-6 max-w-2xl shadow-sm">
-          <div className="flex items-center gap-2.5 mb-2">
-            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-amber-50">
-              <Globe className="h-4 w-4 text-amber-600" />
-            </span>
-            <div>
-              <h2 className="font-bold text-slate-900">Storefront visibility</h2>
-              <p className="text-xs text-slate-500">Admin → Pages → Marketplace</p>
-            </div>
-            <span className={`ml-auto inline-flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1 rounded-full ${overview?.pagePublished ? "bg-emerald-50 text-emerald-700" : "bg-slate-100 text-slate-500"}`}>
-              <span className={`h-1.5 w-1.5 rounded-full ${overview?.pagePublished ? "bg-emerald-500 animate-pulse" : "bg-slate-400"}`} />
-              {overview?.pagePublished ? "Published (live)" : "Hidden"}
-            </span>
-          </div>
-          <p className="text-sm text-slate-500 mb-4">
-            Controls whether <code className="bg-slate-100 rounded px-1">/marketplace</code> is
-            published. This switch activates it instantly — no redeploy.
-          </p>
-          <div className="flex flex-wrap items-center justify-between gap-2 bg-slate-50 border rounded-xl px-4 py-3">
-            <p className="text-xs text-slate-500">Also editable in Admin → Pages → Marketplace</p>
-            <div className="flex gap-2">
-              <Link href="/admin/pages/marketplace" className="text-xs font-semibold border border-slate-200 bg-white rounded-lg px-3 py-2 hover:bg-slate-50 inline-flex items-center gap-1 transition-colors">
-                <Pencil className="h-3.5 w-3.5" /> Edit page
-              </Link>
-              <button
-                onClick={() => setPagePublished(!overview?.pagePublished)}
-                className={`text-xs font-bold rounded-lg px-4 py-2 transition-colors ${overview?.pagePublished ? "bg-slate-900 text-white hover:bg-slate-700" : "bg-[#F59E0B] text-[#0F172A] hover:bg-[#D97706]"}`}
-              >
-                {overview?.pagePublished ? "Hide store" : "Publish store"}
-              </button>
+        <div className="max-w-3xl">
+          <MarketHeader
+            icon={Globe}
+            title="Visibility"
+            desc="Storefront publish switch — Admin → Pages → Marketplace"
+            actions={
+              <span className={cn(
+                "inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-extrabold",
+                overview?.pagePublished ? "bg-emerald-100 text-emerald-800" : "bg-slate-100 text-slate-500"
+              )}>
+                <span className={cn("h-1.5 w-1.5 rounded-full", overview?.pagePublished ? "bg-emerald-500 animate-pulse" : "bg-slate-400")} />
+                {overview?.pagePublished ? "PUBLISHED · LIVE" : "HIDDEN"}
+              </span>
+            }
+          />
+          <div className={cn(marketCardCls, "p-4 sm:p-5")}>
+            <p className="mb-4 text-sm leading-relaxed text-slate-600">
+              Controls whether <code className="rounded bg-slate-100 px-1">/marketplace</code> is
+              published. This switch activates it instantly — no redeploy.
+            </p>
+            <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-slate-200/80 bg-slate-50/60 px-4 py-3">
+              <p className="text-xs text-slate-500">Also editable in Admin → Pages → Marketplace</p>
+              <div className="flex gap-2">
+                <Link href="/admin/pages/marketplace" className={cn(marketBtnGhostCls, "text-xs px-3 py-2")}>
+                  <Pencil className="h-3.5 w-3.5" /> Edit page
+                </Link>
+                <button
+                  onClick={() => setPagePublished(!overview?.pagePublished)}
+                  className={cn(
+                    "inline-flex items-center justify-center gap-1.5 rounded-xl px-4 py-2 text-xs font-bold transition-all active:scale-[0.98]",
+                    overview?.pagePublished ? "bg-slate-900 text-white hover:bg-slate-700" : "bg-[#F59E0B] text-[#0F172A] hover:bg-[#D97706]"
+                  )}
+                >
+                  {overview?.pagePublished ? "Hide store" : "Publish store"}
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -485,15 +505,28 @@ function AdminMarketplacePageInner() {
 
       {tab === "products" && (
         <>
+          <MarketHeader
+            icon={Package}
+            title="Products"
+            desc="Catalog, prices & sale timers — every change is live on the storefront"
+          />
+          {overview && (
+            <MarketStatStrip>
+              <MarketStat label="Total" value={String(overview.total)} />
+              <MarketStat label="Active" value={String(overview.active)} sub={`${overview.total - overview.active} hidden`} />
+              <MarketStat label="Featured" value={String(overview.featured)} />
+              <MarketStat label="Clicks" value={overview.clicks.toLocaleString()} sub={`${overview.conversions.toLocaleString()} conversions`} />
+            </MarketStatStrip>
+          )}
           {/* store-wide discount badge switch — one flip hides every -% badge,
               strikethrough and sale countdown in the whole store */}
-          <div className={`flex flex-wrap items-center justify-between gap-2 bg-white border rounded-xl px-4 py-3 mb-4 shadow-sm transition-colors ${saleBadges ? "border-emerald-200" : ""}`}>
+          <div className={cn(marketCardCls, "mb-3 flex flex-wrap items-center justify-between gap-2 px-4 py-3", saleBadges && "border-emerald-200")}>
             <div className="flex items-center gap-3">
-              <span className={`flex h-9 w-9 items-center justify-center rounded-xl shrink-0 ${saleBadges ? "bg-emerald-50" : "bg-slate-100"}`}>
-                <BadgePercent className={`h-4 w-4 ${saleBadges ? "text-emerald-600" : "text-slate-400"}`} />
+              <span className={cn("flex h-10 w-10 shrink-0 items-center justify-center rounded-xl", saleBadges ? "bg-emerald-50" : "bg-slate-100")}>
+                <BadgePercent className={cn("h-5 w-5", saleBadges ? "text-emerald-600" : "text-slate-400")} />
               </span>
               <div>
-                <p className="text-sm font-bold text-slate-900">
+                <p className="text-sm font-extrabold text-slate-900">
                   Discount badges: {saleBadges ? <span className="text-emerald-600">ON</span> : <span className="text-slate-400">OFF</span>}
                 </p>
                 <p className="text-xs text-slate-500">Hides every discount badge, strikethrough price and sale countdown store-wide. Per-product flags still apply when back on.</p>
@@ -503,28 +536,32 @@ function AdminMarketplacePageInner() {
               role="switch"
               aria-checked={saleBadges}
               onClick={() => void saveSaleBadges(!saleBadges)}
-              className={`relative h-6 w-11 shrink-0 rounded-full transition-colors ${saleBadges ? "bg-emerald-500" : "bg-slate-300"}`}
+              className={cn("relative h-6 w-11 shrink-0 rounded-full transition-colors", saleBadges ? "bg-emerald-500" : "bg-slate-300")}
               title={saleBadges ? "Turn all discount badges off" : "Turn all discount badges on"}
             >
-              <span className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-all ${saleBadges ? "left-[22px]" : "left-0.5"}`} />
+              <span className={cn("absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-all", saleBadges ? "left-[22px]" : "left-0.5")} />
             </button>
           </div>
-          <div className="flex flex-col sm:flex-row gap-2 mb-4">
+          <div className={cn(marketCardCls, "mb-3 flex flex-col gap-2 p-3 sm:flex-row sm:items-center")}>
             <div className="relative flex-1">
-              <Search className="h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
               <input
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 placeholder="Search products or vendors..."
-                className="w-full border rounded-lg pl-9 pr-3 py-2 text-sm focus:outline-none focus:border-amber-500"
+                aria-label="Search products"
+                className="w-full rounded-xl border border-slate-200 bg-white py-2 pl-9 pr-3 text-sm focus:border-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-100"
               />
             </div>
-            <div className="flex gap-1 overflow-x-auto">
+            <div className="flex gap-1.5 overflow-x-auto pb-0.5 [scrollbar-width:none] sm:pb-0 [&::-webkit-scrollbar]:hidden">
               {(["all", "active", "hidden", "featured"] as const).map((f) => (
                 <button
                   key={f}
                   onClick={() => setFilter(f)}
-                  className={`text-xs font-medium px-3 py-2 rounded-lg border whitespace-nowrap capitalize ${filter === f ? "bg-slate-900 text-white border-slate-900" : "bg-white text-slate-600 hover:bg-slate-50"}`}
+                  className={cn(
+                    "whitespace-nowrap rounded-full px-3.5 py-2 text-xs font-bold capitalize transition-all active:scale-[0.97]",
+                    filter === f ? "bg-slate-900 text-white shadow-md" : "border border-slate-200 bg-white text-slate-600 hover:border-slate-300"
+                  )}
                 >
                   {f}
                 </button>
@@ -532,18 +569,18 @@ function AdminMarketplacePageInner() {
             </div>
           </div>
 
-          <div className="bg-white border rounded-xl overflow-hidden shadow-sm">
+          <div className={cn(marketCardCls, "overflow-hidden")}>
             <div className="overflow-x-auto max-h-[70vh]">
                 <table className="w-full text-sm min-w-[880px]">
                 <thead className="sticky top-0 z-10">
-                  <tr className="text-left text-xs uppercase tracking-wide text-slate-500 border-b bg-slate-50">
-                    <th className="px-4 py-3 font-semibold">Product</th>
-                    <th className="px-4 py-3 font-semibold">Vendor</th>
-                    <th className="px-4 py-3 font-semibold">Price</th>
-                    <th className="px-4 py-3 font-semibold">Your cut</th>
-                    <th className="px-4 py-3 font-semibold">Clicks</th>
-                    <th className="px-4 py-3 font-semibold">Status</th>
-                    <th className="px-4 py-3 font-semibold text-right">Actions</th>
+                  <tr className="border-b border-slate-100 bg-slate-50/90 backdrop-blur">
+                    <th className={marketThCls}>Product</th>
+                    <th className={marketThCls}>Vendor</th>
+                    <th className={marketThCls}>Price</th>
+                    <th className={marketThCls}>Your cut</th>
+                    <th className={marketThCls}>Clicks</th>
+                    <th className={marketThCls}>Status</th>
+                    <th className={cn(marketThCls, "text-right")}>Actions</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -610,17 +647,17 @@ function AdminMarketplacePageInner() {
                         )}
                       </td>
                       <td className="px-4 py-3">
-                        <div className="flex justify-end gap-1">
-                          <button title={p.is_active ? "Hide" : "Activate"} onClick={() => toggle(p, "is_active")} className="p-2 rounded-lg hover:bg-slate-100 text-slate-500">
+                        <div className="flex justify-end gap-0.5">
+                          <button title={p.is_active ? "Hide" : "Activate"} aria-label={p.is_active ? `Hide ${p.product_name}` : `Activate ${p.product_name}`} onClick={() => toggle(p, "is_active")} className={marketIconBtnCls}>
                             {p.is_active ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                           </button>
-                          <button title="Feature" onClick={() => toggle(p, "is_featured")} className={`p-2 rounded-lg hover:bg-slate-100 ${p.is_featured ? "text-amber-500" : "text-slate-400"}`}>
-                            <Star className="h-4 w-4" />
+                          <button title="Feature" aria-label={`Feature ${p.product_name}`} onClick={() => toggle(p, "is_featured")} className={cn(marketIconBtnCls, p.is_featured && "text-amber-500 hover:text-amber-600")}>
+                            <Star className={cn("h-4 w-4", p.is_featured && "fill-amber-400 text-amber-400")} />
                           </button>
-                          <button title="Edit" onClick={() => openEdit(p)} className="p-2 rounded-lg hover:bg-slate-100 text-slate-500">
+                          <button title="Edit" aria-label={`Edit ${p.product_name}`} onClick={() => openEdit(p)} className={marketIconBtnCls}>
                             <Pencil className="h-4 w-4" />
                           </button>
-                          <button title="Delete" onClick={() => remove(p)} className="p-2 rounded-lg hover:bg-red-50 text-slate-400 hover:text-red-500">
+                          <button title="Delete" aria-label={`Delete ${p.product_name}`} onClick={() => remove(p)} className={marketIconBtnDangerCls}>
                             <Trash2 className="h-4 w-4" />
                           </button>
                         </div>
@@ -629,8 +666,14 @@ function AdminMarketplacePageInner() {
                   ))}
                   {filtered.length === 0 && (
                     <tr>
-                      <td colSpan={7} className="px-4 py-12 text-center text-slate-500">
-                        No products found. Click <strong>New product</strong> to add your first TechPivo Market item.
+                      <td colSpan={7} className="px-4 py-12 text-center">
+                        <Package className="mx-auto mb-2 h-8 w-8 text-slate-300" />
+                        <p className="text-sm font-bold text-slate-900">No products found</p>
+                        <p className="mt-1 text-sm text-slate-500">
+                          {products.length === 0
+                            ? "Click New product above — or import from CJ in seconds."
+                            : "Try a different search term or filter."}
+                        </p>
                       </td>
                     </tr>
                   )}

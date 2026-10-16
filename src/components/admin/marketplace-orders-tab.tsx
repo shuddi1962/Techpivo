@@ -1,7 +1,20 @@
 "use client"
 
 import { useCallback, useEffect, useState } from "react"
-import { PackageSearch, RefreshCw, RotateCcw } from "lucide-react"
+import { PackageSearch, ReceiptText, RefreshCw, RotateCcw } from "lucide-react"
+import { createClient } from "@/lib/supabase/client"
+import {
+  marketBtnDarkCls,
+  marketBtnGhostCls,
+  marketCardCls,
+  MarketEmpty,
+  MarketHeader,
+  MarketLoading,
+  MarketNotice,
+  MarketStat,
+  MarketStatStrip,
+} from "@/components/admin/marketplace-ui"
+import { cn } from "@/lib/utils"
 
 interface OrderItem {
   id: string
@@ -61,15 +74,27 @@ export function MarketplaceOrdersTab() {
   const [varPick, setVarPick] = useState<Record<string, { open: boolean; loading: boolean; options: VariantOpt[]; picked: string; saving: boolean; error: string }>>({})
 
   const load = useCallback(async () => {
-    const r = await fetch("/admin/marketplace/api?section=orders").then((x) => x.json()).catch(() => null)
+    const r = await fetch("/admin/marketplace/api?section=orders", { cache: "no-store" }).then((x) => x.json()).catch(() => null)
     if (r?.orders) setOrders(r.orders)
     setLoading(false)
   }, [])
 
   useEffect(() => {
     load()
+    // Live: new checkouts + fulfillment changes arrive instantly.
+    const supabase = createClient()
+    const ch = supabase
+      .channel(`admin_market_orders_${Date.now()}_${Math.random().toString(36).slice(2)}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "marketplace_orders" }, () => load())
+      .subscribe()
     const poll = setInterval(load, 30000)
-    return () => clearInterval(poll)
+    const onFocus = () => load()
+    window.addEventListener("focus", onFocus)
+    return () => {
+      clearInterval(poll)
+      window.removeEventListener("focus", onFocus)
+      supabase.removeChannel(ch)
+    }
   }, [load])
 
   const setStatus = async (id: string, status: string) => {
@@ -182,49 +207,91 @@ export function MarketplaceOrdersTab() {
     }
   }
 
+  const paidCount = orders.filter((o) => ["paid", "fulfilled", "delivered"].includes(o.status)).length
+  const needsFulfill = orders.filter((o) => o.status === "paid" && !o.cj_order_id).length
+  const collectedUsd = orders
+    .filter((o) => ["paid", "fulfilled", "delivered"].includes(o.status))
+    .reduce((s, o) => s + (Number(o.total_usd) || 0), 0)
+
+  const statusTone: Record<string, string> = {
+    pending: "bg-slate-100 text-slate-500",
+    paid: "bg-blue-50 text-blue-700",
+    fulfilled: "bg-violet-50 text-violet-700",
+    delivered: "bg-emerald-50 text-emerald-700",
+    cancelled: "bg-red-50 text-red-600",
+  }
+
   if (loading) {
-    return (
-      <div className="bg-white border rounded-xl p-10 text-center text-sm text-slate-500">
-        <RefreshCw className="h-4 w-4 animate-spin inline mr-2" /> Loading orders...
-      </div>
-    )
+    return <MarketLoading label="Loading orders..." />
   }
 
   if (orders.length === 0) {
     return (
-      <div className="bg-white border rounded-xl p-10 text-center">
-        <PackageSearch className="h-8 w-8 text-slate-300 mx-auto mb-2" />
-        <p className="font-bold text-slate-900">No orders yet</p>
-        <p className="text-sm text-slate-500 mt-1">Paid checkouts appear here instantly with payment + fulfillment status.</p>
+      <div>
+        <MarketHeader
+          icon={ReceiptText}
+          title="Orders"
+          desc="Payments & fulfillment — every checkout lands here"
+        />
+        <MarketEmpty
+          icon={PackageSearch}
+          title="No orders yet"
+          desc="Paid checkouts appear here instantly with payment + fulfillment status."
+        />
       </div>
     )
   }
 
   return (
-    <div className="space-y-3">
-      <div className="bg-white border rounded-xl p-4">
-        <p className="text-sm font-bold text-slate-900 mb-1">How you make money on every order</p>
-        <p className="text-xs text-slate-600 leading-relaxed">
+    <div>
+      <MarketHeader
+        icon={ReceiptText}
+        title="Orders"
+        desc="Payments & fulfillment — new checkouts land here live"
+        actions={
+          <button onClick={load} className={marketBtnGhostCls}>
+            <RefreshCw className="h-4 w-4" /> Refresh
+          </button>
+        }
+      />
+      <MarketStatStrip>
+        <MarketStat label="Total orders" value={String(orders.length)} />
+        <MarketStat label="Paid volume" value={String(paidCount)} sub={`$${collectedUsd.toFixed(2)} collected`} />
+        <MarketStat
+          label="Needs fulfillment"
+          value={String(needsFulfill)}
+          sub={needsFulfill > 0 ? "paid, not sent to CJ" : "all caught up"}
+        />
+      </MarketStatStrip>
+      <div className={marketCardCls + " mb-3 p-4"}>
+        <p className="mb-1 text-sm font-extrabold text-slate-900">How you make money on every order</p>
+        <p className="text-xs leading-relaxed text-slate-600">
           Customer pays <strong>(your price + shipping)</strong> → you pay CJ <strong>(their cost + their postage)</strong> + a small gateway fee → <strong>you keep the difference</strong>.
           Three guardrails protect you: shipping is charged at live CJ rates <strong>+35%</strong>; every product carries at least <strong>$1.50</strong> margin;
           fallback shipping is <strong>$9</strong>. Free shipping over $35 means you absorb postage on big baskets — deliberate, the basket covers it.
         </p>
       </div>
-      {notice && <p className="text-sm bg-emerald-50 border border-emerald-200 text-emerald-700 rounded-lg px-3 py-2">{notice}</p>}
+      {notice && <MarketNotice>{notice}</MarketNotice>}
+      <div className="space-y-2.5">
       {orders.map((o) => {
         const addr = [o.ship_address, [o.ship_city, o.ship_state, o.ship_zip].filter(Boolean).join(" "), o.ship_country].filter(Boolean).join(", ")
         const needsAction = o.status === "paid" && !o.cj_order_id
         return (
-          <div key={o.id} className="bg-white border rounded-xl p-4">
+          <div key={o.id} className={cn(marketCardCls, "p-4", needsAction && "border-amber-300 ring-1 ring-amber-200")}>
             <div className="flex flex-wrap items-center justify-between gap-2">
-              <div>
-                    <p className="text-sm font-bold text-slate-900">{o.paystack_reference || o.id.slice(0, 8)}</p>
-                    {o.coupon_code && (
-                      <p className="text-[11px] font-bold text-emerald-700">Coupon {o.coupon_code}{Number(o.discount_usd) > 0 && ` · −$${Number(o.discount_usd).toFixed(2)}`}</p>
-                    )}
-                <p className="text-xs text-slate-500">{o.email} · {o.ship_name || ""}{o.ship_city ? ` · ${o.ship_city}` : ""} · {new Date(o.created_at).toLocaleString()}</p>
+              <div className="min-w-0">
+                <p className="flex flex-wrap items-center gap-2 text-sm font-extrabold text-slate-900">
+                  {o.paystack_reference || o.id.slice(0, 8)}
+                  {needsAction && (
+                    <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-extrabold text-amber-800">ACTION NEEDED</span>
+                  )}
+                </p>
+                {o.coupon_code && (
+                  <p className="text-[11px] font-bold text-emerald-700">Coupon {o.coupon_code}{Number(o.discount_usd) > 0 && ` · −$${Number(o.discount_usd).toFixed(2)}`}</p>
+                )}
+                <p className="mt-0.5 truncate text-xs text-slate-500">{o.email} · {o.ship_name || ""}{o.ship_city ? ` · ${o.ship_city}` : ""} · {new Date(o.created_at).toLocaleString()}</p>
               </div>
-              <span className="text-[11px] font-bold uppercase px-2 py-1 rounded-full bg-amber-50 text-amber-700">{o.status}</span>
+              <span className={cn("rounded-full px-2.5 py-1 text-[11px] font-extrabold uppercase", statusTone[o.status] || "bg-slate-100 text-slate-500")}>{o.status}</span>
             </div>
             <ul className="text-sm text-slate-600 mt-2 space-y-0.5">
               {(Array.isArray(o.items) ? o.items : []).map((it, i) => (
@@ -240,10 +307,10 @@ export function MarketplaceOrdersTab() {
                 <span className="ml-2 text-xs font-normal text-slate-400">pay: {o.paystack_status}{o.cj_order_id ? ` · CJ ${o.cj_order_id}` : o.status === "paid" ? " · fulfillment queued" : ""}</span>
               </p>
               <div className="flex items-center gap-2">
-                <button onClick={() => setOpen((p) => ({ ...p, [o.id]: !p[o.id] }))} className="text-xs border rounded-lg px-2 py-1.5 bg-white hover:bg-slate-50">
+                <button onClick={() => setOpen((p) => ({ ...p, [o.id]: !p[o.id] }))} className={marketBtnGhostCls + " text-xs px-2.5 py-1.5"}>
                   {open[o.id] ? "Hide details" : "Customer + order details"}
                 </button>
-                <select value={o.status} onChange={(e) => setStatus(o.id, e.target.value)} className="text-xs border rounded-lg px-2 py-1.5 bg-white" aria-label={`Order status for ${o.paystack_reference}`}>
+                <select value={o.status} onChange={(e) => setStatus(o.id, e.target.value)} className="cursor-pointer rounded-xl border border-slate-200 bg-white px-2 py-1.5 text-xs font-semibold focus:border-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-100" aria-label={`Order status for ${o.paystack_reference}`}>
                   {STATUSES.map((s) => (
                     <option key={s} value={s}>{s}</option>
                   ))}
@@ -330,7 +397,7 @@ export function MarketplaceOrdersTab() {
                   </div>
                 )}
                 {needsAction && (
-                  <button onClick={() => retry(o.id)} disabled={retrying === o.id} className="inline-flex items-center gap-1.5 bg-slate-900 text-white text-xs font-semibold rounded-lg px-3 py-1.5 disabled:opacity-50">
+                  <button onClick={() => retry(o.id)} disabled={retrying === o.id} className={marketBtnDarkCls + " text-xs px-3 py-1.5"}>
                     <RotateCcw className={`h-3.5 w-3.5 ${retrying === o.id ? "animate-spin" : ""}`} />
                     {retrying === o.id ? "Sending to CJ..." : "Retry CJ fulfillment"}
                   </button>
@@ -340,6 +407,7 @@ export function MarketplaceOrdersTab() {
           </div>
         )
       })}
+      </div>
     </div>
   )
 }

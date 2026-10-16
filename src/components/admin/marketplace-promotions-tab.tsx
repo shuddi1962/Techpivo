@@ -4,6 +4,20 @@ import { useCallback, useEffect, useState } from "react"
 import { BadgePercent, Loader2, Pencil, Plus, Power, Save, Trash2 } from "lucide-react"
 import { blankCoupon, type MarketCoupon } from "@/lib/marketplace-coupons"
 import { isoToLocalInput } from "@/lib/marketplace-banners"
+import { createClient } from "@/lib/supabase/client"
+import {
+  marketBtnPrimaryCls,
+  marketCardCls,
+  marketIconBtnCls,
+  marketIconBtnDangerCls,
+  MarketEmpty,
+  MarketHeader,
+  MarketLoading,
+  MarketNotice,
+  MarketStat,
+  MarketStatStrip,
+} from "@/components/admin/marketplace-ui"
+import { cn } from "@/lib/utils"
 
 const inputCls =
   "w-full border rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:border-amber-500"
@@ -17,19 +31,26 @@ export function MarketplacePromotionsTab() {
   const [showForm, setShowForm] = useState(false)
 
   const load = useCallback(async () => {
-    const r = await fetch("/admin/marketplace/api?section=coupons").then((x) => x.json()).catch(() => null)
+    const r = await fetch("/admin/marketplace/api?section=coupons", { cache: "no-store" }).then((x) => x.json()).catch(() => null)
     if (r?.coupons) setCoupons(r.coupons as MarketCoupon[])
     setLoading(false)
   }, [])
 
   useEffect(() => {
     load()
+    // Live: coupon edits (here, checkout usage bumps) arrive instantly.
+    const supabase = createClient()
+    const ch = supabase
+      .channel(`admin_market_promos_${Date.now()}_${Math.random().toString(36).slice(2)}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "site_settings" }, () => load())
+      .subscribe()
     const poll = setInterval(load, 60000)
     const onFocus = () => load()
     window.addEventListener("focus", onFocus)
     return () => {
       clearInterval(poll)
       window.removeEventListener("focus", onFocus)
+      supabase.removeChannel(ch)
     }
   }, [load])
 
@@ -103,68 +124,97 @@ export function MarketplacePromotionsTab() {
     void persist(coupons.map((x) => (x.id === c.id ? { ...x, active: !x.active } : x)))
   }
 
+  const activeCount = coupons.filter((c) => c.active).length
+  const totalUses = coupons.reduce((s, c) => s + (c.uses || 0), 0)
+
   if (loading) {
-    return (
-      <div className="bg-white border rounded-xl p-10 text-center text-sm text-slate-500">
-        <Loader2 className="h-5 w-5 animate-spin mx-auto mb-2 text-amber-600" /> Loading promotions...
-      </div>
-    )
+    return <MarketLoading label="Loading promotions..." />
   }
 
   return (
     <div>
-      {notice && (
-        <div className="mb-3 text-sm bg-emerald-50 border border-emerald-200 text-emerald-700 rounded-lg px-3 py-2">{notice}</div>
-      )}
-      <div className="flex items-center justify-between mb-4">
-        <p className="text-sm text-slate-500">
-          {coupons.length} coupon{coupons.length === 1 ? "" : "s"} · shoppers enter codes at checkout, discounts apply before payment.
-        </p>
-        <button
-          type="button"
-          onClick={openCreate}
-          className="inline-flex items-center gap-1.5 text-sm font-bold bg-[#F59E0B] hover:bg-[#D97706] text-[#0F172A] rounded-lg px-3 py-2"
-        >
-          <Plus className="h-4 w-4" /> New coupon
-        </button>
-      </div>
+      <MarketHeader
+        icon={BadgePercent}
+        title="Promotions"
+        desc="Coupons & discounts — codes apply at checkout instantly"
+        actions={
+          <button type="button" onClick={openCreate} className={marketBtnPrimaryCls}>
+            <Plus className="h-4 w-4" /> New coupon
+          </button>
+        }
+      />
+      {notice && <MarketNotice>{notice}</MarketNotice>}
+      <MarketStatStrip>
+        <MarketStat label="Coupons" value={String(coupons.length)} sub={`${activeCount} active`} />
+        <MarketStat label="Total redemptions" value={String(totalUses)} sub="all-time uses" />
+        <MarketStat
+          label="Sync"
+          value="Live"
+          sub="refreshes in realtime · 60s poll · focus"
+        />
+      </MarketStatStrip>
       {coupons.length === 0 ? (
-        <div className="bg-white border rounded-xl p-10 text-center">
-          <BadgePercent className="h-10 w-10 text-slate-300 mx-auto mb-3" />
-          <p className="font-bold text-slate-900">No coupons yet</p>
-          <p className="text-sm text-slate-500 mt-1">Create one — e.g. WELCOME10 for 10% off every first order.</p>
-        </div>
+        <MarketEmpty
+          icon={BadgePercent}
+          title="No coupons yet"
+          desc="Create one — e.g. WELCOME10 for 10% off every first order. Shoppers enter codes at checkout."
+          action={
+            <button type="button" onClick={openCreate} className={marketBtnPrimaryCls}>
+              <Plus className="h-4 w-4" /> New coupon
+            </button>
+          }
+        />
       ) : (
-        <div className="grid gap-3">
-          {coupons.map((c) => (
-            <div key={c.id} className={`bg-white border rounded-xl p-4 flex flex-wrap items-center gap-3 ${c.active ? "" : "opacity-60"}`}>
-              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-50 text-amber-600">
-                <BadgePercent className="h-5 w-5" />
-              </span>
-              <div className="min-w-0 flex-1">
-                <p className="font-mono font-bold text-slate-900 tracking-wide">{c.code}</p>
-                <p className="text-xs text-slate-500">
-                  {c.type === "percent" ? `${c.value}% off` : `$${c.value.toFixed(2)} off`}
-                  {c.min_order_usd > 0 && ` · min $${c.min_order_usd.toFixed(2)}`}
-                  {c.max_uses > 0 && ` · ${c.uses}/${c.max_uses} used`}
-                  {c.ends_at && Date.parse(c.ends_at) > Date.now() && ` · ends ${new Date(c.ends_at).toLocaleDateString()}`}
-                  {c.ends_at && Date.parse(c.ends_at) <= Date.now() && ` · expired`}
-                  {!c.active && ` · paused`}
-                </p>
+        <div className="grid gap-2.5">
+          {coupons.map((c) => {
+            const expired = !!c.ends_at && Date.parse(c.ends_at) <= Date.now()
+            return (
+              <div key={c.id} className={cn(marketCardCls, "flex flex-wrap items-center gap-3 p-4", !c.active && "opacity-60")}>
+                <span className={cn(
+                  "flex h-10 w-10 shrink-0 items-center justify-center rounded-xl",
+                  !c.active || expired ? "bg-slate-100 text-slate-400" : "bg-amber-50 text-amber-600"
+                )}>
+                  <BadgePercent className="h-5 w-5" />
+                </span>
+                <div className="min-w-0 flex-1">
+                  <p className="flex flex-wrap items-center gap-2 font-mono font-bold tracking-wide text-slate-900">
+                    {c.code}
+                    {!c.active && (
+                      <span className="rounded-full bg-slate-100 px-2 py-0.5 font-sans text-[10px] font-extrabold text-slate-500">PAUSED</span>
+                    )}
+                    {expired && (
+                      <span className="rounded-full bg-red-50 px-2 py-0.5 font-sans text-[10px] font-extrabold text-red-600">EXPIRED</span>
+                    )}
+                  </p>
+                  <p className="mt-0.5 text-xs text-slate-500">
+                    {c.type === "percent" ? `${c.value}% off` : `$${c.value.toFixed(2)} off`}
+                    {c.min_order_usd > 0 && ` · min $${c.min_order_usd.toFixed(2)}`}
+                    {c.max_uses > 0 ? ` · ${c.uses}/${c.max_uses} used` : c.uses > 0 ? ` · ${c.uses} used` : ""}
+                    {c.ends_at && !expired && ` · ends ${new Date(c.ends_at).toLocaleDateString()}`}
+                  </p>
+                  {c.max_uses > 0 && (
+                    <div className="mt-1.5 h-1.5 max-w-xs overflow-hidden rounded-full bg-slate-100">
+                      <div
+                        className={cn("h-full rounded-full", expired || !c.active ? "bg-slate-300" : "bg-amber-500")}
+                        style={{ width: `${Math.min(100, Math.round((c.uses / c.max_uses) * 100))}%` }}
+                      />
+                    </div>
+                  )}
+                </div>
+                <div className="flex items-center gap-1">
+                  <button title={c.active ? "Pause" : "Activate"} aria-label={c.active ? `Pause ${c.code}` : `Activate ${c.code}`} onClick={() => toggle(c)} className={marketIconBtnCls}>
+                    <Power className="h-4 w-4" />
+                  </button>
+                  <button title="Edit" aria-label={`Edit ${c.code}`} onClick={() => openEdit(c)} className={marketIconBtnCls}>
+                    <Pencil className="h-4 w-4" />
+                  </button>
+                  <button title="Delete" aria-label={`Delete ${c.code}`} onClick={() => remove(c)} className={marketIconBtnDangerCls}>
+                    <Trash2 className="h-4 w-4" />
+                  </button>
+                </div>
               </div>
-              <div className="flex items-center gap-1">
-                <button title={c.active ? "Pause" : "Activate"} onClick={() => toggle(c)} className="p-2 rounded-lg hover:bg-slate-100 text-slate-500">
-                  <Power className="h-4 w-4" />
-                </button>
-                <button title="Edit" onClick={() => openEdit(c)} className="p-2 rounded-lg hover:bg-slate-100 text-slate-500">
-                  <Pencil className="h-4 w-4" />
-                </button>
-                <button title="Delete" onClick={() => remove(c)} className="p-2 rounded-lg hover:bg-red-50 text-slate-400 hover:text-red-500">
-                  <Trash2 className="h-4 w-4" />
-                </button>
-              </div>
-            </div>
-          ))}
+            )
+          })}
         </div>
       )}
       {showForm && editing && (
