@@ -136,16 +136,30 @@ export async function GET(request: NextRequest) {
         const s = String(o.status || "unknown")
         statusCount[s] = (statusCount[s] || 0) + 1
       }
-      // Revenue per product from paid order line items.
+      // Revenue per product from paid order line items. Checkout stores
+      // lines as { id, name, unit_usd, qty } — older rows used price /
+      // unit_price / total fallbacks, so read every known shape.
       const revById = new Map<string, { qty: number; revenue: number }>()
       for (const o of paid) {
-        const items = Array.isArray(o.items) ? (o.items as Array<{ id?: string; qty?: number; price?: number }>) : []
+        const items = Array.isArray(o.items) ? (o.items as Array<Record<string, unknown>>) : []
         for (const it of items) {
-          if (!it?.id) continue
-          const hit = revById.get(it.id) || { qty: 0, revenue: 0 }
-          hit.qty += Math.max(0, Math.floor(Number(it.qty) || 0))
-          hit.revenue = Math.round((hit.revenue + (Number(it.price) || 0) * (Number(it.qty) || 0)) * 100) / 100
-          revById.set(it.id, hit)
+          const id = String((it as { id?: unknown })?.id || "")
+          if (!id) continue
+          const qty = Math.max(0, Math.floor(Number((it as { qty?: unknown })?.qty) || 0))
+          const unit =
+            Number((it as { unit_usd?: unknown })?.unit_usd) ||
+            Number((it as { price?: unknown })?.price) ||
+            Number((it as { unit_price?: unknown })?.unit_price) ||
+            Number((it as { amount?: unknown })?.amount) ||
+            0
+          const lineTotal =
+            Number((it as { total?: unknown })?.total) ||
+            Number((it as { line_total?: unknown })?.line_total) ||
+            unit * qty
+          const hit = revById.get(id) || { qty: 0, revenue: 0 }
+          hit.qty += qty
+          hit.revenue = Math.round((hit.revenue + lineTotal) * 100) / 100
+          revById.set(id, hit)
         }
       }
       const prods = ((products || []) as Array<{ id: string; product_name: string; product_image_url: string | null; clicks: number | null; conversions: number | null; category_slug: string | null; program_key: string | null; is_active: boolean }>)

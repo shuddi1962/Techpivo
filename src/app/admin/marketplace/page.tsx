@@ -17,7 +17,7 @@ import { MarketplacePaymentsTab } from "@/components/admin/marketplace-payments-
 import { MarketplaceReviewsTab } from "@/components/admin/marketplace-reviews-tab"
 import { MarketplacePromotionsTab } from "@/components/admin/marketplace-promotions-tab"
 import { MarketplaceDashboardTab } from "@/components/admin/marketplace-dashboard-tab"
-import { isMarketSection } from "@/components/admin/marketplace-nav"
+import { isMarketSection, MarketplaceSectionPills, MARKET_SECTIONS } from "@/components/admin/marketplace-nav"
 import { isoToLocalInput } from "@/lib/marketplace-banners"
 
 interface Product {
@@ -337,39 +337,86 @@ function AdminMarketplacePageInner() {
     )
   }
 
+  const activeMeta = MARKET_SECTIONS.find((s) => s.id === tab)
+
   return (
-    <div className="p-4 sm:p-6 max-w-[1400px] mx-auto">
-      {/* header band */}
-      <div className="relative overflow-hidden rounded-2xl mb-5 text-white" style={{ background: "linear-gradient(120deg, #0F172A 0%, #1E293B 55%, #451A03 100%)" }}>
-        <div className="absolute inset-0 opacity-20" style={{ background: "radial-gradient(circle at 85% 20%, #F59E0B 0%, transparent 45%)" }} />
-        <div className="relative flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-5 sm:p-6">
-          <div className="flex items-center gap-3">
-            <span className="flex h-12 w-12 items-center justify-center rounded-xl bg-[#F59E0B] shadow-lg shadow-amber-500/30">
-              <Store className="h-6 w-6 text-[#0F172A]" />
+    <div className="mx-auto w-full max-w-[1400px] px-3 py-4 sm:px-6 sm:py-6">
+      {/* header band — modern ecommerce command bar */}
+      <div className="relative mb-3 overflow-hidden rounded-2xl bg-slate-950 text-white shadow-[0_18px_45px_-20px_rgba(15,23,42,0.7)] ring-1 ring-white/10">
+        <div
+          className="pointer-events-none absolute inset-0"
+          style={{
+            background:
+              "radial-gradient(520px 220px at 88% -10%, rgba(245,158,11,0.35), transparent 60%), radial-gradient(420px 220px at 8% 110%, rgba(59,130,246,0.22), transparent 60%), linear-gradient(120deg, #020617 0%, #0F172A 55%, #1C1206 100%)",
+          }}
+        />
+        <div
+          className="pointer-events-none absolute inset-0 opacity-[0.14]"
+          style={{
+            backgroundImage:
+              "linear-gradient(rgba(255,255,255,0.5) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.5) 1px, transparent 1px)",
+            backgroundSize: "28px 28px",
+            maskImage: "radial-gradient(ellipse at 70% 0%, black 30%, transparent 75%)",
+          }}
+        />
+        <div className="relative flex flex-col gap-4 p-4 sm:p-6 lg:flex-row lg:items-center lg:justify-between">
+          <div className="flex min-w-0 items-start gap-3 sm:items-center">
+            <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[#F59E0B] shadow-lg shadow-amber-500/30 sm:h-12 sm:w-12">
+              <Store className="h-5 w-5 text-[#0F172A] sm:h-6 sm:w-6" />
             </span>
-            <div>
-              <h1 className="text-xl sm:text-2xl font-extrabold tracking-tight m-0 flex items-center gap-2">
-                TechPivo Market
-                <span className="inline-flex items-center gap-1 text-[10px] font-bold bg-red-500 text-white rounded-full px-2 py-0.5">
-                  <span className="h-1.5 w-1.5 rounded-full bg-white animate-pulse" /> LIVE
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                <h1 className="m-0 text-lg font-extrabold tracking-tight sm:text-2xl">
+                  TechPivo Market
+                </h1>
+                <span className="inline-flex items-center gap-1 rounded-full bg-red-500 px-2 py-0.5 text-[10px] font-bold text-white">
+                  <span className="relative flex h-1.5 w-1.5">
+                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-white opacity-75" />
+                    <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-white" />
+                  </span>
+                  LIVE
                 </span>
-              </h1>
-              <p className="text-sm text-slate-300 mt-0.5">Sales, products, vendors & storefront — everything live</p>
+                {activeMeta && (
+                  <span className="hidden rounded-full border border-white/20 bg-white/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-slate-200 sm:inline-flex">
+                    {activeMeta.label}
+                  </span>
+                )}
+              </div>
+              <p className="mt-0.5 truncate text-[13px] text-slate-300 sm:text-sm">
+                {activeMeta ? `${activeMeta.desc} — everything live` : "Sales, products, vendors & storefront — everything live"}
+              </p>
+              {overview && (
+                <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-[11px] font-semibold text-slate-300">
+                  <span className="tabular-nums">{overview.active}/{overview.total} live</span>
+                  <span className="tabular-nums">{overview.clicks.toLocaleString()} clicks</span>
+                  <span className="tabular-nums">{overview.conversions.toLocaleString()} conversions</span>
+                  <span className="tabular-nums">{overview.vendors} vendors</span>
+                </div>
+              )}
             </div>
           </div>
-          <div className="flex items-center gap-2 flex-wrap">
+          <div className="grid grid-cols-2 gap-2 sm:flex sm:items-center">
             <Link
               href="/marketplace"
               target="_blank"
-              className="inline-flex items-center gap-1.5 text-sm font-semibold border border-white/25 rounded-lg px-3 py-2 hover:bg-white/10 transition-colors"
+              rel="noopener noreferrer"
+              className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-white/25 px-3 py-2.5 text-sm font-semibold transition-colors hover:bg-white/10 active:scale-[0.98]"
             >
               <ExternalLink className="h-4 w-4" /> View store
             </Link>
-            <button onClick={openCreate} className="inline-flex items-center gap-1.5 text-sm font-bold bg-[#F59E0B] hover:bg-[#D97706] text-[#0F172A] rounded-lg px-3 py-2 transition-colors">
+            <button
+              onClick={openCreate}
+              className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-[#F59E0B] px-3 py-2.5 text-sm font-bold text-[#0F172A] transition-colors hover:bg-[#D97706] active:scale-[0.98]"
+            >
               <Plus className="h-4 w-4" /> New product
             </button>
           </div>
         </div>
+      </div>
+
+      {/* mobile-first section switcher — the sidebar is hidden below lg */}
+      <div className="sticky top-0 z-20 -mx-1 bg-[#F8FAFC]/95 py-1 backdrop-blur supports-[backdrop-filter]:bg-[#F8FAFC]/80 lg:hidden">
+        <MarketplaceSectionPills />
       </div>
 
       {notice && (
