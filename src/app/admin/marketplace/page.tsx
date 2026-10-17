@@ -158,27 +158,41 @@ function AdminMarketplacePageInner() {
   }
 
   const toggle = async (p: Product, field: "is_active" | "is_featured") => {
-    const res = await fetch("/admin/marketplace/api", {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id: p.id, [field]: !p[field] }),
-    })
-    if (res.ok) {
-      setProducts((prev) => prev.map((x) => (x.id === p.id ? { ...x, [field]: !x[field] } : x)))
-      flash(`${p.product_name} ${field === "is_active" ? (!p.is_active ? "activated" : "hidden") : (!p.is_featured ? "featured" : "unfeatured")}`)
+    try {
+      const res = await fetch("/admin/marketplace/api", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: p.id, [field]: !p[field] }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (res.ok) {
+        setProducts((prev) => prev.map((x) => (x.id === p.id ? { ...x, [field]: !x[field] } : x)))
+        flash(`${p.product_name} ${field === "is_active" ? (!p.is_active ? "activated" : "hidden") : (!p.is_featured ? "featured" : "unfeatured")}`)
+      } else {
+        flash(data.error || "Update failed")
+      }
+    } catch {
+      flash("Network error — try again")
     }
   }
 
   const remove = async (p: Product) => {
     if (!confirm(`Delete "${p.product_name}"?`)) return
-    const res = await fetch("/admin/marketplace/api", {
-      method: "DELETE",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id: p.id }),
-    })
-    if (res.ok) {
-      setProducts((prev) => prev.filter((x) => x.id !== p.id))
-      flash("Product deleted")
+    try {
+      const res = await fetch("/admin/marketplace/api", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: p.id }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (res.ok) {
+        setProducts((prev) => prev.filter((x) => x.id !== p.id))
+        flash("Product deleted")
+      } else {
+        flash(data.error || "Delete failed")
+      }
+    } catch {
+      flash("Network error — try again")
     }
   }
 
@@ -320,14 +334,21 @@ function AdminMarketplacePageInner() {
   }
 
   const setPagePublished = async (is_published: boolean) => {
-    const res = await fetch("/admin/marketplace/api", {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ is_published }),
-    })
-    if (res.ok) {
-      setOverview((o) => (o ? { ...o, pagePublished: is_published } : o))
-      flash(is_published ? "Marketplace page is LIVE" : "Marketplace page hidden")
+    try {
+      const res = await fetch("/admin/marketplace/api", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ is_published }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (res.ok) {
+        setOverview((o) => (o ? { ...o, pagePublished: is_published } : o))
+        flash(is_published ? "Marketplace page is LIVE" : "Marketplace page hidden")
+      } else {
+        flash(data.error || "Update failed")
+      }
+    } catch {
+      flash("Network error — try again")
     }
   }
 

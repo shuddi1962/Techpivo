@@ -1,12 +1,12 @@
 "use client"
 
 import Link from "next/link"
-import { Suspense, useMemo, useState } from "react"
+import { Suspense } from "react"
 import { useSearchParams } from "next/navigation"
 import {
   Package, ReceiptText, MessageSquare, BadgePercent, LayoutGrid,
   ImagePlus, Plug, TrendingUp, CreditCard, Globe, ArrowLeft,
-  ExternalLink, LayoutDashboard, Store, Search, type LucideIcon,
+  ExternalLink, LayoutDashboard, Store, type LucideIcon,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 
@@ -113,19 +113,6 @@ function MarketplaceLinks({ onNavClick, mini = false }: { onNavClick?: () => voi
   const searchParams = useSearchParams()
   const active = searchParams.get("section")
   const current = isMarketSection(active) ? active : "dashboard"
-  const [q, setQ] = useState("")
-
-  const filtered = useMemo(() => {
-    const needle = q.trim().toLowerCase()
-    if (!needle) return MARKET_SECTIONS
-    return MARKET_SECTIONS.filter(
-      (s) =>
-        s.label.toLowerCase().includes(needle) ||
-        s.desc.toLowerCase().includes(needle) ||
-        s.group.toLowerCase().includes(needle)
-    )
-  }, [q])
-
   if (mini) {
     return (
       <div className="flex flex-1 flex-col items-center gap-1 overflow-y-auto py-3 [scrollbar-width:none]">
@@ -138,23 +125,11 @@ function MarketplaceLinks({ onNavClick, mini = false }: { onNavClick?: () => voi
 
   const grouped = MARKET_GROUPS.map((g) => ({
     name: g,
-    items: filtered.filter((s) => s.group === g),
+    items: MARKET_SECTIONS.filter((s) => s.group === g),
   })).filter((g) => g.items.length > 0)
 
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <div className="shrink-0 px-0.5 pb-1.5">
-        <div className="relative">
-          <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3 w-3 -translate-y-1/2 text-slate-400" />
-          <input
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-            placeholder="Search sections…"
-            aria-label="Search marketplace sections"
-            className="h-8 w-full rounded-lg border border-slate-200 bg-slate-50 pl-8 pr-2 text-xs text-slate-700 placeholder:text-slate-400 focus:border-amber-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-amber-100"
-          />
-        </div>
-      </div>
       {/* Overflow is a safety net for very short viewports only — at normal
           laptop heights every section is visible with no scrolling. */}
       <nav className="grid min-h-0 flex-1 content-start gap-2 overflow-y-auto pb-0.5 [scrollbar-width:thin]" aria-label="Marketplace sections">
@@ -170,11 +145,6 @@ function MarketplaceLinks({ onNavClick, mini = false }: { onNavClick?: () => voi
             </div>
           </div>
         ))}
-        {grouped.length === 0 && (
-          <p className="rounded-lg bg-slate-50 px-3 py-5 text-center text-xs text-slate-400">
-            No sections match “{q}”.
-          </p>
-        )}
       </nav>
     </div>
   )

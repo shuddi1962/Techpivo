@@ -44,7 +44,7 @@ import {
 import { BannerSlider } from "@/components/marketplace/banner-slider"
 import { WelcomePopupCard } from "@/components/marketplace/welcome-popup"
 import { MARKET_STORE_DEFAULTS } from "@/lib/marketplace-store"
-import { marketCardCls, MarketLoading } from "@/components/admin/marketplace-ui"
+import { marketBtnPrimaryCls, marketBtnDarkCls, marketCardCls, MarketLoading } from "@/components/admin/marketplace-ui"
 import { cn } from "@/lib/utils"
 
 // Sample artworks so a transition preview plays even before any upload.
@@ -1168,7 +1168,7 @@ export function MarketplaceBannersTab() {
             type="button"
             onClick={save}
             disabled={saving}
-            className="inline-flex items-center gap-2 rounded-xl bg-[#F59E0B] px-5 py-2.5 text-sm font-extrabold text-[#0F172A] transition-all hover:bg-[#D97706] active:scale-[0.98] disabled:opacity-60"
+            className={cn(marketBtnPrimaryCls, "px-5 py-2.5 font-extrabold")}
           >
             {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
             {saving ? "Saving…" : "Save banners"}
@@ -1668,7 +1668,7 @@ export function MarketplaceBannersTab() {
                 type="button"
                 onClick={saveStore}
                 disabled={storeSaving}
-                className="inline-flex items-center gap-2 bg-[#0F172A] hover:bg-black text-white text-xs font-bold rounded-lg px-4 py-2 disabled:opacity-60"
+                className={cn(marketBtnDarkCls, "text-xs rounded-lg px-4 py-2")}
               >
                 {storeSaving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
                 {storeSaving ? "Saving…" : "Save contact info"}
