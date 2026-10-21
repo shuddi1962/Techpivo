@@ -2,19 +2,20 @@
 
 import { useCallback, useEffect, useState } from "react"
 import Link from "next/link"
-import { ExternalLink, MessageSquare, Search, Star, Trash2 } from "lucide-react"
+import { ExternalLink, MessageSquare, Star, Trash2 } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
 import {
   marketCardCls,
   marketIconBtnDangerCls,
-  marketIconInputCls,
-  marketIconInputWrapCls,
+  MarketBadge,
   MarketEmpty,
-  MarketHeader,
+  MarketKpi,
   MarketLoading,
   MarketNotice,
-  MarketStat,
-  MarketStatStrip,
+  MarketPageBar,
+  MarketSearch,
+  MarketSegmented,
+  MarketToolbar,
 } from "@/components/admin/marketplace-ui"
 import { cn } from "@/lib/utils"
 
@@ -93,54 +94,62 @@ export function MarketplaceReviewsTab() {
 
   const lowCount = reviews.filter((r) => r.rating <= 2).length
 
+  const ratingOptions = [
+    { value: "0", label: "All ratings", count: reviews.length },
+    { value: "1", label: "1 star", count: reviews.filter((r) => r.rating === 1).length },
+    { value: "2", label: "2 stars & below", count: reviews.filter((r) => r.rating <= 2).length },
+    { value: "3", label: "3 stars & below", count: reviews.filter((r) => r.rating <= 3).length },
+  ]
+
   if (loading) {
     return <MarketLoading label="Loading reviews..." />
   }
 
   return (
     <div>
-      <MarketHeader
+      <MarketPageBar
         icon={MessageSquare}
         title="Reviews"
         desc="Ratings & moderation — new reviews land here live for approval or removal"
+        badge={
+          lowCount > 0 ? (
+            <MarketBadge tone="red" dot>
+              {lowCount} need attention
+            </MarketBadge>
+          ) : undefined
+        }
       />
       {notice && <MarketNotice>{notice}</MarketNotice>}
-      <MarketStatStrip>
-        <MarketStat label="Total reviews" value={String(reviews.length)} />
-        <MarketStat
+
+      <div className="mb-3 grid grid-cols-2 gap-2.5 sm:gap-3 lg:grid-cols-4">
+        <MarketKpi label="Total reviews" value={String(reviews.length)} sub="all time" tone="neutral" />
+        <MarketKpi
           label="Average rating"
           value={reviews.length > 0 ? avg.toFixed(1) : "—"}
-          sub={reviews.length > 0 ? "across all products" : "no ratings yet"}
+          sub={reviews.length > 0 ? "out of 5 stars" : "no ratings yet"}
+          tone="amber"
         />
-        <MarketStat
-          label="Needs attention"
-          value={String(lowCount)}
-          sub="1–2 star reviews"
-        />
-        <div className="ml-auto flex w-full flex-wrap items-center gap-2 sm:w-auto">
-          <div className={cn(marketIconInputWrapCls, "min-w-0 flex-1 sm:w-56 sm:flex-none")}>
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-            <input
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search product, author, text..."
-              aria-label="Search reviews"
-              className={marketIconInputCls}
+        <MarketKpi label="Needs attention" value={String(lowCount)} sub="1–2 star reviews" tone={lowCount > 0 ? "red" : "emerald"} />
+        <MarketKpi label="5-star reviews" value={String(reviews.filter((r) => r.rating >= 5).length)} sub="happy shoppers" tone="emerald" />
+      </div>
+
+      <MarketToolbar
+        left={
+          <>
+            <MarketSearch value={query} onChange={setQuery} placeholder="Search product, author, text..." />
+            <MarketSegmented
+              options={ratingOptions}
+              value={String(minRating)}
+              onChange={(v) => setMinRating(Number(v))}
             />
-          </div>
-          <select
-            value={minRating}
-            onChange={(e) => setMinRating(Number(e.target.value))}
-            aria-label="Filter by rating"
-            className="cursor-pointer rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm focus:border-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-100"
-          >
-            <option value={0}>All ratings</option>
-            <option value={1}>1 star only</option>
-            <option value={2}>2 stars & below</option>
-            <option value={3}>3 stars & below</option>
-          </select>
-        </div>
-      </MarketStatStrip>
+          </>
+        }
+        right={
+          <span className="text-xs font-semibold tabular-nums text-slate-500">
+            {shown.length} of {reviews.length} shown
+          </span>
+        }
+      />
       {shown.length === 0 ? (
         <MarketEmpty
           icon={MessageSquare}

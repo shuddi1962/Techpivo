@@ -6,21 +6,22 @@ import { blankCoupon, type MarketCoupon } from "@/lib/marketplace-coupons"
 import { isoToLocalInput } from "@/lib/marketplace-banners"
 import { createClient } from "@/lib/supabase/client"
 import {
+  marketBtnGhostCls,
   marketBtnPrimaryCls,
   marketCardCls,
   marketIconBtnCls,
   marketIconBtnDangerCls,
+  marketInputCls,
+  MarketBadge,
   MarketEmpty,
-  MarketHeader,
+  MarketField,
+  MarketKpi,
   MarketLoading,
+  MarketModal,
   MarketNotice,
-  MarketStat,
-  MarketStatStrip,
+  MarketPageBar,
 } from "@/components/admin/marketplace-ui"
 import { cn } from "@/lib/utils"
-
-const inputCls =
-  "w-full border rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:border-amber-500"
 
 export function MarketplacePromotionsTab() {
   const [coupons, setCoupons] = useState<MarketCoupon[]>([])
@@ -133,7 +134,7 @@ export function MarketplacePromotionsTab() {
 
   return (
     <div>
-      <MarketHeader
+      <MarketPageBar
         icon={BadgePercent}
         title="Promotions"
         desc="Coupons & discounts — codes apply at checkout instantly"
@@ -144,15 +145,19 @@ export function MarketplacePromotionsTab() {
         }
       />
       {notice && <MarketNotice>{notice}</MarketNotice>}
-      <MarketStatStrip>
-        <MarketStat label="Coupons" value={String(coupons.length)} sub={`${activeCount} active`} />
-        <MarketStat label="Total redemptions" value={String(totalUses)} sub="all-time uses" />
-        <MarketStat
-          label="Sync"
-          value="Live"
-          sub="refreshes in realtime · 60s poll · focus"
+
+      <div className="mb-3 grid grid-cols-2 gap-2.5 sm:gap-3 lg:grid-cols-4">
+        <MarketKpi label="Coupons" value={String(coupons.length)} sub={`${activeCount} active`} icon={BadgePercent} tone="amber" />
+        <MarketKpi label="Redemptions" value={String(totalUses)} sub="all-time uses" tone="violet" />
+        <MarketKpi
+          label="Paused / expired"
+          value={String(coupons.filter((c) => !c.active || (!!c.ends_at && Date.parse(c.ends_at) <= Date.now())).length)}
+          sub="not redeemable"
+          tone="neutral"
         />
-      </MarketStatStrip>
+        <MarketKpi label="Sync" value="Live" sub="realtime · 60s poll · focus" tone="emerald" />
+      </div>
+
       {coupons.length === 0 ? (
         <MarketEmpty
           icon={BadgePercent}
@@ -179,12 +184,9 @@ export function MarketplacePromotionsTab() {
                 <div className="min-w-0 flex-1">
                   <p className="flex flex-wrap items-center gap-2 font-mono font-bold tracking-wide text-slate-900">
                     {c.code}
-                    {!c.active && (
-                      <span className="rounded-full bg-slate-100 px-2 py-0.5 font-sans text-[10px] font-extrabold text-slate-500">PAUSED</span>
-                    )}
-                    {expired && (
-                      <span className="rounded-full bg-red-50 px-2 py-0.5 font-sans text-[10px] font-extrabold text-red-600">EXPIRED</span>
-                    )}
+                    {!c.active && <MarketBadge tone="neutral">Paused</MarketBadge>}
+                    {expired && <MarketBadge tone="red">Expired</MarketBadge>}
+                    {c.active && !expired && <MarketBadge tone="emerald" dot pulse>Live</MarketBadge>}
                   </p>
                   <p className="mt-0.5 text-xs text-slate-500">
                     {c.type === "percent" ? `${c.value}% off` : `$${c.value.toFixed(2)} off`}
@@ -217,106 +219,102 @@ export function MarketplacePromotionsTab() {
           })}
         </div>
       )}
-      {showForm && editing && (
-        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 p-0 sm:p-4" onClick={() => setShowForm(false)}>
-          <div className="bg-white w-full sm:max-w-lg rounded-t-2xl sm:rounded-2xl p-5 max-h-[92vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
-            <h2 className="font-bold text-lg text-slate-900 mb-4">{coupons.some((c) => c.id === editing.id) ? "Edit coupon" : "New coupon"}</h2>
-            <div className="space-y-3">
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="text-xs font-semibold text-slate-600">Code *</label>
-                  <input
-                    value={editing.code}
-                    onChange={(e) => setEditing({ ...editing, code: e.target.value.toUpperCase().replace(/[^A-Z0-9-]/g, "").slice(0, 24) })}
-                    placeholder="WELCOME10"
-                    className="mt-1 w-full border rounded-lg px-3 py-2 text-sm font-mono focus:outline-none focus:border-amber-500"
-                  />
-                </div>
-                <div>
-                  <label className="text-xs font-semibold text-slate-600">Type</label>
-                  <select
-                    value={editing.type}
-                    onChange={(e) => setEditing({ ...editing, type: e.target.value === "fixed" ? "fixed" : "percent" })}
-                    className="mt-1 w-full border rounded-lg px-3 py-2 text-sm bg-white cursor-pointer focus:outline-none focus:border-amber-500"
-                  >
-                    <option value="percent">Percent %</option>
-                    <option value="fixed">Fixed $</option>
-                  </select>
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="text-xs font-semibold text-slate-600">{editing.type === "percent" ? "Percent (1–90)" : "Amount ($)"}</label>
-                  <input
-                    value={editing.value}
-                    onChange={(e) => setEditing({ ...editing, value: Math.max(0, Number(e.target.value) || 0) })}
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    className="mt-1 w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-amber-500"
-                  />
-                </div>
-                <div>
-                  <label className="text-xs font-semibold text-slate-600">Min order ($, 0 = none)</label>
-                  <input
-                    value={editing.min_order_usd}
-                    onChange={(e) => setEditing({ ...editing, min_order_usd: Math.max(0, Number(e.target.value) || 0) })}
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    className="mt-1 w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-amber-500"
-                  />
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="text-xs font-semibold text-slate-600">Starts (optional)</label>
-                  <input
-                    type="datetime-local"
-                    value={isoToLocalInput(editing.starts_at)}
-                    onChange={(e) => setEditing({ ...editing, starts_at: e.target.value ? new Date(e.target.value).toISOString() : "" })}
-                    className={`${inputCls} mt-1 text-xs`}
-                  />
-                </div>
-                <div>
-                  <label className="text-xs font-semibold text-slate-600">Ends (optional)</label>
-                  <input
-                    type="datetime-local"
-                    value={isoToLocalInput(editing.ends_at)}
-                    onChange={(e) => setEditing({ ...editing, ends_at: e.target.value ? new Date(e.target.value).toISOString() : "" })}
-                    className={`${inputCls} mt-1 text-xs`}
-                  />
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="text-xs font-semibold text-slate-600">Usage limit (0 = unlimited)</label>
-                  <input
-                    value={editing.max_uses}
-                    onChange={(e) => setEditing({ ...editing, max_uses: Math.max(0, Math.floor(Number(e.target.value) || 0)) })}
-                    type="number"
-                    min="0"
-                    step="1"
-                    className="mt-1 w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-amber-500"
-                  />
-                </div>
-                <label className="flex items-center gap-2 text-sm text-slate-700 mt-5">
-                  <input type="checkbox" checked={editing.active} onChange={(e) => setEditing({ ...editing, active: e.target.checked })} className="accent-[#F59E0B]" /> Active
-                </label>
-              </div>
-              {editing.max_uses > 0 && (
-                <p className="text-[11px] text-slate-500">Used {editing.uses} of {editing.max_uses} times.</p>
-              )}
+      <MarketModal
+        open={showForm && !!editing}
+        onClose={() => setShowForm(false)}
+        title={editing && coupons.some((c) => c.id === editing.id) ? "Edit coupon" : "New coupon"}
+        desc="Codes apply instantly at checkout."
+        footer={
+          <>
+            <button onClick={() => setShowForm(false)} className={marketBtnGhostCls}>
+              Cancel
+            </button>
+            <button onClick={saveForm} disabled={saving} className={marketBtnPrimaryCls}>
+              {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />} {saving ? "Saving…" : "Save coupon"}
+            </button>
+          </>
+        }
+      >
+        {editing && (
+          <div className="space-y-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <MarketField label="Code *" hint="2–24 letters, numbers or dashes.">
+                <input
+                  value={editing.code}
+                  onChange={(e) => setEditing({ ...editing, code: e.target.value.toUpperCase().replace(/[^A-Z0-9-]/g, "").slice(0, 24) })}
+                  placeholder="WELCOME10"
+                  className={marketInputCls + " font-mono"}
+                />
+              </MarketField>
+              <MarketField label="Type">
+                <select
+                  value={editing.type}
+                  onChange={(e) => setEditing({ ...editing, type: e.target.value === "fixed" ? "fixed" : "percent" })}
+                  className={marketInputCls + " cursor-pointer"}
+                >
+                  <option value="percent">Percent %</option>
+                  <option value="fixed">Fixed $</option>
+                </select>
+              </MarketField>
             </div>
-            <div className="flex gap-2 mt-5">
-              <button onClick={() => setShowForm(false)} className="flex-1 border rounded-lg py-2.5 text-sm font-medium hover:bg-slate-50">Cancel</button>
-              <button onClick={saveForm} disabled={saving} className="flex-1 bg-[#F59E0B] hover:bg-[#D97706] text-[#0F172A] rounded-lg py-2.5 text-sm font-bold disabled:opacity-60 inline-flex items-center justify-center gap-1.5">
-                {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />} {saving ? "Saving..." : "Save coupon"}
-              </button>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <MarketField label={editing.type === "percent" ? "Percent (1–90)" : "Amount ($)"}>
+                <input
+                  value={editing.value}
+                  onChange={(e) => setEditing({ ...editing, value: Math.max(0, Number(e.target.value) || 0) })}
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  className={marketInputCls}
+                />
+              </MarketField>
+              <MarketField label="Min order ($, 0 = none)">
+                <input
+                  value={editing.min_order_usd}
+                  onChange={(e) => setEditing({ ...editing, min_order_usd: Math.max(0, Number(e.target.value) || 0) })}
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  className={marketInputCls}
+                />
+              </MarketField>
+            </div>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <MarketField label="Starts (optional)">
+                <input
+                  type="datetime-local"
+                  value={isoToLocalInput(editing.starts_at)}
+                  onChange={(e) => setEditing({ ...editing, starts_at: e.target.value ? new Date(e.target.value).toISOString() : "" })}
+                  className={marketInputCls + " text-xs"}
+                />
+              </MarketField>
+              <MarketField label="Ends (optional)">
+                <input
+                  type="datetime-local"
+                  value={isoToLocalInput(editing.ends_at)}
+                  onChange={(e) => setEditing({ ...editing, ends_at: e.target.value ? new Date(e.target.value).toISOString() : "" })}
+                  className={marketInputCls + " text-xs"}
+                />
+              </MarketField>
+            </div>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <MarketField label="Usage limit (0 = unlimited)" hint={editing.max_uses > 0 ? `Used ${editing.uses} of ${editing.max_uses} times.` : undefined}>
+                <input
+                  value={editing.max_uses}
+                  onChange={(e) => setEditing({ ...editing, max_uses: Math.max(0, Math.floor(Number(e.target.value) || 0)) })}
+                  type="number"
+                  min="0"
+                  step="1"
+                  className={marketInputCls}
+                />
+              </MarketField>
+              <label className="mt-6 flex items-center gap-2 text-sm text-slate-700">
+                <input type="checkbox" checked={editing.active} onChange={(e) => setEditing({ ...editing, active: e.target.checked })} className="accent-[#F59E0B]" /> Active
+              </label>
             </div>
           </div>
-        </div>
-      )}
+        )}
+      </MarketModal>
     </div>
   )
 }

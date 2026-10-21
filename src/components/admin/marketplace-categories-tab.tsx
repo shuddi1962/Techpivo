@@ -5,11 +5,11 @@ import { ChevronDown, LayoutGrid } from "lucide-react"
 import { MARKET_DEPARTMENTS, MARKET_LEAF_COUNT, MARKET_SUB_COUNT } from "@/lib/marketplace-categories"
 import {
   marketCardCls,
+  MarketBadge,
   MarketEmpty,
-  MarketHeader,
+  MarketKpi,
   MarketLoading,
-  MarketStat,
-  MarketStatStrip,
+  MarketPageBar,
 } from "@/components/admin/marketplace-ui"
 import { cn } from "@/lib/utils"
 
@@ -32,23 +32,30 @@ export function MarketplaceCategoriesTab() {
 
   return (
     <div>
-      <MarketHeader
+      <MarketPageBar
         icon={LayoutGrid}
         title="Categories"
         desc="Departments, subcategories & leaves — drives the storefront menu and CJ mapping"
+        badge={
+          dbCount !== null ? (
+            <MarketBadge tone={dbCount === 0 ? "amber" : "emerald"} dot>
+              {dbCount === 0 ? "DB not seeded" : `${dbCount} rows synced`}
+            </MarketBadge>
+          ) : undefined
+        }
       />
-      <MarketStatStrip>
-        <MarketStat label="Departments" value={String(MARKET_DEPARTMENTS.length)} />
-        <MarketStat label="Subcategories" value={String(MARKET_SUB_COUNT)} />
-        <MarketStat label="Leaves" value={String(MARKET_LEAF_COUNT)} />
-        {dbCount !== null && (
-          <MarketStat
-            label="DB rows"
-            value={String(dbCount)}
-            sub={dbCount === 0 ? "run migration 091 to seed" : "synced with code tree"}
-          />
-        )}
-      </MarketStatStrip>
+
+      <div className="mb-3 grid grid-cols-2 gap-2.5 sm:gap-3 lg:grid-cols-4">
+        <MarketKpi label="Departments" value={String(MARKET_DEPARTMENTS.length)} sub="storefront menu" tone="amber" />
+        <MarketKpi label="Subcategories" value={String(MARKET_SUB_COUNT)} sub="second level" tone="sky" />
+        <MarketKpi label="Leaves" value={String(MARKET_LEAF_COUNT)} sub="leaf categories" tone="violet" />
+        <MarketKpi
+          label="DB rows"
+          value={dbCount === null ? "—" : String(dbCount)}
+          sub={dbCount === 0 ? "run migration 091 to seed" : "synced with code tree"}
+          tone={dbCount === 0 ? "red" : "emerald"}
+        />
+      </div>
 
       {MARKET_DEPARTMENTS.length === 0 ? (
         <MarketEmpty

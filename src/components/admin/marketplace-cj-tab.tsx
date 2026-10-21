@@ -7,8 +7,9 @@ import {
   marketBtnDarkCls,
   marketBtnPrimaryCls,
   marketCardCls,
+  MarketBadge,
   MarketEmpty,
-  MarketHeader,
+  MarketPageBar,
   marketIconInputCls,
   marketIconInputWrapCls,
   MarketNotice,
@@ -24,7 +25,7 @@ interface CjItem {
   categorySecondName?: string
 }
 
-export function MarketplaceCjTab({ onImported }: { onImported: () => void }) {
+export function MarketplaceCjTab({ onImported }: { onImported?: () => void }) {
   const [status, setStatus] = useState<{ configured: boolean; connected: boolean; message: string } | null>(null)
   const [apiKey, setApiKey] = useState("")
   const [savingKey, setSavingKey] = useState(false)
@@ -105,7 +106,7 @@ export function MarketplaceCjTab({ onImported }: { onImported: () => void }) {
       if (r?.imported !== undefined) {
         setNotice(`Imported ${r.imported} products${r.skipped ? ` (${r.skipped} already existed)` : ""} into TechPivo Market.`)
         setSelected({})
-        onImported()
+        onImported?.()
       } else {
         setNotice(r?.error || "Import failed.")
       }
@@ -116,21 +117,15 @@ export function MarketplaceCjTab({ onImported }: { onImported: () => void }) {
 
   return (
     <div>
-      <MarketHeader
+      <MarketPageBar
         icon={Plug}
         title="CJ Import"
         desc="Supplier catalog sync — search CJ live, then import into your catalog"
-        actions={
+        badge={
           status ? (
-            <span
-              className={cn(
-                "inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-extrabold",
-                status.connected ? "bg-emerald-100 text-emerald-800" : "bg-slate-100 text-slate-500"
-              )}
-            >
-              {status.connected ? <CheckCircle2 className="h-3.5 w-3.5" /> : <XCircle className="h-3.5 w-3.5" />}
-              {status.connected ? "CONNECTED" : "NOT CONNECTED"}
-            </span>
+            <MarketBadge tone={status.connected ? "emerald" : "neutral"} dot pulse={status.connected}>
+              {status.connected ? "Connected" : "Not connected"}
+            </MarketBadge>
           ) : undefined
         }
       />

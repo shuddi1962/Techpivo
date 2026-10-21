@@ -44,7 +44,7 @@ import {
 import { BannerSlider } from "@/components/marketplace/banner-slider"
 import { WelcomePopupCard } from "@/components/marketplace/welcome-popup"
 import { MARKET_STORE_DEFAULTS } from "@/lib/marketplace-store"
-import { marketBtnPrimaryCls, marketBtnDarkCls, marketCardCls, MarketLoading } from "@/components/admin/marketplace-ui"
+import { marketBtnPrimaryCls, marketBtnDarkCls, marketCardCls, MarketBadge, MarketLoading, MarketPageBar } from "@/components/admin/marketplace-ui"
 import { cn } from "@/lib/utils"
 
 // Sample artworks so a transition preview plays even before any upload.
@@ -1151,19 +1151,17 @@ export function MarketplaceBannersTab() {
     <div className="w-full space-y-3">
       <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/gif,image/webp,image/avif" className="hidden" onChange={onFile} />
 
-      {/* Sticky save bar */}
-      <div className="sticky top-0 z-10 rounded-2xl border border-slate-900 bg-[#0F172A] p-3 text-white shadow-[0_18px_45px_-20px_rgba(15,23,42,0.7)] sm:p-4">
-        <div className="flex flex-wrap items-center gap-2.5">
-          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#F59E0B]">
-            <ImagePlus className="h-5 w-5 text-[#0F172A]" />
-          </span>
-          <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-extrabold sm:text-[15px]">Banners & promos</p>
-            <p className="truncate text-[11px] text-white/60">
-              <span className="mr-1 inline-block h-1.5 w-1.5 rounded-full bg-emerald-400 align-middle" />
-              {liveCount} custom banner{liveCount === 1 ? "" : "s"} live · saves go public instantly
-            </p>
-          </div>
+      {/* Sticky page bar — save action + live status */}
+      <MarketPageBar
+        icon={ImagePlus}
+        title="Banners & promos"
+        desc="Hero, promo bar, flash sale, welcome popups — saves go public instantly"
+        badge={
+          <MarketBadge tone="emerald" dot pulse>
+            {liveCount} custom banner{liveCount === 1 ? "" : "s"} live
+          </MarketBadge>
+        }
+        actions={
           <button
             type="button"
             onClick={save}
@@ -1173,13 +1171,13 @@ export function MarketplaceBannersTab() {
             {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
             {saving ? "Saving…" : "Save banners"}
           </button>
+        }
+      />
+      {notice && (
+        <div className="mb-3 flex items-center gap-1.5 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-700">
+          <BadgeCheck className="h-3.5 w-3.5 shrink-0" /> {notice}
         </div>
-        {notice && (
-          <p className="mt-2 flex items-center gap-1.5 rounded-lg bg-white/10 px-3 py-2 text-xs font-semibold text-emerald-300">
-            <BadgeCheck className="h-3.5 w-3.5 shrink-0" /> {notice}
-          </p>
-        )}
-      </div>
+      )}
 
       {/* 1 — Homepage banners & sliders */}
       <Section

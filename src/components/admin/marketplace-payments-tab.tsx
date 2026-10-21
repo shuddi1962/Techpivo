@@ -5,7 +5,9 @@ import { CheckCircle2, CreditCard, ExternalLink, KeyRound, XCircle } from "lucid
 import {
   marketBtnDarkCls,
   marketCardCls,
-  MarketHeader,
+  MarketBadge,
+  MarketCardHead,
+  MarketPageBar,
   marketIconInputCls,
   marketIconInputWrapCls,
   MarketLoading,
@@ -81,25 +83,19 @@ export function MarketplacePaymentsTab() {
 
   return (
     <div className="max-w-3xl">
-      <MarketHeader
+      <MarketPageBar
         icon={CreditCard}
         title="Payments"
         desc="Gateway keys & mode — checkout stays disabled until the secret key is set"
-        actions={
+        badge={
           status?.secret && status.testMode !== null && status.testMode !== undefined ? (
-            <span
-              className={cn(
-                "inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-extrabold",
-                status.testMode ? "bg-amber-100 text-amber-800" : "bg-emerald-100 text-emerald-800"
-              )}
-            >
-              <span className={cn("h-1.5 w-1.5 rounded-full", status.testMode ? "bg-amber-500" : "bg-emerald-500 animate-pulse")} />
-              {status.testMode ? "TEST MODE" : "LIVE"}
-            </span>
+            <MarketBadge tone={status.testMode ? "amber" : "emerald"} dot pulse={!status.testMode}>
+              {status.testMode ? "Test mode" : "Live"}
+            </MarketBadge>
           ) : (
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-extrabold text-slate-500">
-              <span className="h-1.5 w-1.5 rounded-full bg-slate-400" /> NOT CONFIGURED
-            </span>
+            <MarketBadge tone="neutral" dot>
+              Not configured
+            </MarketBadge>
           )
         }
       />
@@ -124,7 +120,7 @@ export function MarketplacePaymentsTab() {
       )}
 
       <div className={cn(marketCardCls, "mb-3 p-4 sm:p-5")}>
-        <p className="mb-3 text-xs font-extrabold uppercase tracking-[0.12em] text-slate-400">Key status</p>
+        <MarketCardHead title="Key status" desc="Which gateway credentials are stored server-side." />
         <div className="grid gap-2 sm:grid-cols-2">
           {KEY_ROWS.map((row) => {
             const set = !!status?.[row.key]
@@ -143,10 +139,10 @@ export function MarketplacePaymentsTab() {
                 )}
                 <div className="leading-tight">
                   <p className="text-sm font-bold text-slate-800">{row.label}</p>
-                  <p className={cn("text-[11px] font-semibold", set ? "text-emerald-600" : "text-slate-400")}>
-                    {set ? "Set" : "Missing"}
-                  </p>
                 </div>
+                <MarketBadge tone={set ? "emerald" : "neutral"} className="ml-auto">
+                  {set ? "Set" : "Missing"}
+                </MarketBadge>
               </div>
             )
           })}
@@ -154,7 +150,7 @@ export function MarketplacePaymentsTab() {
       </div>
 
       <div className={cn(marketCardCls, "p-4 sm:p-5")}>
-        <p className="mb-3 text-xs font-extrabold uppercase tracking-[0.12em] text-slate-400">Update keys</p>
+        <MarketCardHead title="Update keys" desc="Paste test keys to trial checkout, then swap to live keys." />
         <div className="space-y-2">
           <div className={marketIconInputWrapCls}>
             <KeyRound className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />

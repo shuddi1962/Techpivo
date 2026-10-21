@@ -4,13 +4,16 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { createClient } from "@/lib/supabase/client"
-import { Plus, Trash2, Eye, EyeOff, RefreshCw, TrendingUp } from "lucide-react"
+import { Plus, Trash2, Eye, EyeOff, RefreshCw, TrendingUp, ShoppingBag, Banknote } from "lucide-react"
 import {
+  marketBtnDarkCls,
+  marketBtnGhostCls,
   marketCardCls,
-  MarketHeader,
+  marketInputCls,
+  MarketKpi,
+  MarketLoading,
   MarketNotice,
-  MarketStat,
-  MarketStatStrip,
+  MarketPageBar,
 } from "@/components/admin/marketplace-ui"
 
 interface Rec {
@@ -168,16 +171,21 @@ export function MarketplaceUpsellsTab() {
     return [...map.entries()]
   }, [recs])
 
-  if (loading) return <p className="py-8 text-center text-sm text-slate-500">Loading upsells...</p>
+  if (loading) return <MarketLoading label="Loading upsells..." />
 
   const attachRate = report && report.paidOrders > 0 ? Math.round((report.multiItemOrders / report.paidOrders) * 1000) / 10 : 0
 
   return (
     <div>
-      <MarketHeader
+      <MarketPageBar
         icon={TrendingUp}
         title="Upsells"
         desc="Complete-your-purchase — curated picks plus live conversion data"
+        actions={
+          <button type="button" onClick={load} className={marketBtnGhostCls}>
+            <RefreshCw className="h-3.5 w-3.5" /> Refresh
+          </button>
+        }
       />
       {!migrated && (
         <MarketNotice tone="warn">
@@ -185,16 +193,17 @@ export function MarketplaceUpsellsTab() {
           Supabase SQL Editor. The storefront keeps working on automatic category recommendations meanwhile.
         </MarketNotice>
       )}
-      {report && report.totalEvents > 0 && (
-        <MarketStatStrip>
-          <MarketStat label="Upsell adds" value={String(report.byKind.recommend_add ?? 0)} sub="from Complete Your Purchase" />
-          <MarketStat label="Multi-item orders" value={String(report.multiItemOrders)} sub={`${attachRate}% of paid orders`} />
-          <MarketStat label="Avg order value" value={`$${report.aovUsd.toFixed(2)}`} sub={`${report.paidOrders} paid orders`} />
-        </MarketStatStrip>
-      )}
+      {notice && <MarketNotice>{notice}</MarketNotice>}
+
+      <div className="mb-3 grid grid-cols-2 gap-2.5 sm:gap-3 lg:grid-cols-4">
+        <MarketKpi label="Curated pairs" value={String(recs.length)} sub="pinned add-ons" icon={TrendingUp} tone="amber" />
+        <MarketKpi label="Upsell adds" value={String(report?.byKind.recommend_add ?? 0)} sub="from Complete Your Purchase" icon={Plus} tone="violet" />
+        <MarketKpi label="Multi-item orders" value={String(report?.multiItemOrders ?? 0)} sub={`${attachRate}% of paid orders`} icon={ShoppingBag} tone="sky" />
+        <MarketKpi label="Avg order value" value={`$${(report?.aovUsd ?? 0).toFixed(2)}`} sub={`${report?.paidOrders ?? 0} paid orders`} icon={Banknote} tone="emerald" />
+      </div>
 
       <section className={marketCardCls + " p-4 sm:p-5 mb-3"}>
-        <h3 className="font-bold text-[#0F172A]">Curated recommendations</h3>
+        <h3 className="font-bold text-slate-900">Curated recommendations</h3>
         <p className="mt-0.5 text-[13px] text-slate-500">
           Pin specific add-ons to a product. Curated picks always outrank automatic ones on “Complete Your Purchase”.
         </p>
@@ -205,12 +214,12 @@ export function MarketplaceUpsellsTab() {
               value={primaryQ}
               onChange={(e) => setPrimaryQ(e.target.value)}
               placeholder="Search products..."
-              className="mt-1 w-full rounded-lg border border-[#E2E8F0] px-3 py-2 text-sm focus:border-amber-500 focus:outline-none"
+              className={marketInputCls}
             />
             {primaryId ? (
               <p className="mt-1 truncate text-xs font-semibold text-emerald-700">Selected: {names[primaryId] || products.find((p) => p.id === primaryId)?.product_name || primaryId.slice(0, 8)}</p>
             ) : (
-              <ul className="mt-1 divide-y divide-slate-100 rounded-lg border border-[#E2E8F0]">
+              <ul className="mt-1 divide-y divide-slate-100 overflow-hidden rounded-xl border border-slate-200">
                 {match(primaryQ).map((p) => (
                   <li key={p.id}>
                     <button type="button" onClick={() => { setPrimaryId(p.id); setPrimaryQ(p.product_name) }} className="block w-full truncate px-3 py-1.5 text-left text-[13px] hover:bg-amber-50">
@@ -227,12 +236,12 @@ export function MarketplaceUpsellsTab() {
               value={recQ}
               onChange={(e) => setRecQ(e.target.value)}
               placeholder="Search products..."
-              className="mt-1 w-full rounded-lg border border-[#E2E8F0] px-3 py-2 text-sm focus:border-amber-500 focus:outline-none"
+              className={marketInputCls}
             />
             {recId ? (
               <p className="mt-1 truncate text-xs font-semibold text-emerald-700">Selected: {products.find((p) => p.id === recId)?.product_name || recId.slice(0, 8)}</p>
             ) : (
-              <ul className="mt-1 divide-y divide-slate-100 rounded-lg border border-[#E2E8F0]">
+              <ul className="mt-1 divide-y divide-slate-100 overflow-hidden rounded-xl border border-slate-200">
                 {match(recQ).map((p) => (
                   <li key={p.id}>
                     <button type="button" onClick={() => { setRecId(p.id); setRecQ(p.product_name) }} className="block w-full truncate px-3 py-1.5 text-left text-[13px] hover:bg-amber-50">
@@ -249,9 +258,9 @@ export function MarketplaceUpsellsTab() {
             type="button"
             onClick={add}
             disabled={!primaryId || !recId || saving}
-            className="inline-flex items-center gap-1.5 rounded-xl bg-slate-900 px-4 py-2 text-sm font-bold text-white transition-all hover:bg-slate-700 active:scale-[0.98] disabled:opacity-50"
+            className={marketBtnDarkCls + " disabled:opacity-50"}
           >
-            <Plus className="h-4 w-4" /> {saving ? "Saving..." : "Add recommendation"}
+            <Plus className="h-4 w-4" /> {saving ? "Saving…" : "Add recommendation"}
           </button>
           {(primaryId || recId) && (
             <button type="button" onClick={() => { setPrimaryId(""); setRecId(""); setPrimaryQ(""); setRecQ("") }} className="text-xs text-slate-400 hover:text-slate-600">
@@ -259,7 +268,6 @@ export function MarketplaceUpsellsTab() {
             </button>
           )}
         </div>
-        {notice && <p className="mt-2 text-[13px] font-semibold text-emerald-700">{notice}</p>}
 
         <div className="mt-4 space-y-3">
           {grouped.length === 0 && (
@@ -268,18 +276,18 @@ export function MarketplaceUpsellsTab() {
             </p>
           )}
           {grouped.map(([primary, list]) => (
-            <div key={primary} className="rounded-xl border border-[#E2E8F0] p-3">
-              <p className="text-sm font-bold text-[#0F172A]">{names[primary] || primary.slice(0, 8)}</p>
+            <div key={primary} className="rounded-xl border border-slate-200 p-3">
+              <p className="text-sm font-bold text-slate-900">{names[primary] || primary.slice(0, 8)}</p>
               <ul className="mt-2 space-y-1.5">
                 {list.map((r) => (
                   <li key={r.id} className="flex items-center gap-2 text-[13px]">
                     <span className={`flex-1 truncate ${r.is_active ? "text-slate-700" : "text-slate-400 line-through"}`}>
                       → {names[r.recommended_id] || r.recommended_id.slice(0, 8)}
                     </span>
-                    <button type="button" onClick={() => toggle(r)} aria-label={r.is_active ? "Hide recommendation" : "Show recommendation"} className="rounded-lg border border-[#E2E8F0] p-1.5 text-slate-500 hover:text-[#0F172A]">
+                    <button type="button" onClick={() => toggle(r)} aria-label={r.is_active ? "Hide recommendation" : "Show recommendation"} className="rounded-lg border border-slate-200 p-1.5 text-slate-500 hover:text-slate-900">
                       {r.is_active ? <Eye className="h-3.5 w-3.5" /> : <EyeOff className="h-3.5 w-3.5" />}
                     </button>
-                    <button type="button" onClick={() => remove(r.id)} aria-label="Remove recommendation" className="rounded-lg border border-[#E2E8F0] p-1.5 text-slate-400 hover:text-[#EF4444]">
+                    <button type="button" onClick={() => remove(r.id)} aria-label="Remove recommendation" className="rounded-lg border border-slate-200 p-1.5 text-slate-400 hover:text-red-500">
                       <Trash2 className="h-3.5 w-3.5" />
                     </button>
                   </li>
@@ -292,7 +300,7 @@ export function MarketplaceUpsellsTab() {
 
       <section className={marketCardCls + " p-4 sm:p-5"}>
         <div className="flex items-center justify-between">
-          <h3 className="inline-flex items-center gap-1.5 font-bold text-[#0F172A]">
+          <h3 className="inline-flex items-center gap-1.5 font-bold text-slate-900">
             <TrendingUp className="h-4 w-4 text-amber-600" /> Conversion report
           </h3>
           <button type="button" onClick={load} className="inline-flex items-center gap-1 text-xs text-slate-400 hover:text-slate-600">
@@ -313,22 +321,22 @@ export function MarketplaceUpsellsTab() {
               {Object.entries(report.byKind).map(([k, n]) => (
                 <div key={k} className="rounded-xl bg-slate-50 px-3 py-2">
                   <dt className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">{KIND_LABELS[k] || k}</dt>
-                  <dd className="text-xl font-extrabold tabular-nums text-[#0F172A]">{n.toLocaleString()}</dd>
+                  <dd className="text-xl font-extrabold tabular-nums text-slate-900">{n.toLocaleString()}</dd>
                 </div>
               ))}
             </dl>
             <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
-              <div className="rounded-xl border border-[#E2E8F0] px-3 py-2 text-sm">
+              <div className="rounded-xl border border-slate-200 px-3 py-2 text-sm">
                 <span className="text-slate-500">Paid orders: </span>
-                <strong className="tabular-nums text-[#0F172A]">{report.paidOrders}</strong>
+                <strong className="tabular-nums text-slate-900">{report.paidOrders}</strong>
               </div>
-              <div className="rounded-xl border border-[#E2E8F0] px-3 py-2 text-sm">
+              <div className="rounded-xl border border-slate-200 px-3 py-2 text-sm">
                 <span className="text-slate-500">Multi-item orders: </span>
-                <strong className="tabular-nums text-[#0F172A]">{report.multiItemOrders}</strong>
+                <strong className="tabular-nums text-slate-900">{report.multiItemOrders}</strong>
               </div>
-              <div className="rounded-xl border border-[#E2E8F0] px-3 py-2 text-sm">
+              <div className="rounded-xl border border-slate-200 px-3 py-2 text-sm">
                 <span className="text-slate-500">Avg order value: </span>
-                <strong className="tabular-nums text-[#0F172A]">${report.aovUsd.toFixed(2)}</strong>
+                <strong className="tabular-nums text-slate-900">${report.aovUsd.toFixed(2)}</strong>
               </div>
             </div>
             {report.topProducts.length > 0 && (
@@ -338,7 +346,7 @@ export function MarketplaceUpsellsTab() {
                   {report.topProducts.map((t) => (
                     <li key={t.id} className="flex items-center justify-between gap-2 text-[13px]">
                       <span className="truncate text-slate-700">{t.name}</span>
-                      <strong className="shrink-0 tabular-nums text-[#0F172A]">{t.adds} adds</strong>
+                      <strong className="shrink-0 tabular-nums text-slate-900">{t.adds} adds</strong>
                     </li>
                   ))}
                 </ul>

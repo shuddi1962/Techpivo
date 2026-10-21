@@ -7,12 +7,16 @@ import {
   marketBtnDarkCls,
   marketBtnGhostCls,
   marketCardCls,
+  MarketBadge,
   MarketEmpty,
-  MarketHeader,
+  MarketKpi,
   MarketLoading,
   MarketNotice,
-  MarketStat,
-  MarketStatStrip,
+  MarketPageBar,
+  MarketSearch,
+  MarketSegmented,
+  MarketToolbar,
+  type MarketTone,
 } from "@/components/admin/marketplace-ui"
 import { cn } from "@/lib/utils"
 
@@ -70,6 +74,8 @@ export function MarketplaceOrdersTab() {
   const [notice, setNotice] = useState("")
   const [open, setOpen] = useState<Record<string, boolean>>({})
   const [retrying, setRetrying] = useState("")
+  const [query, setQuery] = useState("")
+  const [statusFilter, setStatusFilter] = useState("all")
   const [cjCost, setCjCost] = useState<Record<string, { loading: boolean; product?: number; postage?: number; total?: number; track?: string | null; error?: string }>>({})
   const [varPick, setVarPick] = useState<Record<string, { open: boolean; loading: boolean; options: VariantOpt[]; picked: string; saving: boolean; error: string }>>({})
 
@@ -213,13 +219,33 @@ export function MarketplaceOrdersTab() {
     .filter((o) => ["paid", "fulfilled", "delivered"].includes(o.status))
     .reduce((s, o) => s + (Number(o.total_usd) || 0), 0)
 
-  const statusTone: Record<string, string> = {
-    pending: "bg-slate-100 text-slate-500",
-    paid: "bg-blue-50 text-blue-700",
-    fulfilled: "bg-violet-50 text-violet-700",
-    delivered: "bg-emerald-50 text-emerald-700",
-    cancelled: "bg-red-50 text-red-600",
+  const statusBadgeTone: Record<string, MarketTone> = {
+    pending: "neutral",
+    paid: "blue",
+    fulfilled: "violet",
+    delivered: "emerald",
+    cancelled: "red",
   }
+
+  const q = query.trim().toLowerCase()
+  const shown = orders.filter((o) => {
+    const matchQ =
+      !q ||
+      (o.paystack_reference || "").toLowerCase().includes(q) ||
+      o.email.toLowerCase().includes(q) ||
+      (o.ship_name || "").toLowerCase().includes(q) ||
+      (o.ship_city || "").toLowerCase().includes(q) ||
+      (Array.isArray(o.items) ? o.items : []).some((it) => (it.name || "").toLowerCase().includes(q))
+    const matchS = statusFilter === "all" || o.status === statusFilter
+    return matchQ && matchS
+  })
+
+  const statusOptions = [
+    { value: "all", label: "All", count: orders.length },
+    ...STATUSES.map((s) => ({ value: s, label: s, count: orders.filter((o) => o.status === s).length })).filter(
+      (s) => s.count > 0 || s.value === statusFilter
+    ),
+  ]
 
   if (loading) {
     return <MarketLoading label="Loading orders..." />
@@ -228,7 +254,7 @@ export function MarketplaceOrdersTab() {
   if (orders.length === 0) {
     return (
       <div>
-        <MarketHeader
+        <MarketPageBar
           icon={ReceiptText}
           title="Orders"
           desc="Payments & fulfillment — every checkout lands here"
@@ -244,25 +270,50 @@ export function MarketplaceOrdersTab() {
 
   return (
     <div>
-      <MarketHeader
+      <MarketPageBar
         icon={ReceiptText}
         title="Orders"
         desc="Payments & fulfillment — new checkouts land here live"
+        badge={
+          needsFulfill > 0 ? (
+            <MarketBadge tone="amber" dot pulse>
+              {needsFulfill} need action
+            </MarketBadge>
+          ) : undefined
+        }
         actions={
           <button onClick={load} className={marketBtnGhostCls}>
             <RefreshCw className="h-4 w-4" /> Refresh
           </button>
         }
       />
-      <MarketStatStrip>
-        <MarketStat label="Total orders" value={String(orders.length)} />
-        <MarketStat label="Paid volume" value={String(paidCount)} sub={`$${collectedUsd.toFixed(2)} collected`} />
-        <MarketStat
+
+      <div className="mb-3 grid grid-cols-2 gap-2.5 sm:gap-3 lg:grid-cols-4">
+        <MarketKpi label="Total orders" value={String(orders.length)} sub="all time" tone="neutral" />
+        <MarketKpi label="Paid volume" value={String(paidCount)} sub={`$${collectedUsd.toFixed(2)} collected`} tone="emerald" />
+        <MarketKpi
           label="Needs fulfillment"
           value={String(needsFulfill)}
           sub={needsFulfill > 0 ? "paid, not sent to CJ" : "all caught up"}
+          tone={needsFulfill > 0 ? "amber" : "emerald"}
         />
-      </MarketStatStrip>
+        <MarketKpi label="Avg order" value={`$${(paidCount ? collectedUsd / paidCount : 0).toFixed(2)}`} sub="per paid order" tone="sky" />
+      </div>
+
+      <MarketToolbar
+        left={
+          <>
+            <MarketSearch value={query} onChange={setQuery} placeholder="Search reference, email, city or item..." />
+            <MarketSegmented options={statusOptions} value={statusFilter} onChange={setStatusFilter} />
+          </>
+        }
+        right={
+          <span className="text-xs font-semibold tabular-nums text-slate-500">
+            {shown.length} of {orders.length} shown
+          </span>
+        }
+      />
+
       <div className={marketCardCls + " mb-3 p-4"}>
         <p className="mb-1 text-sm font-extrabold text-slate-900">How you make money on every order</p>
         <p className="text-xs leading-relaxed text-slate-600">
@@ -272,8 +323,15 @@ export function MarketplaceOrdersTab() {
         </p>
       </div>
       {notice && <MarketNotice>{notice}</MarketNotice>}
+      {shown.length === 0 ? (
+        <MarketEmpty
+          icon={PackageSearch}
+          title="No orders match your filters"
+          desc="Try a different status tab or clear the search to see every order."
+        />
+      ) : (
       <div className="space-y-2.5">
-      {orders.map((o) => {
+      {shown.map((o) => {
         const addr = [o.ship_address, [o.ship_city, o.ship_state, o.ship_zip].filter(Boolean).join(" "), o.ship_country].filter(Boolean).join(", ")
         const needsAction = o.status === "paid" && !o.cj_order_id
         return (
@@ -291,7 +349,9 @@ export function MarketplaceOrdersTab() {
                 )}
                 <p className="mt-0.5 truncate text-xs text-slate-500">{o.email} · {o.ship_name || ""}{o.ship_city ? ` · ${o.ship_city}` : ""} · {new Date(o.created_at).toLocaleString()}</p>
               </div>
-              <span className={cn("rounded-full px-2.5 py-1 text-[11px] font-extrabold uppercase", statusTone[o.status] || "bg-slate-100 text-slate-500")}>{o.status}</span>
+              <MarketBadge tone={statusBadgeTone[o.status] || "neutral"} dot>
+                {o.status}
+              </MarketBadge>
             </div>
             <ul className="text-sm text-slate-600 mt-2 space-y-0.5">
               {(Array.isArray(o.items) ? o.items : []).map((it, i) => (
@@ -408,6 +468,7 @@ export function MarketplaceOrdersTab() {
         )
       })}
       </div>
+      )}
     </div>
   )
 }
