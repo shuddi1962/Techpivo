@@ -134,3 +134,95 @@ export function codeTreeRows(): Array<Omit<MarketCategoryRow, "cj_category_id">>
   }
   return rows
 }
+
+/**
+ * Translate one of OUR categories into the equivalent CJ categories so a
+ * supplier search inside a department can never return a product from a
+ * different department.
+ *
+ * Our taxonomy was modelled on CJ's, so the mapping is by name: a
+ * department is a CJ first-level category, a subcategory is a CJ
+ * second-level category. The names returned are CJ's OWN names — the
+ * product filter compares them against what CJ sends back, so they must
+ * match exactly (CJ says "Laptop & Tablets", we say "Laptops & Tablets").
+ */
+export interface CjCategoryFilter {
+  /** CJ category names the product path must contain (ALL of them). */
+  names: string[]
+  /** CJ second-level category ids to narrow the supplier query. */
+  lv2: string[]
+  /** CJ third-level category ids (when we know the leaf). */
+  lv3: string[]
+  /** True when the mapping actually matched something on CJ's side. */
+  matched: boolean
+}
+
+export async function resolveCjCategoryFilter(
+  categorySlug?: string | null,
+  subcategorySlug?: string | null
+): Promise<CjCategoryFilter | null> {
+  if (!categorySlug && !subcategorySlug) return null
+  const rows = await fetchMarketplaceCategoryRows(true)
+  const dept = rows.find((r) => r.slug === categorySlug && r.depth === 0)
+  const sub = rows.find((r) => r.slug === subcategorySlug && r.depth === 1)
+  if (!dept && !sub) return null
+
+  const { cjGetCategoryIndex, matchCjFirstLevel, matchCjSecondLevel } = await import("@/lib/cj")
+  let index
+  try {
+    index = await cjGetCategoryIndex()
+  } catch {
+    // CJ unreachable — do not scope the search (an unreachable category
+    // tree must never make the admin see an empty catalogue).
+    return null
+  }
+
+  const names: string[] = []
+  const lv2: string[] = []
+  const lv3: string[] = []
+  let matched = false
+
+  // The department (CJ first level).
+  const deptRows = dept ? matchCjFirstLevel(index, dept.name) : []
+  if (deptRows.length > 0) {
+    matched = true
+    const firstName = deptRows[0].firstName
+    if (firstName && !names.includes(firstName)) names.push(firstName)
+    for (const r of deptRows) {
+      if (r.secondId && !lv2.includes(r.secondId)) lv2.push(r.secondId)
+      if (r.thirdId && !lv3.includes(r.thirdId)) lv3.push(r.thirdId)
+    }
+    // A subcategory narrows the department to one CJ second level.
+    if (sub) {
+      const subRows = matchCjSecondLevel(index, sub.name, firstName)
+      if (subRows.length > 0) {
+        const secondName = subRows[0].secondName
+        if (secondName && !names.includes(secondName)) names.push(secondName)
+        lv2.length = 0
+        lv3.length = 0
+        for (const r of subRows) {
+          if (r.secondId && !lv2.includes(r.secondId)) lv2.push(r.secondId)
+          if (r.thirdId && !lv3.includes(r.thirdId)) lv3.push(r.thirdId)
+        }
+      }
+    }
+  } else if (sub) {
+    // No department row (or it does not exist on CJ) — try the subcategory
+    // on its own.
+    const subRows = matchCjSecondLevel(index, sub.name)
+    if (subRows.length > 0) {
+      matched = true
+      const firstName = subRows[0].firstName
+      const secondName = subRows[0].secondName
+      if (firstName && !names.includes(firstName)) names.push(firstName)
+      if (secondName && !names.includes(secondName)) names.push(secondName)
+      for (const r of subRows) {
+        if (r.secondId && !lv2.includes(r.secondId)) lv2.push(r.secondId)
+        if (r.thirdId && !lv3.includes(r.thirdId)) lv3.push(r.thirdId)
+      }
+    }
+  }
+
+  if (!matched) return null
+  return { names, lv2, lv3, matched }
+}

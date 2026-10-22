@@ -1,8 +1,19 @@
 import { NextRequest, NextResponse } from "next/server"
 import { revalidatePath } from "next/cache"
-import { requireAdminRole } from "@/lib/admin-auth"
-import { createClient } from "@/lib/supabase/server"
+import { requireAdminRole, createServiceClient } from "@/lib/admin-auth"
 import { cjListProducts, cjProductMatchesQuery, cjSearchProducts, cjStatus, mapCjToAffiliate, resolveCjApiKey } from "@/lib/cj"
+
+// All database work in this route runs through the service-role client.
+// The route is admin-guarded by `requireAdminRole`, and several marketplace
+// tables (affiliate_products) only have a public READ policy — a session
+// (RLS-bound) client therefore silently updates 0 rows and every write
+// failed with "Failed to update product".
+
+// The CJ import/search round-trip is slow (auth + supplier catalogue +
+// category tree). Without an explicit budget Vercel kills the function at
+// the platform default and the browser sees a non-JSON error — which is how
+// "Search failed — check the CJ connection." used to appear.
+export const maxDuration = 60
 
 // Bust the storefront ISR cache after every admin write, so the next
 // refresh renders the new state — never the previous page first.
@@ -18,7 +29,7 @@ function revalidateStore() {
 export async function GET(request: NextRequest) {
   const auth = await requireAdminRole(["admin", "editor"], request)
   if (!auth.ok) return auth.response
-  const supabase = await createClient()
+  const supabase = createServiceClient()
   const url = new URL(request.url)
   const section = url.searchParams.get("section") || "overview"
   try {
@@ -76,7 +87,7 @@ export async function GET(request: NextRequest) {
     if (section === "orders") {
       const { data, error } = await supabase
         .from("marketplace_orders")
-        .select("id,email,items,subtotal_usd,shipping_usd,total_usd,total_ngn,paystack_reference,paystack_status,cj_order_id,cj_status,fulfill_error,status,ship_name,ship_phone,ship_address,ship_city,ship_state,ship_zip,ship_country,ship_method,ship_eta,created_at")
+        .select("id,email,items,subtotal_usd,shipping_usd,total_usd,total_ngn,paystack_reference,paystack_status,cj_order_id,cj_order_ref,cj_status,fulfill_error,status,ship_name,ship_phone,ship_address,ship_city,ship_state,ship_zip,ship_country,ship_method,ship_eta,created_at")
         .order("created_at", { ascending: false })
         .limit(200)
       if (error) throw error
@@ -361,10 +372,47 @@ export async function GET(request: NextRequest) {
       const size = Math.min(100, Math.max(1, Number(url.searchParams.get("size") || "20")))
       const sort = (url.searchParams.get("sort") || "match") as "match" | "listings" | "price_asc" | "price_desc" | "new"
       const flag = (url.searchParams.get("flag") || "") as "" | "trending" | "new"
-      const res = await cjSearchProducts({ keyWord: q || undefined, page, size, sort, flag: flag || undefined })
+      // Category scoping: a search inside a department must never return a
+      // product from another department.
+      const category = url.searchParams.get("category") || null
+      const subcategory = url.searchParams.get("subcategory") || null
+      let filter: { names: string[]; lv2: string[]; lv3: string[]; matched: boolean } | null = null
+      try {
+        const { resolveCjCategoryFilter } = await import("@/lib/marketplace-category-db")
+        filter = await resolveCjCategoryFilter(category, subcategory)
+      } catch {
+        filter = null
+      }
+      const res = await cjSearchProducts({
+        keyWord: q || undefined,
+        page,
+        size,
+        sort,
+        flag: flag || undefined,
+        categoryNames: filter?.names,
+        lv2categoryList: filter?.lv2,
+        // Only narrow to the leaf level when the list is short enough for the
+        // request URL — a department can have hundreds of leaves.
+        lv3categoryList: filter?.lv3 && filter.lv3.length <= 40 ? filter.lv3 : undefined,
+      })
       // Guarantee the list matches what was searched for — never show an
       // unrelated product just because the supplier API was fuzzy.
       const list = q ? res.list.filter((p) => cjProductMatchesQuery(p, q)) : res.list
+      // Tell the admin which of these are ALREADY live in the store, so a
+      // product is never imported twice.
+      const resultPids = list.map((p) => p.pid).filter(Boolean)
+      let existing: string[] = []
+      try {
+        if (resultPids.length > 0) {
+          const { data: ex } = await supabase
+            .from("affiliate_products")
+            .select("cj_pid")
+            .in("cj_pid", resultPids.slice(0, 100))
+          existing = (ex || []).map((e: { cj_pid: string }) => e.cj_pid)
+        }
+      } catch {
+        existing = []
+      }
       return NextResponse.json({
         demo: false,
         list,
@@ -374,6 +422,8 @@ export async function GET(request: NextRequest) {
         source: res.source,
         related: res.relatedCategories,
         matched: list.length,
+        scoped: filter?.names || [],
+        existing,
       })
     }
     // Our own best sellers for a department (no supplier call — instant).
@@ -421,7 +471,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   const auth = await requireAdminRole(["admin", "editor"], request)
   if (!auth.ok) return auth.response
-  const supabase = await createClient()
+  const supabase = createServiceClient()
   try {
     const body = await request.json()
     // Save CJ API key to the server-only secret store
@@ -805,61 +855,266 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: true })
     }
     if (body.action === "cj-import") {
-      const items = Array.isArray(body.items) ? body.items : []
+      const items: unknown[] = Array.isArray(body.items) ? (body.items as unknown[]) : []
       if (items.length === 0) return NextResponse.json({ error: "No items to import" }, { status: 400 })
       if (items.length > 200) return NextResponse.json({ error: "Max 200 per batch" }, { status: 400 })
-      const clean = items
-        .map((cj: { pid?: string; productNameEn?: string; productImage?: string; sellPrice?: number; categoryFirstName?: string; categorySecondName?: string; sku?: string }) => ({
-          pid: String(cj?.pid || "").trim(),
-          productNameEn: cj?.productNameEn || "",
-          productImage: cj?.productImage || "",
-          sellPrice: Number(cj?.sellPrice) || 0,
-          categoryFirstName: cj?.categoryFirstName || "",
-          categorySecondName: cj?.categorySecondName || "",
-          sku: cj?.sku || "",
-        }))
-        .filter((cj: { pid: string }) => !!cj.pid)
+      const clean: Array<{
+        pid: string
+        productNameEn: string
+        productImage: string
+        sellPrice: number
+        categoryFirstName: string
+        categorySecondName: string
+        sku: string
+      }> = items
+        .map((raw) => {
+          const cj = (raw || {}) as Record<string, unknown>
+          return {
+            pid: String(cj.pid || "").trim(),
+            productNameEn: String(cj.productNameEn || ""),
+            productImage: String(cj.productImage || ""),
+            sellPrice: Number(cj.sellPrice) || 0,
+            categoryFirstName: String(cj.categoryFirstName || ""),
+            categorySecondName: String(cj.categorySecondName || ""),
+            sku: String(cj.sku || ""),
+          }
+        })
+        .filter((cj) => !!cj.pid)
       if (clean.length === 0) return NextResponse.json({ error: "No valid products in the selection." }, { status: 400 })
 
-      // Store the default supplier variant so orders auto-fulfill without
-      // an admin picking a variant by hand. CJ throttles variant lookups, so
-      // we hydrate a limited number per batch.
-      const { cjGetVariants } = await import("@/lib/cj")
+      // ── Duplicate guard ────────────────────────────────────────────────
+      // A product that is already live in the store must never be added a
+      // second time. We match on the CJ product id first, then on the SKU
+      // and finally on an identical product name — and we tell the admin
+      // exactly which ones were skipped.
+      const pids = clean.map((c) => c.pid)
+      const skus = clean.map((c) => c.sku).filter(Boolean)
+      const names = clean.map((c) => c.productNameEn).filter(Boolean)
+      const dupByPid = new Map<string, { id: string; name: string; live: boolean }>()
+      // (a) same CJ product id
+      const { data: dupPidRows } = await supabase
+        .from("affiliate_products")
+        .select("id,cj_pid,product_name,is_active")
+        .in("cj_pid", pids.slice(0, 200))
+      for (const r of (dupPidRows || []) as Array<{ id: string; cj_pid: string | null; product_name: string; is_active: boolean }>) {
+        if (r.cj_pid) dupByPid.set(r.cj_pid, { id: r.id, name: r.product_name, live: r.is_active !== false })
+      }
+      // (b) same supplier SKU — the same product can be reached through a
+      // different CJ product id
+      if (skus.length > 0) {
+        const { data: dupSkuRows } = await supabase
+          .from("affiliate_products")
+          .select("id,cj_sku,product_name,is_active")
+          .in("cj_sku", skus.slice(0, 200))
+        for (const r of (dupSkuRows || []) as Array<{ id: string; cj_sku: string | null; product_name: string; is_active: boolean }>) {
+          if (!r.cj_sku) continue
+          const pid = clean.find((c) => c.sku === r.cj_sku)?.pid
+          if (pid && !dupByPid.has(pid)) dupByPid.set(pid, { id: r.id, name: r.product_name, live: r.is_active !== false })
+        }
+      }
+      // (c) identical product name (the same product imported from another source)
+      if (names.length) {
+        const nameLookup = new Map(
+          names.map((n) => [n.trim().toLowerCase(), clean.find((c) => c.productNameEn === n)?.pid || ""])
+        )
+        const { data: nameRows } = await supabase
+          .from("affiliate_products")
+          .select("id,cj_pid,product_name,is_active")
+          .in("product_name", names.slice(0, 200))
+        for (const r of (nameRows || []) as Array<{ id: string; cj_pid: string | null; product_name: string; is_active: boolean }>) {
+          const pid = nameLookup.get(r.product_name.trim().toLowerCase())
+          if (pid && !dupByPid.has(pid)) dupByPid.set(pid, { id: r.id, name: r.product_name, live: r.is_active !== false })
+        }
+      }
+      const duplicates = clean
+        .filter((c) => dupByPid.has(c.pid))
+        .map((c) => {
+          const d = dupByPid.get(c.pid)!
+          return { pid: c.pid, name: c.productNameEn, existingId: d.id, existingName: d.name, live: d.live }
+        })
+      const freshItems = clean.filter((c) => !dupByPid.has(c.pid))
+
+      // Store the default supplier variant so orders auto-fulfill without an
+      // admin picking a variant by hand, and add the product to CJ "My
+      // Products" so it shows up in the CJ platform as one of our store
+      // products. CJ throttles variant lookups, so we stagger them.
+      const { cjGetProductDetail, cjAddToMyProduct } = await import("@/lib/cj")
+      const CJ_BUDGET = 12
+      const hydrate = freshItems.slice(0, CJ_BUDGET)
       const withVid = new Map<string, string>()
-      for (const cj of clean.slice(0, 8)) {
+      const skuByPid = new Map<string, string>()
+      const pushed: string[] = []
+      const pushFailed: string[] = []
+      for (const cj of hydrate) {
         try {
-          const variants = await cjGetVariants(cj.pid)
-          const priced = (variants || [])
+          const product = await cjGetProductDetail(cj.pid)
+          const priced = (product.variants || [])
             .map((v) => ({ vid: String(v.vid || ""), price: Number(v.variantSellPrice) || 0 }))
             .filter((v) => v.vid)
             .sort((a, b) => a.price - b.price)
           if (priced.length > 0) withVid.set(cj.pid, priced[0].vid)
+          if (product.sku) skuByPid.set(cj.pid, product.sku)
         } catch {
           // variant lookup is best effort — the product still imports
         }
+        // Push into CJ "My Products" (idempotent). 100002 means CJ does not
+        // know that pid any more — the product still imports locally.
+        try {
+          const r = await cjAddToMyProduct(cj.pid)
+          if (r.ok) pushed.push(cj.pid)
+          else pushFailed.push(cj.pid)
+        } catch {
+          pushFailed.push(cj.pid)
+        }
+        // CJ rate-limits; give the supplier API a moment between products.
+        if (hydrate.length > 1) await new Promise((r) => setTimeout(r, 200))
       }
 
-      const rows = clean.map((cj: { pid: string }) =>
+      const rows = freshItems.map((cj) =>
         mapCjToAffiliate(cj, {
           categorySlug: body.categorySlug || null,
           subcategorySlug: body.subcategorySlug || null,
           cjVid: withVid.get(cj.pid) || null,
+          cjSku: skuByPid.get(cj.pid) || cj.sku || null,
         })
       )
-      // skip already-imported pids
-      const pids = rows.map((r: { cj_pid: string }) => r.cj_pid)
-      const { data: existing } = await supabase.from("affiliate_products").select("cj_pid").in("cj_pid", pids)
-      const seen = new Set((existing || []).map((e: { cj_pid: string }) => e.cj_pid))
-      const fresh = rows.filter((r: { cj_pid: string }) => !seen.has(r.cj_pid))
-      if (fresh.length === 0) return NextResponse.json({ imported: 0, skipped: rows.length, variants: withVid.size })
-      const { data, error } = await supabase.from("affiliate_products").insert(fresh).select("id")
+      if (rows.length === 0) {
+        return NextResponse.json({
+          imported: 0,
+          skipped: clean.length,
+          duplicates,
+          variants: 0,
+          pushed: 0,
+          pushFailed: 0,
+          deferred: 0,
+        })
+      }
+      const { data, error } = await supabase.from("affiliate_products").insert(rows).select("id")
       if (error) throw error
       revalidateStore()
       return NextResponse.json({
         imported: data?.length ?? 0,
-        skipped: rows.length - fresh.length,
+        skipped: duplicates.length,
+        duplicates,
         variants: withVid.size,
+        pushed: pushed.length,
+        pushFailed: pushFailed.length,
+        // Products beyond the CJ budget of this request — they still import,
+        // they just need the "Fill missing variants" / "Push products to CJ"
+        // buttons (which resume where this stopped).
+        deferred: freshItems.length - hydrate.length,
       })
+    }
+    // ── CJ maintenance: variants, "My Products" and order sync ───────────
+    // Fill in the supplier variant for every product that is missing one.
+    // Without a variant an order can never be placed with CJ — this is what
+    // made multi-item orders sit in "manual_needed" forever.
+    if (body.action === "cj-backfill-variants") {
+      const { cjGetProductDetail } = await import("@/lib/cj")
+      // This route has a 60s ceiling, so a click fills a batch and the next
+      // click continues with the products that still have no variant.
+      const limit = Math.min(Number(body.limit) || 20, 40)
+      const { data: rows } = await supabase
+        .from("affiliate_products")
+        .select("id,cj_pid,cj_vid")
+        .not("cj_pid", "is", null)
+        .is("cj_vid", null)
+        .limit(limit)
+      const list = (rows || []) as Array<{ id: string; cj_pid: string; cj_vid: string | null }>
+      let filled = 0
+      const failed: string[] = []
+      for (const p of list) {
+        try {
+          const product = await cjGetProductDetail(p.cj_pid)
+          const priced = (product.variants || [])
+            .map((v) => ({ vid: String(v.vid || ""), price: Number(v.variantSellPrice) || 0 }))
+            .filter((v) => v.vid)
+            .sort((a, b) => a.price - b.price)
+          if (priced.length > 0) {
+            const patch: Record<string, unknown> = { cj_vid: priced[0].vid }
+            if (product.sku) patch.cj_sku = product.sku
+            const { error } = await supabase.from("affiliate_products").update(patch).eq("id", p.id)
+            if (!error) filled += 1
+            else failed.push(p.cj_pid)
+          } else {
+            failed.push(p.cj_pid)
+          }
+        } catch {
+          failed.push(p.cj_pid)
+        }
+        await new Promise((r) => setTimeout(r, 200))
+      }
+      revalidateStore()
+      let remaining = 0
+      try {
+        const { count } = await supabase
+          .from("affiliate_products")
+          .select("id", { count: "exact", head: true })
+          .not("cj_pid", "is", null)
+          .is("cj_vid", null)
+        remaining = count || 0
+      } catch {
+        remaining = 0
+      }
+      return NextResponse.json({ scanned: list.length, filled, failed: failed.length, remaining })
+    }
+    // Add every imported product to CJ "My Products" so the CJ platform
+    // shows them as products in our store.
+    if (body.action === "cj-push-my-products") {
+      const { cjAddToMyProduct, cjGetMyProducts } = await import("@/lib/cj")
+      // Bounded per click — this route has a 60s ceiling. The next click
+      // continues with whatever is still missing.
+      const limit = Math.min(Number(body.limit) || 20, 40)
+      // Products CJ already knows as ours are skipped (no point asking again).
+      let known = new Set<string>()
+      try {
+        const mine = await cjGetMyProducts({ size: 100 })
+        known = new Set(mine.rows.map((r) => r.productId))
+      } catch {
+        // ignore — we simply ask CJ about every product
+      }
+      const { data: rows } = await supabase
+        .from("affiliate_products")
+        .select("id,cj_pid")
+        .not("cj_pid", "is", null)
+        .limit(500)
+      const list = ((rows || []) as Array<{ id: string; cj_pid: string }>).filter((p) => !known.has(p.cj_pid))
+      const batch = list.slice(0, limit)
+      let pushed = 0
+      const failed: string[] = []
+      for (const p of batch) {
+        try {
+          const r = await cjAddToMyProduct(p.cj_pid)
+          if (r.ok) pushed += 1
+          else failed.push(p.cj_pid)
+        } catch {
+          failed.push(p.cj_pid)
+        }
+        await new Promise((r) => setTimeout(r, 200))
+      }
+      let mine = 0
+      try {
+        mine = (await cjGetMyProducts({ size: 100 })).total
+      } catch {
+        // ignore
+      }
+      revalidateStore()
+      return NextResponse.json({
+        scanned: batch.length,
+        pushed,
+        failed: failed.length,
+        myProducts: mine,
+        remaining: Math.max(0, list.length - batch.length),
+      })
+    }
+    // The products CJ knows as ours, and the orders CJ has for us.
+    if (body.action === "cj-my-products") {
+      const { cjGetMyProducts, cjListOrders } = await import("@/lib/cj")
+      const [mine, orders] = await Promise.all([
+        cjGetMyProducts({ size: 50 }),
+        cjListOrders({ size: 50 }),
+      ])
+      return NextResponse.json({ products: mine, orders })
     }
     const { data, error } = await supabase
       .from("affiliate_products")
@@ -892,7 +1147,7 @@ export async function POST(request: NextRequest) {
 export async function PATCH(request: NextRequest) {
   const auth = await requireAdminRole(["admin", "editor"], request)
   if (!auth.ok) return auth.response
-  const supabase = await createClient()
+  const supabase = createServiceClient()
   try {
     const body = await request.json()
     const { id, ...updates } = body
@@ -914,7 +1169,7 @@ export async function PATCH(request: NextRequest) {
 export async function DELETE(request: NextRequest) {
   const auth = await requireAdminRole(["admin", "editor"], request)
   if (!auth.ok) return auth.response
-  const supabase = await createClient()
+  const supabase = createServiceClient()
   try {
     const body = await request.json()
     if (!body?.id) return NextResponse.json({ error: "id required" }, { status: 400 })
@@ -932,7 +1187,7 @@ export async function PUT(request: NextRequest) {
   // Activate / publish the marketplace site page (Pages module wiring)
   const auth = await requireAdminRole(["admin", "editor"], request)
   if (!auth.ok) return auth.response
-  const supabase = await createClient()
+  const supabase = createServiceClient()
   try {
     const body = await request.json()
     const is_published = body?.is_published !== false

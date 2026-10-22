@@ -49,6 +49,7 @@ interface Order {
   paystack_reference: string | null
   paystack_status: string
   cj_order_id: string | null
+  cj_order_ref: string | null
   cj_status: string | null
   fulfill_error: string | null
   status: string
@@ -364,7 +365,7 @@ export function MarketplaceOrdersTab() {
             <div className="flex flex-wrap items-center justify-between gap-2 mt-3 border-t pt-3">
               <p className="text-sm font-bold text-slate-900">
                 ₦{Number(o.total_ngn || 0).toLocaleString()}
-                <span className="ml-2 text-xs font-normal text-slate-400">pay: {o.paystack_status}{o.cj_order_id ? ` · CJ ${o.cj_order_id}` : o.status === "paid" ? " · fulfillment queued" : ""}</span>
+                <span className="ml-2 text-xs font-normal text-slate-400">pay: {o.paystack_status}{o.cj_order_id ? ` · CJ ${o.cj_order_ref || o.cj_order_id}` : o.status === "paid" ? " · fulfillment queued" : ""}</span>
               </p>
               <div className="flex items-center gap-2">
                 <button onClick={() => setOpen((p) => ({ ...p, [o.id]: !p[o.id] }))} className={marketBtnGhostCls + " text-xs px-2.5 py-1.5"}>
@@ -385,7 +386,7 @@ export function MarketplaceOrdersTab() {
                 <p>
                   <span className="font-bold text-slate-800">Breakdown:</span> subtotal ${Number(o.subtotal_usd || 0).toFixed(2)} + shipping ${Number(o.shipping_usd || 0).toFixed(2)} = ${Number(o.total_usd || 0).toFixed(2)} · charged ₦{Number(o.total_ngn || 0).toLocaleString()}
                 </p>
-                <p><span className="font-bold text-slate-800">Fulfillment:</span> {o.cj_order_id ? `CJ order ${o.cj_order_id} (${o.cj_status || "submitted"})` : `not sent to CJ${o.cj_status ? ` (${o.cj_status})` : ""}`}</p>
+                <p><span className="font-bold text-slate-800">Fulfillment:</span> {o.cj_order_id ? `CJ order ${o.cj_order_ref || o.cj_order_id}${o.cj_order_ref && o.cj_order_ref !== o.cj_order_id ? ` (id ${o.cj_order_id})` : ""} (${o.cj_status || "submitted"})` : `not sent to CJ${o.cj_status ? ` (${o.cj_status})` : ""}`}</p>
                 {o.cj_order_id && (
                   <div>
                     {!cjCost[o.id] && (

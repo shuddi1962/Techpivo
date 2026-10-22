@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createPublicClient } from "@/lib/supabase/server"
 import { fetchWithTimeout } from "@/lib/fetch-timeout"
-import { cjGetVariants, withMargin } from "@/lib/cj"
+import { cjGetProductDetail, withMargin } from "@/lib/cj"
 import { marketImage } from "@/lib/marketplace-images"
 
 export const dynamic = "force-dynamic"
@@ -30,6 +30,22 @@ function guessAttrName(values: string[], index: number): string {
   return index === 0 ? "Style" : "Type"
 }
 
+/**
+ * CJ variant names repeat the whole product name ("… Flip Phone Case Black
+ * Samsung S10E"). Strip the product name so the shopper sees the OPTION
+ * ("Black Samsung S10E") instead of a 90-character label.
+ */
+function compactLabel(variantName: string, productName: string): string {
+  const raw = (variantName || "").trim()
+  if (!raw) return ""
+  const base = (productName || "").trim()
+  if (base && raw.toLowerCase().startsWith(base.toLowerCase())) {
+    const rest = raw.slice(base.length).replace(/^[\s\-_/,;:|]+/, "").trim()
+    return (rest || raw).slice(0, 60)
+  }
+  return raw.slice(0, 60)
+}
+
 export interface StoreVariant {
   vid: string
   label: string
@@ -55,12 +71,13 @@ export async function GET(request: NextRequest) {
     )) as { data: { cj_pid: string | null } | null } | null
     const pid = res?.data?.cj_pid
     if (!pid) return NextResponse.json({ variants: [], attributes: [] })
-    const list = await cjGetVariants(pid)
+    const product = await cjGetProductDetail(pid)
+    const list = product.variants || []
     const variants: StoreVariant[] = (list || [])
       .filter((v) => v.vid)
       .map((v) => ({
         vid: String(v.vid),
-        label: String(v.variantNameEn || "Standard").slice(0, 120),
+        label: compactLabel(String(v.variantNameEn || ""), product.name) || "Standard",
         price:
           v.variantSellPrice != null && Number.isFinite(Number(v.variantSellPrice))
             ? withMargin(Number(v.variantSellPrice))

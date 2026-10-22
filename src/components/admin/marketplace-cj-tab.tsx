@@ -40,6 +40,11 @@ interface TopSeller {
   conversions: number
 }
 
+interface CjState {
+  products: { total: number; rows: Array<{ productId: string; nameEn: string; sku: string }> }
+  orders: { total: number; rows: Array<{ orderId: string; cjOrderId: string; status: string; country: string }> }
+}
+
 const money = (v: unknown): string => {
   const n = Number(v)
   if (!Number.isFinite(n) || n <= 0) return "—"
@@ -69,6 +74,10 @@ export function MarketplaceCjTab({ onImported }: { onImported?: () => void }) {
   const [noticeTone, setNoticeTone] = useState<"success" | "warn" | "info">("info")
   const [importing, setImporting] = useState(false)
   const [top, setTop] = useState<TopSeller[]>([])
+  const [busy, setBusy] = useState<"" | "variants" | "push">("")
+  const [cjState, setCjState] = useState<CjState | null>(null)
+  /** pids of results that are ALREADY live in our store. */
+  const [existing, setExisting] = useState<string[]>([])
 
   const loadStatus = useCallback(async () => {
     const r = await fetch("/admin/marketplace/api?section=cj-status").then((x) => x.json()).catch(() => null)
@@ -113,6 +122,7 @@ export function MarketplaceCjTab({ onImported }: { onImported?: () => void }) {
   useEffect(() => {
     loadStatus()
     void loadTop(categorySlug, subcategorySlug)
+    void loadCjState()
   }, [loadStatus, loadTop, categorySlug, subcategorySlug])
 
   const dept = depts.find((d) => d.slug === categorySlug) ?? depts[0] ?? MARKET_DEPARTMENTS[0]
@@ -129,7 +139,26 @@ export function MarketplaceCjTab({ onImported }: { onImported?: () => void }) {
         sort,
       })
       if (flag) params.set("flag", flag)
-      const r = await fetch(`/admin/marketplace/api?${params.toString()}`).then((x) => x.json())
+      // Scope the supplier search to the selected department so a result
+      // from another category can never show up.
+      if (categorySlug) params.set("category", categorySlug)
+      if (subcategorySlug) params.set("subcategory", subcategorySlug)
+      const res = await fetch(`/admin/marketplace/api?${params.toString()}`)
+      const text = await res.text()
+      let r: Record<string, unknown> | null = null
+      try {
+        r = text ? (JSON.parse(text) as Record<string, unknown>) : null
+      } catch {
+        r = null
+      }
+      if (!res.ok || !r) {
+        setNoticeTone("warn")
+        setNotice(
+          (r?.error as string) ||
+            `CJ search failed (HTTP ${res.status}). The supplier request may have timed out — try again or narrow the keyword.`
+        )
+        return
+      }
       if (r?.demo) {
         setDemo(true)
         setList([])
@@ -140,6 +169,7 @@ export function MarketplaceCjTab({ onImported }: { onImported?: () => void }) {
       }
       setDemo(false)
       const rows = (Array.isArray(r?.list) ? r.list : []) as CjItem[]
+      setExisting(Array.isArray(r?.existing) ? (r.existing as string[]) : [])
       setList((prev) => (nextPage > 1 ? [...prev, ...rows] : rows))
       setTotal(Number(r?.total) || rows.length)
       setPage(Number(r?.page) || nextPage)
@@ -148,15 +178,87 @@ export function MarketplaceCjTab({ onImported }: { onImported?: () => void }) {
         setNoticeTone("info")
         setNotice(
           query
-            ? `No CJ product matches “${query}”. Try a shorter keyword (e.g. “hoodie” instead of “black oversized hoodie”).`
-            : "No products returned — try another keyword or switch the sort."
+            ? `No CJ product matches “${query}” in ${dept?.name || "this category"}. Try a shorter keyword (e.g. “hoodie” instead of “black oversized hoodie”).`
+            : `No products returned for ${dept?.name || "this category"} — try another keyword or switch the sort.`
         )
       }
     } catch {
       setNoticeTone("warn")
-      setNotice("Search failed — check the CJ connection.")
+      setNotice("Search failed — the CJ request did not complete. Check the CJ connection and try again.")
     } finally {
       setLoading(false)
+    }
+  }
+
+  const loadCjState = async () => {
+    try {
+      const r = await fetch("/admin/marketplace/api", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "cj-my-products" }),
+      }).then((x) => x.json())
+      if (r?.products && r?.orders) setCjState(r as CjState)
+    } catch {
+      // ignore — the panel simply stays empty
+    }
+  }
+
+  const backfillVariants = async () => {
+    setBusy("variants")
+    setNotice("")
+    try {
+      const r = await fetch("/admin/marketplace/api", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "cj-backfill-variants", limit: 120 }),
+      }).then((x) => x.json())
+      if (r?.error) {
+        setNoticeTone("warn")
+        setNotice(r.error)
+      } else {
+        setNoticeTone("success")
+        setNotice(
+          `Filled ${r?.filled ?? 0} of ${r?.scanned ?? 0} products with a supplier variant` +
+            (r?.failed ? ` · ${r.failed} could not be resolved (no longer available on CJ).` : ".") +
+            (r?.remaining ? ` ${r.remaining} still need a variant — press the button again to continue.` : "")
+        )
+      }
+      onImported?.()
+    } catch {
+      setNoticeTone("warn")
+      setNotice("Could not reach CJ to fill the variants.")
+    } finally {
+      setBusy("")
+    }
+  }
+
+  const pushMyProducts = async () => {
+    setBusy("push")
+    setNotice("")
+    try {
+      const r = await fetch("/admin/marketplace/api", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "cj-push-my-products", limit: 120 }),
+      }).then((x) => x.json())
+      if (r?.error) {
+        setNoticeTone("warn")
+        setNotice(r.error)
+      } else {
+        setNoticeTone("success")
+        setNotice(
+          `Pushed ${r?.pushed ?? 0} products to CJ “My Products”` +
+            (r?.failed ? ` · ${r.failed} were rejected by CJ.` : ".") +
+            ` You now have ${r?.myProducts ?? 0} product(s) listed on CJ.` +
+            (r?.remaining ? ` ${r.remaining} still to push — press the button again to continue.` : "")
+        )
+      }
+      void loadCjState()
+    } catch {
+      setNoticeTone("warn")
+      setNotice("Could not reach CJ to push the products.")
+    } finally {
+      setBusy("")
     }
   }
 
@@ -192,9 +294,34 @@ export function MarketplaceCjTab({ onImported }: { onImported?: () => void }) {
         body: JSON.stringify({ action: "cj-import", items: chosen, categorySlug, subcategorySlug }),
       }).then((x) => x.json())
       if (r?.imported !== undefined) {
-        setNoticeTone("success")
+        const dups = (Array.isArray(r?.duplicates) ? r.duplicates : []) as Array<{ pid: string; name: string; live: boolean }>
         const variants = r?.variants ? ` · ${r.variants} pre-picked supplier variant(s)` : ""
-        setNotice(`Imported ${r.imported} product${r.imported === 1 ? "" : "s"}${r.skipped ? ` (${r.skipped} already in the catalog)` : ""}${variants}.`)
+        const pushed = r?.pushed ? ` · ${r.pushed} added to CJ “My Products”` : ""
+        const deferred = r?.deferred
+          ? ` ${r.deferred} still need a CJ variant — use “Fill missing variants” to finish them.`
+          : ""
+        if (r.imported > 0) {
+          setNoticeTone(dups.length > 0 ? "warn" : "success")
+          setNotice(
+            `Imported ${r.imported} product${r.imported === 1 ? "" : "s"}${variants}${pushed}.${deferred}` +
+              (dups.length > 0
+                ? ` ${dups.length} skipped — already in the store${dups[0]?.live ? " and live" : ""}: ${dups
+                    .slice(0, 3)
+                    .map((d) => d.name || d.pid)
+                    .join(", ")}${dups.length > 3 ? "…" : ""}.`
+                : "")
+          )
+        } else {
+          setNoticeTone("warn")
+          setNotice(
+            dups.length > 0
+              ? `Nothing imported — all ${dups.length} selected product${dups.length === 1 ? " is" : "s are"} already in the store: ${dups
+                  .slice(0, 3)
+                  .map((d) => d.name || d.pid)
+                  .join(", ")}${dups.length > 3 ? "…" : ""}.`
+              : "Nothing was imported."
+          )
+        }
         setSelected({})
         onImported?.()
         void loadTop(categorySlug, subcategorySlug)
@@ -252,6 +379,59 @@ export function MarketplaceCjTab({ onImported }: { onImported?: () => void }) {
         <p className="mt-2 text-xs text-slate-500">
           Get your key from CJDropshipping → My CJ → API. Stored in the server-only <code className="rounded bg-slate-100 px-1">site_secrets</code> table.
         </p>
+      </div>
+
+      {/* CJ sync — variants, "My Products" and the orders CJ holds for us */}
+      <div className={marketCardCls + " p-4 sm:p-5 mb-3"}>
+        <MarketCardHead
+          title="CJ sync"
+          desc="Keep your store and the CJDropshipping platform in step"
+          icon={RefreshCw}
+        />
+        <div className="mb-3 flex flex-wrap gap-2">
+          <button onClick={backfillVariants} disabled={!!busy} className={marketBtnDarkCls}>
+            {busy === "variants" ? "Filling variants..." : "Fill missing variants"}
+          </button>
+          <button onClick={pushMyProducts} disabled={!!busy} className={marketBtnDarkCls}>
+            {busy === "push" ? "Pushing to CJ..." : "Push products to CJ (My Products)"}
+          </button>
+          <button onClick={loadCjState} disabled={!!busy} className={marketBtnGhostCls}>
+            <RefreshCw className="h-4 w-4" /> Refresh CJ state
+          </button>
+        </div>
+        <p className="mb-3 text-xs text-slate-500">
+          <strong>Fill missing variants</strong> looks up the supplier variant for every product that has none — without a
+          variant an order can never be placed with CJ. <strong>Push products to CJ</strong> adds them to
+          &ldquo;My Products&rdquo; so they show in your CJDropshipping store.
+        </p>
+        {cjState && (
+          <div className="grid gap-2 sm:grid-cols-2">
+            <div className="rounded-xl border border-slate-200 bg-slate-50/60 p-3">
+              <p className="text-[11px] font-extrabold uppercase tracking-wider text-slate-400">My Products on CJ</p>
+              <p className="text-lg font-extrabold text-slate-900">{cjState.products.total}</p>
+              <ul className="mt-1 max-h-28 space-y-0.5 overflow-y-auto text-[11px] text-slate-500">
+                {cjState.products.rows.slice(0, 8).map((p) => (
+                  <li key={p.productId} className="truncate">
+                    {p.nameEn || p.sku || p.productId}
+                  </li>
+                ))}
+                {cjState.products.rows.length === 0 && <li>Nothing pushed to CJ yet.</li>}
+              </ul>
+            </div>
+            <div className="rounded-xl border border-slate-200 bg-slate-50/60 p-3">
+              <p className="text-[11px] font-extrabold uppercase tracking-wider text-slate-400">Orders on CJ</p>
+              <p className="text-lg font-extrabold text-slate-900">{cjState.orders.total}</p>
+              <ul className="mt-1 max-h-28 space-y-0.5 overflow-y-auto text-[11px] text-slate-500">
+                {cjState.orders.rows.slice(0, 8).map((o) => (
+                  <li key={o.cjOrderId || o.orderId} className="truncate">
+                    {o.cjOrderId || o.orderId} · {o.status} · {o.country}
+                  </li>
+                ))}
+                {cjState.orders.rows.length === 0 && <li>No orders on CJ yet.</li>}
+              </ul>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* our own best sellers for the selected department */}
@@ -376,35 +556,55 @@ export function MarketplaceCjTab({ onImported }: { onImported?: () => void }) {
         ) : list.length > 0 ? (
           <>
             <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 sm:gap-3 lg:grid-cols-4">
-              {list.map((item) => (
-                <label
-                  key={item.pid}
-                  className={cn(
-                    "cursor-pointer overflow-hidden rounded-2xl border bg-white transition-all",
-                    selected[item.pid] ? "border-amber-500 shadow-md ring-2 ring-amber-500/20" : "border-slate-200/80 hover:border-slate-300 hover:shadow-sm"
-                  )}
-                >
-                  <div className="relative aspect-square bg-slate-100">
-                    {item.productImage ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img src={item.productImage} alt={item.productNameEn || item.pid} className="h-full w-full object-cover" loading="lazy" />
-                    ) : null}
-                    <input type="checkbox" checked={!!selected[item.pid]} onChange={() => toggle(item.pid)} className="absolute right-2 top-2 h-5 w-5 rounded accent-[#F59E0B]" aria-label={`Select ${item.productNameEn || item.pid}`} />
-                    {!!item.listedNum && item.listedNum > 20 && (
-                      <span className="absolute bottom-2 left-2 inline-flex items-center gap-1 rounded-full bg-slate-900/80 px-2 py-0.5 text-[10px] font-bold text-white">
-                        <Flame className="h-3 w-3 text-amber-400" /> {item.listedNum} stores
-                      </span>
+              {list.map((item) => {
+                const inStore = existing.includes(item.pid)
+                return (
+                  <label
+                    key={item.pid}
+                    title={inStore ? "Already in your store — importing again would duplicate it" : undefined}
+                    className={cn(
+                      "cursor-pointer overflow-hidden rounded-2xl border bg-white transition-all",
+                      inStore
+                        ? "border-emerald-300 opacity-90"
+                        : selected[item.pid]
+                          ? "border-amber-500 shadow-md ring-2 ring-amber-500/20"
+                          : "border-slate-200/80 hover:border-slate-300 hover:shadow-sm"
                     )}
-                  </div>
-                  <div className="p-2.5">
-                    <p className="line-clamp-2 min-h-[2em] text-xs font-semibold text-slate-900">{item.productNameEn || item.pid}</p>
-                    <p className="mt-1 text-sm font-extrabold tabular-nums text-slate-900">{money(item.sellPrice)}</p>
-                    <p className="truncate text-[11px] text-slate-400">
-                      {[item.categoryFirstName, item.categorySecondName].filter(Boolean).join(" / ") || item.sku || item.pid}
-                    </p>
-                  </div>
-                </label>
-              ))}
+                  >
+                    <div className="relative aspect-square bg-slate-100">
+                      {item.productImage ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={item.productImage} alt={item.productNameEn || item.pid} className="h-full w-full object-cover" loading="lazy" />
+                      ) : null}
+                      <input
+                        type="checkbox"
+                        checked={!!selected[item.pid]}
+                        onChange={() => toggle(item.pid)}
+                        disabled={inStore}
+                        className="absolute right-2 top-2 h-5 w-5 rounded accent-[#F59E0B] disabled:cursor-not-allowed disabled:opacity-40"
+                        aria-label={`Select ${item.productNameEn || item.pid}`}
+                      />
+                      {inStore && (
+                        <span className="absolute left-2 top-2 inline-flex items-center gap-1 rounded-full bg-emerald-600 px-2 py-0.5 text-[10px] font-bold text-white">
+                          <CheckCircle2 className="h-3 w-3" /> In store
+                        </span>
+                      )}
+                      {!!item.listedNum && item.listedNum > 20 && (
+                        <span className="absolute bottom-2 left-2 inline-flex items-center gap-1 rounded-full bg-slate-900/80 px-2 py-0.5 text-[10px] font-bold text-white">
+                          <Flame className="h-3 w-3 text-amber-400" /> {item.listedNum} stores
+                        </span>
+                      )}
+                    </div>
+                    <div className="p-2.5">
+                      <p className="line-clamp-2 min-h-[2em] text-xs font-semibold text-slate-900">{item.productNameEn || item.pid}</p>
+                      <p className="mt-1 text-sm font-extrabold tabular-nums text-slate-900">{money(item.sellPrice)}</p>
+                      <p className="truncate text-[11px] text-slate-400">
+                        {[item.categoryFirstName, item.categorySecondName].filter(Boolean).join(" / ") || item.sku || item.pid}
+                      </p>
+                    </div>
+                  </label>
+                )
+              })}
             </div>
             {page < pages && (
               <div className="mt-3 flex justify-center">

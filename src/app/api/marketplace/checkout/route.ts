@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
 import { createClient as createAdmin } from "@/lib/supabase/admin"
 import { flutterwaveInit } from "@/lib/flutterwave"
-import { cjGetVariants, withMargin } from "@/lib/cj"
+import { cjGetVariantsResilient, withMargin } from "@/lib/cj"
 import { storeShipOptions } from "@/lib/marketplace-shipping"
 import { supplierShipOptions } from "@/lib/marketplace-freight"
 import { checkRateLimit, clientIp } from "@/lib/rate-limiter"
@@ -77,16 +77,21 @@ export async function POST(request: NextRequest) {
       const cjPid = (p as { cj_pid?: string }).cj_pid || null
       if (wantVid && cjPid) {
         try {
-          const variants = await cjGetVariants(cjPid)
+          // CJ throttles variant lookups — a busy supplier API must not
+          // silently strip the variant the shopper chose.
+          const variants = await cjGetVariantsResilient(cjPid)
           const match = (variants || []).find((v) => String(v.vid) === wantVid)
-          const cost = match ? Number(match.variantSellPrice) : NaN
-          if (match && Number.isFinite(cost) && cost > 0) {
-            unit = withMargin(cost)
+          if (match) {
+            const cost = Number(match.variantSellPrice)
+            if (Number.isFinite(cost) && cost > 0) unit = withMargin(cost)
+            // The shopper picked this variant — keep it whatever the price
+            // lookup did, otherwise the order can never be fulfilled.
             vid = wantVid
           }
         } catch {
-          // supplier unreachable — fall back to base price, manual fulfillment
-          vid = null
+          // Supplier unreachable — keep the chosen variant and the base
+          // price. The order still reaches CJ for fulfillment.
+          vid = wantVid
         }
       }
       subtotal += unit * qty

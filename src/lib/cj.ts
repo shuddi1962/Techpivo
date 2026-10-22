@@ -84,6 +84,8 @@ export interface CjProductSummary {
   categoryFirstId?: string
   categorySecondId?: string
   categoryThirdId?: string
+  /** True when the product is already in "My Products" on CJ. */
+  myProduct?: boolean
 }
 
 /**
@@ -191,6 +193,7 @@ interface CjV2Product {
   twoCategoryName?: string
   categoryId?: string
   threeCategoryName?: string
+  myProduct?: boolean
 }
 
 function normalizeV2Product(p: CjV2Product): CjProductSummary | null {
@@ -212,6 +215,7 @@ function normalizeV2Product(p: CjV2Product): CjProductSummary | null {
     categoryFirstId: p.oneCategoryId || "",
     categorySecondId: p.twoCategoryId || "",
     categoryThirdId: p.categoryId || "",
+    myProduct: p.myProduct === true,
   }
 }
 
@@ -223,6 +227,8 @@ export async function cjListProductsV2(opts: {
   categoryId?: string
   /** CJ second-level category ids. */
   lv2categoryList?: string[]
+  /** CJ third-level category ids. */
+  lv3categoryList?: string[]
   /** 0 = trending, 1 = new, 2 = video, 3 = slow-moving. */
   productFlag?: number
   /** 0 = best match, 1 = listing count, 2 = price, 3 = newest. */
@@ -241,6 +247,9 @@ export async function cjListProductsV2(opts: {
   if (opts.categoryId) params.set("categoryId", opts.categoryId)
   if (opts.lv2categoryList && opts.lv2categoryList.length > 0) {
     params.set("lv2categoryList", opts.lv2categoryList.join(","))
+  }
+  if (opts.lv3categoryList && opts.lv3categoryList.length > 0) {
+    params.set("lv3categoryList", opts.lv3categoryList.join(","))
   }
   if (typeof opts.productFlag === "number") params.set("productFlag", String(opts.productFlag))
   if (typeof opts.orderBy === "number") params.set("orderBy", String(opts.orderBy))
@@ -290,11 +299,27 @@ export async function cjSearchProducts(opts: {
   flag?: "trending" | "new"
   categoryId?: string
   lv2categoryList?: string[]
+  lv3categoryList?: string[]
+  /**
+   * CJ category names (first/second/leaf) the result must belong to.
+   * Used as a hard local filter so a search inside one department can
+   * never return a product from another department.
+   */
+  categoryNames?: string[]
 }): Promise<CjListV2Result> {
   const orderBy =
     opts.sort === "listings" ? 1 : opts.sort === "price_asc" || opts.sort === "price_desc" ? 2 : opts.sort === "new" ? 3 : 0
   const sort = opts.sort === "price_asc" ? "asc" : "desc"
   const productFlag = opts.flag === "trending" ? 0 : opts.flag === "new" ? 1 : undefined
+  const names = (opts.categoryNames || []).map((n) => n.trim().toLowerCase()).filter(Boolean)
+  // ALL names must be present: a product inside "Consumer Electronics >
+  // Camera & Photo" matches a department+subcategory filter, but a product
+  // from another department never does.
+  const inCategory = (p: CjProductSummary) => {
+    if (names.length === 0) return true
+    const hay = `${p.categoryFirstName || ""} ${p.categorySecondName || ""} ${p.categoryThirdName || ""}`.toLowerCase()
+    return names.every((n) => hay.includes(n))
+  }
   try {
     const res = await cjListProductsV2({
       keyWord: opts.keyWord,
@@ -305,8 +330,11 @@ export async function cjSearchProducts(opts: {
       productFlag,
       categoryId: opts.categoryId,
       lv2categoryList: opts.lv2categoryList,
+      lv3categoryList: opts.lv3categoryList,
     })
-    return res
+    if (names.length === 0) return res
+    const list = res.list.filter(inCategory)
+    return { ...res, list, total: list.length }
   } catch (e) {
     // Fall back to the deprecated endpoint (still returns usable rows) and
     // filter locally so the admin never sees unrelated products.
@@ -323,9 +351,10 @@ export async function cjSearchProducts(opts: {
         productImage: p.productImage || "",
       }))
       .filter((p) => cjProductMatchesQuery(p, opts.keyWord || ""))
+      .filter(inCategory)
     return {
       list,
-      total: legacy.total ?? list.length,
+      total: list.length,
       page: opts.page ?? 1,
       pages: 1,
       relatedCategories: [],
@@ -457,7 +486,43 @@ export interface CjVariant {
   variantSku?: string
 }
 
+/**
+ * One supplier product with ALL of its variants.
+ *
+ * `/product/query?pid=` is the only CJ endpoint that returns the full
+ * variant list — `/product/variant/query?pid=` answers with a SINGLE
+ * (default) variant, which is why multi-variant products could never be
+ * matched to the option the shopper picked.
+ */
+export interface CjProductDetail {
+  pid: string
+  sku: string
+  name: string
+  variants: CjVariant[]
+}
+
+export async function cjGetProductDetail(pid: string): Promise<CjProductDetail> {
+  const raw = (await cjGetProduct(pid)) as {
+    pid?: string
+    productSku?: string
+    productNameEn?: string
+    variants?: CjVariant[]
+  } | null
+  return {
+    pid: String(raw?.pid || pid),
+    sku: String(raw?.productSku || ""),
+    name: String(raw?.productNameEn || ""),
+    variants: Array.isArray(raw?.variants) ? raw.variants : [],
+  }
+}
+
 export async function cjGetVariants(pid: string): Promise<CjVariant[]> {
+  try {
+    const product = await cjGetProductDetail(pid)
+    if (product.variants.length > 0) return product.variants
+  } catch {
+    // fall through to the single-variant endpoint
+  }
   const key = await resolveCjApiKey()
   if (!key) throw new Error("CJ API key not configured")
   const token = await getAccessToken(key)
@@ -472,22 +537,282 @@ export async function cjGetVariants(pid: string): Promise<CjVariant[]> {
   return d.list ?? d.variantList ?? []
 }
 
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
+
+/**
+ * CJ throttles variant lookups (HTTP 429) when several fire at once — which
+ * is exactly what a multi-item checkout does. Retry with backoff so a busy
+ * supplier API degrades to "try again" instead of losing the variant (a
+ * missing variant means the order can never be fulfilled).
+ */
+export async function cjGetVariantsResilient(pid: string): Promise<CjVariant[]> {
+  let lastErr: unknown = null
+  for (let attempt = 0; attempt < 3; attempt++) {
+    if (attempt > 0) await sleep(700 * attempt)
+    try {
+      return await cjGetVariants(pid)
+    } catch (e) {
+      lastErr = e
+      const msg = e instanceof Error ? e.message : ""
+      // Only rate/throughput errors are worth retrying; auth/config errors
+      // would fail identically on every attempt.
+      if (!/429|rate|throttl|too many|timeout|network|fetch failed/i.test(msg)) break
+    }
+  }
+  throw lastErr instanceof Error ? lastErr : new Error("CJ variant lookup failed")
+}
+
+/** The variant we ship by default: cheapest, else the first one. */
+export function pickDefaultVariant(variants: CjVariant[]): string | null {
+  const usable = (variants || []).filter((v) => v && String(v.vid || "").trim())
+  if (usable.length === 0) return null
+  const priced = usable
+    .map((v) => ({ vid: String(v.vid), price: Number(v.variantSellPrice) || 0 }))
+    .sort((a, b) => a.price - b.price)
+  return priced[0].vid || null
+}
+
 export interface CjCategory {
   categoryFirstId?: string
   categoryFirstName?: string
   categorySecondId?: string
   categorySecondName?: string
+  /** Third level (leaf) category id — the one listV2 filters on. */
+  categoryId?: string
+  categoryName?: string
 }
 
-export async function cjGetCategories(): Promise<CjCategory[]> {
+/**
+ * The full CJ category tree flattened into one row per leaf category.
+ * CJ returns it nested (first → second → third) with the ids we need to
+ * filter `product/listV2` by category.
+ */
+export interface CjCategoryRow {
+  firstId: string
+  firstName: string
+  secondId: string
+  secondName: string
+  thirdId: string
+  thirdName: string
+}
+
+export async function cjGetCategoryRows(): Promise<CjCategoryRow[]> {
   const key = await resolveCjApiKey()
   if (!key) throw new Error("CJ API key not configured")
   const token = await getAccessToken(key)
-  const data = await cjFetch<{ list?: CjCategory[] }>(`/api2.0/v1/product/category/getCategory`, {
-    method: "GET",
-    token,
+  // NOTE: the endpoint is /product/getCategory (NOT /product/category/...).
+  const data = await cjFetch<unknown>(`/api2.0/v1/product/getCategory`, { method: "GET", token })
+  const rows: CjCategoryRow[] = []
+  const arr = Array.isArray(data) ? data : []
+  for (const first of arr as Array<Record<string, unknown>>) {
+    const firstId = String(first?.categoryFirstId || "")
+    const firstName = String(first?.categoryFirstName || "")
+    const firstList = Array.isArray(first?.categoryFirstList) ? (first?.categoryFirstList as Array<Record<string, unknown>>) : []
+    for (const second of firstList) {
+      const secondId = String(second?.categorySecondId || "")
+      const secondName = String(second?.categorySecondName || "")
+      const secondList = Array.isArray(second?.categorySecondList) ? (second?.categorySecondList as Array<Record<string, unknown>>) : []
+      for (const third of secondList) {
+        const thirdId = String(third?.categoryId || "")
+        const thirdName = String(third?.categoryName || "")
+        if (!thirdId) continue
+        rows.push({ firstId, firstName, secondId, secondName, thirdId, thirdName })
+      }
+    }
+  }
+  return rows
+}
+
+/** Flat list of categories (kept for backwards compatibility). */
+export async function cjGetCategories(): Promise<CjCategory[]> {
+  const rows = await cjGetCategoryRows()
+  return rows.map((r) => ({
+    categoryFirstId: r.firstId,
+    categoryFirstName: r.firstName,
+    categorySecondId: r.secondId,
+    categorySecondName: r.secondName,
+    categoryId: r.thirdId,
+    categoryName: r.thirdName,
+  }))
+}
+
+/**
+ * Name → category ids index, used to map our own store categories onto CJ
+ * categories so a search inside a department can never return a product
+ * from another department.
+ */
+let categoryIndexCache: { at: number; index: CjCategoryIndex } | null = null
+const CATEGORY_INDEX_TTL = 60 * 60 * 1000 // 1h
+
+export interface CjCategoryIndex {
+  rows: CjCategoryRow[]
+  /** lower-cased first-level name → rows */
+  byFirst: Map<string, CjCategoryRow[]>
+  /** lower-cased second-level name → rows */
+  bySecond: Map<string, CjCategoryRow[]>
+  /** lower-cased leaf name → rows */
+  byThird: Map<string, CjCategoryRow[]>
+}
+
+function norm(s: string) {
+  return s.trim().toLowerCase().replace(/[^a-z0-9]+/g, " ").trim()
+}
+
+/**
+ * Fold a name to a comparable form: lower case, punctuation removed and a
+ * trailing "s" dropped from every word ("Laptops & Tablets" and CJ's
+ * "Laptop & Tablets" must map to the same category).
+ */
+function fold(s: string) {
+  return norm(s)
+    .split(" ")
+    .filter(Boolean)
+    .map((w) => (w.length > 3 && w.endsWith("s") ? w.slice(0, -1) : w))
+    .join(" ")
+}
+
+export async function cjGetCategoryIndex(): Promise<CjCategoryIndex> {
+  const now = Date.now()
+  if (categoryIndexCache && now - categoryIndexCache.at < CATEGORY_INDEX_TTL) return categoryIndexCache.index
+  const rows = await cjGetCategoryRows()
+  const byFirst = new Map<string, CjCategoryRow[]>()
+  const bySecond = new Map<string, CjCategoryRow[]>()
+  const byThird = new Map<string, CjCategoryRow[]>()
+  const push = (m: Map<string, CjCategoryRow[]>, k: string, r: CjCategoryRow) => {
+    const key = norm(k)
+    if (!key) return
+    const list = m.get(key) || []
+    list.push(r)
+    m.set(key, list)
+  }
+  for (const r of rows) {
+    push(byFirst, r.firstName, r)
+    push(bySecond, r.secondName, r)
+    push(byThird, r.thirdName, r)
+  }
+  const index = { rows, byFirst, bySecond, byThird }
+  categoryIndexCache = { at: now, index }
+  return index
+}
+
+/**
+ * Find the CJ first-level category that matches one of OUR department
+ * names. Our taxonomy was modelled on CJ's, so the names are nearly
+ * identical — but CJ calls it "Laptop & Tablets" where we say "Laptops &
+ * Tablets", hence the folded comparison.
+ */
+export function matchCjFirstLevel(index: CjCategoryIndex, ourName: string): CjCategoryRow[] {
+  const target = fold(ourName)
+  if (!target) return []
+  const exact = index.byFirst.get(norm(ourName))
+  if (exact && exact.length) return exact
+  const rows = index.rows.filter((r) => fold(r.firstName) === target)
+  return rows
+}
+
+/**
+ * Find the CJ second-level categories (inside a department) that match one
+ * of OUR subcategory names.
+ */
+export function matchCjSecondLevel(index: CjCategoryIndex, ourName: string, firstName?: string): CjCategoryRow[] {
+  const target = fold(ourName)
+  if (!target) return []
+  const inDept = (r: CjCategoryRow) => !firstName || fold(r.firstName) === fold(firstName)
+  const rows = index.rows.filter((r) => inDept(r) && fold(r.secondName) === target)
+  if (rows.length) return rows
+  return index.rows.filter((r) => inDept(r) && norm(r.secondName) === norm(ourName))
+}
+
+/**
+ * Add a CJ catalog product to "My Products" so it shows up in the CJ
+ * platform as one of YOUR store products (and can be listed/ordered from
+ * there). Idempotent — CJ answers 1600000 when it is already added.
+ */
+export async function cjAddToMyProduct(pid: string): Promise<{ ok: boolean; already: boolean; message: string }> {
+  const key = await resolveCjApiKey()
+  if (!key) throw new Error("CJ API key not configured")
+  const token = await getAccessToken(key)
+  const res = await fetch(`${CJ_BASE}/api2.0/v1/product/addToMyProduct`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "CJ-Access-Token": token },
+    body: JSON.stringify({ productId: pid }),
+    signal: AbortSignal.timeout(20000),
   })
-  return data?.list ?? []
+  const json = (await res.json().catch(() => ({}))) as { code?: number; result?: boolean; message?: string }
+  if (json?.code === 200) return { ok: true, already: false, message: json.message || "Added to My Products" }
+  if (json?.code === 1600000) return { ok: true, already: true, message: json.message || "Already in My Products" }
+  return { ok: false, already: false, message: json?.message || `CJ error ${json?.code ?? "?"}` }
+}
+
+/** Your own products on CJ ("My Products"). */
+export async function cjGetMyProducts(opts?: { keyword?: string; page?: number; size?: number }): Promise<{
+  total: number
+  rows: Array<{ productId: string; nameEn: string; sku: string; bigImage: string; sellPrice: number; myProduct: boolean }>
+}> {
+  const key = await resolveCjApiKey()
+  if (!key) throw new Error("CJ API key not configured")
+  const token = await getAccessToken(key)
+  const params = new URLSearchParams({
+    page: String(Math.min(Math.max(opts?.page ?? 1, 1), 100)),
+    size: String(Math.min(Math.max(opts?.size ?? 20, 1), 100)),
+  })
+  if (opts?.keyword) params.set("keyword", opts.keyword.slice(0, 200))
+  const data = await cjFetch<{
+    totalRecords?: number
+    content?: Array<{
+      productId?: string
+      nameEn?: string
+      sku?: string
+      bigImage?: string
+      sellPrice?: string | number
+    }>
+  }>(`/api2.0/v1/product/myProduct/query?${params.toString()}`, { method: "GET", token })
+  const rows = (data?.content || []).map((p) => ({
+    productId: String(p.productId || ""),
+    nameEn: p.nameEn || "",
+    sku: p.sku || "",
+    bigImage: p.bigImage || "",
+    sellPrice: parseCjPrice(p.sellPrice),
+    myProduct: true,
+  }))
+  return { total: Number(data?.totalRecords) || rows.length, rows }
+}
+
+/** Orders placed on CJ (so the admin can see what the supplier platform has). */
+export async function cjListOrders(opts?: { page?: number; size?: number }): Promise<{
+  total: number
+  rows: Array<{ orderId: string; cjOrderId: string; orderNum: string; status: string; createdAt: string; country: string }>
+}> {
+  const key = await resolveCjApiKey()
+  if (!key) throw new Error("CJ API key not configured")
+  const token = await getAccessToken(key)
+  const params = new URLSearchParams({
+    pageNum: String(Math.min(Math.max(opts?.page ?? 1, 1), 100)),
+    pageSize: String(Math.min(Math.max(opts?.size ?? 20, 1), 100)),
+  })
+  const data = await cjFetch<{
+    total?: number
+    list?: Array<{
+      orderId?: string | number
+      cjOrderId?: string
+      orderNum?: string
+      orderStatus?: string
+      /** CJ returns the creation time as `createDate` ("2026-10-07 07:16:34"). */
+      createDate?: string
+      createdAt?: string | number
+      shippingCountryCode?: string
+      logisticName?: string | null
+    }>
+  }>(`/api2.0/v1/shopping/order/list?${params.toString()}`, { method: "GET", token })
+  const rows = (data?.list || []).map((o) => ({
+    orderId: String(o.orderId || ""),
+    cjOrderId: o.cjOrderId || "",
+    orderNum: o.orderNum || "",
+    status: o.orderStatus || "",
+    createdAt: o.createDate || (o.createdAt ? String(o.createdAt) : ""),
+    country: o.shippingCountryCode || "",
+  }))
+  return { total: Number(data?.total) || rows.length, rows }
 }
 
 export interface CjFreightOption {
@@ -545,17 +870,100 @@ export interface CjOrderInput {
   fromCountryCode: string
   products: Array<{ vid: string; quantity: number }>
   remark?: string
+  email?: string
 }
 
-export async function cjCreateOrder(order: CjOrderInput): Promise<unknown> {
+/** Normalised CJ order response — every id we might need to track it. */
+export interface CjOrderResult {
+  /** CJ's own order id (numeric) — use this for getOrderDetail. */
+  orderId: string
+  /** The CJ-facing reference (SD…) — this is what the CJ UI shows. */
+  cjOrderId: string
+  /** Our own order number echoed back. */
+  orderNumber: string
+  status: string
+  /** Raw response, kept for debugging. */
+  raw: unknown
+}
+
+function normalizeCjOrder(data: unknown): CjOrderResult {
+  if (typeof data === "string") {
+    // Some CJ responses return the id as a bare string.
+    const s = data.trim()
+    return { orderId: s, cjOrderId: s, orderNumber: "", status: "", raw: data }
+  }
+  const o = (data || {}) as Record<string, unknown>
+  const pick = (...keys: string[]) => {
+    for (const k of keys) {
+      const v = o[k]
+      if (typeof v === "string" && v.trim()) return v.trim()
+      if (typeof v === "number" && Number.isFinite(v)) return String(v)
+    }
+    return ""
+  }
+  const orderId = pick("orderId", "id")
+  const cjOrderId = pick("cjOrderId", "shipmentOrderId")
+  const orderNumber = pick("orderNumber", "orderNum")
+  return {
+    orderId: orderId || cjOrderId || orderNumber,
+    cjOrderId: cjOrderId || orderId,
+    orderNumber,
+    status: pick("orderStatus", "status"),
+    raw: data,
+  }
+}
+
+/**
+ * Place the supplier order.
+ *
+ * Uses `createOrderV2` with `payType: 3` (create the order only — no CJ
+ * balance is spent, so the order always shows up in the CJ platform and can
+ * be paid/confirmed there). Falls back to the v1 endpoint when v2 rejects
+ * the payload.
+ */
+export async function cjCreateOrder(order: CjOrderInput): Promise<CjOrderResult> {
   const key = await resolveCjApiKey()
   if (!key) throw new Error("CJ API key not configured")
   const token = await getAccessToken(key)
-  return cjFetch<unknown>(`/api2.0/v1/shopping/order/createOrder`, {
-    method: "POST",
-    token,
-    body: JSON.stringify(order),
-  })
+  const body = { ...order, payType: 3, orderFlow: 1, shopLogisticsType: 2 }
+  try {
+    const data = await cjFetch<unknown>(`/api2.0/v1/shopping/order/createOrderV2`, {
+      method: "POST",
+      token,
+      body: JSON.stringify(body),
+    })
+    const res = normalizeCjOrder(data)
+    if (!res.orderId) {
+      // CJ answered 200 but gave us no id. We must NOT retry on the legacy
+      // endpoint here: the order may already exist on CJ's side and a second
+      // call would place a duplicate real supplier order for one payment.
+      const keys = data && typeof data === "object" ? Object.keys(data as object).join(",") : typeof data
+      throw new Error(`CJ accepted the request but returned no order id (fields: ${keys}).`)
+    }
+    return res
+  } catch (e) {
+    // Only a genuine request failure (network error, rejected payload, HTTP
+    // error) reaches this point — CJ never created an order, so retrying on
+    // the legacy endpoint is safe.
+    const v2Error = e instanceof Error ? e.message : String(e)
+    let data: unknown = null
+    try {
+      data = await cjFetch<unknown>(`/api2.0/v1/shopping/order/createOrder`, {
+        method: "POST",
+        token,
+        body: JSON.stringify(order),
+      })
+    } catch (v1Error) {
+      const v1Msg = v1Error instanceof Error ? v1Error.message : String(v1Error)
+      throw new Error(`CJ order create failed (v2: ${v2Error} · v1: ${v1Msg})`)
+    }
+    const res = normalizeCjOrder(data)
+    if (!res.orderId) {
+      const keys = data && typeof data === "object" ? Object.keys(data as object).join(",") : typeof data
+      throw new Error(`CJ accepted the request but returned no order id (fields: ${keys}).`)
+    }
+    return res
+  }
 }
 
 export async function cjGetOrderDetail(cjOrderId: string): Promise<unknown> {
@@ -566,6 +974,51 @@ export async function cjGetOrderDetail(cjOrderId: string): Promise<unknown> {
     method: "GET",
     token,
   })
+}
+
+/**
+ * The order as CJ sees it — fetched by EITHER the CJ order id or our own
+ * custom order number (CJ accepts both). Used right after an order is
+ * created to learn the CJ-facing reference (SD…) that the CJ dashboard
+ * shows, plus the live tracking status.
+ */
+export interface CjOrderSnapshot {
+  orderId: string
+  cjOrderId: string
+  orderNum: string
+  status: string
+  logisticName: string
+  trackNumber: string
+  trackingProvider: string
+  trackingUrl: string
+  country: string
+  createdAt: string
+  raw: unknown
+}
+
+export async function cjFetchOrderSnapshot(idOrNumber: string): Promise<CjOrderSnapshot | null> {
+  const key = await resolveCjApiKey()
+  if (!key) throw new Error("CJ API key not configured")
+  const token = await getAccessToken(key)
+  const data = await cjFetch<Record<string, unknown>>(
+    `/api2.0/v1/shopping/order/getOrderDetail?orderId=${encodeURIComponent(idOrNumber)}`,
+    { method: "GET", token }
+  )
+  const d = (data || {}) as Record<string, unknown>
+  const str = (v: unknown) => (typeof v === "string" ? v.trim() : typeof v === "number" ? String(v) : "")
+  return {
+    orderId: str(d.orderId),
+    cjOrderId: str(d.cjOrderId),
+    orderNum: str(d.orderNum),
+    status: str(d.orderStatus),
+    logisticName: str(d.logisticName),
+    trackNumber: str(d.trackNumber),
+    trackingProvider: str(d.trackingProvider),
+    trackingUrl: str(d.trackingUrl),
+    country: str(d.shippingCountryCode),
+    createdAt: str(d.createDate),
+    raw: data,
+  }
 }
 
 /** Automation helper: search CJ and shape rows ready for affiliate_products insert */
@@ -607,7 +1060,7 @@ export function withFreightMarkup(fee: number): number {
 
 export function mapCjToAffiliate(
   cj: CjProductSummary,
-  extra?: { categorySlug?: string | null; subcategorySlug?: string | null; cjVid?: string | null }
+  extra?: { categorySlug?: string | null; subcategorySlug?: string | null; cjVid?: string | null; cjSku?: string | null }
 ) {
   const cost = parseCjPrice(cj.sellPrice)
   const sale = cost > 0 ? withMargin(cost) : null
@@ -631,5 +1084,8 @@ export function mapCjToAffiliate(
     subcategory_slug: extra?.subcategorySlug || null,
     cj_pid: cj.pid,
     cj_vid: extra?.cjVid || null,
+    // The supplier SKU — the second (safer) duplicate key: the same CJ
+    // product can be reached through different product ids.
+    cj_sku: (extra?.cjSku || cj.sku || "").slice(0, 120) || null,
   }
 }

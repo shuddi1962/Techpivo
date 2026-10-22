@@ -15,7 +15,7 @@ export async function GET(request: NextRequest) {
   const supabase = createClient()
   const { data: order } = await supabase
     .from("marketplace_orders")
-    .select("paystack_reference,status,paystack_status,cj_order_id,cj_status,total_ngn,total_usd,subtotal_usd,shipping_usd,items,created_at,ship_city,ship_country")
+    .select("paystack_reference,status,paystack_status,cj_order_id,cj_order_ref,cj_status,total_ngn,total_usd,subtotal_usd,shipping_usd,items,created_at,ship_city,ship_country")
     .eq("paystack_reference", reference)
     .eq("email", email)
     .maybeSingle()
