@@ -44,6 +44,7 @@ interface DbProduct {
   clicks?: number | null
   category_slug?: string | null
   subcategory_slug?: string | null
+  created_at?: string | null
 }
 
 // Calm-at-rest storefront card: the whole card (image + name + price)
@@ -412,8 +413,11 @@ export function MarketplaceHome() {
         .select("*")
         .eq("is_active", true)
         .order("is_featured", { ascending: false })
-        .order("created_at", { ascending: false })
-        .limit(120)
+        // Ordered by id (a stable pseudo-random spread) so the homepage
+        // shows every department of the full catalogue, not just the batch
+        // that happened to be imported last.
+        .order("id", { ascending: true })
+        .limit(240)
         .then(({ data }) => {
           if (!alive) return
           if (data) setDbProducts(data as DbProduct[])
@@ -526,8 +530,16 @@ export function MarketplaceHome() {
     usedIds,
     6
   )
+  const createdById = useMemo(
+    () => new Map(dbProducts.map((d) => [d.id, d.created_at || ""])),
+    [dbProducts]
+  )
   const newArrivals = takeFresh(
-    [...grid].sort((a, b) => Number(isNewPick(merch, b.id)) - Number(isNewPick(merch, a.id))),
+    [...grid].sort(
+      (a, b) =>
+        Number(isNewPick(merch, b.id)) - Number(isNewPick(merch, a.id)) ||
+        (createdById.get(b.id) || "").localeCompare(createdById.get(a.id) || "")
+    ),
     usedIds,
     6
   )
@@ -636,25 +648,29 @@ export function MarketplaceHome() {
   const strip1Props = slotSliderProps(banners, "strip1_slides")
   const strip2Props = slotSliderProps(banners, "strip2_slides")
 
-  // Shop By Collections: a curated 12 — the 5 departments plus the 7
-  // subcategories closest to a classic marketplace mix. Real nodes only.
-  const COLLECTION_SLUGS = useMemo(
-    () => [
-      "consumer-electronics",
-      "phones-accessories",
-      "computer-office",
-      "automobiles-motorcycles",
-      "home-improvement",
-      "smart-electronics",
-      "camera-photo",
-      "video-games",
-      "mobile-phones",
-      "portable-audio-video",
-      "home-audio-video",
-      "laptops-tablets",
-    ],
-    []
-  )
+  // Shop By Collections: 12 tiles taken from the LIVE tree — the
+  // departments that actually have products plus the busiest
+  // subcategories. With the full CJ catalogue in the store this is no
+  // longer a hand-picked list.
+  const COLLECTION_SLUGS = useMemo(() => {
+    const deptCount = new Map<string, number>()
+    const subCount = new Map<string, number>()
+    for (const p of dbProducts) {
+      const dept = deptOf.get(p.id)
+      if (dept) deptCount.set(dept, (deptCount.get(dept) || 0) + 1)
+      const sub = p.subcategory_slug
+      if (sub) subCount.set(sub, (subCount.get(sub) || 0) + 1)
+    }
+    const topDepts = [...deptCount.entries()]
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 6)
+      .map(([slug]) => slug)
+    const topSubs = [...subCount.entries()]
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 6)
+      .map(([slug]) => slug)
+    return [...topDepts, ...topSubs]
+  }, [dbProducts, deptOf])
   const collections = useMemo<CollectionItem[]>(() => {
     // Candidate product images per node, in preference order.
     const subImgs = new Map<string, string[]>()

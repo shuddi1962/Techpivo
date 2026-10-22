@@ -70,6 +70,39 @@ export async function GET(request: NextRequest) {
       const status = await cjStatus()
       return NextResponse.json({ status })
     }
+    if (section === "cj-sync") {
+      // What the automatic sync (cron, every 10 minutes) last did.
+      const { data } = await supabase
+        .from("site_settings")
+        .select("value")
+        .eq("key", "marketplace_cj_sync")
+        .maybeSingle()
+      const record = (data as { value?: unknown } | null)?.value as
+        | { at?: string; orders?: number; variants?: number; pushed?: number; remaining?: number }
+        | null
+      // How much of the catalogue is still waiting for CJ.
+      const [{ count: withoutVariant }, { count: catalogue }] = await Promise.all([
+        supabase
+          .from("affiliate_products")
+          .select("id", { count: "exact", head: true })
+          .not("cj_pid", "is", null)
+          .is("cj_vid", null),
+        supabase
+          .from("affiliate_products")
+          .select("id", { count: "exact", head: true })
+          .not("cj_pid", "is", null),
+      ])
+      return NextResponse.json({
+        lastRun: record?.at || null,
+        orders: record?.orders ?? 0,
+        variants: record?.variants ?? 0,
+        pushed: record?.pushed ?? 0,
+        remaining: record?.remaining ?? 0,
+        catalogue: catalogue || 0,
+        withoutVariant: withoutVariant || 0,
+        automatic: true,
+      })
+    }
     if (section === "pay-status") {
       const { getSecret } = await import("@/lib/site-secrets")
       const [secret, pub, encryption, webhook] = await Promise.all([

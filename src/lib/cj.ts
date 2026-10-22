@@ -740,7 +740,10 @@ export async function cjAddToMyProduct(pid: string): Promise<{ ok: boolean; alre
   })
   const json = (await res.json().catch(() => ({}))) as { code?: number; result?: boolean; message?: string }
   if (json?.code === 200) return { ok: true, already: false, message: json.message || "Added to My Products" }
-  if (json?.code === 1600000) return { ok: true, already: true, message: json.message || "Already in My Products" }
+  // 1600000 / 100002 — "the product has been added to My Products".
+  if (json?.code === 1600000 || json?.code === 100002) {
+    return { ok: true, already: true, message: json.message || "Already in My Products" }
+  }
   return { ok: false, already: false, message: json?.message || `CJ error ${json?.code ?? "?"}` }
 }
 

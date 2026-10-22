@@ -45,6 +45,17 @@ interface CjState {
   orders: { total: number; rows: Array<{ orderId: string; cjOrderId: string; status: string; country: string }> }
 }
 
+/** What the automatic cron sync last did. */
+interface SyncState {
+  lastRun: string | null
+  orders: number
+  variants: number
+  pushed: number
+  remaining: number
+  catalogue: number
+  withoutVariant: number
+}
+
 const money = (v: unknown): string => {
   const n = Number(v)
   if (!Number.isFinite(n) || n <= 0) return "—"
@@ -76,6 +87,7 @@ export function MarketplaceCjTab({ onImported }: { onImported?: () => void }) {
   const [top, setTop] = useState<TopSeller[]>([])
   const [busy, setBusy] = useState<"" | "variants" | "push">("")
   const [cjState, setCjState] = useState<CjState | null>(null)
+  const [sync, setSync] = useState<SyncState | null>(null)
   /** pids of results that are ALREADY live in our store. */
   const [existing, setExisting] = useState<string[]>([])
 
@@ -192,12 +204,16 @@ export function MarketplaceCjTab({ onImported }: { onImported?: () => void }) {
 
   const loadCjState = async () => {
     try {
-      const r = await fetch("/admin/marketplace/api", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "cj-my-products" }),
-      }).then((x) => x.json())
-      if (r?.products && r?.orders) setCjState(r as CjState)
+      const [state, sync] = await Promise.all([
+        fetch("/admin/marketplace/api", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ action: "cj-my-products" }),
+        }).then((x) => x.json()),
+        fetch("/admin/marketplace/api?section=cj-sync").then((x) => x.json()),
+      ])
+      if (state?.products && state?.orders) setCjState(state as CjState)
+      if (sync && !sync.error) setSync(sync as SyncState)
     } catch {
       // ignore — the panel simply stays empty
     }
@@ -384,25 +400,51 @@ export function MarketplaceCjTab({ onImported }: { onImported?: () => void }) {
       {/* CJ sync — variants, "My Products" and the orders CJ holds for us */}
       <div className={marketCardCls + " p-4 sm:p-5 mb-3"}>
         <MarketCardHead
-          title="CJ sync"
-          desc="Keep your store and the CJDropshipping platform in step"
+          title="CJ sync — automatic"
+          desc="The store and the CJDropshipping platform stay in step on their own"
           icon={RefreshCw}
         />
+        <div className="mb-3 rounded-xl border border-emerald-200 bg-emerald-50/70 p-3">
+          <p className="text-xs font-bold text-emerald-900">
+            Automatic sync is on — it runs every 10 minutes.
+          </p>
+          <p className="mt-1 text-[11px] leading-relaxed text-emerald-900/80">
+            Every product in your store is added to CJ &ldquo;My Products&rdquo;, every product without a supplier
+            variant gets one, and the CJ order status is pulled back into your orders. Nothing to press.
+            {sync && (
+              <>
+                {" "}
+                Last run{" "}
+                <strong>
+                  {sync.lastRun
+                    ? new Date(sync.lastRun).toLocaleString()
+                    : "not yet — it starts within 10 minutes"}
+                </strong>
+                {sync.lastRun ? ` · ${sync.orders} order(s) synced · ${sync.variants} variant(s) filled · ${sync.pushed} product(s) pushed` : ""}
+                .
+              </>
+            )}
+          </p>
+          {sync && (
+            <p className="mt-1 text-[11px] text-emerald-900/80">
+              Catalogue: <strong>{sync.catalogue}</strong> products ·{" "}
+              <strong>{sync.withoutVariant}</strong> still waiting for a supplier variant (filled automatically).
+            </p>
+          )}
+        </div>
         <div className="mb-3 flex flex-wrap gap-2">
           <button onClick={backfillVariants} disabled={!!busy} className={marketBtnDarkCls}>
-            {busy === "variants" ? "Filling variants..." : "Fill missing variants"}
+            {busy === "variants" ? "Filling variants..." : "Fill missing variants now"}
           </button>
           <button onClick={pushMyProducts} disabled={!!busy} className={marketBtnDarkCls}>
-            {busy === "push" ? "Pushing to CJ..." : "Push products to CJ (My Products)"}
+            {busy === "push" ? "Pushing to CJ..." : "Push products to CJ now"}
           </button>
           <button onClick={loadCjState} disabled={!!busy} className={marketBtnGhostCls}>
             <RefreshCw className="h-4 w-4" /> Refresh CJ state
           </button>
         </div>
         <p className="mb-3 text-xs text-slate-500">
-          <strong>Fill missing variants</strong> looks up the supplier variant for every product that has none — without a
-          variant an order can never be placed with CJ. <strong>Push products to CJ</strong> adds them to
-          &ldquo;My Products&rdquo; so they show in your CJDropshipping store.
+          The buttons above only force the automatic job to run right now — normally you never need them.
         </p>
         {cjState && (
           <div className="grid gap-2 sm:grid-cols-2">

@@ -54,7 +54,7 @@ export async function POST(request: NextRequest) {
     const ids = [...new Set(items.map((i) => String(i.id)).filter(Boolean))].slice(0, 50)
     const { data: products, error } = await supabase
       .from("affiliate_products")
-      .select("id,product_name,product_image_url,sale_price,original_price,cj_pid,cj_vid")
+      .select("id,product_name,product_image_url,sale_price,original_price,cj_pid,cj_vid,stock")
       .in("id", ids)
       .eq("is_active", true)
     if (error) return NextResponse.json({ error: "Could not load products." }, { status: 500 })
@@ -68,6 +68,21 @@ export async function POST(request: NextRequest) {
       if (!p) continue
       const base = Number(p.sale_price ?? p.original_price ?? 0)
       if (!Number.isFinite(base) || base <= 0) continue
+      // Stock is checked on the server — a shopper can never order more
+      // units than the supplier actually has (the classic "order 99 of a
+      // scarce item" scam).
+      const stock = (p as { stock?: number | null }).stock
+      if (stock != null && Number.isFinite(Number(stock)) && qty > Number(stock)) {
+        return NextResponse.json(
+          {
+            error:
+              Number(stock) <= 0
+                ? `"${String(p.product_name || "that product").slice(0, 60)}" is out of stock right now.`
+                : `Only ${Number(stock)} left of "${String(p.product_name || "that product").slice(0, 60)}".`,
+          },
+          { status: 400 }
+        )
+      }
       // Selected option: verify its live price when the product is linked
       // to a supplier catalog, otherwise charge the base product price.
       let unit = base

@@ -18,16 +18,35 @@ export async function GET(request: NextRequest) {
   try {
     const supabase = createPublicClient()
     const res = (await fetchWithTimeout(
-      supabase.from("affiliate_products").select("cj_pid").eq("id", productId).eq("is_active", true).maybeSingle(),
+      supabase
+        .from("affiliate_products")
+        .select("cj_pid,cj_data,product_description")
+        .eq("id", productId)
+        .eq("is_active", true)
+        .maybeSingle(),
       8000
-    )) as { data: { cj_pid: string | null } | null } | null
-    const pid = res?.data?.cj_pid
+    )) as {
+      data: { cj_pid: string | null; cj_data: Record<string, unknown> | null; product_description: string | null } | null
+    } | null
+    const row = res?.data
+    const pid = row?.cj_pid
     if (!pid) return NextResponse.json({ short: "", paras: [], images: [] })
-    const raw = await cjGetProduct(pid)
+
+    // Our own copy of the supplier description (stored at import time) —
+    // free and instant. Only products we have not imported yet fall back
+    // to a live supplier call.
+    const stored = ((row?.cj_data || {}) as { desc?: string }).desc
+    let raw: unknown = null
+    if (stored && String(stored).length > 40) {
+      raw = { description: String(stored) }
+    } else {
+      raw = await cjGetProduct(pid)
+    }
     const d = extractCjDetail(raw)
+    const paras = d.paras.map((x) => cleanSupplierText(x)).filter(Boolean).slice(0, 20)
     return NextResponse.json({
-      short: cleanSupplierText(d.short),
-      paras: d.paras.map((x) => cleanSupplierText(x)).filter(Boolean).slice(0, 20),
+      short: cleanSupplierText(d.short) || cleanSupplierText(row?.product_description || "").slice(0, 220),
+      paras,
       images: d.images.map((x) => marketImage(x)).filter(Boolean),
       video: /^https?:\/\//i.test(d.video) ? d.video : "",
       material: cleanSupplierText(d.material).slice(0, 120),

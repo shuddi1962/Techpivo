@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/admin"
 import { flutterwaveVerify, resolveFlutterwaveWebhookHash, verifyFlutterwaveSignature } from "@/lib/flutterwave"
 import { fulfillMarketplaceOrder } from "@/lib/marketplace-fulfill"
 import { notifyMarketplacePaid } from "@/lib/marketplace-email"
+import { checkRateLimit, clientIp } from "@/lib/rate-limiter"
 
 export const dynamic = "force-dynamic"
 
@@ -18,6 +19,10 @@ export const dynamic = "force-dynamic"
 // Always 200s so the gateway stops retrying.
 export async function POST(request: NextRequest) {
   try {
+    // The gateway retries, but a flood must never turn into a flood of
+    // gateway verification calls.
+    const limit = checkRateLimit(`mkt_webhook_${clientIp(request)}`, { limit: 120, windowMs: 60 * 1000 })
+    if (!limit.allowed) return NextResponse.json({ received: true }, { status: 200 })
     const raw = await request.text().catch(() => "")
     const body = (raw ? JSON.parse(raw) : null) as {
       event?: string

@@ -10,11 +10,33 @@ import { StorePageShell } from "@/components/marketplace/store-shell"
 
 export const revalidate = 60
 
-function resolveCategory(slug: string, departments: MarketDepartment[]) {
+// The store mirrors CJ's own three-level tree: department -> subcategory ->
+// leaf. Every level has its own page.
+type Resolved =
+  | { kind: "dept"; dept: MarketDepartment; sub: null; leaf: null }
+  | { kind: "sub"; dept: MarketDepartment; sub: { name: string; slug: string }; leaf: null }
+  | {
+      kind: "leaf"
+      dept: MarketDepartment
+      sub: { name: string; slug: string }
+      leaf: { name: string; slug: string }
+    }
+
+function resolveCategory(slug: string, departments: MarketDepartment[]): Resolved | null {
   for (const d of departments) {
-    if (d.slug === slug) return { kind: "dept" as const, dept: d, sub: null as null | { name: string; slug: string } }
-    const sub = d.subs.find((s) => s.slug === slug)
-    if (sub) return { kind: "sub" as const, dept: d, sub }
+    if (d.slug === slug) return { kind: "dept", dept: d, sub: null, leaf: null }
+    for (const s of d.subs) {
+      if (s.slug === slug) return { kind: "sub", dept: d, sub: { name: s.name, slug: s.slug }, leaf: null }
+      const leaf = s.items.find((i) => i.slug === slug)
+      if (leaf) {
+        return {
+          kind: "leaf",
+          dept: d,
+          sub: { name: s.name, slug: s.slug },
+          leaf: { name: leaf.name, slug: leaf.slug },
+        }
+      }
+    }
   }
   return null
 }
@@ -22,10 +44,15 @@ function resolveCategory(slug: string, departments: MarketDepartment[]) {
 export async function generateMetadata({ params }: { params: { slug: string } }): Promise<Metadata> {
   const found = resolveCategory(params.slug, await fetchMarketplaceTree())
   if (!found) return { title: "Category not found — TechPivo Market" }
-  const name = found.kind === "dept" ? found.dept.name : `${found.sub!.name} — ${found.dept.name}`
+  const name =
+    found.kind === "dept"
+      ? found.dept.name
+      : found.kind === "sub"
+        ? `${found.sub.name} — ${found.dept.name}`
+        : `${found.leaf.name} — ${found.sub.name} — ${found.dept.name}`
   return {
     title: `${name} — TechPivo Market`,
-    description: `Shop ${name} on TechPivo Market — curated tech products with fast tracked delivery and secure checkout.`,
+    description: `Shop ${name} on TechPivo Market — curated products with fast tracked delivery and secure checkout.`,
   }
 }
 
@@ -33,16 +60,22 @@ export default async function MarketplaceCategoryPage({ params }: { params: { sl
   const found = resolveCategory(params.slug, await fetchMarketplaceTree())
   if (!found) notFound()
 
+  // A leaf page shows exactly that leaf; a subcategory page shows the whole
+  // subcategory; a department page shows everything inside it.
   const slugs =
     found.kind === "dept"
       ? [found.dept.slug, ...found.dept.subs.map((s) => s.slug)]
-      : [found.sub!.slug]
+      : found.kind === "sub"
+        ? [found.sub.slug]
+        : []
+  const leafSlugs = found.kind === "leaf" ? [found.leaf.slug] : undefined
   const [products, banners, merchState] = await Promise.all([
-    fetchStoreProducts({ slugs, limit: 150 }),
+    fetchStoreProducts({ slugs, leafSlugs, limit: 150 }),
     fetchMarketBanners(),
     fetchMarketMerch(),
   ])
-  const title = found.kind === "dept" ? found.dept.name : found.sub!.name
+  const title =
+    found.kind === "dept" ? found.dept.name : found.kind === "sub" ? found.sub.name : found.leaf.name
 
   // Hero imagery: admin upload wins (per-department → default). Otherwise
   // the hero is built from THIS category's own live product photos — never
@@ -58,9 +91,15 @@ export default async function MarketplaceCategoryPage({ params }: { params: { sl
         found.kind === "sub"
           ? [
               { label: found.dept.name, href: `/marketplace/category/${found.dept.slug}` },
-              { label: found.sub!.name },
+              { label: found.sub.name },
             ]
-          : [{ label: title }]
+          : found.kind === "leaf"
+            ? [
+                { label: found.dept.name, href: `/marketplace/category/${found.dept.slug}` },
+                { label: found.sub.name, href: `/marketplace/category/${found.sub.slug}` },
+                { label: found.leaf.name },
+              ]
+            : [{ label: title }]
       }
     >
       {/* category hero — an uploaded banner stands clean (no overlay

@@ -13,7 +13,7 @@ const COLOR_WORDS = [
 ]
 
 const isSizeLike = (v: string) =>
-  /^(xxs|xs|s|m|l|xl|xxl|xxxl|\d+(\.\d+)?(gb|inch|\"|mm|cm)?|one[\s-]?size)$/i.test(v.trim())
+  /^(xxs|xs|s|m|l|xl|xxl|xxxl|\d+(\.\d+)?(gb|inch|"|mm|cm)?|one[\s-]?size)$/i.test(v.trim())
 
 function splitAttrs(name: string): string[] {
   return name
@@ -55,9 +55,21 @@ export interface StoreVariant {
   weightGrams: number | null
 }
 
+interface StoredVariant {
+  vid?: string
+  label?: string
+  price?: number
+  image?: string
+}
+
 // GET /api/marketplace/variants?product_id=<uuid> — live supplier options
 // (color/size/type) with store pricing. Never exposes supplier internals
 // beyond an opaque variant id needed for fulfillment.
+//
+// The option list is served from our own copy (cj_data.variants) that the
+// automatic sync keeps fresh, so a shopper browsing the store never spends
+// a CJ API point. Only products the sync has not reached yet fall back to
+// a live supplier call.
 export async function GET(request: NextRequest) {
   const productId = new URL(request.url).searchParams.get("product_id") || ""
   if (!/^[0-9a-f-]{36}$/i.test(productId)) {
@@ -66,18 +78,50 @@ export async function GET(request: NextRequest) {
   try {
     const supabase = createPublicClient()
     const res = (await fetchWithTimeout(
-      supabase.from("affiliate_products").select("cj_pid").eq("id", productId).eq("is_active", true).maybeSingle(),
+      supabase
+        .from("affiliate_products")
+        .select("cj_pid,product_name,cj_data")
+        .eq("id", productId)
+        .eq("is_active", true)
+        .maybeSingle(),
       8000
-    )) as { data: { cj_pid: string | null } | null } | null
-    const pid = res?.data?.cj_pid
+    )) as {
+      data: { cj_pid: string | null; product_name: string | null; cj_data: Record<string, unknown> | null } | null
+    } | null
+    const row = res?.data
+    const pid = row?.cj_pid
     if (!pid) return NextResponse.json({ variants: [], attributes: [] })
-    const product = await cjGetProductDetail(pid)
-    const list = product.variants || []
+
+    const stored = ((row?.cj_data || {}) as { variants?: StoredVariant[] }).variants
+    let list: Array<{
+      vid?: string
+      variantNameEn?: string
+      variantImage?: string
+      variantSellPrice?: number
+      variantStock?: number
+      variantWeight?: number
+    }> = []
+    let productName = row?.product_name || ""
+
+    if (Array.isArray(stored) && stored.length > 0) {
+      // Our own copy — free and instant.
+      list = stored.map((v) => ({
+        vid: v.vid,
+        variantNameEn: v.label,
+        variantImage: v.image,
+        variantSellPrice: v.price,
+      }))
+    } else {
+      const product = await cjGetProductDetail(pid)
+      productName = product.name || productName
+      list = product.variants as typeof list
+    }
+
     const variants: StoreVariant[] = (list || [])
       .filter((v) => v.vid)
       .map((v) => ({
         vid: String(v.vid),
-        label: compactLabel(String(v.variantNameEn || ""), product.name) || "Standard",
+        label: compactLabel(String(v.variantNameEn || ""), productName) || "Standard",
         price:
           v.variantSellPrice != null && Number.isFinite(Number(v.variantSellPrice))
             ? withMargin(Number(v.variantSellPrice))

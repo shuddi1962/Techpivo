@@ -24,10 +24,11 @@ interface RawProduct {
   created_at: string | null
   category_slug: string | null
   subcategory_slug: string | null
+  leaf_slug: string | null
 }
 
 const COLS =
-  "id,product_name,product_description,product_image_url,original_price,sale_price,program_key,is_featured,stock,clicks,created_at,category_slug,subcategory_slug"
+  "id,product_name,product_description,product_image_url,original_price,sale_price,program_key,is_featured,stock,clicks,created_at,category_slug,subcategory_slug,leaf_slug"
 
 function sanitize(p: RawProduct, rating: number, reviews: number): StoreProduct {
   return {
@@ -51,16 +52,21 @@ function sanitize(p: RawProduct, rating: number, reviews: number): StoreProduct 
 
 export async function fetchStoreProducts(opts?: {
   slugs?: string[]
+  /** CJ leaf categories (third level) — the finest grain in the store. */
+  leafSlugs?: string[]
   order?: "newest" | "popular"
   limit?: number
   timeoutMs?: number
 }): Promise<StoreProduct[]> {
   const supabase = createPublicClient()
-  const timeout = opts?.timeoutMs ?? 10000
+  const timeout = opts?.timeoutMs ?? 20000
   let q = supabase.from("affiliate_products").select(COLS).eq("is_active", true)
   if (opts?.slugs && opts.slugs.length > 0) {
     const list = opts.slugs.join(",")
     q = q.or(`category_slug.in.(${list}),subcategory_slug.in.(${list})`)
+  }
+  if (opts?.leafSlugs && opts.leafSlugs.length > 0) {
+    q = q.in("leaf_slug", opts.leafSlugs.slice(0, 100))
   }
   if (opts?.order === "popular") q = q.order("clicks", { ascending: false, nullsFirst: false })
   else q = q.order("created_at", { ascending: false })

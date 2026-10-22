@@ -94,11 +94,19 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { path: "/marketplace/faq", priority: 0.5, freq: "monthly" },
     ...(await fetchMarketplaceTree()).flatMap((d) => [
       { path: `/marketplace/category/${d.slug}`, priority: 0.7, freq: "weekly" as const },
-      ...d.subs.map((s) => ({
-        path: `/marketplace/category/${s.slug}`,
-        priority: 0.6,
-        freq: "weekly" as const,
-      })),
+      ...d.subs.flatMap((s) => [
+        {
+          path: `/marketplace/category/${s.slug}`,
+          priority: 0.6,
+          freq: "weekly" as const,
+        },
+        // Leaf categories have their own page too.
+        ...s.items.map((i) => ({
+          path: `/marketplace/category/${i.slug}`,
+          priority: 0.5,
+          freq: "weekly" as const,
+        })),
+      ]),
     ]),
   ]
 
