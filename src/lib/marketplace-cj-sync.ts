@@ -103,6 +103,7 @@ export async function fillMissingVariants(
     .from("affiliate_products")
     .select("id,cj_pid,cj_data")
     .not("cj_pid", "is", null)
+    .eq("is_active", true)
     .is("cj_vid", null)
     .limit(500)
   const list = (data || []) as Array<{ id: string; cj_pid: string; cj_data: Record<string, unknown> | null }>
@@ -137,7 +138,18 @@ export async function fillMissingVariants(
       const { error } = await supabase.from("affiliate_products").update(patch).eq("id", p.id)
       if (error) failed++
       else filled++
-    } catch {
+    } catch (err) {
+      // CJ answered "removed from shelves" (code 1602002) — the supplier
+      // delisted the product, so it can never grant a variant and can never be
+      // fulfilled. Take it out of the storefront and out of this retry loop.
+      const msg = err instanceof Error ? err.message : String(err)
+      if (/removed from shelves|1602002/i.test(msg)) {
+        const { error } = await supabase
+          .from("affiliate_products")
+          .update({ is_active: false })
+          .eq("id", p.id)
+        if (!error) continue
+      }
       failed++
     }
     await sleep(1100)
