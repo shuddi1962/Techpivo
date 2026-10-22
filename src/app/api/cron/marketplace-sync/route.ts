@@ -24,15 +24,15 @@ async function run() {
   const deadline = Date.now() + 42_000
 
   // 1. Orders first — the customer is waiting on them.
-  const orders = await syncOrderStatuses(supabase, { limit: 20, deadline })
+  const orders = await syncOrderStatuses(supabase, { limit: 12, deadline })
   report.orders = orders
 
   // 2. Products that cannot be fulfilled yet (no supplier variant).
-  const variants = await fillMissingVariants(supabase, { limit: 20, deadline })
+  const variants = await fillMissingVariants(supabase, { limit: 12, deadline })
   report.variants = variants
 
   // 3. Push the catalogue into CJ "My Products".
-  const catalogue = await syncCatalogueToCj(supabase, { limit: 40, deadline })
+  const catalogue = await syncCatalogueToCj(supabase, { limit: 12, deadline })
   report.catalogue = catalogue
 
   // Record the run so the admin can see the sync is alive.
