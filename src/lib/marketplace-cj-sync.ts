@@ -19,7 +19,6 @@ import type { SupabaseClient } from "@supabase/supabase-js"
 import {
   cjAddToMyProduct,
   cjFetchOrderSnapshot,
-  cjGetMyProducts,
   cjGetProductDetail,
   pickDefaultVariant,
 } from "@/lib/cj"
@@ -45,43 +44,52 @@ const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
 /**
  * Push the catalogue to CJ "My Products".
  *
- * CJ's own "My Products" list is the source of truth for what is already
- * there, so we never ask twice for the same product.
+ * Progress is recorded IN OUR OWN DATABASE (cj_pushed_at), so the run is
+ * deterministic and resumable: every pass takes the oldest active products
+ * that have never been pushed and stops cleanly at the deadline.
  */
 export async function syncCatalogueToCj(
   supabase: SupabaseClient,
   opts?: { limit?: number; pointsLeft?: number | null; deadline?: number }
-): Promise<{ pushed: number; already: number; failed: number; remaining: number; pointsUsedToday: number | null }> {
+): Promise<{ pushed: number; already: number; failed: number; remaining: number; pushedTotal: number; pointsUsedToday: number | null }> {
   const limit = Math.min(opts?.limit ?? 40, 120)
-  let known = new Set<string>()
   let pointsUsedToday: number | null = null
-  try {
-    const mine = await cjGetMyProducts({ size: 100 })
-    known = new Set(mine.rows.map((r) => r.productId))
-  } catch {
-    // The list is unavailable — we simply try every product (CJ answers
-    // "already added" for the ones that are there).
-  }
+
+  // Exact head counts — cheap (no rows back), so the remaining math is always
+  // right even when a deadline breaks the loop early.
+  const { count: unpushedCount } = await supabase
+    .from("affiliate_products")
+    .select("id", { count: "exact", head: true })
+    .not("cj_pid", "is", null)
+    .eq("is_active", true)
+    .is("cj_pushed_at", null)
+  const unpushed = (unpushedCount as number | null) ?? 0
 
   const { data } = await supabase
     .from("affiliate_products")
     .select("id,cj_pid")
     .not("cj_pid", "is", null)
-    .limit(2000)
-  const list = (data || []) as Array<{ id: string; cj_pid: string }>
-  const pending = list.filter((p) => !known.has(p.cj_pid))
-  const batch = pending.slice(0, limit)
+    .eq("is_active", true)
+    .is("cj_pushed_at", null)
+    .order("created_at", { ascending: true })
+    .limit(limit)
+  const batch = (data || []) as Array<{ id: string; cj_pid: string }>
 
   let pushed = 0
   let already = 0
   let failed = 0
+  const done: string[] = []
   for (const p of batch) {
     if (opts?.deadline && Date.now() > opts.deadline) break
     try {
       const r = await cjAddToMyProduct(p.cj_pid)
       if (r.ok) {
+        // "already" means the product IS on CJ — mark it pushed either way so
+        // the run is resumable: this pass backfills cj_pushed_at for the
+        // products that were pushed before this column existed.
         if (r.already) already++
         else pushed++
+        done.push(p.id)
       } else {
         failed++
       }
@@ -90,7 +98,31 @@ export async function syncCatalogueToCj(
     }
     await sleep(1100)
   }
-  return { pushed, already, failed, remaining: Math.max(0, pending.length - batch.length), pointsUsedToday }
+
+  // Record progress in the DB: every product we got a definitive answer for
+  // is marked pushed, so the next pass starts past it.
+  let pushedTotal = 0
+  if (done.length > 0) {
+    // The update error is accepted best-effort: a missed write just means the
+    // next pass re-pushes the same products and CJ answers "already added".
+    await supabase.from("affiliate_products").update({ cj_pushed_at: new Date().toISOString() }).in("id", done)
+    const { count: totalDone } = await supabase
+      .from("affiliate_products")
+      .select("id", { count: "exact", head: true })
+      .not("cj_pid", "is", null)
+      .eq("is_active", true)
+      .not("cj_pushed_at", "is", null)
+    pushedTotal = (totalDone as number | null) ?? 0
+  }
+
+  return {
+    pushed,
+    already,
+    failed,
+    remaining: Math.max(0, unpushed - (pushed + already)),
+    pushedTotal,
+    pointsUsedToday,
+  }
 }
 
 /** Give every catalogue product a supplier variant (and its SKU). */
@@ -99,12 +131,22 @@ export async function fillMissingVariants(
   opts?: { limit?: number; deadline?: number }
 ): Promise<{ filled: number; failed: number; remaining: number }> {
   const limit = Math.min(opts?.limit ?? 25, 60)
+  // Exact head count up front so "remaining" stays right even when the fetch
+  // select below is capped or the deadline ends the pass early.
+  const { count: unresolvedCount } = await supabase
+    .from("affiliate_products")
+    .select("id", { count: "exact", head: true })
+    .not("cj_pid", "is", null)
+    .eq("is_active", true)
+    .is("cj_vid", null)
+  const unresolved = (unresolvedCount as number | null) ?? 0
   const { data } = await supabase
     .from("affiliate_products")
     .select("id,cj_pid,cj_data")
     .not("cj_pid", "is", null)
     .eq("is_active", true)
     .is("cj_vid", null)
+    .order("created_at", { ascending: true })
     .limit(500)
   const list = (data || []) as Array<{ id: string; cj_pid: string; cj_data: Record<string, unknown> | null }>
   let filled = 0

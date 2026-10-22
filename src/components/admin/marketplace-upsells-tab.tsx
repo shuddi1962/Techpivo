@@ -76,7 +76,7 @@ export function MarketplaceUpsellsTab() {
   const load = useCallback(async () => {
     const [r, p, rep] = await Promise.all([
       fetch("/admin/marketplace/api?section=recommendations").then((x) => x.json()).catch(() => null),
-      fetch("/admin/marketplace/api?section=products").then((x) => x.json()).catch(() => null),
+      fetch("/admin/marketplace/api?section=products&size=200").then((x) => x.json()).catch(() => null),
       fetch("/admin/marketplace/api?section=upsell-report").then((x) => x.json()).catch(() => null),
     ])
     if (r) {

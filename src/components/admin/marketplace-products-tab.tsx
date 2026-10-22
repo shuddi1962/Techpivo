@@ -4,9 +4,9 @@
 // Premium ecommerce index shape — page bar, KPI strip, toolbar with search +
 // filter vocabulary, bulk selection bar, quiet dense table with sticky head.
 
-import { useCallback, useEffect, useMemo, useState } from "react"
+import { useCallback, useEffect, useState } from "react"
 import {
-  Eye, EyeOff, Package, Pencil, Plus, Search, Star, Trash2, BadgePercent, X,
+  ChevronLeft, ChevronRight, Eye, EyeOff, Package, Pencil, Plus, Search, Star, Trash2, BadgePercent, X,
 } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
 import { isoToLocalInput } from "@/lib/marketplace-banners"
@@ -51,6 +51,7 @@ interface Overview {
   total: number
   active: number
   featured: number
+  hidden?: number
   clicks: number
   conversions: number
   vendors: number
@@ -75,6 +76,8 @@ const emptyForm = {
 
 type MerchFlags = { sale?: boolean; is_new?: boolean; bestseller?: boolean }
 
+const PAGE_SIZE = 50
+
 export function MarketplaceProductsTab() {
   const [overview, setOverview] = useState<Overview | null>(null)
   const [products, setProducts] = useState<Product[]>([])
@@ -92,21 +95,36 @@ export function MarketplaceProductsTab() {
   const [notice, setNotice] = useState("")
   const [noticeTone, setNoticeTone] = useState<"success" | "error" | "info">("success")
 
+  const [page, setPage] = useState(1)
+  const [total, setTotal] = useState(0)
+  const [debouncedQ, setDebouncedQ] = useState("")
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedQ(query.trim()), 350)
+    return () => clearTimeout(t)
+  }, [query])
+  useEffect(() => {
+    setPage(1)
+  }, [filter, debouncedQ])
+
   const load = useCallback(async () => {
     const noStore = { cache: "no-store" as RequestCache }
+    const qs = new URLSearchParams({ size: String(PAGE_SIZE), page: String(page) })
+    if (debouncedQ) qs.set("q", debouncedQ)
+    if (filter !== "all") qs.set("status", filter)
     const [ov, pr, sa, me] = await Promise.all([
       fetch("/admin/marketplace/api?section=overview", noStore).then((r) => r.json()).catch(() => null),
-      fetch("/admin/marketplace/api?section=products", noStore).then((r) => r.json()).catch(() => null),
+      fetch(`/admin/marketplace/api?section=products&${qs.toString()}`, noStore).then((r) => r.json()).catch(() => null),
       fetch("/admin/marketplace/api?section=sales", noStore).then((r) => r.json()).catch(() => null),
       fetch("/admin/marketplace/api?section=merch", noStore).then((r) => r.json()).catch(() => null),
     ])
     if (ov?.overview) setOverview(ov.overview)
     if (pr?.products) setProducts(pr.products)
+    if (typeof pr?.total === "number") setTotal(pr.total)
     if (sa?.sales && typeof sa.sales === "object") setSales(sa.sales as Record<string, string>)
     if (me?.merch && typeof me.merch === "object") setMerch(me.merch as Record<string, MerchFlags>)
     if (typeof me?.sale_badges === "boolean") setSaleBadges(me.sale_badges)
     setLoading(false)
-  }, [])
+  }, [page, filter, debouncedQ])
 
   useEffect(() => {
     load()
@@ -135,25 +153,7 @@ export function MarketplaceProductsTab() {
     setTimeout(() => setNotice(""), 3500)
   }
 
-  const filtered = useMemo(() => {
-    const q = query.trim().toLowerCase()
-    return products.filter((p) => {
-      const matchQ =
-        !q ||
-        p.product_name.toLowerCase().includes(q) ||
-        (p.program_key || "").toLowerCase().includes(q) ||
-        (p.product_description || "").toLowerCase().includes(q)
-      const matchF =
-        filter === "all"
-          ? true
-          : filter === "active"
-            ? p.is_active
-            : filter === "hidden"
-              ? !p.is_active
-              : !!p.is_featured
-      return matchQ && matchF
-    })
-  }, [products, query, filter])
+  const filtered = products
 
   const selectedIds = selected.filter((id) => filtered.some((p) => p.id === id))
   const allVisibleSelected = filtered.length > 0 && selectedIds.length === filtered.length
@@ -388,11 +388,16 @@ export function MarketplaceProductsTab() {
   }
 
   const filterOptions = [
-    { value: "all", label: "All", count: products.length },
-    { value: "active", label: "Active", count: products.filter((p) => p.is_active).length },
-    { value: "hidden", label: "Hidden", count: products.filter((p) => !p.is_active).length },
-    { value: "featured", label: "Featured", count: products.filter((p) => p.is_featured).length },
+    { value: "all", label: "All", count: total || products.length },
+    { value: "active", label: "Active", count: overview?.active ?? 0 },
+    {
+      value: "hidden",
+      label: "Hidden",
+      count: overview?.hidden ?? Math.max(0, (overview?.total ?? 0) - (overview?.active ?? 0)),
+    },
+    { value: "featured", label: "Featured", count: overview?.featured ?? 0 },
   ]
+  const totalPages = Math.max(1, Math.ceil((total || products.length) / PAGE_SIZE))
 
   return (
     <div>
@@ -431,7 +436,7 @@ export function MarketplaceProductsTab() {
 
       <div className="mb-3 grid grid-cols-2 gap-2.5 sm:gap-3 lg:grid-cols-4">
         <MarketKpi label="Total products" value={String(overview?.total ?? products.length)} sub="in the catalog" icon={Package} tone="neutral" />
-        <MarketKpi label="Live on store" value={String(overview?.active ?? 0)} sub={`${(overview?.total ?? 0) - (overview?.active ?? 0)} hidden`} icon={Eye} tone="emerald" />
+        <MarketKpi label="Live on store" value={String(overview?.active ?? 0)} sub={`${overview?.hidden ?? Math.max(0, (overview?.total ?? 0) - (overview?.active ?? 0))} hidden`} icon={Eye} tone="emerald" />
         <MarketKpi label="Clicks" value={(overview?.clicks ?? 0).toLocaleString()} sub={`${(overview?.conversions ?? 0).toLocaleString()} conversions`} icon={Search} tone="sky" />
         <MarketKpi label="Vendors" value={String(overview?.vendors ?? 0)} sub="supplier programs" icon={Star} tone="amber" />
       </div>
@@ -471,7 +476,7 @@ export function MarketplaceProductsTab() {
         }
         right={
           <span className="text-xs font-semibold tabular-nums text-slate-500">
-            {filtered.length} of {products.length} shown
+            {filtered.length} of {total || products.length} shown
           </span>
         }
       />
@@ -502,14 +507,14 @@ export function MarketplaceProductsTab() {
       {filtered.length === 0 ? (
         <MarketEmpty
           icon={Package}
-          title={products.length === 0 ? "No products yet" : "No products match your filters"}
+          title={total === 0 ? "No products yet" : "No products match your filters"}
           desc={
-            products.length === 0
+            total === 0
               ? "Add your first product here, or import a supplier catalog from CJ Import in seconds."
               : "Try a different search term or filter."
           }
           action={
-            products.length === 0 ? (
+            total === 0 ? (
               <button onClick={openCreate} className={marketBtnPrimaryCls}>
                 <Plus className="h-4 w-4" /> New product
               </button>
@@ -635,6 +640,28 @@ export function MarketplaceProductsTab() {
             </tbody>
           </table>
         </MarketTableShell>
+      )}
+
+      {filtered.length > 0 && totalPages > 1 && (
+        <div className="mt-4 flex items-center justify-between rounded-xl border border-black/5 bg-white px-4 py-3">
+          <button
+            onClick={() => setPage((p) => Math.max(1, p - 1))}
+            disabled={page <= 1}
+            className={`${marketBtnGhostCls} ${page <= 1 ? "cursor-not-allowed opacity-50" : ""}`}
+          >
+            <ChevronLeft className="h-4 w-4" /> Prev
+          </button>
+          <span className="text-xs font-semibold tabular-nums text-slate-500">
+            Page {page} of {totalPages}
+          </span>
+          <button
+            onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+            disabled={page >= totalPages}
+            className={`${marketBtnGhostCls} ${page >= totalPages ? "cursor-not-allowed opacity-50" : ""}`}
+          >
+            Next <ChevronRight className="h-4 w-4" />
+          </button>
+        </div>
       )}
 
       <MarketModal

@@ -34,13 +34,24 @@ export async function GET(request: NextRequest) {
   const section = url.searchParams.get("section") || "overview"
   try {
     if (section === "products") {
-      const { data, error } = await supabase
+      const q = url.searchParams.get("q")?.trim() || ""
+      const status = url.searchParams.get("status") || "all"
+      const page = Math.max(1, Number(url.searchParams.get("page")) || 1)
+      const size = Math.min(200, Math.max(1, Number(url.searchParams.get("size")) || 50))
+      const from = (page - 1) * size
+      let query = supabase
         .from("affiliate_products")
-        .select("*")
+        .select("id,program_key,product_name,product_description,product_image_url,affiliate_link,original_price,sale_price,clicks,conversions,is_active,is_featured,created_at", { count: "exact" })
+      if (q) query = query.or(`product_name.ilike.%${q}%,program_key.ilike.%${q}%`)
+      if (status === "active") query = query.eq("is_active", true)
+      if (status === "hidden") query = query.eq("is_active", false)
+      if (status === "featured") query = query.eq("is_featured", true)
+      const { data, error, count } = await query
         .order("created_at", { ascending: false })
-        .limit(200)
+        .order("id", { ascending: true })
+        .range(from, from + size - 1)
       if (error) throw error
-      return NextResponse.json({ products: data || [] })
+      return NextResponse.json({ products: data || [], total: count ?? 0, page, size })
     }
     if (section === "categories") {
       const { fetchMarketplaceCategoryRows, buildMarketplaceTree } = await import("@/lib/marketplace-category-db")
@@ -155,11 +166,21 @@ export async function GET(request: NextRequest) {
         .select("id,total_usd,total_ngn,status,paystack_status,items,coupon_code,discount_usd,created_at")
         .order("created_at", { ascending: false })
         .limit(500)
-      const { data: products } = await supabase
-        .from("affiliate_products")
-        .select("id,product_name,product_image_url,clicks,conversions,category_slug,program_key,is_active")
-        .order("clicks", { ascending: false, nullsFirst: false })
-        .limit(200)
+      const PROD_PAGE = 1000
+      const prods: Array<{ id: string; product_name: string; product_image_url: string | null; clicks: number | null; conversions: number | null; category_slug: string | null; program_key: string | null; is_active: boolean }> = []
+      const { count: prodCount } = await supabase.from("affiliate_products").select("id", { count: "exact", head: true })
+      const prodTotal = prodCount ?? 0
+      for (let from = 0; from < prodTotal; from += PROD_PAGE) {
+        const { data: chunk } = await supabase
+          .from("affiliate_products")
+          .select("id,product_name,product_image_url,clicks,conversions,category_slug,program_key,is_active")
+          .order("clicks", { ascending: false, nullsFirst: false })
+          .order("id", { ascending: true })
+          .range(from, from + PROD_PAGE - 1)
+        const rows = ((chunk || []) as Array<{ id: string; product_name: string; product_image_url: string | null; clicks: number | null; conversions: number | null; category_slug: string | null; program_key: string | null; is_active: boolean }>)
+        prods.push(...rows)
+        if (rows.length < PROD_PAGE) break
+      }
       const list = ((orders || []) as Array<Record<string, unknown>>)
       const paid = list.filter((o) => ["paid", "fulfilled", "delivered"].includes(String(o.status || "")))
       const revenueUsd = paid.reduce((s, o) => s + (Number(o.total_usd) || 0), 0)
@@ -219,7 +240,6 @@ export async function GET(request: NextRequest) {
           revById.set(id, hit)
         }
       }
-      const prods = ((products || []) as Array<{ id: string; product_name: string; product_image_url: string | null; clicks: number | null; conversions: number | null; category_slug: string | null; program_key: string | null; is_active: boolean }>)
       const names = new Map(prods.map((p) => [p.id, p.product_name]))
       const topRevenue = [...revById.entries()]
         .map(([id, v]) => ({ id, name: names.get(id) || id.slice(0, 8), ...v }))
@@ -467,6 +487,8 @@ export async function GET(request: NextRequest) {
         .from("affiliate_products")
         .select("id,product_name,product_image_url,sale_price,original_price,clicks,conversions,category_slug,subcategory_slug,is_active")
         .eq("is_active", true)
+        .order("clicks", { ascending: false })
+        .order("conversions", { ascending: false })
         .limit(300)
       if (category) q = q.eq("category_slug", category)
       if (subcategory) q = q.eq("subcategory_slug", subcategory)
@@ -482,18 +504,41 @@ export async function GET(request: NextRequest) {
       rows.sort((a, b) => b.clicks - a.clicks || b.conversions - a.conversions)
       return NextResponse.json({ top: rows.slice(0, 8) })
     }
-    // overview
-    const { data: products } = await supabase.from("affiliate_products").select("id,is_active,is_featured,clicks,conversions,sale_price,program_key,created_at").limit(500)
-    const list = (products || []) as Array<{ id: string; is_active: boolean; is_featured: boolean; clicks: number | null; conversions: number | null; sale_price: number | null; program_key: string | null; created_at: string | null }>
-    const total = list.length
-    const active = list.filter((p) => p.is_active).length
-    const featured = list.filter((p) => p.is_featured).length
-    const clicks = list.reduce((s, p) => s + (p.clicks || 0), 0)
-    const conversions = list.reduce((s, p) => s + (p.conversions || 0), 0)
-    const vendors = new Set(list.map((p) => p.program_key).filter(Boolean)).size
+    // overview — exact counts over the WHOLE catalogue. A plain .limit()
+    // select silently capped this (2,873 live rows, only the newest 500
+    // counted), and Supabase caps one page read at 1,000 rows, so use exact
+    // head counts for the totals and walk the pages for the aggregates.
+    const base = supabase.from("affiliate_products")
+    const [{ count: totalCount }, { count: activeCount }, { count: featuredCount }] = await Promise.all([
+      base.select("id", { count: "exact", head: true }),
+      base.select("id", { count: "exact", head: true }).eq("is_active", true),
+      base.select("id", { count: "exact", head: true }).eq("is_featured", true),
+    ])
+    const total = (totalCount as number | null) ?? 0
+    const active = (activeCount as number | null) ?? 0
+    const featured = (featuredCount as number | null) ?? 0
+    const overviewRows: Array<{ clicks: number | null; conversions: number | null; program_key: string | null }> = []
+    const OVERVIEW_PAGE = 1000
+    for (let from = 0; from < total; from += OVERVIEW_PAGE) {
+      const { data } = await base.select("clicks,conversions,program_key").range(from, from + OVERVIEW_PAGE - 1)
+      overviewRows.push(...((data || []) as Array<{ clicks: number | null; conversions: number | null; program_key: string | null }>))
+      if ((data || []).length < OVERVIEW_PAGE) break
+    }
+    const clicks = overviewRows.reduce((s, p) => s + (p.clicks || 0), 0)
+    const conversions = overviewRows.reduce((s, p) => s + (p.conversions || 0), 0)
+    const vendors = new Set(overviewRows.map((p) => p.program_key).filter(Boolean)).size
     const { data: pages } = await supabase.from("site_pages").select("slug,is_published").eq("slug", "marketplace").maybeSingle()
     return NextResponse.json({
-      overview: { total, active, featured, clicks, conversions, vendors, pagePublished: (pages as { is_published?: boolean } | null)?.is_published ?? true },
+      overview: {
+        total,
+        active,
+        hidden: Math.max(0, total - active),
+        featured,
+        clicks,
+        conversions,
+        vendors,
+        pagePublished: (pages as { is_published?: boolean } | null)?.is_published ?? true,
+      },
     })
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : "Failed to load marketplace"
@@ -1091,40 +1136,63 @@ export async function POST(request: NextRequest) {
       }
       return NextResponse.json({ scanned: list.length, filled, failed: failed.length, remaining })
     }
-    // Add every imported product to CJ "My Products" so the CJ platform
-    // shows them as products in our store.
+    // Add every imported product to CJ "My Products" so the CJ platform shows
+    // them as products in our store. Progress is recorded in our own database
+    // (cj_pushed_at), so the button is resumable: the next click starts past
+    // whatever this click already pushed.
     if (body.action === "cj-push-my-products") {
       const { cjAddToMyProduct, cjGetMyProducts } = await import("@/lib/cj")
       // Bounded per click — this route has a 60s ceiling. The next click
       // continues with whatever is still missing.
       const limit = Math.min(Number(body.limit) || 20, 40)
-      // Products CJ already knows as ours are skipped (no point asking again).
-      let known = new Set<string>()
-      try {
-        const mine = await cjGetMyProducts({ size: 100 })
-        known = new Set(mine.rows.map((r) => r.productId))
-      } catch {
-        // ignore — we simply ask CJ about every product
-      }
+      const { count: unpushedCount } = await supabase
+        .from("affiliate_products")
+        .select("id", { count: "exact", head: true })
+        .not("cj_pid", "is", null)
+        .eq("is_active", true)
+        .is("cj_pushed_at", null)
+      const unpushed = (unpushedCount as number | null) ?? 0
       const { data: rows } = await supabase
         .from("affiliate_products")
         .select("id,cj_pid")
         .not("cj_pid", "is", null)
-        .limit(500)
-      const list = ((rows || []) as Array<{ id: string; cj_pid: string }>).filter((p) => !known.has(p.cj_pid))
-      const batch = list.slice(0, limit)
+        .eq("is_active", true)
+        .is("cj_pushed_at", null)
+        .order("created_at", { ascending: true })
+        .limit(limit)
+      const batch = ((rows || []) as Array<{ id: string; cj_pid: string }>)
       let pushed = 0
+      let already = 0
       const failed: string[] = []
+      const done: string[] = []
       for (const p of batch) {
         try {
           const r = await cjAddToMyProduct(p.cj_pid)
-          if (r.ok) pushed += 1
-          else failed.push(p.cj_pid)
+          if (r.ok) {
+            if (r.already) already += 1
+            else pushed += 1
+            done.push(p.id)
+          } else {
+            failed.push(p.cj_pid)
+          }
         } catch {
           failed.push(p.cj_pid)
         }
         await new Promise((r) => setTimeout(r, 200))
       }
+      if (done.length > 0) {
+        await supabase
+          .from("affiliate_products")
+          .update({ cj_pushed_at: new Date().toISOString() })
+          .in("id", done)
+      }
+      const { count: pushedTotalCount } = await supabase
+        .from("affiliate_products")
+        .select("id", { count: "exact", head: true })
+        .not("cj_pid", "is", null)
+        .eq("is_active", true)
+        .not("cj_pushed_at", "is", null)
+      const pushedTotal = (pushedTotalCount as number | null) ?? 0
       let mine = 0
       try {
         mine = (await cjGetMyProducts({ size: 100 })).total
@@ -1135,9 +1203,11 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({
         scanned: batch.length,
         pushed,
+        already,
         failed: failed.length,
         myProducts: mine,
-        remaining: Math.max(0, list.length - batch.length),
+        remaining: Math.max(0, unpushed - (pushed + already)),
+        pushedTotal,
       })
     }
     // The products CJ knows as ours, and the orders CJ has for us.
