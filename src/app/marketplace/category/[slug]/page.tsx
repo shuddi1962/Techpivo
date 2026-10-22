@@ -1,7 +1,8 @@
 import type { Metadata } from "next"
 import Link from "next/link"
 import { notFound } from "next/navigation"
-import { MARKET_DEPARTMENTS } from "@/lib/marketplace-categories"
+import type { MarketDepartment } from "@/lib/marketplace-categories"
+import { fetchMarketplaceTree } from "@/lib/marketplace-category-db"
 import { deptBannerOf, linkOf } from "@/lib/marketplace-banners"
 import { fetchStoreProducts, fetchMarketBanners, fetchMarketMerch } from "@/lib/marketplace-products"
 import { ProductListing } from "@/components/marketplace/product-listing"
@@ -9,8 +10,8 @@ import { StorePageShell } from "@/components/marketplace/store-shell"
 
 export const revalidate = 60
 
-function resolveCategory(slug: string) {
-  for (const d of MARKET_DEPARTMENTS) {
+function resolveCategory(slug: string, departments: MarketDepartment[]) {
+  for (const d of departments) {
     if (d.slug === slug) return { kind: "dept" as const, dept: d, sub: null as null | { name: string; slug: string } }
     const sub = d.subs.find((s) => s.slug === slug)
     if (sub) return { kind: "sub" as const, dept: d, sub }
@@ -19,7 +20,7 @@ function resolveCategory(slug: string) {
 }
 
 export async function generateMetadata({ params }: { params: { slug: string } }): Promise<Metadata> {
-  const found = resolveCategory(params.slug)
+  const found = resolveCategory(params.slug, await fetchMarketplaceTree())
   if (!found) return { title: "Category not found — TechPivo Market" }
   const name = found.kind === "dept" ? found.dept.name : `${found.sub!.name} — ${found.dept.name}`
   return {
@@ -29,7 +30,7 @@ export async function generateMetadata({ params }: { params: { slug: string } })
 }
 
 export default async function MarketplaceCategoryPage({ params }: { params: { slug: string } }) {
-  const found = resolveCategory(params.slug)
+  const found = resolveCategory(params.slug, await fetchMarketplaceTree())
   if (!found) notFound()
 
   const slugs =

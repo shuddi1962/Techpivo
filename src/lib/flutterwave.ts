@@ -1,47 +1,39 @@
 // Payment gateway helpers (server-side only — never import in client components)
-// Keys: FLUTTERWAVE_SECRET_KEY env -> site_settings.flutterwave_secret_key
-// Public key: NEXT_PUBLIC_FLUTTERWAVE_PUBLIC_KEY env -> site_settings.flutterwave_public_key
-// Encryption key: FLUTTERWAVE_ENCRYPTION_KEY env -> site_settings.flutterwave_encryption_key
-// Webhook secret hash: FLUTTERWAVE_SECRET_HASH env -> site_settings.flutterwave_secret_hash
+// Keys: FLUTTERWAVE_SECRET_KEY env -> site_secrets.flutterwave_secret_key
+// Public key: NEXT_PUBLIC_FLUTTERWAVE_PUBLIC_KEY env -> site_secrets.flutterwave_public_key
+// Encryption key: FLUTTERWAVE_ENCRYPTION_KEY env -> site_secrets.flutterwave_encryption_key
+// Webhook secret hash: FLUTTERWAVE_SECRET_HASH env -> site_secrets.flutterwave_secret_hash
 // Test keys contain _TEST; live keys do not.
+//
+// SECURITY: gateway credentials live in `site_secrets` (service-role only),
+// NEVER in the publicly-readable `site_settings` table.
 
-import { createClient } from "@/lib/supabase/admin"
+import { getSecret } from "@/lib/site-secrets"
 
 const FLW_BASE = "https://api.flutterwave.com/v3"
 
-async function setting(key: string): Promise<string | null> {
-  try {
-    const supabase = createClient()
-    const { data } = await supabase.from("site_settings").select("value").eq("key", key).maybeSingle()
-    const v = (data as { value?: unknown } | null)?.value
-    if (typeof v === "string" && v.trim()) return v.trim()
-  } catch {
-    // ignore
-  }
-  return null
-}
-
 export async function resolveFlutterwaveSecret(): Promise<string | null> {
   if (process.env.FLUTTERWAVE_SECRET_KEY?.trim()) return process.env.FLUTTERWAVE_SECRET_KEY.trim()
-  return setting("flutterwave_secret_key")
+  return getSecret("flutterwave_secret_key")
 }
 
 export async function resolveFlutterwavePublic(): Promise<string | null> {
   if (process.env.NEXT_PUBLIC_FLUTTERWAVE_PUBLIC_KEY?.trim()) return process.env.NEXT_PUBLIC_FLUTTERWAVE_PUBLIC_KEY.trim()
-  return setting("flutterwave_public_key")
+  return getSecret("flutterwave_public_key")
 }
 
 export async function resolveFlutterwaveEncryption(): Promise<string | null> {
   if (process.env.FLUTTERWAVE_ENCRYPTION_KEY?.trim()) return process.env.FLUTTERWAVE_ENCRYPTION_KEY.trim()
-  return setting("flutterwave_encryption_key")
+  return getSecret("flutterwave_encryption_key")
 }
 
 export async function resolveFlutterwaveWebhookHash(): Promise<string | null> {
   if (process.env.FLUTTERWAVE_SECRET_HASH?.trim()) return process.env.FLUTTERWAVE_SECRET_HASH.trim()
-  const stored = await setting("flutterwave_secret_hash")
-  // Fall back to the secret key — some setups reuse it as the hash.
-  if (stored) return stored
-  return resolveFlutterwaveSecret()
+  // The webhook hash is a SEPARATE credential from the API secret. We never
+  // fall back to the API secret: doing so would let anyone who learns the
+  // secret forge webhooks. Configure the "Secret Hash" in the Flutterwave
+  // dashboard (Settings → API Keys → Secret Hash) to enable webhooks.
+  return getSecret("flutterwave_secret_hash")
 }
 
 export function isFlutterwaveConfigured(secret: string | null | undefined) {
@@ -50,6 +42,29 @@ export function isFlutterwaveConfigured(secret: string | null | undefined) {
 
 export function isFlutterwaveTestMode(secret: string | null | undefined) {
   return !!secret && secret.includes("_TEST")
+}
+
+/** Validate a secret against the gateway (read-only call — no money moves). */
+export async function flutterwaveValidateSecret(secret: string): Promise<{ ok: boolean; message: string; mode: "live" | "test" | "unknown" }> {
+  if (!isFlutterwaveConfigured(secret)) {
+    return { ok: false, message: "That does not look like a Flutterwave secret key (expected FLWSECK…).", mode: "unknown" }
+  }
+  const mode: "live" | "test" = isFlutterwaveTestMode(secret) ? "test" : "live"
+  try {
+    const res = await fetch(`${FLW_BASE}/transactions?limit=1`, {
+      headers: { Authorization: `Bearer ${secret}` },
+      signal: AbortSignal.timeout(20000),
+    })
+    if (res.ok) {
+      return { ok: true, message: `Key verified — ${mode === "test" ? "test mode" : "live mode"} is active.`, mode }
+    }
+    if (res.status === 401 || res.status === 403) {
+      return { ok: false, message: "The gateway rejected this key (unauthorized). Check you pasted the SECRET key, not the public key.", mode }
+    }
+    return { ok: false, message: `Gateway responded HTTP ${res.status} — the key could not be verified.`, mode }
+  } catch {
+    return { ok: false, message: "Could not reach the gateway to verify the key. The key was still saved.", mode }
+  }
 }
 
 export interface FlutterwaveInit {

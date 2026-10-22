@@ -1,11 +1,12 @@
 "use client"
 
-import { Fragment, useEffect, useRef, useState } from "react"
+import { Fragment, useEffect, useMemo, useRef, useState } from "react"
 import {
   BadgeCheck, ChevronDown, ChevronUp, ImagePlus, Layers, Link2,
   Loader2, MousePointerClick, Plus, RotateCcw, Save, Settings2, Trash2,
 } from "lucide-react"
-import { MARKET_DEPARTMENTS } from "@/lib/marketplace-categories"
+import type { MarketDepartment } from "@/lib/marketplace-categories"
+import { MarketCategorySync, useMarketplaceTree } from "@/components/marketplace/market-category-store"
 import {
   BANNER_LINK_PRESETS,
   BANNER_SLOTS,
@@ -43,6 +44,7 @@ import {
 } from "@/lib/marketplace-banners"
 import { BannerSlider } from "@/components/marketplace/banner-slider"
 import { WelcomePopupCard } from "@/components/marketplace/welcome-popup"
+import { createClient } from "@/lib/supabase/client"
 import { MARKET_STORE_DEFAULTS } from "@/lib/marketplace-store"
 import { marketBtnPrimaryCls, marketBtnDarkCls, marketCardCls, MarketBadge, MarketLoading, MarketPageBar } from "@/components/admin/marketplace-ui"
 import { cn } from "@/lib/utils"
@@ -60,13 +62,15 @@ const PREVIEW_SLIDES: BannerSlide[] = [
 
 // Every place a banner can point to: store pages first, then every live
 // department / subcategory. Anything else can be typed as a custom URL.
-const LINK_OPTIONS: Array<{ value: string; label: string }> = [
-  ...BANNER_LINK_PRESETS,
-  ...MARKET_DEPARTMENTS.flatMap((d) => [
-    { value: `/marketplace/category/${d.slug}`, label: `Department — ${d.name}` },
-    ...d.subs.map((s) => ({ value: `/marketplace/category/${s.slug}`, label: `${d.name} — ${s.name}` })),
-  ]),
-]
+function linkOptionsFor(departments: MarketDepartment[]): Array<{ value: string; label: string }> {
+  return [
+    ...BANNER_LINK_PRESETS,
+    ...departments.flatMap((d) => [
+      { value: `/marketplace/category/${d.slug}`, label: `Department — ${d.name}` },
+      ...d.subs.map((s) => ({ value: `/marketplace/category/${s.slug}`, label: `${d.name} — ${s.name}` })),
+    ]),
+  ]
+}
 
 function isUrl(v: string): boolean {
   return /^https?:\/\/.+/i.test(v.trim()) || v.trim().startsWith("/")
@@ -89,7 +93,11 @@ function LinkField({
   onChange: (v: string) => void
 }) {
   const [custom, setCustom] = useState("")
-  const isPreset = LINK_OPTIONS.some((o) => o.value === value)
+  // The live, admin-editable department tree — banner destinations follow
+  // the categories the admin has added or renamed.
+  const departments = useMarketplaceTree()
+  const options = useMemo(() => linkOptionsFor(departments), [departments])
+  const isPreset = options.some((o) => o.value === value)
   const selectValue = value === "" || isPreset ? value : "__custom"
   return (
     <div>
@@ -108,7 +116,7 @@ function LinkField({
           className={`${inputCls} text-xs`}
           aria-label="Where this banner opens"
         >
-          {LINK_OPTIONS.map((o) => (
+          {options.map((o) => (
             <option key={o.label} value={o.value}>
               {o.label}
             </option>
@@ -954,24 +962,31 @@ export function MarketplaceBannersTab() {
   const [uploadTarget, setUploadTarget] = useState<string | null>(null)
   const [store, setStore] = useState({ ...MARKET_STORE_DEFAULTS })
   const [storeSaving, setStoreSaving] = useState(false)
+  // Live, admin-editable department tree (Admin → Marketplace → Categories).
+  const departments = useMarketplaceTree()
 
   useEffect(() => {
-    fetch("/admin/marketplace/api?section=banners")
-      .then((r) => r.json())
-      .then((d) => {
-        if (d?.banners) {
-          setBanners({
-            ...EMPTY_BANNERS,
-            ...d.banners,
-            departments: d.banners.departments || {},
-            sidebar_banners: d.banners.sidebar_banners || {},
-            links: d.banners.links || {},
-            slot_settings: d.banners.slot_settings || {},
-          })
-        }
-      })
-      .catch(() => {})
-      .finally(() => setLoading(false))
+    let alive = true
+    const loadBanners = () => {
+      fetch("/admin/marketplace/api?section=banners")
+        .then((r) => r.json())
+        .then((d) => {
+          if (!alive) return
+          if (d?.banners) {
+            setBanners({
+              ...EMPTY_BANNERS,
+              ...d.banners,
+              departments: d.banners.departments || {},
+              sidebar_banners: d.banners.sidebar_banners || {},
+              links: d.banners.links || {},
+              slot_settings: d.banners.slot_settings || {},
+            })
+          }
+        })
+        .catch(() => {})
+        .finally(() => setLoading(false))
+    }
+    loadBanners()
     fetch("/admin/marketplace/api?section=store")
       .then((r) => r.json())
       .then((d) => {
@@ -980,7 +995,29 @@ export function MarketplaceBannersTab() {
       .catch(() => {})
     loadStats()
     const poll = setInterval(loadStats, 60000)
-    return () => clearInterval(poll)
+    // Live: banner + store edits (from any admin tab) land here instantly.
+    let channel: ReturnType<ReturnType<typeof createClient>["channel"]> | null = null
+    try {
+      const supabase = createClient()
+      channel = supabase
+        .channel(`admin_market_banners_${Date.now()}_${Math.random().toString(36).slice(2)}`)
+        .on("postgres_changes", { event: "*", schema: "public", table: "site_settings" }, () => loadBanners())
+        .subscribe()
+    } catch {
+      // realtime unavailable — polling still covers it
+    }
+    return () => {
+      alive = false
+      clearInterval(poll)
+      if (channel) {
+        try {
+          const supabase = createClient()
+          supabase.removeChannel(channel)
+        } catch {
+          // ignore
+        }
+      }
+    }
   }, [])
 
   const flash = (msg: string) => {
@@ -1149,6 +1186,8 @@ export function MarketplaceBannersTab() {
 
   return (
     <div className="w-full space-y-3">
+      {/* Keeps the department list + link presets in step with the live tree */}
+      <MarketCategorySync />
       <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/gif,image/webp,image/avif" className="hidden" onChange={onFile} />
 
       {/* Sticky page bar — save action + live status */}
@@ -1265,7 +1304,7 @@ export function MarketplaceBannersTab() {
         onToggle={() => setSection(section === "depts" ? "" : "depts")}
       >
         <div className="grid gap-2.5 sm:grid-cols-2 xl:grid-cols-3">
-          {MARKET_DEPARTMENTS.map((d) => {
+          {departments.map((d) => {
             const val = banners.departments[d.slug] || ""
             const key = `dept:${d.slug}`
             const side = banners.sidebar_banners?.[d.slug] || ""

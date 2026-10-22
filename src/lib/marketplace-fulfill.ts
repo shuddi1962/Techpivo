@@ -14,6 +14,8 @@ interface OrderLine {
   qty: number
   cj_pid?: string | null
   cj_vid?: string | null
+  /** Set once this line has been handed to the supplier (no double-shipping). */
+  cj_sent?: boolean
 }
 
 interface FulfillOrder {
@@ -33,7 +35,8 @@ function fail(supabase: SupabaseClient, orderId: string, reason: string) {
   const msg = String(reason || "fulfillment failed").slice(0, 500)
   return supabase
     .from("marketplace_orders")
-    .update({ cj_status: "manual_needed", fulfill_error: msg })
+    // Release the lock so the admin can retry immediately.
+    .update({ cj_status: "manual_needed", fulfill_error: msg, fulfill_lock_at: null })
     .eq("id", orderId)
     .then(() => ({ fulfilled: false as const, cj_order_id: null as string | null, error: msg }))
 }
@@ -146,16 +149,43 @@ export async function fulfillMarketplaceOrder(supabase: SupabaseClient, order: F
   // default -> single supplier variant -> unique variant-name match) and
   // persist it, so Retry actually makes progress instead of failing forever.
   const healed = await healMissingVids(supabase, order.id, lines)
-  const stillMissing = healed.lines.filter((l) => !l.cj_vid)
-  if (stillMissing.length > 0) {
+  // Lines already handed to the supplier are never sent twice — a retry only
+  // ships what is still outstanding.
+  const outstanding = healed.lines.filter((l) => l.cj_sent !== true)
+  if (outstanding.length === 0) {
+    // Everything has already been handed to the supplier.
+    return { fulfilled: true as const, cj_order_id: (order as { cj_order_id?: string | null }).cj_order_id ?? null, error: null as string | null }
+  }
+  const ready = outstanding.filter((l) => l.cj_vid)
+  const stillMissing = outstanding.filter((l) => !l.cj_vid)
+  if (ready.length === 0) {
     const names = [...new Set(stillMissing.map((l) => (l.name || "an item").slice(0, 60)))].slice(0, 3).join("; ")
     return fail(
       supabase,
       order.id,
-      `Not auto-fulfillable: no supplier variant for ${names}. Pick the variant in Admin → Marketplace → CJ Import (or fulfill manually).`
+      `Not auto-fulfillable: no supplier variant for ${names}. Pick the variant in Admin → Marketplace → Orders (or fulfill manually).`
     )
   }
-  const fulfillLines = healed.lines
+
+  // Idempotency lock: only one attempt may talk to the supplier for an
+  // order at a time. Without this, two simultaneous verify/webhook calls
+  // place TWO real supplier orders for one paid order (double cost).
+  const staleIso = new Date(Date.now() - 2 * 60 * 1000).toISOString()
+  const { data: claimed } = await supabase
+    .from("marketplace_orders")
+    .update({ fulfill_lock_at: new Date().toISOString() })
+    .eq("id", order.id)
+    .or(`fulfill_lock_at.is.null,fulfill_lock_at.lt.${staleIso}`)
+    .select("id")
+  if (!claimed || claimed.length === 0) {
+    return {
+      fulfilled: false as const,
+      cj_order_id: null as string | null,
+      error: "Fulfillment already in progress for this order — give it a moment before retrying.",
+    }
+  }
+
+  const fulfillLines = ready
   try {
     let logisticName = "CJPacket"
     const stored = String(order.ship_method || "")
@@ -210,11 +240,24 @@ export async function fulfillMarketplaceOrder(supabase: SupabaseClient, order: F
       const keys = result && typeof result === "object" ? Object.keys(result).join(",") : typeof result
       return fail(supabase, order.id, `CJ accepted the request but returned no order id (fields: ${keys}).`)
     }
+    // Mark the lines we just handed to the supplier so a later retry never
+    // ships them twice.
+    const sentIds = new Set(fulfillLines.map((l) => l.id))
+    const nextItems = healed.lines.map((l) => (sentIds.has(l.id) ? { ...l, cj_sent: true } : l))
+    const remaining = nextItems.filter((l) => l.cj_sent !== true)
     await supabaseUpdate(supabase, order.id, {
+      items: nextItems,
       cj_order_id: cjId,
-      cj_status: "submitted",
-      status: "fulfilled",
-      fulfill_error: null,
+      cj_status: remaining.length > 0 ? "partially_submitted" : "submitted",
+      status: remaining.length > 0 ? "paid" : "fulfilled",
+      fulfill_error:
+        remaining.length > 0
+          ? `${fulfillLines.length} line(s) sent to CJ (${cjId}). Still waiting on a supplier variant for: ${remaining
+              .map((l) => (l.name || "an item").slice(0, 50))
+              .join("; ")
+              .slice(0, 300)} — pick the variant and hit Retry to send the rest.`
+          : null,
+      fulfill_lock_at: null,
     })
     return { fulfilled: true as const, cj_order_id: cjId, error: null as string | null }
   } catch (e) {

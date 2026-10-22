@@ -233,14 +233,11 @@ export async function resolveOpenRouterKey(): Promise<string | null> {
   const now = Date.now()
   if (_cachedKey !== undefined && now < _keyExpiry) return _cachedKey
 
+  // The key lives in the server-only secret store (site_secrets) — never in
+  // the publicly-readable site_settings table.
   try {
-    const supabase = createClient()
-    const { data } = await supabase
-      .from("site_settings")
-      .select("value")
-      .eq("key", "openrouter_api_key")
-      .maybeSingle()
-    const key = typeof data?.value === "string" ? data.value.trim() : ""
+    const { getSecret } = await import("@/lib/site-secrets")
+    const key = (await getSecret("openrouter_api_key")) || ""
     if (key && key.startsWith("sk-or-")) {
       _cachedKey = key
       _keyExpiry = now + CACHE_MS

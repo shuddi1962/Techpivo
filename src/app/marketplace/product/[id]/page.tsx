@@ -4,7 +4,8 @@ import { notFound } from "next/navigation"
 import { ChevronRight } from "lucide-react"
 import { createPublicClient } from "@/lib/supabase/server"
 import { fetchWithTimeout } from "@/lib/fetch-timeout"
-import { MARKET_DEPARTMENTS } from "@/lib/marketplace-categories"
+import { fetchMarketplaceTree } from "@/lib/marketplace-category-db"
+import type { MarketDepartment } from "@/lib/marketplace-categories"
 import { marketImage, cleanSupplierText } from "@/lib/marketplace-images"
 import { supplierDisplayName } from "@/lib/marketplace"
 import { MarketplaceHeader, MarketplaceFooter } from "@/components/marketplace/marketplace-header"
@@ -54,9 +55,9 @@ export async function generateMetadata({ params }: { params: { id: string } }): 
   }
 }
 
-function deptNameFor(slug: string | null): string | null {
+function deptNameFor(slug: string | null, departments: MarketDepartment[]): string | null {
   if (!slug) return null
-  for (const d of MARKET_DEPARTMENTS) {
+  for (const d of departments) {
     if (d.slug === slug) return d.name
     if (d.subs.some((s) => s.slug === slug)) return d.name
   }
@@ -123,11 +124,12 @@ export default async function MarketplaceProductPage({ params }: { params: { id:
     product_image_url: marketImage(r.product_image_url),
   }))
 
+  const departments = await fetchMarketplaceTree()
   const deptSlug =
-    MARKET_DEPARTMENTS.find(
+    departments.find(
       (d) => d.slug === p.category_slug || d.subs.some((s) => s.slug === (p.subcategory_slug || p.category_slug))
     )?.slug ?? null
-  const deptName = deptNameFor(p.subcategory_slug || p.category_slug)
+  const deptName = deptNameFor(p.subcategory_slug || p.category_slug, departments)
 
   // Seed merch flags at render so the first paint already matches the
   // admin's latest change (no stale badges flashing before the live fetch).

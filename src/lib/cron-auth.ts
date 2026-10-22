@@ -1,18 +1,11 @@
-import { createClient as createServiceClient } from '@supabase/supabase-js'
+import { getSecret } from '@/lib/site-secrets'
 
 export async function getCronSecret(): Promise<string> {
   if (process.env.CRON_SECRET) return process.env.CRON_SECRET
-  try {
-    const supabase = createServiceClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!
-    )
-    const { data } = await supabase.from('site_settings').select('value').eq('key', 'cron_secret').maybeSingle()
-    if (typeof data?.value === 'string') return data.value
-  } catch {
-    // env fallback only
-  }
-  return ''
+  // Stored in the server-only secret store — the cron secret used to live in
+  // the publicly-readable site_settings table, which let anyone trigger our
+  // scheduled jobs.
+  return (await getSecret('cron_secret')) || ''
 }
 
 export async function isCronAuthorized(req: Request, opts?: { required?: boolean }): Promise<boolean> {

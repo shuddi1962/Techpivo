@@ -3,13 +3,23 @@ import { createClient } from "@/lib/supabase/admin"
 import { flutterwaveVerify } from "@/lib/flutterwave"
 import { fulfillMarketplaceOrder } from "@/lib/marketplace-fulfill"
 import { notifyMarketplacePaid } from "@/lib/marketplace-email"
+import { checkRateLimit, clientIp } from "@/lib/rate-limiter"
 
 export const dynamic = "force-dynamic"
 
 // POST /api/marketplace/verify — confirm gateway payment, then auto-place
 // the CJDropshipping fulfillment order when every line has a variant id.
+//
+// SECURITY: the transaction is verified with the gateway, the tx_ref must
+// match our stored order reference, the currency must be NGN and the paid
+// amount must cover the order total. Rate limited so nobody can probe
+// transaction ids.
 export async function POST(request: NextRequest) {
   try {
+    const limit = checkRateLimit(`mkt_verify_${clientIp(request)}`, { limit: 30, windowMs: 15 * 60 * 1000 })
+    if (!limit.allowed) {
+      return NextResponse.json({ error: "Too many verification attempts. Try again in a few minutes." }, { status: 429 })
+    }
     const body = await request.json().catch(() => null)
     const reference = String(body?.reference || body?.tx_ref || "").trim()
     // Gateway redirect appends these; the transaction id is what the
@@ -43,6 +53,11 @@ export async function POST(request: NextRequest) {
     if (tx.status !== "successful") {
       await supabase.from("marketplace_orders").update({ paystack_status: tx.status || "failed" }).eq("id", order.id)
       return NextResponse.json({ paid: false, status: tx.status })
+    }
+    // Currency must match the order — a dollar charge is not a naira order.
+    if (tx.currency && tx.currency.toUpperCase() !== "NGN") {
+      await supabase.from("marketplace_orders").update({ paystack_status: "currency_mismatch" }).eq("id", order.id)
+      return NextResponse.json({ paid: false, status: "currency_mismatch" })
     }
     // Amount sanity: paid naira must cover the order total (tolerate FX drift).
     const expected = Number(order.total_ngn) || 0

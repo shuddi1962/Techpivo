@@ -2,7 +2,7 @@ import { createPublicClient } from "@/lib/supabase/server"
 import { SITE_URL } from "@/lib/constants"
 import { TOOL_SLUGS } from "@/lib/tools-metadata"
 import { CATEGORY_SLUGS, CATEGORY_ROUTE } from "@/lib/tools-categories"
-import { MARKET_DEPARTMENTS } from "@/lib/marketplace-categories"
+import { fetchMarketplaceTree } from "@/lib/marketplace-category-db"
 import { STATIC_PAGE_SLUGS } from "@/lib/pages"
 import type { MetadataRoute } from "next"
 
@@ -92,7 +92,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { path: "/marketplace/wishlist", priority: 0.3, freq: "monthly" },
     { path: "/marketplace/help", priority: 0.5, freq: "monthly" },
     { path: "/marketplace/faq", priority: 0.5, freq: "monthly" },
-    ...MARKET_DEPARTMENTS.flatMap((d) => [
+    ...(await fetchMarketplaceTree()).flatMap((d) => [
       { path: `/marketplace/category/${d.slug}`, priority: 0.7, freq: "weekly" as const },
       ...d.subs.map((s) => ({
         path: `/marketplace/category/${s.slug}`,

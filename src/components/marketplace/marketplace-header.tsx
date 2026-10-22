@@ -8,7 +8,7 @@ import {
   Flame, MapPin, Phone, Mail, Truck, RefreshCcw, Headset, ShieldCheck,
   ArrowLeftRight,
 } from "lucide-react"
-import { MARKET_DEPARTMENTS as DEPARTMENTS } from "@/lib/marketplace-categories"
+import { MarketCategorySync, useMarketplaceTree } from "./market-category-store"
 import { MARKETPLACE_BRAND } from "@/lib/marketplace"
 import type { MarketBanners } from "@/lib/marketplace-banners"
 import { cartCount as countLines, useMarketCart } from "@/lib/marketplace-cart"
@@ -66,6 +66,8 @@ export function MarketplaceHeader({
   const [deptOpen, setDeptOpen] = useState(false)
   const [currency, setCurrency] = useState("USD")
   const [currencyOpen, setCurrencyOpen] = useState(false)
+  // Live, admin-editable category tree (falls back to the bundled tree).
+  const departments = useMarketplaceTree()
   const deptWrapRef = useRef<HTMLDivElement>(null)
   const currencyWrapRef = useRef<HTMLDivElement>(null)
   // Live AJAX suggestions under both search boxes — product names pop up
@@ -244,6 +246,8 @@ export function MarketplaceHeader({
 
   return (
     <>
+      {/* Keeps the department menu in sync with Admin → Categories */}
+      <MarketCategorySync />
       <MarketCommerce />
       {/* utility bar — promo copy + colors editable in Admin → Marketplace → Banners */}
       <div style={{ background: `linear-gradient(90deg, ${promoBanners?.promo_bar_from || MARKETPLACE_BRAND.topbar} 0%, ${promoBanners?.promo_bar_to || MARKETPLACE_BRAND.topbarSoft} 100%)` }} className="relative z-[60] w-full text-white">
@@ -321,7 +325,7 @@ export function MarketplaceHeader({
               className="bg-transparent px-3 text-sm text-slate-500 border-r border-[#E2E8F0] focus:outline-none cursor-pointer hidden lg:block max-w-[190px]"
             >
               <option value="">All Departments</option>
-              {DEPARTMENTS.map((d) => (
+              {departments.map((d) => (
                 <option key={d.slug} value={d.slug}>{d.name}</option>
               ))}
             </select>
@@ -454,7 +458,7 @@ export function MarketplaceHeader({
                   >
                     <div className="rounded-b-2xl border border-t-0 border-[#E2E8F0] bg-white p-6 shadow-2xl lg:p-8 max-h-[70vh] overflow-y-auto">
                       <div className="grid grid-cols-2 gap-6 sm:grid-cols-3 lg:grid-cols-6">
-                        {DEPARTMENTS.map((d) => (
+                        {departments.map((d) => (
                           <div key={d.slug} className="min-w-0">
                             <Link
                               href={`/marketplace/category/${d.slug}`}
@@ -599,7 +603,7 @@ export function MarketplaceHeader({
               )
             ))}
             <p className="px-3 pt-2 text-[11px] font-bold uppercase tracking-wider text-slate-400">Departments</p>
-            {DEPARTMENTS.map((d) => (
+            {departments.map((d) => (
               <div key={d.slug}>
                 <Link
                   href={`/marketplace/category/${d.slug}`}
@@ -641,6 +645,8 @@ export function MarketplaceFooter() {
   const [email, setEmail] = useState("")
   const [subMsg, setSubMsg] = useState("")
   const [subBusy, setSubBusy] = useState(false)
+  // Live, admin-editable department tree.
+  const departments = useMarketplaceTree()
   // Store contact info — editable in Admin → Marketplace → Banners
   // ("Store contact info"), reflected here live.
   const [store, setStore] = useState(MARKET_STORE_DEFAULTS)
@@ -731,7 +737,7 @@ export function MarketplaceFooter() {
           <nav aria-label="Shop departments">
             <h5 className="mb-4 text-sm font-bold uppercase tracking-wider text-white">Shop</h5>
             <ul className="grid grid-cols-1 gap-2.5 text-sm text-slate-300">
-              {DEPARTMENTS.map((d) => (
+              {departments.map((d) => (
                 <li key={d.slug}><Link className="transition-colors hover:text-[#F59E0B]" href={`/marketplace/category/${d.slug}`}>{d.name}</Link></li>
               ))}
             </ul>

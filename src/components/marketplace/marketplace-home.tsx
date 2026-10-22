@@ -15,7 +15,7 @@ import {
   MARKETPLACE_BRAND, MARKETPLACE_HERO, supplierDisplayName, type DemoProduct,
 } from "@/lib/marketplace"
 import { EMPTY_BANNERS, campaignView, flashSecondsLeft, linkOf, markPopupShown, parseBanners, pickPopupCampaign, slidesOfObjects, slotSliderProps, splitCountdown, stampPopup, type MarketBanners } from "@/lib/marketplace-banners"
-import { MARKET_DEPARTMENTS } from "@/lib/marketplace-categories"
+import { useMarketplaceTree } from "./market-category-store"
 import { marketImage, cleanSupplierText } from "@/lib/marketplace-images"
 import { readCompare, toggleCompareStored } from "@/lib/marketplace-compare"
 import { MarketplaceHeader, MarketplaceFooter } from "./marketplace-header"
@@ -302,6 +302,8 @@ export function MarketplaceHome() {
   }, [])
   const [query, setQuery] = useState("")
   const [banners, setBanners] = useState<MarketBanners>({ ...EMPTY_BANNERS, departments: {} })
+  // Live, admin-editable department tree (Admin → Marketplace → Categories).
+  const departments = useMarketplaceTree()
   // First-paint gate: while the live catalog hasn't arrived yet, render
   // neutral skeletons instead of fallback/empty designs — so visitors
   // never see a previous design flash before the current one paints.
@@ -564,11 +566,11 @@ export function MarketplaceHome() {
     dbProducts.forEach((d) => {
       const slug = d.category_slug || d.subcategory_slug
       if (!slug) return
-      const dept = MARKET_DEPARTMENTS.find((dep) => dep.slug === slug || dep.subs.some((s) => s.slug === slug))
+      const dept = departments.find((dep) => dep.slug === slug || dep.subs.some((s) => s.slug === slug))
       if (dept) m.set(d.id, dept.slug)
     })
     return m
-  }, [dbProducts])
+  }, [dbProducts, departments])
   const shown = tabShown.filter((p) => matchQuery(p))
   const filtering = q.length > 0
   const tabEmpty = !filtering && tab !== "new" && tabShown.length === 0
@@ -587,7 +589,7 @@ export function MarketplaceHome() {
       bySub.set(key, list)
     })
     const out: Array<{ name: string; short: string; dept: string; slug: string; icon: string; cover: string }> = []
-    MARKET_DEPARTMENTS.forEach((dep) => {
+    departments.forEach((dep) => {
       dep.subs.forEach((s) => {
         const items = bySub.get(s.slug) || []
         if (items.length === 0) return
@@ -602,7 +604,7 @@ export function MarketplaceHome() {
       })
     })
     return out
-  }, [dbProducts])
+  }, [dbProducts, departments])
 
   // Real product photo per department for Shop-by-Department tiles
   // (CJ-style: actual catalog photos, not generic stock).
@@ -695,7 +697,7 @@ export function MarketplaceHome() {
       return img
     }
     const bySlug = new Map<string, CollectionItem>()
-    MARKET_DEPARTMENTS.forEach((dep) => {
+    departments.forEach((dep) => {
       const stock = banners.departments[dep.slug] || dep.image
       bySlug.set(dep.slug, {
         name: dep.name,
@@ -713,7 +715,7 @@ export function MarketplaceHome() {
       })
     })
     return COLLECTION_SLUGS.map((slug) => bySlug.get(slug)).filter((c): c is CollectionItem => !!c)
-  }, [dbProducts, banners, deptOf, COLLECTION_SLUGS, rot])
+  }, [dbProducts, banners, deptOf, COLLECTION_SLUGS, rot, departments])
 
   // Showcase sections: the 4 departments with the most live stock. Each
   // gets the showcase treatment with its stocked subcategories as pills.
@@ -725,7 +727,7 @@ export function MarketplaceHome() {
   const dbById = new Map(dbProducts.map((d) => [d.id, d]))
   // Showcase order: Phones always leads (the store's signature section),
   // followed by the 3 departments with the most live stock.
-  const rankedDepts = MARKET_DEPARTMENTS.map((dep) => ({
+  const rankedDepts = departments.map((dep) => ({
     dep,
     count: grid.filter((p) => deptOf.get(p.id) === dep.slug).length,
   })).sort((a, b) => b.count - a.count)
@@ -1079,7 +1081,7 @@ export function MarketplaceHome() {
               <p className="font-bold text-[#0F172A]">Fresh stock is on the way</p>
               <p className="text-sm text-slate-500 mt-1">New picks land here as soon as they sync — browse the departments meanwhile.</p>
               <Link
-                href={`/marketplace/category/${MARKET_DEPARTMENTS[0].slug}`}
+                href={`/marketplace/category/${departments[0]?.slug ?? ""}`}
                 className="inline-block mt-4 bg-[#F59E0B] hover:bg-[#D97706] text-[#0F172A] text-sm font-bold px-5 py-2.5 rounded-lg transition-colors"
               >
                 Browse departments

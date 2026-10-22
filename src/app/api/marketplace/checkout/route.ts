@@ -5,6 +5,7 @@ import { flutterwaveInit } from "@/lib/flutterwave"
 import { cjGetVariants, withMargin } from "@/lib/cj"
 import { storeShipOptions } from "@/lib/marketplace-shipping"
 import { supplierShipOptions } from "@/lib/marketplace-freight"
+import { checkRateLimit, clientIp } from "@/lib/rate-limiter"
 
 export const dynamic = "force-dynamic"
 
@@ -16,8 +17,16 @@ interface CheckoutItem {
 
 // POST /api/marketplace/checkout — validate cart server-side, create a
 // pending order, and initialize a gateway checkout (NGN).
+//
+// SECURITY: every price, discount and shipping fee is computed on the
+// server from the database — nothing the browser sends is trusted for money.
 export async function POST(request: NextRequest) {
   try {
+    // Anti-spam: one order per minute-ish per IP, 30/hour.
+    const limit = checkRateLimit(`mkt_checkout_${clientIp(request)}`, { limit: 30, windowMs: 60 * 60 * 1000 })
+    if (!limit.allowed) {
+      return NextResponse.json({ error: "Too many checkout attempts from this device. Please try again shortly." }, { status: 429 })
+    }
     const body = await request.json().catch(() => null)
     const items = (Array.isArray(body?.items) ? body.items : []) as CheckoutItem[]
     const email = String(body?.email || "").trim().toLowerCase()
@@ -96,22 +105,44 @@ export async function POST(request: NextRequest) {
     }
 
     // Coupon: validated server-side (never trusted from the client preview).
+    // The use is RESERVED before the order is written, so two simultaneous
+    // checkouts can never both take the last use of a limited code.
     let couponCode: string | null = null
     let discountUsd = 0
+    let couponReserved = false
     const wantCoupon = String(body?.coupon_code || "").trim().toUpperCase().slice(0, 24)
     if (wantCoupon) {
       try {
         const admin0 = createAdmin()
         const { data: cdata } = await admin0.from("site_settings").select("value").eq("key", "marketplace_coupons").maybeSingle()
         const { parseMarketCoupons, validateCoupon } = await import("@/lib/marketplace-coupons")
-        const check = validateCoupon(parseMarketCoupons((cdata as { value?: unknown } | null)?.value), wantCoupon, subtotal)
+        const list = parseMarketCoupons((cdata as { value?: unknown } | null)?.value)
+        const check = validateCoupon(list, wantCoupon, subtotal)
         if (!check.ok) {
           return NextResponse.json({ error: check.reason }, { status: 400 })
         }
         couponCode = check.coupon!.code
-        discountUsd = check.discountUsd
+        // Never discount more than the goods themselves.
+        discountUsd = Math.min(check.discountUsd, Math.round(subtotal * 100) / 100)
+        const hit = list.find((c) => c.code === couponCode)
+        if (hit) {
+          if (hit.max_uses > 0 && hit.uses >= hit.max_uses) {
+            return NextResponse.json({ error: "That code has just been fully used. Try again without it." }, { status: 400 })
+          }
+          hit.uses += 1
+          const { error: upErr } = await admin0
+            .from("site_settings")
+            .upsert({ key: "marketplace_coupons", value: list as unknown as never }, { onConflict: "key" })
+          if (upErr) throw upErr
+          couponReserved = true
+        }
       } catch (e) {
-        if (e instanceof Error && /minimum|expired|limit|active|valid|live/i.test(e.message)) {
+        if (couponReserved) {
+          // reservation failed after validation — never charge for a code we
+          // could not reserve
+          return NextResponse.json({ error: "Could not apply that coupon. Please try again." }, { status: 400 })
+        }
+        if (e instanceof Error && /minimum|expired|limit|active|valid|live|fully used/i.test(e.message)) {
           return NextResponse.json({ error: e.message }, { status: 400 })
         }
         // coupon store unreadable — proceed without the discount
@@ -207,22 +238,24 @@ export async function POST(request: NextRequest) {
         orderError = (retry.error as { message?: string } | null) || null
       }
     }
-    if (orderError || !order) return NextResponse.json({ error: "Could not create your order." }, { status: 500 })
-
-    // Best-effort coupon usage counting (for admin limits display).
-    if (couponCode) {
-      try {
-        const { data: cdata } = await admin.from("site_settings").select("value").eq("key", "marketplace_coupons").maybeSingle()
-        const { parseMarketCoupons } = await import("@/lib/marketplace-coupons")
-        const list = parseMarketCoupons((cdata as { value?: unknown } | null)?.value)
-        const hit = list.find((c) => c.code === couponCode)
-        if (hit) {
-          hit.uses += 1
-          await admin.from("site_settings").upsert({ key: "marketplace_coupons", value: list }, { onConflict: "key" })
+    if (orderError || !order) {
+      // Roll back the coupon reservation so a failed order never burns a use.
+      if (couponReserved && couponCode) {
+        try {
+          const admin0 = createAdmin()
+          const { data: cdata } = await admin0.from("site_settings").select("value").eq("key", "marketplace_coupons").maybeSingle()
+          const { parseMarketCoupons } = await import("@/lib/marketplace-coupons")
+          const list = parseMarketCoupons((cdata as { value?: unknown } | null)?.value)
+          const hit = list.find((c) => c.code === couponCode)
+          if (hit) {
+            hit.uses = Math.max(0, hit.uses - 1)
+            await admin0.from("site_settings").upsert({ key: "marketplace_coupons", value: list as unknown as never }, { onConflict: "key" })
+          }
+        } catch {
+          // best effort
         }
-      } catch {
-        // counting must never break checkout
       }
+      return NextResponse.json({ error: "Could not create your order." }, { status: 500 })
     }
 
     try {

@@ -1,7 +1,7 @@
 import type { Metadata } from "next"
 import Link from "next/link"
 import { ArrowRight } from "lucide-react"
-import { MARKET_DEPARTMENTS } from "@/lib/marketplace-categories"
+import { fetchMarketplaceTree } from "@/lib/marketplace-category-db"
 import { fetchStoreProducts, fetchMarketBanners } from "@/lib/marketplace-products"
 import { pageBannerOf } from "@/lib/marketplace-banners"
 import { StorePageShell, CollectionHero } from "@/components/marketplace/store-shell"
@@ -44,7 +44,7 @@ export default async function MarketplaceTopStoresPage() {
         links={banners.links}
       />
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {MARKET_DEPARTMENTS.map((d) => {
+        {(await fetchMarketplaceTree()).map((d) => {
           const cover = coverOf(d.slug, d.subs)
           return (
           <Link

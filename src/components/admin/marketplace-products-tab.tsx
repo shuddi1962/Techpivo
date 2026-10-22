@@ -115,6 +115,9 @@ export function MarketplaceProductsTab() {
       .channel(`admin_market_products_${Date.now()}_${Math.random().toString(36).slice(2)}`)
       .on("postgres_changes", { event: "*", schema: "public", table: "affiliate_products" }, () => load())
       .on("postgres_changes", { event: "*", schema: "public", table: "marketplace_orders" }, () => load())
+      // Merch flags, sale timers and the store-wide badge switch live in
+      // site_settings — subscribe so a change in another tab shows up here.
+      .on("postgres_changes", { event: "*", schema: "public", table: "site_settings" }, () => load())
       .subscribe()
     const poll = setInterval(load, 30000)
     const onFocus = () => load()

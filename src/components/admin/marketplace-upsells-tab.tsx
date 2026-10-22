@@ -27,6 +27,10 @@ interface Rec {
 interface Product {
   id: string
   product_name: string
+  product_image_url?: string | null
+  clicks?: number | null
+  conversions?: number | null
+  sale_price?: number | null
 }
 
 interface Report {
@@ -81,7 +85,16 @@ export function MarketplaceUpsellsTab() {
       setMigrated(r.migrated !== false)
     }
     if (p?.products) {
-      setProducts((p.products as Array<{ id: string; product_name: string }>).map((x) => ({ id: x.id, product_name: x.product_name })))
+      setProducts(
+        (p.products as Product[]).map((x) => ({
+          id: x.id,
+          product_name: x.product_name,
+          product_image_url: x.product_image_url ?? null,
+          clicks: x.clicks ?? 0,
+          conversions: x.conversions ?? 0,
+          sale_price: x.sale_price ?? null,
+        }))
+      )
     }
     if (rep) {
       setReport(rep.report || null)
@@ -111,8 +124,19 @@ export function MarketplaceUpsellsTab() {
   const match = (q: string) => {
     const s = q.trim().toLowerCase()
     if (s.length < 2) return []
-    return products.filter((p) => p.product_name.toLowerCase().includes(s)).slice(0, 6)
+    return products.filter((p) => p.product_name.toLowerCase().includes(s)).slice(0, 8)
   }
+
+  // Highest-clicking products first — the admin usually wants to pair a
+  // winner with an add-on.
+  const trending = useMemo(
+    () =>
+      [...products]
+        .filter((p) => (p.clicks || 0) > 0 || (p.conversions || 0) > 0)
+        .sort((a, b) => (b.clicks || 0) - (a.clicks || 0) || (b.conversions || 0) - (a.conversions || 0))
+        .slice(0, 6),
+    [products]
+  )
 
   const add = async () => {
     if (!primaryId || !recId || saving) return
@@ -219,14 +243,24 @@ export function MarketplaceUpsellsTab() {
             {primaryId ? (
               <p className="mt-1 truncate text-xs font-semibold text-emerald-700">Selected: {names[primaryId] || products.find((p) => p.id === primaryId)?.product_name || primaryId.slice(0, 8)}</p>
             ) : (
-              <ul className="mt-1 divide-y divide-slate-100 overflow-hidden rounded-xl border border-slate-200">
+              <ul className="mt-1 max-h-64 divide-y divide-slate-100 overflow-y-auto overflow-x-hidden rounded-xl border border-slate-200">
                 {match(primaryQ).map((p) => (
                   <li key={p.id}>
-                    <button type="button" onClick={() => { setPrimaryId(p.id); setPrimaryQ(p.product_name) }} className="block w-full truncate px-3 py-1.5 text-left text-[13px] hover:bg-amber-50">
-                      {p.product_name}
+                    <button type="button" onClick={() => { setPrimaryId(p.id); setPrimaryQ(p.product_name) }} className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-[13px] hover:bg-amber-50">
+                      {p.product_image_url ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={p.product_image_url} alt="" className="h-9 w-9 shrink-0 rounded-lg border border-slate-200 object-cover" />
+                      ) : (
+                        <span className="h-9 w-9 shrink-0 rounded-lg bg-slate-100" />
+                      )}
+                      <span className="min-w-0 flex-1 truncate font-medium text-slate-700">{p.product_name}</span>
+                      {(p.clicks || 0) > 0 && <span className="shrink-0 text-[10px] font-bold text-slate-400">{p.clicks} clicks</span>}
                     </button>
                   </li>
                 ))}
+                {match(primaryQ).length === 0 && (
+                  <li className="px-3 py-2 text-[13px] text-slate-400">No product matches that name.</li>
+                )}
               </ul>
             )}
           </div>
@@ -241,14 +275,24 @@ export function MarketplaceUpsellsTab() {
             {recId ? (
               <p className="mt-1 truncate text-xs font-semibold text-emerald-700">Selected: {products.find((p) => p.id === recId)?.product_name || recId.slice(0, 8)}</p>
             ) : (
-              <ul className="mt-1 divide-y divide-slate-100 overflow-hidden rounded-xl border border-slate-200">
+              <ul className="mt-1 max-h-64 divide-y divide-slate-100 overflow-y-auto overflow-x-hidden rounded-xl border border-slate-200">
                 {match(recQ).map((p) => (
                   <li key={p.id}>
-                    <button type="button" onClick={() => { setRecId(p.id); setRecQ(p.product_name) }} className="block w-full truncate px-3 py-1.5 text-left text-[13px] hover:bg-amber-50">
-                      {p.product_name}
+                    <button type="button" onClick={() => { setRecId(p.id); setRecQ(p.product_name) }} className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-[13px] hover:bg-amber-50">
+                      {p.product_image_url ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={p.product_image_url} alt="" className="h-9 w-9 shrink-0 rounded-lg border border-slate-200 object-cover" />
+                      ) : (
+                        <span className="h-9 w-9 shrink-0 rounded-lg bg-slate-100" />
+                      )}
+                      <span className="min-w-0 flex-1 truncate font-medium text-slate-700">{p.product_name}</span>
+                      {(p.clicks || 0) > 0 && <span className="shrink-0 text-[10px] font-bold text-slate-400">{p.clicks} clicks</span>}
                     </button>
                   </li>
                 ))}
+                {match(recQ).length === 0 && (
+                  <li className="px-3 py-2 text-[13px] text-slate-400">No product matches that name.</li>
+                )}
               </ul>
             )}
           </div>
@@ -268,6 +312,41 @@ export function MarketplaceUpsellsTab() {
             </button>
           )}
         </div>
+
+        {trending.length > 0 && (
+          <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50/60 p-3">
+            <p className="mb-2 flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-slate-500">
+              <TrendingUp className="h-3.5 w-3.5 text-amber-600" /> Best sellers — tap to pick
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {trending.map((p) => (
+                <div key={p.id} className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white py-1 pl-1 pr-2">
+                  {p.product_image_url ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={p.product_image_url} alt="" className="h-8 w-8 rounded-md object-cover" />
+                  ) : (
+                    <span className="h-8 w-8 rounded-md bg-slate-100" />
+                  )}
+                  <span className="max-w-[160px] truncate text-xs font-semibold text-slate-700">{p.product_name}</span>
+                  <button
+                    type="button"
+                    onClick={() => { setPrimaryId(p.id); setPrimaryQ(p.product_name) }}
+                    className="rounded-md bg-slate-100 px-1.5 py-0.5 text-[10px] font-bold text-slate-500 hover:bg-amber-100 hover:text-amber-700"
+                  >
+                    Primary
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { setRecId(p.id); setRecQ(p.product_name) }}
+                    className="rounded-md bg-slate-100 px-1.5 py-0.5 text-[10px] font-bold text-slate-500 hover:bg-amber-100 hover:text-amber-700"
+                  >
+                    Add-on
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         <div className="mt-4 space-y-3">
           {grouped.length === 0 && (

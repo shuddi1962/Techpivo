@@ -3,9 +3,9 @@
 // Auth: POST /api2.0/v1/authentication/getAccessToken { apiKey } -> accessToken (15 days)
 // Products: GET /api2.0/v1/product/list, /product/query, /product/variant/query
 // Orders: POST /api2.0/v1/shopping/order/createOrder
-// Key resolution: CJ_API_KEY env -> site_settings.cj_api_key -> error (demo mode)
+// Key resolution: CJ_API_KEY env -> site_secrets.cj_api_key -> error (demo mode)
 
-import { createClient } from "@/lib/supabase/admin"
+import { getSecret } from "@/lib/site-secrets"
 
 const CJ_BASE = "https://developers.cjdropshipping.com"
 const TOKEN_CACHE_MS = 1000 * 60 * 60 * 24 * 10 // refresh after 10 days
@@ -20,15 +20,7 @@ export function isCjDemoMode(key: string | null | undefined) {
 
 export async function resolveCjApiKey(): Promise<string | null> {
   if (process.env.CJ_API_KEY) return process.env.CJ_API_KEY
-  try {
-    const supabase = createClient()
-    const { data } = await supabase.from("site_settings").select("value").eq("key", "cj_api_key").maybeSingle()
-    const v = (data as { value?: unknown } | null)?.value
-    if (typeof v === "string" && v.trim()) return v.trim()
-  } catch {
-    // settings table may not exist in some envs — demo mode
-  }
-  return null
+  return getSecret("cj_api_key")
 }
 
 async function getAccessToken(apiKey: string): Promise<string> {
@@ -80,6 +72,47 @@ export interface CjProductSummary {
   productWeight?: number
   categoryFirstName?: string
   categorySecondName?: string
+  /** CJ SKU / SPU (search + debug). */
+  sku?: string
+  /** How many storefronts list this product (a trending signal). */
+  listedNum?: number
+  /** Supplier stock in the warehouse. */
+  inventory?: number
+  /** Third-level CJ category (shown as the leaf). */
+  categoryThirdName?: string
+  /** CJ category ids (used to filter by category). */
+  categoryFirstId?: string
+  categorySecondId?: string
+  categoryThirdId?: string
+}
+
+/**
+ * CJ prices arrive as a number on the legacy endpoint and as a STRING on
+ * the V2 endpoint — sometimes a RANGE ("11.85-20.00"). `Number("11.85-20")`
+ * is NaN, which is exactly how "$NaN" ended up on imported products.
+ * Parse defensively and always return a finite number.
+ */
+export function parseCjPrice(value: unknown): number {
+  if (typeof value === "number") return Number.isFinite(value) ? value : 0
+  if (typeof value !== "string") return 0
+  const first = value.match(/-?\d+(?:\.\d+)?/g)
+  if (!first || first.length === 0) return 0
+  const nums = first.map(Number).filter((n) => Number.isFinite(n))
+  if (nums.length === 0) return 0
+  // A range means "from X" — the cheapest variant is our cost basis.
+  return Math.min(...nums)
+}
+
+/** Does this product actually match what the admin searched for? */
+export function cjProductMatchesQuery(p: CjProductSummary, query: string): boolean {
+  const q = query.trim().toLowerCase()
+  if (!q) return true
+  const haystack = `${p.productNameEn || ""} ${p.sku || ""} ${p.categoryFirstName || ""} ${p.categorySecondName || ""}`.toLowerCase()
+  if (haystack.includes(q)) return true
+  const tokens = q.split(/[^a-z0-9]+/i).filter((t) => t.length > 1)
+  if (tokens.length === 0) return true
+  // Every meaningful token must appear somewhere in the product.
+  return tokens.every((t) => haystack.includes(t))
 }
 
 export interface CjListResult {
@@ -119,6 +152,186 @@ export async function cjListProducts(opts: {
   if (opts.categoryFirstId) params.set("categoryFirstId", opts.categoryFirstId)
   if (opts.categorySecondId) params.set("categorySecondId", opts.categorySecondId)
   return cjFetch<CjListResult>(`/api2.0/v1/product/list?${params.toString()}`, { method: "GET", token })
+}
+
+/* ------------------------------------------------------------------ *
+ * Product List V2 — the supported search endpoint.
+ *
+ * The legacy /product/list endpoint is DEPRECATED by CJ and does not
+ * support keyword search, which is why searching in Admin → CJ Import used
+ * to return unrelated products. V2 is elasticsearch-backed and takes
+ * `keyWord` (name OR SKU), category filters, sorting and the trending /
+ * new product flags.
+ * ------------------------------------------------------------------ */
+export type CjSort = "match" | "listings" | "price_asc" | "price_desc" | "new"
+
+export interface CjListV2Result {
+  list: CjProductSummary[]
+  total: number
+  page: number
+  pages: number
+  relatedCategories: Array<{ id: string; name: string }>
+  source: "v2" | "v1"
+}
+
+interface CjV2Product {
+  id?: string
+  nameEn?: string
+  sku?: string
+  spu?: string
+  bigImage?: string
+  sellPrice?: string | number
+  nowPrice?: string | number
+  discountPrice?: string | number
+  listedNum?: number
+  warehouseInventoryNum?: number
+  oneCategoryId?: string
+  oneCategoryName?: string
+  twoCategoryId?: string
+  twoCategoryName?: string
+  categoryId?: string
+  threeCategoryName?: string
+}
+
+function normalizeV2Product(p: CjV2Product): CjProductSummary | null {
+  const pid = String(p?.id || "").trim()
+  if (!pid) return null
+  const price =
+    parseCjPrice(p.sellPrice) || parseCjPrice(p.nowPrice) || parseCjPrice(p.discountPrice)
+  return {
+    pid,
+    productNameEn: p.nameEn || "",
+    productImage: p.bigImage || "",
+    sellPrice: price,
+    sku: p.sku || p.spu || "",
+    listedNum: Number(p.listedNum) || 0,
+    inventory: Number(p.warehouseInventoryNum) || 0,
+    categoryFirstName: p.oneCategoryName || "",
+    categorySecondName: p.twoCategoryName || "",
+    categoryThirdName: p.threeCategoryName || "",
+    categoryFirstId: p.oneCategoryId || "",
+    categorySecondId: p.twoCategoryId || "",
+    categoryThirdId: p.categoryId || "",
+  }
+}
+
+export async function cjListProductsV2(opts: {
+  keyWord?: string
+  page?: number
+  size?: number
+  /** CJ third-level category id. */
+  categoryId?: string
+  /** CJ second-level category ids. */
+  lv2categoryList?: string[]
+  /** 0 = trending, 1 = new, 2 = video, 3 = slow-moving. */
+  productFlag?: number
+  /** 0 = best match, 1 = listing count, 2 = price, 3 = newest. */
+  orderBy?: number
+  sort?: "asc" | "desc"
+  countryCode?: string
+}): Promise<CjListV2Result> {
+  const key = await resolveCjApiKey()
+  if (!key) throw new Error("CJ API key not configured")
+  const token = await getAccessToken(key)
+  const params = new URLSearchParams({
+    page: String(Math.min(Math.max(opts.page ?? 1, 1), 1000)),
+    size: String(Math.min(Math.max(opts.size ?? 20, 1), 100)),
+  })
+  if (opts.keyWord) params.set("keyWord", opts.keyWord.slice(0, 200))
+  if (opts.categoryId) params.set("categoryId", opts.categoryId)
+  if (opts.lv2categoryList && opts.lv2categoryList.length > 0) {
+    params.set("lv2categoryList", opts.lv2categoryList.join(","))
+  }
+  if (typeof opts.productFlag === "number") params.set("productFlag", String(opts.productFlag))
+  if (typeof opts.orderBy === "number") params.set("orderBy", String(opts.orderBy))
+  if (opts.sort) params.set("sort", opts.sort)
+  if (opts.countryCode) params.set("countryCode", opts.countryCode)
+  params.set("features", "enable_category")
+
+  const data = await cjFetch<{
+    content?: Array<{
+      productList?: CjV2Product[]
+      relatedCategoryList?: Array<{ categoryId?: string; categoryName?: string }>
+    }>
+    totalRecords?: number
+    totalPages?: number
+    pageNumber?: number
+    pageSize?: number
+  }>(`/api2.0/v1/product/listV2?${params.toString()}`, { method: "GET", token })
+
+  const content = data?.content || []
+  const list: CjProductSummary[] = []
+  const relatedCategories: Array<{ id: string; name: string }> = []
+  for (const block of content) {
+    for (const raw of block.productList || []) {
+      const p = normalizeV2Product(raw)
+      if (p) list.push(p)
+    }
+    for (const c of block.relatedCategoryList || []) {
+      if (c?.categoryId) relatedCategories.push({ id: c.categoryId, name: c.categoryName || "" })
+    }
+  }
+  return {
+    list,
+    total: Number(data?.totalRecords) || list.length,
+    page: Number(data?.pageNumber) || opts.page || 1,
+    pages: Number(data?.totalPages) || 1,
+    relatedCategories,
+    source: "v2",
+  }
+}
+
+/** Search the supplier catalog (V2 first, legacy endpoint as a fallback). */
+export async function cjSearchProducts(opts: {
+  keyWord?: string
+  page?: number
+  size?: number
+  sort?: CjSort
+  flag?: "trending" | "new"
+  categoryId?: string
+  lv2categoryList?: string[]
+}): Promise<CjListV2Result> {
+  const orderBy =
+    opts.sort === "listings" ? 1 : opts.sort === "price_asc" || opts.sort === "price_desc" ? 2 : opts.sort === "new" ? 3 : 0
+  const sort = opts.sort === "price_asc" ? "asc" : "desc"
+  const productFlag = opts.flag === "trending" ? 0 : opts.flag === "new" ? 1 : undefined
+  try {
+    const res = await cjListProductsV2({
+      keyWord: opts.keyWord,
+      page: opts.page,
+      size: opts.size,
+      orderBy,
+      sort,
+      productFlag,
+      categoryId: opts.categoryId,
+      lv2categoryList: opts.lv2categoryList,
+    })
+    return res
+  } catch (e) {
+    // Fall back to the deprecated endpoint (still returns usable rows) and
+    // filter locally so the admin never sees unrelated products.
+    const legacy = await cjListProducts({
+      pageNum: opts.page ?? 1,
+      pageSize: opts.size ?? 20,
+      productNameEn: opts.keyWord,
+    })
+    const list = (legacy.list || [])
+      .map((p) => ({
+        ...p,
+        sellPrice: parseCjPrice(p.sellPrice),
+        productNameEn: p.productNameEn || "",
+        productImage: p.productImage || "",
+      }))
+      .filter((p) => cjProductMatchesQuery(p, opts.keyWord || ""))
+    return {
+      list,
+      total: legacy.total ?? list.length,
+      page: opts.page ?? 1,
+      pages: 1,
+      relatedCategories: [],
+      source: "v1",
+    }
+  }
 }
 
 export async function cjGetProduct(pid: string): Promise<unknown> {
@@ -392,16 +605,24 @@ export function withFreightMarkup(fee: number): number {
   return Math.round(Number(fee) * FREIGHT_MARKUP * 100) / 100
 }
 
-export function mapCjToAffiliate(cj: CjProductSummary, extra?: { categorySlug?: string | null; subcategorySlug?: string | null }) {
-  const cost = Number(cj.sellPrice ?? 0)
-  const sale = cost ? withMargin(cost) : null
-  const original = cost && sale ? Math.max(Math.round(cost * MARKET_COMPARE * 100) / 100, Math.round(sale * 1.25 * 100) / 100) : null
+export function mapCjToAffiliate(
+  cj: CjProductSummary,
+  extra?: { categorySlug?: string | null; subcategorySlug?: string | null; cjVid?: string | null }
+) {
+  const cost = parseCjPrice(cj.sellPrice)
+  const sale = cost > 0 ? withMargin(cost) : null
+  const original = cost > 0 && sale ? Math.max(Math.round(cost * MARKET_COMPARE * 100) / 100, Math.round(sale * 1.25 * 100) / 100) : null
+  const name = (cj.productNameEn || `CJ Product ${cj.pid}`).slice(0, 200)
   return {
     program_key: "cjdropshipping",
-    product_name: (cj.productNameEn || `CJ Product ${cj.pid}`).slice(0, 200),
-    product_description: [cj.categoryFirstName, cj.categorySecondName].filter(Boolean).join(" / ") || null,
+    product_name: name,
+    product_description:
+      [cj.categoryFirstName, cj.categorySecondName, cj.categoryThirdName].filter(Boolean).join(" / ") ||
+      cj.sku ||
+      null,
     product_image_url: cj.productImage || null,
-    affiliate_link: `https://cjdropshipping.com/`,
+    // The real supplier product page (CJ serves /products/{pid}).
+    affiliate_link: `https://cjdropshipping.com/products/${encodeURIComponent(cj.pid)}`,
     original_price: original,
     sale_price: sale,
     is_active: true,
@@ -409,5 +630,6 @@ export function mapCjToAffiliate(cj: CjProductSummary, extra?: { categorySlug?: 
     category_slug: extra?.categorySlug || null,
     subcategory_slug: extra?.subcategorySlug || null,
     cj_pid: cj.pid,
+    cj_vid: extra?.cjVid || null,
   }
 }

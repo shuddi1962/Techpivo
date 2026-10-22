@@ -1,15 +1,12 @@
 import { NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/admin"
+import { getSecret } from "@/lib/site-secrets"
 import { SITE_URL } from "@/lib/constants"
 
 async function getOpenRouterApiKey() {
-  const supabase = createClient()
-  const { data } = await supabase
-    .from("site_settings")
-    .select("value")
-    .eq("key", "openrouter_api_key")
-    .single()
-  return data?.value || process.env.OPENROUTER_API_KEY
+  // Server-only secret store first, then the environment variable.
+  const stored = await getSecret("openrouter_api_key")
+  return stored || process.env.OPENROUTER_API_KEY
 }
 
 export async function GET() {

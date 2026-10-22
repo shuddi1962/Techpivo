@@ -38,6 +38,7 @@ export function MarketplacePaymentsTab() {
   const [webhook, setWebhook] = useState("")
   const [saving, setSaving] = useState(false)
   const [notice, setNotice] = useState("")
+  const [noticeTone, setNoticeTone] = useState<"success" | "warn" | "info">("info")
   const [loading, setLoading] = useState(true)
 
   const load = async () => {
@@ -63,13 +64,15 @@ export function MarketplacePaymentsTab() {
         body: JSON.stringify({ action: "pay-save-keys", secret: secret.trim(), public: pub.trim(), encryption: encryption.trim(), webhook: webhook.trim() }),
       }).then((x) => x.json())
       if (r?.success) {
-        setNotice("Payment keys saved — checkout can now accept live payments.")
+        setNoticeTone("success")
+        setNotice(r?.validation?.message || "Payment keys saved — checkout can now accept live payments.")
         setSecret("")
         setPub("")
         setEncryption("")
         setWebhook("")
         load()
       } else {
+        setNoticeTone("warn")
         setNotice(r?.error || "Save failed.")
       }
     } finally {
@@ -100,7 +103,7 @@ export function MarketplacePaymentsTab() {
         }
       />
 
-      {notice && <MarketNotice tone={notice.startsWith("Payment keys saved") ? "success" : "info"}>{notice}</MarketNotice>}
+      {notice && <MarketNotice tone={noticeTone}>{notice}</MarketNotice>}
 
       {!status?.secret && (
         <MarketNotice tone="warn">
@@ -116,6 +119,14 @@ export function MarketplacePaymentsTab() {
       {live && (
         <MarketNotice tone="success">
           Live keys active — every paid checkout settles to your account in real money.
+        </MarketNotice>
+      )}
+      {status?.secret && !status?.webhook && (
+        <MarketNotice tone="info">
+          <strong>Webhooks are not set up yet.</strong> Without the Secret Hash, orders are only confirmed when the
+          buyer returns from the payment page. Copy the “Secret Hash” from your Flutterwave dashboard
+          (Settings → API Keys) into the webhook field below and point the webhook URL at
+          <code className="rounded bg-slate-200/70 px-1">https://techpivo.com/api/marketplace/webhook</code>.
         </MarketNotice>
       )}
 
@@ -184,9 +195,10 @@ export function MarketplacePaymentsTab() {
             </a>
           </div>
           <p className="pt-1 text-xs leading-relaxed text-slate-500">
-            Paste test keys to trial checkout, then swap to live keys. Stored in{" "}
-            <code className="rounded bg-slate-100 px-1">site_settings</code> (server-only reads). Point your
-            payment dashboard webhook at{" "}
+            Paste test keys to trial checkout, then swap to live keys. Every key is stored in the server-only
+            <code className="rounded bg-slate-100 px-1">site_secrets</code> table — never in a publicly readable
+            setting, so nobody can copy your keys. The secret key is verified against the gateway the moment you save
+            it, so a typo can never silently break checkout. Point your payment dashboard webhook at
             <code className="rounded bg-slate-100 px-1">https://techpivo.com/api/marketplace/webhook</code>.
           </p>
         </div>

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { revalidatePath } from "next/cache"
 import { requireAdminRole } from "@/lib/admin-auth"
 import { createClient } from "@/lib/supabase/server"
-import { cjListProducts, cjStatus, mapCjToAffiliate, resolveCjApiKey } from "@/lib/cj"
+import { cjListProducts, cjProductMatchesQuery, cjSearchProducts, cjStatus, mapCjToAffiliate, resolveCjApiKey } from "@/lib/cj"
 
 // Bust the storefront ISR cache after every admin write, so the next
 // refresh renders the new state — never the previous page first.
@@ -32,33 +32,46 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ products: data || [] })
     }
     if (section === "categories") {
-      const { data, error } = await supabase
-        .from("marketplace_categories")
-        .select("*")
-        .order("sort", { ascending: true })
-      if (error) {
-        // table not migrated yet — fall back to code tree
-        const { MARKET_DEPARTMENTS } = await import("@/lib/marketplace-categories")
-        return NextResponse.json({ categories: [], tree: MARKET_DEPARTMENTS, migrated: false })
-      }
+      const { fetchMarketplaceCategoryRows, buildMarketplaceTree } = await import("@/lib/marketplace-category-db")
+      const rows = await fetchMarketplaceCategoryRows(true)
       const { MARKET_DEPARTMENTS } = await import("@/lib/marketplace-categories")
-      return NextResponse.json({ categories: data || [], tree: MARKET_DEPARTMENTS, migrated: true })
+      const active = rows.filter((r) => r.is_active)
+      const tree = buildMarketplaceTree(active)
+      // treeAll keeps HIDDEN categories in the admin tree so they can be
+      // renamed, re-published or deleted — a hidden row that vanishes from
+      // the editor can never be brought back.
+      const treeAll = buildMarketplaceTree(rows)
+      return NextResponse.json({
+        rows,
+        tree: tree.length > 0 ? tree : MARKET_DEPARTMENTS,
+        treeAll: treeAll.length > 0 ? treeAll : MARKET_DEPARTMENTS,
+        dbBacked: rows.length > 0,
+        codeTree: MARKET_DEPARTMENTS,
+        counts: {
+          departments: active.filter((r) => r.depth === 0).length,
+          subs: active.filter((r) => r.depth === 1).length,
+          leaves: active.filter((r) => r.depth === 2).length,
+          hidden: rows.length - active.length,
+        },
+      })
     }
     if (section === "cj-status") {
       const status = await cjStatus()
       return NextResponse.json({ status })
     }
     if (section === "pay-status") {
-      const { data } = await supabase.from("site_settings").select("key").in("key", ["flutterwave_secret_key", "flutterwave_public_key", "flutterwave_encryption_key", "flutterwave_secret_hash"])
-      const keys = new Set(((data || []) as Array<{ key: string }>).map((r) => r.key))
-      const secretKey = keys.has("flutterwave_secret_key")
+      const { getSecret } = await import("@/lib/site-secrets")
+      const [secret, pub, encryption, webhook] = await Promise.all([
+        getSecret("flutterwave_secret_key"),
+        getSecret("flutterwave_public_key"),
+        getSecret("flutterwave_encryption_key"),
+        getSecret("flutterwave_secret_hash"),
+      ])
       let testMode: boolean | null = null
-      if (secretKey) {
-        const { data: sv } = await supabase.from("site_settings").select("value").eq("key", "flutterwave_secret_key").maybeSingle()
-        const v = (sv as { value?: unknown } | null)?.value
-        if (typeof v === "string" && v.trim()) testMode = v.includes("_TEST")
-      }
-      return NextResponse.json({ status: { secret: secretKey, public: keys.has("flutterwave_public_key"), encryption: keys.has("flutterwave_encryption_key"), webhook: keys.has("flutterwave_secret_hash"), testMode } })
+      if (secret) testMode = secret.includes("_TEST")
+      return NextResponse.json({
+        status: { secret: !!secret, public: !!pub, encryption: !!encryption, webhook: !!webhook, testMode },
+      })
     }
     if (section === "orders") {
       const { data, error } = await supabase
@@ -340,14 +353,51 @@ export async function GET(request: NextRequest) {
         return NextResponse.json({ report: null, migrated: false })
       }
     }
-    if (section === "cj-list") {      const key = await resolveCjApiKey()
-      if (!key) return NextResponse.json({ demo: true, list: [], message: "CJ API key not set" })
-      const list = await cjListProducts({
-        pageNum: Number(url.searchParams.get("page") || "1"),
-        pageSize: Number(url.searchParams.get("size") || "20"),
-        productNameEn: url.searchParams.get("q") || undefined,
+    if (section === "cj-list") {
+      const key = await resolveCjApiKey()
+      if (!key) return NextResponse.json({ demo: true, list: [], total: 0, page: 1, pages: 1 })
+      const q = String(url.searchParams.get("q") || "").trim()
+      const page = Math.max(1, Number(url.searchParams.get("page") || "1"))
+      const size = Math.min(100, Math.max(1, Number(url.searchParams.get("size") || "20")))
+      const sort = (url.searchParams.get("sort") || "match") as "match" | "listings" | "price_asc" | "price_desc" | "new"
+      const flag = (url.searchParams.get("flag") || "") as "" | "trending" | "new"
+      const res = await cjSearchProducts({ keyWord: q || undefined, page, size, sort, flag: flag || undefined })
+      // Guarantee the list matches what was searched for — never show an
+      // unrelated product just because the supplier API was fuzzy.
+      const list = q ? res.list.filter((p) => cjProductMatchesQuery(p, q)) : res.list
+      return NextResponse.json({
+        demo: false,
+        list,
+        total: res.total,
+        page: res.page,
+        pages: res.pages,
+        source: res.source,
+        related: res.relatedCategories,
+        matched: list.length,
       })
-      return NextResponse.json({ demo: false, ...list })
+    }
+    // Our own best sellers for a department (no supplier call — instant).
+    if (section === "cj-top") {
+      const category = String(url.searchParams.get("category") || "").trim()
+      const subcategory = String(url.searchParams.get("subcategory") || "").trim()
+      let q = supabase
+        .from("affiliate_products")
+        .select("id,product_name,product_image_url,sale_price,original_price,clicks,conversions,category_slug,subcategory_slug,is_active")
+        .eq("is_active", true)
+        .limit(300)
+      if (category) q = q.eq("category_slug", category)
+      if (subcategory) q = q.eq("subcategory_slug", subcategory)
+      const { data } = await q
+      const rows = ((data || []) as Array<Record<string, unknown>>).map((p) => ({
+        id: p.id,
+        name: p.product_name,
+        image: p.product_image_url,
+        price: Number(p.sale_price) || 0,
+        clicks: Number(p.clicks) || 0,
+        conversions: Number(p.conversions) || 0,
+      }))
+      rows.sort((a, b) => b.clicks - a.clicks || b.conversions - a.conversions)
+      return NextResponse.json({ top: rows.slice(0, 8) })
     }
     // overview
     const { data: products } = await supabase.from("affiliate_products").select("id,is_active,is_featured,clicks,conversions,sale_price,program_key,created_at").limit(500)
@@ -374,18 +424,16 @@ export async function POST(request: NextRequest) {
   const supabase = await createClient()
   try {
     const body = await request.json()
-    // Save CJ API key to site_settings
+    // Save CJ API key to the server-only secret store
     if (body.action === "cj-save-key") {
       const key = String(body.apiKey || "").trim()
       if (!key) return NextResponse.json({ error: "API key required" }, { status: 400 })
-      const { error } = await supabase
-        .from("site_settings")
-        .upsert({ key: "cj_api_key", value: key as unknown as never }, { onConflict: "key" })
-      if (error) throw error
+      const { setSecret } = await import("@/lib/site-secrets")
+      await setSecret("cj_api_key", key)
       const status = await cjStatus()
       return NextResponse.json({ success: true, status })
     }
-    // Save payment gateway keys to site_settings
+    // Save payment gateway keys to the server-only secret store
     if (body.action === "pay-save-keys") {
       const secret = String(body.secret || "").trim()
       const pub = String(body.public || "").trim()
@@ -393,15 +441,22 @@ export async function POST(request: NextRequest) {
       const webhook = String(body.webhook || "").trim()
       if (secret && !secret.startsWith("FLWSECK")) return NextResponse.json({ error: "That secret key looks invalid — check and retry." }, { status: 400 })
       if (pub && !pub.startsWith("FLWPUBK")) return NextResponse.json({ error: "That public key looks invalid — check and retry." }, { status: 400 })
-      const rows = []
-      if (secret) rows.push({ key: "flutterwave_secret_key", value: secret as unknown as never })
-      if (pub) rows.push({ key: "flutterwave_public_key", value: pub as unknown as never })
-      if (encryption) rows.push({ key: "flutterwave_encryption_key", value: encryption as unknown as never })
-      if (webhook) rows.push({ key: "flutterwave_secret_hash", value: webhook as unknown as never })
-      if (rows.length === 0) return NextResponse.json({ error: "Paste at least one key." }, { status: 400 })
-      const { error } = await supabase.from("site_settings").upsert(rows, { onConflict: "key" })
-      if (error) throw error
-      return NextResponse.json({ success: true })
+      if (secret.length < 20) return NextResponse.json({ error: "That secret key is too short to be a real gateway key." }, { status: 400 })
+      if (!secret && !pub && !encryption && !webhook) return NextResponse.json({ error: "Paste at least one key." }, { status: 400 })
+      // Verify the secret against the gateway BEFORE storing it, so a typo
+      // never leaves checkout broken.
+      let validation: { ok: boolean; message: string; mode: string } | null = null
+      if (secret) {
+        const { flutterwaveValidateSecret } = await import("@/lib/flutterwave")
+        validation = await flutterwaveValidateSecret(secret)
+        if (!validation.ok) return NextResponse.json({ error: validation.message, validation }, { status: 400 })
+      }
+      const { setSecret } = await import("@/lib/site-secrets")
+      if (secret) await setSecret("flutterwave_secret_key", secret)
+      if (pub) await setSecret("flutterwave_public_key", pub)
+      if (encryption) await setSecret("flutterwave_encryption_key", encryption)
+      if (webhook) await setSecret("flutterwave_secret_hash", webhook)
+      return NextResponse.json({ success: true, validation })
     }
     // Update order status (fulfillment pipeline)
     if (body.action === "order-status") {
@@ -423,9 +478,15 @@ export async function POST(request: NextRequest) {
       const { fulfillMarketplaceOrder } = await import("@/lib/marketplace-fulfill")
       const { data: order, error: fetchError } = await supabase.from("marketplace_orders").select("*").eq("id", id).maybeSingle()
       if (fetchError || !order) return NextResponse.json({ error: "Order not found." }, { status: 404 })
-      const o = order as { paystack_status?: string; cj_order_id?: string | null; status?: string }
+      const o = order as { paystack_status?: string; cj_order_id?: string | null; status?: string; items?: Array<{ cj_sent?: boolean }> }
       if (o.paystack_status !== "paid") return NextResponse.json({ error: "Only paid orders can be fulfilled." }, { status: 400 })
-      if (o.cj_order_id) return NextResponse.json({ error: "Already sent to CJ.", cj_order_id: o.cj_order_id }, { status: 400 })
+      // Lines already sent to the supplier are never re-sent — a retry only
+      // ships what is still outstanding (partial fulfillment).
+      const items = Array.isArray(o.items) ? o.items : []
+      const remaining = items.filter((l) => l?.cj_sent !== true)
+      if (o.cj_order_id && remaining.length === 0) {
+        return NextResponse.json({ error: "Already sent to CJ.", cj_order_id: o.cj_order_id }, { status: 400 })
+      }
       const result = await fulfillMarketplaceOrder(supabase, order as never)
       if (result.cj_order_id) return NextResponse.json({ success: true, cj_order_id: result.cj_order_id })
       return NextResponse.json({ error: result.error || "Fulfillment failed — see order details." }, { status: 502 })
@@ -441,9 +502,13 @@ export async function POST(request: NextRequest) {
       }
       const { data: order, error: fetchError } = await supabase.from("marketplace_orders").select("id,items,cj_order_id").eq("id", id).maybeSingle()
       if (fetchError || !order) return NextResponse.json({ error: "Order not found." }, { status: 404 })
-      const o = order as { cj_order_id?: string | null; items?: Array<{ id?: string; cj_vid?: string | null }> }
-      if (o.cj_order_id) return NextResponse.json({ error: "Already sent to CJ — variants are locked." }, { status: 400 })
+      const o = order as { cj_order_id?: string | null; items?: Array<{ id?: string; cj_vid?: string | null; cj_sent?: boolean }> }
       const items = Array.isArray(o.items) ? o.items : []
+      const target = items.find((l) => l?.id === lineId)
+      // A line already handed to the supplier can never be changed.
+      if (target?.cj_sent === true) {
+        return NextResponse.json({ error: "That line was already sent to CJ — it can no longer be changed." }, { status: 400 })
+      }
       let touched = 0
       const next = items.map((l) => {
         if (l?.id === lineId) {
@@ -584,23 +649,217 @@ export async function POST(request: NextRequest) {
       revalidateStore()
       return NextResponse.json({ success: true, store })
     }
+    // ── Category tree CRUD (Admin → Marketplace → Categories) ───────────
+    if (body.action === "category-sync") {
+      const { codeTreeRows, clearMarketplaceTreeCache } = await import("@/lib/marketplace-category-db")
+      const rows = codeTreeRows()
+      // Insert-only: an admin's renames/hides are never overwritten.
+      const { error } = await supabase
+        .from("marketplace_categories")
+        .upsert(rows as unknown as never[], { onConflict: "slug", ignoreDuplicates: true })
+      if (error) throw error
+      clearMarketplaceTreeCache()
+      revalidateStore()
+      return NextResponse.json({ success: true, synced: rows.length })
+    }
+    if (body.action === "category-add") {
+      const { slugify } = await import("@/lib/marketplace-categories")
+      const { depthOfLevel, clearMarketplaceTreeCache } = await import("@/lib/marketplace-category-db")
+      const name = String(body.name || "").trim().slice(0, 80)
+      if (!name) return NextResponse.json({ error: "Name is required." }, { status: 400 })
+      const level = (["dept", "sub", "leaf"].includes(body.level) ? body.level : "leaf") as "dept" | "sub" | "leaf"
+      const parent = body.parent_slug ? String(body.parent_slug).slice(0, 80) : null
+      if (level !== "dept" && !parent) {
+        return NextResponse.json({ error: "Pick the parent category first." }, { status: 400 })
+      }
+      const slug = slugify(String(body.slug || name))
+      if (!slug) return NextResponse.json({ error: "That name has no usable slug." }, { status: 400 })
+      const { data: dupe } = await supabase.from("marketplace_categories").select("slug").eq("slug", slug).maybeSingle()
+      if (dupe) return NextResponse.json({ error: `"${slug}" already exists.` }, { status: 400 })
+      const { data: maxRow } = await supabase
+        .from("marketplace_categories")
+        .select("sort")
+        .order("sort", { ascending: false })
+        .limit(1)
+        .maybeSingle()
+      const sort = Number((maxRow as { sort?: number } | null)?.sort ?? 0) + 1
+      const { data, error } = await supabase
+        .from("marketplace_categories")
+        .insert({
+          slug,
+          name,
+          parent_slug: parent,
+          depth: depthOfLevel(level),
+          icon: body.icon ? String(body.icon).slice(0, 40) : null,
+          image_url: body.image ? String(body.image).slice(0, 400) : null,
+          sort,
+          is_active: true,
+        })
+        .select()
+        .single()
+      if (error) throw error
+      clearMarketplaceTreeCache()
+      revalidateStore()
+      return NextResponse.json({ success: true, row: data })
+    }
+    if (body.action === "category-update") {
+      const { slugify } = await import("@/lib/marketplace-categories")
+      const { clearMarketplaceTreeCache } = await import("@/lib/marketplace-category-db")
+      const slug = String(body.slug || "")
+      if (!slug || slug.length > 90) return NextResponse.json({ error: "Valid category slug required." }, { status: 400 })
+      const patch: Record<string, unknown> = {}
+      if (typeof body.name === "string" && body.name.trim()) patch.name = body.name.trim().slice(0, 80)
+      if (typeof body.new_slug === "string" && body.new_slug.trim()) {
+        const nextSlug = slugify(body.new_slug)
+        if (!nextSlug) return NextResponse.json({ error: "That slug is not usable." }, { status: 400 })
+        const { data: dupe } = await supabase.from("marketplace_categories").select("slug").eq("slug", nextSlug).neq("slug", slug).maybeSingle()
+        if (dupe) return NextResponse.json({ error: `"${nextSlug}" already exists.` }, { status: 400 })
+        patch.slug = nextSlug
+      }
+      if (typeof body.is_active === "boolean") patch.is_active = body.is_active
+      if (typeof body.sort === "number" && Number.isFinite(body.sort)) patch.sort = Math.round(body.sort)
+      if (typeof body.icon === "string") patch.icon = body.icon.slice(0, 40) || null
+      if (typeof body.image === "string") patch.image_url = body.image.slice(0, 400) || null
+      if (Object.keys(patch).length === 0) return NextResponse.json({ error: "Nothing to update." }, { status: 400 })
+      const nextSlug = typeof patch.slug === "string" ? patch.slug : null
+      // A rename must carry the children with it: the parent_slug FK is not
+      // deferrable, so the children are detached, the parent is renamed and
+      // the children are re-attached to the new slug.
+      let childSlugs: string[] = []
+      if (nextSlug && nextSlug !== slug) {
+        const { data: kids } = await supabase.from("marketplace_categories").select("slug").eq("parent_slug", slug)
+        childSlugs = (kids || []).map((k) => (k as { slug: string }).slug)
+        if (childSlugs.length > 0) {
+          await supabase.from("marketplace_categories").update({ parent_slug: null }).eq("parent_slug", slug)
+        }
+      }
+      const { data, error } = await supabase.from("marketplace_categories").update(patch).eq("slug", slug).select().single()
+      if (error) {
+        // Roll the detached children back onto the original parent.
+        if (childSlugs.length > 0) {
+          await supabase.from("marketplace_categories").update({ parent_slug: slug }).in("slug", childSlugs)
+        }
+        throw error
+      }
+      if (nextSlug && nextSlug !== slug) {
+        // Re-attach the children to the renamed parent.
+        if (childSlugs.length > 0) {
+          await supabase.from("marketplace_categories").update({ parent_slug: nextSlug }).in("slug", childSlugs)
+        }
+        await supabase.from("affiliate_products").update({ category_slug: nextSlug }).eq("category_slug", slug)
+        await supabase.from("affiliate_products").update({ subcategory_slug: nextSlug }).eq("subcategory_slug", slug)
+        // Department artwork + sidebar artwork are keyed by slug.
+        const { data: bannerRow } = await supabase
+          .from("site_settings")
+          .select("value")
+          .eq("key", "marketplace_banners")
+          .maybeSingle()
+        const raw = (bannerRow as { value?: unknown } | null)?.value
+        if (raw && typeof raw === "object") {
+          const banners = raw as Record<string, unknown>
+          let touched = false
+          for (const bucket of ["departments", "sidebar_banners"]) {
+            const map = banners[bucket]
+            if (!map || typeof map !== "object" || Array.isArray(map)) continue
+            const rec = map as Record<string, unknown>
+            if (rec[slug] !== undefined) {
+              rec[nextSlug] = rec[slug]
+              delete rec[slug]
+              touched = true
+            }
+          }
+          if (touched) {
+            await supabase
+              .from("site_settings")
+              .upsert({ key: "marketplace_banners", value: banners as unknown as never }, { onConflict: "key" })
+          }
+        }
+      }
+      clearMarketplaceTreeCache()
+      revalidateStore()
+      return NextResponse.json({ success: true, row: data })
+    }
+    if (body.action === "category-delete") {
+      const { clearMarketplaceTreeCache } = await import("@/lib/marketplace-category-db")
+      const slug = String(body.slug || "")
+      if (!slug || slug.length > 90) return NextResponse.json({ error: "Valid category slug required." }, { status: 400 })
+      const { data: row } = await supabase.from("marketplace_categories").select("slug,depth").eq("slug", slug).maybeSingle()
+      if (!row) return NextResponse.json({ error: "Category not found." }, { status: 404 })
+      const r = row as { slug: string; depth: number }
+      // Remove the branch: a department takes its subcategories, a
+      // subcategory takes its leaves. (The parent FK is ON DELETE SET NULL,
+      // so children must be removed explicitly.)
+      if (r.depth === 0) {
+        const { data: subs } = await supabase.from("marketplace_categories").select("slug").eq("parent_slug", r.slug)
+        for (const s of (subs || []) as Array<{ slug: string }>) {
+          await supabase.from("marketplace_categories").delete().eq("parent_slug", s.slug)
+        }
+        await supabase.from("marketplace_categories").delete().eq("parent_slug", r.slug)
+      } else if (r.depth === 1) {
+        await supabase.from("marketplace_categories").delete().eq("parent_slug", r.slug)
+      }
+      const { error } = await supabase.from("marketplace_categories").delete().eq("slug", slug)
+      if (error) throw error
+      clearMarketplaceTreeCache()
+      revalidateStore()
+      return NextResponse.json({ success: true })
+    }
     if (body.action === "cj-import") {
       const items = Array.isArray(body.items) ? body.items : []
       if (items.length === 0) return NextResponse.json({ error: "No items to import" }, { status: 400 })
-      if (items.length > 50) return NextResponse.json({ error: "Max 50 per batch" }, { status: 400 })
-      const rows = items.map((cj: { pid: string; productNameEn?: string; productImage?: string; sellPrice?: number; categoryFirstName?: string; categorySecondName?: string }) =>
-        mapCjToAffiliate(cj, { categorySlug: body.categorySlug || null, subcategorySlug: body.subcategorySlug || null })
+      if (items.length > 200) return NextResponse.json({ error: "Max 200 per batch" }, { status: 400 })
+      const clean = items
+        .map((cj: { pid?: string; productNameEn?: string; productImage?: string; sellPrice?: number; categoryFirstName?: string; categorySecondName?: string; sku?: string }) => ({
+          pid: String(cj?.pid || "").trim(),
+          productNameEn: cj?.productNameEn || "",
+          productImage: cj?.productImage || "",
+          sellPrice: Number(cj?.sellPrice) || 0,
+          categoryFirstName: cj?.categoryFirstName || "",
+          categorySecondName: cj?.categorySecondName || "",
+          sku: cj?.sku || "",
+        }))
+        .filter((cj: { pid: string }) => !!cj.pid)
+      if (clean.length === 0) return NextResponse.json({ error: "No valid products in the selection." }, { status: 400 })
+
+      // Store the default supplier variant so orders auto-fulfill without
+      // an admin picking a variant by hand. CJ throttles variant lookups, so
+      // we hydrate a limited number per batch.
+      const { cjGetVariants } = await import("@/lib/cj")
+      const withVid = new Map<string, string>()
+      for (const cj of clean.slice(0, 8)) {
+        try {
+          const variants = await cjGetVariants(cj.pid)
+          const priced = (variants || [])
+            .map((v) => ({ vid: String(v.vid || ""), price: Number(v.variantSellPrice) || 0 }))
+            .filter((v) => v.vid)
+            .sort((a, b) => a.price - b.price)
+          if (priced.length > 0) withVid.set(cj.pid, priced[0].vid)
+        } catch {
+          // variant lookup is best effort — the product still imports
+        }
+      }
+
+      const rows = clean.map((cj: { pid: string }) =>
+        mapCjToAffiliate(cj, {
+          categorySlug: body.categorySlug || null,
+          subcategorySlug: body.subcategorySlug || null,
+          cjVid: withVid.get(cj.pid) || null,
+        })
       )
       // skip already-imported pids
       const pids = rows.map((r: { cj_pid: string }) => r.cj_pid)
       const { data: existing } = await supabase.from("affiliate_products").select("cj_pid").in("cj_pid", pids)
       const seen = new Set((existing || []).map((e: { cj_pid: string }) => e.cj_pid))
       const fresh = rows.filter((r: { cj_pid: string }) => !seen.has(r.cj_pid))
-      if (fresh.length === 0) return NextResponse.json({ imported: 0, skipped: rows.length })
+      if (fresh.length === 0) return NextResponse.json({ imported: 0, skipped: rows.length, variants: withVid.size })
       const { data, error } = await supabase.from("affiliate_products").insert(fresh).select("id")
       if (error) throw error
       revalidateStore()
-      return NextResponse.json({ imported: data?.length ?? 0, skipped: rows.length - fresh.length })
+      return NextResponse.json({
+        imported: data?.length ?? 0,
+        skipped: rows.length - fresh.length,
+        variants: withVid.size,
+      })
     }
     const { data, error } = await supabase
       .from("affiliate_products")
