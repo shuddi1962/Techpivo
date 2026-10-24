@@ -4,7 +4,7 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useEffect, useRef, useState } from "react"
 import {
-  Search, Heart, User, ShoppingBasket, Menu, X, ChevronDown,
+  Search, Heart, User, ShoppingBasket, Menu, X, ChevronDown, ChevronRight,
   Flame, MapPin, Phone, Mail, Truck, RefreshCcw, Headset, ShieldCheck,
   ArrowLeftRight,
 } from "lucide-react"
@@ -64,6 +64,8 @@ export function MarketplaceHeader({
   const [query, setQuery] = useState("")
   const [dept, setDept] = useState("")
   const [deptOpen, setDeptOpen] = useState(false)
+  const [openDept, setOpenDept] = useState<string | null>(null)
+  const [openCat, setOpenCat] = useState<string | null>(null)
   const [currency, setCurrency] = useState("USD")
   const [currencyOpen, setCurrencyOpen] = useState(false)
   // Live, admin-editable category tree (falls back to the bundled tree).
@@ -190,12 +192,18 @@ export function MarketplaceHeader({
   // Close the departments mega-menu + currency menu on outside click / Escape.
   useEffect(() => {
     const onDown = (e: MouseEvent) => {
-      if (deptWrapRef.current && !deptWrapRef.current.contains(e.target as Node)) setDeptOpen(false)
+      if (deptWrapRef.current && !deptWrapRef.current.contains(e.target as Node)) {
+        setDeptOpen(false)
+        setOpenDept(null)
+        setOpenCat(null)
+      }
       if (currencyWrapRef.current && !currencyWrapRef.current.contains(e.target as Node)) setCurrencyOpen(false)
     }
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
         setDeptOpen(false)
+        setOpenDept(null)
+        setOpenCat(null)
         setCurrencyOpen(false)
       }
     }
@@ -457,79 +465,139 @@ export function MarketplaceHeader({
                     onMouseEnter={() => setDeptOpen(true)}
                   >
                     <div className="rounded-b-2xl border border-t-0 border-[#E2E8F0] bg-white p-6 shadow-2xl lg:p-8 max-h-[70vh] overflow-y-auto">
-                      <div className="grid grid-cols-2 gap-6 sm:grid-cols-3 lg:grid-cols-6">
-                        {departments.map((d) => (
-                          <div key={d.slug} className="min-w-0">
-                            <Link
-                              href={`/marketplace/category/${d.slug}`}
-                              onClick={() => setDeptOpen(false)}
-                              className="group block overflow-hidden rounded-xl border border-[#E2E8F0]"
-                            >
-                              {deptCovers[d.slug] ? (
-                              // eslint-disable-next-line @next/next/no-img-element
-                              <img src={deptCovers[d.slug]} alt={d.name} loading="lazy" className="h-24 w-full object-cover transition-transform duration-300 group-hover:scale-105" />
-                              ) : (
-                              <span className="flex h-24 w-full items-center justify-center" style={{ background: "linear-gradient(120deg, #23272E 0%, #14171C 100%)" }} aria-hidden>
-                                <span className="text-2xl font-extrabold text-white/25">{d.name.charAt(0)}</span>
-                              </span>
-                              )}
-                            </Link>
-                            <Link
-                              href={`/marketplace/category/${d.slug}`}
-                              onClick={() => setDeptOpen(false)}
-                              className="mt-2.5 block text-sm font-bold text-[#0F172A] hover:text-[#DC2626]"
-                            >
-                              {d.name}
-                            </Link>
-                            <ul className="mt-1.5 space-y-1.5">
-                              {d.subs.slice(0, 6).map((s) => (
-                                <li key={s.slug}>
-                                  <Link
-                                    href={`/marketplace/category/${s.slug}`}
-                                    onClick={() => setDeptOpen(false)}
-                                    className="text-[13px] text-slate-500 transition-colors hover:text-[#DC2626]"
+                      {openCat ? (
+                        (() => {
+                          const dNode = departments.find((d) => d.slug === openDept)
+                          const sNode = dNode?.subs.find((s) => s.slug === openCat)
+                          const items = sNode?.items ?? []
+                          return (
+                            <div>
+                              <button
+                                type="button"
+                                onClick={() => { setOpenDept(null); setDeptOpen(false) }}
+                                className="text-xs font-bold uppercase tracking-wider text-slate-400 hover:text-[#DC2626]"
+                              >
+                                ← Back to {sNode?.name ?? "sub-categories"}
+                              </button>
+                              <h4 className="mt-3 text-sm font-bold text-[#0F172A]">{sNode?.name}</h4>
+                              <ul className="mt-2 space-y-1.5">
+                                {items.map((it) => (
+                                  <li key={it.slug}>
+                                    <Link
+                                      href={`/marketplace/category/${openDept}/${openCat}`}
+                                      onClick={() => { setDeptOpen(false); setOpenDept(null); setOpenCat(null) }}
+                                      className="block rounded-lg border border-[#E2E8F0] px-3 py-2 text-sm text-slate-600 transition-colors hover:border-[#F59E0B] hover:text-[#DC2626]"
+                                    >
+                                      {it.name}
+                                    </Link>
+                                  </li>
+                                ))}
+                              </ul>
+                              {items.length === 0 ? <p className="mt-2 text-sm text-slate-400">No items in this category yet.</p> : null}
+                            </div>
+                          )
+                        })()
+                      ) : openDept ? (
+                        (() => {
+                          const dNode = departments.find((d) => d.slug === openDept)
+                          const subs = dNode?.subs ?? []
+                          return (
+                            <div>
+                              <button
+                                type="button"
+                                onClick={() => { setOpenDept(null); setDeptOpen(false) }}
+                                className="text-xs font-bold uppercase tracking-wider text-slate-400 hover:text-[#DC2626]"
+                              >
+                                ← All departments
+                              </button>
+                              <h4 className="mt-3 text-sm font-bold text-[#0F172A]">{dNode?.name}</h4>
+                              <ul className="mt-2 grid gap-x-6 gap-y-1.5 sm:grid-cols-2 lg:grid-cols-3">
+                                {subs.map((s) => (
+                                  <li key={s.slug}>
+                                    <Link
+                                      href={`/marketplace/category/${openDept}/${s.slug}`}
+                                      onMouseEnter={() => { setDeptOpen(true); setOpenCat(s.slug) }}
+                                      onClick={() => { setDeptOpen(false); setOpenDept(null); setOpenCat(null) }}
+                                      className={`block rounded-lg border px-3 py-2 text-sm font-semibold transition-colors ${openCat === s.slug ? "border-[#F59E0B] bg-[#FFFBEB] text-[#B45309]" : "border-[#E2E8F0] text-[#0F172A] hover:border-[#F59E0B] hover:text-[#DC2626]"}`}
+                                    >
+                                      {s.name}
+                                    </Link>
+                                    {openCat === s.slug ? (
+                                      <ul className="mt-1.5 ml-4 grid gap-1.5 border-l border-[#E2E8F0] pl-3">
+                                        {s.items.map((it) => (
+                                          <li key={it.slug}>
+                                            <Link
+                                              href={`/marketplace/category/${openDept}/${s.slug}`}
+                                              onClick={() => { setDeptOpen(false); setOpenDept(null); setOpenCat(null) }}
+                                              className="block text-[13px] text-slate-500 transition-colors hover:text-[#DC2626]"
+                                            >
+                                              {it.name}
+                                            </Link>
+                                          </li>
+                                        ))}
+                                      </ul>
+                                    ) : null}
+                                  </li>
+                                ))}
+                              </ul>
+                              {subs.length === 0 ? <p className="mt-2 text-sm text-slate-400">No sub-categories yet.</p> : null}
+                            </div>
+                          )
+                        })()
+                      ) : (
+                        <div className="grid gap-6 lg:grid-cols-12">
+                          <div className="lg:col-span-7">
+                            <p className="mb-2 text-[11px] font-bold uppercase tracking-wider text-slate-400">Departments</p>
+                            <ul className="grid gap-1.5">
+                              {departments.map((d) => (
+                                <li key={d.slug}>
+                                  <div
+                                    onMouseEnter={() => { setDeptOpen(true); setOpenDept(d.slug) }}
+                                    className="group flex items-center justify-between gap-2 rounded-lg px-3 py-2 transition-colors hover:bg-slate-50"
                                   >
-                                    {s.name}
-                                  </Link>
+                                    <Link
+                                      href={`/marketplace/category/${d.slug}`}
+                                      onClick={() => { setDeptOpen(false); setOpenDept(null); setOpenCat(null) }}
+                                      className={`text-sm font-semibold transition-colors ${openDept === d.slug ? "text-[#B45309]" : "text-[#0F172A] group-hover:text-[#DC2626]"}`}
+                                    >
+                                      {d.name}
+                                    </Link>
+                                    <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">{d.subs.length} categories</span>
+                                  </div>
                                 </li>
                               ))}
                             </ul>
-                            <Link
-                              href={`/marketplace/category/${d.slug}`}
-                              onClick={() => setDeptOpen(false)}
-                              className="mt-2 inline-block text-xs font-bold text-[#DC2626] hover:underline"
+                          </div>
+                          <div className="lg:col-span-5">
+                            <div
+                              className="flex min-h-[280px] flex-col justify-between overflow-hidden rounded-xl p-5 text-white relative"
+                              style={promoBanners?.flash_image?.trim() ? undefined : { background: `linear-gradient(160deg, ${promoBanners?.flash_bg_from || "#DC2626"} 0%, ${promoBanners?.flash_bg_to || "#7F1D1D"} 100%)` }}
                             >
-                              View all →
-                            </Link>
+                              {promoBanners?.flash_image?.trim() ? (
+                                <>
+                                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                                  <img src={promoBanners.flash_image.trim()} alt="" aria-hidden className="absolute inset-0 h-full w-full object-cover" loading="lazy" />
+                                  <span className="absolute inset-0" style={{ background: "linear-gradient(180deg, rgba(0,0,0,0.15) 0%, rgba(0,0,0,0.72) 100%)" }} />
+                                </>
+                              ) : null}
+                              <div className="relative">
+                                <span className="inline-flex items-center gap-1 rounded bg-[#EF4444] px-2 py-0.5 text-[11px] font-bold uppercase">
+                                  <Flame className="h-3 w-3" /> {promoBanners?.flash_badge || "Flash Sale"}
+                                </span>
+                                <p className="mt-3 text-2xl font-extrabold leading-tight line-clamp-3">{promoBanners?.flash_title || "Up to 50% Off"}</p>
+                                <p className="mt-1 text-xs text-blue-100">{promoBanners?.flash_subtitle || "Verified supplier picks, tracked delivery."}</p>
+                              </div>
+                              <Link
+                                href={promoBanners?.specials_link || "/marketplace#flash-deals"}
+                                onClick={() => setDeptOpen(false)}
+                                className="relative mt-4 rounded-lg bg-[#F59E0B] py-2.5 text-center text-sm font-bold text-[#0F172A] transition-colors hover:bg-[#D97706]"
+                              >
+                                Shop deals
+                              </Link>
+                            </div>
                           </div>
-                        ))}
-                        <div
-                          className="flex min-h-[280px] flex-col justify-between overflow-hidden rounded-xl p-5 text-white relative"
-                          style={promoBanners?.flash_image?.trim() ? undefined : { background: `linear-gradient(160deg, ${promoBanners?.flash_bg_from || "#DC2626"} 0%, ${promoBanners?.flash_bg_to || "#7F1D1D"} 100%)` }}
-                        >
-                          {promoBanners?.flash_image?.trim() ? (
-                            <>
-                              {/* eslint-disable-next-line @next/next/no-img-element */}
-                              <img src={promoBanners.flash_image.trim()} alt="" aria-hidden className="absolute inset-0 h-full w-full object-cover" loading="lazy" />
-                              <span className="absolute inset-0" style={{ background: "linear-gradient(180deg, rgba(0,0,0,0.15) 0%, rgba(0,0,0,0.72) 100%)" }} />
-                            </>
-                          ) : null}
-                          <div className="relative">
-                            <span className="inline-flex items-center gap-1 rounded bg-[#EF4444] px-2 py-0.5 text-[11px] font-bold uppercase">
-                              <Flame className="h-3 w-3" /> {promoBanners?.flash_badge || "Flash Sale"}
-                            </span>
-                            <p className="mt-3 text-2xl font-extrabold leading-tight line-clamp-3">{promoBanners?.flash_title || "Up to 50% Off"}</p>
-                            <p className="mt-1 text-xs text-blue-100">{promoBanners?.flash_subtitle || "Verified supplier picks, tracked delivery."}</p>
-                          </div>
-                          <Link
-                            href={promoBanners?.specials_link || "/marketplace#flash-deals"}
-                            onClick={() => setDeptOpen(false)}
-                            className="relative mt-4 rounded-lg bg-[#F59E0B] py-2.5 text-center text-sm font-bold text-[#0F172A] transition-colors hover:bg-[#D97706]"
-                          >
-                            Shop deals
-                          </Link>
                         </div>
-                      </div>
+                      )}
                     </div>
                   </div>
                 </div>

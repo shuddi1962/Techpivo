@@ -30,12 +30,18 @@ import { SaleCountdown, useSaleEnd } from "./sale-countdown"
 import { isNewPick, isBestsellerPick, showSaleBadge } from "@/lib/marketplace-merch"
 import { useMarketMerch, useSaleBadge } from "./market-flags"
 
+type ScopeRow = {
+  category_slug: string | null;
+  subcategory_slug: string | null;
+  leaf_slug: string | null;
+  product_image_url: string | null;
+}
+
 interface DbProduct {
   id: string
   product_name: string
   product_description: string | null
   product_image_url: string | null
-  affiliate_link: string
   original_price: number | null
   sale_price: number | null
   program_key: string | null
@@ -274,6 +280,7 @@ interface RevStat { sum: number; n: number }
 export function MarketplaceHome() {
   const router = useRouter()
   const [dbProducts, setDbProducts] = useState<DbProduct[]>([])
+  const [scopeRows, setScopeRows] = useState<ScopeRow[]>([])
   const [revStats, setRevStats] = useState<Record<string, RevStat>>({})
   const [tab, setTab] = useState<"new" | "featured" | "best">("new")
   const cart = useMarketCart()
@@ -409,20 +416,31 @@ export function MarketplaceHome() {
     let alive = true
     const load = () => {
       supabase
-        .from("affiliate_products")
-        .select("*")
-        .eq("is_active", true)
-        .order("is_featured", { ascending: false })
+      .from("affiliate_products")
+      .select("id,product_name,product_description,product_image_url,original_price,sale_price,program_key,is_featured,clicks,created_at,category_slug,subcategory_slug")
+      .eq("is_active", true)
+      .order("is_featured", { ascending: false })
         // Ordered by id (a stable pseudo-random spread) so the homepage
         // shows every department of the full catalogue, not just the batch
         // that happened to be imported last.
         .order("id", { ascending: true })
         .limit(240)
         .then(({ data }) => {
-          if (!alive) return
-          if (data) setDbProducts(data as DbProduct[])
-          setLoaded(true)
-        })
+      if (!alive) return
+      if (data) setDbProducts(data as DbProduct[])
+      setLoaded(true)
+    })
+    supabase
+      .from("affiliate_products")
+      .select("category_slug,subcategory_slug,leaf_slug,product_image_url")
+      .eq("is_active", true)
+      .neq("product_image_url", "")
+      .order("is_featured", { ascending: false })
+      .order("id", { ascending: true })
+      .limit(1600)
+      .then(({ data }) => {
+        if (alive && data) setScopeRows(data as ScopeRow[])
+      })
       // Real review aggregates for honest ratings (public read policy).
       supabase
         .from("marketplace_reviews")
@@ -528,7 +546,7 @@ export function MarketplaceHome() {
   const featured = takeFresh(
     grid.filter((p) => p.badge === "Featured"),
     usedIds,
-    6
+    12
   )
   const createdById = useMemo(
     () => new Map(dbProducts.map((d) => [d.id, d.created_at || ""])),
@@ -541,7 +559,7 @@ export function MarketplaceHome() {
         (createdById.get(b.id) || "").localeCompare(createdById.get(a.id) || "")
     ),
     usedIds,
-    6
+    12
   )
   const bestPool = [...grid].sort(
     (a, b) =>
@@ -551,7 +569,7 @@ export function MarketplaceHome() {
       discountRateOf(b) - discountRateOf(a) ||
       b.rating - a.rating
   )
-  const best = takeFresh(bestPool, usedIds, 6)
+  const best = takeFresh(bestPool, usedIds, 12)
   const trending = [...grid]
     .filter((p) => !usedIds.has(p.id))
     .sort(
@@ -648,90 +666,52 @@ export function MarketplaceHome() {
   const strip1Props = slotSliderProps(banners, "strip1_slides")
   const strip2Props = slotSliderProps(banners, "strip2_slides")
 
-  // Shop By Collections: 12 tiles taken from the LIVE tree — the
-  // departments that actually have products plus the busiest
-  // subcategories. With the full CJ catalogue in the store this is no
-  // longer a hand-picked list.
-  const COLLECTION_SLUGS = useMemo(() => {
-    const deptCount = new Map<string, number>()
-    const subCount = new Map<string, number>()
-    for (const p of dbProducts) {
-      const dept = deptOf.get(p.id)
-      if (dept) deptCount.set(dept, (deptCount.get(dept) || 0) + 1)
-      const sub = p.subcategory_slug
-      if (sub) subCount.set(sub, (subCount.get(sub) || 0) + 1)
-    }
-    const topDepts = [...deptCount.entries()]
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, 6)
-      .map(([slug]) => slug)
-    const topSubs = [...subCount.entries()]
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, 6)
-      .map(([slug]) => slug)
-    return [...topDepts, ...topSubs]
-  }, [dbProducts, deptOf])
   const collections = useMemo<CollectionItem[]>(() => {
-    // Candidate product images per node, in preference order.
-    const subImgs = new Map<string, string[]>()
-    dbProducts.forEach((d) => {
-      const key = d.subcategory_slug || d.category_slug
-      if (key && d.product_image_url) {
-        const list = subImgs.get(key) || []
-        if (!list.includes(d.product_image_url)) list.push(d.product_image_url)
-        subImgs.set(key, list)
-      }
-    })
-    const deptImgs = new Map<string, string[]>()
-    dbProducts.forEach((d) => {
-      const slug = deptOf.get(d.id)
-      if (slug && d.product_image_url) {
-        const list = deptImgs.get(slug) || []
-        if (!list.includes(d.product_image_url)) list.push(d.product_image_url)
-        deptImgs.set(slug, list)
-      }
-    })
-    const allImgs: string[] = []
-    dbProducts.forEach((d) => {
-      if (d.product_image_url && !allImgs.includes(d.product_image_url)) allImgs.push(d.product_image_url)
-    })
-    // Globally unique tile images: walk the 12 tiles in order, each takes
-    // the first candidate no other tile has used yet — so two different
-    // categories can never show the same photo. Candidate pools rotate
-    // with `rot`, so every 30s each tile re-deals a (possibly) new photo
-    // from its own node's live stock.
+    const pools = new Map<string, string[]>()
     const used = new Set<string>()
+    const push = (slug: string | null | undefined, img: string | null | undefined) => {
+      if (!slug || !img) return
+      const list = pools.get(slug) || []
+      if (!list.includes(img)) {
+        list.push(img)
+        pools.set(slug, list)
+      }
+    }
+    for (const r of scopeRows) {
+      push(r.leaf_slug, r.product_image_url)
+      push(r.subcategory_slug, r.product_image_url)
+      push(r.category_slug, r.product_image_url)
+    }
+
     const spin = (list: string[]): string[] => {
       if (list.length < 2 || rot === 0) return list
       const k = rot % list.length
       return [...list.slice(k), ...list.slice(0, k)]
     }
-    const claim = (cands: string[], fallback: string): string => {
-      const pool = spin(cands)
-      const img = pool.find((c) => !used.has(c)) || spin(allImgs).find((c) => !used.has(c)) || cands[0] || fallback
-      used.add(img)
-      return img
+    const claim = (cands: string[]): string | null => {
+      for (const c of spin(cands)) {
+        if (!used.has(c)) {
+          used.add(c)
+          return c
+        }
+      }
+      return null
     }
-    const bySlug = new Map<string, CollectionItem>()
-    departments.forEach((dep) => {
-      const stock = banners.departments[dep.slug] || dep.image
-      bySlug.set(dep.slug, {
+    return departments.map((dep) => {
+      const stock = banners.departments[dep.slug] || dep.image || ""
+      const pool = pools.get(dep.slug) || []
+      return {
         name: dep.name,
         slug: dep.slug,
         href: `/marketplace/category/${dep.slug}`,
-        image: claim(deptImgs.get(dep.slug) || [], stock),
-      })
-      dep.subs.forEach((s) => {
-        bySlug.set(s.slug, {
-          name: s.name,
-          slug: s.slug,
-          href: `/marketplace/category/${s.slug}`,
-          image: claim([...(subImgs.get(s.slug) || []), ...(deptImgs.get(dep.slug) || [])], stock),
-        })
-      })
+        image: claim(pool) || deptCover.get(dep.slug) || stock,
+        subs: dep.subs
+          .filter((s) => (pools.get(s.slug) || []).length > 0)
+          .slice(0, 6)
+          .map((s) => ({ name: s.name, slug: s.slug })),
+      }
     })
-    return COLLECTION_SLUGS.map((slug) => bySlug.get(slug)).filter((c): c is CollectionItem => !!c)
-  }, [dbProducts, banners, deptOf, COLLECTION_SLUGS, rot, departments])
+  }, [scopeRows, departments, deptCover, rot, banners])
 
   // Showcase sections: the 4 departments with the most live stock. Each
   // gets the showcase treatment with its stocked subcategories as pills.
@@ -974,8 +954,8 @@ export function MarketplaceHome() {
         {!loaded ? (
           <section aria-label="Loading collections" className="bg-white rounded-2xl p-5 shadow-sm border border-[#E2E8F0] animate-pulse" aria-hidden>
             <div className="mb-4 h-6 w-48 rounded bg-slate-100" />
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
-              {Array.from({ length: 12 }).map((_, i) => (
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
+              {Array.from({ length: 14 }).map((_, i) => (
                 <div key={i}>
                   <div className="aspect-[5/4] w-full rounded-xl bg-slate-100" />
                   <div className="mx-auto mt-2 h-4 w-3/4 rounded bg-slate-100" />
@@ -1076,8 +1056,8 @@ export function MarketplaceHome() {
             </div>
           )}
           {!loaded ? (
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 pt-1 animate-pulse" aria-hidden aria-label="Loading products">
-              {Array.from({ length: 6 }).map((_, i) => (
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 pt-1 animate-pulse" aria-hidden aria-label="Loading products">
+              {Array.from({ length: 8 }).map((_, i) => (
                 <div key={i} className="rounded-xl border border-[#E2E8F0] bg-white p-3">
                   <div className="aspect-square w-full rounded-lg bg-slate-100" />
                   <div className="mt-3 h-4 w-full rounded bg-slate-100" />
@@ -1086,7 +1066,7 @@ export function MarketplaceHome() {
               ))}
             </div>
           ) : shown.length > 0 ? (
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 pt-1">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 pt-1">
               {shown.map((p) => (
                 <ProductCard key={p.id} {...cardProps(p)} />
               ))}

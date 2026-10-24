@@ -1600,9 +1600,9 @@ export function MarketplaceBannersTab() {
               </div>
               {(banners.flash_image || "").trim() && isUrl(banners.flash_image || "") && (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img src={(banners.flash_image || "").trim()} alt="Flash card preview" className="mt-2 h-20 w-full rounded-lg border object-cover" loading="lazy" />
+                <img src={(banners.flash_image || "").trim()} alt="Flash card preview" className="mt-2 aspect-[3/1] w-40 rounded-lg border object-cover" loading="lazy" />
               )}
-              <p className="mt-1 text-[11px] text-slate-400">Dropdown card — square works best (600 × 600).</p>
+              <p className="mt-1 text-[11px] text-slate-400">Dropdown card — wide works best (1200 × 400).</p>
             </div>
             </div>
             <div className="rounded-lg border border-amber-200 bg-amber-50/50 p-3">

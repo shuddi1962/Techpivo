@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { createPublicClient } from "@/lib/supabase/server"
 import { fetchWithTimeout } from "@/lib/fetch-timeout"
 import { cjGetProduct, extractCjDetail } from "@/lib/cj"
-import { marketImage, cleanSupplierText } from "@/lib/marketplace-images"
+import { marketImage, cleanSupplierText, polishSupplierParas } from "@/lib/marketplace-images"
 
 export const dynamic = "force-dynamic"
 
@@ -43,7 +43,11 @@ export async function GET(request: NextRequest) {
       raw = await cjGetProduct(pid)
     }
     const d = extractCjDetail(raw)
-    const paras = d.paras.map((x) => cleanSupplierText(x)).filter(Boolean).slice(0, 20)
+    const paras = polishSupplierParas(
+      d.paras
+        .map((x) => cleanSupplierText(x))
+        .filter(Boolean)
+    ).slice(0, 20)
     return NextResponse.json({
       short: cleanSupplierText(d.short) || cleanSupplierText(row?.product_description || "").slice(0, 220),
       paras,

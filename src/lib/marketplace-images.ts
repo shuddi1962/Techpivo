@@ -38,3 +38,45 @@ export function cleanSupplierText(text: string | null | undefined): string {
     .replace(/\s{2,}/g, " ")
     .trim()
 }
+
+const PARA_LIST_MARK_RE = /^\d{1,3}\s*[.)\]]\s*|^[-–—•▪◦*·]\s*/
+const PARA_HOSTED_PATH_RE = /^[\w.-]+\.[a-z]{2,}\/\S*$/i
+
+export function polishSupplierParas(paras: string[]): string[] {
+  if (!Array.isArray(paras) || paras.length === 0) return []
+  const seen = new Set<string>()
+  const lines: string[] = []
+  for (const raw of paras) {
+    if (typeof raw !== "string") continue
+    const line = raw
+      .replace(PARA_LIST_MARK_RE, "")
+      .replace(/\s{2,}/g, " ")
+      .trim()
+    if (line.length < 3) continue
+    if (/^(?:https?:\/\/|www\.)/i.test(line)) continue
+    if (PARA_HOSTED_PATH_RE.test(line)) continue
+    const key = line.toLowerCase()
+    if (seen.has(key)) continue
+    seen.add(key)
+    lines.push(line)
+  }
+  const merged: string[] = []
+  const counts: number[] = []
+  for (const line of lines) {
+    const i = merged.length - 1
+    if (
+      i >= 0 &&
+      counts[i] < 3 &&
+      line.length <= 90 &&
+      merged[i].length <= 90 &&
+      line.length + merged[i].length + 3 <= 300
+    ) {
+      merged[i] = `${merged[i]} · ${line}`
+      counts[i] += 1
+    } else {
+      merged.push(line)
+      counts.push(1)
+    }
+  }
+  return merged
+}
