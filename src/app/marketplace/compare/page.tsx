@@ -9,7 +9,8 @@ import { clearCompare, toggleCompareStored, useCompareIds } from "@/lib/marketpl
 import { marketImage, cleanSupplierText } from "@/lib/marketplace-images"
 import { supplierDisplayName } from "@/lib/marketplace"
 import { openCartPopup } from "@/lib/marketplace-events"
-import { MarketplaceHeader, MarketplaceFooter } from "@/components/marketplace/marketplace-header"
+import { MarketplaceFooter } from "@/components/marketplace/marketplace-header"
+import SiteHeader from "@/components/menu/site-header"
 import { MarketPrice } from "@/components/marketplace/market-price"
 import { PanelStars } from "@/components/marketplace/feature-panels"
 
@@ -227,7 +228,7 @@ export default function MarketplaceComparePage() {
 
   return (
     <div className="min-h-screen w-full bg-[#F8FAFC]">
-      <MarketplaceHeader />
+      <SiteHeader />
       <main className="mx-auto w-full max-w-[1200px] px-3 py-6 sm:px-6 lg:px-10 sm:py-8">
         <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
           <div>

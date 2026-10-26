@@ -3,7 +3,8 @@ import Link from "next/link"
 import { Suspense } from "react"
 import { ChevronRight } from "lucide-react"
 import { TrackPage } from "@/components/marketplace/track-page"
-import { MarketplaceHeader, MarketplaceFooter } from "@/components/marketplace/marketplace-header"
+import { MarketplaceFooter } from "@/components/marketplace/marketplace-header"
+import SiteHeader from "@/components/menu/site-header"
 import { CollectionHero } from "@/components/marketplace/store-shell"
 import { fetchMarketBanners } from "@/lib/marketplace-products"
 import { pageBannerOf } from "@/lib/marketplace-banners"
@@ -19,7 +20,7 @@ export default async function MarketplaceTrackRoute() {
   const banners = await fetchMarketBanners()
   return (
     <div className="w-full bg-[#F8FAFC] min-h-screen">
-      <MarketplaceHeader />
+      <SiteHeader />
       <main className="mx-auto w-full max-w-[1400px] px-3 sm:px-6 lg:px-10 py-6 sm:py-8 space-y-6 sm:space-y-8">
         <nav aria-label="Breadcrumb" className="flex items-center gap-1.5 text-xs text-slate-500">
           <Link href="/marketplace" className="hover:text-[#0F172A]">Home</Link>

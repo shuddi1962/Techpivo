@@ -8,12 +8,17 @@ import { fetchMarketplaceTree } from "@/lib/marketplace-category-db"
 import type { MarketDepartment } from "@/lib/marketplace-categories"
 import { marketImage, cleanSupplierText } from "@/lib/marketplace-images"
 import { supplierDisplayName } from "@/lib/marketplace"
-import { MarketplaceHeader, MarketplaceFooter } from "@/components/marketplace/marketplace-header"
+import { MarketplaceFooter } from "@/components/marketplace/marketplace-header"
+import SiteHeader from "@/components/menu/site-header"
 import { ProductDetail, type ProductDetailData } from "@/components/marketplace/product-detail"
 import { MarketMerchProvider } from "@/components/marketplace/market-flags"
 import { fetchMarketMerch } from "@/lib/marketplace-products"
 
 export const revalidate = 60
+
+// Product ids are uuid-typed in the DB — a non-uuid path segment can never
+// exist, so those requests get an honest 404 instead of a PostgREST cast 500.
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
 interface DbProduct {
   id: string
@@ -33,6 +38,7 @@ interface DbProduct {
 
 export async function generateMetadata({ params }: { params: { id: string } }): Promise<Metadata> {
   const supabase = createPublicClient()
+  if (!UUID_RE.test(params.id)) return { title: "Product not found — TechPivo Market" }
   const metaRes = (await fetchWithTimeout(
     supabase
       .from("affiliate_products")
@@ -66,6 +72,7 @@ function deptNameFor(slug: string | null, departments: MarketDepartment[]): stri
 
 export default async function MarketplaceProductPage({ params }: { params: { id: string } }) {
   const supabase = createPublicClient()
+  if (!UUID_RE.test(params.id)) notFound()
   // A failed query must throw (500 + Try Again), never masquerade as a
   // missing product: the database can transiently fail under load, and a
   // 404 would be a lie for a product that exists.
@@ -169,7 +176,7 @@ export default async function MarketplaceProductPage({ params }: { params: { id:
   return (
     <div className="w-full bg-[#F8FAFC] min-h-screen">
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
-      <MarketplaceHeader />
+      <SiteHeader />
       <main className="mx-auto w-full max-w-[1400px] px-3 sm:px-6 lg:px-10 py-6 sm:py-8 space-y-6 sm:space-y-8">
         <nav aria-label="Breadcrumb" className="flex items-center gap-1.5 text-xs text-slate-500 flex-wrap">
           <Link href="/marketplace" className="hover:text-[#0F172A]">Home</Link>

@@ -1,7 +1,6 @@
 "use client"
 
 import Link from "next/link"
-import { useRouter } from "next/navigation"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import {
   ArrowLeftRight, ArrowRight, Check, ChevronLeft, ChevronRight, Eye, Flame,
@@ -9,7 +8,7 @@ import {
   BadgeCheck, Truck,
 } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
-import { addToCart as addLine, cartCount as countLines, useMarketCart } from "@/lib/marketplace-cart"
+import { addToCart as addLine } from "@/lib/marketplace-cart"
 import { openCartPopup, openQuickView } from "@/lib/marketplace-events"
 import {
   MARKETPLACE_BRAND, MARKETPLACE_HERO, supplierDisplayName, type DemoProduct,
@@ -18,7 +17,7 @@ import { EMPTY_BANNERS, campaignView, flashSecondsLeft, linkOf, markPopupShown, 
 import { useMarketplaceTree } from "./market-category-store"
 import { marketImage, cleanSupplierText } from "@/lib/marketplace-images"
 import { readCompare, toggleCompareStored } from "@/lib/marketplace-compare"
-import { MarketplaceHeader, MarketplaceFooter } from "./marketplace-header"
+import { MarketplaceFooter } from "./marketplace-header"
 import { BannerSlider } from "./banner-slider"
 import { WelcomePopupCard } from "./welcome-popup"
 import { FeaturePanels } from "./feature-panels"
@@ -278,12 +277,10 @@ function takeFresh<T extends { id: string }>(pool: T[], used: Set<string>, n: nu
 interface RevStat { sum: number; n: number }
 
 export function MarketplaceHome() {
-  const router = useRouter()
   const [dbProducts, setDbProducts] = useState<DbProduct[]>([])
   const [scopeRows, setScopeRows] = useState<ScopeRow[]>([])
   const [revStats, setRevStats] = useState<Record<string, RevStat>>({})
   const [tab, setTab] = useState<"new" | "featured" | "best">("new")
-  const cart = useMarketCart()
   const [wishlist, setWishlist] = useState<Record<string, boolean>>({})
   const [recentIds, setRecentIds] = useState<string[]>([])
   const [justAdded, setJustAdded] = useState<Record<string, boolean>>({})
@@ -604,7 +601,6 @@ export function MarketplaceHome() {
   const shown = tabShown.filter((p) => matchQuery(p))
   const filtering = q.length > 0
   const tabEmpty = !filtering && tab !== "new" && tabShown.length === 0
-  const wishCount = Object.values(wishlist).filter(Boolean).length
 
   // Top stores: one tile per stocked subcategory (not per department),
   // so the rail has ~25 distinct tiles and scrolls well. Cover = that
@@ -774,13 +770,6 @@ export function MarketplaceHome() {
     [recentIds, dbProducts]
   )
 
-  const cartCount = countLines(cart)
-  const cartTotal = cart.reduce((sum, l) => {
-    const found = dbProducts.find((d) => d.id === l.id)
-    const unit = found ? Number(found.sale_price ?? found.original_price ?? 0) : 0
-    return Math.round((sum + unit * l.qty) * 100) / 100
-  }, 0)
-
   const addToCart = (p: DemoProduct) => {
     if (!/^[0-9a-f-]{36}$/i.test(p.id)) return
     addLine(p.id, 1)
@@ -812,19 +801,7 @@ export function MarketplaceHome() {
 
   return (
     <div className="w-full bg-[#F8FAFC] min-h-screen overflow-x-clip">
-      <MarketplaceHeader
-        cartCount={cartCount}
-        cartTotal={`$${cartTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
-        wishCount={wishCount}
-        onSearch={(v) => {
-          setQuery(v)
-          if (v.trim()) document.getElementById("trending")?.scrollIntoView({ behavior: "smooth", block: "start" })
-        }}
-        onShopDept={(slug) => {
-          if (slug) router.push(`/marketplace/category/${slug}`)
-          else router.push("/marketplace")
-        }}
-      />
+
       <main className="mx-auto w-full max-w-[1480px] px-3 sm:px-6 lg:px-10 py-6 sm:py-8 space-y-6 sm:space-y-8">
 
         {/* welcome popup — once per visit, fully driven by Admin →
