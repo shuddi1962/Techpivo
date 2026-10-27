@@ -8,8 +8,7 @@ import { fetchMarketplaceTree } from "@/lib/marketplace-category-db"
 import type { MarketDepartment } from "@/lib/marketplace-categories"
 import { marketImage, cleanSupplierText } from "@/lib/marketplace-images"
 import { supplierDisplayName } from "@/lib/marketplace"
-import { MarketplaceFooter } from "@/components/marketplace/marketplace-header"
-import SiteHeader from "@/components/menu/site-header"
+import { MarketplaceFooter, MarketplaceHeader } from "@/components/marketplace/marketplace-header"
 import { ProductDetail, type ProductDetailData } from "@/components/marketplace/product-detail"
 import { MarketMerchProvider } from "@/components/marketplace/market-flags"
 import { fetchMarketMerch } from "@/lib/marketplace-products"
@@ -176,7 +175,7 @@ export default async function MarketplaceProductPage({ params }: { params: { id:
   return (
     <div className="w-full bg-[#F8FAFC] min-h-screen">
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
-      <SiteHeader />
+      <MarketplaceHeader />
       <main className="mx-auto w-full max-w-[1400px] px-3 sm:px-6 lg:px-10 py-6 sm:py-8 space-y-6 sm:space-y-8">
         <nav aria-label="Breadcrumb" className="flex items-center gap-1.5 text-xs text-slate-500 flex-wrap">
           <Link href="/marketplace" className="hover:text-[#0F172A]">Home</Link>
