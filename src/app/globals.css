@@ -208,6 +208,11 @@ body { position: relative; }
 .modal-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,.5); backdrop-filter: blur(8px); z-index: 1000; display: flex; align-items: center; justify-content: center; padding: 20px; animation: fadeIn .2s; }
 @keyframes fadeIn { from{opacity:0} to{opacity:1} }
 
+/* Marketplace header mega-menu — dropdown slide */
+@keyframes slide-down { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: translateY(0); } }
+.animate-slide-down { animation: slide-down 0.15s ease-out; }
+@media (prefers-reduced-motion: reduce) { .animate-slide-down { animation: none; } }
+
 /* Banner slider engine (marketplace) — GPU-friendly keyframes.
    WAAPI-driven tile/particle overlays live in banner-slider.tsx. */
 @keyframes bpKenburns { from{transform:scale(1) translate(0,0)} to{transform:scale(1.14) translate(-1.5%,1%)} }

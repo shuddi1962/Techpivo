@@ -6,7 +6,7 @@ import { useEffect, useRef, useState } from "react"
 import {
   Search, Heart, User, ShoppingBasket, Menu, X, ChevronDown, ChevronRight,
   Flame, MapPin, Phone, Mail, Truck, RefreshCcw, Headset, ShieldCheck,
-  ArrowLeftRight,
+  ArrowLeftRight, LayoutGrid,
 } from "lucide-react"
 import { MarketCategorySync, useMarketplaceTree } from "./market-category-store"
 import { MARKETPLACE_BRAND } from "@/lib/marketplace"
@@ -65,8 +65,9 @@ export function MarketplaceHeader({
   const [dept, setDept] = useState("")
   const [deptOpen, setDeptOpen] = useState(false)
   const [openDept, setOpenDept] = useState<string | null>(null)
-  const [openCat, setOpenCat] = useState<string | null>(null)
-  const [currency, setCurrency] = useState("USD")
+const [openCat, setOpenCat] = useState<string | null>(null)
+const [mobileExpanded, setMobileExpanded] = useState("")
+const [currency, setCurrency] = useState("USD")
   const [currencyOpen, setCurrencyOpen] = useState(false)
   // Live, admin-editable category tree (falls back to the bundled tree).
   const departments = useMarketplaceTree()
@@ -259,11 +260,11 @@ export function MarketplaceHeader({
       <MarketCommerce />
       {/* utility bar — promo copy + colors editable in Admin → Marketplace → Banners */}
       <div style={{ background: `linear-gradient(90deg, ${promoBanners?.promo_bar_from || MARKETPLACE_BRAND.topbar} 0%, ${promoBanners?.promo_bar_to || MARKETPLACE_BRAND.topbarSoft} 100%)` }} className="relative z-[60] w-full text-white">
-        <div className="mx-auto w-full max-w-[1400px] px-3 sm:px-6 lg:px-10 flex items-center justify-between h-10 text-xs gap-2">
+        <div className="mx-auto w-full max-w-[1440px] px-3 sm:px-6 lg:px-10 flex items-center justify-between h-10 text-xs gap-2">
           <div className="flex items-center gap-2 min-w-0">
             {promoOn ? (
             <>
-            <span style={{ background: promoBanners?.promo_badge_bg || "#EF4444" }} className="text-white px-2 py-0.5 rounded font-bold text-[10px] uppercase tracking-wide shrink-0">
+            <span style={{ background: promoBanners?.promo_badge_bg || "#FF6B00" }} className="text-white px-2 py-0.5 rounded font-bold text-[10px] uppercase tracking-wide shrink-0">
               {promoBanners?.promo_badge_text || "Limited Deal"}
             </span>
             <p className="text-slate-300 hidden sm:block truncate">{promoBanners?.promo_message || "Black Friday Sale! Special offers up to 50% Off at TechPivo Market"}</p>
@@ -293,7 +294,7 @@ export function MarketplaceHeader({
                       role="option"
                       aria-selected={currency === code}
                       onClick={() => setCurrencyChoice(code)}
-                      className={`block w-full px-3 py-2 text-left text-xs font-semibold ${currency === code ? "text-[#B45309] bg-amber-50" : "text-slate-600 hover:bg-slate-100"}`}
+                      className={`block w-full px-3 py-2 text-left text-xs font-semibold ${currency === code ? "text-[#e86000] bg-[#FF6B00]/10" : "text-slate-600 hover:bg-slate-100"}`}
                     >
                       {code}
                     </button>
@@ -313,7 +314,7 @@ export function MarketplaceHeader({
       <header className="sticky top-0 z-50 w-full bg-white shadow-[0_2px_12px_rgba(0,0,0,0.08)]">
       {/* main bar — full width */}
       <div className="w-full bg-white">
-        <div className="mx-auto w-full max-w-[1400px] px-3 sm:px-6 lg:px-10 flex items-center justify-between gap-4 h-16 md:h-20">
+        <div className="mx-auto w-full max-w-[1440px] px-3 sm:px-6 lg:px-10 flex items-center justify-between gap-4 h-16 md:h-20">
           <Link href="/marketplace" className="flex items-center shrink-0" aria-label="TechPivo Market home">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src="/market-logo.svg" alt="TechPivo Market" className="h-10 w-auto sm:h-11" />
@@ -322,7 +323,7 @@ export function MarketplaceHeader({
           {/* search (desktop) with live AJAX suggestions */}
           <div ref={searchBoxRef} className="hidden md:flex flex-1 max-w-2xl relative">
           <form
-            className="flex w-full h-12 rounded-lg border border-[#CBD5E1] bg-[#F8FAFC] overflow-hidden focus-within:border-[#F59E0B] focus-within:ring-2 focus-within:ring-[#F59E0B]/20"
+            className="flex w-full h-12 rounded-lg border border-[#CBD5E1] bg-[#F8FAFC] overflow-hidden focus-within:border-[#FF6B00] focus-within:ring-2 focus-within:ring-[#FF6B00]/20"
             onSubmit={submitSearch}
             role="search"
           >
@@ -341,10 +342,10 @@ export function MarketplaceHeader({
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               onFocus={() => { if (query.trim().length >= 2) setSuggestOpen(true) }}
-              className="flex-1 bg-transparent px-4 text-sm text-[#0F172A] placeholder:text-slate-400 focus:outline-none"
+              className="flex-1 bg-transparent px-4 text-sm text-[#0A1628] placeholder:text-slate-400 focus:outline-none"
               placeholder="Search TechPivo Market — gadgets, laptops, cameras..."
             />
-            <button type="submit" aria-label="Search" className="bg-[#F59E0B] hover:bg-[#D97706] text-[#0F172A] px-5 flex items-center justify-center transition-colors">
+            <button type="submit" aria-label="Search" className="bg-[#FF6B00] hover:bg-[#e86000] text-[#0A1628] px-5 flex items-center justify-center transition-colors">
               <Search className="h-5 w-5" />
             </button>
           </form>
@@ -363,24 +364,24 @@ export function MarketplaceHeader({
             <Link href="/marketplace/wishlist" aria-label="Wishlist" className="relative p-2 rounded-full hover:bg-slate-100 flex items-center justify-center">
               <Heart className="h-6 w-6 text-slate-600" />
               {shownWishCount > 0 && (
-                <span className="absolute -top-0.5 -right-0.5 bg-[#EF4444] text-white text-[10px] min-w-5 h-5 px-1 rounded-full flex items-center justify-center font-bold">{shownWishCount}</span>
+                <span className="absolute -top-0.5 -right-0.5 bg-[#FF6B00] text-white text-[10px] min-w-5 h-5 px-1 rounded-full flex items-center justify-center font-bold">{shownWishCount}</span>
               )}
             </Link>
             <Link href="/marketplace/compare" aria-label={compareIds.length > 0 ? `Compare ${compareIds.length} products` : "Compare products"} className="relative p-2 rounded-full hover:bg-slate-100 hidden sm:flex items-center justify-center">
               <ArrowLeftRight className="h-6 w-6 text-slate-600" />
               {compareIds.length > 0 && (
-                <span className="absolute -top-0.5 -right-0.5 bg-[#0F172A] text-white text-[10px] min-w-5 h-5 px-1 rounded-full flex items-center justify-center font-bold">{compareIds.length}</span>
+                <span className="absolute -top-0.5 -right-0.5 bg-[#0A1628] text-white text-[10px] min-w-5 h-5 px-1 rounded-full flex items-center justify-center font-bold">{compareIds.length}</span>
               )}
             </Link>
             <Link href="/marketplace/cart" aria-label={`Your basket, ${shownCartCount} item${shownCartCount === 1 ? "" : "s"}`} className="relative p-2 rounded-full hover:bg-slate-100 flex items-center justify-center">
               <ShoppingBasket className="h-6 w-6 text-slate-600" />
               {shownCartCount > 0 && (
-                <span className="absolute -top-0.5 -right-0.5 bg-[#F59E0B] text-[#0F172A] text-[10px] min-w-5 h-5 px-1 rounded-full flex items-center justify-center font-bold tabular-nums">{shownCartCount}</span>
+                <span className="absolute -top-0.5 -right-0.5 bg-[#FF6B00] text-[#0A1628] text-[10px] min-w-5 h-5 px-1 rounded-full flex items-center justify-center font-bold tabular-nums">{shownCartCount}</span>
               )}
             </Link>
             <div className="h-8 w-px bg-[#E2E8F0] hidden sm:block" />
             <Link href={acctName ? "/marketplace/account" : "/login"} className="hidden sm:flex items-center gap-2 hover:opacity-90 p-1" aria-label={acctName ? `My marketplace account (${acctName})` : "Sign in"}>
-              <span className="w-8 h-8 rounded-full bg-[#23272E] flex items-center justify-center shrink-0 overflow-hidden">
+              <span className="w-8 h-8 rounded-full bg-[#0A1628] flex items-center justify-center shrink-0 overflow-hidden">
                 {acctAvatar ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img src={acctAvatar} alt="" className="h-full w-full object-cover" />
@@ -392,12 +393,12 @@ export function MarketplaceHeader({
               </span>
               <span className="hidden xl:flex flex-col text-left max-w-[140px]">
                 <span className="text-[11px] text-slate-400 uppercase leading-none">{acctFirst ? `Hi, ${acctFirst}` : "Sign In"}</span>
-                <span className="text-sm font-semibold text-[#0F172A] leading-tight truncate">{acctName || "My Account"}</span>
+                <span className="text-sm font-semibold text-[#0A1628] leading-tight truncate">{acctName || "My Account"}</span>
               </span>
             </Link>
             <div className="h-8 w-px bg-[#E2E8F0] hidden sm:block" />
             <button
-              className="md:hidden p-2 rounded-lg border border-[#E2E8F0] text-[#0F172A]"
+              className="lg:hidden p-2 rounded-lg border border-[#0A1628] bg-[#0A1628] text-white"
               onClick={() => setOpen((v) => !v)}
               aria-label={open ? "Close menu" : "Open menu"}
               aria-expanded={open}
@@ -418,7 +419,7 @@ export function MarketplaceHeader({
               className="flex-1 bg-transparent px-3 text-sm focus:outline-none"
               placeholder="Search TechPivo Market..."
             />
-            <button type="submit" aria-label="Search" className="bg-[#F59E0B] text-[#0F172A] px-4 flex items-center justify-center">
+            <button type="submit" aria-label="Search" className="bg-[#FF6B00] text-[#0A1628] px-4 flex items-center justify-center">
               <Search className="h-5 w-5" />
             </button>
           </form>
@@ -437,31 +438,31 @@ export function MarketplaceHeader({
 
       {/* nav bar — single row, never wraps: horizontal scroll instead of pushing content down */}
       <div
-        className="relative w-full bg-white border-t border-[#E2E8F0]"
+        className="relative hidden w-full bg-white border-t border-[#E2E8F0] lg:block"
         onMouseLeave={() => setDeptOpen(false)}
       >
-        <div className="mx-auto w-full max-w-[1400px] px-3 sm:px-6 lg:px-10 hidden md:flex items-center justify-between h-14 gap-3">
+        <div className="mx-auto w-full max-w-[1440px] px-3 sm:px-6 lg:px-10 hidden lg:flex items-center justify-between h-14 gap-3 bg-[#0A1628]">
           <div className="flex items-center gap-3 min-w-0 flex-1 overflow-hidden">
             <div
-              ref={deptWrapRef}
-              onMouseEnter={() => setDeptOpen(true)}
-              className="shrink-0"
+          ref={deptWrapRef}
+          onMouseEnter={() => setDeptOpen(true)}
+          className="relative shrink-0"
             >
-              <button
-                type="button"
-                onClick={() => setDeptOpen((v) => !v)}
-                aria-haspopup="true"
-                aria-expanded={deptOpen}
-                className="bg-[#F59E0B] hover:bg-[#D97706] text-[#0F172A] px-4 py-2.5 rounded-lg flex items-center gap-2 text-sm font-bold transition-colors cursor-pointer"
-              >
-                <Menu className="h-5 w-5" />
-                <span>All Departments</span>
-                <ChevronDown className={`h-4 w-4 transition-transform ${deptOpen ? "rotate-180" : ""}`} />
-              </button>
-              {deptOpen && (
-                <div className="absolute inset-x-0 top-full z-50 hidden md:block">
+            <button
+              onClick={() => {
+                setDeptOpen(!deptOpen);
+                setOpenCat("");
+              }}
+              className="bg-[#FF6B00] hover:bg-[#e86000] text-white px-4 py-2.5 rounded-lg flex items-center gap-2 text-sm font-bold transition-colors cursor-pointer"
+            >
+              <LayoutGrid className="h-5 w-5" />
+              <span>All Departments</span>
+              <ChevronDown className={`h-4 w-4 transition-transform ${deptOpen ? "rotate-180" : ""}`} />
+            </button>
+        {deptOpen && (
+          <div className="absolute top-full left-0 z-50 hidden lg:block animate-slide-down">
                   <div
-                    className="mx-auto w-full max-w-[1400px] px-3 sm:px-6 lg:px-10"
+                    className="w-[820px] max-w-[calc(100vw-2rem)]"
                     onMouseEnter={() => setDeptOpen(true)}
                   >
                     <div className="rounded-b-2xl border border-t-0 border-[#E2E8F0] bg-white p-6 shadow-2xl lg:p-8 max-h-[70vh] overflow-y-auto">
@@ -475,18 +476,18 @@ export function MarketplaceHeader({
                               <button
                                 type="button"
                                 onClick={() => { setOpenDept(null); setDeptOpen(false) }}
-                                className="text-xs font-bold uppercase tracking-wider text-slate-400 hover:text-[#DC2626]"
+                                className="text-xs font-bold uppercase tracking-wider text-slate-400 hover:text-[#FF6B00]"
                               >
                                 ← Back to {sNode?.name ?? "sub-categories"}
                               </button>
-                              <h4 className="mt-3 text-sm font-bold text-[#0F172A]">{sNode?.name}</h4>
+                              <h4 className="mt-3 text-sm font-bold text-[#0A1628]">{sNode?.name}</h4>
                               <ul className="mt-2 space-y-1.5">
                                 {items.map((it) => (
                                   <li key={it.slug}>
                                     <Link
                                       href={`/marketplace/category/${openDept}/${openCat}`}
                                       onClick={() => { setDeptOpen(false); setOpenDept(null); setOpenCat(null) }}
-                                      className="block rounded-lg border border-[#E2E8F0] px-3 py-2 text-sm text-slate-600 transition-colors hover:border-[#F59E0B] hover:text-[#DC2626]"
+                                      className="block rounded-lg border border-[#E2E8F0] px-3 py-2 text-sm text-slate-600 transition-colors hover:border-[#FF6B00] hover:text-[#FF6B00]"
                                     >
                                       {it.name}
                                     </Link>
@@ -506,11 +507,11 @@ export function MarketplaceHeader({
                               <button
                                 type="button"
                                 onClick={() => { setOpenDept(null); setDeptOpen(false) }}
-                                className="text-xs font-bold uppercase tracking-wider text-slate-400 hover:text-[#DC2626]"
+                                className="text-xs font-bold uppercase tracking-wider text-slate-400 hover:text-[#FF6B00]"
                               >
                                 ← All departments
                               </button>
-                              <h4 className="mt-3 text-sm font-bold text-[#0F172A]">{dNode?.name}</h4>
+                              <h4 className="mt-3 text-sm font-bold text-[#0A1628]">{dNode?.name}</h4>
                               <ul className="mt-2 grid gap-x-6 gap-y-1.5 sm:grid-cols-2 lg:grid-cols-3">
                                 {subs.map((s) => (
                                   <li key={s.slug}>
@@ -518,7 +519,7 @@ export function MarketplaceHeader({
                                       href={`/marketplace/category/${openDept}/${s.slug}`}
                                       onMouseEnter={() => { setDeptOpen(true); setOpenCat(s.slug) }}
                                       onClick={() => { setDeptOpen(false); setOpenDept(null); setOpenCat(null) }}
-                                      className={`block rounded-lg border px-3 py-2 text-sm font-semibold transition-colors ${openCat === s.slug ? "border-[#F59E0B] bg-[#FFFBEB] text-[#B45309]" : "border-[#E2E8F0] text-[#0F172A] hover:border-[#F59E0B] hover:text-[#DC2626]"}`}
+                                      className={`block rounded-lg border px-3 py-2 text-sm font-semibold transition-colors ${openCat === s.slug ? "border-[#FF6B00] bg-[#FF6B00]/10 text-[#9A3412]" : "border-[#E2E8F0] text-[#0A1628] hover:border-[#FF6B00] hover:text-[#FF6B00]"}`}
                                     >
                                       {s.name}
                                     </Link>
@@ -529,7 +530,7 @@ export function MarketplaceHeader({
                                             <Link
                                               href={`/marketplace/category/${openDept}/${s.slug}`}
                                               onClick={() => { setDeptOpen(false); setOpenDept(null); setOpenCat(null) }}
-                                              className="block text-[13px] text-slate-500 transition-colors hover:text-[#DC2626]"
+                                              className="block text-[13px] text-slate-500 transition-colors hover:text-[#FF6B00]"
                                             >
                                               {it.name}
                                             </Link>
@@ -558,7 +559,7 @@ export function MarketplaceHeader({
                                     <Link
                                       href={`/marketplace/category/${d.slug}`}
                                       onClick={() => { setDeptOpen(false); setOpenDept(null); setOpenCat(null) }}
-                                      className={`text-sm font-semibold transition-colors ${openDept === d.slug ? "text-[#B45309]" : "text-[#0F172A] group-hover:text-[#DC2626]"}`}
+                                      className={`text-sm font-semibold transition-colors ${openDept === d.slug ? "text-[#e86000]" : "text-[#0A1628] group-hover:text-[#FF6B00]"}`}
                                     >
                                       {d.name}
                                     </Link>
@@ -571,7 +572,7 @@ export function MarketplaceHeader({
                           <div className="lg:col-span-5">
                             <div
                               className="flex min-h-[280px] flex-col justify-between overflow-hidden rounded-xl p-5 text-white relative"
-                              style={promoBanners?.flash_image?.trim() ? undefined : { background: `linear-gradient(160deg, ${promoBanners?.flash_bg_from || "#DC2626"} 0%, ${promoBanners?.flash_bg_to || "#7F1D1D"} 100%)` }}
+                              style={promoBanners?.flash_image?.trim() ? undefined : { background: `linear-gradient(160deg, ${promoBanners?.flash_bg_from || "#FF6B00"} 0%, ${promoBanners?.flash_bg_to || "#7F1D1D"} 100%)` }}
                             >
                               {promoBanners?.flash_image?.trim() ? (
                                 <>
@@ -581,16 +582,16 @@ export function MarketplaceHeader({
                                 </>
                               ) : null}
                               <div className="relative">
-                                <span className="inline-flex items-center gap-1 rounded bg-[#EF4444] px-2 py-0.5 text-[11px] font-bold uppercase">
+                                <span className="inline-flex items-center gap-1 rounded bg-[#FF6B00] px-2 py-0.5 text-[11px] font-bold uppercase">
                                   <Flame className="h-3 w-3" /> {promoBanners?.flash_badge || "Flash Sale"}
                                 </span>
-                                <p className="mt-3 text-2xl font-extrabold leading-tight line-clamp-3">{promoBanners?.flash_title || "Up to 50% Off"}</p>
+                                <p className="mt-3 text-3xl font-extrabold leading-tight line-clamp-3">{promoBanners?.flash_title || "Up to 50% Off"}</p>
                                 <p className="mt-1 text-xs text-blue-100">{promoBanners?.flash_subtitle || "Verified supplier picks, tracked delivery."}</p>
                               </div>
                               <Link
                                 href={promoBanners?.specials_link || "/marketplace#flash-deals"}
                                 onClick={() => setDeptOpen(false)}
-                                className="relative mt-4 rounded-lg bg-[#F59E0B] py-2.5 text-center text-sm font-bold text-[#0F172A] transition-colors hover:bg-[#D97706]"
+                                className="relative mt-4 rounded-lg bg-[#FF6B00] py-2.5 text-center text-sm font-bold text-[#0A1628] transition-colors hover:bg-[#e86000]"
                               >
                                 Shop deals
                               </Link>
@@ -611,7 +612,7 @@ export function MarketplaceHeader({
                   href={item.href}
                   target="_blank"
                   rel="noopener"
-                  className="shrink-0 px-3 py-2 rounded-lg text-slate-600 hover:bg-slate-100 hover:text-[#0F172A] text-sm"
+                  className="shrink-0 px-3 py-2 rounded-lg text-slate-600 hover:bg-slate-100 hover:text-[#0A1628] text-sm"
                 >
                   {item.label}
                 </a>
@@ -622,8 +623,8 @@ export function MarketplaceHeader({
                   aria-current={i === 0 ? "page" : undefined}
                   className={
                     i === 0
-                      ? "shrink-0 px-3 py-2 rounded-lg bg-slate-100 text-[#0F172A] font-semibold text-sm"
-                      : "shrink-0 px-3 py-2 rounded-lg text-slate-600 hover:bg-slate-100 hover:text-[#0F172A] text-sm"
+                      ? "shrink-0 px-3 py-2 rounded-lg bg-slate-100 text-[#0A1628] font-semibold text-sm"
+                      : "shrink-0 px-3 py-2 rounded-lg text-slate-600 hover:bg-slate-100 hover:text-[#0A1628] text-sm"
                   }
                 >
                   {item.label}
@@ -635,7 +636,7 @@ export function MarketplaceHeader({
           {promoBanners?.specials_enabled !== false && (
           <Link
             href={promoBanners?.specials_link || "/marketplace#flash-deals"}
-            className="flex items-center gap-2 bg-[#FEF2F2] text-[#EF4444] border border-[#EF4444]/20 px-3 py-1.5 rounded-full text-sm font-semibold hover:bg-[#FEE2E2] shrink-0"
+            className="flex items-center gap-2 bg-[#FF6B00]/10 text-[#FF6B00] border border-[#FF6B00]/20 px-3 py-1.5 rounded-full text-sm font-semibold hover:bg-[#FF6B00]/20 shrink-0"
           >
             <Flame className="h-4 w-4" />
             <span className="hidden xl:inline">{promoBanners?.specials_label || "Flash Sale Specials"}</span>
@@ -645,57 +646,98 @@ export function MarketplaceHeader({
         </div>
 
         {/* mobile nav drawer */}
-        {open && (
-          <nav className="md:hidden border-t border-[#E2E8F0] px-4 py-3 grid gap-1 bg-white max-h-[70vh] overflow-y-auto" aria-label="Marketplace mobile">
-            {NAV.map((item) => (
-              item.external ? (
-                <a
-                  key={item.label}
-                  href={item.href}
-                  target="_blank"
-                  rel="noopener"
-                  onClick={() => setOpen(false)}
-                  className="px-3 py-2.5 rounded-lg text-sm font-medium text-slate-700 hover:bg-slate-100"
-                >
-                  {item.label}
-                </a>
-              ) : (
-                <Link
-                  key={item.label}
-                  href={item.href}
-                  onClick={() => setOpen(false)}
-                  className="px-3 py-2.5 rounded-lg text-sm font-medium text-slate-700 hover:bg-slate-100"
-                >
-                  {item.label}
-                </Link>
-              )
-            ))}
-            <p className="px-3 pt-2 text-[11px] font-bold uppercase tracking-wider text-slate-400">Departments</p>
-            {departments.map((d) => (
-              <div key={d.slug}>
-                <Link
-                  href={`/marketplace/category/${d.slug}`}
-                  onClick={() => setOpen(false)}
-                  className="block px-3 py-2 rounded-lg text-sm font-semibold text-[#0F172A] hover:bg-slate-100 text-left"
-                >
-                  {d.name}
-                </Link>
-                <div className="pl-5 grid">
-                  {d.subs.slice(0, 4).map((s) => (
-                    <Link
-                      key={s.slug}
-                      href={`/marketplace/category/${s.slug}`}
-                      onClick={() => setOpen(false)}
-                      className="block px-3 py-1.5 rounded-lg text-xs text-slate-500 hover:bg-slate-100 text-left"
+        <div className={`lg:hidden ${open ? "" : "hidden"}`}>
+          {open && (
+            <div
+              className="fixed inset-0 z-40 bg-black/50"
+              onClick={() => setOpen(false)}
+              aria-hidden="true"
+            />
+          )}
+          <nav
+            className="fixed top-0 left-0 z-50 h-full w-[85%] max-w-[360px] overflow-y-auto bg-white shadow-2xl"
+            aria-label="Marketplace mobile"
+          >
+            <div className="flex items-center justify-between px-4 py-3 border-b border-[#E2E8F0]">
+              <span className="text-sm font-bold text-[#0A1628]">Menu</span>
+              <button
+                type="button"
+                onClick={() => setOpen(false)}
+                className="p-2 rounded-lg border border-[#E2E8F0] text-[#0A1628]"
+                aria-label="Close menu"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            <div className="px-2 py-3 grid gap-1">
+              {NAV.map((item) => (
+                item.external ? (
+                  <a
+                    key={item.label}
+                    href={item.href}
+                    target="_blank"
+                    rel="noopener"
+                    onClick={() => setOpen(false)}
+                    className="px-3 py-2.5 rounded-lg text-sm font-medium text-slate-700 hover:bg-slate-100"
+                  >
+                    {item.label}
+                  </a>
+                ) : (
+                  <Link
+                    key={item.label}
+                    href={item.href}
+                    onClick={() => setOpen(false)}
+                    className="px-3 py-2.5 rounded-lg text-sm font-medium text-slate-700 hover:bg-slate-100"
+                  >
+                    {item.label}
+                  </Link>
+                )
+              ))}
+            </div>
+            <p className="px-4 pt-2 text-[11px] font-bold uppercase tracking-wider text-slate-400">Departments</p>
+            <div className="px-2 pb-4 grid gap-1">
+              {departments.map((d) => {
+                const expanded = mobileExpanded === d.slug;
+                return (
+                  <div key={d.slug}>
+                    <button
+                      type="button"
+                      onClick={() => setMobileExpanded(expanded ? "" : d.slug)}
+                      aria-expanded={expanded}
+                      className="w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm font-semibold text-[#0A1628] hover:bg-slate-100 text-left"
                     >
-                      {s.name}
-                    </Link>
-                  ))}
-                </div>
-              </div>
-            ))}
+                      {d.name}
+                      <ChevronDown
+                        className={`h-4 w-4 text-slate-400 transition-transform ${expanded ? "rotate-180" : ""}`}
+                      />
+                    </button>
+                    {expanded && (
+                      <div className="pl-5 grid">
+                        <Link
+                          href={`/marketplace/category/${d.slug}`}
+                          onClick={() => setOpen(false)}
+                          className="block px-3 py-1.5 rounded-lg text-xs font-semibold text-[#FF6B00] hover:bg-slate-100 text-left"
+                        >
+                          All {d.name}
+                        </Link>
+                        {d.subs.map((s) => (
+                          <Link
+                            key={s.slug}
+                            href={`/marketplace/category/${s.slug}`}
+                            onClick={() => setOpen(false)}
+                            className="block px-3 py-1.5 rounded-lg text-xs text-slate-500 hover:bg-slate-100 text-left"
+                          >
+                            {s.name}
+                          </Link>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
           </nav>
-        )}
+        </div>
       </div>
       </header>
     </>
@@ -769,14 +811,14 @@ export function MarketplaceFooter() {
     <footer className="mt-12 w-full">
       {/* perks strip — full width */}
       <div className="w-full border-y border-[#E2E8F0] bg-white">
-        <div className="mx-auto grid w-full max-w-[1400px] grid-cols-1 gap-5 px-3 py-6 sm:grid-cols-2 sm:px-6 lg:grid-cols-4 lg:px-10">
+        <div className="mx-auto grid w-full max-w-[1440px] grid-cols-1 gap-5 px-3 py-6 sm:grid-cols-2 sm:px-6 lg:grid-cols-4 lg:px-10">
           {PERKS.map((p) => (
             <div key={p.title} className="flex items-center gap-3">
-              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] text-[#F59E0B]">
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] text-[#FF6B00]">
                 <p.icon className="h-6 w-6" />
               </div>
               <div>
-                <h4 className="text-sm font-bold text-[#0F172A]">{p.title}</h4>
+                <h4 className="text-sm font-bold text-[#0A1628]">{p.title}</h4>
                 <p className="text-sm text-slate-500">{p.copy}</p>
               </div>
             </div>
@@ -785,7 +827,7 @@ export function MarketplaceFooter() {
       </div>
       {/* main footer — formal charcoal */}
       <div className="w-full text-white" style={{ background: `linear-gradient(180deg, ${MARKETPLACE_BRAND.navy} 0%, ${MARKETPLACE_BRAND.navyDeep} 100%)` }}>
-        <div className="mx-auto grid w-full max-w-[1400px] grid-cols-1 gap-10 px-3 py-12 sm:px-6 md:grid-cols-2 lg:grid-cols-4 lg:px-10">
+        <div className="mx-auto grid w-full max-w-[1440px] grid-cols-1 gap-10 px-3 py-12 sm:px-6 md:grid-cols-2 lg:grid-cols-4 lg:px-10">
           <div className="space-y-4 lg:col-span-1">
           <div className="flex items-center gap-2">
             <span className="inline-flex rounded-xl bg-white px-2.5 py-1.5">
@@ -796,9 +838,9 @@ export function MarketplaceFooter() {
             <p className="text-sm leading-relaxed text-slate-300">Curated tech products, reviewed by the TechPivo editorial team. Every purchase supports independent tech journalism.</p>
             {store.contact_visible !== false && (
             <div className="space-y-2 text-sm text-slate-300">
-              <div className="flex items-start gap-2"><MapPin className="mt-0.5 h-4 w-4 shrink-0 text-[#F59E0B]" /><span>{store.address}</span></div>
-              <div className="flex items-center gap-2"><Phone className="h-4 w-4 shrink-0 text-[#F59E0B}" /><span>{store.phone}</span></div>
-              <div className="flex items-center gap-2"><Mail className="h-4 w-4 shrink-0 text-[#F59E0B}" /><span>{store.email}</span></div>
+              <div className="flex items-start gap-2"><MapPin className="mt-0.5 h-4 w-4 shrink-0 text-[#FF6B00]" /><span>{store.address}</span></div>
+              <div className="flex items-center gap-2"><Phone className="h-4 w-4 shrink-0 text-[#FF6B00}" /><span>{store.phone}</span></div>
+              <div className="flex items-center gap-2"><Mail className="h-4 w-4 shrink-0 text-[#FF6B00}" /><span>{store.email}</span></div>
             </div>
             )}
           </div>
@@ -806,31 +848,31 @@ export function MarketplaceFooter() {
             <h5 className="mb-4 text-sm font-bold uppercase tracking-wider text-white">Shop</h5>
             <ul className="grid grid-cols-1 gap-2.5 text-sm text-slate-300">
               {departments.map((d) => (
-                <li key={d.slug}><Link className="transition-colors hover:text-[#F59E0B]" href={`/marketplace/category/${d.slug}`}>{d.name}</Link></li>
+                <li key={d.slug}><Link className="transition-colors hover:text-[#FF6B00]" href={`/marketplace/category/${d.slug}`}>{d.name}</Link></li>
               ))}
             </ul>
           </nav>
           <nav aria-label="Customer service">
             <h5 className="mb-4 text-sm font-bold uppercase tracking-wider text-white">Customer Service</h5>
             <ul className="grid grid-cols-1 gap-2.5 text-sm text-slate-300">
-              <li><Link className="transition-colors hover:text-[#F59E0B]" href="/marketplace/help">Help Center</Link></li>
-              <li><Link className="transition-colors hover:text-[#F59E0B]" href="/marketplace/faq">FAQ</Link></li>
-              <li><Link className="transition-colors hover:text-[#F59E0B]" href="/marketplace/track">Order Tracking</Link></li>
-              <li><Link className="transition-colors hover:text-[#F59E0B]" href="/marketplace/cart">Your Cart</Link></li>
-              <li><Link className="transition-colors hover:text-[#F59E0B]" href="/marketplace/wishlist">Your Wishlist</Link></li>
-              <li><Link className="transition-colors hover:text-[#F59E0B]" href="/marketplace/compare">Compare Products</Link></li>
-              <li><Link className="transition-colors hover:text-[#F59E0B]" href="/marketplace/faq">Returns & Warranty</Link></li>
-              <li><Link className="transition-colors hover:text-[#F59E0B]" href="/privacy-policy">Privacy Policy</Link></li>
-              <li><Link className="transition-colors hover:text-[#F59E0B]" href="/terms-of-use">Terms of Use</Link></li>
-              <li><a className="transition-colors hover:text-[#F59E0B]" href="https://techpivo.com/" target="_blank" rel="noopener">Blog</a></li>
+              <li><Link className="transition-colors hover:text-[#FF6B00]" href="/marketplace/help">Help Center</Link></li>
+              <li><Link className="transition-colors hover:text-[#FF6B00]" href="/marketplace/faq">FAQ</Link></li>
+              <li><Link className="transition-colors hover:text-[#FF6B00]" href="/marketplace/track">Order Tracking</Link></li>
+              <li><Link className="transition-colors hover:text-[#FF6B00]" href="/marketplace/cart">Your Cart</Link></li>
+              <li><Link className="transition-colors hover:text-[#FF6B00]" href="/marketplace/wishlist">Your Wishlist</Link></li>
+              <li><Link className="transition-colors hover:text-[#FF6B00]" href="/marketplace/compare">Compare Products</Link></li>
+              <li><Link className="transition-colors hover:text-[#FF6B00]" href="/marketplace/faq">Returns & Warranty</Link></li>
+              <li><Link className="transition-colors hover:text-[#FF6B00]" href="/privacy-policy">Privacy Policy</Link></li>
+              <li><Link className="transition-colors hover:text-[#FF6B00]" href="/terms-of-use">Terms of Use</Link></li>
+              <li><a className="transition-colors hover:text-[#FF6B00]" href="https://techpivo.com/" target="_blank" rel="noopener">Blog</a></li>
             </ul>
           </nav>
           <div>
             <h5 className="mb-4 text-sm font-bold uppercase tracking-wider text-white">Newsletter</h5>
             <p className="mb-3 text-sm text-slate-300">Weekly tech drops and member coupons.</p>
             <form className="space-y-2" onSubmit={subscribe}>
-              <input value={email} onChange={(e) => setEmail(e.target.value)} className="w-full rounded-lg border border-white/15 bg-white/10 px-3 py-2.5 text-sm text-white placeholder:text-slate-400 focus:border-[#F59E0B] focus:outline-none" placeholder="Your email" type="email" aria-label="Email" />
-              <button className="w-full rounded-lg bg-[#F59E0B] py-2.5 text-sm font-bold text-[#0F172A] transition-colors hover:bg-[#D97706] disabled:opacity-60" type="submit" disabled={subBusy}>
+              <input value={email} onChange={(e) => setEmail(e.target.value)} className="w-full rounded-lg border border-white/15 bg-white/10 px-3 py-2.5 text-sm text-white placeholder:text-slate-400 focus:border-[#FF6B00] focus:outline-none" placeholder="Your email" type="email" aria-label="Email" />
+              <button className="w-full rounded-lg bg-[#FF6B00] py-2.5 text-sm font-bold text-[#0A1628] transition-colors hover:bg-[#e86000] disabled:opacity-60" type="submit" disabled={subBusy}>
                 {subBusy ? "Subscribing..." : "Subscribe"}
               </button>
               {subMsg && <p className="text-xs text-slate-300">{subMsg}</p>}
@@ -840,7 +882,7 @@ export function MarketplaceFooter() {
       </div>
       {/* bottom bar — full width */}
       <div className="w-full text-white" style={{ background: MARKETPLACE_BRAND.navyDeep }}>
-        <div className="mx-auto flex w-full max-w-[1400px] flex-col items-center justify-between gap-2 px-3 py-5 text-xs sm:flex-row sm:px-6 sm:text-sm lg:px-10">
+        <div className="mx-auto flex w-full max-w-[1440px] flex-col items-center justify-between gap-2 px-3 py-5 text-xs sm:flex-row sm:px-6 sm:text-sm lg:px-10">
           <p className="text-slate-400">© {new Date().getFullYear()} TechPivo Market. All rights reserved.</p>
           <p className="text-[11px] leading-relaxed text-slate-500">Quality-checked products · secure payment · tracked delivery on every order.</p>
         </div>
