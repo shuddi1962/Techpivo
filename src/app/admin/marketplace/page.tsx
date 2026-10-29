@@ -13,6 +13,7 @@ import { MarketplacePromotionsTab } from "@/components/admin/marketplace-promoti
 import { MarketplaceDashboardTab } from "@/components/admin/marketplace-dashboard-tab"
 import { MarketplaceProductsTab } from "@/components/admin/marketplace-products-tab"
 import { MarketplaceVisibilityTab } from "@/components/admin/marketplace-visibility-tab"
+import { MarketplaceFeedTab } from "@/components/admin/marketplace-feed-tab"
 import { isMarketSection, MarketplaceSectionPills } from "@/components/admin/marketplace-nav"
 
 // Section switching lives in the global admin sidebar (which shows the
@@ -66,6 +67,8 @@ function AdminMarketplacePageInner() {
         {tab === "payments" && <MarketplacePaymentsTab />}
 
         {tab === "visibility" && <MarketplaceVisibilityTab />}
+
+        {tab === "feed" && <MarketplaceFeedTab />}
       </div>
     </div>
   )

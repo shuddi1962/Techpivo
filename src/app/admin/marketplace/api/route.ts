@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { revalidatePath } from "next/cache"
 import { requireAdminRole, createServiceClient } from "@/lib/admin-auth"
+import { SITE_URL } from "@/lib/constants"
 import { cjListProducts, cjProductMatchesQuery, cjSearchProducts, cjStatus, mapCjToAffiliate, resolveCjApiKey } from "@/lib/cj"
 
 // All database work in this route runs through the service-role client.
@@ -503,6 +504,59 @@ export async function GET(request: NextRequest) {
       }))
       rows.sort((a, b) => b.clicks - a.clicks || b.conversions - a.conversions)
       return NextResponse.json({ top: rows.slice(0, 8) })
+    }
+    // feed-stats — eligibility report for the Google Merchant Center feed.
+    if (section === "feed-stats") {
+      const [{ count: totalCount }, { count: activeCount }] = await Promise.all([
+        supabase.from("affiliate_products").select("id", { count: "exact", head: true }),
+        supabase.from("affiliate_products").select("id", { count: "exact", head: true }).eq("is_active", true),
+      ])
+      const total = (totalCount as number | null) ?? 0
+      const active = (activeCount as number | null) ?? 0
+      // Walk active products (pages of 1000) to count feed-eligibility issues
+      // without fabricating data: missing name, missing image, non-positive price.
+      let missingName = 0
+      let missingImage = 0
+      let badPrice = 0
+      let eligible = 0
+      let from = 0
+      const PAGE = 1000
+      for (;;) {
+        const { data } = await supabase
+          .from("affiliate_products")
+          .select("id,product_name,product_image_url,original_price,sale_price")
+          .eq("is_active", true)
+          .order("created_at", { ascending: false })
+          .range(from, from + PAGE - 1)
+        const rows = (data || []) as Array<{
+          product_name: string | null
+          product_image_url: string | null
+          original_price: number | null
+          sale_price: number | null
+        }>
+        for (const p of rows) {
+          const nameOk = Boolean(p.product_name?.trim())
+          const imageOk = Boolean(p.product_image_url?.trim())
+          const price = p.sale_price ?? p.original_price
+          const priceOk = Number.isFinite(Number(price)) && Number(price) > 0
+          if (nameOk && imageOk && priceOk) eligible++
+          if (!nameOk) missingName++
+          if (!imageOk) missingImage++
+          if (!priceOk) badPrice++
+        }
+        if ((data || []).length < PAGE) break
+        from += PAGE
+      }
+      return NextResponse.json({
+        feedUrl: `${SITE_URL}/feeds/google-merchant-center`,
+        total,
+        active,
+        eligible,
+        excluded: Math.max(0, active - eligible),
+        missingName,
+        missingImage,
+        badPrice,
+      })
     }
     // overview — exact counts over the WHOLE catalogue. A plain .limit()
     // select silently capped this (2,873 live rows, only the newest 500

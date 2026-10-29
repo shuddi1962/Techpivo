@@ -12,6 +12,7 @@ import { MarketplaceFooter, MarketplaceHeader } from "@/components/marketplace/m
 import { ProductDetail, type ProductDetailData } from "@/components/marketplace/product-detail"
 import { MarketMerchProvider } from "@/components/marketplace/market-flags"
 import { fetchMarketMerch } from "@/lib/marketplace-products"
+import { SITE_URL } from "@/lib/constants"
 
 export const revalidate = 60
 
@@ -33,6 +34,7 @@ interface DbProduct {
   clicks: number | null
   cj_data: unknown
   cj_pid: string | null
+  cj_sku: string | null
 }
 
 export async function generateMetadata({ params }: { params: { id: string } }): Promise<Metadata> {
@@ -53,9 +55,11 @@ export async function generateMetadata({ params }: { params: { id: string } }): 
   if (!data) return { title: "Product not found — TechPivo Market" }
   const cleanDesc = cleanSupplierText(data.product_description)
   const cleanImg = marketImage(data.product_image_url)
+  const canonical = `${SITE_URL}/marketplace/product/${params.id}`
   return {
     title: `${cleanSupplierText(data.product_name) || data.product_name} — TechPivo Market`,
     description: (cleanDesc || `Buy ${data.product_name} on TechPivo Market with fast delivery.`).slice(0, 160),
+    alternates: { canonical },
     openGraph: cleanImg ? { images: [{ url: cleanImg }] } : undefined,
   }
 }
@@ -78,7 +82,7 @@ export default async function MarketplaceProductPage({ params }: { params: { id:
   const prodRes = (await fetchWithTimeout(
     supabase
       .from("affiliate_products")
-      .select("id,product_name,product_description,product_image_url,original_price,sale_price,program_key,category_slug,subcategory_slug,stock,clicks,cj_data,cj_pid")
+      .select("id,product_name,product_description,product_image_url,original_price,sale_price,program_key,category_slug,subcategory_slug,stock,clicks,cj_data,cj_pid,cj_sku")
       .eq("id", params.id)
       .eq("is_active", true)
       .maybeSingle(),
@@ -157,18 +161,40 @@ export default async function MarketplaceProductPage({ params }: { params: { id:
     // sales count is informational only
   }
 
+  const priceUsd = Number(p.sale_price ?? p.original_price ?? 0)
+  const inStock = (p.stock ?? 0) > 0
+  // CJ supplier SKU (SPU) — the closest real manufacturer part identifier.
+  // Never fabricate a GTIN/MPN: omit when genuinely unavailable.
+  const mpn = p.cj_sku || undefined
+  const sku = p.cj_pid || `TPM-${p.id.replace(/-/g, "").slice(0, 8).toUpperCase()}`
+  const brandName = (typeof p.cj_data === "object" && p.cj_data !== null && (p.cj_data as { brand?: string })?.brand)
+    ? String((p.cj_data as { brand?: string }).brand)
+    : "TechPivo Market"
+
   const jsonLd = {
     "@context": "https://schema.org",
     "@type": "Product",
     name: p.product_name,
     description: p.product_description || undefined,
-    image: p.product_image_url || undefined,
-    brand: { "@type": "Brand", name: "TechPivo Market" },
+    image: p.product_image_url ? [p.product_image_url] : undefined,
+    sku,
+    ...(mpn ? { mpn } : {}),
+    brand: { "@type": "Brand", name: brandName },
+    itemCondition: "https://schema.org/NewCondition",
     offers: {
       "@type": "Offer",
       priceCurrency: "USD",
-      price: Number(p.sale_price ?? p.original_price ?? 0),
-      availability: "https://schema.org/InStock",
+      price: priceUsd,
+      availability: inStock
+        ? "https://schema.org/InStock"
+        : "https://schema.org/OutOfStock",
+      url: `${SITE_URL}/marketplace/product/${p.id}`,
+      itemCondition: "https://schema.org/NewCondition",
+      seller: {
+        "@type": "Organization",
+        name: "TechPivo Market",
+        url: SITE_URL,
+      },
     },
   }
 

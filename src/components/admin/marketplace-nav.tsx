@@ -6,7 +6,7 @@ import { useSearchParams } from "next/navigation"
 import {
   Package, ReceiptText, MessageSquare, BadgePercent, LayoutGrid,
   ImagePlus, Plug, TrendingUp, CreditCard, Globe, ArrowLeft,
-  ExternalLink, LayoutDashboard, Store, type LucideIcon,
+  ExternalLink, LayoutDashboard, Store, Rss, type LucideIcon,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 
@@ -38,6 +38,7 @@ export const MARKET_SECTIONS: MarketSection[] = [
   { id: "categories", label: "Categories", desc: "Departments & mapping", icon: LayoutGrid, group: "Marketing" },
   { id: "payments", label: "Payments", desc: "Gateway keys & mode", icon: CreditCard, group: "Setup" },
   { id: "visibility", label: "Visibility", desc: "Storefront publish switch", icon: Globe, group: "Setup" },
+  { id: "feed", label: "Google Feed", desc: "Merchant Center product feed", icon: Rss, group: "Setup" },
 ]
 
 const MARKET_GROUPS = ["Overview", "Sell", "Marketing", "Setup"] as const
