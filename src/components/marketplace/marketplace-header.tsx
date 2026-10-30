@@ -19,7 +19,71 @@ import { MarketCommerce } from "./market-commerce"
 import { readMarketCurrency, setMarketCurrency } from "@/lib/marketplace-pricing"
 import { MARKET_STORE_DEFAULTS } from "@/lib/marketplace-store"
 
-const NAV: Array<{ label: string; href: string; external?: boolean }> = [
+// │──────────────────────────────────────────────────────────────────────│
+// │ MarketplaceHeader — 3‑level cascade mega‑menu + mobile drawer         │
+// │                                                                      │
+// │ ARCHITECTURE SUMMARY                                                  │
+// │                                                                     │
+// │ 1. 3‑LEVEL CASCADE (desktop only):                                   │
+// │    L1 — department list (grid, left dept rows with subs, right flash card)   │
+// │    L2 — when a department is open → sub‑category list; each sub column reveals leaves │
+// │    L3 — when a sub‑category is open → leaf list; back row → parent      │
+// │    State: openDept (department slug), openCat (sub‑category slug), open (mobile) │
+// │    Every Link click resets all three states to closed.                 │
+// │                                                                     │
+// │ 2. HOVER HOOKS (deptOpen):                                            │
+// │    - panels stay open while mouse is over them                         │
+// │    - outside‑click + Escape reset all three states (openDept/openCat/deptOpen) │
+// │    - deptOpen flag controls hover intent; panels close on mouse leave    │
+// │                                                                     │
+// │ 3. MOBILE DRAWER:                                                     │
+// │    - simple accordion of departments (subs.slice(0,4))                 │
+// │    - mobileExpanded tracks last‑expanded department slug               │
+// │    - outside click + Escape close the drawer                         │
+// │    - 85% width white drawer with accordion layout                    │
+// │                                                                     │
+// │ 4. BANNER INTEGRATION:                                                │
+// │    - promoBanners fetched from site_settings key "marketplace_banners"  │
+// │    - promoOn switch (default ON) hides promo surfaces publicly         │
+// │    - departments may have banner_image; when set renders in L2/L3 panels │
+// │    - Black Friday promo switch in Admin → Marketplace → Banners         │
+// │    - banners also appear on homepage and category pages               │
+// │                                                                     │
+// │ Live cart / wishlist counts are subscribed so badges stay correct        │
+// │ across store pages even when the page doesn't pass cartCount.          │
+// │                                                                      │
+// │ Live, admin‑editable category tree falls back to the bundled tree.    │
+// │                                                                      │
+// │ ──────────────────────────────────────────────────────────────────────│
+// │ MarketplaceHeader — 3‑level cascade mega‑menu + mobile drawer         │
+// │                                                                      │
+// │ State:                                                               │
+// │   openDept    — currently highlighted department slug (hover)         │
+// │   openCat     — currently highlighted sub‑category slug (open)        │
+// │   open        — mobile drawer open state                              │
+// │   mobileExpanded — last‑expanded department slug for mobile list      │
+// │   deptOpen    — hover‑intent flag; panels close on outside‑click/Esc   │
+// │   promoBanners — live banners from site_settings (promo + flash)      │
+// │   departments — live tree fetched via useMarketplaceTree               │
+// │                                                                      │
+// │ 3‑level cascade (desktop):                                            │
+// │   L1 — department list (grid, left dept rows with subs, right flash card)   │
+// │   L2 — when a department is open → sub‑category list; each sub column reveals leaves      │
+// │   L3 — when a sub‑category is open → leaf list; back row → parent      │
+// │                                                                     │
+// │ Hover intent (deptOpen): panels stay open while mouse is over them;   │
+// │ outside‑click + Escape reset all three states (openDept/openCat/deptOpen). │
+// │                                                                      │
+// │ Mobile drawer: simple accordion of departments (subs.slice(0,4)).      │
+// │                                                                      │
+// │ Banners: promo_banners from site_settings; when set, the Black Friday │
+// │ promo switch hides promo surfaces publicly (default ON).               │
+// │                                                                      │
+// │ Live cart / wishlist counts are subscribed so badges stay correct      │
+// │ across store pages even when the page doesn't pass cartCount.          │
+// │                                                                      │
+// │ Live, admin‑editable category tree falls back to the bundled tree.    │
+// └──────────────────────────────────────────────────────────────────────│
   { label: "Home", href: "/marketplace" },
   { label: "Shop", href: "/marketplace/shop" },
   { label: "Deals of the Day", href: "/marketplace/deals" },
