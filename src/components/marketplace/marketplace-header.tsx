@@ -527,142 +527,109 @@ const [currency, setCurrency] = useState("USD")
                                   </li>
                                 ))}
                               </ul>
-                              {items.length === 0 ? <p className="mt-2 text-sm text-slate-400">No items in this category yet.</p> : null}
+                              {items.length === 0 ? null : ""}
                             </div>
                           )
                         })()
-                      ) : openDept ? (
-                        (() => {
-                          const dNode = departments.find((d) => d.slug === openDept)
-                          const subs = dNode?.subs ?? []
-                          return (
-                            <div>
-                              <button
-                                type="button"
-                                onClick={() => { setOpenDept(null); setDeptOpen(false) }}
-                                className="text-xs font-bold uppercase tracking-wider text-slate-400 hover:text-[#FF6B00]"
-                              >
-                                ← All departments
-                              </button>
-                              <h4 className="mt-3 text-sm font-bold text-[#0A1628]">{dNode?.name}</h4>
-                              <ul className="mt-2 grid gap-x-6 gap-y-1.5 sm:grid-cols-2 lg:grid-cols-3">
-                                {subs.map((s) => (
-                                  <li key={s.slug}>
+) : openDept ? (
+                          (() => {
+                            const dNode = departments.find((d) => d.slug === openDept)
+                            const subs = dNode?.subs ?? []
+                            return (
+                              <div>
+                                <div className="flex items-center justify-between mb-3">
+                                  <h3 className="font-bold text-base text-[#0A1628]">{dNode?.name || "Department"}</h3>
+                                  <Link
+                                    href={`/marketplace/category/${openDept}`}
+                                    className="text-xs font-semibold hover:underline flex items-center gap-1 transition-colors"
+                                    style={{ color: "#FF6B00" }}
+                                    onClick={() => { setDeptOpen(false); setOpenDept(null); setOpenCat(null) }}
+                                  >
+                                    View all <ChevronRight size={12} />
+                                  </Link>
+                                </div>
+                                <div className="grid grid-cols-2 gap-x-6 gap-y-2 mb-4">
+                                  {subs.map((s) => (
                                     <Link
+                                      key={s.slug}
                                       href={`/marketplace/category/${openDept}/${s.slug}`}
-                                      onMouseEnter={() => { setDeptOpen(true); setOpenCat(s.slug) }}
                                       onClick={() => { setDeptOpen(false); setOpenDept(null); setOpenCat(null) }}
-                                      className={`block rounded-lg border px-3 py-2 text-sm font-semibold transition-colors ${openCat === s.slug ? "border-[#FF6B00] bg-[#FF6B00]/10 text-[#9A3412]" : "border-[#E2E8F0] text-[#0A1628] hover:border-[#FF6B00] hover:text-[#FF6B00]"}`}
+                                      className="text-sm text-slate-600 hover:text-[#FF6B00] transition-colors py-1"
                                     >
                                       {s.name}
                                     </Link>
-                                    {openCat === s.slug ? (
-                                      <ul className="mt-1.5 ml-4 grid gap-1.5 border-l border-[#E2E8F0] pl-3">
-                                        {s.items.map((it) => (
-                                          <li key={it.slug}>
-                                            <Link
-                                              href={`/marketplace/category/${openDept}/${s.slug}`}
-                                              onClick={() => { setDeptOpen(false); setOpenDept(null); setOpenCat(null) }}
-                                              className="block text-[13px] text-slate-500 transition-colors hover:text-[#FF6B00]"
-                                            >
-                                              {it.name}
-                                            </Link>
-                                          </li>
-                                        ))}
-                                      </ul>
-                                    ) : null}
-                                  </li>
-                                ))}
-                              </ul>
-                              {subs.length === 0 ? <p className="mt-2 text-sm text-slate-400">No sub-categories yet.</p> : null}
-                            </div>
-                          )
-                        })()
-                      ) : (
-                        <div className="grid gap-6 lg:grid-cols-12">
-                          <div className="w-[260px] border-r border-gray-200 py-2">
-                            {departments.map((d) => {
-                              const isActive = openDept === d.slug
-                              const Icon = DEPT_ICONS[d.icon]
-                              return (
-                                <div
-                                  key={d.slug}
-                                  onMouseEnter={() => { setDeptOpen(true); setOpenDept(d.slug) }}
-                                  className={`flex items-center gap-3 px-4 py-2.5 cursor-pointer transition-colors ${
-                                    isActive
-                                      ? "bg-orange-50 text-[#FF6B00]"
-                                      : "text-slate-700 hover:bg-gray-50"
-                                  }`}
-                                  style={isActive ? { color: "#FF6B00" } : undefined}
-                                >
-                                  {Icon ? (
-                                    <span className="flex h-5 w-5 items-center justify-center shrink-0" style={{ color: isActive ? "#FF6B00" : "#9ca3af" }}>
-                                      <Icon size={16} />
-                                    </span>
-                                  ) : (
-                                    <span className="h-5 w-5" />
-                                  )}
-                                  <span className="text-sm font-medium flex-1 truncate">{d.name}</span>
-                                  <ChevronRight size={14} className="text-gray-400 shrink-0" />
-                                  
+                                  ))}
                                 </div>
-                              );
-                            })}
-                          </div>
-                          <div className="lg:col-span-5">
-                            {openDept ? (
-                              (() => {
-                                const dNode = departments.find((d) => d.slug === openDept)
-                                const subs = dNode?.subs ?? []
-                                return (
-                                  <div>
-                                    <div className="flex items-center justify-between mb-3">
-                                      <h3 className="font-bold text-base text-[#0A1628]">{dNode?.name || "Department"}</h3>
-                                      <Link
-                                        href={`/marketplace/category/${openDept}`}
-                                        className="text-xs font-semibold hover:underline flex items-center gap-1 transition-colors"
-                                        style={{ color: "#FF6B00" }}
-                                        onClick={() => { setDeptOpen(false); setOpenDept(null); setOpenCat(null) }}
-                                      >
-                                        View all <ChevronRight size={12} />
-                                      </Link>
-                                    </div>
-                                    <div className="grid grid-cols-2 gap-x-6 gap-y-2 mb-4">
-                                      {subs.map((s) => (
-                                        <Link
-                                          key={s.slug}
-                                          href={`/marketplace/category/${openDept}/${s.slug}`}
-                                          onClick={() => { setDeptOpen(false); setOpenDept(null); setOpenCat(null) }}
-                                          className="text-sm text-slate-600 hover:text-[#FF6B00] transition-colors py-1"
-                                        >
-                                          {s.name}
-                                        </Link>
-                                      ))}
-                                    </div>
-                                    {dNode?.image && (
-                                      <div className="relative rounded-lg overflow-hidden h-[140px] mt-3">
-                                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                                        <img src={dNode.image} alt={dNode.name} className="absolute inset-0 w-full h-full object-cover" loading="lazy" />
-                                        <div className="absolute inset-0 flex items-end bg-gradient-to-t from-black/60 to-transparent p-4">
-                                          <p className="text-white font-bold text-sm">{dNode.name}</p>
-                                        </div>
-                                      </div>
-                                    )}
+                                {dNode?.banner_image && dNode.banner_image !== "" ? (
+                                  <div className="mt-6 p-4 bg-[#FF6B00]/5 border rounded-lg">
+                                    <img
+                                      src={dNode.banner_image}
+                                      alt={dNode.name || "Promo"}
+                                      className="w-full h-32 object-cover rounded-lg mb-3"
+                                    />
+                                    <p className="text-sm font-medium text-[#FF6B00]">{dNode.banner_headline || ""}</p>
+                                    <p className="text-xs text-slate-500">{dNode.banner_description || ""}</p>
                                   </div>
-                                )
-                              })()
-                            ) : (
-                              <div className="h-full flex flex-col items-center justify-center text-slate-400 text-sm pt-20">
-                                Hover a department to see subcategories
+                                ) : null}
                               </div>
-                            )}
+                            )
+                          })()
+                        ) : (
+<div className="lg:col-span-8 border-l border-[#E2E8F0] p-6">
+                    {openDept ? (
+                      (() => {
+                        const dNode = departments.find((d) => d.slug === openDept)
+                        const subs = dNode?.subs ?? []
+                        return (
+                          <div>
+                            <div className="flex items-center justify-between mb-3">
+                              <h3 className="font-bold text-base text-[#0A1628]">{dNode?.name || "Department"}</h3>
+                              <Link
+                                href={`/marketplace/category/${openDept}`}
+                                className="text-xs font-semibold hover:underline flex items-center gap-1 transition-colors"
+                                style={{ color: "#FF6B00" }}
+                                onClick={() => { setDeptOpen(false); setOpenDept(null); setOpenCat(null) }}
+                              >
+                                View all <ChevronRight size={12} />
+                              </Link>
+                            </div>
+                            <div className="grid grid-cols-2 gap-x-6 gap-y-2 mb-4">
+                              {subs.map((s) => (
+                                <Link
+                                  key={s.slug}
+                                  href={`/marketplace/category/${openDept}/${s.slug}`}
+                                  onClick={() => { setDeptOpen(false); setOpenDept(null); setOpenCat(null) }}
+                                  className="text-sm text-slate-600 hover:text-[#FF6B00] transition-colors py-1"
+                                >
+                                  {s.name}
+                                </Link>
+                              ))}
+                            </div>
+                            {dNode?.banner_image && dNode.banner_image !== "" ? (
+                              <div className="mt-6 p-4 bg-[#FF6B00]/5 border rounded-lg">
+                                <img
+                                  src={dNode.banner_image}
+                                  alt={dNode.name || "Promo"}
+                                  className="w-full h-32 object-cover rounded-lg mb-3"
+                                />
+                                <p className="text-sm font-medium text-[#FF6B00]">{dNode.banner_headline || ""}</p>
+                                <p className="text-xs text-slate-500">{dNode.banner_description || ""}</p>
+                              </div>
+                            ) : null}
                           </div>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              )}
+                        )
+                      })()
+                    ) : (
+                      <div className="text-center py-12 text-slate-400">
+                        Hover a department to see subcategories
+</div>
+              </div>
+            </div>
+</div>
+              </div>
+            </div>
+          </div>
+        )}
             </div>
             <nav className="hidden lg:flex items-center gap-1 min-w-0 flex-1 overflow-x-auto whitespace-nowrap" aria-label="Marketplace" style={{ scrollbarWidth: "none" }}>
               {NAV.map((item, i) => (
