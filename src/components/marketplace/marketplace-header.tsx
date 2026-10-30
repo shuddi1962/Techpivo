@@ -604,12 +604,7 @@ const [currency, setCurrency] = useState("USD")
                                   )}
                                   <span className="text-sm font-medium flex-1 truncate">{d.name}</span>
                                   <ChevronRight size={14} className="text-gray-400 shrink-0" />
-                                  {d.subs.length > 0 && (
-                                    <span className="text-[9px] px-1.5 py-0.5 rounded-full font-bold"
-                                      style={{ backgroundColor: "#FF6B001A", color: "#FF6B00" }}>
-                                      {d.subs.length}
-                                    </span>
-                                  )}
+                                  
                                 </div>
                               );
                             })}
