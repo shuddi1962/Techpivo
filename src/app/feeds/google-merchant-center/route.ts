@@ -11,7 +11,7 @@ export const revalidate = 60 * 60 // refresh hourly; product changes re-validate
 const RSS_VERSION = "2.0"
 const G_NS = "xmlns:g=\"http://base.google.com/ns/1.0\""
 
-const DEFAULT_LIMIT = 1000 // sensible DB cap so a single feed request stays fast
+const DEFAULT_LIMIT = 5000 // raised to match MAX_LIMIT; single feed stays fast via range
 const MAX_LIMIT = 5000
 
 function xmlEscape(value: string | null | undefined): string {
