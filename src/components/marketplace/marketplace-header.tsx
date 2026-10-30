@@ -67,6 +67,34 @@ export function MarketplaceHeader({
   onSearch?: (q: string) => void
   onShopDept?: (slug: string | null) => void
 }) {
+  // ├──────────────────────────────────────────────────────────────────────┤
+  // │ MarketplaceHeader — 3‑level cascade mega‑menu + mobile drawer       │
+  // │                                                                      │
+  // │ State:                                                               │
+  // │   openDept    — currently highlighted department slug (hover)         │
+  // │   openCat     — currently highlighted sub‑category slug (open)        │
+  // │   open        — mobile drawer open state                              │
+  // │   mobileExpanded — last‑expanded department slug for mobile list      │
+  // │   deptOpen    — hover‑intent flag; panels close on outside‑click/Esc   │
+  // │   promoBanners — live banners from site_settings (promo + flash)      │
+  // │   departments — live tree fetched via useMarketplaceTree               │
+  // │                                                                      │
+  // │ 3‑level cascade (desktop):                                            │
+  // │   L1 — department list (grid, left dept rows with subs, right flash card)   │
+  // │   L2 — when a department is open → sub‑category list; each sub column reveals leaves      │
+  // │   L3 — when a sub‑category is open → leaf list; back row → parent      │
+  // │                                                                      │
+  // │ Hover intent (deptOpen): panels stay open while mouse is over them;   │
+  // │ outside‑click + Escape reset all three states (openDept/openCat/deptOpen). │
+  // │                                                                      │
+  // │ Mobile drawer: simple accordion of departments (subs.slice(0,4)).      │
+  // │                                                                      │
+  // │ Banners: promo_banners from site_settings; when set, the Black Friday │
+  // │ promo switch hides promo surfaces publicly (default ON).               │
+  // │                                                                      │
+  // │ Live cart / wishlist counts are subscribed so badges stay correct      │
+  // │ across store pages even when the page doesn't pass cartCount.          │
+  // └──────────────────────────────────────────────────────────────────────┤
   const router = useRouter()
   const [open, setOpen] = useState(false)
   const [query, setQuery] = useState("")
