@@ -6,7 +6,8 @@ import { useEffect, useRef, useState } from "react"
 import {
   Search, Heart, User, ShoppingBasket, Menu, X, ChevronDown, ChevronRight,
   Flame, MapPin, Phone, Mail, Truck, RefreshCcw, Headset, ShieldCheck,
-  ArrowLeftRight, LayoutGrid,
+  ArrowLeftRight, LayoutGrid, Cpu, Smartphone, Laptop, Car, Wrench, Monitor,
+  Package, Globe, CreditCard, ShoppingCart,
 } from "lucide-react"
 import { MarketCategorySync, useMarketplaceTree } from "./market-category-store"
 import { MARKETPLACE_BRAND } from "@/lib/marketplace"
@@ -31,6 +32,12 @@ const NAV: Array<{ label: string; href: string; external?: boolean }> = [
 ]
 
 const WISH_KEY = "tp_market_wish_v1"
+
+// Live tree icons are stored as lucide name strings; map them to components.
+const DEPT_ICONS: Record<string, any> = {
+  Cpu, Smartphone, Laptop, Car, Wrench, Monitor, Package, Globe, CreditCard,
+  ShoppingCart, Flame, MapPin, Phone, Mail,
+}
 
 function readWishCount(): number {
   if (typeof window === "undefined") return 0
@@ -438,8 +445,8 @@ const [currency, setCurrency] = useState("USD")
       </div>
 
       {/* nav bar — single row, never wraps: horizontal scroll instead of pushing content down */}
-      <div className="relative hidden w-full bg-white border-t border-[#E2E8F0] lg:block">
-        <div className="mx-auto w-full max-w-[1440px] px-3 sm:px-6 lg:px-10 hidden lg:flex items-center justify-between h-14 gap-3 bg-white">
+      <div className="relative hidden w-full bg-[#0A1628] lg:block">
+        <div className="mx-auto w-full max-w-[1440px] px-3 sm:px-6 lg:px-10 hidden lg:flex items-center justify-between h-14 gap-3">
           <div className="flex items-center gap-3 min-w-0 flex-1">
             <div
           ref={deptWrapRef}
@@ -452,19 +459,18 @@ const [currency, setCurrency] = useState("USD")
                 setOpenCat("");
               }}
               onMouseEnter={() => setDeptOpen(true)}
-              className="bg-[#FF6B00] hover:bg-[#e86000] text-white px-4 py-2.5 rounded-lg flex items-center gap-2 text-sm font-bold transition-colors cursor-pointer"
+              className="mega-btn text-white h-12 px-6 flex items-center gap-2 font-semibold text-sm transition-colors cursor-pointer"
             >
               <LayoutGrid className="h-5 w-5" />
               <span>All Departments</span>
               <ChevronDown className={`h-4 w-4 transition-transform ${deptOpen ? "rotate-180" : ""}`} />
             </button>
         {deptOpen && (
-          <div className="absolute top-full left-0 z-50 hidden lg:block animate-slide-down" onMouseEnter={() => setDeptOpen(true)}>
-                  <div
-                    className="w-[820px] max-w-[calc(100vw-2rem)]"
+          <div className="absolute top-full left-0 bg-white rounded-b-xl shadow-xl z-50 flex animate-slide-down" onMouseEnter={() => setDeptOpen(true)} style={{ width: "820px" }}>
+                  <div className="w-[820px] max-w-[calc(100vw-2rem)]"
                     onMouseEnter={() => setDeptOpen(true)}
                   >
-                    <div className="rounded-b-2xl border border-t-0 border-[#E2E8F0] bg-white p-6 shadow-2xl lg:p-8 max-h-[70vh] overflow-y-auto">
+                    <div className="rounded-b-xl border border-t-0 border-[#E2E8F0] bg-white p-6 shadow-2xl lg:p-8 max-h-[70vh] overflow-y-auto">
                       {openCat ? (
                         (() => {
                           const dNode = departments.find((d) => d.slug === openDept)
@@ -546,54 +552,87 @@ const [currency, setCurrency] = useState("USD")
                         })()
                       ) : (
                         <div className="grid gap-6 lg:grid-cols-12">
-                          <div className="lg:col-span-7">
-                            <p className="mb-2 text-[11px] font-bold uppercase tracking-wider text-slate-400">Departments</p>
-                            <ul className="grid gap-1.5">
-                              {departments.map((d) => (
-                                <li key={d.slug}>
-                                  <div
-                                    onMouseEnter={() => { setDeptOpen(true); setOpenDept(d.slug) }}
-                                    className="group flex items-center justify-between gap-2 rounded-lg px-3 py-2 transition-colors hover:bg-slate-50"
-                                  >
-                                    <Link
-                                      href={`/marketplace/category/${d.slug}`}
-                                      onClick={() => { setDeptOpen(false); setOpenDept(null); setOpenCat(null) }}
-                                      className={`text-sm font-semibold transition-colors ${openDept === d.slug ? "text-[#e86000]" : "text-[#0A1628] group-hover:text-[#FF6B00]"}`}
-                                    >
-                                      {d.name}
-                                    </Link>
-                                    <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">{d.subs.length} categories</span>
-                                  </div>
-                                </li>
-                              ))}
-                            </ul>
+                          <div className="w-[260px] border-r border-gray-200 py-2">
+                            {departments.map((d) => {
+                              const isActive = openDept === d.slug
+                              const Icon = DEPT_ICONS[d.icon]
+                              return (
+                                <div
+                                  key={d.slug}
+                                  onMouseEnter={() => { setDeptOpen(true); setOpenDept(d.slug) }}
+                                  className={`flex items-center gap-3 px-4 py-2.5 cursor-pointer transition-colors ${
+                                    isActive
+                                      ? "bg-orange-50 text-[#FF6B00]"
+                                      : "text-slate-700 hover:bg-gray-50"
+                                  }`}
+                                  style={isActive ? { color: "#FF6B00" } : undefined}
+                                >
+                                  {Icon ? (
+                                    <span className="flex h-5 w-5 items-center justify-center shrink-0" style={{ color: isActive ? "#FF6B00" : "#9ca3af" }}>
+                                      <Icon size={16} />
+                                    </span>
+                                  ) : (
+                                    <span className="h-5 w-5" />
+                                  )}
+                                  <span className="text-sm font-medium flex-1 truncate">{d.name}</span>
+                                  <ChevronRight size={14} className="text-gray-400 shrink-0" />
+                                  {d.subs.length > 0 && (
+                                    <span className="text-[9px] px-1.5 py-0.5 rounded-full font-bold"
+                                      style={{ backgroundColor: "#FF6B001A", color: "#FF6B00" }}>
+                                      {d.subs.length}
+                                    </span>
+                                  )}
+                                </div>
+                              );
+                            })}
                           </div>
                           <div className="lg:col-span-5">
-                            <div
-                              className="flex min-h-[280px] flex-col justify-between overflow-hidden rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] p-5 relative"
-                            >
-                              {promoBanners?.flash_image?.trim() ? (
-                                <>
-                                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                                  <img src={promoBanners.flash_image.trim()} alt="" aria-hidden className="absolute inset-0 h-full w-full object-cover" loading="lazy" />
-                                  <span className="absolute inset-0" style={{ background: "linear-gradient(180deg, rgba(255,255,255,0.6) 0%, rgba(255,255,255,0.9) 100%)" }} />
-                                </>
-                              ) : null}
-                              <div className="relative">
-                                <span className="inline-flex items-center gap-1 rounded bg-[#FF6B00] px-2 py-0.5 text-[11px] font-bold uppercase text-white">
-                                  <Flame className="h-3 w-3" /> {promoBanners?.flash_badge || "Flash Sale"}
-                                </span>
-                                <p className="mt-3 text-2xl font-extrabold leading-tight line-clamp-3 text-[#0A1628]">{promoBanners?.flash_title || "Up to 50% Off"}</p>
-                                <p className="mt-1 text-xs text-slate-600">{promoBanners?.flash_subtitle || "Verified supplier picks, tracked delivery."}</p>
+                            {openDept ? (
+                              (() => {
+                                const dNode = departments.find((d) => d.slug === openDept)
+                                const subs = dNode?.subs ?? []
+                                return (
+                                  <div>
+                                    <div className="flex items-center justify-between mb-3">
+                                      <h3 className="font-bold text-base text-[#0A1628]">{dNode?.name || "Department"}</h3>
+                                      <Link
+                                        href={`/marketplace/category/${openDept}`}
+                                        className="text-xs font-semibold hover:underline flex items-center gap-1 transition-colors"
+                                        style={{ color: "#FF6B00" }}
+                                        onClick={() => { setDeptOpen(false); setOpenDept(null); setOpenCat(null) }}
+                                      >
+                                        View all <ChevronRight size={12} />
+                                      </Link>
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-x-6 gap-y-2 mb-4">
+                                      {subs.map((s) => (
+                                        <Link
+                                          key={s.slug}
+                                          href={`/marketplace/category/${openDept}/${s.slug}`}
+                                          onClick={() => { setDeptOpen(false); setOpenDept(null); setOpenCat(null) }}
+                                          className="text-sm text-slate-600 hover:text-[#FF6B00] transition-colors py-1"
+                                        >
+                                          {s.name}
+                                        </Link>
+                                      ))}
+                                    </div>
+                                    {dNode?.image && (
+                                      <div className="relative rounded-lg overflow-hidden h-[140px] mt-3">
+                                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                                        <img src={dNode.image} alt={dNode.name} className="absolute inset-0 w-full h-full object-cover" loading="lazy" />
+                                        <div className="absolute inset-0 flex items-end bg-gradient-to-t from-black/60 to-transparent p-4">
+                                          <p className="text-white font-bold text-sm">{dNode.name}</p>
+                                        </div>
+                                      </div>
+                                    )}
+                                  </div>
+                                )
+                              })()
+                            ) : (
+                              <div className="h-full flex flex-col items-center justify-center text-slate-400 text-sm pt-20">
+                                Hover a department to see subcategories
                               </div>
-                              <Link
-                                href={promoBanners?.specials_link || "/marketplace#flash-deals"}
-                                onClick={() => setDeptOpen(false)}
-                                className="relative mt-4 rounded-lg bg-[#FF6B00] py-2.5 text-center text-sm font-bold text-[#0A1628] transition-colors hover:bg-[#e86000]"
-                              >
-                                Shop deals
-                              </Link>
-                            </div>
+                            )}
                           </div>
                         </div>
                       )}
@@ -610,7 +649,7 @@ const [currency, setCurrency] = useState("USD")
                   href={item.href}
                   target="_blank"
                   rel="noopener"
-                  className="shrink-0 px-3 py-2 rounded-lg text-slate-600 hover:bg-slate-100 hover:text-[#0A1628] text-sm"
+                  className="shrink-0 px-3 py-2 rounded-lg text-white/90 hover:text-white text-sm"
                 >
                   {item.label}
                 </a>
@@ -621,8 +660,8 @@ const [currency, setCurrency] = useState("USD")
                   aria-current={i === 0 ? "page" : undefined}
                   className={
                     i === 0
-                      ? "shrink-0 px-3 py-2 rounded-lg bg-slate-100 text-[#0A1628] font-semibold text-sm"
-                      : "shrink-0 px-3 py-2 rounded-lg text-slate-600 hover:bg-slate-100 hover:text-[#0A1628] text-sm"
+                      ? "shrink-0 px-3 py-2 rounded-lg bg-[#FF6B00]/10 text-[#FF6B00] font-semibold text-sm"
+                      : "shrink-0 px-3 py-2 rounded-lg text-white/80 hover:text-white text-sm"
                   }
                 >
                   {item.label}
