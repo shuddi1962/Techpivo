@@ -22,6 +22,7 @@ const NAV: Array<{ label: string; href: string; external?: boolean }> = [
   { label: "Home", href: "/marketplace" },
   { label: "Shop", href: "/marketplace/shop" },
   { label: "Deals of the Day", href: "/marketplace/deals" },
+  { label: "Flash Sale Specials", href: "/marketplace/deals/flash-sale" },
   { label: "Best Sellers", href: "/marketplace/best-sellers" },
   { label: "Top Stores", href: "/marketplace/top-stores" },
   { label: "New Arrivals", href: "/marketplace/new-arrivals" },
@@ -259,7 +260,7 @@ const [currency, setCurrency] = useState("USD")
       <MarketCategorySync />
       <MarketCommerce />
       {/* utility bar — promo copy + colors editable in Admin → Marketplace → Banners */}
-      <div style={{ background: `linear-gradient(90deg, ${promoBanners?.promo_bar_from || MARKETPLACE_BRAND.topbar} 0%, ${promoBanners?.promo_bar_to || MARKETPLACE_BRAND.topbarSoft} 100%)` }} className="relative z-[60] w-full text-white">
+      <div className="relative z-[60] w-full bg-white text-slate-800">
         <div className="mx-auto w-full max-w-[1440px] px-3 sm:px-6 lg:px-10 flex items-center justify-between h-10 text-xs gap-2">
           <div className="flex items-center gap-2 min-w-0">
             {promoOn ? (
@@ -281,7 +282,7 @@ const [currency, setCurrency] = useState("USD")
                 onClick={() => setCurrencyOpen((v) => !v)}
                 aria-haspopup="listbox"
                 aria-expanded={currencyOpen}
-                className="inline-flex items-center gap-1 cursor-pointer hover:text-white"
+                className="inline-flex items-center gap-1 cursor-pointer hover:text-slate-800"
               >
                 {currency} <ChevronDown className="h-3.5 w-3.5" />
               </button>
@@ -303,9 +304,9 @@ const [currency, setCurrency] = useState("USD")
               )}
             </div>
             <span className="hidden sm:inline text-slate-600">|</span>
-            <Link href="/marketplace/track" className="hover:text-white hidden md:inline">Track Order</Link>
+            <Link href="/marketplace/track" className="hover:text-slate-800 hidden md:inline">Track Order</Link>
             <span className="hidden md:inline text-slate-600">|</span>
-            <Link href="/marketplace/help" className="hover:text-white hidden md:inline">Help Center</Link>
+            <Link href="/marketplace/help" className="hover:text-slate-800 hidden md:inline">Help Center</Link>
           </div>
         </div>
       </div>
@@ -437,12 +438,9 @@ const [currency, setCurrency] = useState("USD")
       </div>
 
       {/* nav bar — single row, never wraps: horizontal scroll instead of pushing content down */}
-      <div
-        className="relative hidden w-full bg-white border-t border-[#E2E8F0] lg:block"
-        onMouseLeave={() => setDeptOpen(false)}
-      >
-        <div className="mx-auto w-full max-w-[1440px] px-3 sm:px-6 lg:px-10 hidden lg:flex items-center justify-between h-14 gap-3 bg-[#0A1628]">
-          <div className="flex items-center gap-3 min-w-0 flex-1 overflow-hidden">
+      <div className="relative hidden w-full bg-white border-t border-[#E2E8F0] lg:block">
+        <div className="mx-auto w-full max-w-[1440px] px-3 sm:px-6 lg:px-10 hidden lg:flex items-center justify-between h-14 gap-3 bg-white">
+          <div className="flex items-center gap-3 min-w-0 flex-1">
             <div
           ref={deptWrapRef}
           onMouseEnter={() => setDeptOpen(true)}
@@ -453,6 +451,7 @@ const [currency, setCurrency] = useState("USD")
                 setDeptOpen(!deptOpen);
                 setOpenCat("");
               }}
+              onMouseEnter={() => setDeptOpen(true)}
               className="bg-[#FF6B00] hover:bg-[#e86000] text-white px-4 py-2.5 rounded-lg flex items-center gap-2 text-sm font-bold transition-colors cursor-pointer"
             >
               <LayoutGrid className="h-5 w-5" />
@@ -460,7 +459,7 @@ const [currency, setCurrency] = useState("USD")
               <ChevronDown className={`h-4 w-4 transition-transform ${deptOpen ? "rotate-180" : ""}`} />
             </button>
         {deptOpen && (
-          <div className="absolute top-full left-0 z-50 hidden lg:block animate-slide-down">
+          <div className="absolute top-full left-0 z-50 hidden lg:block animate-slide-down" onMouseEnter={() => setDeptOpen(true)}>
                   <div
                     className="w-[820px] max-w-[calc(100vw-2rem)]"
                     onMouseEnter={() => setDeptOpen(true)}
@@ -571,22 +570,21 @@ const [currency, setCurrency] = useState("USD")
                           </div>
                           <div className="lg:col-span-5">
                             <div
-                              className="flex min-h-[280px] flex-col justify-between overflow-hidden rounded-xl p-5 text-white relative"
-                              style={promoBanners?.flash_image?.trim() ? undefined : { background: `linear-gradient(160deg, ${promoBanners?.flash_bg_from || "#FF6B00"} 0%, ${promoBanners?.flash_bg_to || "#7F1D1D"} 100%)` }}
+                              className="flex min-h-[280px] flex-col justify-between overflow-hidden rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] p-5 relative"
                             >
                               {promoBanners?.flash_image?.trim() ? (
                                 <>
                                   {/* eslint-disable-next-line @next/next/no-img-element */}
                                   <img src={promoBanners.flash_image.trim()} alt="" aria-hidden className="absolute inset-0 h-full w-full object-cover" loading="lazy" />
-                                  <span className="absolute inset-0" style={{ background: "linear-gradient(180deg, rgba(0,0,0,0.15) 0%, rgba(0,0,0,0.72) 100%)" }} />
+                                  <span className="absolute inset-0" style={{ background: "linear-gradient(180deg, rgba(255,255,255,0.6) 0%, rgba(255,255,255,0.9) 100%)" }} />
                                 </>
                               ) : null}
                               <div className="relative">
-                                <span className="inline-flex items-center gap-1 rounded bg-[#FF6B00] px-2 py-0.5 text-[11px] font-bold uppercase">
+                                <span className="inline-flex items-center gap-1 rounded bg-[#FF6B00] px-2 py-0.5 text-[11px] font-bold uppercase text-white">
                                   <Flame className="h-3 w-3" /> {promoBanners?.flash_badge || "Flash Sale"}
                                 </span>
-                                <p className="mt-3 text-3xl font-extrabold leading-tight line-clamp-3">{promoBanners?.flash_title || "Up to 50% Off"}</p>
-                                <p className="mt-1 text-xs text-blue-100">{promoBanners?.flash_subtitle || "Verified supplier picks, tracked delivery."}</p>
+                                <p className="mt-3 text-2xl font-extrabold leading-tight line-clamp-3 text-[#0A1628]">{promoBanners?.flash_title || "Up to 50% Off"}</p>
+                                <p className="mt-1 text-xs text-slate-600">{promoBanners?.flash_subtitle || "Verified supplier picks, tracked delivery."}</p>
                               </div>
                               <Link
                                 href={promoBanners?.specials_link || "/marketplace#flash-deals"}
