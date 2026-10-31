@@ -300,32 +300,27 @@ const [currency, setCurrency] = useState("USD")
       {/* Keeps the department menu in sync with Admin → Categories */}
       <MarketCategorySync />
       <MarketCommerce />
-      {/* utility bar — promo copy + colors editable in Admin → Marketplace → Banners */}
-      <div className="relative z-[60] w-full bg-white text-slate-800">
-        <div className="mx-auto w-full max-w-[1440px] px-3 sm:px-6 lg:px-10 flex items-center justify-between h-10 text-xs gap-2">
-          <div className="flex items-center gap-2 min-w-0">
-            {promoOn ? (
-            <>
-            <span style={{ background: promoBanners?.promo_badge_bg || "#FF6B00" }} className="text-white px-2 py-0.5 rounded font-bold text-[10px] uppercase tracking-wide shrink-0">
+      {/* utility bar — blue Limited Deal / Black Friday banner, always live */}
+      <div className="marketplace-promo-bar relative z-[60] w-full bg-gradient-to-r from-[#1453D6] to-[#0B3A9A] text-white shadow-lg border-b border-white/25">
+        <div className="mx-auto w-full max-w-[1440px] px-3 sm:px-6 lg:px-10 flex items-center justify-between h-12 text-[11px] sm:text-xs gap-4">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <span className="marketplace-badge-pill shrink-0">
+              <span className="mp-dot" aria-hidden="true" />
               {promoBanners?.promo_badge_text || "Limited Deal"}
             </span>
-            <p className="text-slate-300 hidden sm:block truncate">{promoBanners?.promo_message || "Black Friday Sale! Special offers up to 50% Off at TechPivo Market"}</p>
-            <p className="text-slate-300 sm:hidden truncate">{promoBanners?.promo_message_mobile || "Up to 50% Off at TechPivo Market"}</p>
-            </>
-            ) : (
-            <p className="text-slate-300 truncate">Quality-checked tech, tracked delivery</p>
-            )}
+            <p className="marketplace-promo-text text-white/95 hidden sm:block truncate">{promoBanners?.promo_message || "Black Friday Sale! Special offers up to 50% Off at TechPivo Market"}</p>
+            <p className="marketplace-promo-text-mobile text-white/90 sm:hidden truncate">{promoBanners?.promo_message_mobile || "Up to 50% Off at TechPivo Market"}</p>
           </div>
-          <div className="flex items-center gap-3 text-slate-300 shrink-0">
+          <div className="flex items-center gap-2.5 shrink-0 text-white/90">
             <div ref={currencyWrapRef} className="relative hidden sm:block">
               <button
                 type="button"
                 onClick={() => setCurrencyOpen((v) => !v)}
                 aria-haspopup="listbox"
                 aria-expanded={currencyOpen}
-                className="inline-flex items-center gap-1 cursor-pointer hover:text-slate-800"
+                className="inline-flex items-center gap-1 cursor-pointer hover:text-white"
               >
-                {currency} <ChevronDown className="h-3.5 w-3.5" />
+                {currency} <ChevronDown className="h-3.5 w-3.5 text-white" />
               </button>
               {currencyOpen && (
                 <div role="listbox" className="absolute right-0 top-full mt-2 w-28 rounded-lg border border-[#E2E8F0] bg-white py-1 shadow-xl z-[70]">
@@ -336,7 +331,7 @@ const [currency, setCurrency] = useState("USD")
                       role="option"
                       aria-selected={currency === code}
                       onClick={() => setCurrencyChoice(code)}
-                      className={`block w-full px-3 py-2 text-left text-xs font-semibold ${currency === code ? "text-[#e86000] bg-[#FF6B00]/10" : "text-slate-600 hover:bg-slate-100"}`}
+                      className={`block w-full px-3 py-2 text-left text-xs font-semibold ${currency === code ? "text-[#0F4FB3] bg-[#1668DC]/10" : "text-white/70 hover:bg-white/10"}`}
                     >
                       {code}
                     </button>
@@ -344,10 +339,20 @@ const [currency, setCurrency] = useState("USD")
                 </div>
               )}
             </div>
-            <span className="hidden sm:inline text-slate-600">|</span>
-            <Link href="/marketplace/track" className="hover:text-slate-800 hidden md:inline">Track Order</Link>
-            <span className="hidden md:inline text-slate-600">|</span>
-            <Link href="/marketplace/help" className="hover:text-slate-800 hidden md:inline">Help Center</Link>
+            <span className="hidden sm:inline text-white/50">|</span>
+            <Link
+              href="/marketplace/track"
+              className="hover:text-white hidden md:inline transition-colors"
+            >
+              Track Order
+            </Link>
+            <span className="hidden md:inline text-white/50">|</span>
+            <Link
+              href="/marketplace/help"
+              className="hover:text-white hidden md:inline transition-colors"
+            >
+              Help Center
+            </Link>
           </div>
         </div>
       </div>
@@ -365,7 +370,7 @@ const [currency, setCurrency] = useState("USD")
           {/* search (desktop) with live AJAX suggestions */}
           <div ref={searchBoxRef} className="hidden md:flex flex-1 max-w-2xl relative">
           <form
-            className="flex w-full h-12 rounded-lg border border-[#CBD5E1] bg-[#F8FAFC] overflow-hidden focus-within:border-[#FF6B00] focus-within:ring-2 focus-within:ring-[#FF6B00]/20"
+            className="flex w-full h-12 rounded-lg border border-[#CBD5E1] bg-[#F8FAFC] overflow-hidden focus-within:border-[#1668DC] focus-within:ring-2 focus-within:ring-[#1668DC]/20"
             onSubmit={submitSearch}
             role="search"
           >
@@ -373,7 +378,7 @@ const [currency, setCurrency] = useState("USD")
               aria-label="Department"
               value={dept}
               onChange={(e) => pickDept(e.target.value)}
-              className="bg-transparent px-3 text-sm text-slate-500 border-r border-[#E2E8F0] focus:outline-none cursor-pointer hidden lg:block max-w-[190px]"
+              className="bg-transparent px-3 text-sm text-[#1668DC] border-r border-[#E2E8F0] focus:outline-none cursor-pointer hidden lg:block max-w-[190px]"
             >
               <option value="">All Departments</option>
               {departments.map((d) => (
@@ -384,10 +389,10 @@ const [currency, setCurrency] = useState("USD")
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               onFocus={() => { if (query.trim().length >= 2) setSuggestOpen(true) }}
-              className="flex-1 bg-transparent px-4 text-sm text-[#0A1628] placeholder:text-slate-400 focus:outline-none"
+              className="flex-1 bg-transparent px-4 text-sm text-[#1668DC] placeholder:text-slate-400 focus:outline-none"
               placeholder="Search TechPivo Market — gadgets, laptops, cameras..."
             />
-            <button type="submit" aria-label="Search" className="bg-[#FF6B00] hover:bg-[#e86000] text-[#0A1628] px-5 flex items-center justify-center transition-colors">
+            <button type="submit" aria-label="Search" className="bg-[#1668DC] hover:bg-[#0F4FB3] text-white px-5 flex items-center justify-center transition-all duration-200 shadow-md hover:shadow-lg rounded-r-xl">
               <Search className="h-5 w-5" />
             </button>
           </form>
@@ -406,24 +411,24 @@ const [currency, setCurrency] = useState("USD")
             <Link href="/marketplace/wishlist" aria-label="Wishlist" className="relative p-2 rounded-full hover:bg-slate-100 flex items-center justify-center">
               <Heart className="h-6 w-6 text-slate-600" />
               {shownWishCount > 0 && (
-                <span className="absolute -top-0.5 -right-0.5 bg-[#FF6B00] text-white text-[10px] min-w-5 h-5 px-1 rounded-full flex items-center justify-center font-bold">{shownWishCount}</span>
+                <span className="absolute -top-0.5 -right-0.5 bg-[#1668DC] text-white text-[10px] min-w-5 h-5 px-1 rounded-full flex items-center justify-center font-bold shadow-sm">{shownWishCount}</span>
               )}
             </Link>
             <Link href="/marketplace/compare" aria-label={compareIds.length > 0 ? `Compare ${compareIds.length} products` : "Compare products"} className="relative p-2 rounded-full hover:bg-slate-100 hidden sm:flex items-center justify-center">
               <ArrowLeftRight className="h-6 w-6 text-slate-600" />
               {compareIds.length > 0 && (
-                <span className="absolute -top-0.5 -right-0.5 bg-[#0A1628] text-white text-[10px] min-w-5 h-5 px-1 rounded-full flex items-center justify-center font-bold">{compareIds.length}</span>
+                <span className="absolute -top-0.5 -right-0.5 bg-[#1668DC] text-white text-[10px] min-w-5 h-5 px-1 rounded-full flex items-center justify-center font-bold shadow-sm">{compareIds.length}</span>
               )}
             </Link>
             <Link href="/marketplace/cart" aria-label={`Your basket, ${shownCartCount} item${shownCartCount === 1 ? "" : "s"}`} className="relative p-2 rounded-full hover:bg-slate-100 flex items-center justify-center">
               <ShoppingBasket className="h-6 w-6 text-slate-600" />
               {shownCartCount > 0 && (
-                <span className="absolute -top-0.5 -right-0.5 bg-[#FF6B00] text-[#0A1628] text-[10px] min-w-5 h-5 px-1 rounded-full flex items-center justify-center font-bold tabular-nums">{shownCartCount}</span>
+                <span className="absolute -top-0.5 -right-0.5 bg-[#1668DC] text-white text-[10px] min-w-5 h-5 px-1 rounded-full flex items-center justify-center font-bold shadow-sm tabular-nums">{shownCartCount}</span>
               )}
             </Link>
             <div className="h-8 w-px bg-[#E2E8F0] hidden sm:block" />
             <Link href={acctName ? "/marketplace/account" : "/login"} className="hidden sm:flex items-center gap-2 hover:opacity-90 p-1" aria-label={acctName ? `My marketplace account (${acctName})` : "Sign in"}>
-              <span className="w-8 h-8 rounded-full bg-[#0A1628] flex items-center justify-center shrink-0 overflow-hidden">
+              <span className="w-8 h-8 rounded-full bg-[#1668DC] flex items-center justify-center shrink-0 overflow-hidden shadow-sm">
                 {acctAvatar ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img src={acctAvatar} alt="" className="h-full w-full object-cover" />
@@ -435,12 +440,12 @@ const [currency, setCurrency] = useState("USD")
               </span>
               <span className="hidden xl:flex flex-col text-left max-w-[140px]">
                 <span className="text-[11px] text-slate-400 uppercase leading-none">{acctFirst ? `Hi, ${acctFirst}` : "Sign In"}</span>
-                <span className="text-sm font-semibold text-[#0A1628] leading-tight truncate">{acctName || "My Account"}</span>
+                <span className="text-sm font-semibold text-[#1668DC] leading-tight truncate">{acctName || "My Account"}</span>
               </span>
             </Link>
             <div className="h-8 w-px bg-[#E2E8F0] hidden sm:block" />
             <button
-              className="lg:hidden p-2 rounded-lg border border-[#0A1628] bg-[#0A1628] text-white"
+              className="lg:hidden p-2 rounded-lg border border-[#1668DC] bg-[#1668DC] text-white shadow-md hover:bg-[#0F4FB3] transition-all duration-200"
               onClick={() => setOpen((v) => !v)}
               aria-label={open ? "Close menu" : "Open menu"}
               aria-expanded={open}
@@ -461,7 +466,7 @@ const [currency, setCurrency] = useState("USD")
               className="flex-1 bg-transparent px-3 text-sm focus:outline-none"
               placeholder="Search TechPivo Market..."
             />
-            <button type="submit" aria-label="Search" className="bg-[#FF6B00] text-[#0A1628] px-4 flex items-center justify-center">
+            <button type="submit" aria-label="Search" className="bg-[#1668DC] text-white px-4 flex items-center justify-center transition-all duration-200 shadow-md hover:bg-[#0F4FB3] hover:shadow-lg rounded-r-xl">
               <Search className="h-5 w-5" />
             </button>
           </form>
@@ -479,7 +484,7 @@ const [currency, setCurrency] = useState("USD")
       </div>
 
       {/* nav bar — single row, never wraps: horizontal scroll instead of pushing content down */}
-      <div className="relative hidden w-full bg-[#0A1628] lg:block">
+      <div className="relative hidden w-full bg-gradient-to-r from-[#1453D6] to-[#0B3A9A] border-b border-white/20 shadow-sm lg:block">
         <div className="mx-auto w-full max-w-[1440px] px-3 sm:px-6 lg:px-10 hidden lg:flex items-center justify-between h-14 gap-3">
           <div className="flex items-center gap-3 min-w-0 flex-1">
             <div
@@ -493,7 +498,7 @@ const [currency, setCurrency] = useState("USD")
                 setDeptOpen(!deptOpen);
               }}
               onMouseEnter={() => setDeptOpen(true)}
-              className="mega-btn text-white h-12 px-6 flex items-center gap-2 font-semibold text-sm transition-colors cursor-pointer"
+              className="mega-btn text-white h-12 px-6 flex items-center gap-2 font-semibold text-sm transition-all duration-200 cursor-pointer bg-gradient-to-r from-[#1453D6] to-[#0B3A9A] hover:from-[#0F4FB3] hover:to-[#082B6B] shadow-md hover:shadow-lg rounded-xl market-menu-glow"
             >
               <LayoutGrid className="h-5 w-5" />
               <span>All Departments</span>
@@ -501,7 +506,7 @@ const [currency, setCurrency] = useState("USD")
             </button>
         {deptOpen && (
           <div
-            className="absolute top-full left-0 bg-white rounded-b-xl shadow-2xl z-50 flex animate-slide-down"
+            className="absolute top-full left-0 border-t-2 border-t-[#1453D6] bg-white rounded-b-2xl shadow-2xl z-50 flex animate-slide-down"
             onMouseEnter={() => {
               setDeptOpen(true)
               if (!openDept && firstDeptSlug) setOpenDept(firstDeptSlug)
@@ -514,45 +519,48 @@ const [currency, setCurrency] = useState("USD")
                   {/* Left: departments */}
                   <div className="w-[280px] border-r border-[#E2E8F0] flex flex-col shrink-0">
                     <div className="flex items-center justify-between px-4 py-3 border-b border-[#E2E8F0]">
-                      <span className="text-xs font-bold uppercase tracking-wider text-slate-400">All Departments</span>
+                      <div className="flex items-center gap-2">
+                        <LayoutGrid className="h-4 w-4 text-[#1453D6]" />
+                        <span className="text-xs font-bold uppercase tracking-wider text-slate-500">All Departments</span>
+                      </div>
                       <button
                         type="button"
                         onClick={toggleSeeMore}
-                        className="text-xs font-medium text-[#FF6B00] hover:text-[#e86000] transition-colors"
+                        className="text-xs font-medium text-[#1453D6] hover:text-[#0B3A9A] transition-all duration-150"
                       >
                         {seeMore ? "See Less" : "See More"}
                       </button>
                     </div>
                     <div className="flex-1 overflow-y-auto py-1 space-y-0.5">
-                      {visibleDepartments.map((d) => {
-                        const isActive = openDept === d.slug
-                        const Icon = DEPT_ICONS[d.icon]
-                        return (
-                          <div
-                            key={d.slug}
-                            onMouseEnter={() => { setDeptOpen(true); setOpenDept(d.slug) }}
-                            className={`flex items-center gap-3 px-4 py-2.5 cursor-pointer transition-colors ${
-                              isActive
-                                ? "bg-[#FFF7F0] text-[#FF6B00] border-l-2 border-[#FF6B00]"
-                                : "text-slate-600 hover:bg-[#F8FAFC] border-l-2 border-transparent"
-                            }`}
-                          >
-                            <span className="flex h-5 w-5 shrink-0 items-center justify-center" style={{ color: isActive ? "#FF6B00" : "#94a3b8" }}>
-                              {Icon ? <Icon size={15} /> : <ChevronRight size={12} className="text-slate-400" />}
-                            </span>
-                            <span className="text-sm font-medium truncate leading-none">{d.name}</span>
-                          </div>
-                        )
-                      })}
+                          {visibleDepartments.map((d) => {
+                            const isActive = openDept === d.slug
+                            const Icon = DEPT_ICONS[d.icon]
+                            return (
+                              <div
+                                key={d.slug}
+                                onMouseEnter={() => { setDeptOpen(true); setOpenDept(d.slug) }}
+                                className={`flex items-center gap-3 px-4 py-2.5 cursor-pointer transition-all duration-150 ${
+                                  isActive
+                                    ? "bg-[#1453D6]/12 text-[#1453D6] border-l-3 border-[#1453D6] shadow-sm rounded-r-xl"
+                                    : "text-slate-600 hover:bg-[#EFF6FF] hover:text-[#1453D6] border-l-3 border-transparent rounded-r-xl"
+                                }`}
+                              >
+                                <span className="flex h-5 w-5 shrink-0 items-center justify-center" style={{ color: isActive ? "#1453D6" : "#94a3b8" }}>
+                                  {Icon ? <Icon size={15} /> : <ChevronRight size={12} className="text-slate-400" />}
+                                </span>
+                                <span className="text-sm font-semibold truncate leading-none">{d.name}</span>
+                              </div>
+                            )
+                          })}
                       {!seeMore && departments.length > VISIBLE_DEPT_COUNT && (
                         <div className="px-4 py-3 border-t border-[#E2E8F0]">
                           <button
                             type="button"
                             onClick={toggleSeeMore}
-                            className="w-full flex items-center justify-between text-xs font-medium text-[#FF6B00] hover:text-[#e86000]"
-                          >
-                            <span>See more departments</span>
-                            <ChevronDown className="h-4 w-4 text-[#FF6B00]" />
+                          className="w-full flex items-center justify-between text-xs font-medium text-[#1668DC] hover:text-[#0F4FB3] transition-all duration-150"
+                      >
+                        <span>See more departments</span>
+                            <ChevronDown className="h-4 w-4 text-[#1668DC]" />
                           </button>
                         </div>
                       )}
@@ -569,11 +577,11 @@ const [currency, setCurrency] = useState("USD")
                         return (
                           <div className="flex-1 overflow-y-auto p-4">
                             <div className="flex items-center gap-3 mb-4">
-                              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#FFF7F0] text-[#FF6B00]">
+                              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#1453D6]/12 text-[#1453D6] shadow-sm">
                                 {Icon ? <Icon size={22} /> : <ChevronRight size={16} className="text-slate-400" />}
                               </div>
                               <div>
-                                <h3 className="text-sm font-bold text-[#0A1628] leading-none">{dNode?.name}</h3>
+                                <h3 className="text-sm font-bold text-[#1453D6] leading-none">{dNode?.name}</h3>
                                 <p className="text-[11px] text-slate-400 leading-none">
                                   {subs.length} category{subs.length !== 1 ? "s" : ""} · {totalItems} item{totalItems !== 1 ? "s" : ""}
                                 </p>
@@ -581,27 +589,27 @@ const [currency, setCurrency] = useState("USD")
                             </div>
                             <div className="grid gap-3 lg:grid-cols-3">
                               {subs.map((s) => (
-                                <div key={s.slug} className="rounded-xl border border-[#E2E8F0] bg-[#F8FAFC]/40 p-3 hover:bg-[#FFF7F0] hover:border-[#FF6B00]/50 transition-colors group">
+                                <div key={s.slug} className="rounded-xl border border-[#E2E8F0] bg-[#F8FAFC]/30 p-3 hover:bg-[#1453D6]/8 hover:border-[#1453D6]/50 transition-all duration-150 group">
                                   <Link
                                     href={`/marketplace/category/${s.slug}`}
-                                    className="block mb-1.5 text-sm font-bold text-[#0A1628] hover:text-[#FF6B00] leading-none"
+                                    className="block mb-1.5 text-sm font-bold text-[#1453D6] hover:text-[#0B3A9A] leading-none transition-colors"
                                   >
                                     {s.name}
-                                  </Link>
-                                  <div className="flex flex-wrap gap-1">
-                                    {s.items.map((it) => (
-                                      <Link
-                                        key={it.slug}
-                                        href={`/marketplace/category/${openDept}/${s.slug}#leaf-${it.slug}`}
-                                        className="inline-block rounded border border-transparent px-2 py-1 text-[11px] text-slate-500 font-medium whitespace-nowrap hover:bg-[#FF6B00]/10 hover:text-[#FF6B00] hover:border-[#FF6B00]/30 transition-colors"
-                                      >
+                                   </Link>
+                                   <div className="flex flex-wrap gap-1">
+                                     {s.items.map((it) => (
+                                       <Link
+                                         key={it.slug}
+                                         href={`/marketplace/category/${openDept}/${s.slug}#leaf-${it.slug}`}
+                                         className="inline-block rounded border border-transparent px-2 py-1 text-[11px] text-slate-500 font-medium whitespace-nowrap hover:bg-[#1453D6]/12 hover:text-[#1453D6] hover:border-[#1453D6]/30 transition-all duration-150"
+                                       >
                                         {it.name}
                                       </Link>
-                                    ))}
-                                    {s.items.length === 0 && (
-                                      <p className="text-[10px] text-slate-400 italic">No items yet</p>
-                                    )}
-                                  </div>
+                                     ))}
+                                     {s.items.length === 0 && (
+                                       <p className="text-[10px] text-slate-400 italic">No items yet</p>
+                                     )}
+                                   </div>
                                 </div>
                               ))}
                               {subs.length === 0 && (
@@ -619,7 +627,7 @@ const [currency, setCurrency] = useState("USD")
                                 >
                                   {/* eslint-disable-next-line @next/next/no-img-element */}
                                   <img src={promoBanners.flash_image} alt="Flash deals" className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
-                                  <div className="absolute inset-0 bg-black/35 flex items-center justify-center">
+                                  <div className="absolute inset-0 bg-gradient-to-t from-[#1668DC]/80 via-[#0F4FB3]/40 to-transparent flex items-center justify-center">
                                     <span className="text-white font-bold text-lg">{promoBanners?.flash_title || "Flash Sale Specials"}</span>
                                   </div>
                                 </Link>
@@ -666,7 +674,7 @@ const [currency, setCurrency] = useState("USD")
                   aria-current={i === 0 ? "page" : undefined}
                   className={
                     i === 0
-                      ? "shrink-0 px-3 py-2 rounded-lg bg-[#FF6B00]/10 text-[#FF6B00] font-semibold text-sm"
+                      ? "shrink-0 px-3 py-2 rounded-lg bg-[#EFF6FF] text-[#1668DC] font-semibold text-sm shadow-sm"
                       : "shrink-0 px-3 py-2 rounded-lg text-white/80 hover:text-white text-sm"
                   }
                 >
@@ -677,10 +685,10 @@ const [currency, setCurrency] = useState("USD")
             </nav>
           </div>
           {promoBanners?.specials_enabled !== false && (
-          <Link
-            href={promoBanners?.specials_link || "/marketplace#flash-deals"}
-            className="flex items-center gap-2 bg-[#FF6B00]/10 text-[#FF6B00] border border-[#FF6B00]/20 px-3 py-1.5 rounded-full text-sm font-semibold hover:bg-[#FF6B00]/20 shrink-0"
-          >
+            <Link
+              href={promoBanners?.specials_link || "/marketplace#flash-deals"}
+              className="flex items-center gap-2 bg-[#EFF6FF] text-[#1668DC] border border-[#1668DC]/20 px-3 py-1.5 rounded-full text-sm font-semibold hover:bg-[#1668DC]/30 shrink-0 shadow-sm hover:shadow-md transition-all duration-200"
+            >
             <Flame className="h-4 w-4" />
             <span className="hidden xl:inline">{promoBanners?.specials_label || "Flash Sale Specials"}</span>
             <span className="xl:hidden truncate max-w-[110px]">{promoBanners?.specials_label || "Specials"}</span>
@@ -692,7 +700,7 @@ const [currency, setCurrency] = useState("USD")
         <div className={`lg:hidden ${open ? "" : "hidden"}`}>
           {open && (
             <div
-              className="fixed inset-0 z-40 bg-black/50"
+              className="fixed inset-0 z-40 bg-[#0B3A9A]/45 backdrop-blur-sm"
               onClick={() => setOpen(false)}
               aria-hidden="true"
             />
@@ -702,11 +710,11 @@ const [currency, setCurrency] = useState("USD")
             aria-label="Marketplace mobile"
           >
             <div className="flex items-center justify-between px-4 py-3 border-b border-[#E2E8F0]">
-              <span className="text-sm font-bold text-[#0A1628]">Menu</span>
+              <span className="text-sm font-bold text-[#1453D6]">Menu</span>
               <button
                 type="button"
                 onClick={() => setOpen(false)}
-                className="p-2 rounded-lg border border-[#E2E8F0] text-[#0A1628]"
+                className="p-2 rounded-lg border border-[#1453D6]/20 text-[#1453D6] bg-[#EFF6FF]/40"
                 aria-label="Close menu"
               >
                 <X className="h-5 w-5" />
@@ -721,7 +729,7 @@ const [currency, setCurrency] = useState("USD")
                     target="_blank"
                     rel="noopener"
                     onClick={() => setOpen(false)}
-                    className="px-3 py-2.5 rounded-lg text-sm font-medium text-slate-700 hover:bg-slate-100"
+                    className="px-3 py-2.5 rounded-lg text-sm font-medium text-slate-700 hover:bg-[#EFF6FF] hover:text-[#1453D6] transition-colors"
                   >
                     {item.label}
                   </a>
@@ -730,7 +738,7 @@ const [currency, setCurrency] = useState("USD")
                     key={item.label}
                     href={item.href}
                     onClick={() => setOpen(false)}
-                    className="px-3 py-2.5 rounded-lg text-sm font-medium text-slate-700 hover:bg-slate-100"
+                    className="px-3 py-2.5 rounded-lg text-sm font-medium text-slate-700 hover:bg-[#EFF6FF] hover:text-[#1453D6] transition-colors"
                   >
                     {item.label}
                   </Link>
@@ -747,7 +755,7 @@ const [currency, setCurrency] = useState("USD")
                       type="button"
                       onClick={() => setMobileExpanded(expanded ? "" : d.slug)}
                       aria-expanded={expanded}
-                      className="w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm font-semibold text-[#0A1628] hover:bg-slate-100 text-left"
+                      className="w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm font-semibold text-[#1453D6] hover:bg-[#1453D6]/10 hover:text-[#0B3A9A] text-left transition-colors"
                     >
                       {d.name}
                       <ChevronDown
@@ -759,7 +767,7 @@ const [currency, setCurrency] = useState("USD")
                         <Link
                           href={`/marketplace/category/${d.slug}`}
                           onClick={() => setOpen(false)}
-                          className="block px-3 py-1.5 rounded-lg text-xs font-semibold text-[#FF6B00] hover:bg-slate-100 text-left"
+                          className="block px-3 py-1.5 rounded-lg text-xs font-semibold text-[#1453D6] hover:bg-[#1453D6]/10 hover:text-[#0B3A9A] text-left transition-colors"
                         >
                           All {d.name}
                         </Link>
@@ -768,7 +776,7 @@ const [currency, setCurrency] = useState("USD")
                             key={s.slug}
                             href={`/marketplace/category/${s.slug}`}
                             onClick={() => setOpen(false)}
-                            className="block px-3 py-1.5 rounded-lg text-xs text-slate-500 hover:bg-slate-100 text-left"
+                            className="block px-3 py-1.5 rounded-lg text-xs text-slate-500 hover:bg-[#EFF6FF] hover:text-[#1453D6] text-left transition-colors"
                           >
                             {s.name}
                           </Link>
@@ -857,11 +865,11 @@ export function MarketplaceFooter() {
         <div className="mx-auto grid w-full max-w-[1440px] grid-cols-1 gap-5 px-3 py-6 sm:grid-cols-2 sm:px-6 lg:grid-cols-4 lg:px-10">
           {PERKS.map((p) => (
             <div key={p.title} className="flex items-center gap-3">
-              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] text-[#FF6B00]">
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] text-[#1668DC]">
                 <p.icon className="h-6 w-6" />
               </div>
               <div>
-                <h4 className="text-sm font-bold text-[#0A1628]">{p.title}</h4>
+                <h4 className="text-sm font-bold text-[#1668DC]">{p.title}</h4>
                 <p className="text-sm text-slate-500">{p.copy}</p>
               </div>
             </div>
@@ -881,9 +889,9 @@ export function MarketplaceFooter() {
             <p className="text-sm leading-relaxed text-slate-300">Curated tech products, reviewed by the TechPivo editorial team. Every purchase supports independent tech journalism.</p>
             {store.contact_visible !== false && (
             <div className="space-y-2 text-sm text-slate-300">
-              <div className="flex items-start gap-2"><MapPin className="mt-0.5 h-4 w-4 shrink-0 text-[#FF6B00]" /><span>{store.address}</span></div>
-              <div className="flex items-center gap-2"><Phone className="h-4 w-4 shrink-0 text-[#FF6B00}" /><span>{store.phone}</span></div>
-              <div className="flex items-center gap-2"><Mail className="h-4 w-4 shrink-0 text-[#FF6B00}" /><span>{store.email}</span></div>
+              <div className="flex items-start gap-2"><MapPin className="mt-0.5 h-4 w-4 shrink-0 text-[#1668DC]" /><span>{store.address}</span></div>
+              <div className="flex items-center gap-2"><Phone className="h-4 w-4 shrink-0 text-[#1668DC}" /><span>{store.phone}</span></div>
+              <div className="flex items-center gap-2"><Mail className="h-4 w-4 shrink-0 text-[#1668DC}" /><span>{store.email}</span></div>
             </div>
             )}
           </div>
@@ -891,31 +899,31 @@ export function MarketplaceFooter() {
             <h5 className="mb-4 text-sm font-bold uppercase tracking-wider text-white">Shop</h5>
             <ul className="grid grid-cols-1 gap-2.5 text-sm text-slate-300">
               {departments.map((d) => (
-                <li key={d.slug}><Link className="transition-colors hover:text-[#FF6B00]" href={`/marketplace/category/${d.slug}`}>{d.name}</Link></li>
+                <li key={d.slug}><Link className="transition-colors hover:text-[#1668DC]" href={`/marketplace/category/${d.slug}`}>{d.name}</Link></li>
               ))}
             </ul>
           </nav>
           <nav aria-label="Customer service">
             <h5 className="mb-4 text-sm font-bold uppercase tracking-wider text-white">Customer Service</h5>
             <ul className="grid grid-cols-1 gap-2.5 text-sm text-slate-300">
-              <li><Link className="transition-colors hover:text-[#FF6B00]" href="/marketplace/help">Help Center</Link></li>
-              <li><Link className="transition-colors hover:text-[#FF6B00]" href="/marketplace/faq">FAQ</Link></li>
-              <li><Link className="transition-colors hover:text-[#FF6B00]" href="/marketplace/track">Order Tracking</Link></li>
-              <li><Link className="transition-colors hover:text-[#FF6B00]" href="/marketplace/cart">Your Cart</Link></li>
-              <li><Link className="transition-colors hover:text-[#FF6B00]" href="/marketplace/wishlist">Your Wishlist</Link></li>
-              <li><Link className="transition-colors hover:text-[#FF6B00]" href="/marketplace/compare">Compare Products</Link></li>
-              <li><Link className="transition-colors hover:text-[#FF6B00]" href="/marketplace/faq">Returns & Warranty</Link></li>
-              <li><Link className="transition-colors hover:text-[#FF6B00]" href="/privacy-policy">Privacy Policy</Link></li>
-              <li><Link className="transition-colors hover:text-[#FF6B00]" href="/terms-of-use">Terms of Use</Link></li>
-              <li><a className="transition-colors hover:text-[#FF6B00]" href="https://techpivo.com/" target="_blank" rel="noopener">Blog</a></li>
+              <li><Link className="transition-colors hover:text-[#1668DC]" href="/marketplace/help">Help Center</Link></li>
+              <li><Link className="transition-colors hover:text-[#1668DC]" href="/marketplace/faq">FAQ</Link></li>
+              <li><Link className="transition-colors hover:text-[#1668DC]" href="/marketplace/track">Order Tracking</Link></li>
+              <li><Link className="transition-colors hover:text-[#1668DC]" href="/marketplace/cart">Your Cart</Link></li>
+              <li><Link className="transition-colors hover:text-[#1668DC]" href="/marketplace/wishlist">Your Wishlist</Link></li>
+              <li><Link className="transition-colors hover:text-[#1668DC]" href="/marketplace/compare">Compare Products</Link></li>
+              <li><Link className="transition-colors hover:text-[#1668DC]" href="/marketplace/faq">Returns & Warranty</Link></li>
+              <li><Link className="transition-colors hover:text-[#1668DC]" href="/privacy-policy">Privacy Policy</Link></li>
+              <li><Link className="transition-colors hover:text-[#1668DC]" href="/terms-of-use">Terms of Use</Link></li>
+              <li><a className="transition-colors hover:text-[#1668DC]" href="https://techpivo.com/" target="_blank" rel="noopener">Blog</a></li>
             </ul>
           </nav>
           <div>
             <h5 className="mb-4 text-sm font-bold uppercase tracking-wider text-white">Newsletter</h5>
             <p className="mb-3 text-sm text-slate-300">Weekly tech drops and member coupons.</p>
             <form className="space-y-2" onSubmit={subscribe}>
-              <input value={email} onChange={(e) => setEmail(e.target.value)} className="w-full rounded-lg border border-white/15 bg-white/10 px-3 py-2.5 text-sm text-white placeholder:text-slate-400 focus:border-[#FF6B00] focus:outline-none" placeholder="Your email" type="email" aria-label="Email" />
-              <button className="w-full rounded-lg bg-[#FF6B00] py-2.5 text-sm font-bold text-[#0A1628] transition-colors hover:bg-[#e86000] disabled:opacity-60" type="submit" disabled={subBusy}>
+              <input value={email} onChange={(e) => setEmail(e.target.value)} className="w-full rounded-lg border border-white/15 bg-white/10 px-3 py-2.5 text-sm text-white placeholder:text-slate-400 focus:border-[#1668DC] focus:outline-none" placeholder="Your email" type="email" aria-label="Email" />
+              <button className="w-full rounded-lg bg-[#1668DC] py-2.5 text-sm font-bold text-[#1668DC] transition-colors hover:bg-[#0F4FB3] disabled:opacity-60" type="submit" disabled={subBusy}>
                 {subBusy ? "Subscribing..." : "Subscribe"}
               </button>
               {subMsg && <p className="text-xs text-slate-300">{subMsg}</p>}
