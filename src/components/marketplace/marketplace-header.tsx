@@ -174,6 +174,89 @@ const [currency, setCurrency] = useState("USD")
   const departments = useMarketplaceTree()
   const deptWrapRef = useRef<HTMLDivElement>(null)
   const currencyWrapRef = useRef<HTMLDivElement>(null)
+
+  // Right panel content for the mega menu, based on open state.
+  const renderRightPanel = (): JSX.Element => {
+    if (openCat) {
+      const dNode = departments.find((d) => d.slug === openDept)
+      const sNode = dNode?.subs.find((s) => s.slug === openCat)
+      const items = sNode?.items ?? []
+      return (
+        <div>
+          <button
+            type="button"
+            onClick={() => setOpenCat(null)}
+            className="mb-3 text-xs font-bold uppercase tracking-wider text-slate-400 hover:text-[#FF6B00]"
+          >
+            ← Back
+          </button>
+          <h4 className="mt-1 text-sm font-bold text-[#0A1628]">{sNode?.name}</h4>
+          <div className="grid grid-cols-3 gap-3 mt-2">
+            {items.map((it) => (
+              <Link
+                key={it.slug}
+                href={`/marketplace/category/${openDept ?? ""}/${openCat}`}
+                onClick={() => { setDeptOpen(false); setOpenDept(null); setOpenCat(null) }}
+                className="block rounded-lg border border-[#E2E8F0] px-3 py-2 text-sm text-slate-600 transition-colors hover:border-[#FF6B00] hover:text-[#FF6B00] text-center"
+              >
+                {it.name}
+              </Link>
+            ))}
+            {items.length === 0 && <p className="text-xs text-slate-400 mt-2">No items available</p>}
+          </div>
+        </div>
+      )
+    }
+    if (openDept) {
+      const dNode = departments.find((d) => d.slug === openDept)
+      const subs = dNode?.subs ?? []
+      const bannerImg = deptCovers[openDept ?? ""] || dNode?.banner_image
+      return (
+        <div>
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="font-bold text-base text-[#0A1628]">{dNode?.name || "Department"}</h3>
+            <Link
+              href={`/marketplace/category/${openDept}`}
+              className="text-xs font-semibold hover:underline flex items-center gap-1 transition-colors"
+              style={{ color: "#FF6B00" }}
+              onClick={() => { setDeptOpen(false); setOpenDept(null); setOpenCat(null) }}
+            >
+              View all <ChevronRight size={12} />
+            </Link>
+          </div>
+          <div className="grid grid-cols-3 gap-4 mb-4">
+            {subs.map((s) => (
+                <Link
+                key={s.slug}
+                href={`/marketplace/category/${openDept ?? ""}/${s.slug}`}
+                onMouseEnter={() => setOpenCat(s.slug)}
+                onClick={() => setOpenCat(s.slug)}
+                className="block rounded-lg border border-[#E2E8F0] px-3 py-2.5 text-sm text-slate-600 transition-colors hover:border-[#FF6B00] hover:text-[#FF6B00] hover:bg-slate-50 text-center"
+              >
+                {s.name}
+              </Link>
+            ))}
+          </div>
+          {bannerImg && (
+            <div className="mt-6 p-4 bg-[#FF6B00]/5 border rounded-lg">
+              <img
+                src={bannerImg}
+                alt={dNode?.name || "Promo"}
+                className="w-full h-32 object-cover rounded-lg mb-3"
+              />
+              <p className="text-sm font-medium text-[#FF6B00]">{dNode?.banner_headline || ""}</p>
+              <p className="text-xs text-slate-500">{dNode?.banner_description || ""}</p>
+            </div>
+          )}
+        </div>
+      )
+    }
+    return (
+      <div className="flex h-full flex-col items-center justify-center text-slate-400">
+        <p className="text-sm">Hover a department to see subcategories</p>
+      </div>
+    )
+  }
   // Live AJAX suggestions under both search boxes — product names pop up
   // as you type; Escape / outside click / submit dismisses the panel.
   const { items: suggestItems, loading: suggestLoading } = useRemoteSuggest(query)
@@ -559,149 +642,48 @@ const [currency, setCurrency] = useState("USD")
               <ChevronDown className={`h-4 w-4 transition-transform ${deptOpen ? "rotate-180" : ""}`} />
             </button>
         {deptOpen && (
-          <div className="absolute top-full left-0 bg-white rounded-b-xl shadow-xl z-50 flex animate-slide-down" onMouseEnter={() => setDeptOpen(true)} style={{ width: "820px" }}>
-                  <div className="w-[820px] max-w-[calc(100vw-2rem)]"
-                    onMouseEnter={() => setDeptOpen(true)}
-                  >
-                    <div className="rounded-b-xl border border-t-0 border-[#E2E8F0] bg-white p-6 shadow-2xl lg:p-8 max-h-[70vh] overflow-y-auto">
-                      {openCat ? (
-                        (() => {
-                          const dNode = departments.find((d) => d.slug === openDept)
-                          const sNode = dNode?.subs.find((s) => s.slug === openCat)
-                          const items = sNode?.items ?? []
-                          return (
-                            <div>
-                              <button
-                                type="button"
-                                onClick={() => { setOpenDept(null); setDeptOpen(false) }}
-                                className="text-xs font-bold uppercase tracking-wider text-slate-400 hover:text-[#FF6B00]"
-                              >
-                                ← Back to {sNode?.name ?? "sub-categories"}
-                              </button>
-                              <h4 className="mt-3 text-sm font-bold text-[#0A1628]">{sNode?.name}</h4>
-                              <ul className="mt-2 space-y-1.5">
-                                {items.map((it) => (
-                                  <li key={it.slug}>
-                                    <Link
-                                      href={`/marketplace/category/${openDept}/${openCat}`}
-                                      onClick={() => { setDeptOpen(false); setOpenDept(null); setOpenCat(null) }}
-                                      className="block rounded-lg border border-[#E2E8F0] px-3 py-2 text-sm text-slate-600 transition-colors hover:border-[#FF6B00] hover:text-[#FF6B00]"
-                                    >
-                                      {it.name}
-                                    </Link>
-                                  </li>
-                                ))}
-                              </ul>
-                              {items.length === 0 ? null : ""}
-                            </div>
-                          )
-                        })()
-) : openDept ? (
-                          (() => {
-                            const dNode = departments.find((d) => d.slug === openDept)
-                            const subs = dNode?.subs ?? []
-                            return (
-                              <div>
-                                <div className="flex items-center justify-between mb-3">
-                                  <h3 className="font-bold text-base text-[#0A1628]">{dNode?.name || "Department"}</h3>
-                                  <Link
-                                    href={`/marketplace/category/${openDept}`}
-                                    className="text-xs font-semibold hover:underline flex items-center gap-1 transition-colors"
-                                    style={{ color: "#FF6B00" }}
-                                    onClick={() => { setDeptOpen(false); setOpenDept(null); setOpenCat(null) }}
-                                  >
-                                    View all <ChevronRight size={12} />
-                                  </Link>
-                                </div>
-                                <div className="grid grid-cols-2 gap-x-6 gap-y-2 mb-4">
-                                  {subs.map((s) => (
-                                    <Link
-                                      key={s.slug}
-                                      href={`/marketplace/category/${openDept}/${s.slug}`}
-                                      onClick={() => { setDeptOpen(false); setOpenDept(null); setOpenCat(null) }}
-                                      className="text-sm text-slate-600 hover:text-[#FF6B00] transition-colors py-1"
-                                    >
-                                      {s.name}
-                                    </Link>
-                                  ))}
-                                </div>
-                                {dNode?.banner_image && dNode.banner_image !== "" ? (
-                                  <div className="mt-6 p-4 bg-[#FF6B00]/5 border rounded-lg">
-                                    <img
-                                      src={dNode.banner_image}
-                                      alt={dNode.name || "Promo"}
-                                      className="w-full h-32 object-cover rounded-lg mb-3"
-                                    />
-                                    <p className="text-sm font-medium text-[#FF6B00]">{dNode.banner_headline || ""}</p>
-                                    <p className="text-xs text-slate-500">{dNode.banner_description || ""}</p>
-                                  </div>
-                                ) : null}
-                              </div>
-                            )
-                          })()
-                        ) : (
-<div className="lg:col-span-8 border-l border-[#E2E8F0] p-6">
-                    {openDept ? (
-                      (() => {
-                        const dNode = departments.find((d) => d.slug === openDept)
-                        const subs = dNode?.subs ?? []
+          <div className="absolute top-full left-0 bg-white rounded-b-xl shadow-xl z-50 flex animate-slide-down" onMouseLeave={() => { setDeptOpen(false); setOpenDept(null); setOpenCat(null) }} style={{ width: "820px" }}>
+            <div className="w-[820px] max-w-[calc(100vw-2rem)]" onMouseEnter={() => setDeptOpen(true)}>
+              <div className="rounded-b-xl border border-t-0 border-[#E2E8F0] bg-white p-6 shadow-2xl lg:p-8 max-h-[70vh] overflow-y-auto">
+                <div className="grid grid-cols-12 gap-0">
+                  {/* LEFT: Department list */}
+                  <div className="col-span-12 lg:col-span-4 border-r border-[#E2E8F0] pb-4 lg:pb-0 overflow-y-auto max-h-full">
+                    <div className="space-y-1">
+                      {departments.map((d) => {
+                        const active = openDept === d.slug
+                        const hasSubs = d.subs && d.subs.length > 0
+                        const Icon = DEPT_ICONS[d.icon]
                         return (
-                          <div>
-                            <div className="flex items-center justify-between mb-3">
-                              <h3 className="font-bold text-base text-[#0A1628]">{dNode?.name || "Department"}</h3>
-                              <Link
-                                href={`/marketplace/category/${openDept}`}
-                                className="text-xs font-semibold hover:underline flex items-center gap-1 transition-colors"
-                                style={{ color: "#FF6B00" }}
-                                onClick={() => { setDeptOpen(false); setOpenDept(null); setOpenCat(null) }}
-                              >
-                                View all <ChevronRight size={12} />
-                              </Link>
-                            </div>
-                            <div className="grid grid-cols-2 gap-x-6 gap-y-2 mb-4">
-                              {subs.map((s) => (
-                                <Link
-                                  key={s.slug}
-                                  href={`/marketplace/category/${openDept}/${s.slug}`}
-                                  onClick={() => { setDeptOpen(false); setOpenDept(null); setOpenCat(null) }}
-                                  className="text-sm text-slate-600 hover:text-[#FF6B00] transition-colors py-1"
-                                >
-                                  {s.name}
-                                </Link>
-                              ))}
-                            </div>
-                            {dNode?.banner_image && dNode.banner_image !== "" ? (
-                              <div className="mt-6 p-4 bg-[#FF6B00]/5 border rounded-lg">
-                                <img
-                                  src={dNode.banner_image}
-                                  alt={dNode.name || "Promo"}
-                                  className="w-full h-32 object-cover rounded-lg mb-3"
-                                />
-                                <p className="text-sm font-medium text-[#FF6B00]">{dNode.banner_headline || ""}</p>
-                                <p className="text-xs text-slate-500">{dNode.banner_description || ""}</p>
-                              </div>
-                            ) : null}
+                          <div key={d.slug}>
+                            <button
+                              onMouseEnter={() => { setOpenDept(d.slug); setOpenCat("") }}
+                              onClick={() => { setOpenDept(d.slug); setOpenCat(""); }}
+                              className={`w-full flex items-center gap-2 px-3 py-2.5 text-sm transition-colors rounded-lg ${active ? "bg-[#FF6B00]/10 text-[#FF6B00] font-semibold" : "text-slate-600 hover:bg-slate-50 hover:text-[#0A1628]"}`}
+                            >
+                              {Icon ? <Icon className="h-4 w-4 text-slate-400 shrink-0" /> : <span className="text-slate-400 h-4 w-4 shrink-0">{d.icon}</span>}
+                              <span className="flex-1 truncate">{d.name}</span>
+                              {hasSubs && <ChevronRight className="h-3 w-3 text-slate-400 shrink-0" />}
+                            </button>
                           </div>
                         )
-                      })()
-                    ) : (
-                      <div className="text-center py-12 text-slate-400">
-                        Hover a department to see subcategories
-                      </div>
-                    )
-                }
+                      })}
+                    </div>
                   </div>
-                )
-                }
-               </div>
-               </div>
-             </div>
+
+                  {/* RIGHT: Subcategory panel */}
+                  <div className="col-span-12 lg:col-span-8 border-l border-[#E2E8F0] p-4 lg:p-6">
+                    {renderRightPanel()}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
           )}
-            </div>
-            </div>
-            </div>
-            </div>
-             <nav className="hidden lg:flex items-center gap-1 min-w-0 flex-1 overflow-x-auto whitespace-nowrap" aria-label="Marketplace" style={{ scrollbarWidth: "none" }}>
+          </div>
+          </div>
+          </div>
+          </div>
+            <nav className="hidden lg:flex items-center gap-1 min-w-0 flex-1 overflow-x-auto whitespace-nowrap" aria-label="Marketplace" style={{ scrollbarWidth: "none" }}>
               {NAV.map((item, i) => (
                 item.external ? (
                 <a
