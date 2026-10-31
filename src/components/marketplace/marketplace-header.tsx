@@ -19,8 +19,9 @@ import { MarketCommerce } from "./market-commerce"
 import { readMarketCurrency, setMarketCurrency } from "@/lib/marketplace-pricing"
 import { MARKET_STORE_DEFAULTS } from "@/lib/marketplace-store"
 
-// │──────────────────────────────────────────────────────────────────────│
-// │ MarketplaceHeader — 3‑level cascade mega‑menu + mobile drawer         │
+const NAV: Array<{ label: string; href: string; external?: boolean }> = [
+  // │──────────────────────────────────────────────────────────────────────│
+  // │ MarketplaceHeader — 3‑level cascade mega‑menu + mobile drawer         │
 // │                                                                      │
 // │ ARCHITECTURE SUMMARY                                                  │
 // │                                                                     │
@@ -686,16 +687,21 @@ const [currency, setCurrency] = useState("USD")
                     ) : (
                       <div className="text-center py-12 text-slate-400">
                         Hover a department to see subcategories
-</div>
-              </div>
+                      </div>
+                    )
+                }
+                  </div>
+                )
+                }
+               </div>
+               </div>
+             </div>
+          )}
             </div>
-</div>
-              </div>
             </div>
-          </div>
-        )}
             </div>
-            <nav className="hidden lg:flex items-center gap-1 min-w-0 flex-1 overflow-x-auto whitespace-nowrap" aria-label="Marketplace" style={{ scrollbarWidth: "none" }}>
+            </div>
+             <nav className="hidden lg:flex items-center gap-1 min-w-0 flex-1 overflow-x-auto whitespace-nowrap" aria-label="Marketplace" style={{ scrollbarWidth: "none" }}>
               {NAV.map((item, i) => (
                 item.external ? (
                 <a
@@ -723,7 +729,6 @@ const [currency, setCurrency] = useState("USD")
                 )
               ))}
             </nav>
-          </div>
           {promoBanners?.specials_enabled !== false && (
           <Link
             href={promoBanners?.specials_link || "/marketplace#flash-deals"}
@@ -734,7 +739,6 @@ const [currency, setCurrency] = useState("USD")
             <span className="xl:hidden truncate max-w-[110px]">{promoBanners?.specials_label || "Specials"}</span>
           </Link>
           )}
-        </div>
 
         {/* mobile nav drawer */}
         <div className={`lg:hidden ${open ? "" : "hidden"}`}>
@@ -829,7 +833,6 @@ const [currency, setCurrency] = useState("USD")
             </div>
           </nav>
         </div>
-      </div>
       </header>
     </>
   )

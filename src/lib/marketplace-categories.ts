@@ -19,6 +19,9 @@ export interface MarketDepartment {
   icon: string
   image: string
   subs: MarketSub[]
+  banner_image?: string
+  banner_headline?: string
+  banner_description?: string
 }
 
 export const slugify = (s: string) =>
