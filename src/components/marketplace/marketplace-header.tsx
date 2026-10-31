@@ -590,6 +590,7 @@ const [currency, setCurrency] = useState("USD")
                                       {col.map((s) => (
                                         <Link
                                           key={s.slug}
+                                          href={`/marketplace/category/${openDept}/${s.slug}`}
                                           onMouseEnter={() => { setDeptOpen(true); setOpenCat(s.slug) }}
                                           onMouseLeave={() => { if (openCat === s.slug) setOpenCat(null) }}
                                           className="block rounded border border-transparent px-3 py-2 text-sm text-slate-600 transition-colors hover:border-[#E2E8F0] hover:text-[#FF6B00] hover:bg-[#F8FAFC]"
