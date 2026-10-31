@@ -4,7 +4,7 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useEffect, useRef, useState } from "react"
 import {
-  Search, Heart, User, ShoppingBasket, Menu, X,   ChevronDown, ChevronRight, ChevronLeft,
+  Search, Heart, User, ShoppingBasket, Menu, X,   ChevronDown, ChevronRight,
   Flame, MapPin, Phone, Mail, Truck, RefreshCcw, Headset, ShieldCheck,
   ArrowLeftRight, LayoutGrid, Cpu, Smartphone, Laptop, Car, Wrench, Monitor,
   Package, Globe, CreditCard, ShoppingCart,
@@ -101,8 +101,8 @@ export function MarketplaceHeader({
   const [dept, setDept] = useState("")
   const [deptOpen, setDeptOpen] = useState(false)
   const [openDept, setOpenDept] = useState<string | null>(null)
-const [openCat, setOpenCat] = useState<string | null>(null)
 const [mobileExpanded, setMobileExpanded] = useState("")
+const [seeMore, setSeeMore] = useState(false)
 const [currency, setCurrency] = useState("USD")
   const [currencyOpen, setCurrencyOpen] = useState(false)
   // Live, admin-editable category tree (falls back to the bundled tree).
@@ -232,7 +232,6 @@ const [currency, setCurrency] = useState("USD")
       if (deptWrapRef.current && !deptWrapRef.current.contains(e.target as Node)) {
         setDeptOpen(false)
         setOpenDept(null)
-        setOpenCat(null)
       }
       if (currencyWrapRef.current && !currencyWrapRef.current.contains(e.target as Node)) setCurrencyOpen(false)
     }
@@ -240,7 +239,6 @@ const [currency, setCurrency] = useState("USD")
       if (e.key === "Escape") {
         setDeptOpen(false)
         setOpenDept(null)
-        setOpenCat(null)
         setCurrencyOpen(false)
       }
     }
@@ -288,6 +286,14 @@ const [currency, setCurrency] = useState("USD")
     setCurrencyOpen(false)
     setMarketCurrency(code === "NGN" ? "NGN" : "USD")
   }
+
+  const VISIBLE_DEPT_COUNT = 6
+  const visibleDepartments = departments.slice(0, seeMore ? departments.length : VISIBLE_DEPT_COUNT)
+  const toggleSeeMore = () => setSeeMore((v) => !v)
+
+  // Default to the first department when the mega-panel opens so it is never
+  // an empty "hover a department" state.
+  const firstDeptSlug = departments.length > 0 ? departments[0].slug : ""
 
   return (
     <>
@@ -479,12 +485,12 @@ const [currency, setCurrency] = useState("USD")
             <div
           ref={deptWrapRef}
           onMouseEnter={() => setDeptOpen(true)}
+          onMouseLeave={() => setDeptOpen(false)}
           className="relative shrink-0"
             >
             <button
               onClick={() => {
                 setDeptOpen(!deptOpen);
-                setOpenCat("");
               }}
               onMouseEnter={() => setDeptOpen(true)}
               className="mega-btn text-white h-12 px-6 flex items-center gap-2 font-semibold text-sm transition-colors cursor-pointer"
@@ -494,145 +500,144 @@ const [currency, setCurrency] = useState("USD")
               <ChevronDown className={`h-4 w-4 transition-transform ${deptOpen ? "rotate-180" : ""}`} />
             </button>
         {deptOpen && (
-          <div className="absolute top-full left-0 bg-white rounded-b-xl shadow-2xl z-50 flex animate-slide-down" onMouseEnter={() => setDeptOpen(true)} style={{ width: "1120px" }}>
+          <div
+            className="absolute top-full left-0 bg-white rounded-b-xl shadow-2xl z-50 flex animate-slide-down"
+            onMouseEnter={() => {
+              setDeptOpen(true)
+              if (!openDept && firstDeptSlug) setOpenDept(firstDeptSlug)
+            }}
+            style={{ width: "1120px" }}
+          >
             <div className="w-full max-w-[calc(100vw-2rem)]">
-              <div className="border border-t-0 border-[#E2E8F0] bg-white p-6 lg:p-8 max-h-[82vh] overflow-y-auto">
+              <div className="border border-t-0 border-[#E2E8F0] bg-white p-6 lg:p-8 max-h-[86vh] overflow-y-auto">
                 <div className="flex flex-col lg:flex-row h-full gap-0">
-                  {/* Left: departments sidebar */}
-                  <div className="w-[270px] border-r border-[#E2E8F0] flex flex-col shrink-0">
+                  {/* Left: departments */}
+                  <div className="w-[280px] border-r border-[#E2E8F0] flex flex-col shrink-0">
                     <div className="flex items-center justify-between px-4 py-3 border-b border-[#E2E8F0]">
                       <span className="text-xs font-bold uppercase tracking-wider text-slate-400">All Departments</span>
-                      <ChevronDown className="h-4 w-4 text-slate-400" />
+                      <button
+                        type="button"
+                        onClick={toggleSeeMore}
+                        className="text-xs font-medium text-[#FF6B00] hover:text-[#e86000] transition-colors"
+                      >
+                        {seeMore ? "See Less" : "See More"}
+                      </button>
                     </div>
-                    <div className="flex-1 overflow-y-auto py-2 space-y-0.5">
-                      {departments.map((d) => {
+                    <div className="flex-1 overflow-y-auto py-1 space-y-0.5">
+                      {visibleDepartments.map((d) => {
                         const isActive = openDept === d.slug
                         const Icon = DEPT_ICONS[d.icon]
                         return (
                           <div
                             key={d.slug}
-                            onMouseEnter={() => { setDeptOpen(true); setOpenDept(d.slug); setOpenCat(null) }}
+                            onMouseEnter={() => { setDeptOpen(true); setOpenDept(d.slug) }}
                             className={`flex items-center gap-3 px-4 py-2.5 cursor-pointer transition-colors ${
                               isActive
-                                ? "bg-[#FFF7F0] text-[#FF6B00]"
-                                : "text-slate-600 hover:bg-[#F8FAFC]"
+                                ? "bg-[#FFF7F0] text-[#FF6B00] border-l-2 border-[#FF6B00]"
+                                : "text-slate-600 hover:bg-[#F8FAFC] border-l-2 border-transparent"
                             }`}
                           >
-                            {Icon ? (
-                              <span className="flex h-5 w-5 items-center justify-center shrink-0" style={{ color: isActive ? "#FF6B00" : "#cbd5e1" }}>
-                                <Icon size={15} />
-                              </span>
-                            ) : (
-                              <span className="h-5 w-5" />
-                            )}
-                            <span className="text-sm font-medium truncate">{d.name}</span>
-                            <ChevronRight size={12} className="text-gray-400 shrink-0" />
+                            <span className="flex h-5 w-5 shrink-0 items-center justify-center" style={{ color: isActive ? "#FF6B00" : "#94a3b8" }}>
+                              {Icon ? <Icon size={15} /> : <ChevronRight size={12} className="text-slate-400" />}
+                            </span>
+                            <span className="text-sm font-medium truncate leading-none">{d.name}</span>
                           </div>
-                        );
+                        )
                       })}
-                      <div className="px-4 py-3 border-t border-[#E2E8F0]">
-                        <button className="w-full flex items-center gap-2 text-xs text-[#FF6B00] font-medium hover:text-[#e86000]">
-                          See More + <ChevronRight size={12} className="text-[#FF6B00]" />
-                        </button>
-                      </div>
+                      {!seeMore && departments.length > VISIBLE_DEPT_COUNT && (
+                        <div className="px-4 py-3 border-t border-[#E2E8F0]">
+                          <button
+                            type="button"
+                            onClick={toggleSeeMore}
+                            className="w-full flex items-center justify-between text-xs font-medium text-[#FF6B00] hover:text-[#e86000]"
+                          >
+                            <span>See more departments</span>
+                            <ChevronDown className="h-4 w-4 text-[#FF6B00]" />
+                          </button>
+                        </div>
+                      )}
                     </div>
                   </div>
-                  {/* Right: sub-columns + promo banner */}
+                  {/* Right: all sub-categories + items of the hovered department — single level, no drill-down */}
                   <div className="flex-1 flex flex-col min-w-0">
                     {openDept ? (
                       (() => {
                         const dNode = departments.find((d) => d.slug === openDept)
                         const subs = dNode?.subs ?? []
-                        const sNode = subs.find((s) => s.slug === openCat)
-                        const items = sNode?.items ?? []
-                        // Group subs into 3 columns
-                        const columns = []
-                        for (let i = 0; i < subs.length; i += 3) {
-                          columns.push(subs.slice(i, i + 3))
-                        }
+                        const totalItems = subs.reduce((n, s) => n + s.items.length, 0)
+                        const Icon = dNode ? DEPT_ICONS[dNode.icon] : undefined
                         return (
                           <div className="flex-1 overflow-y-auto p-4">
-                            {openCat ? (
-                              // L3 — leaf list under a sub-category
+                            <div className="flex items-center gap-3 mb-4">
+                              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#FFF7F0] text-[#FF6B00]">
+                                {Icon ? <Icon size={22} /> : <ChevronRight size={16} className="text-slate-400" />}
+                              </div>
                               <div>
-                                <button
-                                  type="button"
-                                  onClick={() => { setDeptOpen(true); setOpenCat(null) }}
-                                  className="inline-flex items-center gap-1 text-xs font-bold uppercase tracking-wider text-slate-400 hover:text-[#FF6B00] mb-4"
-                                >
-                                  <ChevronLeft className="h-3.5 w-3.5" /> Back to {dNode?.name}
-                                </button>
-                                <h4 className="mb-3 text-sm font-bold text-[#0A1628]">{sNode?.name}</h4>
-                                <div className="grid grid-cols-1 gap-y-1.5">
-                                  {items.map((it) => (
-                                    <Link
-                                      key={it.slug}
-                                      href={`/marketplace/category/${openDept}/${openCat}#leaf-${it.slug}`}
-                                      onClick={() => { setDeptOpen(false); setOpenDept(null); setOpenCat(null) }}
-                                      className="flex items-center justify-between rounded-lg border border-[#E2E8F0] px-3 py-2.5 text-sm text-slate-600 transition-colors hover:border-[#FF6B00] hover:text-[#FF6B00] hover:bg-[#FFF7F0]"
-                                    >
-                                      <span>{it.name}</span>
-                                      <ChevronRight size={13} className="text-gray-300 shrink-0" />
-                                    </Link>
-                                  ))}
-                                  {items.length === 0 && (
-                                    <p className="mt-2 text-sm text-slate-400">No items in this category yet.</p>
-                                  )}
-                                </div>
+                                <h3 className="text-sm font-bold text-[#0A1628] leading-none">{dNode?.name}</h3>
+                                <p className="text-[11px] text-slate-400 leading-none">
+                                  {subs.length} category{subs.length !== 1 ? "s" : ""} · {totalItems} item{totalItems !== 1 ? "s" : ""}
+                                </p>
                               </div>
-                            ) : (
-                              // L2 — sub-category columns
-                              <div className="grid gap-6 lg:grid-cols-3">
-                                {columns.map((col, ci) => (
-                                  <div key={ci} className="space-y-4">
-                                    <h4 className="mb-2 text-sm font-bold uppercase tracking-wider text-[#0A1628]">{col[0]?.name}</h4>
-                                    <div className="space-y-1.5">
-                                      {col.map((s) => (
-                                        <Link
-                                          key={s.slug}
-                                          href={`/marketplace/category/${openDept}/${s.slug}`}
-                                          onMouseEnter={() => { setDeptOpen(true); setOpenCat(s.slug) }}
-                                          onMouseLeave={() => { if (openCat === s.slug) setOpenCat(null) }}
-                                          className="block rounded border border-transparent px-3 py-2 text-sm text-slate-600 transition-colors hover:border-[#E2E8F0] hover:text-[#FF6B00] hover:bg-[#F8FAFC]"
-                                        >
-                                          {s.name}
-                                        </Link>
-                                      ))}
-                                    </div>
+                            </div>
+                            <div className="grid gap-3 lg:grid-cols-3">
+                              {subs.map((s) => (
+                                <div key={s.slug} className="rounded-xl border border-[#E2E8F0] bg-[#F8FAFC]/40 p-3 hover:bg-[#FFF7F0] hover:border-[#FF6B00]/50 transition-colors group">
+                                  <Link
+                                    href={`/marketplace/category/${s.slug}`}
+                                    className="block mb-1.5 text-sm font-bold text-[#0A1628] hover:text-[#FF6B00] leading-none"
+                                  >
+                                    {s.name}
+                                  </Link>
+                                  <div className="flex flex-wrap gap-1">
+                                    {s.items.map((it) => (
+                                      <Link
+                                        key={it.slug}
+                                        href={`/marketplace/category/${openDept}/${s.slug}#leaf-${it.slug}`}
+                                        className="inline-block rounded border border-transparent px-2 py-1 text-[11px] text-slate-500 font-medium whitespace-nowrap hover:bg-[#FF6B00]/10 hover:text-[#FF6B00] hover:border-[#FF6B00]/30 transition-colors"
+                                      >
+                                        {it.name}
+                                      </Link>
+                                    ))}
+                                    {s.items.length === 0 && (
+                                      <p className="text-[10px] text-slate-400 italic">No items yet</p>
+                                    )}
                                   </div>
-                                ))}
-                                {/* Promo banner column */}
-                                <div className="lg:col-span-3 relative rounded-xl overflow-hidden h-40 flex items-center justify-center group">
-                                  {promoBanners?.flash_image && promoOn ? (
-                                    <Link
-                                      href={promoBanners?.specials_link || "/marketplace#flash-deals"}
-                                      className="absolute inset-0 w-full h-full"
-                                      onClick={() => { setDeptOpen(false); setOpenDept(null); setOpenCat(null) }}
-                                    >
-                                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                                      <img src={promoBanners.flash_image} alt="Flash deals" className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
-                                      <div className="absolute inset-0 bg-black/35 flex items-center justify-center">
-                                        <span className="text-white font-bold text-lg">{promoBanners?.flash_title || "Flash Sale Specials"}</span>
-                                      </div>
-                                    </Link>
-                                  ) : (
-                                    <div className="absolute inset-0 bg-[#F8FAFC] border border-[#E2E8F0] flex items-center justify-center">
-                                      <span className="text-sm text-slate-400">Special offers coming soon</span>
-                                    </div>
-                                  )}
                                 </div>
-                              </div>
-                            )}
+                              ))}
+                              {subs.length === 0 && (
+                                <div className="col-span-3 py-8 text-center">
+                                  <p className="text-sm text-slate-400">No sub-categories yet.</p>
+                                </div>
+                              )}
+                            </div>
+                            <div className="mt-6 relative rounded-xl overflow-hidden h-44 flex items-center justify-center group border border-[#E2E8F0] bg-[#F8FAFC]">
+                              {promoBanners?.flash_image && promoOn ? (
+                                <Link
+                                  href={promoBanners?.specials_link || "/marketplace#flash-deals"}
+                                  className="absolute inset-0 w-full h-full"
+                                  onClick={() => { setDeptOpen(false); setOpenDept(null) }}
+                                >
+                                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                                  <img src={promoBanners.flash_image} alt="Flash deals" className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+                                  <div className="absolute inset-0 bg-black/35 flex items-center justify-center">
+                                    <span className="text-white font-bold text-lg">{promoBanners?.flash_title || "Flash Sale Specials"}</span>
+                                  </div>
+                                </Link>
+                              ) : (
+                                <div className="absolute inset-0 flex items-center justify-center">
+                                  <span className="text-sm text-slate-400">Special offers coming soon</span>
+                                </div>
+                              )}
+                            </div>
                           </div>
                         )
                       })()
                     ) : (
-                      // L1 default — nothing selected yet
                       <div className="flex-1 overflow-y-auto p-4 flex flex-col items-center justify-center h-full">
-                        <div className="h-32 rounded-xl border-2 border-dashed border-[#E2E8F0] bg-[#F8FAFC] flex items-center justify-center mb-4">
-                          <span className="text-sm text-slate-400">Hover a department</span>
+                        <div className="h-36 rounded-xl border-2 border-dashed border-[#E2E8F0] bg-[#F8FAFC] flex items-center justify-center mb-4">
+                          <span className="text-sm text-slate-400">Browse departments</span>
                         </div>
-                        <p className="text-xs text-slate-400 uppercase tracking-wider">Select a department to browse sub-categories</p>
+                        <p className="text-xs text-slate-400 uppercase tracking-wider">Select a department above</p>
                       </div>
                     )}
                   </div>
