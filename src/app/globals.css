@@ -234,13 +234,13 @@ body { position: relative; }
 .marketplace-promo-bar > * { position: relative; z-index: 2; }
 .marketplace-badge-pill {
   display: inline-flex; align-items: center; gap: 6px;
-  background: rgba(255,255,255,0.14); border: 1px solid rgba(255,255,255,0.35);
+  background: #FF3B30; border: 1px solid rgba(255,255,255,0.4);
   color: #fff; font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.06em;
-  padding: 3px 9px; border-radius: 999px; box-shadow: 0 2px 6px rgba(0,0,0,0.25);
+  padding: 3px 9px; border-radius: 999px; box-shadow: 0 2px 8px rgba(255,59,48,0.5);
 }
 .marketplace-badge-pill .mp-dot {
   width: 6px; height: 6px; border-radius: 50%; background: #fff;
-  box-shadow: 0 0 8px rgba(255,255,255,0.6);
+  box-shadow: 0 0 8px rgba(255,255,255,0.8);
   animation: mpDotPulse 2s ease-in-out infinite;
 }
 @keyframes mpDotPulse {

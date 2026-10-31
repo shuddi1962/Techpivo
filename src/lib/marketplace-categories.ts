@@ -228,6 +228,208 @@ export const MARKET_DEPARTMENTS: MarketDepartment[] = [
       },
     ],
   },
+  {
+    name: "Fashion & Clothing",
+    slug: "fashion-clothing",
+    icon: "Shirt",
+    image: px(771621, 600),
+    subs: [
+      {
+        name: "Men's Clothing",
+        slug: "mens-clothing",
+        items: leaf(["T-Shirts", "Shirts", "Jackets & Coats", "Jeans", "Trousers", "Suits & Blazers"]),
+      },
+      {
+        name: "Women's Clothing",
+        slug: "womens-clothing",
+        items: leaf(["Dresses", "Tops & Blouses", "Jeans & Denim", "Jackets", "Skirts", "Lingerie"]),
+      },
+      {
+        name: "Shoes",
+        slug: "shoes",
+        items: leaf(["Sneakers", "Boots", "Sandals", "Loafers", "Heels", "Running Shoes"]),
+      },
+    ],
+  },
+  {
+    name: "Beauty & Personal Care",
+    slug: "beauty-personal-care",
+    icon: "Sparkles",
+    image: px(3714720, 600),
+    subs: [
+      {
+        name: "Skincare",
+        slug: "skincare",
+        items: leaf(["Moisturizers", "Cleansers", "Serums", "Sunscreen", "Eye Creams"]),
+      },
+      {
+        name: "Makeup",
+        slug: "makeup",
+        items: leaf(["Lipstick", "Foundation", "Eyeshadow", "Mascara", "Blush", "Makeup Brushes"]),
+      },
+      {
+        name: "Hair Care",
+        slug: "hair-care",
+        items: leaf(["Shampoo", "Conditioner", "Hair Styling", "Hair Color", "Hair Tools"]),
+      },
+    ],
+  },
+  {
+    name: "Sports & Outdoors",
+    slug: "sports-outdoors",
+    icon: "Trophy",
+    image: px(1485319, 600),
+    subs: [
+      {
+        name: "Fitness",
+        slug: "fitness",
+        items: leaf(["Dumbbells", "Treadmills", "Yoga Mats", "Resistance Bands", "Exercise Bikes"]),
+      },
+      {
+        name: "Outdoor",
+        slug: "outdoor",
+        items: leaf(["Camping", "Hiking", "Tents", "Sleeping Bags", "Backpacks"]),
+      },
+      {
+        name: "Sports Gear",
+        slug: "sports-gear",
+        items: leaf(["Footballs", "Basketballs", "Tennis Rackets", "Golf Clubs", "Bicycles"]),
+      },
+    ],
+  },
+  {
+    name: "Home & Garden",
+    slug: "home-garden",
+    icon: "Home",
+    image: px(1520022, 600),
+    subs: [
+      {
+        name: "Furniture",
+        slug: "furniture",
+        items: leaf(["Sofas", "Dining Tables", "Chairs", "Beds", "Wardrobes"]),
+      },
+      {
+        name: "Garden",
+        slug: "garden",
+        items: leaf(["Planters", "Garden Tools", "Outdoor Decor", "Lawn Mowers", "Fencing"]),
+      },
+      {
+        name: "Decor",
+        slug: "decor",
+        items: leaf(["Wall Art", "Mirrors", "Clocks", "Candles", "Rugs"]),
+      },
+    ],
+  },
+  {
+    name: "Tools & Hardware",
+    slug: "tools-hardware",
+    icon: "Hammer",
+    image: px(4193558, 600),
+    subs: [
+      {
+        name: "Hand Tools",
+        slug: "hand-tools",
+        items: leaf(["Screwdrivers", "Pliers", "Hammers", "Wrenches", "Tool Sets"]),
+      },
+      {
+        name: "Power Tools",
+        slug: "power-tools",
+        items: leaf(["Drills", "Saws", "Sanders", "Nail Guns", "Grinders"]),
+      },
+      {
+        name: "Hardware",
+        slug: "hardware",
+        items: leaf(["Nails", "Screws", "Bolts", "Hinges", "Locks"]),
+      },
+    ],
+  },
+  {
+    name: "Books & Media",
+    slug: "books-media",
+    icon: "Book",
+    image: px(1521975, 600),
+    subs: [
+      {
+        name: "Books",
+        slug: "books",
+        items: leaf(["Fiction", "Non-Fiction", "Textbooks", "Children's Books", "Comics"]),
+      },
+      {
+        name: "Movies & Music",
+        slug: "movies-music",
+        items: leaf(["DVDs", "Blu-rays", "CDs", "Vinyl Records"]),
+      },
+      {
+        name: "Games",
+        slug: "games",
+        items: leaf(["Board Games", "Card Games", "Puzzles", "Video Games"]),
+      },
+    ],
+  },
+  {
+    name: "Bags & Luggage",
+    slug: "bags-luggage",
+    icon: "ShoppingBag",
+    image: px(1519235, 600),
+    subs: [
+      {
+        name: "Handbags",
+        slug: "handbags",
+        items: leaf(["Tote Bags", "Shoulder Bags", "Clutches", "Backpacks"]),
+      },
+      {
+        name: "Luggage",
+        slug: "luggage",
+        items: leaf(["Suitcases", "Carry-Ons", "Travel Bags", "Luggage Sets"]),
+      },
+      {
+        name: "Wallets",
+        slug: "wallets",
+        items: leaf(["Wallets", "Card Holders", "Passport Holders"]),
+      },
+    ],
+  },
+  {
+    name: "Baby & Kids",
+    slug: "baby-kids",
+    icon: "Baby",
+    image: px(2433041, 600),
+    subs: [
+      {
+        name: "Baby Gear",
+        slug: "baby-gear",
+        items: leaf(["Strollers", "Car Seats", "Cribs", "High Chairs"]),
+      },
+      {
+        name: "Toys",
+        slug: "toys",
+        items: leaf(["Action Figures", "Dolls", "Building Blocks", "Remote Control Toys"]),
+      },
+      {
+        name: "Kids Clothing",
+        slug: "kids-clothing",
+        items: leaf(["Baby Onesies", "Kids Shoes", "Kids Dresses", "School Uniforms"]),
+      },
+    ],
+  },
+  {
+    name: "Watches & Jewelry",
+    slug: "watches-jewelry",
+    icon: "Clock",
+    image: px(1485343, 600),
+    subs: [
+      {
+        name: "Watches",
+        slug: "watches",
+        items: leaf(["Men's Watches", "Women's Watches", "Smart Watches", "Luxury Watches"]),
+      },
+      {
+        name: "Jewelry",
+        slug: "jewelry",
+        items: leaf(["Necklaces", "Rings", "Earrings", "Bracelets"]),
+      },
+    ],
+  },
 ]
 
 // Flat lookup: leaf slug -> department + sub metadata

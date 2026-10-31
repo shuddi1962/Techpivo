@@ -7,7 +7,8 @@ import {
   Search, Heart, User, ShoppingBasket, Menu, X,   ChevronDown, ChevronRight,
   Flame, MapPin, Phone, Mail, Truck, RefreshCcw, Headset, ShieldCheck,
   ArrowLeftRight, LayoutGrid, Cpu, Smartphone, Laptop, Car, Wrench, Monitor,
-  Package, Globe, CreditCard, ShoppingCart,
+  Package, Globe, CreditCard, ShoppingCart, Home, Trophy, Shirt, Baby, Hammer,
+  Book, ShoppingBag, Clock, Sparkles, Star, Gift,
 } from "lucide-react"
 import { MarketCategorySync, useMarketplaceTree } from "./market-category-store"
 import { MARKETPLACE_BRAND } from "@/lib/marketplace"
@@ -34,8 +35,12 @@ const NAV: Array<{ label: string; href: string; external?: boolean }> = [
 const WISH_KEY = "tp_market_wish_v1"
 
 // Live tree icons are stored as lucide name strings; map them to components.
+// One representative icon per department so every major category is visually
+// identified. Colours follow the TechPivo Market palette: blue = main,
+// red / orange = accent (sale, flash, limited deal).
 const DEPT_ICONS: Record<string, any> = {
-  Cpu, Smartphone, Laptop, Car, Wrench, Monitor, Package, Globe, CreditCard,
+  Cpu, Smartphone, Laptop, Car, Wrench, Home, Heart, Trophy, Shirt, Baby,
+  Hammer, Book, ShoppingBag, Clock, Monitor, Package, Globe, CreditCard,
   ShoppingCart, Flame, MapPin, Phone, Mail,
 }
 
@@ -532,34 +537,34 @@ const [currency, setCurrency] = useState("USD")
                       </button>
                     </div>
                     <div className="flex-1 overflow-y-auto py-1 space-y-0.5">
-                          {visibleDepartments.map((d) => {
-                            const isActive = openDept === d.slug
-                            const Icon = DEPT_ICONS[d.icon]
-                            return (
-                              <div
-                                key={d.slug}
-                                onMouseEnter={() => { setDeptOpen(true); setOpenDept(d.slug) }}
-                                className={`flex items-center gap-3 px-4 py-2.5 cursor-pointer transition-all duration-150 ${
-                                  isActive
-                                    ? "bg-[#1453D6]/12 text-[#1453D6] border-l-3 border-[#1453D6] shadow-sm rounded-r-xl"
-                                    : "text-slate-600 hover:bg-[#EFF6FF] hover:text-[#1453D6] border-l-3 border-transparent rounded-r-xl"
-                                }`}
-                              >
-                                <span className="flex h-5 w-5 shrink-0 items-center justify-center" style={{ color: isActive ? "#1453D6" : "#94a3b8" }}>
-                                  {Icon ? <Icon size={15} /> : <ChevronRight size={12} className="text-slate-400" />}
-                                </span>
-                                <span className="text-sm font-semibold truncate leading-none">{d.name}</span>
-                              </div>
-                            )
-                          })}
+                      {visibleDepartments.map((d) => {
+                        const isActive = openDept === d.slug
+                        const Icon = DEPT_ICONS[d.icon]
+                        return (
+                          <div
+                            key={d.slug}
+                            onMouseEnter={() => { setDeptOpen(true); setOpenDept(d.slug) }}
+                            className={`flex items-center gap-3 px-4 py-2.5 cursor-pointer transition-all duration-150 ${
+                              isActive
+                                ? "bg-[#1453D6]/12 text-[#1453D6] border-l-3 border-[#1453D6] shadow-sm rounded-r-xl"
+                                : "text-slate-600 hover:bg-[#EFF6FF] hover:text-[#1453D6] border-l-3 border-transparent rounded-r-xl"
+                            }`}
+                          >
+                            <span className="flex h-5 w-5 shrink-0 items-center justify-center" style={{ color: isActive ? "#FF3B30" : "#94a3b8" }}>
+                              {Icon ? <Icon size={15} /> : <ChevronRight size={12} className="text-slate-400" />}
+                            </span>
+                            <span className="text-sm font-semibold truncate leading-none">{d.name}</span>
+                          </div>
+                        )
+                      })}
                       {!seeMore && departments.length > VISIBLE_DEPT_COUNT && (
                         <div className="px-4 py-3 border-t border-[#E2E8F0]">
                           <button
                             type="button"
                             onClick={toggleSeeMore}
                           className="w-full flex items-center justify-between text-xs font-medium text-[#1668DC] hover:text-[#0F4FB3] transition-all duration-150"
-                      >
-                        <span>See more departments</span>
+                        >
+                          <span>See more departments</span>
                             <ChevronDown className="h-4 w-4 text-[#1668DC]" />
                           </button>
                         </div>
@@ -577,22 +582,22 @@ const [currency, setCurrency] = useState("USD")
                         return (
                           <div className="flex-1 overflow-y-auto p-4">
                             <div className="flex items-center gap-3 mb-4">
-                              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#1453D6]/12 text-[#1453D6] shadow-sm">
+                              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#FFF1F2] text-[#FF3B30] shadow-sm border border-[#FF3B30]/20">
                                 {Icon ? <Icon size={22} /> : <ChevronRight size={16} className="text-slate-400" />}
                               </div>
                               <div>
-                                <h3 className="text-sm font-bold text-[#1453D6] leading-none">{dNode?.name}</h3>
+                                <h3 className="text-sm font-bold text-[#111827] leading-none">{dNode?.name}</h3>
                                 <p className="text-[11px] text-slate-400 leading-none">
                                   {subs.length} category{subs.length !== 1 ? "s" : ""} · {totalItems} item{totalItems !== 1 ? "s" : ""}
                                 </p>
                               </div>
                             </div>
-                            <div className="grid gap-3 lg:grid-cols-3">
-                              {subs.map((s) => (
-                                <div key={s.slug} className="rounded-xl border border-[#E2E8F0] bg-[#F8FAFC]/30 p-3 hover:bg-[#1453D6]/8 hover:border-[#1453D6]/50 transition-all duration-150 group">
+                              <div className="grid gap-3 lg:grid-cols-3">
+                               {subs.map((s) => (
+                                <div key={s.slug} className="rounded-xl border border-[#E2E8F0] bg-[#F8FAFC]/25 p-3 hover:bg-[#FFF1F2] hover:border-[#FF3B30]/60 transition-all duration-150 group">
                                   <Link
                                     href={`/marketplace/category/${s.slug}`}
-                                    className="block mb-1.5 text-sm font-bold text-[#1453D6] hover:text-[#0B3A9A] leading-none transition-colors"
+                                    className="block mb-1.5 text-sm font-bold text-[#111827] hover:text-[#FF3B30] leading-none transition-colors"
                                   >
                                     {s.name}
                                    </Link>
@@ -601,7 +606,7 @@ const [currency, setCurrency] = useState("USD")
                                        <Link
                                          key={it.slug}
                                          href={`/marketplace/category/${openDept}/${s.slug}#leaf-${it.slug}`}
-                                         className="inline-block rounded border border-transparent px-2 py-1 text-[11px] text-slate-500 font-medium whitespace-nowrap hover:bg-[#1453D6]/12 hover:text-[#1453D6] hover:border-[#1453D6]/30 transition-all duration-150"
+                                         className="inline-block rounded border border-transparent px-2 py-1 text-[11px] text-[#111827] font-medium whitespace-nowrap hover:bg-[#FF3B30]/12 hover:text-[#FF3B30] hover:border-[#FF3B30]/40 transition-all duration-150"
                                        >
                                         {it.name}
                                       </Link>
@@ -618,25 +623,28 @@ const [currency, setCurrency] = useState("USD")
                                 </div>
                               )}
                             </div>
-                            <div className="mt-6 relative rounded-xl overflow-hidden h-44 flex items-center justify-center group border border-[#E2E8F0] bg-[#F8FAFC]">
-                              {promoBanners?.flash_image && promoOn ? (
-                                <Link
-                                  href={promoBanners?.specials_link || "/marketplace#flash-deals"}
-                                  className="absolute inset-0 w-full h-full"
-                                  onClick={() => { setDeptOpen(false); setOpenDept(null) }}
-                                >
-                                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                                  <img src={promoBanners.flash_image} alt="Flash deals" className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
-                                  <div className="absolute inset-0 bg-gradient-to-t from-[#1668DC]/80 via-[#0F4FB3]/40 to-transparent flex items-center justify-center">
-                                    <span className="text-white font-bold text-lg">{promoBanners?.flash_title || "Flash Sale Specials"}</span>
-                                  </div>
-                                </Link>
-                              ) : (
-                                <div className="absolute inset-0 flex items-center justify-center">
-                                  <span className="text-sm text-slate-400">Special offers coming soon</span>
-                                </div>
-                              )}
-                            </div>
+                             <div className="mt-6 relative rounded-xl overflow-hidden h-44 flex items-center justify-center group border border-[#E2E8F0] bg-[#F8FAFC]">
+                               {promoBanners?.flash_image && promoOn ? (
+                                 <Link
+                                   href={promoBanners?.specials_link || "/marketplace#flash-deals"}
+                                   className="absolute inset-0 w-full h-full"
+                                   onClick={() => { setDeptOpen(false); setOpenDept(null) }}
+                                 >
+                                   {/* eslint-disable-next-line @next/next/no-img-element */}
+                                   <img src={promoBanners.flash_image} alt="Flash deals" className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+                                   <div className="absolute inset-0 bg-gradient-to-t from-[#FF3B30]/85 via-[#E53935]/45 to-transparent flex items-center justify-center">
+                                     <div className="flex items-center gap-2">
+                                       <Flame className="h-5 w-5 text-white" />
+                                       <span className="text-white font-bold text-lg">{promoBanners?.flash_title || "Flash Sale Specials"}</span>
+                                     </div>
+                                   </div>
+                                 </Link>
+                               ) : (
+                                 <div className="absolute inset-0 flex items-center justify-center">
+                                   <span className="text-sm text-slate-400">Special offers coming soon</span>
+                                 </div>
+                               )}
+                             </div>
                           </div>
                         )
                       })()
@@ -687,12 +695,12 @@ const [currency, setCurrency] = useState("USD")
           {promoBanners?.specials_enabled !== false && (
             <Link
               href={promoBanners?.specials_link || "/marketplace#flash-deals"}
-              className="flex items-center gap-2 bg-[#EFF6FF] text-[#1668DC] border border-[#1668DC]/20 px-3 py-1.5 rounded-full text-sm font-semibold hover:bg-[#1668DC]/30 shrink-0 shadow-sm hover:shadow-md transition-all duration-200"
+              className="flex items-center gap-2 bg-[#FFF1F2] text-[#FF3B30] border border-[#FF3B30]/40 px-3 py-1.5 rounded-full text-sm font-semibold hover:bg-[#FF3B30]/20 shrink-0 shadow-sm hover:shadow-md transition-all duration-200"
             >
-            <Flame className="h-4 w-4" />
-            <span className="hidden xl:inline">{promoBanners?.specials_label || "Flash Sale Specials"}</span>
-            <span className="xl:hidden truncate max-w-[110px]">{promoBanners?.specials_label || "Specials"}</span>
-          </Link>
+              <Flame className="h-4 w-4 text-[#FF3B30]" />
+              <span className="hidden xl:inline">{promoBanners?.specials_label || "Flash Sale Specials"}</span>
+              <span className="xl:hidden truncate max-w-[110px]">{promoBanners?.specials_label || "Specials"}</span>
+            </Link>
           )}
         </div>
 
@@ -776,7 +784,7 @@ const [currency, setCurrency] = useState("USD")
                             key={s.slug}
                             href={`/marketplace/category/${s.slug}`}
                             onClick={() => setOpen(false)}
-                            className="block px-3 py-1.5 rounded-lg text-xs text-slate-500 hover:bg-[#EFF6FF] hover:text-[#1453D6] text-left transition-colors"
+                            className="block px-3 py-1.5 rounded-lg text-xs text-[#111827] hover:bg-[#FFF1F2] hover:text-[#FF3B30] text-left transition-colors"
                           >
                             {s.name}
                           </Link>
