@@ -4,7 +4,7 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useEffect, useRef, useState } from "react"
 import {
-  Search, Heart, User, ShoppingBasket, Menu, X, ChevronDown, ChevronRight,
+  Search, Heart, User, ShoppingBasket, Menu, X,   ChevronDown, ChevronRight, ChevronLeft,
   Flame, MapPin, Phone, Mail, Truck, RefreshCcw, Headset, ShieldCheck,
   ArrowLeftRight, LayoutGrid, Cpu, Smartphone, Laptop, Car, Wrench, Monitor,
   Package, Globe, CreditCard, ShoppingCart,
@@ -20,71 +20,6 @@ import { readMarketCurrency, setMarketCurrency } from "@/lib/marketplace-pricing
 import { MARKET_STORE_DEFAULTS } from "@/lib/marketplace-store"
 
 const NAV: Array<{ label: string; href: string; external?: boolean }> = [
-  // │──────────────────────────────────────────────────────────────────────│
-  // │ MarketplaceHeader — 3‑level cascade mega‑menu + mobile drawer         │
-// │                                                                      │
-// │ ARCHITECTURE SUMMARY                                                  │
-// │                                                                     │
-// │ 1. 3‑LEVEL CASCADE (desktop only):                                   │
-// │    L1 — department list (grid, left dept rows with subs, right flash card)   │
-// │    L2 — when a department is open → sub‑category list; each sub column reveals leaves │
-// │    L3 — when a sub‑category is open → leaf list; back row → parent      │
-// │    State: openDept (department slug), openCat (sub‑category slug), open (mobile) │
-// │    Every Link click resets all three states to closed.                 │
-// │                                                                     │
-// │ 2. HOVER HOOKS (deptOpen):                                            │
-// │    - panels stay open while mouse is over them                         │
-// │    - outside‑click + Escape reset all three states (openDept/openCat/deptOpen) │
-// │    - deptOpen flag controls hover intent; panels close on mouse leave    │
-// │                                                                     │
-// │ 3. MOBILE DRAWER:                                                     │
-// │    - simple accordion of departments (subs.slice(0,4))                 │
-// │    - mobileExpanded tracks last‑expanded department slug               │
-// │    - outside click + Escape close the drawer                         │
-// │    - 85% width white drawer with accordion layout                    │
-// │                                                                     │
-// │ 4. BANNER INTEGRATION:                                                │
-// │    - promoBanners fetched from site_settings key "marketplace_banners"  │
-// │    - promoOn switch (default ON) hides promo surfaces publicly         │
-// │    - departments may have banner_image; when set renders in L2/L3 panels │
-// │    - Black Friday promo switch in Admin → Marketplace → Banners         │
-// │    - banners also appear on homepage and category pages               │
-// │                                                                     │
-// │ Live cart / wishlist counts are subscribed so badges stay correct        │
-// │ across store pages even when the page doesn't pass cartCount.          │
-// │                                                                      │
-// │ Live, admin‑editable category tree falls back to the bundled tree.    │
-// │                                                                      │
-// │ ──────────────────────────────────────────────────────────────────────│
-// │ MarketplaceHeader — 3‑level cascade mega‑menu + mobile drawer         │
-// │                                                                      │
-// │ State:                                                               │
-// │   openDept    — currently highlighted department slug (hover)         │
-// │   openCat     — currently highlighted sub‑category slug (open)        │
-// │   open        — mobile drawer open state                              │
-// │   mobileExpanded — last‑expanded department slug for mobile list      │
-// │   deptOpen    — hover‑intent flag; panels close on outside‑click/Esc   │
-// │   promoBanners — live banners from site_settings (promo + flash)      │
-// │   departments — live tree fetched via useMarketplaceTree               │
-// │                                                                      │
-// │ 3‑level cascade (desktop):                                            │
-// │   L1 — department list (grid, left dept rows with subs, right flash card)   │
-// │   L2 — when a department is open → sub‑category list; each sub column reveals leaves      │
-// │   L3 — when a sub‑category is open → leaf list; back row → parent      │
-// │                                                                     │
-// │ Hover intent (deptOpen): panels stay open while mouse is over them;   │
-// │ outside‑click + Escape reset all three states (openDept/openCat/deptOpen). │
-// │                                                                      │
-// │ Mobile drawer: simple accordion of departments (subs.slice(0,4)).      │
-// │                                                                      │
-// │ Banners: promo_banners from site_settings; when set, the Black Friday │
-// │ promo switch hides promo surfaces publicly (default ON).               │
-// │                                                                      │
-// │ Live cart / wishlist counts are subscribed so badges stay correct      │
-// │ across store pages even when the page doesn't pass cartCount.          │
-// │                                                                      │
-// │ Live, admin‑editable category tree falls back to the bundled tree.    │
-// └──────────────────────────────────────────────────────────────────────│
   { label: "Home", href: "/marketplace" },
   { label: "Shop", href: "/marketplace/shop" },
   { label: "Deals of the Day", href: "/marketplace/deals" },
@@ -174,89 +109,6 @@ const [currency, setCurrency] = useState("USD")
   const departments = useMarketplaceTree()
   const deptWrapRef = useRef<HTMLDivElement>(null)
   const currencyWrapRef = useRef<HTMLDivElement>(null)
-
-  // Right panel content for the mega menu, based on open state.
-  const renderRightPanel = (): JSX.Element => {
-    if (openCat) {
-      const dNode = departments.find((d) => d.slug === openDept)
-      const sNode = dNode?.subs.find((s) => s.slug === openCat)
-      const items = sNode?.items ?? []
-      return (
-        <div>
-          <button
-            type="button"
-            onClick={() => setOpenCat(null)}
-            className="mb-3 text-xs font-bold uppercase tracking-wider text-slate-400 hover:text-[#FF6B00]"
-          >
-            ← Back
-          </button>
-          <h4 className="mt-1 text-sm font-bold text-[#0A1628]">{sNode?.name}</h4>
-          <div className="grid grid-cols-3 gap-3 mt-2">
-            {items.map((it) => (
-              <Link
-                key={it.slug}
-                href={`/marketplace/category/${openDept ?? ""}/${openCat}`}
-                onClick={() => { setDeptOpen(false); setOpenDept(null); setOpenCat(null) }}
-                className="block rounded-lg border border-[#E2E8F0] px-3 py-2 text-sm text-slate-600 transition-colors hover:border-[#FF6B00] hover:text-[#FF6B00] text-center"
-              >
-                {it.name}
-              </Link>
-            ))}
-            {items.length === 0 && <p className="text-xs text-slate-400 mt-2">No items available</p>}
-          </div>
-        </div>
-      )
-    }
-    if (openDept) {
-      const dNode = departments.find((d) => d.slug === openDept)
-      const subs = dNode?.subs ?? []
-      const bannerImg = deptCovers[openDept ?? ""] || dNode?.banner_image
-      return (
-        <div>
-          <div className="flex items-center justify-between mb-3">
-            <h3 className="font-bold text-base text-[#0A1628]">{dNode?.name || "Department"}</h3>
-            <Link
-              href={`/marketplace/category/${openDept}`}
-              className="text-xs font-semibold hover:underline flex items-center gap-1 transition-colors"
-              style={{ color: "#FF6B00" }}
-              onClick={() => { setDeptOpen(false); setOpenDept(null); setOpenCat(null) }}
-            >
-              View all <ChevronRight size={12} />
-            </Link>
-          </div>
-          <div className="grid grid-cols-3 gap-4 mb-4">
-            {subs.map((s) => (
-                <Link
-                key={s.slug}
-                href={`/marketplace/category/${openDept ?? ""}/${s.slug}`}
-                onMouseEnter={() => setOpenCat(s.slug)}
-                onClick={() => setOpenCat(s.slug)}
-                className="block rounded-lg border border-[#E2E8F0] px-3 py-2.5 text-sm text-slate-600 transition-colors hover:border-[#FF6B00] hover:text-[#FF6B00] hover:bg-slate-50 text-center"
-              >
-                {s.name}
-              </Link>
-            ))}
-          </div>
-          {bannerImg && (
-            <div className="mt-6 p-4 bg-[#FF6B00]/5 border rounded-lg">
-              <img
-                src={bannerImg}
-                alt={dNode?.name || "Promo"}
-                className="w-full h-32 object-cover rounded-lg mb-3"
-              />
-              <p className="text-sm font-medium text-[#FF6B00]">{dNode?.banner_headline || ""}</p>
-              <p className="text-xs text-slate-500">{dNode?.banner_description || ""}</p>
-            </div>
-          )}
-        </div>
-      )
-    }
-    return (
-      <div className="flex h-full flex-col items-center justify-center text-slate-400">
-        <p className="text-sm">Hover a department to see subcategories</p>
-      </div>
-    )
-  }
   // Live AJAX suggestions under both search boxes — product names pop up
   // as you type; Escape / outside click / submit dismisses the panel.
   const { items: suggestItems, loading: suggestLoading } = useRemoteSuggest(query)
@@ -642,47 +494,211 @@ const [currency, setCurrency] = useState("USD")
               <ChevronDown className={`h-4 w-4 transition-transform ${deptOpen ? "rotate-180" : ""}`} />
             </button>
         {deptOpen && (
-          <div className="absolute top-full left-0 bg-white rounded-b-xl shadow-xl z-50 flex animate-slide-down" onMouseLeave={() => { setDeptOpen(false); setOpenDept(null); setOpenCat(null) }} style={{ width: "820px" }}>
-            <div className="w-[820px] max-w-[calc(100vw-2rem)]" onMouseEnter={() => setDeptOpen(true)}>
-              <div className="rounded-b-xl border border-t-0 border-[#E2E8F0] bg-white p-6 shadow-2xl lg:p-8 max-h-[70vh] overflow-y-auto">
-                <div className="grid grid-cols-12 gap-0">
-                  {/* LEFT: Department list */}
-                  <div className="col-span-12 lg:col-span-4 border-r border-[#E2E8F0] pb-4 lg:pb-0 overflow-y-auto max-h-full">
-                    <div className="space-y-1">
+          <div className="absolute top-full left-0 bg-white rounded-b-xl shadow-2xl z-50 flex animate-slide-down" onMouseEnter={() => setDeptOpen(true)} style={{ width: "820px" }}>
+            <div className="w-[820px] max-w-[calc(100vw-2rem)]">
+              <div className="rounded-b-xl border border-t-0 border-[#E2E8F0] bg-white p-6 lg:p-8 max-h-[74vh] overflow-y-auto">
+                {/* L3 — leaf list (a sub-category is open) */}
+                {openCat ? (
+                  (() => {
+                    const dNode = departments.find((d) => d.slug === openDept)
+                    const sNode = dNode?.subs.find((s) => s.slug === openCat)
+                    const items = sNode?.items ?? []
+                    return (
+                      <div>
+                        <button
+                          type="button"
+                          onClick={() => { setDeptOpen(true); setOpenCat(null) }}
+                          className="inline-flex items-center gap-1 text-xs font-bold uppercase tracking-wider text-slate-400 hover:text-[#FF6B00] mb-3"
+                        >
+                          <ChevronLeft className="h-3.5 w-3.5" /> Back to {dNode?.name}
+                        </button>
+                        <h4 className="mb-3 text-sm font-bold text-[#0A1628]">{sNode?.name}</h4>
+                        <div className="grid gap-y-1.5">
+                          {items.map((it) => (
+                            <Link
+                              key={it.slug}
+                              href={`/marketplace/category/${openDept}/${openCat}#leaf-${it.slug}`}
+                              onClick={() => { setDeptOpen(false); setOpenDept(null); setOpenCat(null) }}
+                              className="flex items-center justify-between rounded-lg border border-[#E2E8F0] px-3 py-2.5 text-sm text-slate-600 transition-colors hover:border-[#FF6B00] hover:text-[#FF6B00] hover:bg-[#FFF7F0]"
+                            >
+                              <span>{it.name}</span>
+                              <ChevronRight size={13} className="text-gray-300 shrink-0" />
+                            </Link>
+                          ))}
+                          {items.length === 0 && (
+                            <p className="mt-2 text-sm text-slate-400">No items in this category yet.</p>
+                          )}
+                        </div>
+                      </div>
+                    )
+                  })()
+                ) : openDept ? (
+                  (() => {
+                    const dNode = departments.find((d) => d.slug === openDept)
+                    const subs = dNode?.subs ?? []
+                    return (
+                      <div>
+                        <button
+                          type="button"
+                          onClick={() => { setDeptOpen(false); setOpenDept(null) }}
+                          className="inline-flex items-center gap-1 text-xs font-bold uppercase tracking-wider text-slate-400 hover:text-[#FF6B00] mb-3"
+                        >
+                          <ChevronLeft className="h-3.5 w-3.5" /> All Departments
+                        </button>
+                        <div className="grid gap-6 lg:grid-cols-12">
+                          {/* Left: sub-categories list */}
+                          <div className="lg:col-span-7">
+                            <h4 className="mb-3 text-sm font-bold text-[#0A1628]">{dNode?.name}</h4>
+                            <div className="grid gap-y-1.5">
+                              {subs.map((s) => (
+                                <div
+                                  key={s.slug}
+                                  className={`group relative rounded-lg border px-3 py-3 transition-colors cursor-pointer ${openCat === s.slug ? "border-[#FF6B00] bg-[#FFF7F0]" : "border-[#E2E8F0] bg-white hover:border-[#FF6B00]"}`}
+                                  onMouseEnter={() => { setDeptOpen(true); setOpenCat(s.slug) }}
+                                  onMouseLeave={() => { if (openCat === s.slug) setOpenCat(null) }}
+                                >
+                                  <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-2">
+                                      <span className="text-sm font-semibold text-[#0A1628] group-hover:text-[#FF6B00]">{s.name}</span>
+                                      <span className="text-[10px] font-bold text-[#FF6B00] bg-[#FF6B00]/10 px-1.5 py-0.5 rounded">{s.items.length} items</span>
+                                    </div>
+                                    <ChevronRight size={13} className="text-gray-300 group-hover:text-[#FF6B00] shrink-0 transition-transform duration-200" />
+                                  </div>
+                                  {/* Leaves column revealed on hover */}
+                                  {s.items.length > 0 && (
+                                    <div className="absolute left-full top-0 z-10 w-[300px] rounded-xl border border-[#E2E8F0] bg-white shadow-xl pl-4 pr-4 pt-3 pb-3 animate-slide-down">
+                                      <div className="flex items-center gap-2 mb-2">
+                                        <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Items</span>
+                                        <div className="h-px w-16 bg-[#FF6B00] rounded-full" />
+                                      </div>
+                                      <div className="grid gap-y-1.5">
+                                        {s.items.map((it) => (
+                                          <Link
+                                            key={it.slug}
+                                            href={`/marketplace/category/${openDept}/${s.slug}#leaf-${it.slug}`}
+                                            onClick={() => { setDeptOpen(false); setOpenDept(null); setOpenCat(null) }}
+                                            className="flex items-center gap-2 rounded border border-transparent px-2 py-1.5 text-sm text-slate-600 transition-colors hover:border-[#E2E8F0] hover:text-[#FF6B00] hover:bg-[#FFF7F0]"
+                                          >
+                                            <span className="truncate">{it.name}</span>
+                                            <ChevronRight size={11} className="text-gray-300 shrink-0" />
+                                          </Link>
+                                        ))}
+                                      </div>
+                                    </div>
+                                  )}
+                                </div>
+                              ))}
+                              {subs.length === 0 && (
+                                <p className="mt-2 text-sm text-slate-400">No sub-categories yet.</p>
+                              )}
+                            </div>
+                          </div>
+                          {/* Right: department card + deals */}
+                          <div className="lg:col-span-5 flex flex-col gap-4">
+                            <div className="flex items-center justify-between mb-1">
+                              <h4 className="text-sm font-bold text-[#0A1628]">{dNode?.name || "Department"}</h4>
+                              <Link
+                                href={`/marketplace/category/${openDept}`}
+                                className="text-[11px] font-bold uppercase tracking-wider text-[#FF6B00] hover:text-[#e86000] flex items-center gap-1"
+                                onClick={() => { setDeptOpen(false); setOpenDept(null); setOpenCat(null) }}
+                              >
+                                View all <ChevronRight size={10} />
+                              </Link>
+                            </div>
+                            <div className="grid grid-cols-2 gap-x-4 gap-y-2 mb-2">
+                              {subs.slice(0, 6).map((s) => (
+                                <Link
+                                  key={s.slug}
+                                  href={`/marketplace/category/${openDept}/${s.slug}`}
+                                  onClick={() => { setDeptOpen(false); setOpenDept(null); setOpenCat(null) }}
+                                  className="block rounded border border-[#E2E8F0] bg-[#F8FAFC] px-2.5 py-1.5 text-xs text-slate-500 transition-colors hover:border-[#FF6B00] hover:text-[#FF6B00]"
+                                >
+                                  {s.name}
+                                </Link>
+                              ))}
+                            </div>
+                            {dNode?.image && (
+                              <div className="relative rounded-xl overflow-hidden h-28">
+                                {/* eslint-disable-next-line @next/next/no-img-element */}
+                                <img src={dNode.image} alt={dNode.name} className="absolute inset-0 w-full h-full object-cover" loading="lazy" />
+                                <div className="absolute inset-0 flex items-end bg-gradient-to-t from-black/60 to-transparent p-3">
+                                  <p className="text-white font-bold text-sm">{dNode.name}</p>
+                                </div>
+                              </div>
+                            )}
+                            {promoBanners?.flash_image && promoOn && (
+                              <Link
+                                href={promoBanners?.specials_link || "/marketplace#flash-deals"}
+                                className="relative rounded-xl overflow-hidden h-28 flex items-center justify-center"
+                                onClick={() => { setDeptOpen(false); setOpenDept(null); setOpenCat(null) }}
+                              >
+                                {/* eslint-disable-next-line @next/next/no-img-element */}
+                                <img src={promoBanners.flash_image} alt="Flash deals" className="absolute inset-0 w-full h-full object-cover" />
+                                <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
+                            <span className="text-white font-bold text-sm">{promoBanners?.flash_title || "Flash Sale Specials"}</span>
+                                </div>
+                              </Link>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    )
+                  })()
+                ) : (
+                  /* L1 — department list (nothing open) */
+                  <div className="grid gap-6 lg:grid-cols-12">
+                    <div className="w-[270px] border-r border-[#E2E8F0] py-2">
                       {departments.map((d) => {
-                        const active = openDept === d.slug
-                        const hasSubs = d.subs && d.subs.length > 0
+                        const isActive = openDept === d.slug
                         const Icon = DEPT_ICONS[d.icon]
                         return (
-                          <div key={d.slug}>
-                            <button
-                              onMouseEnter={() => { setOpenDept(d.slug); setOpenCat("") }}
-                              onClick={() => { setOpenDept(d.slug); setOpenCat(""); }}
-                              className={`w-full flex items-center gap-2 px-3 py-2.5 text-sm transition-colors rounded-lg ${active ? "bg-[#FF6B00]/10 text-[#FF6B00] font-semibold" : "text-slate-600 hover:bg-slate-50 hover:text-[#0A1628]"}`}
-                            >
-                              {Icon ? <Icon className="h-4 w-4 text-slate-400 shrink-0" /> : <span className="text-slate-400 h-4 w-4 shrink-0">{d.icon}</span>}
-                              <span className="flex-1 truncate">{d.name}</span>
-                              {hasSubs && <ChevronRight className="h-3 w-3 text-slate-400 shrink-0" />}
-                            </button>
+                          <div
+                            key={d.slug}
+                            onMouseEnter={() => { setDeptOpen(true); setOpenDept(d.slug) }}
+                            className={`flex items-center gap-3 px-4 py-3 cursor-pointer transition-colors ${
+                              isActive
+                                ? "bg-[#FFF7F0] text-[#FF6B00] border-r-2 border-[#FF6B00]"
+                                : "text-slate-600 hover:bg-[#F8FAFC]"
+                            }`}
+                          >
+                            {Icon ? (
+                              <span className="flex h-5 w-5 items-center justify-center shrink-0" style={{ color: isActive ? "#FF6B00" : "#cbd5e1" }}>
+                                <Icon size={15} />
+                              </span>
+                            ) : (
+                              <span className="h-5 w-5" />
+                            )}
+                            <span className="text-sm font-medium flex-1 truncate">{d.name}</span>
+                            <ChevronRight size={13} className="text-gray-400 shrink-0" />
                           </div>
-                        )
+                        );
                       })}
                     </div>
+                    <div className="lg:col-span-5 flex flex-col gap-4">
+                      <div className="h-28 rounded-xl border-2 border-dashed border-[#E2E8F0] bg-[#F8FAFC] flex items-center justify-center">
+                        <span className="text-sm text-slate-400">Hover a department to see subcategories</span>
+                      </div>
+                      {promoBanners?.flash_image && promoOn && (
+                        <Link
+                          href={promoBanners?.specials_link || "/marketplace#flash-deals"}
+                          className="relative rounded-xl overflow-hidden h-28 flex items-center justify-center"
+                          onClick={() => { setDeptOpen(false); setOpenDept(null); setOpenCat(null) }}
+                        >
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img src={promoBanners.flash_image} alt="Flash deals" className="absolute inset-0 w-full h-full object-cover" />
+                          <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
+                            <span className="text-white font-bold text-sm">{promoBanners?.flash_title || "Flash Sale Specials"}</span>
+                          </div>
+                        </Link>
+                      )}
+                    </div>
                   </div>
-
-                  {/* RIGHT: Subcategory panel */}
-                  <div className="col-span-12 lg:col-span-8 border-l border-[#E2E8F0] p-4 lg:p-6">
-                    {renderRightPanel()}
-                  </div>
-                </div>
+                )}
               </div>
             </div>
           </div>
-          )}
-          </div>
-          </div>
-          </div>
-          </div>
+        )}
+            </div>
             <nav className="hidden lg:flex items-center gap-1 min-w-0 flex-1 overflow-x-auto whitespace-nowrap" aria-label="Marketplace" style={{ scrollbarWidth: "none" }}>
               {NAV.map((item, i) => (
                 item.external ? (
@@ -711,6 +727,7 @@ const [currency, setCurrency] = useState("USD")
                 )
               ))}
             </nav>
+          </div>
           {promoBanners?.specials_enabled !== false && (
           <Link
             href={promoBanners?.specials_link || "/marketplace#flash-deals"}
@@ -721,6 +738,7 @@ const [currency, setCurrency] = useState("USD")
             <span className="xl:hidden truncate max-w-[110px]">{promoBanners?.specials_label || "Specials"}</span>
           </Link>
           )}
+        </div>
 
         {/* mobile nav drawer */}
         <div className={`lg:hidden ${open ? "" : "hidden"}`}>
@@ -815,6 +833,7 @@ const [currency, setCurrency] = useState("USD")
             </div>
           </nav>
         </div>
+      </div>
       </header>
     </>
   )
