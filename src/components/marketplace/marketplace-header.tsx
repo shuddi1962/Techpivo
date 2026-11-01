@@ -332,7 +332,7 @@ const [currency, setCurrency] = useState("USD")
                 {currency} <ChevronDown className="h-3.5 w-3.5 text-white" />
               </button>
               {currencyOpen && (
-                <div role="listbox" className="absolute right-0 top-full mt-2 w-28 rounded-lg border border-[#E2E8F0] bg-white py-1 shadow-xl z-[70]">
+                <div role="listbox" className="absolute right-0 bottom-full mb-2 w-28 rounded-lg border border-[#E2E8F0] bg-white py-1 shadow-xl z-[70]">
                   {["USD", "NGN"].map((code) => (
                     <button
                       key={code}
