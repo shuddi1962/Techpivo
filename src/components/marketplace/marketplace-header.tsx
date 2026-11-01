@@ -40,8 +40,8 @@ const WISH_KEY = "tp_market_wish_v1"
 // red / orange = accent (sale, flash, limited deal).
 const DEPT_ICONS: Record<string, any> = {
   Cpu, Smartphone, Laptop, Car, Wrench, Home, Heart, Trophy, Shirt, Baby,
-  Hammer, Book, ShoppingBag, Clock, Monitor, Package, Globe, CreditCard,
-  ShoppingCart, Flame, MapPin, Phone, Mail,
+  Hammer, Book, ShoppingBag, Clock, Sparkles, Monitor, Package, Globe,
+  CreditCard, ShoppingCart, Flame, MapPin, Phone, Mail,
 }
 
 function readWishCount(): number {
@@ -194,6 +194,10 @@ const [currency, setCurrency] = useState("USD")
   // read; promo switch hides promo surfaces publicly, default ON).
   const [promoBanners, setPromoBanners] = useState<MarketBanners | null>(null)
   const promoOn = promoBanners?.promo_enabled !== false
+  // Admin-custom mega menu colours (Admin → Marketplace → Banners). Falls back
+  // to the kit navy/orange palette when nothing is saved yet.
+  const menuBg = promoBanners?.menu_bg || "#1453D6"
+  const menuText = promoBanners?.menu_text || "#ffffff"
   useEffect(() => {
     setLiveWish(readWishCount())
     setCurrency(readCurrency())
@@ -306,10 +310,10 @@ const [currency, setCurrency] = useState("USD")
       <MarketCategorySync />
       <MarketCommerce />
       {/* utility bar — blue Limited Deal / Black Friday banner, always live */}
-      <div className="marketplace-promo-bar relative z-[60] w-full bg-gradient-to-r from-[#1453D6] to-[#0B3A9A] text-white shadow-lg border-b border-white/25">
+      <div className="marketplace-promo-bar relative z-[60] w-full text-white shadow-lg border-b border-white/25" style={{ backgroundImage: `linear-gradient(90deg, ${promoBanners?.promo_bar_from || "#1668DC"}, ${promoBanners?.promo_bar_to || "#0F4FB3"})` }}>
         <div className="mx-auto w-full max-w-[1440px] px-3 sm:px-6 lg:px-10 flex items-center justify-between h-12 text-[11px] sm:text-xs gap-4">
           <div className="flex items-center gap-2.5 min-w-0">
-            <span className="marketplace-badge-pill shrink-0">
+            <span className="marketplace-badge-pill shrink-0" style={{ backgroundColor: promoBanners?.promo_badge_bg || "#FF3B30" }}>
               <span className="mp-dot" aria-hidden="true" />
               {promoBanners?.promo_badge_text || "Limited Deal"}
             </span>
@@ -383,7 +387,7 @@ const [currency, setCurrency] = useState("USD")
               aria-label="Department"
               value={dept}
               onChange={(e) => pickDept(e.target.value)}
-              className="bg-transparent px-3 text-sm text-[#1668DC] border-r border-[#E2E8F0] focus:outline-none cursor-pointer hidden lg:block max-w-[190px]"
+              className="bg-transparent px-3 text-sm text-black border-r border-[#E2E8F0] focus:outline-none cursor-pointer hidden lg:block max-w-[190px]"
             >
               <option value="">All Departments</option>
               {departments.map((d) => (
@@ -394,10 +398,10 @@ const [currency, setCurrency] = useState("USD")
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               onFocus={() => { if (query.trim().length >= 2) setSuggestOpen(true) }}
-              className="flex-1 bg-transparent px-4 text-sm text-[#1668DC] placeholder:text-slate-400 focus:outline-none"
+              className="flex-1 bg-transparent px-4 text-sm text-black placeholder:text-slate-600 focus:outline-none"
               placeholder="Search TechPivo Market — gadgets, laptops, cameras..."
             />
-            <button type="submit" aria-label="Search" className="bg-[#1668DC] hover:bg-[#0F4FB3] text-white px-5 flex items-center justify-center transition-all duration-200 shadow-md hover:shadow-lg rounded-r-xl">
+            <button type="submit" aria-label="Search" className={`bg-[${menuBg}] hover:opacity-90 text-[${menuText}] px-5 flex items-center justify-center transition-all duration-200 shadow-md hover:shadow-lg rounded-r-xl`}>
               <Search className="h-5 w-5" />
             </button>
           </form>
@@ -416,36 +420,36 @@ const [currency, setCurrency] = useState("USD")
             <Link href="/marketplace/wishlist" aria-label="Wishlist" className="relative p-2 rounded-full hover:bg-slate-100 flex items-center justify-center">
               <Heart className="h-6 w-6 text-slate-600" />
               {shownWishCount > 0 && (
-                <span className="absolute -top-0.5 -right-0.5 bg-[#1668DC] text-white text-[10px] min-w-5 h-5 px-1 rounded-full flex items-center justify-center font-bold shadow-sm">{shownWishCount}</span>
+                <span className="absolute -top-0.5 -right-0.5 bg-[#EF4444] text-white text-[10px] min-w-5 h-5 px-1 rounded-full flex items-center justify-center font-bold shadow-sm">{shownWishCount}</span>
               )}
             </Link>
             <Link href="/marketplace/compare" aria-label={compareIds.length > 0 ? `Compare ${compareIds.length} products` : "Compare products"} className="relative p-2 rounded-full hover:bg-slate-100 hidden sm:flex items-center justify-center">
               <ArrowLeftRight className="h-6 w-6 text-slate-600" />
               {compareIds.length > 0 && (
-                <span className="absolute -top-0.5 -right-0.5 bg-[#1668DC] text-white text-[10px] min-w-5 h-5 px-1 rounded-full flex items-center justify-center font-bold shadow-sm">{compareIds.length}</span>
+                <span className="absolute -top-0.5 -right-0.5 bg-[#EF4444] text-white text-[10px] min-w-5 h-5 px-1 rounded-full flex items-center justify-center font-bold shadow-sm">{compareIds.length}</span>
               )}
             </Link>
             <Link href="/marketplace/cart" aria-label={`Your basket, ${shownCartCount} item${shownCartCount === 1 ? "" : "s"}`} className="relative p-2 rounded-full hover:bg-slate-100 flex items-center justify-center">
               <ShoppingBasket className="h-6 w-6 text-slate-600" />
               {shownCartCount > 0 && (
-                <span className="absolute -top-0.5 -right-0.5 bg-[#1668DC] text-white text-[10px] min-w-5 h-5 px-1 rounded-full flex items-center justify-center font-bold shadow-sm tabular-nums">{shownCartCount}</span>
+                <span className="absolute -top-0.5 -right-0.5 bg-[#EF4444] text-white text-[10px] min-w-5 h-5 px-1 rounded-full flex items-center justify-center font-bold shadow-sm tabular-nums">{shownCartCount}</span>
               )}
             </Link>
             <div className="h-8 w-px bg-[#E2E8F0] hidden sm:block" />
             <Link href={acctName ? "/marketplace/account" : "/login"} className="hidden sm:flex items-center gap-2 hover:opacity-90 p-1" aria-label={acctName ? `My marketplace account (${acctName})` : "Sign in"}>
-              <span className="w-8 h-8 rounded-full bg-[#1668DC] flex items-center justify-center shrink-0 overflow-hidden shadow-sm">
+              <span className="w-8 h-8 rounded-full bg-white flex items-center justify-center shrink-0 overflow-hidden shadow-sm border border-[#E2E8F0]">
                 {acctAvatar ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img src={acctAvatar} alt="" className="h-full w-full object-cover" />
                 ) : acctFirst ? (
-                  <span className="text-sm font-extrabold text-white">{acctFirst.charAt(0).toUpperCase()}</span>
+                  <span className="text-sm font-extrabold text-black">{acctFirst.charAt(0).toUpperCase()}</span>
                 ) : (
-                  <User className="h-4 w-4 text-white" />
+                  <User className="h-4 w-4 text-black" />
                 )}
               </span>
               <span className="hidden xl:flex flex-col text-left max-w-[140px]">
-                <span className="text-[11px] text-slate-400 uppercase leading-none">{acctFirst ? `Hi, ${acctFirst}` : "Sign In"}</span>
-                <span className="text-sm font-semibold text-[#1668DC] leading-tight truncate">{acctName || "My Account"}</span>
+                <span className="text-[11px] text-black uppercase leading-none">{acctFirst ? `Hi, ${acctFirst}` : "Sign In"}</span>
+                <span className="text-sm font-semibold text-black leading-tight truncate">{acctName || "My Account"}</span>
               </span>
             </Link>
             <div className="h-8 w-px bg-[#E2E8F0] hidden sm:block" />
@@ -471,7 +475,7 @@ const [currency, setCurrency] = useState("USD")
               className="flex-1 bg-transparent px-3 text-sm focus:outline-none"
               placeholder="Search TechPivo Market..."
             />
-            <button type="submit" aria-label="Search" className="bg-[#1668DC] text-white px-4 flex items-center justify-center transition-all duration-200 shadow-md hover:bg-[#0F4FB3] hover:shadow-lg rounded-r-xl">
+            <button type="submit" aria-label="Search" className={`bg-[${menuBg}] hover:opacity-90 text-[${menuText}] px-4 flex items-center justify-center transition-all duration-200 shadow-md hover:bg-[${menuBg}] hover:shadow-lg rounded-r-xl`}>
               <Search className="h-5 w-5" />
             </button>
           </form>
@@ -489,7 +493,7 @@ const [currency, setCurrency] = useState("USD")
       </div>
 
       {/* nav bar — single row, never wraps: horizontal scroll instead of pushing content down */}
-      <div className="relative hidden w-full bg-gradient-to-r from-[#1453D6] to-[#0B3A9A] border-b border-white/20 shadow-sm lg:block">
+      <div className="relative hidden w-full border-b border-white/20 shadow-sm lg-block" style={{ backgroundColor: menuBg }}>
         <div className="mx-auto w-full max-w-[1440px] px-3 sm:px-6 lg:px-10 hidden lg:flex items-center justify-between h-14 gap-3">
           <div className="flex items-center gap-3 min-w-0 flex-1">
             <div
@@ -503,20 +507,20 @@ const [currency, setCurrency] = useState("USD")
                 setDeptOpen(!deptOpen);
               }}
               onMouseEnter={() => setDeptOpen(true)}
-              className="mega-btn text-white h-12 px-6 flex items-center gap-2 font-semibold text-sm transition-all duration-200 cursor-pointer bg-gradient-to-r from-[#1453D6] to-[#0B3A9A] hover:from-[#0F4FB3] hover:to-[#082B6B] shadow-md hover:shadow-lg rounded-xl market-menu-glow"
+              className={`mega-btn text-[${menuText}] h-12 px-6 flex items-center gap-2 font-semibold text-sm transition-all duration-200 cursor-pointer bg-[${menuBg}] hover:opacity-90 shadow-md hover:shadow-lg rounded-xl market-menu-glow`}
             >
-              <LayoutGrid className="h-5 w-5" />
+              <LayoutGrid className={`h-5 w-5 text-[${menuText}]`} />
               <span>All Departments</span>
-              <ChevronDown className={`h-4 w-4 transition-transform ${deptOpen ? "rotate-180" : ""}`} />
+              <ChevronDown className={`h-4 w-4 transition-transform ${deptOpen ? "rotate-180" : ""} text-[${menuText}]`} />
             </button>
         {deptOpen && (
           <div
-            className="absolute top-full left-0 border-t-2 border-t-[#1453D6] bg-white rounded-b-2xl shadow-2xl z-50 flex animate-slide-down"
+            className="absolute top-full left-0 border-t-2 border-white rounded-b-2xl shadow-2xl z-50 flex animate-slide-down"
             onMouseEnter={() => {
               setDeptOpen(true)
               if (!openDept && firstDeptSlug) setOpenDept(firstDeptSlug)
             }}
-            style={{ width: "1120px" }}
+            style={{ width: "1120px", borderTopColor: menuBg }}
           >
             <div className="w-full max-w-[calc(100vw-2rem)]">
               <div className="border border-t-0 border-[#E2E8F0] bg-white p-6 lg:p-8 max-h-[86vh] overflow-y-auto">
@@ -525,13 +529,13 @@ const [currency, setCurrency] = useState("USD")
                   <div className="w-[280px] border-r border-[#E2E8F0] flex flex-col shrink-0">
                     <div className="flex items-center justify-between px-4 py-3 border-b border-[#E2E8F0]">
                       <div className="flex items-center gap-2">
-                        <LayoutGrid className="h-4 w-4 text-[#1453D6]" />
+                        <LayoutGrid className={`h-4 w-4 text-[${menuText}]`} />
                         <span className="text-xs font-bold uppercase tracking-wider text-slate-500">All Departments</span>
                       </div>
                       <button
                         type="button"
                         onClick={toggleSeeMore}
-                        className="text-xs font-medium text-[#1453D6] hover:text-[#0B3A9A] transition-all duration-150"
+                        className={`text-xs font-medium text-[${menuText}] hover:opacity-80 transition-all duration-150`}
                       >
                         {seeMore ? "See Less" : "See More"}
                       </button>
@@ -546,12 +550,17 @@ const [currency, setCurrency] = useState("USD")
                             onMouseEnter={() => { setDeptOpen(true); setOpenDept(d.slug) }}
                             className={`flex items-center gap-3 px-4 py-2.5 cursor-pointer transition-all duration-150 ${
                               isActive
-                                ? "bg-[#1453D6]/12 text-[#1453D6] border-l-3 border-[#1453D6] shadow-sm rounded-r-xl"
-                                : "text-slate-600 hover:bg-[#EFF6FF] hover:text-[#1453D6] border-l-3 border-transparent rounded-r-xl"
+                                ? `bg-[${menuBg}]/12 text-[${menuText}] border-l-3 border-[${menuText}] shadow-sm rounded-r-xl`
+                                : `text-slate-600 hover:bg-[#EFF6FF] hover:text-[${menuText}] border-l-3 border-transparent rounded-r-xl`
                             }`}
                           >
-                            <span className="flex h-5 w-5 shrink-0 items-center justify-center" style={{ color: isActive ? "#FF3B30" : "#94a3b8" }}>
-                              {Icon ? <Icon size={15} /> : <ChevronRight size={12} className="text-slate-400" />}
+                            <span className="flex items-center gap-2 px-1" style={{ color: isActive ? "#FF3B30" : "#94a3b8" }}>
+                              <ChevronRight size={10} className={isActive ? `text-[${menuText}]` : "text-slate-400"} />
+                              {Icon ? (
+                                <Icon size={13} className={isActive ? `text-[${menuText}]` : "text-slate-400"} />
+                              ) : (
+                                <ChevronRight size={12} className="text-slate-400" />
+                              )}
                             </span>
                             <span className="text-sm font-semibold truncate leading-none">{d.name}</span>
                           </div>
@@ -671,7 +680,7 @@ const [currency, setCurrency] = useState("USD")
                   href={item.href}
                   target="_blank"
                   rel="noopener"
-                  className="shrink-0 px-3 py-2 rounded-lg text-white/90 hover:text-white text-sm"
+                  className="shrink-0 px-3 py-2 rounded-lg text-[${menuText}]/90 hover:text-[${menuText}] text-sm"
                 >
                   {item.label}
                 </a>
@@ -682,8 +691,8 @@ const [currency, setCurrency] = useState("USD")
                   aria-current={i === 0 ? "page" : undefined}
                   className={
                     i === 0
-                      ? "shrink-0 px-3 py-2 rounded-lg bg-[#EFF6FF] text-[#1668DC] font-semibold text-sm shadow-sm"
-                      : "shrink-0 px-3 py-2 rounded-lg text-white/80 hover:text-white text-sm"
+                      ? `shrink-0 px-3 py-2 rounded-lg bg-[${menuText}]/10 text-[${menuText}] font-semibold text-sm shadow-sm`
+                      : `shrink-0 px-3 py-2 rounded-lg text-[${menuText}]/80 hover:text-[${menuText}] text-sm`
                   }
                 >
                   {item.label}

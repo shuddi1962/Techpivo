@@ -136,6 +136,11 @@ export interface MarketBanners {
   promo_bar_from: string
   promo_bar_to: string
   promo_badge_bg: string
+  /** Mega menu ("All Departments") custom colours — Admin → Marketplace → Banners.
+      menu_bg colours the nav bar + mega panel background, menu_text colours
+      nav links, buttons and category text. Leave empty for the kit defaults. */
+  menu_bg: string
+  menu_text: string
   /** Flash Sale section (homepage #flash-deals) — editable in Admin →
       Marketplace → Banners ("Flash sale"). False = hidden publicly. */
   flash_enabled: boolean
@@ -250,6 +255,8 @@ export const EMPTY_BANNERS: MarketBanners = {
   promo_bar_from: "#1668DC",
   promo_bar_to: "#0F4FB3",
   promo_badge_bg: "#EF4444",
+  menu_bg: "#1453D6",
+  menu_text: "#ffffff",
   flash_enabled: true,
   flash_badge: "Flash Sale",
   flash_title: "Special Offer — Up to 50% Off",
@@ -613,6 +620,8 @@ export function parseBanners(raw: unknown): MarketBanners {
     promo_bar_from: cleanHex(r.promo_bar_from, EMPTY_BANNERS.promo_bar_from),
     promo_bar_to: cleanHex(r.promo_bar_to, EMPTY_BANNERS.promo_bar_to),
     promo_badge_bg: cleanHex(r.promo_badge_bg, EMPTY_BANNERS.promo_badge_bg),
+    menu_bg: cleanHex(r.menu_bg, EMPTY_BANNERS.menu_bg),
+    menu_text: cleanHex(r.menu_text, EMPTY_BANNERS.menu_text),
     flash_enabled: typeof r.flash_enabled === "boolean" ? r.flash_enabled : true,
     flash_badge: str(r.flash_badge).trim().slice(0, 40) || EMPTY_BANNERS.flash_badge,
     flash_title: str(r.flash_title).trim().slice(0, 80) || EMPTY_BANNERS.flash_title,

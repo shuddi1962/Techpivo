@@ -1714,6 +1714,39 @@ export function MarketplaceBannersTab() {
           </div>
         </div>
       </Section>
+
+      {/* 6 — Mega menu colours (All Departments) */}
+      <Section
+        step="6"
+        title="Mega menu colours"
+        desc="Background colour of the nav bar + mega panel and the colour of nav links / buttons. Reflects on the storefront instantly on save."
+        open={section === "menu-colors"}
+        onToggle={() => setSection(section === "menu-colors" ? "" : "menu-colors")}
+      >
+        <div className="rounded-xl border bg-white p-4">
+          <div className="mt-2 grid gap-2.5 sm:grid-cols-2">
+            {([
+              { k: "menu_bg", label: "Menu background colour" },
+              { k: "menu_text", label: "Menu text colour" },
+            ] as const).map((f) => (
+              <label key={f.k} className="flex items-center gap-2 text-xs font-semibold text-slate-600">
+                <input
+                  type="color"
+                  value={/^#[0-9a-fA-F]{6}$/.test(banners[f.k] || "") ? (banners[f.k] as string) : f.k === "menu_bg" ? "#1453D6" : "#ffffff"}
+                  onChange={(e) => setBanners((b) => ({ ...b, [f.k]: e.target.value }) as MarketBanners)}
+                  className="h-8 w-10 cursor-pointer rounded border"
+                  aria-label={f.label}
+                />
+                {f.label}
+              </label>
+            ))}
+          </div>
+          <p className="mt-2 text-[11px] text-slate-500">
+            Changes apply to the &quot;All Departments&quot; nav bar, the mega‑menu trigger button, the
+            department rows and the desktop nav links. Leave at the defaults for the TechPivo kit palette.
+          </p>
+        </div>
+      </Section>
     </div>
   )
 }
