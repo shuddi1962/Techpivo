@@ -540,6 +540,26 @@ const [currency, setCurrency] = useState("USD")
                         {seeMore ? "See Less" : "See More"}
                       </button>
                     </div>
+                    {/* Quick links — Home, Shop, Deals, etc. (top of mega menu) */}
+                    <div className="px-4 py-4 border-b border-[#E2E8F0]">
+                      <span className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-3">
+                        Market
+                      </span>
+                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
+                        {NAV.map((item, i) => (
+                          <a
+                            key={item.label}
+                            href={item.href}
+                            target={item.external ? "_blank" : undefined}
+                            rel={item.external ? "noopener" : undefined}
+                            className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium text-slate-700 hover:bg-[#EFF6FF] hover:text-[#1453D6] transition-colors whitespace-nowrap"
+                          >
+                            <ChevronRight size={9} className="text-slate-400 shrink-0" />
+                            <span className="truncate">{item.label}</span>
+                          </a>
+                        ))}
+                      </div>
+                    </div>
                     <div className="flex-1 overflow-y-auto py-1 space-y-0.5">
                       {visibleDepartments.map((d) => {
                         const isActive = openDept === d.slug
@@ -672,34 +692,6 @@ const [currency, setCurrency] = useState("USD")
           </div>
         )}
             </div>
-            <nav className="hidden lg:flex items-center gap-1 min-w-0 flex-1 overflow-x-auto whitespace-nowrap" aria-label="Marketplace" style={{ scrollbarWidth: "none" }}>
-              {NAV.map((item, i) => (
-                item.external ? (
-                <a
-                  key={item.label}
-                  href={item.href}
-                  target="_blank"
-                  rel="noopener"
-                  className="shrink-0 px-3 py-2 rounded-lg text-[${menuText}]/90 hover:text-[${menuText}] text-sm"
-                >
-                  {item.label}
-                </a>
-                ) : (
-                <Link
-                  key={item.label}
-                  href={item.href}
-                  aria-current={i === 0 ? "page" : undefined}
-                  className={
-                    i === 0
-                      ? `shrink-0 px-3 py-2 rounded-lg bg-[${menuText}]/10 text-[${menuText}] font-semibold text-sm shadow-sm`
-                      : `shrink-0 px-3 py-2 rounded-lg text-[${menuText}]/80 hover:text-[${menuText}] text-sm`
-                  }
-                >
-                  {item.label}
-                </Link>
-                )
-              ))}
-            </nav>
           </div>
           {promoBanners?.specials_enabled !== false && (
             <Link
