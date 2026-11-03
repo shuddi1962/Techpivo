@@ -495,7 +495,7 @@ const [currency, setCurrency] = useState("USD")
       </div>
 
       {/* nav bar — single row, never wraps: horizontal scroll instead of pushing content down */}
-      <div className="relative hidden w-full border-b border-[#E2E8F0] shadow-sm lg-block bg-white">
+      <div className="relative hidden w-full border-b border-[#E2E8F0] shadow-sm lg:block bg-white">
         <div className="mx-auto w-full max-w-[1440px] px-3 sm:px-6 lg:px-10 hidden lg:flex items-center justify-between h-14 gap-3">
           <div className="flex items-center gap-3 min-w-0 flex-1">
             <div
