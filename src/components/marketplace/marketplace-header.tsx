@@ -377,7 +377,7 @@ const [currency, setCurrency] = useState("USD")
   // Default to Women's Clothing when the mega-panel opens so shoppers see
   // a populated sub-category panel immediately instead of an empty state.
   const womenDept = departments.find((d) => d.slug === "womens-clothing" || d.name.toLowerCase().includes("women"))
-  const firstDeptSlug = womenDept ? womenDept.slug : departments.length > 0 ? departments[0].slug : ""
+  const firstDeptSlug = womenDept ? womenDept.slug : (departments.length > 0 ? departments[0].slug : "")
 
   return (
     <>
