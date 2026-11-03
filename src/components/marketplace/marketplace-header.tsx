@@ -495,7 +495,7 @@ const [currency, setCurrency] = useState("USD")
       </div>
 
       {/* nav bar — single row, never wraps: horizontal scroll instead of pushing content down */}
-      <div className="relative hidden w-full border-b border-white/20 shadow-sm lg-block" style={{ backgroundColor: menuBg }}>
+      <div className="relative hidden w-full border-b border-[#E2E8F0] shadow-sm lg-block bg-white">
         <div className="mx-auto w-full max-w-[1440px] px-3 sm:px-6 lg:px-10 hidden lg:flex items-center justify-between h-14 gap-3">
           <div className="flex items-center gap-3 min-w-0 flex-1">
             <div
@@ -509,20 +509,20 @@ const [currency, setCurrency] = useState("USD")
                 setDeptOpen(!deptOpen);
               }}
               onMouseEnter={() => setDeptOpen(true)}
-              className={`mega-btn text-[${menuText}] h-12 px-6 flex items-center gap-2 font-semibold text-sm transition-all duration-200 cursor-pointer bg-[${menuBg}] hover:opacity-90 shadow-md hover:shadow-lg rounded-xl market-menu-glow`}
+              className="mega-btn text-white h-12 px-6 flex items-center gap-2 font-semibold text-sm transition-all duration-200 cursor-pointer bg-[#FF6B00] hover:bg-[#e86000] shadow-md hover:shadow-lg rounded-xl"
             >
-              <LayoutGrid className={`h-5 w-5 text-[${menuText}]`} />
+              <LayoutGrid className="h-5 w-5 text-white" />
               <span>All Departments</span>
-              <ChevronDown className={`h-4 w-4 transition-transform ${deptOpen ? "rotate-180" : ""} text-[${menuText}]`} />
+              <ChevronDown className={`h-4 w-4 transition-transform ${deptOpen ? "rotate-180" : ""} text-white`} />
             </button>
         {deptOpen && (
           <div
-            className="absolute top-full left-0 border-t-2 border-white rounded-b-2xl shadow-2xl z-50 flex animate-slide-down"
+            className="absolute top-full left-0 border-t-2 border-[#FF6B00] rounded-b-2xl shadow-2xl z-50 flex animate-slide-down"
             onMouseEnter={() => {
               setDeptOpen(true)
               if (!openDept && firstDeptSlug) setOpenDept(firstDeptSlug)
             }}
-            style={{ width: "1120px", borderTopColor: menuBg }}
+            style={{ width: "1120px", borderTopColor: "#FF6B00" }}
           >
             <div className="w-full max-w-[calc(100vw-2rem)]">
               <div className="border border-t-0 border-[#E2E8F0] bg-white p-6 lg:p-8 max-h-[86vh] overflow-y-auto">
@@ -531,13 +531,13 @@ const [currency, setCurrency] = useState("USD")
                   <div className="w-[280px] border-r border-[#E2E8F0] flex flex-col shrink-0">
                     <div className="flex items-center justify-between px-4 py-3 border-b border-[#E2E8F0]">
                       <div className="flex items-center gap-2">
-                        <LayoutGrid className={`h-4 w-4 text-[${menuText}]`} />
+                        <LayoutGrid className="h-4 w-4 text-white" />
                         <span className="text-xs font-bold uppercase tracking-wider text-slate-500">All Departments</span>
                       </div>
                       <button
                         type="button"
                         onClick={toggleSeeMore}
-                        className={`text-xs font-medium text-[${menuText}] hover:opacity-80 transition-all duration-150`}
+                        className="text-xs font-medium text-[#FF6B00] hover:opacity-80 transition-all duration-150"
                       >
                         {seeMore ? "See Less" : "See More"}
                       </button>
@@ -554,7 +554,7 @@ const [currency, setCurrency] = useState("USD")
                             href={item.href}
                             target={item.external ? "_blank" : undefined}
                             rel={item.external ? "noopener" : undefined}
-                            className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium text-slate-700 hover:bg-[#EFF6FF] hover:text-[#1453D6] transition-colors whitespace-nowrap"
+                            className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium text-slate-700 hover:bg-[#EFF6FF] hover:text-[#FF6B00] transition-colors whitespace-nowrap"
                           >
                             <ChevronRight size={9} className="text-slate-400 shrink-0" />
                             <span className="truncate">{item.label}</span>
@@ -572,14 +572,14 @@ const [currency, setCurrency] = useState("USD")
                             onMouseEnter={() => { setDeptOpen(true); setOpenDept(d.slug) }}
                             className={`flex items-center gap-3 px-4 py-2.5 cursor-pointer transition-all duration-150 ${
                               isActive
-                                ? `bg-[${menuBg}]/12 text-[${menuText}] border-l-3 border-[${menuText}] shadow-sm rounded-r-xl`
-                                : `text-slate-600 hover:bg-[#EFF6FF] hover:text-[${menuText}] border-l-3 border-transparent rounded-r-xl`
+                                ? `bg-[#FF6B00]/12 text-white border-l-3 border-[#FF6B00] shadow-sm rounded-r-xl`
+                                : `text-slate-600 hover:bg-[#EFF6FF] hover:text-[#FF6B00] border-l-3 border-transparent rounded-r-xl`
                             }`}
                           >
                             <span className="flex items-center gap-2 px-1" style={{ color: isActive ? "#FF3B30" : "#94a3b8" }}>
-                              <ChevronRight size={10} className={isActive ? `text-[${menuText}]` : "text-slate-400"} />
+                              <ChevronRight size={10} className={isActive ? `text-[#FF6B00]` : "text-slate-400"} />
                               {Icon ? (
-                                <Icon size={13} className={isActive ? `text-[${menuText}]` : "text-slate-400"} />
+                                <Icon size={13} className={isActive ? `text-[#FF6B00]` : "text-slate-400"} />
                               ) : (
                                 <ChevronRight size={12} className="text-slate-400" />
                               )}
@@ -694,6 +694,19 @@ const [currency, setCurrency] = useState("USD")
           </div>
         )}
             </div>
+
+            {/* Top-level navigation links — Home, Shop, Deals, etc. */}
+            {NAV.filter((item) => item.label !== "Flash Sale Specials").map((item, i) => (
+              <Link
+                key={item.label}
+                href={item.href}
+                target={item.external ? "_blank" : undefined}
+                rel={item.external ? "noopener" : undefined}
+                className="px-3 py-2 rounded-lg text-sm font-medium text-slate-700 hover:bg-[#EFF6FF] hover:text-[#FF6B00] transition-colors whitespace-nowrap shrink-0"
+              >
+                {item.label}
+              </Link>
+            ))}
           </div>
           {promoBanners?.specials_enabled !== false && (
             <Link
