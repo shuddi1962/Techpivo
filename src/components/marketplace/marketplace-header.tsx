@@ -91,7 +91,6 @@ const ICONED_DEPTS = new Set([
   "automobiles-motorcycles",
   "phones-accessories",
   "computer-office",
-  "womens-clothing",
 ])
 
 // Resolve an icon component for a department: tries `d.icon` field first,
@@ -394,12 +393,12 @@ const [currency, setCurrency] = useState("USD")
                 onClick={() => setCurrencyOpen((v) => !v)}
                 aria-haspopup="listbox"
                 aria-expanded={currencyOpen}
-                className="inline-flex items-center gap-1 cursor-pointer hover:text-white"
+                className="inline-flex items-center gap-1 cursor-pointer hover:bg-white/10 rounded-lg px-2 py-1 hover:text-white transition-colors"
               >
                 {currency} <ChevronDown className="h-3.5 w-3.5 text-white" />
               </button>
               {currencyOpen && (
-                <div role="listbox" className="absolute right-0 bottom-full mb-2 w-28 rounded-lg border border-[#E2E8F0] bg-white py-1 shadow-xl z-[70]">
+                <div role="listbox" className="absolute top-full mt-2 w-28 rounded-lg border border-[#E2E8F0] bg-white py-1 shadow-xl z-[70]">
                   {["USD", "NGN"].map((code) => (
                     <button
                       key={code}
@@ -407,7 +406,7 @@ const [currency, setCurrency] = useState("USD")
                       role="option"
                       aria-selected={currency === code}
                       onClick={() => setCurrencyChoice(code)}
-                      className={`block w-full px-3 py-2 text-left text-xs font-semibold ${currency === code ? "text-[#0F4FB3] bg-[#1668DC]/10" : "text-white/70 hover:bg-white/10"}`}
+                      className={`block w-full px-3 py-2 text-left text-xs font-semibold ${currency === code ? "text-[#0F4FB3] bg-[#1668DC]/10" : "text-slate-700 hover:bg-[#FFF1F2] hover:text-[#FF6B00]"}`}
                     >
                       {code}
                     </button>
@@ -615,11 +614,11 @@ const [currency, setCurrency] = useState("USD")
                             <div
                               key={d.slug}
                               onMouseEnter={() => { setDeptOpen(true); setOpenDept(d.slug) }}
-                              className={`flex items-center gap-3 px-4 py-2.5 cursor-pointer transition-all duration-150 ${
-                                isActive
-                                  ? `bg-[#FF6B00]/12 text-white border-l-3 border-[#FF6B00] shadow-sm rounded-r-xl`
-                                  : `text-slate-600 hover:bg-[#EFF6FF] hover:text-[#FF6B00] border-l-3 border-transparent rounded-r-xl`
-                              }`}
+                            className={`flex items-center gap-3 px-4 py-2.5 cursor-pointer transition-all duration-150 ${
+                              isActive
+                                ? `bg-[#FF6B00]/15 text-white border-l-3 border-[#FF6B00] shadow-sm rounded-r-xl`
+                                : `text-slate-700 hover:bg-[#FFF1F2] hover:text-[#FF6B00] border-l-3 border-transparent rounded-r-xl`
+                            }`}
                             >
                               {Icon ? (
                                 <span className="flex items-center gap-2 px-1" style={{ color: isActive ? "#FF3B30" : "#94a3b8" }}>
