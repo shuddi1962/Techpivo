@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import React, { useEffect, useState } from "react";
-import { createClient } from "@/lib/supabase/client";
 import { getToolMeta } from "@/lib/tools-registry";
 import { getCategoryDetail } from "@/lib/tools-categories";
 import { useToolStats, formatUsageCount } from "@/lib/use-tool-stats";
@@ -15,15 +14,17 @@ function fetchActiveSlugs(): Promise<Set<string>> {
   if (activeSlugsPromise) return activeSlugsPromise;
   activeSlugsPromise = (async () => {
     try {
-      const supabase = createClient();
-      const { data, error } = await supabase.from("tools").select("slug");
-      if (error || !data) return new Set<string>();
-      return new Set(data.map((t) => t.slug));
+      const res = await fetch(`${process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"}/api/tools/active`, {
+        cache: "no-store",
+      })
+      const json = await res.json()
+      const slugs = json?.slugs || []
+      return new Set<string>(slugs)
     } catch {
-      return new Set<string>();
+      return new Set<string>()
     }
-  })().finally(() => { activeSlugsPromise = null });
-  return activeSlugsPromise;
+  })().finally(() => { activeSlugsPromise = null })
+  return activeSlugsPromise
 }
 
 // Renders children only while the tool is active in the database (public RLS

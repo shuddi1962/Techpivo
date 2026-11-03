@@ -194,10 +194,12 @@ const [currency, setCurrency] = useState("USD")
   // read; promo switch hides promo surfaces publicly, default ON).
   const [promoBanners, setPromoBanners] = useState<MarketBanners | null>(null)
   const promoOn = promoBanners?.promo_enabled !== false
-  // Admin-custom mega menu colours (Admin → Marketplace → Banners). Falls back
-  // to the kit navy/orange palette when nothing is saved yet.
-  const menuBg = promoBanners?.menu_bg || "#1453D6"
-  const menuText = promoBanners?.menu_text || "#ffffff"
+  // Mega menu colours — TechPivo Market palette: blue = main, orange = accent.
+  // Restored to the original navy-blue menu background (#1453D6); orange stays
+  // reserved for sale/flash accents. Site-settings colour overrides are ignored
+  // here so the menu stays on-brand blue regardless of saved banner values.
+  const menuBg = "#1453D6"
+  const menuText = "#ffffff"
   useEffect(() => {
     setLiveWish(readWishCount())
     setCurrency(readCurrency())
