@@ -44,6 +44,70 @@ const DEPT_ICONS: Record<string, any> = {
   CreditCard, ShoppingCart, Flame, MapPin, Phone, Mail,
 }
 
+// Name/slug-based icon fallback for departments whose `icon` field isn't set
+// in the live database tree. Keys are matched case-insensitively against
+// department name then slug.
+const DEPT_ICON_BY_NAME: Record<string, string> = {
+  "pet supplies": "Package",
+  "pet": "Package",
+  "home garden": "Home",
+  "home & garden": "Home",
+  "home improvement": "Wrench",
+  "health beauty": "Sparkles",
+  "health": "Heart",
+  "beauty": "Sparkles",
+  "jewelry": "Clock",
+  "watches": "Clock",
+  "men's clothing": "Shirt",
+  "mens clothing": "Shirt",
+  "bags": "ShoppingBag",
+  "shoes": "ShoppingBag",
+  "toys kids": "Baby",
+  "toys": "Baby",
+  "kids": "Baby",
+  "baby": "Baby",
+  "sports": "Trophy",
+  "outdoors": "Trophy",
+  "consumer electronics": "Cpu",
+  "electronics": "Cpu",
+  "phones": "Smartphone",
+  "mobile": "Smartphone",
+  "computer": "Laptop",
+  "laptop": "Laptop",
+  "automobiles": "Car",
+  "motorcycles": "Car",
+  "auto": "Car",
+  "women's clothing": "Shirt",
+  "womens clothing": "Shirt",
+  "women": "Shirt",
+  "fashion": "Shirt",
+}
+
+// Departments that should display an icon (per screenshot — from Consumer
+// Electronics downwards). All other departments render name + arrow only.
+const ICONED_DEPTS = new Set([
+  "consumer-electronics",
+  "home-improvement",
+  "automobiles-motorcycles",
+  "phones-accessories",
+  "computer-office",
+  "womens-clothing",
+])
+
+// Resolve an icon component for a department: tries `d.icon` field first,
+// then name-based fallback, then undefined (no icon).
+function resolveDeptIcon(d: { icon?: string | null; name: string; slug: string }) {
+  if (!ICONED_DEPTS.has(d.slug)) return undefined
+  if (d.icon && DEPT_ICONS[d.icon]) return DEPT_ICONS[d.icon]
+  const nameKey = d.name.toLowerCase()
+  const slugKey = d.slug.toLowerCase()
+  for (const key of [nameKey, slugKey]) {
+    const iconName = DEPT_ICON_BY_NAME[key]
+    if (iconName && DEPT_ICONS[iconName]) return DEPT_ICONS[iconName]
+  }
+  return undefined
+}
+
 function readWishCount(): number {
   if (typeof window === "undefined") return 0
   try {
@@ -302,9 +366,10 @@ const [currency, setCurrency] = useState("USD")
   const visibleDepartments = departments.slice(0, seeMore ? departments.length : VISIBLE_DEPT_COUNT)
   const toggleSeeMore = () => setSeeMore((v) => !v)
 
-  // Default to the first department when the mega-panel opens so it is never
-  // an empty "hover a department" state.
-  const firstDeptSlug = departments.length > 0 ? departments[0].slug : ""
+  // Default to Women's Clothing when the mega-panel opens so shoppers see
+  // a populated sub-category panel immediately instead of an empty state.
+  const womenDept = departments.find((d) => d.slug === "womens-clothing" || d.name.toLowerCase().includes("women"))
+  const firstDeptSlug = womenDept ? womenDept.slug : departments.length > 0 ? departments[0].slug : ""
 
   return (
     <>
@@ -544,29 +609,27 @@ const [currency, setCurrency] = useState("USD")
                     </div>
                     <div className="flex-1 overflow-y-auto py-1 space-y-0.5">
                       {visibleDepartments.map((d) => {
-                        const isActive = openDept === d.slug
-                        const Icon = DEPT_ICONS[d.icon]
-                        return (
-                          <div
-                            key={d.slug}
-                            onMouseEnter={() => { setDeptOpen(true); setOpenDept(d.slug) }}
-                            className={`flex items-center gap-3 px-4 py-2.5 cursor-pointer transition-all duration-150 ${
-                              isActive
-                                ? `bg-[#FF6B00]/12 text-white border-l-3 border-[#FF6B00] shadow-sm rounded-r-xl`
-                                : `text-slate-600 hover:bg-[#EFF6FF] hover:text-[#FF6B00] border-l-3 border-transparent rounded-r-xl`
-                            }`}
-                          >
-                            <span className="flex items-center gap-2 px-1" style={{ color: isActive ? "#FF3B30" : "#94a3b8" }}>
+                          const isActive = openDept === d.slug
+                          const Icon = resolveDeptIcon(d)
+                          return (
+                            <div
+                              key={d.slug}
+                              onMouseEnter={() => { setDeptOpen(true); setOpenDept(d.slug) }}
+                              className={`flex items-center gap-3 px-4 py-2.5 cursor-pointer transition-all duration-150 ${
+                                isActive
+                                  ? `bg-[#FF6B00]/12 text-white border-l-3 border-[#FF6B00] shadow-sm rounded-r-xl`
+                                  : `text-slate-600 hover:bg-[#EFF6FF] hover:text-[#FF6B00] border-l-3 border-transparent rounded-r-xl`
+                              }`}
+                            >
                               {Icon ? (
-                                <Icon size={13} className={isActive ? `text-[#FF6B00]` : "text-slate-400"} />
-                              ) : (
-                                <ChevronRight size={12} className="text-slate-400" />
-                              )}
-                            </span>
-                            <span className="text-sm font-semibold truncate leading-none">{d.name}</span>
-                            <ChevronRight size={10} className={isActive ? `text-[#FF6B00]` : "text-slate-400"} />
-                          </div>
-                        )
+                                <span className="flex items-center gap-2 px-1" style={{ color: isActive ? "#FF3B30" : "#94a3b8" }}>
+                                  <Icon size={13} className={isActive ? `text-[#FF6B00]` : "text-slate-400"} />
+                                </span>
+                              ) : null}
+                              <span className="text-sm font-semibold truncate leading-none">{d.name}</span>
+                              <ChevronRight size={10} className={isActive ? `text-[#FF6B00]` : "text-slate-400"} />
+                            </div>
+                          )
                       })}
                       {!seeMore && departments.length > VISIBLE_DEPT_COUNT && (
                         <div className="px-4 py-3 border-t border-[#E2E8F0]">
