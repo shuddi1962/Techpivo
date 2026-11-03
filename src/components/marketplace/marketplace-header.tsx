@@ -46,63 +46,72 @@ const DEPT_ICONS: Record<string, any> = {
 
 // Name/slug-based icon fallback for departments whose `icon` field isn't set
 // in the live database tree. Keys are matched case-insensitively against
-// department name then slug.
+// department name then slug. Covers every department in the storefront tree.
 const DEPT_ICON_BY_NAME: Record<string, string> = {
-  "pet supplies": "Package",
-  "pet": "Package",
-  "home garden": "Home",
-  "home & garden": "Home",
-  "home improvement": "Wrench",
-  "health beauty": "Sparkles",
-  "health": "Heart",
-  "beauty": "Sparkles",
-  "jewelry": "Clock",
-  "watches": "Clock",
-  "men's clothing": "Shirt",
-  "mens clothing": "Shirt",
-  "bags": "ShoppingBag",
-  "shoes": "ShoppingBag",
-  "toys kids": "Baby",
-  "toys": "Baby",
-  "kids": "Baby",
-  "baby": "Baby",
-  "sports": "Trophy",
-  "outdoors": "Trophy",
   "consumer electronics": "Cpu",
   "electronics": "Cpu",
   "phones": "Smartphone",
+  "phone": "Smartphone",
   "mobile": "Smartphone",
   "computer": "Laptop",
   "laptop": "Laptop",
   "automobiles": "Car",
   "motorcycles": "Car",
   "auto": "Car",
+  "home improvement": "Wrench",
+  "tools": "Wrench",
   "women's clothing": "Shirt",
   "womens clothing": "Shirt",
   "women": "Shirt",
+  "men's clothing": "Shirt",
+  "mens clothing": "Shirt",
+  "men": "Shirt",
   "fashion": "Shirt",
+  "clothing": "Shirt",
+  "beauty": "Sparkles",
+  "health": "Heart",
+  "health beauty": "Sparkles",
+  "skincare": "Sparkles",
+  "makeup": "Sparkles",
+  "hair care": "Sparkles",
+  "jewelry": "Clock",
+  "watches": "Clock",
+  "watch": "Clock",
+  "sports": "Trophy",
+  "outdoors": "Trophy",
+  "sports & outdoors": "Trophy",
+  "home & garden": "Home",
+  "home garden": "Home",
+  "home": "Home",
+  "garden": "Home",
+  "furniture": "Home",
+  "pet supplies": "Package",
+  "pet": "Package",
+  "baby": "Baby",
+  "kids": "Baby",
+  "toys": "Baby",
+  "toys kids": "Baby",
+  "bags": "ShoppingBag",
+  "luggage": "ShoppingBag",
+  "handbags": "ShoppingBag",
+  "shoes": "ShoppingBag",
+  "footwear": "ShoppingBag",
+  "books": "Book",
+  "media": "Book",
 }
 
-// Departments that should display an icon (per screenshot — from Consumer
-// Electronics downwards). All other departments render name + arrow only.
-const ICONED_DEPTS = new Set([
-  "consumer-electronics",
-  "home-improvement",
-  "automobiles-motorcycles",
-  "phones-accessories",
-  "computer-office",
-])
-
 // Resolve an icon component for a department: tries `d.icon` field first,
-// then name-based fallback, then undefined (no icon).
+// then name-based fallback (substring match against department name/slug),
+// then undefined (no icon).
 function resolveDeptIcon(d: { icon?: string | null; name: string; slug: string }) {
-  if (!ICONED_DEPTS.has(d.slug)) return undefined
   if (d.icon && DEPT_ICONS[d.icon]) return DEPT_ICONS[d.icon]
   const nameKey = d.name.toLowerCase()
   const slugKey = d.slug.toLowerCase()
-  for (const key of [nameKey, slugKey]) {
-    const iconName = DEPT_ICON_BY_NAME[key]
-    if (iconName && DEPT_ICONS[iconName]) return DEPT_ICONS[iconName]
+  for (const key of Object.keys(DEPT_ICON_BY_NAME)) {
+    if (nameKey.includes(key) || slugKey.includes(key)) {
+      const iconName = DEPT_ICON_BY_NAME[key]
+      if (iconName && DEPT_ICONS[iconName]) return DEPT_ICONS[iconName]
+    }
   }
   return undefined
 }
@@ -398,7 +407,7 @@ const [currency, setCurrency] = useState("USD")
                 {currency} <ChevronDown className="h-3.5 w-3.5 text-white" />
               </button>
               {currencyOpen && (
-                <div role="listbox" className="absolute top-full mt-2 w-28 rounded-lg border border-[#E2E8F0] bg-white py-1 shadow-xl z-[70]">
+                <div role="listbox" className="absolute right-0 bottom-full mb-2 w-28 rounded-lg border border-[#E2E8F0] bg-white py-1 shadow-xl z-[100]">
                   {["USD", "NGN"].map((code) => (
                     <button
                       key={code}
