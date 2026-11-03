@@ -24,7 +24,7 @@ const NAV: Array<{ label: string; href: string; external?: boolean }> = [
   { label: "Home", href: "/marketplace" },
   { label: "Shop", href: "/marketplace/shop" },
   { label: "Deals of the Day", href: "/marketplace/deals" },
-  { label: "Flash Sale Specials", href: "/marketplace/deals/flash-sale" },
+  { label: "Flash Sale Specials", href: "/marketplace/deals", external: false },
   { label: "Best Sellers", href: "/marketplace/best-sellers" },
   { label: "Top Stores", href: "/marketplace/top-stores" },
   { label: "New Arrivals", href: "/marketplace/new-arrivals" },
@@ -407,7 +407,7 @@ const [currency, setCurrency] = useState("USD")
                 {currency} <ChevronDown className="h-3.5 w-3.5 text-white" />
               </button>
               {currencyOpen && (
-                <div role="listbox" className="absolute right-0 bottom-full mb-2 w-28 rounded-lg border border-[#E2E8F0] bg-white py-1 shadow-xl z-[100]">
+                <div role="listbox" className="absolute top-full mt-2 w-28 rounded-xl border border-[#E2E8F0] bg-white py-1 shadow-2xl z-[200]">
                   {["USD", "NGN"].map((code) => (
                     <button
                       key={code}
@@ -604,7 +604,7 @@ const [currency, setCurrency] = useState("USD")
                   <div className="w-[280px] border-r border-[#E2E8F0] flex flex-col shrink-0">
                     <div className="flex items-center justify-between px-4 py-3 border-b border-[#E2E8F0]">
                       <div className="flex items-center gap-2">
-                        <LayoutGrid className="h-4 w-4 text-white" />
+                        <LayoutGrid className="h-4 w-4 text-[#FF6B00]" />
                         <span className="text-xs font-bold uppercase tracking-wider text-slate-500">All Departments</span>
                       </div>
                       <button
@@ -623,10 +623,10 @@ const [currency, setCurrency] = useState("USD")
                             <div
                               key={d.slug}
                               onMouseEnter={() => { setDeptOpen(true); setOpenDept(d.slug) }}
-                            className={`flex items-center gap-3 px-4 py-2.5 cursor-pointer transition-all duration-150 ${
+                            className={`flex items-center gap-3 px-4 py-2.5 cursor-pointer transition-all duration-200 ${
                               isActive
-                                ? `bg-[#FF6B00]/15 text-white border-l-3 border-[#FF6B00] shadow-sm rounded-r-xl`
-                                : `text-slate-700 hover:bg-[#FFF1F2] hover:text-[#FF6B00] border-l-3 border-transparent rounded-r-xl`
+                                ? `bg-[#FF6B00]/15 text-white border border-[#FF6B00]/30 rounded-xl shadow-sm`
+                                : `text-slate-700 hover:bg-[#F5F7FA] hover:text-[#FF6B00] hover:border-[#FF6B00]/20 border border-transparent rounded-xl`
                             }`}
                             >
                               {Icon ? (
