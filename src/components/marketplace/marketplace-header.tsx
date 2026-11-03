@@ -396,12 +396,9 @@ const [currency, setCurrency] = useState("USD")
             <p className="marketplace-promo-text-mobile text-white/90 sm:hidden truncate">{promoBanners?.promo_message_mobile || "Up to 50% Off at TechPivo Market"}</p>
           </div>
           <div className="flex items-center gap-2.5 shrink-0 text-white/90">
-            <div ref={currencyWrapRef} className="relative hidden sm:block">
+            <div ref={currencyWrapRef} className="relative hidden sm:block" onMouseEnter={() => setCurrencyOpen(true)} onMouseLeave={() => setCurrencyOpen(false)}>
               <button
                 type="button"
-                onClick={() => setCurrencyOpen((v) => !v)}
-                aria-haspopup="listbox"
-                aria-expanded={currencyOpen}
                 className="inline-flex items-center gap-1 cursor-pointer hover:bg-white/10 rounded-lg px-2 py-1 hover:text-white transition-colors"
               >
                 {currency} <ChevronDown className="h-3.5 w-3.5 text-white" />
@@ -623,11 +620,10 @@ const [currency, setCurrency] = useState("USD")
                             <div
                               key={d.slug}
                               onMouseEnter={() => { setDeptOpen(true); setOpenDept(d.slug) }}
-                            className={`flex items-center gap-3 px-4 py-2.5 cursor-pointer transition-all duration-200 ${
+                            className={`flex items-center gap-3 px-4 py-2.5 cursor-pointer transition-all duration-150 ${
                               isActive
                                 ? `bg-[#FF6B00]/15 text-white border border-[#FF6B00]/30 rounded-xl shadow-sm`
-                                : `text-slate-700 hover:bg-[#F5F7FA] hover:text-[#FF6B00] hover:border-[#FF6B00]/20 border border-transparent rounded-xl`
-                            }`}
+                                : `text-slate-700 border border-[#E2E8F0]/20 rounded-xl`}
                             >
                               {Icon ? (
                                 <span className="flex items-center gap-2 px-1" style={{ color: isActive ? "#FF3B30" : "#94a3b8" }}>
