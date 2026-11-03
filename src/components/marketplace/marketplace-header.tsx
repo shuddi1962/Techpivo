@@ -509,9 +509,9 @@ const [currency, setCurrency] = useState("USD")
                 setDeptOpen(!deptOpen);
               }}
               onMouseEnter={() => setDeptOpen(true)}
-              className="mega-btn text-white h-12 px-6 flex items-center gap-2 font-semibold text-sm transition-all duration-200 cursor-pointer bg-[#FF6B00] hover:bg-[#e86000] shadow-md hover:shadow-lg rounded-xl"
+              className="mega-btn text-white h-10 px-4 flex items-center gap-2 font-semibold text-sm transition-all duration-200 cursor-pointer bg-[#FF6B00] hover:bg-[#e86000] shadow-md rounded-xl"
             >
-              <LayoutGrid className="h-5 w-5 text-white" />
+              <LayoutGrid className="h-4 w-4 text-white" />
               <span>All Departments</span>
               <ChevronDown className={`h-4 w-4 transition-transform ${deptOpen ? "rotate-180" : ""} text-white`} />
             </button>
@@ -542,26 +542,6 @@ const [currency, setCurrency] = useState("USD")
                         {seeMore ? "See Less" : "See More"}
                       </button>
                     </div>
-                    {/* Quick links — Home, Shop, Deals, etc. (top of mega menu) */}
-                    <div className="px-4 py-4 border-b border-[#E2E8F0]">
-                      <span className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-3">
-                        Market
-                      </span>
-                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
-                        {NAV.map((item, i) => (
-                          <a
-                            key={item.label}
-                            href={item.href}
-                            target={item.external ? "_blank" : undefined}
-                            rel={item.external ? "noopener" : undefined}
-                            className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium text-slate-700 hover:bg-[#EFF6FF] hover:text-[#FF6B00] transition-colors whitespace-nowrap"
-                          >
-                            <ChevronRight size={9} className="text-slate-400 shrink-0" />
-                            <span className="truncate">{item.label}</span>
-                          </a>
-                        ))}
-                      </div>
-                    </div>
                     <div className="flex-1 overflow-y-auto py-1 space-y-0.5">
                       {visibleDepartments.map((d) => {
                         const isActive = openDept === d.slug
@@ -577,7 +557,6 @@ const [currency, setCurrency] = useState("USD")
                             }`}
                           >
                             <span className="flex items-center gap-2 px-1" style={{ color: isActive ? "#FF3B30" : "#94a3b8" }}>
-                              <ChevronRight size={10} className={isActive ? `text-[#FF6B00]` : "text-slate-400"} />
                               {Icon ? (
                                 <Icon size={13} className={isActive ? `text-[#FF6B00]` : "text-slate-400"} />
                               ) : (
@@ -585,6 +564,7 @@ const [currency, setCurrency] = useState("USD")
                               )}
                             </span>
                             <span className="text-sm font-semibold truncate leading-none">{d.name}</span>
+                            <ChevronRight size={10} className={isActive ? `text-[#FF6B00]` : "text-slate-400"} />
                           </div>
                         )
                       })}
