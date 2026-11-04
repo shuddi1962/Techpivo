@@ -178,8 +178,6 @@ export function CategoryShowcase({
 
   const shown = active ? items.filter((p) => p.subSlug === active) : items
 
-  if (items.length === 0) return null
-
   const scroll = (dir: 1 | -1) =>
     railRef.current?.scrollBy({ left: dir * 640, behavior: "smooth" })
 

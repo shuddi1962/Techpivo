@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { ChevronRight } from "lucide-react"
+import { ChevronRight, ShoppingBag, LayoutGrid } from "lucide-react"
 import { marketImage } from "@/lib/marketplace-images"
 
 export interface CollectionItem {
@@ -27,7 +27,17 @@ export function ShopCollections({
   return (
     <section aria-label="Shop by collections" className="bg-white rounded-2xl p-5 shadow-sm border border-[#E2E8F0]">
       <div className="mb-4 flex items-center justify-between gap-3">
-        <h2 className="text-lg font-bold text-[#0F172A]">Shop By Collections</h2>
+        <div className="flex items-center gap-2">
+          <span className="flex h-7 w-7 items-center justify-center rounded-full bg-[#F59E0B]/10 text-[#F59E0B]">
+            <ShoppingBag className="h-3.5 w-3.5" />
+          </span>
+          <div>
+            <h2 className="text-lg font-bold text-[#0F172A]">Shop By Collections</h2>
+            <p className="text-[11px] text-slate-500 font-medium">
+              {collections.length} categories · shop by department
+            </p>
+          </div>
+        </div>
         <Link
           href={seeAllHref}
           className="inline-flex shrink-0 items-center gap-0.5 text-[13px] font-bold uppercase tracking-wide text-slate-500 transition-colors hover:text-[#B45309]"
@@ -37,22 +47,29 @@ export function ShopCollections({
       </div>
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
         {collections.map((c) => (
-          <div key={c.slug} className="min-w-0">
+          <div key={c.slug} className="min-w-0 group">
             <Link
               href={c.href}
               aria-label={`View ${c.name} collection`}
-              className="group block min-w-0"
+              className="block min-w-0"
             >
-              <span className="block aspect-[5/4] w-full overflow-hidden rounded-xl bg-[#F1F5F9] p-4 transition-colors group-hover:bg-[#E8EEF4]">
+              <span className="block relative aspect-[5/4] w-full overflow-hidden rounded-xl bg-[#F1F5F9] p-4 transition-all duration-300 group-hover:bg-[#E8EEF4] group-hover:-translate-y-1 group-hover:shadow-md">
                 {c.image ? (
                   <img
                     src={marketImage(c.image)}
                     alt=""
                     loading="lazy"
                     decoding="async"
-                    className="h-full w-full object-contain transition-transform duration-300 group-hover:scale-105"
+                    className="h-full w-full object-contain transition-transform duration-500 group-hover:scale-105"
                   />
-                ) : null}
+                ) : (
+                  <div className="h-full w-full flex items-center justify-center text-slate-300">
+                    <LayoutGrid className="h-6 w-6" />
+                  </div>
+                )}
+                <span className="absolute bottom-3 right-3 z-20 flex h-8 w-8 items-center justify-center rounded-full bg-white/95 text-[#0F172A] shadow-md opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                  <ShoppingBag className="h-4 w-4" />
+                </span>
               </span>
             </Link>
             <div className="mt-2 flex justify-center">
@@ -64,20 +81,6 @@ export function ShopCollections({
                 {c.name}
               </Link>
             </div>
-            {c.subs && c.subs.length > 0 && (
-              <div className="mt-1 flex flex-wrap justify-center gap-1">
-                {c.subs.slice(0, 6).map((s) => (
-                  <Link
-                    key={s.slug}
-                    href={`/marketplace/category/${s.slug}`}
-                    title={s.name}
-                    className="max-w-full truncate rounded-full bg-[#F1F5F9] px-2 py-[3px] text-[11px] text-slate-600 transition-colors hover:bg-[#FEF3C7] hover:text-[#B45309]"
-                  >
-                    {s.name}
-                  </Link>
-                ))}
-              </div>
-            )}
           </div>
         ))}
       </div>

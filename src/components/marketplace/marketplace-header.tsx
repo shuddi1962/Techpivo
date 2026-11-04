@@ -396,30 +396,34 @@ const [currency, setCurrency] = useState("USD")
             <p className="marketplace-promo-text-mobile text-white/90 sm:hidden truncate">{promoBanners?.promo_message_mobile || "Up to 50% Off at TechPivo Market"}</p>
           </div>
           <div className="flex items-center gap-2.5 shrink-0 text-white/90">
-            <div ref={currencyWrapRef} className="relative hidden sm:block" onMouseEnter={() => setCurrencyOpen(true)} onMouseLeave={() => setCurrencyOpen(false)}>
-              <button
-                type="button"
-                className="inline-flex items-center gap-1 cursor-pointer hover:bg-white/10 rounded-lg px-2 py-1 hover:text-white transition-colors"
-              >
-                {currency} <ChevronDown className="h-3.5 w-3.5 text-white" />
-              </button>
-              {currencyOpen && (
-                <div role="listbox" className="absolute top-full mt-2 w-28 rounded-xl border border-[#E2E8F0] bg-white py-1 shadow-2xl z-[200]">
-                  {["USD", "NGN"].map((code) => (
-                    <button
-                      key={code}
-                      type="button"
-                      role="option"
-                      aria-selected={currency === code}
-                      onClick={() => setCurrencyChoice(code)}
-                      className={`block w-full px-3 py-2 text-left text-xs font-semibold ${currency === code ? "text-[#0F4FB3] bg-[#1668DC]/10" : "text-slate-700 hover:bg-[#FFF1F2] hover:text-[#FF6B00]"}`}
-                    >
-                      {code}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
+              <div ref={currencyWrapRef} className="relative group">
+                <button
+                  type="button"
+                  onClick={() => setCurrencyOpen((o) => !o)}
+                  aria-label="Switch currency"
+                  aria-expanded={currencyOpen}
+                  className="inline-flex items-center gap-1.5 cursor-pointer rounded-lg px-2.5 py-1.5 text-white bg-white/15 border border-white/20 hover:bg-white/25 hover:border-white/30 transition-colors focus-visible:ring-2 focus-visible:ring-white/40"
+                >
+                  <span className="font-semibold text-xs">{currency}</span>
+                  <ChevronDown className="h-3.5 w-3.5 text-white/90" />
+                </button>
+                {currencyOpen && (
+                  <div role="listbox" className="absolute top-full mt-3 left-0 w-32 rounded-xl border border-[#E2E8F0] bg-white py-2 shadow-2xl z-[300] animate-slide-down">
+                    {["USD", "NGN"].map((code) => (
+                      <button
+                        key={code}
+                        type="button"
+                        role="option"
+                        aria-selected={currency === code}
+                        onClick={() => setCurrencyChoice(code)}
+                        className={`block w-full px-3 py-2 text-left text-sm font-semibold transition-colors ${currency === code ? "text-[#0F4FB3] bg-[#1668DC]/10" : "text-slate-800 hover:bg-[#FFF1F2] hover:text-[#0F4FB3]"}`}
+                      >
+                        {code}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
             <span className="hidden sm:inline text-white/50">|</span>
             <Link
               href="/marketplace/track"
@@ -574,13 +578,13 @@ const [currency, setCurrency] = useState("USD")
           onMouseLeave={() => setDeptOpen(false)}
           className="relative shrink-0"
             >
-            <button
-              onClick={() => {
-                setDeptOpen(!deptOpen);
-              }}
-              onMouseEnter={() => setDeptOpen(true)}
-              className="mega-btn text-white h-10 px-4 flex items-center gap-2 font-semibold text-sm transition-all duration-200 cursor-pointer bg-[#FF6B00] hover:bg-[#e86000] shadow-md rounded-xl"
-            >
+              <button
+                onClick={() => {
+                  setDeptOpen(!deptOpen);
+                }}
+                onMouseEnter={() => setDeptOpen(true)}
+                className="mega-btn text-white h-10 px-4 flex items-center gap-2 font-semibold text-sm cursor-pointer bg-[#FF6B00] rounded-xl"
+              >
               <LayoutGrid className="h-4 w-4 text-white" />
               <span>All Departments</span>
               <ChevronDown className={`h-4 w-4 transition-transform ${deptOpen ? "rotate-180" : ""} text-white`} />
@@ -607,7 +611,7 @@ const [currency, setCurrency] = useState("USD")
                       <button
                         type="button"
                         onClick={toggleSeeMore}
-                        className="text-xs font-medium text-[#FF6B00] hover:opacity-80 transition-all duration-150"
+                        className="text-xs font-medium text-[#FF6B00] underline-offset-4 hover:underline"
                       >
                         {seeMore ? "See Less" : "See More"}
                       </button>
@@ -622,9 +626,9 @@ const [currency, setCurrency] = useState("USD")
                               onMouseEnter={() => { setDeptOpen(true); setOpenDept(d.slug) }}
                             className={`flex items-center gap-3 px-4 py-2.5 cursor-pointer transition-all duration-150 ${
                               isActive
-                                ? `bg-[#FF6B00]/15 text-white border border-[#FF6B00]/30 rounded-xl shadow-sm`
-                                : `text-slate-700 border border-[#E2E8F0]/20 rounded-xl`}
-                            >
+                                ? `text-white bg-[#FF6B00] border border-[#FF6B00]/50 rounded-xl`
+                              : `text-slate-700 border border-transparent rounded-xl`}
+                          `}>
                               {Icon ? (
                                 <span className="flex items-center gap-2 px-1" style={{ color: isActive ? "#FF3B30" : "#94a3b8" }}>
                                   <Icon size={13} className={isActive ? `text-[#FF6B00]` : "text-slate-400"} />
@@ -640,7 +644,7 @@ const [currency, setCurrency] = useState("USD")
                           <button
                             type="button"
                             onClick={toggleSeeMore}
-                          className="w-full flex items-center justify-between text-xs font-medium text-[#1668DC] hover:text-[#0F4FB3] transition-all duration-150"
+                          className="w-full flex items-center justify-between text-xs font-medium text-[#1668DC] underline-offset-4 hover:underline"
                         >
                           <span>See more departments</span>
                             <ChevronDown className="h-4 w-4 text-[#1668DC]" />
@@ -935,15 +939,15 @@ export function MarketplaceFooter() {
       <div className="w-full border-y border-[#E2E8F0] bg-white">
         <div className="mx-auto grid w-full max-w-[1440px] grid-cols-1 gap-5 px-3 py-6 sm:grid-cols-2 sm:px-6 lg:grid-cols-4 lg:px-10">
           {PERKS.map((p) => (
-            <div key={p.title} className="flex items-center gap-3">
-              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] text-[#1668DC]">
-                <p.icon className="h-6 w-6" />
+              <div key={p.title} className="flex items-center gap-3">
+                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border border-[#EF4444] bg-white text-[#EF4444]">
+                  <p.icon className="h-6 w-6" />
+                </div>
+                <div>
+                  <h4 className="text-sm font-bold text-[#0F172A]">{p.title}</h4>
+                  <p className="text-sm text-[#0F172A]">{p.copy}</p>
+                </div>
               </div>
-              <div>
-                <h4 className="text-sm font-bold text-[#1668DC]">{p.title}</h4>
-                <p className="text-sm text-slate-500">{p.copy}</p>
-              </div>
-            </div>
           ))}
         </div>
       </div>
@@ -991,10 +995,10 @@ export function MarketplaceFooter() {
           </nav>
           <div>
             <h5 className="mb-4 text-sm font-bold uppercase tracking-wider text-white">Newsletter</h5>
-            <p className="mb-3 text-sm text-slate-300">Weekly tech drops and member coupons.</p>
+            <p className="mb-3 text-sm text-white/90">Weekly tech drops and member coupons.</p>
             <form className="space-y-2" onSubmit={subscribe}>
               <input value={email} onChange={(e) => setEmail(e.target.value)} className="w-full rounded-lg border border-white/15 bg-white/10 px-3 py-2.5 text-sm text-white placeholder:text-slate-400 focus:border-[#1668DC] focus:outline-none" placeholder="Your email" type="email" aria-label="Email" />
-              <button className="w-full rounded-lg bg-[#1668DC] py-2.5 text-sm font-bold text-[#1668DC] transition-colors hover:bg-[#0F4FB3] disabled:opacity-60" type="submit" disabled={subBusy}>
+              <button className="w-full rounded-lg bg-[#EF4444] py-2.5 text-sm font-bold text-white transition-colors hover:bg-[#DC2626] disabled:opacity-60" type="submit" disabled={subBusy}>
                 {subBusy ? "Subscribing..." : "Subscribe"}
               </button>
               {subMsg && <p className="text-xs text-slate-300">{subMsg}</p>}

@@ -191,6 +191,17 @@ function PromoBox({
   )
 }
 
+// Subtle section divider for a clean, modern storefront layout.
+function SectionDivider() {
+  return (
+    <div className="my-8 sm:my-10 lg:my-12">
+      <div className="relative h-[1px] w-full bg-[#E2E8F0]">
+        <div className="absolute left-1/2 -translate-x-1/2 top-1/2 -translate-y-1/2 h-1 w-[160px] sm:w-[200px] bg-gradient-to-r from-[#0F172A]/60 via-[#F59E0B] to-[#0F172A]/60" />
+      </div>
+    </div>
+  )
+}
+
 // Fire-and-forget popup analytics (view / click / close per campaign).
 function logPopup(campaignId: string, event: "view" | "click" | "close") {
   try {
@@ -538,12 +549,12 @@ export function MarketplaceHome() {
       .filter((p) => discountRateOf(p) > 0 && showSaleBadge(saleBadges, merch, p.id))
       .sort((a, b) => discountRateOf(b) - discountRateOf(a)),
     usedIds,
-    4
+    5
   )
   const featured = takeFresh(
     grid.filter((p) => p.badge === "Featured"),
     usedIds,
-    12
+    5
   )
   const createdById = useMemo(
     () => new Map(dbProducts.map((d) => [d.id, d.created_at || ""])),
@@ -556,7 +567,7 @@ export function MarketplaceHome() {
         (createdById.get(b.id) || "").localeCompare(createdById.get(a.id) || "")
     ),
     usedIds,
-    12
+    5
   )
   const bestPool = [...grid].sort(
     (a, b) =>
@@ -566,7 +577,7 @@ export function MarketplaceHome() {
       discountRateOf(b) - discountRateOf(a) ||
       b.rating - a.rating
   )
-  const best = takeFresh(bestPool, usedIds, 12)
+  const best = takeFresh(bestPool, usedIds, 5)
   const trending = [...grid]
     .filter((p) => !usedIds.has(p.id))
     .sort(
@@ -693,20 +704,23 @@ export function MarketplaceHome() {
       }
       return null
     }
-    return departments.map((dep) => {
-      const stock = banners.departments[dep.slug] || dep.image || ""
-      const pool = pools.get(dep.slug) || []
-      return {
-        name: dep.name,
-        slug: dep.slug,
-        href: `/marketplace/category/${dep.slug}`,
-        image: claim(pool) || deptCover.get(dep.slug) || stock,
-        subs: dep.subs
-          .filter((s) => (pools.get(s.slug) || []).length > 0)
-          .slice(0, 6)
-          .map((s) => ({ name: s.name, slug: s.slug })),
-      }
-    })
+    // Rotate which 10 departments show over time so a different set leads
+    // the collections section periodically.
+    const deptRotOffset = rot % Math.max(1, departments.length)
+    return departments
+      .slice(deptRotOffset).concat(departments.slice(0, deptRotOffset))
+      .slice(0, 10)
+      .map((dep) => {
+        const stock = banners.departments[dep.slug] || dep.image || ""
+        const pool = pools.get(dep.slug) || []
+        return {
+          name: dep.name,
+          slug: dep.slug,
+          href: `/marketplace/category/${dep.slug}`,
+          image: claim(pool) || deptCover.get(dep.slug) || stock,
+          subs: [],
+        }
+      })
   }, [scopeRows, departments, deptCover, rot, banners])
 
   // Showcase sections: the 4 departments with the most live stock. Each
@@ -717,16 +731,24 @@ export function MarketplaceHome() {
   // lives in exactly one department, so it can never appear under a
   // department it doesn't belong to.
   const dbById = new Map(dbProducts.map((d) => [d.id, d]))
-  // Showcase order: Phones always leads (the store's signature section),
-  // followed by the 3 departments with the most live stock.
-  const rankedDepts = departments.map((dep) => ({
+  // Every department gets its own showcase section (Phones & Accessories
+  // style), ordered by live stock with Phones leading. The order rotates
+  // automatically over time so a different department leads periodically.
+  const deptStock = departments.map((dep) => ({
     dep,
     count: grid.filter((p) => deptOf.get(p.id) === dep.slug).length,
-  })).sort((a, b) => b.count - a.count)
+  }))
+  const orderedDepts = [...deptStock]
+    .sort((a, b) => b.count - a.count)
+    .map((r) => r.dep)
+  const phonesFirst = orderedDepts.filter((d) => d.slug === "phones-accessories")
+  const rest = orderedDepts.filter((d) => d.slug !== "phones-accessories")
+  const rotOffset = rot % Math.max(1, rest.length)
   const showcaseOrder = [
-    ...rankedDepts.filter((r) => r.dep.slug === "phones-accessories"),
-    ...rankedDepts.filter((r) => r.dep.slug !== "phones-accessories").slice(0, 3),
-  ].map((r) => r.dep)
+    ...phonesFirst,
+    ...rest.slice(rotOffset),
+    ...rest.slice(0, rotOffset),
+  ]
   const showcases = showcaseOrder
     .map((dep) => {
       const shelf = grid
@@ -741,24 +763,26 @@ export function MarketplaceHome() {
       })
       const nav = dep.subs
         .filter((s) => (counts.get(s.slug) || 0) > 0)
+        .slice(0, 6)
         .map((s) => ({ name: s.name, slug: s.slug }))
       let items = shelf.filter((p) => !usedIds.has(p.id))
-      if (items.length < 4) {
+      if (items.length === 0) {
+        items = []
+      } else if (items.length < 4) {
         const have = new Set(items.map((p) => p.id))
         for (const p of shelf) {
-          if (items.length >= 10) break
+          if (items.length >= 8) break
           if (!have.has(p.id)) {
             items.push(p)
             have.add(p.id)
           }
         }
       } else {
-        items = items.slice(0, 10)
+        items = items.slice(0, 8)
       }
       items.forEach((p) => usedIds.add(p.id))
       return { dep, nav, items }
     })
-    .filter((x) => x.items.length > 0)
 
   // Real recently-viewed products (recorded by product pages locally).
   const recentRows = useMemo(
@@ -927,6 +951,7 @@ export function MarketplaceHome() {
           </div>
         </div>
         </section>
+        <SectionDivider />
         {/* shop by collections — every real category node */}
         {!loaded ? (
           <section aria-label="Loading collections" className="bg-white rounded-2xl p-5 shadow-sm border border-[#E2E8F0] animate-pulse" aria-hidden>
@@ -997,6 +1022,7 @@ export function MarketplaceHome() {
             </div>
           </section>
         )}
+        <SectionDivider />
 
         {/* tabbed products — live catalog */}
         <section id="trending" className="bg-white rounded-2xl p-5 shadow-sm border border-[#E2E8F0] scroll-mt-4">
@@ -1091,6 +1117,7 @@ export function MarketplaceHome() {
             </div>
           )}
         </section>
+        <SectionDivider />
 
         {/* feature panels — new arrivals / featured / best selling */}
         {loaded ? (
@@ -1155,6 +1182,7 @@ export function MarketplaceHome() {
           </section>
           )
         })()}
+        <SectionDivider />
 
         {/* in-feed strip 1 — slim full-width banner between Trending Now
             and the department showcases. An upload shows clean on its own;
@@ -1191,6 +1219,8 @@ export function MarketplaceHome() {
           </section>
         )}
 
+        <SectionDivider />
+
         {/* department showcases — top departments by live stock, each with
             subcategory pills, a photo promo banner, and its own distinct products */}
         {loaded ? showcases.map(({ dep, nav, items }) => (
@@ -1209,6 +1239,7 @@ export function MarketplaceHome() {
             onWish={toggleWish}
           />
         )) : null}
+        <SectionDivider />
 
         {/* in-feed strip 2 — slim full-width banner between the department
             showcases and Top Stores. An upload shows clean on its own;
@@ -1244,6 +1275,8 @@ export function MarketplaceHome() {
             </div>
           </section>
         )}
+
+        <SectionDivider />
 
         {/* top stores — same card style as collections, as a slider */}
         {vendors.length > 0 && (
@@ -1306,6 +1339,8 @@ export function MarketplaceHome() {
           </section>
         )}
 
+        <SectionDivider />
+
         {/* promo banner — uploaded image shows clean (no overlay text or
             button); default gradient with writeups only when no upload.
             Hidden publicly while the admin's Black Friday promo toggle is OFF. */}
@@ -1349,6 +1384,8 @@ export function MarketplaceHome() {
         </section>
         ))}
 
+        <SectionDivider />
+
         {/* brands — live catalog brands only, with loading skeleton */}
         {!loaded ? (
           <section aria-label="Loading brands" className="bg-white rounded-2xl p-5 shadow-sm border border-[#E2E8F0] animate-pulse" aria-hidden>
@@ -1390,6 +1427,8 @@ export function MarketplaceHome() {
             </div>
           </section>
         )}
+
+        <SectionDivider />
 
         {/* store promise */}
         <p className="text-center text-[11px] text-slate-400 px-4">

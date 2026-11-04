@@ -1,11 +1,12 @@
 "use client"
 
 import Link from "next/link"
-import { useRef, useState } from "react"
+import { useState } from "react"
 import {
-  ArrowLeftRight, Check, ChevronDown, ChevronUp, Heart, ShoppingCart, Star,
+  ArrowLeftRight, Check, ChevronDown, ChevronUp, Eye, Heart, ShoppingCart, Star,
 } from "lucide-react"
 import type { DemoProduct } from "@/lib/marketplace"
+import { openQuickView } from "@/lib/marketplace-events"
 import { marketImage } from "@/lib/marketplace-images"
 import { readCompare, toggleCompareStored } from "@/lib/marketplace-compare"
 import { MarketPrice } from "./market-price"
@@ -36,164 +37,96 @@ interface PanelActions {
   onWish: (id: string) => void
 }
 
-function FeaturePanel({ title, items, onAdd, added, wished, onWish }: { title: string; items: DemoProduct[] } & PanelActions) {
-  const [index, setIndex] = useState(0)
+function FeaturedCard({ p, onAdd, added, wished, onWish }: { p: DemoProduct } & PanelActions) {
   const [compared, setCompared] = useState<Record<string, boolean>>(() => readCompare())
-  const thumbsRef = useRef<HTMLDivElement>(null)
-
-  // Same rule as every other card: the store-wide switch + the per-product
-  // flag decide whether any discount shows at all. (Hook sits before the
-  // empty-list early return — hooks must run unconditionally.)
-  const safe = items.length === 0 ? 0 : Math.min(index, items.length - 1)
-  const saleBadgeAllowed = useSaleBadge(items.length > 0 ? items[safe].id : "")
-  if (items.length === 0) return null
-  const current = items[safe]
-  const pct = discountPct(current.price, current.oldPrice)
+  const pct = discountPct(p.price, p.oldPrice)
+  const href = /^[0-9a-f-]{36}$/i.test(p.id) ? `/marketplace/product/${p.id}` : undefined
+  const saleBadgeAllowed = useSaleBadge(p.id)
   const showSale = pct > 0 && saleBadgeAllowed
-  const href = /^[0-9a-f-]{36}$/i.test(current.id) ? `/marketplace/product/${current.id}` : undefined
+  const flipCompare = () => setCompared((m) => ({ ...m, [p.id]: toggleCompareStored(p.id) }))
 
-  const select = (i: number) => {
-    const n = (i + items.length) % items.length
-    setIndex(n)
-    thumbsRef.current?.children[n]?.scrollIntoView({ behavior: "smooth", block: "nearest" })
-  }
-
-  const flipCompare = (id: string) =>
-    setCompared((m) => ({ ...m, [id]: toggleCompareStored(id) }))
-
+  const iconBtn =
+    "flex h-9 w-9 items-center justify-center rounded-full bg-white/95 text-slate-500 shadow-[0_4px_16px_rgba(15,23,42,0.18)] backdrop-blur-sm transition-all hover:scale-105 hover:text-[#0F172A] focus-visible:outline-2 focus-visible:outline-[#F59E0B] active:scale-95"
   return (
-    <article className="flex w-[86%] shrink-0 snap-start flex-col bg-white rounded-2xl border border-[#E5E7EB] p-5 md:w-auto">
-      {/* header: yellow pill flush-left + circular up button */}
-      <div className="mb-4 flex items-center justify-between">
-        <span className="-ml-5 rounded-r-full bg-[#F59E0B] py-2 pl-5 pr-6 text-sm font-extrabold uppercase tracking-wide text-[#0F172A]">
-          {title}
-        </span>
-        <button
-          type="button"
-          onClick={() => select(safe - 1)}
-          aria-label={`Previous product in ${title}`}
-          className="flex h-9 w-9 items-center justify-center rounded-full border border-[#E5E7EB] bg-white text-[#0F172A] transition-colors hover:border-[#F59E0B] hover:text-[#B45309]"
-        >
-          <ChevronUp className="h-4 w-4" />
-        </button>
-      </div>
-
-      <div className="flex gap-3">
-        {/* main product */}
-        <div className="relative min-w-0 flex-1">
-          <div className="relative aspect-square w-full overflow-hidden rounded-xl border border-[#F1F5F9] bg-white">
-            {href ? (
-              <Link href={href} aria-label={current.name} className="block h-full w-full p-5">
-                {current.image ? (
-                  <img src={marketImage(current.image)} alt={current.name} loading="lazy" decoding="async" className="h-full w-full object-contain" />
-                ) : null}
-              </Link>
-            ) : (
-              <div className="h-full w-full p-5">
-                {current.image ? (
-                  <img src={marketImage(current.image)} alt={current.name} loading="lazy" decoding="async" className="h-full w-full object-contain" />
-                ) : null}
-              </div>
-            )}
-            {showSale && (
-              <span className="absolute left-2 top-2 flex h-11 w-11 items-center justify-center rounded-full bg-[#F59E0B] text-xs font-extrabold text-[#0F172A] shadow-sm">
-                -{pct}%
-              </span>
-            )}
-          </div>
-          <div className="mt-3 space-y-1.5">
-            {href ? (
-              <Link href={href} title={current.name} className="block truncate text-sm font-semibold text-[#0F172A] hover:text-[#B45309]">
-                {current.name}
-              </Link>
-            ) : (
-              <p title={current.name} className="truncate text-sm font-semibold text-[#0F172A]">{current.name}</p>
-            )}
-            <div className="flex items-baseline gap-2">
-              <MarketPrice usd={current.price} className="text-base font-extrabold tabular-nums text-[#0F172A]" />
-              {showSale && current.oldPrice && current.oldPrice > current.price && (
-                <MarketPrice usd={current.oldPrice} className="text-sm tabular-nums text-slate-400 line-through" />
-              )}
-            </div>
-          </div>
+    <div className="group flex w-44 shrink-0 snap-start flex-col bg-white rounded-xl border border-[#E5E7EB] p-3 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_12px_32px_-12px_rgba(15,23,42,0.25)] focus-within:ring-2 focus-within:ring-[#F59E0B] sm:w-52">
+      <div className="relative aspect-square w-full overflow-hidden rounded-lg bg-white">
+        <div className="h-full w-full p-3">
+          {p.image ? (
+            <img src={marketImage(p.image)} alt={p.name} loading="lazy" decoding="async" className="h-full w-full object-contain transition-transform duration-500 group-hover:scale-105" />
+          ) : null}
         </div>
-
-        {/* vertical thumbnails + down button */}
-        <div className="flex w-[76px] shrink-0 flex-col gap-2">
-          <div ref={thumbsRef} className="grid max-h-[324px] gap-2 overflow-y-auto pr-0.5" style={{ scrollbarWidth: "thin" }}>
-            {items.map((t, i) => (
-              <button
-                key={t.id}
-                type="button"
-                onClick={() => select(i)}
-                aria-label={`View ${t.name}`}
-                aria-pressed={i === safe}
-                className={`flex h-[76px] w-full items-center justify-center overflow-hidden rounded-lg border bg-white p-1.5 transition-colors ${i === safe ? "border-[#F59E0B] border-2" : "border-[#E5E7EB] hover:border-slate-300"}`}
-              >
-                {t.image ? (
-                  <img src={marketImage(t.image)} alt="" loading="lazy" decoding="async" className="h-full w-full object-contain" />
-                ) : null}
-              </button>
-            ))}
-          </div>
+        {showSale && (
+          <span className="absolute left-1.5 top-1.5 z-10 flex h-10 w-10 items-center justify-center rounded-full bg-[#F59E0B] text-[11px] font-extrabold text-[#0F172A] shadow-sm">
+            -{pct}%
+          </span>
+        )}
+        <div className="absolute right-1.5 top-1.5 z-10 flex flex-col gap-1.5 opacity-0 translate-y-1 transition-all duration-300 group-hover:translate-y-0 group-hover:opacity-100 group-focus-within:translate-y-0 group-focus-within:opacity-100 max-md:translate-y-0 max-md:opacity-100">
           <button
             type="button"
-            onClick={() => {
-              if (thumbsRef.current) {
-                const el = thumbsRef.current
-                const nearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 40
-                if (nearBottom) {
-                  el.scrollTo({ top: 0, behavior: "smooth" })
-                  select(0)
-                } else {
-                  el.scrollBy({ top: 84, behavior: "smooth" })
-                  select(safe + 1)
-                }
-              } else {
-                select(safe + 1)
-              }
-            }}
-            aria-label={`Next product in ${title}`}
-            className="flex h-9 w-9 items-center justify-center self-center rounded-full border border-[#E5E7EB] bg-white text-[#0F172A] transition-colors hover:border-[#F59E0B] hover:text-[#B45309]"
+            onClick={() => onWish(p.id)}
+            aria-label={wished[p.id] ? "Remove from wishlist" : "Add to wishlist"}
+            aria-pressed={!!wished[p.id]}
+            title="Wishlist"
+            className={`${iconBtn} ${wished[p.id] ? "!bg-[#EF4444] !text-white" : "hover:!text-[#EF4444]"}`}
           >
-            <ChevronDown className="h-4 w-4" />
+            <Heart className={`h-4 w-4 ${wished[p.id] ? "fill-current" : ""}`} />
+          </button>
+          {href && (
+            <button
+              type="button"
+              onClick={() => openQuickView(p.id)}
+              aria-label={`Quick view ${p.name}`}
+              title="Quick view"
+              className={iconBtn}
+            >
+              <Eye className="h-4 w-4" />
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={flipCompare}
+            aria-label={compared[p.id] ? "Remove from compare" : "Add to compare"}
+            aria-pressed={!!compared[p.id]}
+            title="Compare"
+            className={`${iconBtn} ${compared[p.id] ? "!bg-[#0F172A] !text-white" : ""}`}
+          >
+            <ArrowLeftRight className="h-4 w-4" />
           </button>
         </div>
+        {href && (
+          <div className="absolute inset-x-2 bottom-2 z-10 hidden translate-y-[130%] transition-transform duration-300 ease-out group-hover:translate-y-0 group-focus-within:translate-y-0 md:block">
+            <button
+              type="button"
+              onClick={() => onAdd(p)}
+              className={`flex w-full items-center justify-center gap-1.5 rounded-lg py-2.5 text-xs font-bold shadow-[0_8px_24px_rgba(15,23,42,0.3)] backdrop-blur-sm transition-colors active:scale-[0.99] ${added[p.id] ? "bg-[#0B0F19]/95 text-white" : "bg-[#0F172A]/95 text-white hover:bg-[#F59E0B] hover:text-[#0F172A]"}`}
+            >
+              {added[p.id] ? <><Check className="h-3.5 w-3.5" strokeWidth={3} /> Added</> : <><ShoppingCart className="h-3.5 w-3.5" /> Add to Cart</>}
+            </button>
+          </div>
+        )}
       </div>
-
-      {/* actions: add to cart + wishlist + compare */}
-      <div className="mt-4 flex items-center gap-2">
-        <button
-          type="button"
-          onClick={() => onAdd(current)}
-          className={`flex flex-1 items-center justify-center gap-1.5 rounded-lg py-2.5 text-sm font-bold transition-colors ${added[current.id] ? "bg-[#10B981] text-white" : "bg-slate-100 text-[#0F172A] hover:bg-[#F59E0B]"}`}
-        >
-          {added[current.id] ? (
-            <><Check className="h-4 w-4" /> Added</>
-          ) : (
-            <><ShoppingCart className="h-4 w-4" /> Add to cart</>
+      <div className="mt-2 flex flex-1 flex-col gap-1">
+        <p title={p.name} className="truncate text-[13px] font-semibold text-[#0F172A] transition-colors group-hover:text-[#B45309]">{p.name}</p>
+        <div className="flex items-baseline gap-1.5">
+          <MarketPrice usd={p.price} className="text-[15px] font-extrabold tabular-nums text-[#0F172A]" />
+          {showSale && p.oldPrice && p.oldPrice > p.price && (
+            <MarketPrice usd={p.oldPrice} className="text-xs tabular-nums text-slate-400 line-through" />
           )}
-        </button>
+        </div>
+        {/* mobile add to cart */}
         <button
           type="button"
-          onClick={() => onWish(current.id)}
-          aria-label={wished[current.id] ? "Remove from wishlist" : "Add to wishlist"}
-          aria-pressed={!!wished[current.id]}
-          className={`flex h-10 w-10 items-center justify-center rounded-lg border transition-colors ${wished[current.id] ? "border-[#EF4444] bg-[#EF4444] text-white" : "border-[#E5E7EB] text-slate-500 hover:text-[#EF4444]"}`}
+          onClick={() => onAdd(p)}
+          aria-label={added[p.id] ? "Added to cart" : `Add ${p.name} to cart`}
+          className={`relative z-10 mt-2 flex w-full items-center justify-center gap-1.5 rounded-lg py-2 text-xs font-bold transition-colors active:scale-[0.99] md:hidden ${added[p.id] ? "bg-[#0B0F19] text-white" : "bg-[#F6F7F9] text-[#0F172A] active:bg-[#F59E0B]"}`}
         >
-          <Heart className={`h-4 w-4 ${wished[current.id] ? "fill-current" : ""}`} />
-        </button>
-        <button
-          type="button"
-          onClick={() => flipCompare(current.id)}
-          aria-label={compared[current.id] ? "Remove from compare" : "Add to compare"}
-          aria-pressed={!!compared[current.id]}
-          className={`flex h-10 w-10 items-center justify-center rounded-lg border transition-colors ${compared[current.id] ? "border-[#0F172A] bg-[#0F172A] text-white" : "border-[#E5E7EB] text-slate-500 hover:text-[#0F172A]"}`}
-        >
-          <ArrowLeftRight className="h-4 w-4" />
+          {added[p.id] ? <><Check className="h-3.5 w-3.5" strokeWidth={3} /> Added</> : <><ShoppingCart className="h-3.5 w-3.5" /> Add to Cart</>}
         </button>
       </div>
-    </article>
+      {href ? (
+        <Link href={href} aria-label={p.name} className="absolute inset-0 z-0 rounded-xl focus:outline-none" />
+      ) : null}
+    </div>
   )
 }
 
@@ -214,11 +147,24 @@ export function FeaturePanels({
   if (live.length === 0) return null
   return (
     <section aria-label="Featured product panels" className="bg-white rounded-2xl p-5 shadow-sm border border-[#E2E8F0]">
-      <div className="flex gap-4 overflow-x-auto pb-1 snap-x snap-mandatory md:grid md:grid-cols-2 md:overflow-visible lg:grid-cols-3">
-        {live.map((g) => (
-          <FeaturePanel key={g.title} title={g.title} items={g.items} onAdd={onAdd} added={added} wished={wished} onWish={onWish} />
-        ))}
-      </div>
+      {live.map((g) => (
+        <section key={g.title} className="mb-10 last:mb-0">
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+            <h2 className="text-lg font-extrabold uppercase tracking-tight text-[#0F172A]">{g.title}</h2>
+            <Link
+              href={`/marketplace/${g.title.toLowerCase().replace(" ", "-")}`}
+              className="text-sm font-semibold text-[#B45309] hover:underline"
+            >
+              Shop the collection →
+            </Link>
+          </div>
+          <div className="flex gap-3 overflow-x-auto pb-1 snap-x" style={{ scrollbarWidth: "none" }}>
+            {g.items.map((p) => (
+              <FeaturedCard key={p.id} p={p} onAdd={onAdd} added={added} wished={wished} onWish={onWish} />
+            ))}
+          </div>
+        </section>
+      ))}
     </section>
   )
 }
