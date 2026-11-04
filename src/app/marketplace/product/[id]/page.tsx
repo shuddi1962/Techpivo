@@ -212,7 +212,7 @@ export default async function MarketplaceProductPage({ params }: { params: { id:
               <ChevronRight className="h-3 w-3" />
             </>
           ) : null}
-          <span className="text-[#0F172A] font-medium line-clamp-1 max-w-[60vw]">{p.product_name}</span>
+          <span className="text-[#0F172A] font-medium line-clamp-1 max-w-[60vw]">{cleanSupplierText(product.product_name) || product.product_name}</span>
         </nav>
         <MarketMerchProvider initial={initialMerch}>
           <ProductDetail product={p} reviews={reviews || []} related={related || []} deptSlug={deptSlug} detail={detail} sold={sold} hasSupplier={!!p.cj_pid} />

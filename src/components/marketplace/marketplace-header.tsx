@@ -396,19 +396,19 @@ const [currency, setCurrency] = useState("USD")
             <p className="marketplace-promo-text-mobile text-white/90 sm:hidden truncate">{promoBanners?.promo_message_mobile || "Up to 50% Off at TechPivo Market"}</p>
           </div>
           <div className="flex items-center gap-2.5 shrink-0 text-white/90">
-              <div ref={currencyWrapRef} className="relative group">
+              <div ref={currencyWrapRef} className="relative z-[50] group">
                 <button
                   type="button"
                   onClick={() => setCurrencyOpen((o) => !o)}
-                  aria-label="Switch currency"
+                  aria-label="Switch currency between USD and NGN"
                   aria-expanded={currencyOpen}
-                  className="inline-flex items-center gap-1.5 cursor-pointer rounded-lg px-2.5 py-1.5 text-white bg-white/15 border border-white/20 hover:bg-white/25 hover:border-white/30 transition-colors focus-visible:ring-2 focus-visible:ring-white/40"
+                  className="inline-flex items-center gap-1.5 cursor-pointer rounded-lg px-3 py-1.5 text-white font-semibold bg-white/20 border border-white/25 hover:bg-white/30 hover:border-white/40 transition-all focus-visible:ring-2 focus-visible:ring-white/50 focus-visible:outline-none"
                 >
-                  <span className="font-semibold text-xs">{currency}</span>
+                  <span className="text-xs">{currency}</span>
                   <ChevronDown className="h-3.5 w-3.5 text-white/90" />
                 </button>
                 {currencyOpen && (
-                  <div role="listbox" className="absolute top-full mt-3 left-0 w-32 rounded-xl border border-[#E2E8F0] bg-white py-2 shadow-2xl z-[300] animate-slide-down">
+                  <div role="listbox" className="absolute top-full mt-2 left-0 w-32 rounded-xl border border-[#E2E8F0] bg-white py-2 shadow-2xl z-[1000] animate-slide-down">
                     {["USD", "NGN"].map((code) => (
                       <button
                         key={code}
@@ -416,7 +416,7 @@ const [currency, setCurrency] = useState("USD")
                         role="option"
                         aria-selected={currency === code}
                         onClick={() => setCurrencyChoice(code)}
-                        className={`block w-full px-3 py-2 text-left text-sm font-semibold transition-colors ${currency === code ? "text-[#0F4FB3] bg-[#1668DC]/10" : "text-slate-800 hover:bg-[#FFF1F2] hover:text-[#0F4FB3]"}`}
+                        className={`block w-full px-3 py-2 text-left text-sm font-semibold transition-colors ${currency === code ? "text-[#0F4FB3] bg-[#1668DC]/10 border-r-2 border-[#1668DC]" : "text-slate-800 hover:bg-[#FFF1F2] hover:text-[#0F4FB3]"}`}
                       >
                         {code}
                       </button>

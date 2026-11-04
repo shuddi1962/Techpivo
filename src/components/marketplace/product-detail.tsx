@@ -16,6 +16,7 @@ import { useMarketCurrency, useUsdNgnRate } from "@/lib/marketplace-pricing"
 import { MarketPrice } from "./market-price"
 import { SaleCountdown, useSaleEnd } from "./sale-countdown"
 import { useSaleBadge } from "./market-flags"
+import { rewriteProduct } from "@/lib/marketplace-copy"
 
 interface Review {
   id: string
@@ -155,7 +156,7 @@ function ProductDetailsTabs({
         <div className="space-y-3 pt-4">
           {long.length > 0 ? (
             long.map((para, i) => (
-              <p key={i} className="text-sm leading-relaxed text-slate-600">{para}</p>
+              <p key={i} className="text-sm leading-relaxed text-slate-700">{para}</p>
             ))
           ) : (
             <p className="pt-4 text-sm text-slate-500">Full details for this product are on the way — check back soon.</p>
@@ -413,6 +414,14 @@ export function ProductDetail({
     [reviews]
   )
 
+  // Clean, human-readable copy for the product title + description.
+  // CJ imports ship noisy keyword-stuffed copy — this rewrites it into short
+  // friendly text that renders nicely on the product page.
+  const rewritten = useMemo(
+    () => rewriteProduct(p.product_name, p.product_description),
+    [p.product_name, p.product_description]
+  )
+
   const doAdd = () => {
     // Sync localStorage write — guard rapid double-clicks (400ms) so one
     // tap can never create a duplicate line. Popup opens only on success.
@@ -521,10 +530,10 @@ export function ProductDetail({
             {sold > 0 && <span><strong className="text-[#0F172A]">{sold}</strong> sold</span>}
             {hasSupplier && <span>Ships from: <strong className="text-[#0F172A]">China</strong></span>}
           </div>
-          <h1 className="text-2xl sm:text-3xl font-extrabold text-[#0F172A] tracking-tight mt-1">{p.product_name}</h1>
-          {detailEff.short && (
+          <h1 className="text-2xl sm:text-3xl font-extrabold text-[#0F172A] tracking-tight mt-1">{rewritten.title}</h1>
+          {rewritten.short && (
             <p className="mt-2 rounded-lg border-l-4 border-[#F59E0B] bg-[#FFFBEB] px-3 py-2 text-sm text-slate-700">
-              {detailEff.short}
+              {rewritten.short}
             </p>
           )}
           <div className="flex items-center gap-2 mt-2">
@@ -543,7 +552,13 @@ export function ProductDetail({
               ? `≈ $${price.toFixed(2)}`
               : `≈ ₦${Math.round(price * rate).toLocaleString()}`} · pay in naira at checkout
           </p>
-          {p.product_description && <p className="text-sm text-slate-600 mt-3">{p.product_description}</p>}
+          {rewritten.paras.length > 0 && (
+            <div className="text-sm text-slate-600 mt-3 leading-relaxed space-y-3">
+              {rewritten.paras.map((para, i) => (
+                <p key={i}>{para}</p>
+              ))}
+            </div>
+          )}
 
           {/* supplier options — colors, sizes, types */}
           {attrs.length > 0 && (

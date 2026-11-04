@@ -1,0 +1,190 @@
+import type { Metadata } from "next"
+import Link from "next/link"
+import { notFound } from "next/navigation"
+import type { MarketDepartment } from "@/lib/marketplace-categories"
+import { fetchMarketplaceTree } from "@/lib/marketplace-category-db"
+import { deptBannerOf, linkOf } from "@/lib/marketplace-banners"
+import { fetchStoreProducts, fetchMarketBanners, fetchMarketMerch } from "@/lib/marketplace-products"
+import { ProductListing } from "@/components/marketplace/product-listing"
+import { StorePageShell } from "@/components/marketplace/store-shell"
+
+export const revalidate = 60
+
+// The store mirrors CJ's own three-level tree: department -> subcategory ->
+// leaf. Every level has its own page. This catch-all route handles nested
+// URLs like /marketplace/category/electronics/mobile-phones that the single-
+// segment [slug] route cannot match, so deep category links never 404.
+type Resolved =
+  | { kind: "dept"; dept: MarketDepartment; sub: null; leaf: null }
+  | { kind: "sub"; dept: MarketDepartment; sub: { name: string; slug: string }; leaf: null }
+  | {
+      kind: "leaf"
+      dept: MarketDepartment
+      sub: { name: string; slug: string }
+      leaf: { name: string; slug: string }
+    }
+
+function resolveCategoryByPath(path: string[], departments: MarketDepartment[]): Resolved | null {
+  if (path.length === 0) return null
+  const [first, ...rest] = path
+  for (const d of departments) {
+    if (d.slug === first) {
+      // Department match
+      if (rest.length === 0) return { kind: "dept", dept: d, sub: null, leaf: null }
+      // Look deeper into subcategories
+      for (const s of d.subs) {
+        if (s.slug === rest[0]) {
+          if (rest.length === 1) return { kind: "sub", dept: d, sub: { name: s.name, slug: s.slug }, leaf: null }
+          const leaf = s.items.find((i) => i.slug === rest[1])
+          if (leaf) return { kind: "leaf", dept: d, sub: { name: s.name, slug: s.slug }, leaf: { name: leaf.name, slug: leaf.slug } }
+        }
+      }
+    }
+  }
+  return null
+}
+
+export async function generateMetadata({ params }: { params: { slug: string[] } }): Promise<Metadata> {
+  const departments = await fetchMarketplaceTree()
+  const found = resolveCategoryByPath(params.slug, departments)
+  if (!found) return { title: "Category not found — TechPivo Market" }
+  const name =
+    found.kind === "dept"
+      ? found.dept.name
+      : found.kind === "sub"
+        ? `${found.sub.name} — ${found.dept.name}`
+        : `${found.leaf.name} — ${found.sub.name} — ${found.dept.name}`
+  const canonicalPath = params.slug.join("/")
+  return {
+    title: `${name} — TechPivo Market`,
+    description: `Shop ${name} on TechPivo Market — curated products with fast tracked delivery and secure checkout.`,
+    alternates: { canonical: `${process.env.NEXT_PUBLIC_SITE_URL || "https://techpivo.com"}/marketplace/category/${canonicalPath}` },
+  }
+}
+
+export default async function MarketplaceCategoryCatchAllPage({ params }: { params: { slug: string[] } }) {
+  const departments = await fetchMarketplaceTree()
+  const found = resolveCategoryByPath(params.slug, departments)
+  if (!found) notFound()
+
+  const slugs =
+    found.kind === "dept"
+      ? [found.dept.slug, ...found.dept.subs.map((s) => s.slug)]
+      : found.kind === "sub"
+        ? [found.sub.slug]
+        : []
+  const leafSlugs = found.kind === "leaf" ? [found.leaf.slug] : undefined
+  const [products, banners, merchState] = await Promise.all([
+    fetchStoreProducts({ slugs, leafSlugs, limit: 150 }),
+    fetchMarketBanners(),
+    fetchMarketMerch(),
+  ])
+  const title =
+    found.kind === "dept" ? found.dept.name : found.kind === "sub" ? found.sub.name : found.leaf.name
+
+  const uploadedBanner = deptBannerOf(banners, found.dept.slug, "")
+  const heroShots = products
+    .flatMap((p) => (p.product_image_url ? [{ id: p.id, name: p.product_name, url: p.product_image_url }] : []))
+    .slice(0, 4)
+
+  const canonicalPath = params.slug.join("/")
+
+  return (
+    <StorePageShell
+      trail={
+        found.kind === "sub"
+          ? [
+              { label: found.dept.name, href: `/marketplace/category/${found.dept.slug}` },
+              { label: found.sub.name },
+            ]
+          : found.kind === "leaf"
+            ? [
+                { label: found.dept.name, href: `/marketplace/category/${found.dept.slug}` },
+                { label: found.sub.name, href: `/marketplace/category/${found.dept.slug}/${found.sub.slug}` },
+                { label: found.leaf.name },
+              ]
+            : [{ label: title }]
+      }
+    >
+      {uploadedBanner ? (
+      <section className="overflow-hidden rounded-2xl border border-[#E2E8F0] bg-white shadow-sm">
+        {(() => {
+          const dest = linkOf(banners, uploadedBanner)
+          const img = (
+            <img src={uploadedBanner} alt={title} loading="eager" decoding="async" className="block h-auto w-full" />
+          )
+          return dest ? (
+            <Link href={dest} aria-label={title} className="block">{img}</Link>
+          ) : img
+        })()}
+        <div className="p-6 sm:p-8 text-white" style={{ background: "linear-gradient(120deg, #23272E 0%, #14171C 100%)" }}>
+          <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-[#F59E0B]">
+            {found.kind === "sub" ? found.dept.name : "Department"}
+          </p>
+          <h1 className="mt-1 text-2xl font-extrabold tracking-tight sm:text-3xl">{title}</h1>
+          <p className="mt-1 text-sm text-white/80">
+            Quality-checked, securely paid, delivered with tracking.
+          </p>
+          {found.kind === "dept" && (
+            <div className="flex flex-wrap gap-1.5 pt-2">
+              {found.dept.subs.map((s) => (
+                <Link
+                  key={s.slug}
+                  href={`/marketplace/category/${s.slug}`}
+                  className="rounded-full border border-white/25 bg-white/10 px-3 py-1 text-xs font-semibold text-white backdrop-blur-sm transition-colors hover:bg-white hover:text-[#0F172A]"
+                >
+                  {s.name}
+                </Link>
+              ))}
+            </div>
+          )}
+        </div>
+      </section>
+      ) : (
+      <section className="relative overflow-hidden rounded-2xl p-6 sm:p-8 text-white" style={{ background: "linear-gradient(120deg, #23272E 0%, #14171C 100%)" }}>
+        <div className="flex flex-col gap-6 md:flex-row md:items-center">
+          <div className="min-w-0 flex-1 space-y-2">
+            <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-[#F59E0B]">
+              {found.kind === "sub" ? found.dept.name : "Department"}
+            </p>
+            <h1 className="text-2xl font-extrabold tracking-tight sm:text-3xl">{title}</h1>
+            <p className="text-sm text-white/80">
+              Quality-checked, securely paid, delivered with tracking.
+            </p>
+            {found.kind === "dept" && (
+              <div className="flex flex-wrap gap-1.5 pt-1">
+                {found.dept.subs.map((s) => (
+                  <Link
+                    key={s.slug}
+                    href={`/marketplace/category/${s.slug}`}
+                    className="rounded-full border border-white/25 bg-white/10 px-3 py-1 text-xs font-semibold text-white backdrop-blur-sm transition-colors hover:bg-white hover:text-[#0F172A]"
+                  >
+                    {s.name}
+                  </Link>
+                ))}
+              </div>
+            )}
+          </div>
+          {heroShots.length > 0 && (
+            <div className="flex shrink-0 gap-2.5" aria-hidden={false}>
+              {heroShots.map((p) => (
+                <Link
+                  key={p.id}
+                  href={`/marketplace/product/${p.id}`}
+                  title={p.name}
+                  aria-label={`View ${p.name}`}
+                  className="block h-24 w-24 overflow-hidden rounded-xl border border-white/20 bg-white/5 transition-transform hover:scale-105 sm:h-32 sm:w-32"
+                >
+                  <img src={p.url} alt="" loading="eager" decoding="async" className="h-full w-full object-cover" />
+                </Link>
+              ))}
+            </div>
+          )}
+        </div>
+      </section>
+      )}
+
+      <ProductListing products={products} initialMerch={merchState} />
+    </StorePageShell>
+  )
+}

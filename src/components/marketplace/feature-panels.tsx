@@ -106,7 +106,7 @@ function FeaturedCard({ p, onAdd, added, wished, onWish }: { p: DemoProduct } & 
         )}
       </div>
       <div className="mt-2 flex flex-1 flex-col gap-1">
-        <p title={p.name} className="truncate text-[13px] font-semibold text-[#0F172A] transition-colors group-hover:text-[#B45309]">{p.name}</p>
+        <p title={p.name} className="line-clamp-2 text-[13px] font-semibold text-[#0F172A] transition-colors group-hover:text-[#B45309]">{p.name}</p>
         <div className="flex items-baseline gap-1.5">
           <MarketPrice usd={p.price} className="text-[15px] font-extrabold tabular-nums text-[#0F172A]" />
           {showSale && p.oldPrice && p.oldPrice > p.price && (
@@ -130,6 +130,15 @@ function FeaturedCard({ p, onAdd, added, wished, onWish }: { p: DemoProduct } & 
   )
 }
 
+function panelHref(title: string): string {
+  const map: Record<string, string> = {
+    "New Arrivals": "/marketplace/new-arrivals",
+    "Featured Products": "/marketplace/new-arrivals",
+    "Best Selling": "/marketplace/best-sellers",
+  }
+  return map[title] || "/marketplace"
+}
+
 export function FeaturePanels({
   groups,
   onAdd,
@@ -149,13 +158,13 @@ export function FeaturePanels({
     <section aria-label="Featured product panels" className="bg-white rounded-2xl p-5 shadow-sm border border-[#E2E8F0]">
       {live.map((g) => (
         <section key={g.title} className="mb-10 last:mb-0">
-          <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+          <div className="mb-3 flex items-center justify-between gap-2">
             <h2 className="text-lg font-extrabold uppercase tracking-tight text-[#0F172A]">{g.title}</h2>
             <Link
-              href={`/marketplace/${g.title.toLowerCase().replace(" ", "-")}`}
-              className="text-sm font-semibold text-[#B45309] hover:underline"
+              href={panelHref(g.title)}
+              className="inline-flex items-center gap-1 text-sm font-semibold text-[#B45309] hover:text-[#D97706] hover:underline transition-colors"
             >
-              Shop the collection →
+              Shop {g.title} <span className="text-[#B45309]">→</span>
             </Link>
           </div>
           <div className="flex gap-3 overflow-x-auto pb-1 snap-x" style={{ scrollbarWidth: "none" }}>

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { revalidatePath } from "next/cache"
 import { requireAdminRole, createServiceClient } from "@/lib/admin-auth"
 import { SITE_URL } from "@/lib/constants"
+import type { MarketDepartment } from "@/lib/marketplace-categories"
 import { cjListProducts, cjProductMatchesQuery, cjSearchProducts, cjStatus, mapCjToAffiliate, resolveCjApiKey } from "@/lib/cj"
 
 // All database work in this route runs through the service-role client.
@@ -985,6 +986,160 @@ export async function POST(request: NextRequest) {
       clearMarketplaceTreeCache()
       revalidateStore()
       return NextResponse.json({ success: true })
+    }
+    // Populate empty categories — for every department/subcategory/leaf with
+    // zero products, search CJ and import a batch of qualified products so no
+    // category on the storefront is ever empty.
+    if (body.action === "populate-categories") {
+      const { fetchMarketplaceTree } = await import("@/lib/marketplace-category-db")
+      const { cjSearchProducts, cjGetProductDetail, mapCjToAffiliate } = await import("@/lib/cj")
+      const { codeTreeRows, clearMarketplaceTreeCache } = await import("@/lib/marketplace-category-db")
+      const { MARKET_DEPARTMENTS } = await import("@/lib/marketplace-categories")
+
+      const targetSlug = body.category_slug ? String(body.category_slug).slice(0, 90) : null
+      const limitPerCat = Math.min(Math.max(Number(body.limit) || 12, 1), 40)
+
+      const departments = await fetchMarketplaceTree()
+      const allCategories: Array<{ slug: string; name: string; depth: number; parent: string | null }> = []
+      const walk = (deps: MarketDepartment[], parent: string | null) => {
+        for (const d of deps) {
+          allCategories.push({ slug: d.slug, name: d.name, depth: 0, parent })
+          for (const s of d.subs) {
+            allCategories.push({ slug: s.slug, name: s.name, depth: 1, parent: d.slug })
+            for (const l of s.items) {
+              allCategories.push({ slug: l.slug, name: l.name, depth: 2, parent: s.slug })
+            }
+          }
+        }
+      }
+      walk(departments, null)
+
+      const targets = targetSlug ? allCategories.filter((c) => c.slug === targetSlug) : allCategories
+
+      const results: Array<{ slug: string; name: string; existing: number; imported: number; skipped: number }> = []
+      let totalImported = 0
+
+      for (const cat of targets) {
+        // Count existing products for this category
+        const [{ count: existingCount }] = await Promise.all([
+          supabase
+            .from("affiliate_products")
+            .select("id", { count: "exact", head: true })
+            .eq("is_active", true)
+            .or(`category_slug.eq.${cat.slug},subcategory_slug.eq.${cat.slug}`),
+        ])
+        const existing = existingCount ?? 0
+        if (existing > 0) {
+          results.push({ slug: cat.slug, name: cat.name, existing, imported: 0, skipped: 0 })
+          continue
+        }
+
+        // Search CJ for products in this category
+        let cjList: Array<{ pid: string; productNameEn: string; productImage: string; sellPrice: number; categoryFirstName: string; categorySecondName: string; sku: string }> = []
+        try {
+          const keyName = cat.depth === 0 ? cat.name : cat.depth === 1 ? `${departments.find((d) => d.subs.some((s) => s.slug === cat.parent))?.name} > ${cat.name}` : cat.name
+          const searchRes = await cjSearchProducts({
+            keyWord: cat.name,
+            page: 1,
+            size: limitPerCat,
+            sort: "match",
+          })
+          cjList = (searchRes.list || []).map((p) => ({
+            pid: String(p.pid || ""),
+            productNameEn: String(p.productNameEn || ""),
+            productImage: String(p.productImage || ""),
+            sellPrice: Number(p.sellPrice) || 0,
+            categoryFirstName: String(p.categoryFirstName || ""),
+            categorySecondName: String(p.categorySecondName || ""),
+            sku: String(p.sku || ""),
+          })).filter((c) => c.pid)
+        } catch {
+          // CJ unreachable — skip this category
+          results.push({ slug: cat.slug, name: cat.name, existing: 0, imported: 0, skipped: 0 })
+          continue
+        }
+
+        if (cjList.length === 0) {
+          results.push({ slug: cat.slug, name: cat.name, existing: 0, imported: 0, skipped: 0 })
+          continue
+        }
+
+        // Duplicate guard
+        const pids = cjList.map((c) => c.pid)
+        const { data: dupRows } = await supabase
+          .from("affiliate_products")
+          .select("cj_pid")
+          .in("cj_pid", pids.slice(0, 200))
+        const existingPids = new Set((dupRows || []).map((r) => r.cj_pid).filter(Boolean))
+        const fresh = cjList.filter((c) => !existingPids.has(c.pid))
+
+        if (fresh.length === 0) {
+          results.push({ slug: cat.slug, name: cat.name, existing: 0, imported: 0, skipped: cjList.length })
+          continue
+        }
+
+        // Hydrate variants (best effort)
+        const withVid = new Map<string, string>()
+        const skuByPid = new Map<string, string>()
+        for (const cj of fresh.slice(0, 8)) {
+          try {
+            const product = await cjGetProductDetail(cj.pid)
+            const priced = (product.variants || [])
+              .map((v) => ({ vid: String(v.vid || ""), price: Number(v.variantSellPrice) || 0 }))
+              .filter((v) => v.vid)
+              .sort((a, b) => a.price - b.price)
+            if (priced.length > 0) withVid.set(cj.pid, priced[0].vid)
+            if (product.sku) skuByPid.set(cj.pid, product.sku)
+          } catch {
+            // best effort
+          }
+          await new Promise((r) => setTimeout(r, 150))
+        }
+
+        // Map category slugs
+        let categorySlug: string | null = cat.slug
+        let subcategorySlug: string | null = null
+        if (cat.depth === 1) {
+          subcategorySlug = cat.slug
+          // Find parent dept slug
+          const parentDept = departments.find((d) => d.subs.some((s) => s.slug === cat.slug))
+          categorySlug = parentDept?.slug || null
+        } else if (cat.depth === 2) {
+          subcategorySlug = cat.slug
+          const parentSub = departments.flatMap((d) => d.subs).find((s) => s.items.some((i) => i.slug === cat.slug))
+          const parentDept = departments.find((d) => d.subs.some((s) => s.slug === parentSub?.slug))
+          categorySlug = parentDept?.slug || null
+        }
+
+        const rows = fresh.map((cj) =>
+          mapCjToAffiliate(cj, {
+            categorySlug,
+            subcategorySlug,
+            cjVid: withVid.get(cj.pid) || null,
+            cjSku: skuByPid.get(cj.pid) || cj.sku || null,
+          })
+        )
+
+        if (rows.length === 0) {
+          results.push({ slug: cat.slug, name: cat.name, existing: 0, imported: 0, skipped: fresh.length })
+          continue
+        }
+
+        const { data, error } = await supabase.from("affiliate_products").insert(rows).select("id")
+        if (error) throw error
+        const imported = data?.length ?? 0
+        totalImported += imported
+        results.push({ slug: cat.slug, name: cat.name, existing: 0, imported, skipped: fresh.length - imported })
+      }
+
+      clearMarketplaceTreeCache()
+      revalidateStore()
+      return NextResponse.json({
+        success: true,
+        totalImported,
+        categories: results,
+        message: `Populated ${results.filter((r) => r.imported > 0).length} empty category/categories with ${totalImported} products.`,
+      })
     }
     if (body.action === "cj-import") {
       const items: unknown[] = Array.isArray(body.items) ? (body.items as unknown[]) : []

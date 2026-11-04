@@ -37,6 +37,7 @@ export interface DemoProduct {
   badge?: string
   stockLeft?: number
   stockTotal?: number
+  shortDescription?: string
 }
 
 const px = (id: number, w = 800) =>

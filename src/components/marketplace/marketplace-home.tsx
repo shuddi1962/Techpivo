@@ -16,6 +16,7 @@ import {
 import { EMPTY_BANNERS, campaignView, flashSecondsLeft, linkOf, markPopupShown, parseBanners, pickPopupCampaign, slidesOfObjects, slotSliderProps, splitCountdown, stampPopup, type MarketBanners } from "@/lib/marketplace-banners"
 import { useMarketplaceTree } from "./market-category-store"
 import { marketImage, cleanSupplierText } from "@/lib/marketplace-images"
+import { cleanProductTitle, shortProductDescription } from "@/lib/marketplace-copy"
 import { readCompare, toggleCompareStored } from "@/lib/marketplace-compare"
 import { MarketplaceFooter } from "./marketplace-header"
 import { BannerSlider } from "./banner-slider"
@@ -129,7 +130,10 @@ function ProductCard({ p, onAdd, wished, onWish, added, href }: { p: DemoProduct
         )}
       </div>
       <div className="flex flex-1 flex-col gap-1 p-3">
-        <h5 className="truncate text-[13px] font-semibold leading-snug text-[#0F172A] transition-colors group-hover:text-[#B45309]">{p.name}</h5>
+        <h5 className="line-clamp-2 text-[13px] font-semibold leading-snug text-[#0F172A] transition-colors group-hover:text-[#B45309]">{cleanProductTitle(p.name)}</h5>
+        {p.shortDescription && (
+          <p className="line-clamp-1 text-[11px] text-slate-500 mt-0.5">{p.shortDescription}</p>
+        )}
         <div className="flex items-baseline gap-1.5">
           <MarketPrice usd={p.price} className={`text-[15px] font-extrabold tabular-nums ${showSale ? "text-[#DC2626]" : "text-[#0F172A]"}`} />
           {p.oldPrice && showSale && <MarketPrice usd={p.oldPrice} className="text-[11px] tabular-nums text-slate-400 line-through" />}
@@ -285,6 +289,27 @@ function takeFresh<T extends { id: string }>(pool: T[], used: Set<string>, n: nu
   return out
 }
 
+// Like takeFresh but starts at `offset` (wrapping around the pool) so the
+// same products stop monopolising the homepage rails — the offset rotates
+// over time via the `rot` state, giving different products their turn.
+function takeRotated<T extends { id: string }>(
+  pool: T[],
+  used: Set<string>,
+  n: number,
+  offset: number,
+): T[] {
+  if (pool.length === 0) return []
+  const start = ((offset % pool.length) + pool.length) % pool.length
+  const out: T[] = []
+  for (let i = 0; i < pool.length && out.length < n; i++) {
+    const p = pool[(start + i) % pool.length]
+    if (used.has(p.id)) continue
+    out.push(p)
+    used.add(p.id)
+  }
+  return out
+}
+
 interface RevStat { sum: number; n: number }
 
 export function MarketplaceHome() {
@@ -393,13 +418,13 @@ export function MarketplaceHome() {
       if (auto) clearTimeout(auto)
     }
   }, [showNotice, campaign, closeNotice])
-  // Collection-cover rotation: every 30s the tiles re-deal from each
+  // Collection-cover rotation: every 10 minutes the tiles re-deal from each
   // node's own live photos, so covers change on their own over time.
   const [rot, setRot] = useState(0)
   useEffect(() => {
     const t = setInterval(() => {
       if (!document.hidden) setRot((r) => r + 1)
-    }, 30000)
+    }, 600000)
     return () => clearInterval(t)
   }, [])
   const t = useCountdown(banners.flash_end_at)
@@ -525,6 +550,7 @@ export function MarketplaceHome() {
           reviews: st?.n ?? 0,
           image: d.product_image_url || "",
           badge: d.is_featured ? "Featured" : undefined,
+          shortDescription: shortProductDescription(d.product_description || d.product_name || ""),
         }
       }),
     [dbProducts, revStats]

@@ -117,10 +117,10 @@
   }
   body {
     background: var(--bg);
-    color: var(--text);
+    color: #0F172A;
     font-family: var(--font-dm-sans, 'DM Sans', system-ui, -apple-system, 'Segoe UI', sans-serif);
-    font-size: 16px;
-    line-height: 1.65;
+    font-size: 15px;
+    line-height: 1.7;
     -webkit-font-smoothing: antialiased;
     text-rendering: optimizeLegibility;
   }
