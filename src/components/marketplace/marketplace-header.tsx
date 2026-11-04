@@ -402,10 +402,10 @@ const [currency, setCurrency] = useState("USD")
                   onClick={() => setCurrencyOpen((o) => !o)}
                   aria-label="Switch currency between USD and NGN"
                   aria-expanded={currencyOpen}
-                  className="inline-flex items-center gap-1.5 cursor-pointer rounded-lg px-3 py-1.5 text-white font-semibold bg-white/20 border border-white/25 hover:bg-white/30 hover:border-white/40 transition-all focus-visible:ring-2 focus-visible:ring-white/50 focus-visible:outline-none"
+                  className="inline-flex items-center gap-1.5 cursor-pointer rounded-lg px-3 py-1.5 text-white font-bold bg-[#FF6B00]/90 border border-[#FF6B00] hover:bg-[#FF6B00] hover:border-[#FF6B00] transition-all focus-visible:ring-2 focus-visible:ring-[#FF6B00]/50 focus-visible:outline-none shadow-sm"
                 >
                   <span className="text-xs">{currency}</span>
-                  <ChevronDown className="h-3.5 w-3.5 text-white/90" />
+                  <ChevronDown className="h-3.5 w-3.5 text-white" />
                 </button>
                 {currencyOpen && (
                   <div role="listbox" className="absolute top-full mt-2 left-0 w-32 rounded-xl border border-[#E2E8F0] bg-white py-2 shadow-2xl z-[1000] animate-slide-down">
@@ -416,7 +416,7 @@ const [currency, setCurrency] = useState("USD")
                         role="option"
                         aria-selected={currency === code}
                         onClick={() => setCurrencyChoice(code)}
-                        className={`block w-full px-3 py-2 text-left text-sm font-semibold transition-colors ${currency === code ? "text-[#0F4FB3] bg-[#1668DC]/10 border-r-2 border-[#1668DC]" : "text-slate-800 hover:bg-[#FFF1F2] hover:text-[#0F4FB3]"}`}
+                        className={`block w-full px-3 py-2 text-left text-sm font-semibold transition-colors ${currency === code ? "text-[#FF6B00] bg-[#FFF1F2] border-r-2 border-[#FF6B00]" : "text-slate-800 hover:bg-[#FFF1F2] hover:text-[#FF6B00]"}`}
                       >
                         {code}
                       </button>

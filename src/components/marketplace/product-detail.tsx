@@ -232,6 +232,7 @@ export function ProductDetail({
   const [rText, setRText] = useState("")
   const [rSending, setRSending] = useState(false)
   const [rNotice, setRNotice] = useState("")
+  const [showFull, setShowFull] = useState(false)
 
   // Live reviews: other shoppers' reviews appear without a reload.
   useEffect(() => {
@@ -552,11 +553,27 @@ export function ProductDetail({
               ? `≈ $${price.toFixed(2)}`
               : `≈ ₦${Math.round(price * rate).toLocaleString()}`} · pay in naira at checkout
           </p>
+          {rewritten.short && (
+            <div className="mt-2 rounded-lg border-l-4 border-[#F59E0B] bg-[#FFFBEB] px-3 py-2 text-sm text-slate-700">
+              {rewritten.short}
+            </div>
+          )}
           {rewritten.paras.length > 0 && (
-            <div className="text-sm text-slate-600 mt-3 leading-relaxed space-y-3">
-              {rewritten.paras.map((para, i) => (
-                <p key={i}>{para}</p>
-              ))}
+            <div className="mt-4">
+              <button
+                type="button"
+                onClick={() => setShowFull((prev) => !prev)}
+                className="flex items-center gap-1 text-xs font-semibold text-[#B45309] hover:text-[#D97706] hover:underline"
+              >
+                {showFull ? "Read less" : "Read more"} <span>▾</span>
+              </button>
+              <div
+                className={`text-sm text-slate-700 leading-relaxed space-y-3 mt-2 ${showFull ? "" : "hidden"}`}
+              >
+                {rewritten.paras.map((para, i) => (
+                  <p key={i}>{para}</p>
+                ))}
+              </div>
             </div>
           )}
 

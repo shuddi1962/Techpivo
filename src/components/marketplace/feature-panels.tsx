@@ -158,15 +158,7 @@ export function FeaturePanels({
     <section aria-label="Featured product panels" className="bg-white rounded-2xl p-5 shadow-sm border border-[#E2E8F0]">
       {live.map((g) => (
         <section key={g.title} className="mb-10 last:mb-0">
-          <div className="mb-3 flex items-center justify-between gap-2">
-            <h2 className="text-lg font-extrabold uppercase tracking-tight text-[#0F172A]">{g.title}</h2>
-            <Link
-              href={panelHref(g.title)}
-              className="inline-flex items-center gap-1 text-sm font-semibold text-[#B45309] hover:text-[#D97706] hover:underline transition-colors"
-            >
-              Shop {g.title} <span className="text-[#B45309]">→</span>
-            </Link>
-          </div>
+          <h2 className="text-lg font-extrabold uppercase tracking-tight text-[#0F172A]">{g.title}</h2>
           <div className="flex gap-3 overflow-x-auto pb-1 snap-x" style={{ scrollbarWidth: "none" }}>
             {g.items.map((p) => (
               <FeaturedCard key={p.id} p={p} onAdd={onAdd} added={added} wished={wished} onWish={onWish} />

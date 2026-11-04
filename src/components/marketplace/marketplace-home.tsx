@@ -130,7 +130,7 @@ function ProductCard({ p, onAdd, wished, onWish, added, href }: { p: DemoProduct
         )}
       </div>
       <div className="flex flex-1 flex-col gap-1 p-3">
-        <h5 className="line-clamp-2 text-[13px] font-semibold leading-snug text-[#0F172A] transition-colors group-hover:text-[#B45309]">{cleanProductTitle(p.name)}</h5>
+        <h5 className="text-[13px] font-semibold leading-snug text-[#0F172A] transition-colors group-hover:text-[#B45309]">{cleanProductTitle(p.name)}</h5>
         {p.shortDescription && (
           <p className="line-clamp-1 text-[11px] text-slate-500 mt-0.5">{p.shortDescription}</p>
         )}
