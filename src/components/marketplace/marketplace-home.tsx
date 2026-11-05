@@ -21,7 +21,6 @@ import { readCompare, toggleCompareStored } from "@/lib/marketplace-compare"
 import { MarketplaceFooter } from "./marketplace-header"
 import { BannerSlider } from "./banner-slider"
 import { WelcomePopupCard } from "./welcome-popup"
-import { FeaturePanels } from "./feature-panels"
 import { CategoryShowcase } from "./category-showcase"
 import { ShopCollections, type CollectionItem } from "./shop-collections"
 import { BrandRail } from "./brand-rail"
@@ -1145,20 +1144,10 @@ export function MarketplaceHome() {
         </section>
         <SectionDivider />
 
-        {/* feature panels — new arrivals / featured / best selling */}
-        {loaded ? (
-        <FeaturePanels
-          groups={[
-            { title: "New Arrivals", items: newArrivals, shopAllHref: "/marketplace/new-arrivals", offset: rot },
-            { title: "Featured Products", items: featured, shopAllHref: "/marketplace/new-arrivals", offset: rot },
-            { title: "Best Selling", items: best, shopAllHref: "/marketplace/best-sellers", offset: rot },
-          ]}
-          onAdd={addToCart}
-          added={justAdded}
-          wished={wishlist}
-          onWish={toggleWish}
-        />
-        ) : null}
+        {/* feature panels — removed to avoid a duplicate New/Best/Featured section
+            right after Shop by Collections; the tabbed products rail above
+            already covers New Arrivals / Featured Products / Best Selling. */}
+        {null}
 
         {/* trending slider — products not shown in any rail above */}
         {(() => {

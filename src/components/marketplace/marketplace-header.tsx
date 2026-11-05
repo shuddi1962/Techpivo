@@ -407,15 +407,15 @@ const [currencyOpen, setCurrencyOpen] = useState(false)
                 <button
                   type="button"
                   onClick={() => setCurrencyOpen((o) => !o)}
-                  aria-label="Switch currency between USD and NGN"
+                  aria-label="Switch currency"
                   aria-expanded={currencyOpen}
-                  className="inline-flex items-center gap-1.5 cursor-pointer rounded-lg px-3 py-1.5 text-white font-bold bg-[#FF6B00]/90 border border-[#FF6B00] hover:bg-[#FF6B00] hover:border-[#FF6B00] transition-all focus-visible:ring-2 focus-visible:ring-[#FF6B00]/50 focus-visible:outline-none shadow-sm"
+                  className="inline-flex items-center gap-1.5 cursor-pointer rounded-lg px-3 py-1.5 text-white font-bold border border-white/20 bg-white/10 hover:bg-white/20 transition-all focus-visible:ring-2 focus-visible:ring-white/40 focus-visible:outline-none shadow-sm backdrop-blur-sm"
                 >
                   <span className="text-xs">{currency}</span>
                   <ChevronDown className="h-3.5 w-3.5 text-white" />
                 </button>
                 {currencyOpen && (
-                  <div role="listbox" className="absolute top-full mt-2 left-0 w-40 rounded-xl border border-[#E2E8F0] bg-white py-2 shadow-2xl z-[1000] animate-slide-down">
+                  <div role="listbox" className="fixed top-[44px] left-0 z-[9999] w-48 rounded-xl border border-[#E2E8F0] bg-white py-2 shadow-2xl">
                     {MARKET_CURRENCIES.map((code) => (
                       <button
                         key={code}
