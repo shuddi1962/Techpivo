@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { useEffect, useMemo, useState } from "react"
-import { ArrowLeft, ArrowLeftRight, Check, ShoppingCart, Trash2 } from "lucide-react"
+import { ArrowLeft, ArrowLeftRight, Check, ShoppingCart, Star, Trash2 } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
 import { addToCart } from "@/lib/marketplace-cart"
 import { clearCompare, toggleCompareStored, useCompareIds } from "@/lib/marketplace-compare"
@@ -11,7 +11,19 @@ import { supplierDisplayName } from "@/lib/marketplace"
 import { openCartPopup } from "@/lib/marketplace-events"
 import { MarketplaceFooter, MarketplaceHeader } from "@/components/marketplace/marketplace-header"
 import { MarketPrice } from "@/components/marketplace/market-price"
-import { PanelStars } from "@/components/marketplace/feature-panels"
+
+function RatingStars({ value }: { value: number }) {
+  return (
+    <span className="flex items-center gap-0.5" aria-label={`${value.toFixed(1)} out of 5 stars`}>
+      {Array.from({ length: 5 }).map((_, i) => (
+        <Star
+          key={i}
+          className={`h-3.5 w-3.5 ${i < Math.round(value) ? "fill-[#F59E0B] text-[#F59E0B]" : "text-slate-300"}`}
+        />
+      ))}
+    </span>
+  )
+}
 
 interface CmpProduct {
   id: string
@@ -126,7 +138,7 @@ function CompareTable({ ids }: { ids: string[] }) {
         const st = stats[p.id]
         return st && st.n > 0 ? (
           <span className="inline-flex items-center gap-1.5">
-            <PanelStars value={st.sum / st.n} />
+            <RatingStars value={st.sum / st.n} />
             <span className="text-xs font-semibold text-slate-500">{(st.sum / st.n).toFixed(1)} ({st.n})</span>
           </span>
         ) : (

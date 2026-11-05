@@ -16,6 +16,19 @@ export const MARKET_CURRENCIES: MarketCurrency[] = [
   "USD", "NGN", "EUR", "GBP", "GHS", "KES", "ZAR", "CAD", "AUD", "INR", "JPY", "AED",
 ]
 
+/** Map ISO country code → default display currency for geo-location. */
+export const COUNTRY_TO_CURRENCY: Record<string, MarketCurrency> = {
+  NG: "NGN", US: "USD", GB: "GBP", EUR: "EUR", DE: "EUR", FR: "EUR", ES: "EUR", IT: "EUR", NL: "EUR",
+  GH: "GHS", KE: "KES", ZA: "ZAR", CA: "CAD", AU: "AUD", IN: "INR", JP: "JPY", AE: "AED", SA: "AED",
+}
+
+/** Resolve the best default currency from a detected country code. */
+export function currencyForCountry(countryCode: string | null | undefined): MarketCurrency {
+  if (!countryCode) return "USD"
+  const mapped = COUNTRY_TO_CURRENCY[countryCode.toUpperCase()]
+  return mapped ?? "USD"
+}
+
 export function readMarketCurrency(): MarketCurrency {
   if (typeof window === "undefined") return "USD"
   try {

@@ -10,10 +10,11 @@ import { marketImage } from "@/lib/marketplace-images"
 import {
   readShipSelection, saveShipSelection, standardFee, STANDARD_FLAT_USD, EXPRESS_FLAT_USD, FREE_SHIP_THRESHOLD_USD, SHIP_COUNTRIES, DEFAULT_SHIP_COUNTRY, type ShipOption, type ShipSelection,
 } from "@/lib/marketplace-shipping"
-import { getGeoOnce } from "@/lib/tools-geo"
+import { getGeoOnce, useGeoLocation } from "@/lib/tools-geo"
 import { DeliveryPicker } from "./delivery-picker"
-import { useMarketCurrency, useFxRate } from "@/lib/marketplace-pricing"
+import { useMarketCurrency, useFxRate, currencyForCountry } from "@/lib/marketplace-pricing"
 import { MarketPrice } from "./market-price"
+import { fxFormat } from "@/lib/fx-shared"
 import { SaleCountdown, useSaleEnd } from "./sale-countdown"
 import { useSaleBadge } from "./market-flags"
 import { rewriteProduct } from "@/lib/marketplace-copy"
@@ -217,6 +218,23 @@ export function ProductDetail({
 }) {
   const currency = useMarketCurrency()
   const rate = useFxRate(currency)
+  // Geo-seed the default currency from the visitor's IP on first visit
+  // (no stored preference), then let them switch freely.
+  const { geo } = useGeoLocation()
+  useEffect(() => {
+    if (geo?.countryCode && typeof window !== "undefined") {
+      try {
+        const stored = window.localStorage.getItem("tp_market_currency_v1")
+        if (!stored) {
+          const seeded = currencyForCountry(geo.countryCode)
+          window.localStorage.setItem("tp_market_currency_v1", seeded)
+          window.dispatchEvent(new Event("tp-market-currency"))
+        }
+      } catch {
+        // ignore
+      }
+    }
+  }, [geo?.countryCode])
   const saleEnd = useSaleEnd(p.id)
   // Store-wide switch + per-product flag decide if the discount shows at all.
   const saleBadgeAllowed = useSaleBadge(p.id)
@@ -549,9 +567,9 @@ export function ProductDetail({
             {showSale && saleEnd.trim() && <SaleCountdown endAt={saleEnd} prefix="Sale ends in" />}
           </div>
           <p className="text-sm font-semibold text-slate-600 mt-1">
-            {currency === "NGN"
-              ? `≈ $${price.toFixed(2)}`
-              : `≈ ₦${Math.round(price * rate).toLocaleString()}`} · pay in naira at checkout
+            {currency === "USD"
+              ? `≈ ${fxFormat(Math.round(price * rate * 100) / 100, "NGN", { maxFrac: 0 })} at checkout`
+              : `${fxFormat(Math.round(price * rate * 100) / 100, currency, { maxFrac: currency === "JPY" ? 0 : 2 })} · checkout in ${currency}`}
           </p>
           {rewritten.paras.length > 0 && (
             <div className="mt-4">
