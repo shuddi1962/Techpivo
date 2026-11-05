@@ -8,7 +8,7 @@ import { getCart, removeFromCart, setQty, useMarketCart } from "@/lib/marketplac
 import { openCheckout } from "@/lib/marketplace-events"
 import { marketImage } from "@/lib/marketplace-images"
 import { readShipSelection, shippingCost, FREE_SHIP_THRESHOLD_USD } from "@/lib/marketplace-shipping"
-import { useMarketCurrency, useUsdNgnRate } from "@/lib/marketplace-pricing"
+import { useMarketCurrency, useFxRate } from "@/lib/marketplace-pricing"
 import { MarketPrice } from "./market-price"
 
 interface Row {
@@ -21,8 +21,8 @@ interface Row {
 
 export function CartPage() {
   const cart = useMarketCart()
-  const rate = useUsdNgnRate()
   const currency = useMarketCurrency()
+  const rate = useFxRate(currency)
   const [rows, setRows] = useState<Row[]>([])
   const [loading, setLoading] = useState(true)
   const [shipSel, setShipSel] = useState({ id: "standard", name: "Standard", feeUsd: 0 })

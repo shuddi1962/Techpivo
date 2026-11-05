@@ -7,7 +7,7 @@ import { ArrowLeft, Loader2, Lock, RotateCcw, ShieldCheck, Truck } from "lucide-
 import { createClient } from "@/lib/supabase/client"
 import { marketImage } from "@/lib/marketplace-images"
 import { clearCart, getCart, useMarketCart } from "@/lib/marketplace-cart"
-import { useMarketCurrency, useUsdNgnRate } from "@/lib/marketplace-pricing"
+import { useMarketCurrency, useFxRate } from "@/lib/marketplace-pricing"
 import { MarketPrice } from "./market-price"
 import {
   readShipSelection, saveShipSelection, storeShipOptions, visibleShipOptions, resolveShipActive, SHIP_COUNTRIES, DEFAULT_SHIP_COUNTRY, FREE_SHIP_THRESHOLD_USD,
@@ -28,8 +28,8 @@ interface Row {
 export function CheckoutPage() {
   const router = useRouter()
   const cart = useMarketCart()
-  const rate = useUsdNgnRate()
   const currency = useMarketCurrency()
+  const rate = useFxRate(currency)
   const [rows, setRows] = useState<Row[]>([])
   const [loading, setLoading] = useState(true)
   const [paying, setPaying] = useState(false)

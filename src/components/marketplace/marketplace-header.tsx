@@ -17,7 +17,7 @@ import { cartCount as countLines, useMarketCart } from "@/lib/marketplace-cart"
 import { useCompareIds } from "@/lib/marketplace-compare"
 import { SuggestDropdown, useRemoteSuggest } from "./search-suggest"
 import { MarketCommerce } from "./market-commerce"
-import { readMarketCurrency, setMarketCurrency } from "@/lib/marketplace-pricing"
+import { readMarketCurrency, setMarketCurrency, MARKET_CURRENCIES, type MarketCurrency } from "@/lib/marketplace-pricing"
 import { MARKET_STORE_DEFAULTS } from "@/lib/marketplace-store"
 
 const NAV: Array<{ label: string; href: string; external?: boolean }> = [
@@ -127,7 +127,7 @@ function readWishCount(): number {
   }
 }
 
-function readCurrency(): string {
+function readCurrency(): MarketCurrency {
   return readMarketCurrency()
 }
 
@@ -180,8 +180,8 @@ export function MarketplaceHeader({
   const [openDept, setOpenDept] = useState<string | null>(null)
 const [mobileExpanded, setMobileExpanded] = useState("")
 const [seeMore, setSeeMore] = useState(false)
-const [currency, setCurrency] = useState("USD")
-  const [currencyOpen, setCurrencyOpen] = useState(false)
+const [currency, setCurrency] = useState<MarketCurrency>(readMarketCurrency())
+const [currencyOpen, setCurrencyOpen] = useState(false)
   // Live, admin-editable category tree (falls back to the bundled tree).
   const departments = useMarketplaceTree()
   const deptWrapRef = useRef<HTMLDivElement>(null)
@@ -365,9 +365,16 @@ const [currency, setCurrency] = useState("USD")
   }
 
   const setCurrencyChoice = (code: string) => {
-    setCurrency(code)
+    setCurrency(code as MarketCurrency)
     setCurrencyOpen(false)
-    setMarketCurrency(code === "NGN" ? "NGN" : "USD")
+    setMarketCurrency(code === "NGN" ? "NGN" : (code as MarketCurrency))
+  }
+
+  const CURRENCY_LABEL: Record<string, string> = {
+    USD: "US Dollar", NGN: "Nigerian Naira", EUR: "Euro", GBP: "British Pound",
+    GHS: "Ghanaian Cedi", KES: "Kenyan Shilling", ZAR: "South African Rand",
+    CAD: "Canadian Dollar", AUD: "Australian Dollar", INR: "Indian Rupee",
+    JPY: "Japanese Yen", AED: "UAE Dirham",
   }
 
   const VISIBLE_DEPT_COUNT = 6
@@ -408,8 +415,8 @@ const [currency, setCurrency] = useState("USD")
                   <ChevronDown className="h-3.5 w-3.5 text-white" />
                 </button>
                 {currencyOpen && (
-                  <div role="listbox" className="absolute top-full mt-2 left-0 w-32 rounded-xl border border-[#E2E8F0] bg-white py-2 shadow-2xl z-[1000] animate-slide-down">
-                    {["USD", "NGN"].map((code) => (
+                  <div role="listbox" className="absolute top-full mt-2 left-0 w-40 rounded-xl border border-[#E2E8F0] bg-white py-2 shadow-2xl z-[1000] animate-slide-down">
+                    {MARKET_CURRENCIES.map((code) => (
                       <button
                         key={code}
                         type="button"
@@ -418,7 +425,8 @@ const [currency, setCurrency] = useState("USD")
                         onClick={() => setCurrencyChoice(code)}
                         className={`block w-full px-3 py-2 text-left text-sm font-semibold transition-colors ${currency === code ? "text-[#FF6B00] bg-[#FFF1F2] border-r-2 border-[#FF6B00]" : "text-slate-800 hover:bg-[#FFF1F2] hover:text-[#FF6B00]"}`}
                       >
-                        {code}
+                        <span className="font-medium">{code}</span>
+                        <span className="ml-2 text-xs text-slate-400">{CURRENCY_LABEL[code]}</span>
                       </button>
                     ))}
                   </div>

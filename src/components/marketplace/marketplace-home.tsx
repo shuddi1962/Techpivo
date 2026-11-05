@@ -850,7 +850,7 @@ export function MarketplaceHome() {
   })
 
   return (
-    <div className="w-full bg-[#F8FAFC] min-h-screen overflow-x-clip">
+    <div className="w-full bg-[#F8FAFC] min-h-screen overflow-x-clip marketplace-body">
 
       <main className="mx-auto w-full max-w-[1480px] px-3 sm:px-6 lg:px-10 py-6 sm:py-8 space-y-6 sm:space-y-8">
 
@@ -1149,9 +1149,9 @@ export function MarketplaceHome() {
         {loaded ? (
         <FeaturePanels
           groups={[
-            { title: "New Arrivals", items: newArrivals },
-            { title: "Featured Products", items: featured },
-            { title: "Best Selling", items: best },
+            { title: "New Arrivals", items: newArrivals, shopAllHref: "/marketplace/new-arrivals", offset: rot },
+            { title: "Featured Products", items: featured, shopAllHref: "/marketplace/new-arrivals", offset: rot },
+            { title: "Best Selling", items: best, shopAllHref: "/marketplace/best-sellers", offset: rot },
           ]}
           onAdd={addToCart}
           added={justAdded}

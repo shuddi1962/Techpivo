@@ -2,7 +2,7 @@
 
 import { Truck } from "lucide-react"
 import { SHIP_COUNTRIES, FREE_SHIP_THRESHOLD_USD, visibleShipOptions, resolveShipActive, type ShipOption, type ShipSelection } from "@/lib/marketplace-shipping"
-import { formatMarketPrice, useMarketCurrency, useUsdNgnRate } from "@/lib/marketplace-pricing"
+import { formatMarketPrice, useMarketCurrency, useFxRate } from "@/lib/marketplace-pricing"
 
 // CJ-style delivery picker: "Ship to [full country name] by [method]"
 // with the selected method's processing time, ETA and fee below.
@@ -34,7 +34,7 @@ export function DeliveryPicker({
   const active = resolveShipActive(shown, value)
   const live = shown.filter((o) => o.source === "supplier")
   const currency = useMarketCurrency()
-  const rate = useUsdNgnRate()
+  const rate = useFxRate(currency)
   const feeLabel = (feeUsd: number) =>
     feeUsd === 0 ? "FREE" : formatMarketPrice(feeUsd, rate, currency)
 

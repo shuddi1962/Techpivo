@@ -12,7 +12,7 @@ import {
 } from "@/lib/marketplace-shipping"
 import { getGeoOnce } from "@/lib/tools-geo"
 import { DeliveryPicker } from "./delivery-picker"
-import { useMarketCurrency, useUsdNgnRate } from "@/lib/marketplace-pricing"
+import { useMarketCurrency, useFxRate } from "@/lib/marketplace-pricing"
 import { MarketPrice } from "./market-price"
 import { SaleCountdown, useSaleEnd } from "./sale-countdown"
 import { useSaleBadge } from "./market-flags"
@@ -215,8 +215,8 @@ export function ProductDetail({
   sold: number
   hasSupplier: boolean
 }) {
-  const rate = useUsdNgnRate()
   const currency = useMarketCurrency()
+  const rate = useFxRate(currency)
   const saleEnd = useSaleEnd(p.id)
   // Store-wide switch + per-product flag decide if the discount shows at all.
   const saleBadgeAllowed = useSaleBadge(p.id)
@@ -472,7 +472,7 @@ export function ProductDetail({
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 marketplace-body">
       <section className="bg-white rounded-2xl border border-[#E2E8F0] p-4 sm:p-6 grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div>
           <div className="flex gap-3">

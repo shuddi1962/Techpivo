@@ -10,7 +10,7 @@ import { Loader2, Lock, ShieldCheck } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
 import { getCart, useMarketCart } from "@/lib/marketplace-cart"
 import { marketImage } from "@/lib/marketplace-images"
-import { useMarketCurrency, useUsdNgnRate } from "@/lib/marketplace-pricing"
+import { useMarketCurrency, useFxRate } from "@/lib/marketplace-pricing"
 import { MarketPrice } from "./market-price"
 import { ModalShell } from "./modal-shell"
 import { TPM_CHECKOUT, trackMarket } from "@/lib/marketplace-events"
@@ -33,8 +33,8 @@ interface Row {
 
 function CheckoutModalBody({ onClose }: { onClose: () => void }) {
   const cart = useMarketCart()
-  const rate = useUsdNgnRate()
   const currency = useMarketCurrency()
+  const rate = useFxRate(currency)
   const [rows, setRows] = useState<Row[]>([])
   const [loading, setLoading] = useState(true)
   const [paying, setPaying] = useState(false)
