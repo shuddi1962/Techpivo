@@ -7,10 +7,9 @@ import { ArrowLeft, Loader2, Lock, RotateCcw, ShieldCheck, Truck } from "lucide-
 import { createClient } from "@/lib/supabase/client"
 import { marketImage } from "@/lib/marketplace-images"
 import { clearCart, getCart, useMarketCart } from "@/lib/marketplace-cart"
-import { useMarketCurrency, useFxRate, currencyForCountry, MARKET_CURRENCY_KEY } from "@/lib/marketplace-pricing"
-import { setMarketCurrency } from "@/lib/marketplace-pricing"
-import { MarketPrice } from "./market-price"
+import { useMarketCurrency, useFxRate } from "@/lib/marketplace-pricing"
 import { fxFormat } from "@/lib/fx-shared"
+import { MarketPrice } from "./market-price"
 import {
   readShipSelection, saveShipSelection, storeShipOptions, visibleShipOptions, resolveShipActive, SHIP_COUNTRIES, DEFAULT_SHIP_COUNTRY, FREE_SHIP_THRESHOLD_USD,
   type ShipOption, type ShipSelection,
@@ -151,17 +150,6 @@ export function CheckoutPage() {
         const code = g?.countryCode?.toUpperCase()
         if (code && SHIP_COUNTRIES.some((c) => c.code === code)) {
           setForm((f) => ({ ...f, country: code }))
-        }
-        // Seed the default display currency from IP when the shopper has not
-        // already picked one — so the price they see matches what they pay.
-        if (!code) return
-        try {
-          const stored = window.localStorage.getItem(MARKET_CURRENCY_KEY)
-          if (!stored) {
-            setMarketCurrency(currencyForCountry(code))
-          }
-        } catch {
-          // ignore
         }
       })
       .catch(() => {
@@ -408,24 +396,20 @@ export function CheckoutPage() {
           <div className="flex justify-between items-baseline">
             <span className="text-sm font-bold text-[#0F172A]">Total</span>
             <span className="text-right">
-              <MarketPrice usd={totalUsd} className="block text-2xl font-extrabold text-[#0F172A]" />
-              <span className="block text-xs text-slate-500">
-                {/* The shopper sees the total in their selected currency. The
-                    Flutterwave gateway charges NGN, so state the honest live
-                    NGN equivalent that will actually be debited at checkout. */}
-                {currency !== "NGN" && (
-                  <>
-                    Charged at checkout ≈{" "}
-                    <span className="font-extrabold text-[#DC2626]">
-                      {fxFormat(totalNgn, "NGN", { maxFrac: 0 })}
-                    </span>
-                  </>
-                )}
-              </span>
+              {currency === "NGN" ? (
+                <MarketPrice usd={totalUsd} className="block text-2xl font-extrabold text-[#0F172A]" />
+              ) : (
+                <>
+                  <MarketPrice usd={totalUsd} className="block text-2xl font-extrabold text-[#0F172A]" />
+                  <span className="block text-xs text-slate-500">
+                    Charged at checkout ≈ <span className="font-extrabold text-[#DC2626]">{fxFormat(totalNgn, "NGN", { maxFrac: 0 })}</span>
+                  </span>
+                </>
+              )}
             </span>
           </div>
           <button onClick={pay} disabled={paying || lines.length === 0} className="w-full bg-[#10B981] hover:bg-[#059669] text-white text-sm font-bold py-3 rounded-lg disabled:opacity-60 flex items-center justify-center gap-2">
-            {paying ? <><Loader2 className="h-4 w-4 animate-spin" /> Starting payment...</> : <><Lock className="h-4 w-4" /> Pay ₦{totalNgn.toLocaleString()}</>}
+            {paying ? <><Loader2 className="h-4 w-4 animate-spin" /> Starting payment...</> : <><Lock className="h-4 w-4" /> Pay {currency === "NGN" ? <MarketPrice usd={totalUsd} /> : `₦${totalNgn.toLocaleString()}`}</>}
           </button>
           <div className="flex items-center justify-center gap-1.5">
             {["VISA", "MASTERCARD", "VERVE"].map((b) => (

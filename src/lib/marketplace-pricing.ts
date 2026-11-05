@@ -87,12 +87,12 @@ function readCache(from: string, to: string): number | null {
   }
 }
 
-let inflight: Promise<{ from: string; to: string; rate: number } | null> | null = null
+let inflight: Record<string, Promise<{ from: string; to: string; rate: number } | null>> = {}
 
 function sharedRate(from: string, to: string): Promise<{ from: string; to: string; rate: number } | null> {
   const key = `${from}:${to}`
-  if (!inflight) {
-    inflight = fetch(`/api/tools/fx?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}&amount=1`)
+  if (!inflight[key]) {
+    inflight[key] = fetch(`/api/tools/fx?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}&amount=1`)
       .then((r) => r.json())
       .then((j) => {
         const v = Number(j?.rate)
@@ -106,10 +106,10 @@ function sharedRate(from: string, to: string): Promise<{ from: string; to: strin
       })
       .catch(() => null)
       .finally(() => {
-        inflight = null
+        delete inflight[key]
       })
   }
-  return inflight.then((r) => (r && r.from === from && r.to === to ? r : null))
+  return inflight[key].then((r) => (r && r.from === from && r.to === to ? r : null))
 }
 
 /** Live conversion rate for any supported pair (cached 6h, fallback static). */

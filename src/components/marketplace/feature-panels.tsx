@@ -1,279 +1,23 @@
 "use client"
 
-import { useCallback, useEffect, useRef, useState } from "react"
-import { ChevronDown, ChevronUp, Star, ShoppingCart, Heart, ArrowLeftRight } from "lucide-react"
+import Link from "next/link"
+import { useState } from "react"
+import { ChevronRight, Star, ChevronUp } from "lucide-react"
 import type { DemoProduct } from "@/lib/marketplace"
 import { marketImage } from "@/lib/marketplace-images"
 import { MarketPrice } from "./market-price"
 import { useSaleBadge } from "./market-flags"
-import { addToCart as addLine } from "@/lib/marketplace-cart"
-import { readCompare, toggleCompareStored } from "@/lib/marketplace-compare"
 
 export function discountPct(price: number, oldPrice?: number): number {
   if (!oldPrice || oldPrice <= price) return 0
   return Math.round((1 - price / oldPrice) * 100)
 }
 
-/** Build four thumbnail candidates from the product's single image so the
- *  shopper can pick a view. Real image URLs only — no placeholder/fake art. */
-function thumbVariants(image: string): string[] {
-  const src = marketImage(image)
-  if (!src) return ["", "", "", ""]
-  const sizes = [900, 600, 400, 300]
-  try {
-    const u = new URL(src)
-    return sizes.map((w) => {
-      const v = new URL(u)
-      v.searchParams.set("w", String(w))
-      return v.toString()
-    })
-  } catch {
-    return [src, src, src, src]
-  }
-}
-
-interface CardProps {
-  p: DemoProduct
-  title: string
+interface PanelActions {
   onAdd: (p: DemoProduct) => void
   added: Record<string, boolean>
   wished: Record<string, boolean>
   onWish: (id: string) => void
-}
-
-function PanelStars({ value, size = "h-4 w-4" }: { value: number; size?: string }) {
-  return (
-    <span className="flex items-center gap-0.5" aria-label={`${value} out of 5 stars`}>
-      {Array.from({ length: 5 }).map((_, i) => (
-        <Star key={i} className={`${size} ${i < Math.round(value) ? "fill-[#F59E0B] text-[#F59E0B]" : "text-slate-300"}`} />
-      ))}
-    </span>
-  )
-}
-
-function rotateItems<T extends { id: string }>(items: T[], offset = 0): T[] {
-  if (items.length === 0) return items
-  const start = ((offset % items.length) + items.length) % items.length
-  return [...items.slice(start), ...items.slice(0, start)]
-}
-
-function ShowcaseCard({ p, title, onAdd, added, wished, onWish }: CardProps) {
-  const [collapsed, setCollapsed] = useState(false)
-  const [selected, setSelected] = useState(0)
-  const thumbsRef = useRef<HTMLDivElement>(null)
-  const [compared, setCompared] = useState<boolean>(() => readCompare()[p.id] === true)
-
-  const pct = discountPct(p.price, p.oldPrice)
-  const saleBadgeAllowed = useSaleBadge(p.id)
-  const showSale = pct > 0 && saleBadgeAllowed
-  const href = /^[0-9a-f-]{36}$/i.test(p.id) ? `/marketplace/product/${p.id}` : undefined
-  const thumbs = thumbVariants(p.image)
-  const activeThumb = thumbs[selected] || p.image
-  const avg = p.rating || 0
-  const priceUsd = Number(p.price || 0)
-  const saleUsd = showSale && p.oldPrice && p.oldPrice > priceUsd ? priceUsd : null
-  const oldUsd = showSale && p.oldPrice ? Number(p.oldPrice) : null
-
-  // Stay in sync with compare toggles made anywhere else on the site.
-  useEffect(() => {
-    const onChange = () => setCompared(readCompare()[p.id] === true)
-    window.addEventListener("tp-market-compare", onChange)
-    return () => window.removeEventListener("tp-market-compare", onChange)
-  }, [p.id])
-
-  const scrollThumbs = useCallback(
-    (delta: number) => {
-      const el = thumbsRef.current
-      if (!el) return
-      el.scrollBy({ top: delta * 104, behavior: "smooth" })
-    },
-    []
-  )
-
-  const toggleCompare = () => {
-    const next = toggleCompareStored(p.id)
-    setCompared(next)
-  }
-
-  const handleAdd = () => {
-    if (!href) return
-    onAdd(p)
-  }
-
-  const header = (
-    <div className="flex items-center justify-between px-4 py-3 border-b border-[#E2E8F0] bg-[#F8FAFC]">
-      <span className="inline-flex items-center gap-1 rounded-r-2xl bg-[#FFD000] px-3 py-1.5 text-[#0F172A] font-bold text-sm tracking-tight">
-        {title}
-      </span>
-      <button
-        type="button"
-        onClick={collapsed ? () => setCollapsed(false) : () => setCollapsed(true)}
-        aria-label={collapsed ? "Expand section" : "Collapse section"}
-        className="rounded-full p-1.5 bg-[#F8FAFC] hover:bg-[#E2E8F0] text-slate-500 transition-colors"
-      >
-        {collapsed ? <ChevronDown className="h-4 w-4" /> : <ChevronUp className="h-4 w-4" />}
-      </button>
-    </div>
-  )
-
-  if (collapsed) {
-    return (
-      <section className="rounded-xl border border-[#E2E8F0] bg-white shadow-sm overflow-hidden">
-        {header}
-      </section>
-    )
-  }
-
-  return (
-    <section className="rounded-xl border border-[#E2E8F0] bg-white shadow-sm overflow-hidden flex flex-col">
-      {header}
-
-      <div className="p-4">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
-          {/* Left: main product image */}
-          <div className="relative aspect-square w-full min-h-[260px] bg-[#F8FAFC] border border-[#E2E8F0] rounded-lg overflow-hidden flex items-center justify-center">
-            {activeThumb ? (
-              <img
-                src={activeThumb}
-                alt={p.name}
-                loading="lazy"
-                decoding="async"
-                className="h-full w-full object-contain bg-white"
-              />
-            ) : (
-              <div className="h-full w-full flex items-center justify-center text-slate-200">
-                <Star className="h-10 w-10" />
-              </div>
-            )}
-            {showSale && (
-              <span className="absolute top-3 left-3 z-20 inline-flex items-center gap-1 rounded-full bg-[#FFD000] px-2.5 py-1 text-[11px] font-extrabold text-[#0F172A] shadow-sm">
-                -{pct}%
-              </span>
-            )}
-            <button
-              type="button"
-              onClick={() => scrollThumbs(-1)}
-              aria-label="Scroll thumbnails up"
-              className="absolute top-2 right-2 z-30 rounded-full p-1.5 bg-white/90 border border-[#E2E8F0] text-slate-500 hover:bg-white hover:text-[#0F172A] transition-colors"
-            >
-              <ChevronUp className="h-3.5 w-3.5" />
-            </button>
-            <button
-              type="button"
-              onClick={() => scrollThumbs(1)}
-              aria-label="Scroll thumbnails down"
-              className="absolute bottom-2 right-2 z-30 rounded-full p-1.5 bg-white/90 border border-[#E2E8F0] text-slate-500 hover:bg-white hover:text-[#0F172A] transition-colors"
-            >
-              <ChevronDown className="h-3.5 w-3.5" />
-            </button>
-          </div>
-
-          {/* Right: vertically stacked thumbnails */}
-          <div className="flex flex-col gap-2 h-full min-h-[260px]">
-            <div
-              ref={thumbsRef}
-              className="flex flex-col gap-2 overflow-y-auto pr-1.5 max-h-[400px] scrollbar-hide"
-              style={{ scrollbarWidth: "none" }}
-            >
-              {thumbs.map((thumb, i) => (
-                <button
-                  key={i}
-                  type="button"
-                  onClick={() => setSelected(i)}
-                  aria-label={`Thumbnail view ${i + 1}`}
-                  aria-pressed={selected === i}
-                  className={`aspect-square w-full shrink-0 border rounded-lg bg-white flex items-center justify-center overflow-hidden transition-colors ${
-                    selected === i ? "border-[#FFD000] ring-1 ring-[#FFD000]" : "border-[#E2E8F0] hover:border-slate-400"
-                  }`}
-                >
-                  {thumb ? (
-                    <img src={thumb} alt="" loading="lazy" decoding="async" className="h-full w-full object-contain bg-white" />
-                  ) : (
-                    <div className="h-full w-full flex items-center justify-center text-slate-200">
-                      <Star className="h-8 w-8" />
-                    </div>
-                  )}
-                </button>
-              ))}
-            </div>
-          </div>
-        </div>
-
-        {/* Bottom: product information + shopping actions */}
-        <div className="mt-4 border-t border-[#E2E8F0] pt-4">
-          <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-3">
-            <div className="flex flex-col gap-1 lg:flex-1">
-              <p title={p.name} className="font-bold text-[#0F172A] text-sm leading-snug line-clamp-2">
-                {p.name}
-              </p>
-              <div className="flex items-center gap-1.5 mt-0.5">
-                <PanelStars value={avg} size="h-3.5 w-3.5" />
-                {avg > 0 ? (
-                  <span className="text-xs text-[#F59E0B] font-bold">{avg.toFixed(1)}</span>
-                ) : (
-                  <span className="text-xs text-slate-400">Unrated</span>
-                )}
-                <span className="text-xs text-slate-500">({p.reviews || 0})</span>
-              </div>
-              <div className="flex items-baseline gap-1.5 mt-1">
-                {saleUsd != null ? (
-                  <>
-                    <span className="font-extrabold text-[#DC2626]"><MarketPrice usd={saleUsd} /></span>
-                    <span className="text-sm text-slate-400 line-through"><MarketPrice usd={oldUsd} /></span>
-                  </>
-                ) : (
-                  <span className="font-extrabold text-[#0F172A]"><MarketPrice usd={priceUsd} /></span>
-                )}
-              </div>
-            </div>
-            <div className="flex items-center gap-2 lg:flex-shrink-0 flex-wrap">
-              <button
-                type="button"
-                onClick={handleAdd}
-                disabled={!href}
-                aria-label={added[p.id] ? "Added to cart" : `Add ${p.name} to cart`}
-                className={`flex-1 lg:flex-none items-center justify-center gap-1.5 rounded-lg border border-[#E2E8F0] bg-[#F8FAFC] px-4 py-2.5 text-sm font-semibold text-[#0F172A] transition-colors hover:bg-[#E2E8F0] ${
-                  added[p.id] ? "border-[#0F172A] bg-[#0F172A] text-white" : ""
-                }`}
-              >
-                {added[p.id] ? (
-                  <>
-                    <ShoppingCart className="h-4 w-4" strokeWidth={2} /> Added
-                  </>
-                ) : (
-                  <>
-                    <ShoppingCart className="h-4 w-4" strokeWidth={2} /> Add to Cart
-                  </>
-                )}
-              </button>
-              <button
-                type="button"
-                onClick={() => onWish(p.id)}
-                aria-label={wished[p.id] ? "Remove from wishlist" : "Add to wishlist"}
-                aria-pressed={!!wished[p.id]}
-                className={`p-2 rounded-lg border border-[#E2E8F0] bg-[#F8FAFC] transition-colors hover:bg-[#E2E8F0] ${
-                  wished[p.id] ? "border-[#EF4444] text-[#EF4444]" : "text-slate-500 hover:text-[#EF4444]"
-                }`}
-              >
-                <Heart className={`h-5 w-5 ${wished[p.id] ? "fill-current" : ""}`} />
-              </button>
-              <button
-                type="button"
-                onClick={toggleCompare}
-                aria-label={compared ? "Remove from compare" : "Add to compare"}
-                aria-pressed={compared}
-                className={`p-2 rounded-lg border border-[#E2E8F0] bg-[#F8FAFC] transition-colors hover:bg-[#E2E8F0] ${
-                  compared ? "border-[#0F172A] text-[#0F172A]" : "text-slate-500 hover:text-[#0F172A]"
-                }`}
-              >
-                <ArrowLeftRight className="h-5 w-5" />
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-    </section>
-  )
 }
 
 interface PanelGroup {
@@ -281,6 +25,223 @@ interface PanelGroup {
   items: DemoProduct[]
   shopAllHref?: string
   offset?: number
+}
+
+/** Small card: image + title + price only (no description). */
+function PanelCard({ p, onAdd, added, wished, onWish }: { p: DemoProduct } & PanelActions) {
+  const [expanded, setExpanded] = useState(false)
+  const [compared, setCompared] = useState<Record<string, boolean>>(() => ({}))
+  const pct = discountPct(p.price, p.oldPrice)
+  const href = /^[0-9a-f-]{36}$/i.test(p.id) ? `/marketplace/product/${p.id}` : undefined
+  const saleBadgeAllowed = useSaleBadge(p.id)
+  const showSale = pct > 0 && saleBadgeAllowed
+  const toggleCompare = () => setCompared((m) => ({ ...m, [p.id]: !m[p.id] }))
+
+  const iconBtn =
+    "flex h-9 w-9 items-center justify-center rounded-full bg-white/90 text-slate-500 shadow-sm transition-all hover:scale-105 hover:text-[#0F172A] focus-visible:outline-2 focus-visible:outline-[#F59E0B] active:scale-95"
+
+  return (
+    <div className="group relative flex flex-col overflow-hidden rounded-xl border border-[#E2E8F0] bg-white transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_12px_32px_-12px_rgba(15,23,42,0.20)] focus-within:ring-2 focus-within:ring-[#F59E0B]">
+      {/* hero image */}
+      <div className="relative aspect-square w-full overflow-hidden rounded-t-lg bg-[#F8FAFC]">
+        {p.image ? (
+          <img
+            src={marketImage(p.image)}
+            alt={p.name}
+            loading="lazy"
+            decoding="async"
+            className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+          />
+        ) : (
+          <div className="h-full w-full flex items-center justify-center text-slate-200">
+            <Star className="h-10 w-10" />
+          </div>
+        )}
+        {showSale && (
+          <span className="absolute left-3 top-3 z-10 inline-flex items-center gap-1 rounded-full bg-[#DC2626] px-2.5 py-1 text-[11px] font-extrabold tracking-wide text-white shadow-sm">
+            <ChevronUp className="h-3.5 w-3.5" /> -{Math.round(discountPct(p.price, p.oldPrice))}%
+          </span>
+        )}
+        {/* top-right icon rail */}
+        <div className="absolute right-3 top-3 z-10 flex flex-col gap-2 opacity-0 translate-y-1 transition-all duration-300 group-hover:translate-y-0 group-hover:opacity-100 group-focus-within:translate-y-0 group-focus-within:opacity-100">
+          <button
+            type="button"
+            onClick={() => onWish(p.id)}
+            aria-label={wished[p.id] ? "Remove from wishlist" : "Add to wishlist"}
+            aria-pressed={!!wished[p.id]}
+            title="Wishlist"
+            className={`${iconBtn} ${wished[p.id] ? "!bg-[#EF4444] !text-white" : "hover:!text-[#EF4444]"}`}
+          >
+            <Star className={`h-4 w-4 ${wished[p.id] ? "fill-current text-[#EF4444]" : ""}`} />
+          </button>
+          {href && (
+            <button
+              type="button"
+              onClick={() => setExpanded((e) => !e)}
+              aria-label="Quick view"
+              title="Quick view"
+              className={iconBtn}
+            >
+              <Star className="h-4 w-4 text-[#F59E0B]" />
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={toggleCompare}
+            aria-label={compared[p.id] ? "Remove from compare" : "Add to compare"}
+            aria-pressed={!!compared[p.id]}
+            title="Compare"
+            className={`${iconBtn} ${compared[p.id] ? "!bg-[#0F172A] !text-white" : ""}`}
+          >
+            <Star className="h-4 w-4 text-slate-400" />
+          </button>
+        </div>
+        {/* add to cart slide-up */}
+        {href && (
+          <div className="absolute inset-x-3 bottom-3 z-10 hidden translate-y-[130%] transition-transform duration-300 ease-out group-hover:translate-y-0 group-focus-within:translate-y-0 md:block">
+            <button
+              type="button"
+              onClick={() => onAdd(p)}
+              className={`flex w-full items-center justify-center gap-1.5 rounded-lg py-2.5 text-xs font-bold shadow-[0_8px_24px_rgba(15,23,42,0.3)] backdrop-blur-sm transition-colors active:scale-[0.99] ${added[p.id] ? "bg-[#0B0F19]/95 text-white" : "bg-white/95 text-[#0F172A] hover:bg-[#F59E0B]"}`}
+            >
+              {added[p.id] ? "Added to bag" : "Add to cart"}
+            </button>
+          </div>
+        )}
+      </div>
+      <div className="p-3 flex-1 flex-col gap-1">
+        <p title={p.name} className="line-clamp-2 text-[13px] font-semibold leading-snug text-[#0F172A] transition-colors group-hover:text-[#B45309]">
+          {p.name}
+        </p>
+        <div className="flex items-baseline gap-1.5 mt-0.5">
+          <MarketPrice usd={p.price} className="text-[15px] font-extrabold tabular-nums text-[#0F172A]" />
+          {showSale && p.oldPrice && p.oldPrice > p.price && (
+            <MarketPrice usd={p.oldPrice} className="text-xs tabular-nums text-slate-400 line-through" />
+          )}
+        </div>
+        {expanded && (
+          <div className="mt-2 rounded-lg border border-[#E5E7EB] bg-[#F8FAFC] p-2 animate-in fade-in slide-in-from-top-2 duration-200">
+            <p className="text-xs text-slate-600">
+              Tap the card to see full details, variants, and shipping options on the product page.
+            </p>
+          </div>
+        )}
+      </div>
+      {href ? (
+        <Link href={href} aria-label={p.name} className="absolute inset-0 z-0 rounded-xl focus:outline-none" />
+      ) : null}
+    </div>
+  )
+}
+
+/** Main large card for the top of each column. */
+function PanelHero({ p, onAdd, added, wished, onWish }: { p: DemoProduct } & PanelActions) {
+  const [expanded, setExpanded] = useState(false)
+  const [compared, setCompared] = useState<Record<string, boolean>>(() => ({}))
+  const pct = discountPct(p.price, p.oldPrice)
+  const href = /^[0-9a-f-]{36}$/i.test(p.id) ? `/marketplace/product/${p.id}` : undefined
+  const saleBadgeAllowed = useSaleBadge(p.id)
+  const showSale = pct > 0 && saleBadgeAllowed
+  const toggleCompare = () => setCompared((m) => ({ ...m, [p.id]: !m[p.id] }))
+
+  const iconBtn =
+    "flex h-10 w-10 items-center justify-center rounded-full bg-white/90 text-slate-500 shadow-sm transition-all hover:scale-105 hover:text-[#0F172A] focus-visible:outline-2 focus-visible:outline-[#F59E0B] active:scale-95"
+
+  return (
+    <div className="group relative flex flex-col overflow-hidden rounded-xl border border-[#E2E8F0] bg-white transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_16px_40px_-16px_rgba(15,23,42,0.25)] focus-within:ring-2 focus-within:ring-[#F59E0B]">
+      <div className="relative aspect-[4/3] w-full overflow-hidden rounded-t-lg bg-[#F8FAFC]">
+        {p.image ? (
+          <img
+            src={marketImage(p.image)}
+            alt={p.name}
+            loading="eager"
+            decoding="async"
+            className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+          />
+        ) : (
+          <div className="h-full w-full flex items-center justify-center text-slate-200">
+            <Star className="h-12 w-12" />
+          </div>
+        )}
+        {showSale && (
+          <span className="absolute left-4 top-4 z-10 inline-flex items-center gap-1 rounded-full bg-[#DC2626] px-3 py-1.5 text-[12px] font-extrabold tracking-wide text-white shadow-md">
+            <ChevronUp className="h-4 w-4" /> -{Math.round(discountPct(p.price, p.oldPrice))}%
+          </span>
+        )}
+        <div className="absolute right-4 top-4 z-10 flex flex-col gap-2 opacity-0 translate-y-1 transition-all duration-300 group-hover:translate-y-0 group-hover:opacity-100 group-focus-within:translate-y-0 group-focus-within:opacity-100">
+          <button
+            type="button"
+            onClick={() => onWish(p.id)}
+            aria-label={wished[p.id] ? "Remove from wishlist" : "Add to wishlist"}
+            aria-pressed={!!wished[p.id]}
+            title="Wishlist"
+            className={`${iconBtn} ${wished[p.id] ? "!bg-[#EF4444] !text-white" : "hover:!text-[#EF4444]"}`}
+          >
+            <Star className={`h-5 w-5 ${wished[p.id] ? "fill-current text-[#EF4444]" : ""}`} />
+          </button>
+          {href && (
+            <button
+              type="button"
+              onClick={() => setExpanded((e) => !e)}
+              aria-label="Quick view"
+              title="Quick view"
+              className={iconBtn}
+            >
+              <Star className="h-5 w-5 text-[#F59E0B]" />
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={toggleCompare}
+            aria-label={compared[p.id] ? "Remove from compare" : "Add to compare"}
+            aria-pressed={!!compared[p.id]}
+            title="Compare"
+            className={`${iconBtn} ${compared[p.id] ? "!bg-[#0F172A] !text-white" : ""}`}
+          >
+            <Star className="h-5 w-5 text-slate-400" />
+          </button>
+        </div>
+        {href && (
+          <div className="absolute inset-x-4 bottom-4 z-10 hidden translate-y-[130%] transition-transform duration-300 ease-out group-hover:translate-y-0 group-focus-within:translate-y-0 md:block">
+            <button
+              type="button"
+              onClick={() => onAdd(p)}
+              className={`flex w-full items-center justify-center gap-1.5 rounded-xl py-3 text-sm font-bold shadow-[0_8px_24px_rgba(15,23,42,0.3)] backdrop-blur-sm transition-colors active:scale-[0.99] ${added[p.id] ? "bg-[#0B0F19]/95 text-white" : "bg-white/95 text-[#0F172A] hover:bg-[#F59E0B]"}`}
+            >
+              {added[p.id] ? "Added to bag" : "Add to cart"}
+            </button>
+          </div>
+        )}
+      </div>
+      <div className="p-4 flex-1 flex-col gap-1.5">
+        <p title={p.name} className="line-clamp-2 text-[14px] font-semibold leading-snug text-[#0F172A] transition-colors group-hover:text-[#B45309]">
+          {p.name}
+        </p>
+        <div className="flex items-baseline gap-1.5 mt-0.5">
+          <MarketPrice usd={p.price} className="text-[18px] font-extrabold tabular-nums text-[#0F172A]" />
+          {showSale && p.oldPrice && p.oldPrice > p.price && (
+            <MarketPrice usd={p.oldPrice} className="text-sm tabular-nums text-slate-400 line-through" />
+          )}
+        </div>
+        {expanded && (
+          <div className="mt-2 rounded-lg border border-[#E5E7EB] bg-[#F8FAFC] p-3 animate-in fade-in slide-in-from-top-2 duration-200">
+            <p className="text-xs text-slate-600">
+              Tap to see full details, variants, and shipping options on the product page.
+            </p>
+          </div>
+        )}
+      </div>
+      {href ? (
+        <Link href={href} aria-label={p.name} className="absolute inset-0 z-0 rounded-xl focus:outline-none" />
+      ) : null}
+    </div>
+  )
+}
+
+function rotateItems<T extends { id: string }>(items: T[], offset = 0): T[] {
+  if (items.length === 0) return items
+  const start = ((offset % items.length) + items.length) % items.length
+  return [...items.slice(start), ...items.slice(0, start)]
 }
 
 export function FeaturePanels({
@@ -303,17 +264,41 @@ export function FeaturePanels({
     }))
     .filter((g) => g.items.length > 0)
   if (live.length === 0) return null
-
   return (
-    <section aria-label="Featured product showcase" className="bg-[#F8FAFC]">
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+    <section aria-label="Featured product panels" className="bg-white rounded-2xl p-5 shadow-sm border border-[#E2E8F0]">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         {live.map((g) => {
-          const p = g.items[0]
-          return p ? (
-            <section key={g.title} className="flex flex-col">
-              <ShowcaseCard p={p} title={g.title} onAdd={onAdd} added={added} wished={wished} onWish={onWish} />
+          const hero = g.items[0]
+          const rest = g.items.slice(1, 5)
+          return (
+            <section key={g.title} className="flex flex-col gap-3">
+              <div className="flex items-center justify-between">
+                <div className="relative inline-block">
+                  <span className="inline-flex items-center gap-1 rounded-lg bg-[#F59E0B] px-3 py-1.5 text-[12px] font-extrabold text-white tracking-tight shadow-lg shadow-[#F59E0B]/40">
+                    {g.title}
+                  </span>
+                </div>
+                {g.shopAllHref && (
+                  <Link
+                    href={g.shopAllHref}
+                    className="inline-flex items-center gap-1 text-sm font-semibold text-[#B45309] hover:text-[#D97706] hover:underline transition-colors"
+                  >
+                    Shop all {g.title.toLowerCase()} <ChevronRight className="h-3.5 w-3.5" />
+                  </Link>
+                )}
+              </div>
+              {hero ? (
+                <PanelHero p={hero} onAdd={onAdd} added={added} wished={wished} onWish={onWish} />
+              ) : null}
+              {rest.length > 0 && (
+                <div className="grid grid-cols-2 gap-3">
+                  {rest.map((p) => (
+                    <PanelCard key={p.id} p={p} onAdd={onAdd} added={added} wished={wished} onWish={onWish} />
+                  ))}
+                </div>
+              )}
             </section>
-          ) : null
+          )
         })}
       </div>
     </section>

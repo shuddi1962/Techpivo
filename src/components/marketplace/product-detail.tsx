@@ -566,15 +566,6 @@ export function ProductDetail({
             {oldPrice && showSale && <MarketPrice usd={oldPrice} className="text-lg text-slate-400 line-through" />}
             {showSale && saleEnd.trim() && <SaleCountdown endAt={saleEnd} prefix="Sale ends in" />}
           </div>
-          {currency !== "NGN" && (
-            <p className="text-sm font-semibold text-slate-600 mt-1">
-              <MarketPrice usd={price} /> will be charged as{" "}
-              <span className="font-extrabold text-[#DC2626]">
-                {fxFormat(Math.round(price * rate * 100) / 100, "NGN", { maxFrac: 0 })}
-              </span>
-              at checkout
-            </p>
-          )}
           {rewritten.paras.length > 0 && (
             <div className="mt-4">
               <button
