@@ -7,6 +7,7 @@ export interface StoreProduct {
   product_image_url: string | null
   original_price: number | null
   sale_price: number | null
+  sale_pct?: number
   program_key: string
   is_featured: boolean
   stock: number | null

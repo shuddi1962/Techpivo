@@ -10,7 +10,7 @@ import { getCart, addToCart as addLine } from "@/lib/marketplace-cart"
 import type { CartVariant } from "@/lib/marketplace-cart"
 import { marketImage } from "@/lib/marketplace-images"
 import { MarketPrice } from "./market-price"
-import { useSaleBadge } from "./market-flags"
+import { useProductDiscount } from "./market-flags"
 import { TPM_CHECKOUT, openCartPopup, openCheckout, trackMarket } from "@/lib/marketplace-events"
 
 interface UpsellItem {
@@ -26,11 +26,12 @@ interface UpsellItem {
 
 function UpsellRow({ x, on, toggle }: { x: UpsellItem; on: boolean; toggle: (x: UpsellItem) => void }) {
   // Same discount rule as every other surface: global switch + per-product flag.
-  const saleBadgeAllowed = useSaleBadge(x.id)
   const unit = Number(x.sale_price ?? x.original_price ?? 0)
-  const old = x.original_price ? Number(x.original_price) : NaN
-  const pct = x.sale_price && Number.isFinite(old) && old > unit ? Math.round((1 - unit / old) * 100) : 0
-  const showSale = pct > 0 && saleBadgeAllowed
+  const { pct: discount, oldPrice } = useProductDiscount(
+    { price: unit, oldPrice: x.original_price ?? undefined },
+    x.id
+  )
+  const showSale = discount > 0
   const out = x.stock != null && x.stock <= 0
   const low = !out && x.stock != null && x.stock <= 5
   return (
@@ -66,8 +67,8 @@ function UpsellRow({ x, on, toggle }: { x: UpsellItem; on: boolean; toggle: (x: 
           </span>
           <span className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5">
             <MarketPrice usd={unit} className="text-[15px] font-extrabold tracking-tight text-[#0B0F19]" />
-            {showSale && <span className="text-[11px] font-medium text-[#94A3B8] line-through"><MarketPrice usd={old} /></span>}
-            {showSale && <span className="rounded-full bg-[#FEF3C7] px-1.5 py-px text-[10px] font-bold text-[#B45309]">−{pct}%</span>}
+            {showSale && oldPrice && <span className="text-[11px] font-medium text-[#94A3B8] line-through"><MarketPrice usd={oldPrice} /></span>}
+            {showSale && <span className="rounded-full bg-[#FEF3C7] px-1.5 py-px text-[10px] font-bold text-[#B45309]">−{discount}%</span>}
           </span>
           <span className="mt-1 flex items-center gap-1.5 text-[11px] font-medium text-[#64748B]">
             <span className={`h-1.5 w-1.5 rounded-full ${out ? "bg-[#CBD5E1]" : low ? "bg-[#F59E0B]" : "bg-[#0B0F19]"}`} />

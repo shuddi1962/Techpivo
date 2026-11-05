@@ -763,6 +763,35 @@ export async function POST(request: NextRequest) {
       revalidateStore()
       return NextResponse.json({ success: true, merch: parseMarketMerch(out), sale_badges: parseMarketMerchGlobal(out) })
     }
+    // Bulk merchandising save: apply the same sale flag + percentage to many
+    // products at once (admin selects multiple products in the Products tab).
+    if (body.action === "bulk-merch-save") {
+      const { parseMarketMerch, MARKET_MERCH_GLOBAL_KEY } = await import("@/lib/marketplace-merch")
+      const { data: current } = await supabase.from("site_settings").select("value").eq("key", "marketplace_merch").maybeSingle()
+      const raw = ((current as { value?: unknown } | null)?.value ?? {}) as Record<string, unknown>
+      const next: Record<string, unknown> = { ...raw }
+      const productIds: string[] = Array.isArray(body.product_ids) ? body.product_ids.filter((id: unknown) => /^[0-9a-f-]{36}$/i.test(String(id))).map(String) : []
+      const sale = typeof body.sale === "boolean" ? body.sale : undefined
+      const sale_pct = Number.isFinite(Number(body.sale_pct)) && Number(body.sale_pct) > 0 && Number(body.sale_pct) < 100 ? Math.round(Number(body.sale_pct)) : undefined
+      if (productIds.length === 0) return NextResponse.json({ error: "No valid product ids provided." }, { status: 400 })
+      if (sale === undefined && sale_pct === undefined) return NextResponse.json({ error: "Nothing to set." }, { status: 400 })
+      for (const id of productIds) {
+        const cur = parseMarketMerch(next[id] ?? null)
+        next[id] = { ...cur, ...(sale === undefined ? {} : { sale }), ...(sale_pct === undefined ? {} : { sale_pct }) }
+      }
+      // Drop products whose flags are now empty (keeps the store tidy).
+      for (const id of Object.keys(next)) {
+        if (id === MARKET_MERCH_GLOBAL_KEY) continue
+        const f = next[id] as Record<string, unknown> | undefined
+        if (f && Object.keys(f).length === 0) delete next[id]
+      }
+      const { error } = await supabase
+        .from("site_settings")
+        .upsert({ key: "marketplace_merch", value: next as unknown as never }, { onConflict: "key" })
+      if (error) throw error
+      revalidateStore()
+      return NextResponse.json({ success: true, merch: parseMarketMerch(next), updated: productIds.length })
+    }
     // Replace the whole coupon list (validated item by item)
     if (body.action === "coupons-save") {
       const { parseMarketCoupons } = await import("@/lib/marketplace-coupons")

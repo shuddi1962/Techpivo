@@ -31,6 +31,7 @@ export interface DemoProduct {
   category: string
   price: number
   oldPrice?: number
+  sale_pct?: number
   rating: number
   reviews: number
   image: string

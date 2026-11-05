@@ -16,7 +16,7 @@ import { useMarketCurrency, useFxRate, currencyForCountry } from "@/lib/marketpl
 import { MarketPrice } from "./market-price"
 import { fxFormat } from "@/lib/fx-shared"
 import { SaleCountdown, useSaleEnd } from "./sale-countdown"
-import { useSaleBadge } from "./market-flags"
+import { useProductDiscount } from "./market-flags"
 import { rewriteProduct } from "@/lib/marketplace-copy"
 
 interface Review {
@@ -237,7 +237,10 @@ export function ProductDetail({
   }, [geo?.countryCode])
   const saleEnd = useSaleEnd(p.id)
   // Store-wide switch + per-product flag decide if the discount shows at all.
-  const saleBadgeAllowed = useSaleBadge(p.id)
+  const { pct: discount, oldPrice } = useProductDiscount(
+    { price: Number(p.sale_price ?? p.original_price ?? 0), oldPrice: p.original_price ?? undefined, sale_pct: (p as { sale_pct?: number }).sale_pct },
+    p.id
+  )
   const [qty, setQty] = useState(1)
   const [added, setAdded] = useState(false)
   const lastAddRef = useRef(0)
@@ -425,9 +428,7 @@ export function ProductDetail({
 
   const basePrice = Number(p.sale_price ?? p.original_price ?? 0)
   const price = selected?.price ?? basePrice
-  const oldPrice = p.original_price && p.sale_price ? Number(p.original_price) : null
-  const discount = oldPrice && oldPrice > price ? Math.round((1 - price / oldPrice) * 100) : 0
-  const showSale = discount > 0 && saleBadgeAllowed
+  const showSale = discount > 0
   const avg = useMemo(
     () => (reviews.length ? reviews.reduce((s, r) => s + r.rating, 0) / reviews.length : 0),
     [reviews]

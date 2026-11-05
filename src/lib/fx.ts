@@ -21,10 +21,12 @@ async function fetchExternal(url: string, timeoutMs = 8000): Promise<any> {
 function toPerNgn(usdRates: Record<string, number>): Record<string, number> {
   const ngnUsd = Number(usdRates["NGN"]) || 0
   if (!ngnUsd) throw new Error("NGN rate missing")
-  const out: Record<string, number> = { NGN: 1 }
+  const out: Record<string, number> = { NGN: 1, USD: ngnUsd }
+  // Some providers omit the base currency (USD) from `rates`; without an
+  // explicit USD entry every USD→X rate collapses to 1 (see `getFxRate`).
   for (const [code, rate] of Object.entries(usdRates)) {
     const r = Number(rate)
-    if (code === "NGN" || !r || r <= 0) continue
+    if (code === "NGN" || code === "USD" || !r || r <= 0) continue
     out[code] = ngnUsd / r
   }
   return out

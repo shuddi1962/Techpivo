@@ -6,7 +6,7 @@ import { ChevronRight, Star, ChevronUp } from "lucide-react"
 import type { DemoProduct } from "@/lib/marketplace"
 import { marketImage } from "@/lib/marketplace-images"
 import { MarketPrice } from "./market-price"
-import { useSaleBadge } from "./market-flags"
+import { useSaleBadge, useProductDiscount } from "./market-flags"
 
 export function discountPct(price: number, oldPrice?: number): number {
   if (!oldPrice || oldPrice <= price) return 0
@@ -31,10 +31,9 @@ interface PanelGroup {
 function PanelCard({ p, onAdd, added, wished, onWish }: { p: DemoProduct } & PanelActions) {
   const [expanded, setExpanded] = useState(false)
   const [compared, setCompared] = useState<Record<string, boolean>>(() => ({}))
-  const pct = discountPct(p.price, p.oldPrice)
   const href = /^[0-9a-f-]{36}$/i.test(p.id) ? `/marketplace/product/${p.id}` : undefined
-  const saleBadgeAllowed = useSaleBadge(p.id)
-  const showSale = pct > 0 && saleBadgeAllowed
+  const { pct: discount, oldPrice } = useProductDiscount(p, p.id)
+  const showSale = discount > 0
   const toggleCompare = () => setCompared((m) => ({ ...m, [p.id]: !m[p.id] }))
 
   const iconBtn =
@@ -59,7 +58,7 @@ function PanelCard({ p, onAdd, added, wished, onWish }: { p: DemoProduct } & Pan
         )}
         {showSale && (
           <span className="absolute left-3 top-3 z-10 inline-flex items-center gap-1 rounded-full bg-[#DC2626] px-2.5 py-1 text-[11px] font-extrabold tracking-wide text-white shadow-sm">
-            <ChevronUp className="h-3.5 w-3.5" /> -{Math.round(discountPct(p.price, p.oldPrice))}%
+            <ChevronUp className="h-3.5 w-3.5" /> -{discount}%
           </span>
         )}
         {/* top-right icon rail */}
@@ -115,8 +114,8 @@ function PanelCard({ p, onAdd, added, wished, onWish }: { p: DemoProduct } & Pan
         </p>
         <div className="flex items-baseline gap-1.5 mt-0.5">
           <MarketPrice usd={p.price} className="text-[15px] font-extrabold tabular-nums text-[#0F172A]" />
-          {showSale && p.oldPrice && p.oldPrice > p.price && (
-            <MarketPrice usd={p.oldPrice} className="text-xs tabular-nums text-slate-400 line-through" />
+          {showSale && oldPrice && (
+            <MarketPrice usd={oldPrice} className="text-xs tabular-nums text-slate-400 line-through" />
           )}
         </div>
         {expanded && (
@@ -138,10 +137,9 @@ function PanelCard({ p, onAdd, added, wished, onWish }: { p: DemoProduct } & Pan
 function PanelHero({ p, onAdd, added, wished, onWish }: { p: DemoProduct } & PanelActions) {
   const [expanded, setExpanded] = useState(false)
   const [compared, setCompared] = useState<Record<string, boolean>>(() => ({}))
-  const pct = discountPct(p.price, p.oldPrice)
   const href = /^[0-9a-f-]{36}$/i.test(p.id) ? `/marketplace/product/${p.id}` : undefined
-  const saleBadgeAllowed = useSaleBadge(p.id)
-  const showSale = pct > 0 && saleBadgeAllowed
+  const { pct: discount, oldPrice } = useProductDiscount(p, p.id)
+  const showSale = discount > 0
   const toggleCompare = () => setCompared((m) => ({ ...m, [p.id]: !m[p.id] }))
 
   const iconBtn =
@@ -165,7 +163,7 @@ function PanelHero({ p, onAdd, added, wished, onWish }: { p: DemoProduct } & Pan
         )}
         {showSale && (
           <span className="absolute left-4 top-4 z-10 inline-flex items-center gap-1 rounded-full bg-[#DC2626] px-3 py-1.5 text-[12px] font-extrabold tracking-wide text-white shadow-md">
-            <ChevronUp className="h-4 w-4" /> -{Math.round(discountPct(p.price, p.oldPrice))}%
+            <ChevronUp className="h-4 w-4" /> -{discount}%
           </span>
         )}
         <div className="absolute right-4 top-4 z-10 flex flex-col gap-2 opacity-0 translate-y-1 transition-all duration-300 group-hover:translate-y-0 group-hover:opacity-100 group-focus-within:translate-y-0 group-focus-within:opacity-100">

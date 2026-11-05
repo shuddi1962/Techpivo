@@ -17,6 +17,7 @@ interface RawProduct {
   product_image_url: string | null
   original_price: number | null
   sale_price: number | null
+  sale_pct: number | null
   program_key: string | null
   is_featured: boolean
   stock: number | null
@@ -28,7 +29,7 @@ interface RawProduct {
 }
 
 const COLS =
-  "id,product_name,product_description,product_image_url,original_price,sale_price,program_key,is_featured,stock,clicks,created_at,category_slug,subcategory_slug,leaf_slug"
+  "id,product_name,product_description,product_image_url,original_price,sale_price,sale_pct,program_key,is_featured,stock,clicks,created_at,category_slug,subcategory_slug,leaf_slug"
 
 function sanitize(p: RawProduct, rating: number, reviews: number): StoreProduct {
   return {
@@ -38,6 +39,7 @@ function sanitize(p: RawProduct, rating: number, reviews: number): StoreProduct 
     product_image_url: marketImage(p.product_image_url),
     original_price: p.original_price,
     sale_price: p.sale_price,
+    sale_pct: p.sale_pct ?? undefined,
     program_key: supplierDisplayName(p.program_key),
     is_featured: !!p.is_featured,
     stock: p.stock,

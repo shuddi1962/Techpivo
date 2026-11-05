@@ -11,7 +11,7 @@ import { addToCart as addLine } from "@/lib/marketplace-cart"
 import { marketImage } from "@/lib/marketplace-images"
 import { MarketPrice } from "./market-price"
 import { ModalShell } from "./modal-shell"
-import { useSaleBadge } from "./market-flags"
+import { useProductDiscount } from "./market-flags"
 import { TPM_QUICKVIEW, TPM_CHECKOUT, openCheckout, trackMarket } from "@/lib/marketplace-events"
 
 interface QVProduct {
@@ -107,11 +107,11 @@ function QuickViewBody({ productId, onClose }: { productId: string; onClose: () 
   )
   const basePrice = Number(product?.sale_price ?? product?.original_price ?? 0)
   const price = selected?.price ?? basePrice
-  const old = product?.original_price ? Number(product.original_price) : NaN
-  const discount = Number.isFinite(old) && old > price ? Math.round((1 - price / old) * 100) : 0
-  // Same discount rule as every other surface: global switch + per-product flag.
-  const saleBadgeAllowed = useSaleBadge(productId)
-  const showSale = discount > 0 && saleBadgeAllowed
+  const { pct: discount, oldPrice } = useProductDiscount(
+    { price: basePrice, oldPrice: product?.original_price ?? undefined, sale_pct: (product as { sale_pct?: number })?.sale_pct },
+    productId
+  )
+  const showSale = discount > 0
   const outOfStock = selected ? (selected.stock ?? 1) <= 0 : (product?.stock ?? 1) <= 0
 
   const doAdd = () => {
@@ -194,7 +194,7 @@ function QuickViewBody({ productId, onClose }: { productId: string; onClose: () 
         </span>
         <span className="mt-2 flex items-baseline gap-2">
           <MarketPrice usd={price} className="text-[26px] font-extrabold tracking-tight text-[#0B0F19]" />
-          {showSale && <MarketPrice usd={old} className="text-sm font-medium text-[#94A3B8] line-through" />}
+          {showSale && oldPrice && <MarketPrice usd={oldPrice} className="text-sm font-medium text-[#94A3B8] line-through" />}
         </span>
         <p className={`mt-1.5 flex items-center gap-1.5 text-xs font-semibold ${outOfStock ? "text-[#94A3B8]" : "text-[#0B0F19]"}`}>
           <span className={`h-1.5 w-1.5 rounded-full ${outOfStock ? "bg-[#CBD5E1]" : "bg-[#0B0F19]"}`} />

@@ -8,6 +8,7 @@ import {
   BadgeCheck, Truck,
 } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
+import { fetchWithTimeout } from "@/lib/fetch-timeout"
 import { addToCart as addLine } from "@/lib/marketplace-cart"
 import { openCartPopup, openQuickView } from "@/lib/marketplace-events"
 import {
@@ -21,13 +22,12 @@ import { readCompare, toggleCompareStored } from "@/lib/marketplace-compare"
 import { MarketplaceFooter } from "./marketplace-header"
 import { BannerSlider } from "./banner-slider"
 import { WelcomePopupCard } from "./welcome-popup"
-import { CategoryShowcase } from "./category-showcase"
 import { ShopCollections, type CollectionItem } from "./shop-collections"
 import { BrandRail } from "./brand-rail"
 import { MarketPrice } from "./market-price"
 import { SaleCountdown, useSaleEnd } from "./sale-countdown"
-import { isNewPick, isBestsellerPick, showSaleBadge } from "@/lib/marketplace-merch"
-import { useMarketMerch, useSaleBadge } from "./market-flags"
+import { isNewPick, isBestsellerPick, showSaleBadge, salePctOf } from "@/lib/marketplace-merch"
+import { useMarketMerch, useSaleBadge, useProductDiscount } from "./market-flags"
 import { FeaturePanels } from "./feature-panels"
 
 type ScopeRow = {
@@ -58,10 +58,9 @@ interface DbProduct {
 // quick view / compare) sits above it, plus Add to Bag. No review stars
 // on the card.
 function ProductCard({ p, onAdd, wished, onWish, added, href }: { p: DemoProduct; onAdd: () => void; wished: boolean; onWish: () => void; added: boolean; href?: string }) {
-  const discount = p.oldPrice ? Math.round((1 - p.price / p.oldPrice) * 100) : 0
   const saleEnd = useSaleEnd(p.id)
-  const saleBadgeAllowed = useSaleBadge(p.id)
-  const showSale = discount > 0 && saleBadgeAllowed
+  const { pct: discount, oldPrice } = useProductDiscount(p, p.id)
+  const showSale = discount > 0
   const [compared, setCompared] = useState(() => !!readCompare()[p.id])
   const toggleCompare = () => setCompared(toggleCompareStored(p.id))
   const iconBtn =
@@ -136,7 +135,7 @@ function ProductCard({ p, onAdd, wished, onWish, added, href }: { p: DemoProduct
         )}
         <div className="flex items-baseline gap-1.5">
           <MarketPrice usd={p.price} className={`text-[15px] font-extrabold tabular-nums ${showSale ? "text-[#DC2626]" : "text-[#0F172A]"}`} />
-          {p.oldPrice && showSale && <MarketPrice usd={p.oldPrice} className="text-[11px] tabular-nums text-slate-400 line-through" />}
+          {oldPrice && showSale && <MarketPrice usd={oldPrice} className="text-[11px] tabular-nums text-slate-400 line-through" />}
         </div>
         {showSale && saleEnd.trim() && (
           <SaleCountdown endAt={saleEnd} prefix="Sale ends in" className="mt-0.5 w-fit" />
@@ -448,64 +447,68 @@ export function MarketplaceHome() {
     const supabase = createClient()
     let alive = true
     const load = () => {
-      supabase
-      .from("affiliate_products")
-      .select("id,product_name,product_description,product_image_url,original_price,sale_price,program_key,is_featured,clicks,created_at,category_slug,subcategory_slug")
-      .eq("is_active", true)
-      .order("is_featured", { ascending: false })
-        // Ordered by id (a stable pseudo-random spread) so the homepage
-        // shows every department of the full catalogue, not just the batch
-        // that happened to be imported last.
-        .order("id", { ascending: true })
-        .limit(240)
-        .then(({ data }) => {
-      if (!alive) return
-      if (data) setDbProducts(data as DbProduct[])
-      setLoaded(true)
-    })
-    supabase
-      .from("affiliate_products")
-      .select("category_slug,subcategory_slug,leaf_slug,product_image_url")
-      .eq("is_active", true)
-      .neq("product_image_url", "")
-      .order("is_featured", { ascending: false })
-      .order("id", { ascending: true })
-      .limit(1600)
-      .then(({ data }) => {
+      // Each query is time-boxed so a slow database renders skeletons fast
+      // instead of hanging the whole homepage.
+      fetchWithTimeout(
+        supabase
+          .from("affiliate_products")
+          .select("id,product_name,product_description,product_image_url,original_price,sale_price,program_key,is_featured,clicks,created_at,category_slug,subcategory_slug")
+          .eq("is_active", true)
+          .order("is_featured", { ascending: false })
+          .order("id", { ascending: true })
+          .limit(240),
+        10000
+      ).then((result) => {
+        if (!alive) return
+        const data = result?.data
+        if (data) setDbProducts(data as DbProduct[])
+        setLoaded(true)
+      })
+      fetchWithTimeout(
+        supabase
+          .from("affiliate_products")
+          .select("category_slug,subcategory_slug,leaf_slug,product_image_url")
+          .eq("is_active", true)
+          .neq("product_image_url", "")
+          .order("is_featured", { ascending: false })
+          .order("id", { ascending: true })
+          .limit(1600),
+        10000
+      ).then((result) => {
+        const data = result?.data
         if (alive && data) setScopeRows(data as ScopeRow[])
       })
       // Real review aggregates for honest ratings (public read policy).
-      supabase
-        .from("marketplace_reviews")
-        .select("product_id,rating")
-        .limit(500)
-        .then(({ data }) => {
-          if (!alive || !data) return
-          const m: Record<string, RevStat> = {}
-          for (const r of data as Array<{ product_id: string; rating: number }>) {
-            const cur = m[r.product_id] || { sum: 0, n: 0 }
-            cur.sum += Number(r.rating) || 0
-            cur.n += 1
-            m[r.product_id] = cur
-          }
-          setRevStats(m)
-        })
+      fetchWithTimeout(
+        supabase.from("marketplace_reviews").select("product_id,rating").limit(500),
+        10000
+      ).then((result) => {
+        if (!alive || !result?.data) return
+        const data = result.data as Array<{ product_id: string; rating: number }>
+        const m: Record<string, RevStat> = {}
+        for (const r of data) {
+          const cur = m[r.product_id] || { sum: 0, n: 0 }
+          cur.sum += Number(r.rating) || 0
+          cur.n += 1
+          m[r.product_id] = cur
+        }
+        setRevStats(m)
+      })
       // Admin-custom storefront banners (public site_settings read).
-      supabase
-        .from("site_settings")
-        .select("value")
-        .eq("key", "marketplace_banners")
-        .maybeSingle()
-        .then(
-          ({ data }) => {
-            if (!alive) return
-            if (data) setBanners(parseBanners((data as { value?: unknown }).value))
-            setBannersReady(true)
-          },
-          () => {
-            if (alive) setBannersReady(true)
-          }
-        )
+      fetchWithTimeout(
+        supabase.from("site_settings").select("value").eq("key", "marketplace_banners").maybeSingle(),
+        8000
+      ).then(
+        (result) => {
+          if (!alive) return
+          const data = result?.data
+          if (data) setBanners(parseBanners((data as { value?: unknown }).value))
+          setBannersReady(true)
+        },
+        () => {
+          if (alive) setBannersReady(true)
+        }
+      )
     }
     load()
     // Backstop: never leave banner sections skeletonised if the
@@ -534,10 +537,14 @@ export function MarketplaceHome() {
 
   // Live catalog only — no demo products. Ratings/reviews come from real
   // marketplace_reviews rows; unrated products show as New.
+
+  const { merch, saleBadges } = useMarketMerch()
+
   const liveProducts: DemoProduct[] = useMemo(
     () =>
       dbProducts.map((d) => {
         const st = revStats[d.id]
+        const salePct = salePctOf(merch, d.id)
         return {
           id: d.id,
           name: cleanSupplierText(d.product_name) || d.product_name,
@@ -546,6 +553,7 @@ export function MarketplaceHome() {
           oldPrice: d.original_price && Number(d.original_price) > Number(d.sale_price ?? d.original_price ?? 0)
             ? Number(d.original_price)
             : undefined,
+          sale_pct: salePct > 0 ? salePct : undefined,
           rating: st && st.n > 0 ? st.sum / st.n : 0,
           reviews: st?.n ?? 0,
           image: d.product_image_url || "",
@@ -553,19 +561,11 @@ export function MarketplaceHome() {
           shortDescription: shortProductDescription(d.product_description || d.product_name || ""),
         }
       }),
-    [dbProducts, revStats]
+    [dbProducts, revStats, merch]
   )
 
   const grid: DemoProduct[] = liveProducts
-  // Admin merchandising: discount badges show only where enabled, and
-  // pinned New/Best products lead their rails.
-  const { merch, saleBadges } = useMarketMerch()
-  // Homepage allocation — every product appears in ONE section only.
-  // Order: flash → featured → new → best → trending, each skipping IDs
-  // already taken, so rails never repeat each other. (The tabbed grid
-  // re-uses these same lists as alternative catalog views — that overlap
-  // is intentional.) Best sellers fall back to most-clicked / biggest
-  // discount while no reviews exist yet, so all three panels always show.
+
   const clicksById = new Map<string, number>(
     dbProducts.map((d) => [d.id, Number(d.clicks) || 0])
   )
@@ -577,11 +577,7 @@ export function MarketplaceHome() {
     usedIds,
     8
   )
-  const featured = takeFresh(
-    grid.filter((p) => p.badge === "Featured"),
-    usedIds,
-    8
-  )
+  const featured = takeFresh(grid.filter((p) => p.badge === "Featured"), usedIds, 8)
   const createdById = useMemo(
     () => new Map(dbProducts.map((d) => [d.id, d.created_at || ""])),
     [dbProducts]
@@ -756,59 +752,6 @@ export function MarketplaceHome() {
   // no section looks thin. Strict stored-category match only: a product
   // lives in exactly one department, so it can never appear under a
   // department it doesn't belong to.
-  const dbById = new Map(dbProducts.map((d) => [d.id, d]))
-  // Every department gets its own showcase section (Phones & Accessories
-  // style), ordered by live stock with Phones leading. The order rotates
-  // automatically over time so a different department leads periodically.
-  const deptStock = departments.map((dep) => ({
-    dep,
-    count: grid.filter((p) => deptOf.get(p.id) === dep.slug).length,
-  }))
-  const orderedDepts = [...deptStock]
-    .sort((a, b) => b.count - a.count)
-    .map((r) => r.dep)
-  const phonesFirst = orderedDepts.filter((d) => d.slug === "phones-accessories")
-  const rest = orderedDepts.filter((d) => d.slug !== "phones-accessories")
-  const rotOffset = rot % Math.max(1, rest.length)
-  const showcaseOrder = [
-    ...phonesFirst,
-    ...rest.slice(rotOffset),
-    ...rest.slice(0, rotOffset),
-  ]
-  const showcases = showcaseOrder
-    .map((dep) => {
-      const shelf = grid
-        .filter((p) => deptOf.get(p.id) === dep.slug)
-        .map((p) => {
-          const d = dbById.get(p.id)
-          return { ...p, subSlug: d?.subcategory_slug || d?.category_slug || null }
-        })
-      const counts = new Map<string, number>()
-      shelf.forEach((p) => {
-        if (p.subSlug) counts.set(p.subSlug, (counts.get(p.subSlug) || 0) + 1)
-      })
-      const nav = dep.subs
-        .filter((s) => (counts.get(s.slug) || 0) > 0)
-        .slice(0, 6)
-        .map((s) => ({ name: s.name, slug: s.slug }))
-      let items = shelf.filter((p) => !usedIds.has(p.id))
-      if (items.length === 0) {
-        items = []
-      } else if (items.length < 4) {
-        const have = new Set(items.map((p) => p.id))
-        for (const p of shelf) {
-          if (items.length >= 8) break
-          if (!have.has(p.id)) {
-            items.push(p)
-            have.add(p.id)
-          }
-        }
-      } else {
-        items = items.slice(0, 8)
-      }
-      items.forEach((p) => usedIds.add(p.id))
-      return { dep, nav, items }
-    })
 
   // Real recently-viewed products (recorded by product pages locally).
   const recentRows = useMemo(
@@ -1252,26 +1195,6 @@ export function MarketplaceHome() {
           </section>
         )}
 
-        <SectionDivider />
-
-        {/* department showcases — top departments by live stock, each with
-            subcategory pills, a photo promo banner, and its own distinct products */}
-        {loaded ? showcases.map(({ dep, nav, items }) => (
-          <CategoryShowcase
-            key={dep.slug}
-            title={dep.name}
-            deptSlug={dep.slug}
-            nav={nav}
-            items={items}
-            promoImage={deptCover.get(dep.slug) || dep.image}
-            sideBanner={banners.sidebar_banners[dep.slug] || ""}
-            sideLink={linkOf(banners, banners.sidebar_banners[dep.slug] || "") || `/marketplace/category/${dep.slug}`}
-            onAdd={addToCart}
-            added={justAdded}
-            wished={wishlist}
-            onWish={toggleWish}
-          />
-        )) : null}
         <SectionDivider />
 
         {/* in-feed strip 2 — slim full-width banner between the department

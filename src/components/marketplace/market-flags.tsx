@@ -1,7 +1,16 @@
 "use client"
 
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react"
-import { parseMarketMerch, parseMarketMerchGlobal, showSaleBadge, type MarketMerch } from "@/lib/marketplace-merch"
+import {
+  parseMarketMerch,
+  parseMarketMerchGlobal,
+  showSaleBadge,
+  salePctOf,
+  computeOldPrice,
+  productDiscount,
+  type MarketMerch,
+  type Discount,
+} from "@/lib/marketplace-merch"
 
 export interface MarketMerchState {
   merch: MarketMerch
@@ -82,6 +91,21 @@ export function useMarketMerch(): MarketMerchState {
 export function useSaleBadge(productId: string): boolean {
   const { merch, saleBadges } = useMarketMerch()
   return showSaleBadge(saleBadges, merch, productId)
+}
+
+/** Admin-set discount percentage for a product (0 when none). */
+export function useSalePct(productId: string): number {
+  const { merch } = useMarketMerch()
+  return salePctOf(merch, productId)
+}
+
+/** Full discount resolution for a product: { pct, oldPrice }. */
+export function useProductDiscount(p: { price: number; oldPrice?: number; sale_pct?: number }, productId: string): Discount {
+  const { merch, saleBadges } = useMarketMerch()
+  const d = productDiscount(p, merch, productId)
+  // If the global switch or per-product flag disables the badge, hide it.
+  if (!showSaleBadge(saleBadges, merch, productId)) return { pct: 0, oldPrice: null }
+  return d
 }
 
 // Re-exported so card components only import from here.

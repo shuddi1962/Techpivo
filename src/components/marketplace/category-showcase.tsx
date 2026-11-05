@@ -9,10 +9,9 @@ import type { DemoProduct } from "@/lib/marketplace"
 import { openQuickView } from "@/lib/marketplace-events"
 import { marketImage } from "@/lib/marketplace-images"
 import { readCompare, toggleCompareStored } from "@/lib/marketplace-compare"
-import { discountPct } from "./feature-panels"
 import { MarketPrice } from "./market-price"
 import { SaleCountdown, useSaleEnd } from "./sale-countdown"
-import { useSaleBadge } from "./market-flags"
+import { useProductDiscount } from "./market-flags"
 
 interface ShowcaseActions {
   onAdd: (p: DemoProduct) => void
@@ -28,11 +27,10 @@ export interface ShowcaseNavItem {
 
 function ShowcaseCard({ p, onAdd, added, wished, onWish }: { p: DemoProduct } & ShowcaseActions) {
   const [compared, setCompared] = useState<Record<string, boolean>>(() => readCompare())
-  const pct = discountPct(p.price, p.oldPrice)
   const href = /^[0-9a-f-]{36}$/i.test(p.id) ? `/marketplace/product/${p.id}` : undefined
   const saleEnd = useSaleEnd(p.id)
-  const saleBadgeAllowed = useSaleBadge(p.id)
-  const showSale = pct > 0 && saleBadgeAllowed
+  const { pct: discount, oldPrice } = useProductDiscount(p, p.id)
+  const showSale = discount > 0
   const flipCompare = () => setCompared((m) => ({ ...m, [p.id]: toggleCompareStored(p.id) }))
 
   const iconBtn =
@@ -47,7 +45,7 @@ function ShowcaseCard({ p, onAdd, added, wished, onWish }: { p: DemoProduct } & 
         </div>
         {showSale && (
           <span className="absolute left-1.5 top-1.5 z-10 flex h-10 w-10 items-center justify-center rounded-full bg-[#F59E0B] text-[11px] font-extrabold text-[#0F172A] shadow-sm">
-            -{pct}%
+            -{discount}%
           </span>
         )}
         {/* hover icon rail — wishlist / quick view / compare */}
@@ -101,8 +99,8 @@ function ShowcaseCard({ p, onAdd, added, wished, onWish }: { p: DemoProduct } & 
         <p title={p.name} className="truncate text-[13px] font-semibold text-[#0F172A] transition-colors group-hover:text-[#B45309]">{p.name}</p>
         <div className="flex items-baseline gap-1.5">
           <MarketPrice usd={p.price} className="text-[15px] font-extrabold tabular-nums text-[#0F172A]" />
-          {showSale && p.oldPrice && p.oldPrice > p.price && (
-            <MarketPrice usd={p.oldPrice} className="text-xs tabular-nums text-slate-400 line-through" />
+          {showSale && oldPrice && (
+            <MarketPrice usd={oldPrice} className="text-xs tabular-nums text-slate-400 line-through" />
           )}
         </div>
         {showSale && saleEnd.trim() && (

@@ -6,10 +6,10 @@ import { ArrowLeftRight, Check, Eye, Heart, Package, ShoppingCart } from "lucide
 import { marketImage } from "@/lib/marketplace-images"
 import { openQuickView } from "@/lib/marketplace-events"
 import { readCompare, toggleCompareStored } from "@/lib/marketplace-compare"
-import { priceOf, discountOf, type StoreProduct } from "@/lib/marketplace-catalog"
+import { priceOf, type StoreProduct } from "@/lib/marketplace-catalog"
 import { MarketPrice } from "./market-price"
 import { SaleCountdown, useSaleEnd } from "./sale-countdown"
-import { useSaleBadge } from "./market-flags"
+import { useProductDiscount } from "./market-flags"
 
 // Storefront card: the whole card (image + name + price) opens the product
 // page via a stretched link; hover rail (wishlist / quick view / compare)
@@ -28,13 +28,13 @@ export function ProductCard({
   added: boolean
 }) {
   const price = priceOf(p)
-  const discount = discountOf(p)
-  const old = p.original_price ? Number(p.original_price) : NaN
   const href = `/marketplace/product/${p.id}`
   const saleEnd = useSaleEnd(p.id)
-  // Store-wide switch + per-product flag decide if the discount shows at all.
-  const saleBadgeAllowed = useSaleBadge(p.id)
-  const showSale = discount > 0 && saleBadgeAllowed
+  const { pct: discount, oldPrice } = useProductDiscount(
+    { price, oldPrice: p.original_price ?? undefined, sale_pct: p.sale_pct },
+    p.id
+  )
+  const showSale = discount > 0
   const [compared, setCompared] = useState(() => !!readCompare()[p.id])
 
   const toggleCompare = () => setCompared(toggleCompareStored(p.id))
@@ -60,7 +60,7 @@ export function ProductCard({
         )}
         {showSale && (
           <span className="absolute left-3 top-3 z-10 rounded-full bg-[#DC2626] px-2.5 py-1 text-[11px] font-extrabold tracking-wide text-white shadow-sm">
-            -{Math.round(discount * 100)}%
+            -{discount}%
           </span>
         )}
         {/* top-right icon stack — wishlist / quick view / compare */}
@@ -115,8 +115,8 @@ export function ProductCard({
             usd={price}
             className={`text-[15px] font-extrabold tabular-nums ${showSale ? "text-[#DC2626]" : "text-[#0F172A]"}`}
           />
-          {showSale && Number.isFinite(old) && (
-            <MarketPrice usd={old} className="text-[11px] tabular-nums text-slate-400 line-through" />
+          {showSale && oldPrice && (
+            <MarketPrice usd={oldPrice} className="text-[11px] tabular-nums text-slate-400 line-through" />
           )}
         </div>
         {showSale && saleEnd.trim() && (

@@ -94,6 +94,9 @@ export function MarketplaceProductsTab() {
   const [saving, setSaving] = useState(false)
   const [notice, setNotice] = useState("")
   const [noticeTone, setNoticeTone] = useState<"success" | "error" | "info">("success")
+  const [bulkDiscountOpen, setBulkDiscountOpen] = useState(false)
+  const [bulkDiscountPct, setBulkDiscountPct] = useState("")
+  const [bulkDiscountEnable, setBulkDiscountEnable] = useState(true)
 
   const [page, setPage] = useState(1)
   const [total, setTotal] = useState(0)
@@ -239,6 +242,30 @@ export function MarketplaceProductsTab() {
       flash(ok === selectedIds.length ? `${ok} deleted` : `${ok} of ${selectedIds.length} deleted`, ok === selectedIds.length ? "success" : "info")
     } catch {
       flash("Bulk delete failed — check your connection", "error")
+    }
+  }
+
+  const bulkDiscount = async () => {
+    if (selectedIds.length === 0) return
+    try {
+      const res = await fetch("/admin/marketplace/api", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "bulk-merch-save",
+          product_ids: selectedIds,
+          sale: bulkDiscountEnable,
+          sale_pct: bulkDiscountPct ? Number(bulkDiscountPct) : undefined,
+        }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data?.error || "Bulk discount failed")
+      setSelected([])
+      setBulkDiscountOpen(false)
+      setBulkDiscountPct("")
+      flash(`Discount applied to ${data?.updated ?? selectedIds.length} product${selectedIds.length === 1 ? "" : "s"}`)
+    } catch (err) {
+      flash(err instanceof Error ? err.message : "Bulk discount failed", "error")
     }
   }
 
@@ -497,6 +524,9 @@ export function MarketplaceProductsTab() {
             <button onClick={() => void bulkDelete()} className="inline-flex items-center gap-1.5 rounded-lg bg-red-500/90 px-3 py-1.5 text-xs font-bold hover:bg-red-500">
               <Trash2 className="h-3.5 w-3.5" /> Delete
             </button>
+            <button onClick={() => setBulkDiscountOpen(true)} className="inline-flex items-center gap-1.5 rounded-lg bg-[#F59E0B]/10 px-3 py-1.5 text-xs font-bold text-[#B45309] hover:bg-[#F59E0B]/20">
+              <BadgePercent className="h-3.5 w-3.5" /> Discount
+            </button>
             <button onClick={() => setSelected([])} aria-label="Clear selection" className="inline-flex items-center gap-1 rounded-lg px-2 py-1.5 text-xs font-bold text-slate-300 hover:text-white">
               <X className="h-3.5 w-3.5" /> Clear
             </button>
@@ -751,6 +781,53 @@ export function MarketplaceProductsTab() {
               </button>
             </div>
           </div>
+        </div>
+      </MarketModal>
+
+      {/* Bulk discount modal — apply a badge + percentage to all selected products. */}
+      <MarketModal
+        open={bulkDiscountOpen}
+        onClose={() => setBulkDiscountOpen(false)}
+        title="Bulk discount"
+        desc="Apply a discount badge and percentage to every selected product. Leave percentage blank to compute it from each product's sale price."
+        footer={
+          <>
+            <button onClick={() => setBulkDiscountOpen(false)} className={marketBtnGhostCls}>
+              Cancel
+            </button>
+            <button onClick={bulkDiscount} className={marketBtnPrimaryCls}>
+              Apply to {selectedIds.length} product{selectedIds.length === 1 ? "" : "s"}
+            </button>
+          </>
+        }
+      >
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <span className="text-sm font-semibold text-slate-700">Enable discount badge</span>
+            <button
+              role="switch"
+              aria-checked={bulkDiscountEnable}
+              onClick={() => setBulkDiscountEnable((v) => !v)}
+              className={cn("relative h-6 w-11 shrink-0 rounded-full transition-colors", bulkDiscountEnable ? "bg-emerald-500" : "bg-slate-300")}
+            >
+              <span className={cn("absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-all", bulkDiscountEnable ? "left-[22px]" : "left-[0.5px]")} />
+            </button>
+          </div>
+          <MarketField label="Discount percentage (%)" hint="e.g. 25. Shown as a -25% badge and computes the struck-through price.">
+            <input
+              value={bulkDiscountPct}
+              onChange={(e) => setBulkDiscountPct(e.target.value.replace(/[^0-9.]/g, "").slice(0, 4))}
+              type="number"
+              min="1"
+              max="99"
+              step="0.01"
+              className={marketInputCls}
+              placeholder="25"
+            />
+          </MarketField>
+          <p className="text-xs text-slate-500">
+            Requires a sale price lower than the original price on each product; otherwise no badge shows.
+          </p>
         </div>
       </MarketModal>
     </div>

@@ -16,12 +16,35 @@ export const MARKETPLACE_MERCH_KEY = "marketplace_merch"
 export const MARKET_MERCH_GLOBAL_KEY = "_global"
 
 export interface MerchFlags {
-  /** Show the -% badge + strikethrough when prices differ. Default true. */
+  /** Show the -% badge + strikethrough when prices differ. Default false (opt-in per product). */
   sale?: boolean
+  /** Discount percentage to show (computes the struck-through price from sale_price when set). */
+  sale_pct?: number
   /** Feature in New Arrivals ahead of recency. Default false. */
   is_new?: boolean
   /** Feature in Best Sellers ahead of popularity. Default false. */
   bestseller?: boolean
+}
+
+/** Resolved discount for one product: explicit admin `sale_pct` wins, else the
+   percentage computed from `oldPrice`/`price`. Always returns pct=0 when the
+   product is not opted in for a badge. */
+export interface Discount { pct: number; oldPrice: number | null }
+export function productDiscount(
+  p: { price: number; oldPrice?: number; sale_pct?: number },
+  merch: MarketMerch | null | undefined,
+  productId: string
+): Discount {
+  const merchPct = salePctOf(merch, productId)
+  const productPct = p.sale_pct != null && Number.isFinite(p.sale_pct) && p.sale_pct > 0 && p.sale_pct < 100 ? Math.round(p.sale_pct) : null
+  const pct = productPct ?? merchPct
+  if (Number.isFinite(pct) && pct > 0 && pct < 100) {
+    return { pct, oldPrice: computeOldPrice(p.price, pct) ?? null }
+  }
+  if (p.oldPrice && p.oldPrice > p.price) {
+    return { pct: Math.round((1 - p.price / p.oldPrice) * 100), oldPrice: p.oldPrice }
+  }
+  return { pct: 0, oldPrice: null }
 }
 
 export type MarketMerch = Record<string, MerchFlags>
@@ -33,6 +56,8 @@ function cleanFlags(v: unknown): MerchFlags | null {
   const r = v as Record<string, unknown>
   const out: MerchFlags = {}
   if (typeof r.sale === "boolean") out.sale = r.sale
+  const pct = Number(r.sale_pct)
+  if (Number.isFinite(pct) && pct > 0 && pct < 100) out.sale_pct = Math.round(pct)
   if (typeof r.is_new === "boolean") out.is_new = r.is_new
   if (typeof r.bestseller === "boolean") out.bestseller = r.bestseller
   // Legacy/alternate key spellings admins might type.
@@ -54,9 +79,24 @@ export function parseMarketMerch(raw: unknown): MarketMerch {
   return out
 }
 
-/** Discount badge + strikethrough may show for this product. */
+/** Discount badge + strikethrough may show for this product. Default OFF —
+   the admin must opt each product in (or flip the store-wide switch back on
+   after it was already opted in). */
 export function saleBadgeOn(merch: MarketMerch | null | undefined, productId: string): boolean {
-  return merch?.[productId]?.sale !== false
+  return merch?.[productId]?.sale === true
+}
+
+/** Discount percentage stored for a product (0 when none). */
+export function salePctOf(merch: MarketMerch | null | undefined, productId: string): number {
+  const pct = merch?.[productId]?.sale_pct
+  return pct != null && Number.isFinite(pct) && pct > 0 && pct < 100 ? Math.round(pct) : 0
+}
+
+/** Compute the struck-through "original" price from a sale price + pct. */
+export function computeOldPrice(salePrice: number, pct: number): number | null {
+  if (!Number.isFinite(salePrice) || salePrice <= 0) return null
+  if (!Number.isFinite(pct) || pct <= 0 || pct >= 100) return null
+  return Math.round((salePrice / (1 - pct / 100)) * 100) / 100
 }
 
 /** Store-wide discount-badge kill-switch. Defaults ON (badges show). */
