@@ -367,7 +367,7 @@ const [currencyOpen, setCurrencyOpen] = useState(false)
   const setCurrencyChoice = (code: string) => {
     setCurrency(code as MarketCurrency)
     setCurrencyOpen(false)
-    setMarketCurrency(code === "NGN" ? "NGN" : (code as MarketCurrency))
+    setMarketCurrency(code as MarketCurrency)
   }
 
   const CURRENCY_LABEL: Record<string, string> = {

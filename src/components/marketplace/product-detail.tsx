@@ -525,25 +525,25 @@ export function ProductDetail({
           </div>
         </div>
 
-        <div className="flex flex-col">
+        <div className="flex flex-col gap-3">
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-slate-500">
             <span>SKU: <strong className="text-[#0F172A]">{neutralSku(p.id)}</strong></span>
             {sold > 0 && <span><strong className="text-[#0F172A]">{sold}</strong> sold</span>}
             {hasSupplier && <span>Ships from: <strong className="text-[#0F172A]">China</strong></span>}
           </div>
-          <h1 className="text-2xl sm:text-3xl font-extrabold text-[#0F172A] tracking-tight mt-1">{rewritten.title}</h1>
+          <h1 className="text-2xl sm:text-3xl font-extrabold text-[#0F172A] tracking-tight leading-tight">{rewritten.title}</h1>
           {rewritten.short && (
-            <p className="mt-2 rounded-lg border-l-4 border-[#F59E0B] bg-[#FFFBEB] px-3 py-2 text-sm text-slate-700">
+            <p className="mt-1 rounded-lg border border-[#F59E0B]/20 bg-[#FFFBEB]/50 px-3.5 py-2 text-sm text-slate-700 leading-relaxed">
               {rewritten.short}
             </p>
           )}
-          <div className="flex items-center gap-2 mt-2">
+          <div className="flex items-center gap-2 mt-1">
             <Stars value={avg} />
             <span className="text-sm text-slate-500">
               {reviews.length > 0 ? `${avg.toFixed(1)} · ${reviews.length} review${reviews.length === 1 ? "" : "s"}` : "No reviews yet"}
             </span>
           </div>
-          <div className="flex items-baseline gap-2 mt-3 flex-wrap">
+          <div className="flex items-baseline gap-2 mt-4 flex-wrap">
             <MarketPrice usd={price} className={`text-3xl font-extrabold ${showSale ? "text-[#EF4444]" : "text-[#0F172A]"}`} />
             {oldPrice && showSale && <MarketPrice usd={oldPrice} className="text-lg text-slate-400 line-through" />}
             {showSale && saleEnd.trim() && <SaleCountdown endAt={saleEnd} prefix="Sale ends in" />}
@@ -553,11 +553,6 @@ export function ProductDetail({
               ? `≈ $${price.toFixed(2)}`
               : `≈ ₦${Math.round(price * rate).toLocaleString()}`} · pay in naira at checkout
           </p>
-          {rewritten.short && (
-            <div className="mt-2 rounded-lg border-l-4 border-[#F59E0B] bg-[#FFFBEB] px-3 py-2 text-sm text-slate-700">
-              {rewritten.short}
-            </div>
-          )}
           {rewritten.paras.length > 0 && (
             <div className="mt-4">
               <button
@@ -565,7 +560,7 @@ export function ProductDetail({
                 onClick={() => setShowFull((prev) => !prev)}
                 className="flex items-center gap-1 text-xs font-semibold text-[#B45309] hover:text-[#D97706] hover:underline"
               >
-                {showFull ? "Read less" : "Read more"} <span>▾</span>
+                {showFull ? "Read less" : "Read full description"} <span>▾</span>
               </button>
               <div
                 className={`text-sm text-slate-700 leading-relaxed space-y-3 mt-2 ${showFull ? "" : "hidden"}`}

@@ -574,12 +574,12 @@ export function MarketplaceHome() {
       .filter((p) => discountRateOf(p) > 0 && showSaleBadge(saleBadges, merch, p.id))
       .sort((a, b) => discountRateOf(b) - discountRateOf(a)),
     usedIds,
-    5
+    8
   )
   const featured = takeFresh(
     grid.filter((p) => p.badge === "Featured"),
     usedIds,
-    5
+    8
   )
   const createdById = useMemo(
     () => new Map(dbProducts.map((d) => [d.id, d.created_at || ""])),
@@ -592,7 +592,7 @@ export function MarketplaceHome() {
         (createdById.get(b.id) || "").localeCompare(createdById.get(a.id) || "")
     ),
     usedIds,
-    5
+    8
   )
   const bestPool = [...grid].sort(
     (a, b) =>
@@ -602,7 +602,7 @@ export function MarketplaceHome() {
       discountRateOf(b) - discountRateOf(a) ||
       b.rating - a.rating
   )
-  const best = takeFresh(bestPool, usedIds, 5)
+  const best = takeFresh(bestPool, usedIds, 8)
   const trending = [...grid]
     .filter((p) => !usedIds.has(p.id))
     .sort(
