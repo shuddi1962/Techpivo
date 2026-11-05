@@ -40,9 +40,8 @@ let cached: MarketSales | null = null
 let inflight: Promise<MarketSales> | null = null
 
 export function getMarketSales(): Promise<MarketSales> {
-  if (cached) return Promise.resolve(cached)
   if (inflight) return inflight
-  inflight = fetch("/api/marketplace/sales")
+  inflight = fetch("/api/marketplace/sales", { cache: "no-store" })
     .then((r) => r.json())
     .then((d) => {
       cached = parseMarketSales(d?.sales)

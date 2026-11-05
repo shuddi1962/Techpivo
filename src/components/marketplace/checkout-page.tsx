@@ -30,7 +30,7 @@ export function CheckoutPage() {
   const router = useRouter()
   const cart = useMarketCart()
   const currency = useMarketCurrency()
-  const rate = useFxRate(currency)
+  const ngnRate = useFxRate("NGN")
   const [rows, setRows] = useState<Row[]>([])
   const [loading, setLoading] = useState(true)
   const [paying, setPaying] = useState(false)
@@ -115,7 +115,7 @@ export function CheckoutPage() {
   const shipping = activePick ? activePick.feeUsd : 0
   const discountUsd = coupon ? Math.min(subtotal, coupon.discountUsd) : 0
   const totalUsd = Math.max(0, subtotal - discountUsd + shipping)
-  const totalNgn = Math.round(totalUsd * rate)
+  const totalNgn = Math.round(totalUsd * ngnRate)
 
   const applyCoupon = async () => {
     const code = couponInput.trim().toUpperCase()

@@ -49,11 +49,16 @@ export function useSaleEnd(productId: string): string {
   const [end, setEnd] = useState("")
   useEffect(() => {
     let alive = true
-    getMarketSales().then((m) => {
-      if (alive) setEnd(m[productId] || "")
-    })
+    const refresh = () => {
+      getMarketSales().then((m) => {
+        if (alive) setEnd(m[productId] || "")
+      })
+    }
+    refresh()
+    window.addEventListener("focus", refresh)
     return () => {
       alive = false
+      window.removeEventListener("focus", refresh)
     }
   }, [productId])
   return end

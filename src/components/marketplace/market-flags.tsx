@@ -38,13 +38,13 @@ let cached: MarketMerchState | null = null
 let inflight: Promise<MarketMerchState> | null = null
 
 export function getMarketMerch(): Promise<MarketMerchState> {
-  if (cached) return Promise.resolve(cached)
   if (inflight) return inflight
   inflight = fetch("/api/marketplace/merch", { cache: "no-store" })
     .then((r) => r.json())
     .then((d) => {
-      cached = { merch: parseMarketMerch(d?.merch), saleBadges: d?.sale_badges !== false }
-      return cached
+      const m = { merch: parseMarketMerch(d?.merch), saleBadges: d?.sale_badges !== false }
+      cached = m
+      return m
     })
     .catch(() => {
       cached = { ...DEFAULT_STATE }
@@ -60,16 +60,19 @@ export function useMarketMerch(): MarketMerchState {
   const seeded = useContext(MarketMerchContext)
   const [state, setState] = useState<MarketMerchState>(() => seeded || cached || { ...DEFAULT_STATE })
   useEffect(() => {
-    if (seeded) {
-      setState(seeded)
-      return
-    }
     let alive = true
-    getMarketMerch().then((m) => {
-      if (alive) setState(m)
-    })
+    const refresh = () => {
+      getMarketMerch().then((m) => {
+        if (alive) setState(m)
+      })
+    }
+    // Use the server seed on first mount, then refresh whenever the tab
+    // regains focus so admin changes (merch flags, badge switch) show live.
+    if (!seeded) refresh()
+    window.addEventListener("focus", refresh)
     return () => {
       alive = false
+      window.removeEventListener("focus", refresh)
     }
   }, [seeded])
   return state
