@@ -779,17 +779,17 @@ const [currencyOpen, setCurrencyOpen] = useState(false)
           )}
         </div>
 
-        {/* mobile nav drawer */}
-        <div className={`lg:hidden ${open ? "" : "hidden"}`}>
+        {/* mobile nav drawer — slides in from the left on mobile */}
+        <div className="lg:hidden">
           {open && (
             <div
-              className="fixed inset-0 z-40 bg-[#0B3A9A]/45 backdrop-blur-sm"
+              className="fixed inset-0 z-40 bg-[#0B3A9A]/45 backdrop-blur-sm transition-opacity duration-300"
               onClick={() => setOpen(false)}
               aria-hidden="true"
             />
           )}
           <nav
-            className="fixed top-0 left-0 z-50 h-full w-[85%] max-w-[360px] overflow-y-auto bg-white shadow-2xl"
+            className={`fixed top-0 left-0 z-50 h-full w-[85%] max-w-[360px] overflow-y-auto bg-white shadow-2xl transform transition-transform duration-300 ${open ? "translate-x-0 opacity-100" : "-translate-x-full opacity-0 pointer-events-none"}`}
             aria-label="Marketplace mobile"
           >
             <div className="flex items-center justify-between px-4 py-3 border-b border-[#E2E8F0]">
