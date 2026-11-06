@@ -6,7 +6,7 @@
 import { useEffect, useState } from "react"
 import { fxFormat } from "@/lib/fx-shared"
 
-const RATE_KEY_PREFIX = "tp_market_fx_v1"
+const RATE_KEY_PREFIX = "tp_market_fx_v2"
 const FALLBACK_USD_NGN = 1600
 
 export const MARKET_CURRENCY_KEY = "tp_market_currency_v1"

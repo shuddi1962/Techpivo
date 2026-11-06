@@ -939,22 +939,6 @@ export function MarketplaceHome() {
         )}
         <SectionDivider />
 
-        {/* feature panels — new arrivals / featured / best selling (large cards,
-            title + price only — full details live on the single product page) */}
-        {loaded ? (
-        <FeaturePanels
-          groups={[
-            { title: "New Arrivals", items: newArrivals, shopAllHref: "/marketplace/new-arrivals", offset: rot },
-            { title: "Featured Products", items: featured, shopAllHref: "/marketplace/new-arrivals", offset: rot },
-            { title: "Best Selling", items: best, shopAllHref: "/marketplace/best-sellers", offset: rot },
-          ]}
-          onAdd={addToCart}
-          added={justAdded}
-          wished={wishlist}
-          onWish={toggleWish}
-        />
-        ) : null}
-
         {/* flash deals — live discounted products under an editable countdown banner.
             Admin → Marketplace → Banners → Flash sale. A banner image hides
             the badge + headline + countdown block (image links to Specials).

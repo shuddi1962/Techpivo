@@ -11,7 +11,7 @@ export interface FxRates {
   source: "live" | "fallback"
 }
 
-export const FX_CACHE_KEY = "tp_fx_rates"
+export const FX_CACHE_KEY = "tp_fx_rates_v2"
 export const FX_PREF_KEY = "tp_display_currency"
 const FX_CACHE_TTL_MS = 6 * 60 * 60 * 1000
 
