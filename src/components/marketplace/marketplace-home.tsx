@@ -712,12 +712,11 @@ export function MarketplaceHome() {
       }
       return null
     }
-    // Rotate which 10 departments show over time so a different set leads
+    // Rotate which departments show over time so a different set leads
     // the collections section periodically.
     const deptRotOffset = rot % Math.max(1, departments.length)
     return departments
       .slice(deptRotOffset).concat(departments.slice(0, deptRotOffset))
-      .slice(0, 10)
       .map((dep) => {
         const stock = banners.departments[dep.slug] || dep.image || ""
         const pool = pools.get(dep.slug) || []
@@ -726,7 +725,7 @@ export function MarketplaceHome() {
           slug: dep.slug,
           href: `/marketplace/category/${dep.slug}`,
           image: claim(pool) || deptCover.get(dep.slug) || stock,
-          subs: [],
+          subs: (dep.subs || []).map((s) => ({ name: s.name, slug: s.slug })),
         }
       })
   }, [scopeRows, departments, deptCover, rot, banners])

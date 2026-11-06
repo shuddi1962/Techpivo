@@ -81,6 +81,24 @@ export function ShopCollections({
                 {c.name}
               </Link>
             </div>
+            {c.subs && c.subs.length > 0 && (
+              <div className="flex flex-wrap justify-center gap-1 mb-1">
+                {c.subs.slice(0, 4).map((s) => (
+                  <Link
+                    key={s.slug}
+                    href={`/marketplace/category/${s.slug}`}
+                    className="text-[10px] font-medium px-2 py-1 rounded-md bg-[#F1F5F9] text-[#0F172A]/80 hover:bg-[#FF6B00] hover:text-white transition-colors whitespace-nowrap shrink-0"
+                  >
+                    {s.name}
+                  </Link>
+                ))}
+                {c.subs.length > 4 && (
+                  <span className="text-[10px] font-medium px-2 py-1 rounded-md bg-[#F1F5F9] text-slate-400 whitespace-nowrap shrink-0">
+                    +{c.subs.length - 4}
+                  </span>
+                )}
+              </div>
+            )}
           </div>
         ))}
       </div>
