@@ -18,15 +18,8 @@ const FX_CACHE_TTL_MS = 6 * 60 * 60 * 1000
 let inFlight: Promise<FxRates> | null = null
 
 export function getFxRates(force = false): Promise<FxRates> {
-  try {
-    if (!force) {
-      const cached = localStorage.getItem(FX_CACHE_KEY)
-      if (cached) {
-        const parsed = JSON.parse(cached) as { t: number; data: FxRates }
-        if (Date.now() - parsed.t < FX_CACHE_TTL_MS) return Promise.resolve(parsed.data)
-      }
-    }
-  } catch { /* storage unavailable */ }
+  // Always fetch live — never serve a stale cached rate, so the NGN
+  // conversion reflects the current market rate on every page load.
   if (inFlight) return inFlight
   const p = (async () => {
     try {

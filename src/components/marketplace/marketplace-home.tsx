@@ -324,22 +324,8 @@ export function MarketplaceHome() {
   const trendPauseRef = useRef(false)
   const storesPauseRef = useRef(false)
 
-  // Auto-moving rails — glide on their own, pause while touched, wrap
-  // around at the end for a non-stop loop feel.
-  useEffect(() => {
-    const glide = (el: HTMLDivElement | null) => {
-      if (!el || document.hidden) return
-      const max = el.scrollWidth - el.clientWidth - 8
-      if (max <= 0) return
-      if (el.scrollLeft >= max) el.scrollTo({ left: 0, behavior: "smooth" })
-      else el.scrollBy({ left: 240, behavior: "smooth" })
-    }
-    const t = setInterval(() => {
-      if (!trendPauseRef.current) glide(trendRailRef.current)
-      if (!storesPauseRef.current) glide(storesRailRef.current)
-    }, 2800)
-    return () => clearInterval(t)
-  }, [])
+  // Auto-moving rails disabled — pages no longer auto-scroll; shoppers scroll
+  // manually through each section.
   const [query, setQuery] = useState("")
   const [banners, setBanners] = useState<MarketBanners>({ ...EMPTY_BANNERS, departments: {} })
   // Live, admin-editable department tree (Admin → Marketplace → Categories).

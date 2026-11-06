@@ -66,42 +66,16 @@ export function useMarketCurrency(): MarketCurrency {
   return cur
 }
 
-interface FxCache {
-  rate: number
-  at: number
-}
-
-function cacheKey(from: string, to: string): string {
-  return `${RATE_KEY_PREFIX}:${from}:${to}`
-}
-
-function readCache(from: string, to: string): number | null {
-  try {
-    const raw = window.localStorage.getItem(cacheKey(from, to))
-    if (!raw) return null
-    const c = JSON.parse(raw) as FxCache
-    if (!c || !Number.isFinite(c.rate) || Date.now() - c.at > 6 * 3600 * 1000) return null
-    return c.rate
-  } catch {
-    return null
-  }
-}
-
 let inflight: Record<string, Promise<{ from: string; to: string; rate: number } | null>> = {}
 
 function sharedRate(from: string, to: string): Promise<{ from: string; to: string; rate: number } | null> {
   const key = `${from}:${to}`
   if (!inflight[key]) {
-    inflight[key] = fetch(`/api/tools/fx?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}&amount=1`)
+    inflight[key] = fetch(`/api/tools/fx?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}&amount=1`, { cache: "no-store" })
       .then((r) => r.json())
       .then((j) => {
         const v = Number(j?.rate)
         if (!Number.isFinite(v) || v <= 0) return null
-        try {
-          window.localStorage.setItem(cacheKey(from, to), JSON.stringify({ rate: v, at: Date.now() } satisfies FxCache))
-        } catch {
-          // ignore
-        }
         return { from, to, rate: v }
       })
       .catch(() => null)
@@ -118,7 +92,9 @@ export function useFxRate(to: MarketCurrency): number {
   const [rate, setRate] = useState<number>(() => {
     if (typeof window === "undefined") return to === "USD" ? 1 : FALLBACK_USD_NGN
     if (to === "USD") return 1
-    return readCache(from, to) ?? (to === "NGN" ? FALLBACK_USD_NGN : 1)
+    // Never seed from a possibly-stale cache — start from fallback and let
+    // the effect below overwrite it with the live rate on mount.
+    return to === "NGN" ? FALLBACK_USD_NGN : 1
   })
   useEffect(() => {
     if (to === "USD") {
