@@ -3,7 +3,7 @@
 import Link from "next/link"
 import { useEffect, useMemo, useRef, useState } from "react"
 import {
-  ArrowLeftRight, ChevronRight, Eye, Heart, Home, LayoutGrid,
+  ArrowLeftRight, ChevronRight, Eye, Heart, Home,
   Package as PkgIcon, Search, ShoppingCart, User, Cpu, Smartphone, Laptop,
   Wrench, Shirt, Baby, Hammer, Book, ShoppingBag, Clock, Sparkles, Monitor,
   Globe, CreditCard,

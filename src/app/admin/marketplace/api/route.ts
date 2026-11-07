@@ -717,6 +717,15 @@ export async function POST(request: NextRequest) {
       revalidateStore()
       return NextResponse.json({ success: true, banners })
     }
+    // Save Super Deals promotional configuration
+    if (body.action === "super-deals-save") {
+      const { error } = await supabase
+        .from("site_settings")
+        .upsert({ key: "marketplace_super_deals", value: body.superDeals as unknown as never }, { onConflict: "key" })
+      if (error) throw error
+      revalidateStore()
+      return NextResponse.json({ success: true, superDeals: body.superDeals })
+    }
     // Save per-product sale countdowns (productId → ISO end)
     if (body.action === "sales-save") {
       const { parseMarketSales } = await import("@/lib/marketplace-sales")

@@ -10,6 +10,7 @@ import { MarketplaceOrdersTab } from "@/components/admin/marketplace-orders-tab"
 import { MarketplacePaymentsTab } from "@/components/admin/marketplace-payments-tab"
 import { MarketplaceReviewsTab } from "@/components/admin/marketplace-reviews-tab"
 import { MarketplacePromotionsTab } from "@/components/admin/marketplace-promotions-tab"
+import { MarketplaceSuperDealsTab } from "@/components/admin/marketplace-super-deals-tab"
 import { MarketplaceDashboardTab } from "@/components/admin/marketplace-dashboard-tab"
 import { MarketplaceProductsTab } from "@/components/admin/marketplace-products-tab"
 import { MarketplaceVisibilityTab } from "@/components/admin/marketplace-visibility-tab"
@@ -55,6 +56,8 @@ function AdminMarketplacePageInner() {
         {tab === "reviews" && <MarketplaceReviewsTab />}
 
         {tab === "promotions" && <MarketplacePromotionsTab />}
+
+        {tab === "super-deals" && <MarketplaceSuperDealsTab />}
 
         {tab === "banners" && <MarketplaceBannersTab />}
 
