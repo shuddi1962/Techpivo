@@ -320,6 +320,7 @@ export function MarketplaceHome() {
   const [justAdded, setJustAdded] = useState<Record<string, boolean>>({})
   const trendRailRef = useRef<HTMLDivElement>(null)
   const storesRailRef = useRef<HTMLDivElement>(null)
+  const promoRailRef = useRef<HTMLDivElement>(null)
   const trendPauseRef = useRef(false)
   const storesPauseRef = useRef(false)
 
@@ -620,6 +621,20 @@ export function MarketplaceHome() {
   const filtering = q.length > 0
   const tabEmpty = !filtering && tab !== "new" && tabShown.length === 0
 
+  // Auto-rotate the promotional deals rail every 4 seconds.
+  useEffect(() => {
+    if (flashItems.length <= 6) return
+    const el = promoRailRef.current
+    if (!el) return
+    const t = setInterval(() => {
+      const max = el.scrollWidth - el.clientWidth
+      if (max <= 0) return
+      if (el.scrollLeft >= max) el.scrollTo({ left: 0, behavior: "smooth" })
+      else el.scrollBy({ left: 560, behavior: "smooth" })
+    }, 4000)
+    return () => clearInterval(t)
+  }, [flashItems.length])
+
   // Top stores: one tile per stocked subcategory (not per department),
   // so the rail has ~25 distinct tiles and scrolls well. Cover = that
   // subcategory's first live product photo — never a repeated generic.
@@ -649,6 +664,34 @@ export function MarketplaceHome() {
     })
     return out
   }, [dbProducts, departments])
+
+  // Auto-rotate Top Stores vendors rail every 4 seconds.
+  useEffect(() => {
+    if (vendors.length <= 6) return
+    const el = storesRailRef.current
+    if (!el) return
+    const t = setInterval(() => {
+      const max = el.scrollWidth - el.clientWidth
+      if (max <= 0) return
+      if (el.scrollLeft >= max) el.scrollTo({ left: 0, behavior: "smooth" })
+      else el.scrollBy({ left: 480, behavior: "smooth" })
+    }, 4000)
+    return () => clearInterval(t)
+  }, [vendors.length])
+
+  // Auto-rotate trending rail every 4 seconds.
+  useEffect(() => {
+    if (trending.length <= 6) return
+    const el = trendRailRef.current
+    if (!el) return
+    const t = setInterval(() => {
+      const max = el.scrollWidth - el.clientWidth
+      if (max <= 0) return
+      if (el.scrollLeft >= max) el.scrollTo({ left: 0, behavior: "smooth" })
+      else el.scrollBy({ left: 320, behavior: "smooth" })
+    }, 4000)
+    return () => clearInterval(t)
+  }, [trending.length])
 
   // Real product photo per department for Shop-by-Department tiles
   // (CJ-style: actual catalog photos, not generic stock).
@@ -959,7 +1002,22 @@ export function MarketplaceHome() {
           <span className="text-[#DC2626] text-[11px] font-bold uppercase tracking-wider">Special Offers</span>
           <span className="text-sm text-slate-500">{flashItems.length} deals available</span>
         </div>
-        <div className="flex gap-3 overflow-x-auto pb-1 snap-x" style={{ scrollbarWidth: "none" }}>
+        <div className="flex items-center gap-1.5 mb-3 mt-1">
+          {[
+            { v: t.days, l: "D" },
+            { v: t.hrs, l: "H" },
+            { v: t.mins, l: "M" },
+            { v: t.secs, l: "S" },
+          ].map((x, i, arr) => (
+            <span key={x.l} className="flex items-center gap-1">
+              <span className="min-w-6 rounded-lg bg-[#F8FAFC] px-1.5 py-1 text-center text-[10px] font-bold tabular-nums text-[#DC2626]">
+                {x.v}
+              </span>
+              {i < arr.length - 1 && <span className="text-[10px] font-bold text-slate-400">:</span>}
+            </span>
+          ))}
+        </div>
+        <div className="flex gap-3 overflow-x-auto pb-1 snap-x" style={{ scrollbarWidth: "none" }} ref={promoRailRef}>
           {flashItems.map((p) => {
             const href = /^[0-9a-f-]{36}$/i.test(p.id) ? `/marketplace/product/${p.id}` : undefined
             return (
@@ -1148,39 +1206,20 @@ export function MarketplaceHome() {
                 <span className="text-[#DC2626] text-[11px] font-bold uppercase tracking-wider block">Most viewed right now</span>
                 <h2 className="text-lg font-bold text-[#0F172A]">Trending Now</h2>
               </div>
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => document.getElementById("trend-rail")?.scrollBy({ left: -320, behavior: "smooth" })}
-                  aria-label="Scroll trending products left"
-                  className="w-9 h-9 rounded-full border border-[#E2E8F0] bg-white flex items-center justify-center text-[#0F172A] hover:bg-slate-100"
-                >
-                  <ChevronLeft className="h-4 w-4" />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => document.getElementById("trend-rail")?.scrollBy({ left: 320, behavior: "smooth" })}
-                  aria-label="Scroll trending products right"
-                  className="w-9 h-9 rounded-full border border-[#E2E8F0] bg-white flex items-center justify-center text-[#0F172A] hover:bg-slate-100"
-                >
-                  <ChevronRight className="h-4 w-4" />
-                </button>
-              </div>
             </div>
             <div
               id="trend-rail"
               className="trend-rail flex gap-3 overflow-x-auto pb-1 snap-x snap-mandatory"
               ref={trendRailRef}
-              onMouseEnter={() => { trendPauseRef.current = true }}
-              onMouseLeave={() => { trendPauseRef.current = false }}
-              onTouchStart={() => { trendPauseRef.current = true }}
-              onTouchEnd={() => { trendPauseRef.current = false }}
             >
               {trending.map((p) => (
                 <div key={p.id} className="w-44 sm:w-52 shrink-0 snap-start">
                   <ProductCard {...cardProps(p)} />
                 </div>
               ))}
+              {trending.length > 6 && (
+                <div className="absolute right-0 top-0 bottom-0 flex items-center px-2 bg-gradient-to-r from-white via-white/60 to-transparent pointer-events-none" />
+              )}
             </div>
           </section>
           )
@@ -1284,33 +1323,11 @@ export function MarketplaceHome() {
                 <span className="text-[#DC2626] text-[11px] font-bold uppercase tracking-wider block">Top rated this week</span>
                 <h2 className="text-lg font-bold text-[#0F172A]">Top Stores</h2>
               </div>
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => storesRailRef.current?.scrollBy({ left: -480, behavior: "smooth" })}
-                  aria-label="Scroll top stores left"
-                  className="flex h-9 w-9 items-center justify-center rounded-full border border-[#E5E7EB] bg-white text-[#0F172A] transition-colors hover:border-[#F59E0B]"
-                >
-                  <ChevronLeft className="h-4 w-4" />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => storesRailRef.current?.scrollBy({ left: 480, behavior: "smooth" })}
-                  aria-label="Scroll top stores right"
-                  className="flex h-9 w-9 items-center justify-center rounded-full border border-[#E5E7EB] bg-white text-[#0F172A] transition-colors hover:border-[#F59E0B]"
-                >
-                  <ChevronRight className="h-4 w-4" />
-                </button>
-              </div>
             </div>
             <div
               ref={storesRailRef}
               className="flex gap-3 overflow-x-auto pb-1 snap-x"
-              style={{ scrollbarWidth: "thin" }}
-              onMouseEnter={() => { storesPauseRef.current = true }}
-              onMouseLeave={() => { storesPauseRef.current = false }}
-              onTouchStart={() => { storesPauseRef.current = true }}
-              onTouchEnd={() => { storesPauseRef.current = false }}
+              style={{ scrollbarWidth: "none" }}
             >
               {vendors.map((v) => (
                 <Link
@@ -1336,12 +1353,6 @@ export function MarketplaceHome() {
             </div>
           </section>
         )}
-
-        <SectionDivider />
-
-        {/* promo banner — uploaded image shows clean (no overlay text or
-            button); default gradient with writeups only when no upload.
-            Hidden publicly while the admin's Black Friday promo toggle is OFF. */}
         {!bannersReady ? (
         <section aria-hidden className="relative aspect-[16/5] overflow-hidden rounded-2xl bg-white shadow-sm animate-pulse">
           <div className="h-full w-full bg-slate-100" />

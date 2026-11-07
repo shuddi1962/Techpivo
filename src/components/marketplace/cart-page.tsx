@@ -9,6 +9,7 @@ import { openCheckout } from "@/lib/marketplace-events"
 import { marketImage } from "@/lib/marketplace-images"
 import { readShipSelection, shippingCost, FREE_SHIP_THRESHOLD_USD } from "@/lib/marketplace-shipping"
 import { useMarketCurrency, useFxRate } from "@/lib/marketplace-pricing"
+import { fxFormat } from "@/lib/fx-shared"
 import { MarketPrice } from "./market-price"
 
 interface Row {
@@ -75,6 +76,9 @@ export function CartPage() {
     shipSel.id === "standard" || shipSel.id === "express"
       ? shippingCost(subtotal, shipSel.id)
       : shipSel.feeUsd
+
+  const totalUsd = Math.max(0, subtotal + shipping)
+  const totalNgn = Math.round(totalUsd * rate)
 
   if (loading) {
     return (
@@ -180,12 +184,22 @@ export function CartPage() {
           <div className="border-t border-[#E2E8F0] pt-2 flex justify-between items-baseline">
             <span className="text-sm font-bold text-[#0F172A]">Total</span>
             <span className="text-right">
-              <MarketPrice usd={subtotal + shipping} className="block text-xl font-extrabold text-[#0F172A]" />
-              <span className="block text-xs text-slate-500">
-                {currency === "NGN"
-                  ? `≈ $${(subtotal + shipping).toFixed(2)}`
-                  : `≈ ₦${Math.round((subtotal + shipping) * rate).toLocaleString()}`} at checkout
-              </span>
+              {currency === "NGN" ? (
+                <>
+                  <MarketPrice usd={totalUsd} className="block text-xl font-extrabold text-[#0F172A]" />
+                  <span className="block text-xs text-slate-500">
+                    ≈ ${totalUsd.toFixed(2)} at checkout
+                  </span>
+                </>
+              ) : (
+                <>
+                  <MarketPrice usd={totalUsd} className="block text-xl font-extrabold text-[#0F172A]" />
+                  <span className="block text-xs text-slate-500">
+                    Charged at checkout ≈{" "}
+                    <span className="font-extrabold text-[#DC2626]">{fxFormat(totalNgn, "NGN", { maxFrac: 0 })}</span>
+                  </span>
+                </>
+              )}
             </span>
           </div>
           <button

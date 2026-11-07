@@ -1,8 +1,8 @@
 "use client"
 
 import Link from "next/link"
-import { useState } from "react"
-import { ChevronRight, ShoppingBag, LayoutGrid } from "lucide-react"
+import { useEffect, useMemo, useRef, useState } from "react"
+import { ChevronRight, ShoppingBag } from "lucide-react"
 import { marketImage } from "@/lib/marketplace-images"
 
 export interface CollectionItem {
@@ -17,6 +17,7 @@ export interface CollectionItem {
 // routes to the department. Shows 10 categories by default; tapping See
 // All reveals all departments. No subcategory chips are rendered beneath
 // the cards — only the category image and name.
+// Rotates which departments lead the section every 10 minutes.
 export function ShopCollections({
   collections,
   seeAllHref = "/marketplace/shop",
@@ -25,8 +26,23 @@ export function ShopCollections({
   seeAllHref?: string
 }) {
   const [showAll, setShowAll] = useState(false)
+  const [rot, setRot] = useState(0)
+
+  // Rotate the lead category every 10 minutes so a different department
+  // shows first on each visit.
+  useEffect(() => {
+    const t = setInterval(() => setRot((r) => r + 1), 600000)
+    return () => clearInterval(t)
+  }, [])
+
+  const ordered = useMemo(() => {
+    if (collections.length <= 1) return collections
+    const k = rot % collections.length
+    return [...collections.slice(k), ...collections.slice(0, k)]
+  }, [collections, rot])
+
   if (collections.length === 0) return null
-  const visible = showAll ? collections : collections.slice(0, 10)
+  const visible = showAll ? ordered : ordered.slice(0, 10)
 
   return (
     <section aria-label="Shop by collections" className="bg-white rounded-2xl p-5 shadow-sm border border-[#E2E8F0]">
@@ -69,8 +85,8 @@ export function ShopCollections({
                     className="h-full w-full object-contain transition-transform duration-500 group-hover:scale-105"
                   />
                 ) : (
-                  <div className="h-full w-full flex items-center justify-center text-slate-300">
-                    <LayoutGrid className="h-6 w-6" />
+                  <div className="h-full w-full flex items-center justify-center text-slate-300 rounded-xl">
+                    <span className="text-xs font-medium text-slate-500">No image</span>
                   </div>
                 )}
                 <span className="absolute bottom-3 right-3 z-20 flex h-8 w-8 items-center justify-center rounded-full bg-white/95 text-[#0F172A] shadow-md opacity-0 group-hover:opacity-100 transition-opacity duration-300">

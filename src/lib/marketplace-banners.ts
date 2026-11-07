@@ -416,7 +416,7 @@ export const BANNER_SLOTS = [
   },
 ] as const
 
-export const DEPT_BANNER_DIMS = "1200 × 600 px"
+export const DEPT_BANNER_DIMS = "1600 × 800 px (wide banner for department showcase)"
 export const SIDEBAR_BANNER_DIMS = "600 × 900 px (portrait — min 400 × 600)"
 export const DEPT_TILE_DIMS = "800 × 800 px (square — tiles crop to square)"
 

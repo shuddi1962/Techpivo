@@ -1,9 +1,9 @@
 "use client"
 
 import Link from "next/link"
-import { useMemo, useRef, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import {
-  ArrowLeftRight, ChevronLeft, ChevronRight, Eye, Heart, Home, LayoutGrid,
+  ArrowLeftRight, ChevronRight, Eye, Heart, Home, LayoutGrid,
   Package as PkgIcon, Search, ShoppingCart, User, Cpu, Smartphone, Laptop,
   Wrench, Shirt, Baby, Hammer, Book, ShoppingBag, Clock, Sparkles, Monitor,
   Globe, CreditCard,
@@ -204,8 +204,19 @@ export function CategoryShoppingSection({
 
   const Icon = resolveDeptIcon(dept.icon)
 
-  const scroll = (dir: 1 | -1) =>
-    railRef.current?.scrollBy({ left: dir * 560, behavior: "smooth" })
+  // Auto-rotate products every 4 seconds so the section stays fresh.
+  useEffect(() => {
+    if (shown.length <= 6) return
+    const el = railRef.current
+    if (!el) return
+    const t = setInterval(() => {
+      const max = el.scrollWidth - el.clientWidth
+      if (max <= 0) return
+      if (el.scrollLeft >= max) el.scrollTo({ left: 0, behavior: "smooth" })
+      else el.scrollBy({ left: 560, behavior: "smooth" })
+    }, 4000)
+    return () => clearInterval(t)
+  }, [shown.length])
 
   // Up to 6 subcategory links for the heading row.
   const subLinks = useMemo(
@@ -251,28 +262,12 @@ export function CategoryShoppingSection({
           ))}
         </div>
         <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={() => scroll(-1)}
-            aria-label={`Scroll ${dept.name} products left`}
-            className="flex h-9 w-9 items-center justify-center rounded-full border border-[#E5E7EB] bg-white text-[#0F172A] transition-colors hover:border-[#F59E0B]"
-          >
-            <ChevronLeft className="h-4 w-4" />
-          </button>
           <Link
             href={`/marketplace/category/${dept.slug}`}
             className="text-sm font-semibold text-[#B45309] hover:underline"
           >
             Shop all {dept.name} →
           </Link>
-          <button
-            type="button"
-            onClick={() => scroll(1)}
-            aria-label={`Scroll ${dept.name} products right`}
-            className="flex h-9 w-9 items-center justify-center rounded-full border border-[#E5E7EB] bg-white text-[#0F172A] transition-colors hover:border-[#F59E0B]"
-          >
-            <ChevronRight className="h-4 w-4" />
-          </button>
         </div>
       </div>
 
