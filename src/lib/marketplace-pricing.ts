@@ -103,7 +103,12 @@ export function useFxRate(to: MarketCurrency): number {
     }
     let live = true
     sharedRate(from, to).then((v) => {
-      if (live && v !== null) setRate(v.rate)
+      if (live && v !== null) {
+        // Safety: an API rate of ~1 for NGN would override the 1600 fallback
+        // and make $29 show as ₦29. Clamp unreasonably low rates.
+        const safeRate = to === "NGN" && v.rate < 10 ? FALLBACK_USD_NGN : v.rate
+        setRate(safeRate)
+      }
     })
     return () => {
       live = false

@@ -44,7 +44,7 @@ interface SuperDealsConfig {
 }
 
 const EMPTY_CONFIG: SuperDealsConfig = {
-  enabled: false,
+  enabled: true,
   title: "Super Deals",
   subtitle: "Up to 70% Off",
   bannerImage: "",
@@ -280,7 +280,7 @@ export function SuperDealsSection() {
                   )
                 })}
                 {products.length > 4 && (
-                  <div className="absolute right-0 top-0 bottom-0 flex items-center px-2 bg-gradient-to-r from-white via-white/40 to-transparent pointer-events-none" />
+                  <div className="absolute right-0 top-0 bottom-0 flex items-center px-2 bg-gradient-to-r from-white to-transparent pointer-events-none" />
                 )}
               </div>
             </div>

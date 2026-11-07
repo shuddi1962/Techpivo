@@ -313,7 +313,7 @@ export function CategoryShoppingSection({
               )}
             </div>
             {shown.length > 6 && (
-              <div className="absolute right-0 top-0 bottom-0 flex items-center px-2 bg-gradient-to-r from-white via-white/60 to-transparent pointer-events-none" />
+              <div className="absolute right-0 top-0 bottom-0 flex items-center px-2 bg-gradient-to-r from-white to-transparent pointer-events-none" />
             )}
           </div>
         </div>
