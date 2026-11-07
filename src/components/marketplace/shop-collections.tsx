@@ -1,6 +1,7 @@
 "use client"
 
 import Link from "next/link"
+import { useState } from "react"
 import { ChevronRight, ShoppingBag, LayoutGrid } from "lucide-react"
 import { marketImage } from "@/lib/marketplace-images"
 
@@ -13,9 +14,9 @@ export interface CollectionItem {
 }
 
 // "Shop By Collections" — one tile per live-tree department. The cover
-// routes to the department; subcategory chips beneath it route to their
-// own category pages. Chips live OUTSIDE the cover link so both targets
-// stay clickable.
+// routes to the department. Shows 10 categories by default; tapping See
+// All reveals all departments. No subcategory chips are rendered beneath
+// the cards — only the category image and name.
 export function ShopCollections({
   collections,
   seeAllHref = "/marketplace/shop",
@@ -23,7 +24,10 @@ export function ShopCollections({
   collections: CollectionItem[]
   seeAllHref?: string
 }) {
+  const [showAll, setShowAll] = useState(false)
   if (collections.length === 0) return null
+  const visible = showAll ? collections : collections.slice(0, 10)
+
   return (
     <section aria-label="Shop by collections" className="bg-white rounded-2xl p-5 shadow-sm border border-[#E2E8F0]">
       <div className="mb-4 flex items-center justify-between gap-3">
@@ -38,22 +42,24 @@ export function ShopCollections({
             </p>
           </div>
         </div>
-        <Link
-          href={seeAllHref}
-          className="inline-flex shrink-0 items-center gap-0.5 text-[13px] font-bold uppercase tracking-wide text-slate-500 transition-colors hover:text-[#B45309]"
+        <button
+          type="button"
+          onClick={() => setShowAll((v) => !v)}
+          aria-expanded={showAll}
+          className="inline-flex shrink-0 items-center gap-0.5 text-[13px] font-bold uppercase tracking-wide text-[#B45309] hover:text-[#F59E0B] transition-colors"
         >
-          See all <ChevronRight className="h-4 w-4" />
-        </Link>
+          {showAll ? "See Less" : "See All"} <ChevronRight className="h-4 w-4" />
+        </button>
       </div>
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
-        {collections.map((c) => (
+        {visible.map((c) => (
           <div key={c.slug} className="min-w-0 group">
             <Link
               href={c.href}
               aria-label={`View ${c.name} collection`}
               className="block min-w-0"
             >
-              <span className="block relative aspect-[5/4] w-full overflow-hidden rounded-xl bg-[#F1F5F9] p-4 transition-all duration-300 group-hover:bg-[#E8EEF4] group-hover:-translate-y-1 group-hover:shadow-md">
+              <span className="block relative aspect-[1/1] w-full overflow-hidden rounded-xl bg-[#F1F5F9] p-4 transition-all duration-300 group-hover:bg-[#E8EEF4] group-hover:-translate-y-1 group-hover:shadow-md">
                 {c.image ? (
                   <img
                     src={marketImage(c.image)}
@@ -76,29 +82,11 @@ export function ShopCollections({
               <Link
                 href={c.href}
                 title={c.name}
-                className="max-w-full truncate text-center text-[13px] font-medium text-slate-700 transition-colors hover:text-[#B45309]"
+                className="max-w-full line-clamp-2 text-center text-[13px] font-medium text-slate-700 transition-colors hover:text-[#B45309]"
               >
                 {c.name}
               </Link>
             </div>
-            {c.subs && c.subs.length > 0 && (
-              <div className="flex flex-wrap justify-center gap-1 mb-1">
-                {c.subs.slice(0, 4).map((s) => (
-                  <Link
-                    key={s.slug}
-                    href={`/marketplace/category/${s.slug}`}
-                    className="text-[10px] font-medium px-2 py-1 rounded-md bg-[#F1F5F9] text-[#0F172A]/80 hover:bg-[#FF6B00] hover:text-white transition-colors whitespace-nowrap shrink-0"
-                  >
-                    {s.name}
-                  </Link>
-                ))}
-                {c.subs.length > 4 && (
-                  <span className="text-[10px] font-medium px-2 py-1 rounded-md bg-[#F1F5F9] text-slate-400 whitespace-nowrap shrink-0">
-                    +{c.subs.length - 4}
-                  </span>
-                )}
-              </div>
-            )}
           </div>
         ))}
       </div>

@@ -4,7 +4,8 @@ import Link from "next/link"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import {
   ArrowLeftRight, ArrowRight, Check, ChevronLeft, ChevronRight, Eye, Flame,
-  Heart, Package, ShoppingCart, ShieldCheck, X, Zap,
+  Heart, Home, LayoutGrid, Package, Search, ShoppingCart, ShieldCheck, User,
+  X, Zap,
   BadgeCheck, Truck,
 } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
@@ -23,6 +24,7 @@ import { MarketplaceFooter } from "./marketplace-header"
 import { BannerSlider } from "./banner-slider"
 import { WelcomePopupCard } from "./welcome-popup"
 import { ShopCollections, type CollectionItem } from "./shop-collections"
+import { CategoryShoppingSection, CategoryProductCard } from "./marketplace-category-sections"
 import { BrandRail } from "./brand-rail"
 import { MarketPrice } from "./market-price"
 import { SaleCountdown, useSaleEnd } from "./sale-countdown"
@@ -129,10 +131,7 @@ function ProductCard({ p, onAdd, wished, onWish, added, href }: { p: DemoProduct
         )}
       </div>
       <div className="flex flex-1 flex-col gap-1 p-3">
-        <h5 className="text-[13px] font-semibold leading-snug text-[#0F172A] transition-colors group-hover:text-[#B45309]">{cleanProductTitle(p.name)}</h5>
-        {p.shortDescription && (
-          <p className="line-clamp-1 text-[11px] text-slate-500 mt-0.5">{p.shortDescription}</p>
-        )}
+        <h5 className="line-clamp-2 text-[13px] font-semibold leading-tight text-[#0F172A] transition-colors group-hover:text-[#B45309]">{cleanProductTitle(p.name)}</h5>
         <div className="flex items-baseline gap-1.5">
           <MarketPrice usd={p.price} className={`text-[15px] font-extrabold tabular-nums ${showSale ? "text-[#DC2626]" : "text-[#0F172A]"}`} />
           {oldPrice && showSale && <MarketPrice usd={oldPrice} className="text-[11px] tabular-nums text-slate-400 line-through" />}
@@ -919,10 +918,69 @@ export function MarketplaceHome() {
               ))}
             </div>
           </section>
-        ) : (
-          <ShopCollections collections={collections} />
-        )}
-        <SectionDivider />
+) : (
+  <ShopCollections collections={collections} />
+)}
+
+{/* promotional shopping section — banner left, product carousel right */}
+{flashItems.length > 0 && (
+  <section className="bg-white rounded-2xl p-5 shadow-sm border border-[#E2E8F0]">
+    <div className="flex flex-col lg:flex-row gap-6 items-stretch">
+      <div className="flex-none lg:w-[40%] relative overflow-hidden rounded-xl bg-[#F1F5F9] min-h-[200px] lg:min-h-[220px]">
+        <Link href="/marketplace/deals" aria-label="Shop deals" className="block h-full w-full">
+          {banners.flash_banner_image?.trim() ? (
+            <img
+              src={banners.flash_banner_image.trim()}
+              alt="Featured deals"
+              loading="lazy"
+              decoding="async"
+              className="absolute inset-0 h-full w-full object-cover"
+            />
+          ) : (
+            <>
+              <div className="absolute inset-0 bg-gradient-to-br from-[#0F172A]/85 to-[#0F172A]/50 flex items-end p-5" />
+              <div className="relative z-10 p-5">
+                <span className="text-[#F59E0B] text-[11px] font-bold uppercase tracking-wider">Featured Deals</span>
+                <h3 className="text-xl font-extrabold text-white mt-1 leading-tight">Up to 50% off tech essentials</h3>
+                <p className="text-white/80 text-sm mt-1">Limited-time offers on top-rated gear.</p>
+                <Link
+                  href="/marketplace/deals"
+                  className="mt-4 inline-block bg-[#F59E0B] text-[#0F172A] text-xs font-bold px-4 py-2 rounded hover:bg-[#D97706] transition-colors"
+                >
+                  Shop Deals →
+                </Link>
+              </div>
+            </>
+          )}
+        </Link>
+      </div>
+      <div className="flex-1 min-w-0 relative overflow-hidden">
+        <div className="flex items-center justify-between mb-3">
+          <span className="text-[#DC2626] text-[11px] font-bold uppercase tracking-wider">Special Offers</span>
+          <span className="text-sm text-slate-500">{flashItems.length} deals available</span>
+        </div>
+        <div className="flex gap-3 overflow-x-auto pb-1 snap-x" style={{ scrollbarWidth: "none" }}>
+          {flashItems.map((p) => {
+            const href = /^[0-9a-f-]{36}$/i.test(p.id) ? `/marketplace/product/${p.id}` : undefined
+            return (
+              <div key={p.id} className="shrink-0 w-48 flex flex-col">
+                <CategoryProductCard
+                  p={p}
+                  onAdd={addToCart}
+                  wished={wishlist}
+                  onWish={toggleWish}
+                  added={justAdded}
+                  href={href}
+                />
+              </div>
+            )
+          })}
+        </div>
+      </div>
+    </div>
+  </section>
+)}
+<SectionDivider />
 
         {/* flash deals — live discounted products under an editable countdown banner.
             Admin → Marketplace → Banners → Flash sale. A banner image hides
@@ -1128,6 +1186,21 @@ export function MarketplaceHome() {
           )
         })()}
         <SectionDivider />
+
+{/* category shopping sections — one dedicated section per major department */}
+{departments.map((dep) => (
+  <CategoryShoppingSection
+    key={dep.slug}
+    dept={dep}
+    products={liveProducts}
+    deptOf={deptOf}
+    onAdd={addToCart}
+    wished={wishlist}
+    onWish={toggleWish}
+    added={justAdded}
+  />
+))}
+<SectionDivider />
 
         {/* in-feed strip 1 — slim full-width banner between Trending Now
             and the department showcases. An upload shows clean on its own;
@@ -1359,6 +1432,35 @@ export function MarketplaceHome() {
         <p className="text-center text-[11px] text-slate-400 px-4">
           Every order is quality-checked, securely paid and delivered with tracking — shop with confidence on TechPivo Market.
         </p>
+
+        {/* mobile bottom navigation — modern shopping app style */}
+        <nav className="md:hidden fixed bottom-0 left-0 right-0 z-40 border-t border-[#E2E8F0] bg-white/95 backdrop-blur-md">
+          <div className="mx-auto w-full max-w-[1440px] px-3 py-2.5 flex justify-around items-center gap-2">
+            <Link href="/marketplace" className="flex flex-col items-center gap-1 text-[#FF6B00]">
+              <Home className="h-5 w-5" />
+              <span className="text-[10px] font-semibold">Home</span>
+            </Link>
+            <Link href="/marketplace/shop" className="flex flex-col items-center gap-1 text-slate-600">
+              <LayoutGrid className="h-5 w-5" />
+              <span className="text-[10px] font-semibold">Categories</span>
+            </Link>
+            <button className="flex flex-col items-center gap-1 text-slate-600" onClick={() => { /* header search is mobile-native */ }}>
+              <Search className="h-5 w-5" />
+              <span className="text-[10px] font-semibold">Search</span>
+            </button>
+            <Link href="/marketplace/wishlist" className="relative flex flex-col items-center gap-1 text-slate-600">
+              <Heart className="h-5 w-5" />
+              {Object.keys(wishlist).length > 0 && (
+                <span className="absolute -top-1 -right-1 bg-[#EF4444] text-white text-[9px] min-w-4 h-4 px-0.5 rounded-full flex items-center justify-center font-bold">{Object.keys(wishlist).length}</span>
+              )}
+              <span className="text-[10px] font-semibold">Wishlist</span>
+            </Link>
+            <Link href="/marketplace/account" className="flex flex-col items-center gap-1 text-slate-600">
+              <User className="h-5 w-5" />
+              <span className="text-[10px] font-semibold">Account</span>
+            </Link>
+          </div>
+        </nav>
       </main>
       <MarketplaceFooter />
     </div>
