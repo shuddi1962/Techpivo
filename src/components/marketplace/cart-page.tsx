@@ -188,15 +188,14 @@ export function CartPage() {
                 <>
                   <MarketPrice usd={totalUsd} className="block text-xl font-extrabold text-[#0F172A]" />
                   <span className="block text-xs text-slate-500">
-                    ≈ ${totalUsd.toFixed(2)} at checkout
+                    ≈ {fxFormat(totalNgn, "NGN", { maxFrac: 0 })} at checkout
                   </span>
                 </>
               ) : (
                 <>
                   <MarketPrice usd={totalUsd} className="block text-xl font-extrabold text-[#0F172A]" />
                   <span className="block text-xs text-slate-500">
-                    Charged at checkout ≈{" "}
-                    <span className="font-extrabold text-[#DC2626]">{fxFormat(totalNgn, "NGN", { maxFrac: 0 })}</span>
+                    Charged at checkout ≈ <span className="font-extrabold text-[#DC2626]">{fxFormat(totalNgn, "NGN", { maxFrac: 0 })}</span>
                   </span>
                 </>
               )}

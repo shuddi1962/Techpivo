@@ -397,7 +397,12 @@ export function CheckoutPage() {
             <span className="text-sm font-bold text-[#0F172A]">Total</span>
             <span className="text-right">
               {currency === "NGN" ? (
-                <MarketPrice usd={totalUsd} className="block text-2xl font-extrabold text-[#0F172A]" />
+                <>
+                  <MarketPrice usd={totalUsd} className="block text-2xl font-extrabold text-[#0F172A]" />
+                  <span className="block text-xs text-slate-500">
+                    Charged at checkout ≈ <span className="font-extrabold text-[#DC2626]">{fxFormat(totalNgn, "NGN", { maxFrac: 0 })}</span>
+                  </span>
+                </>
               ) : (
                 <>
                   <MarketPrice usd={totalUsd} className="block text-2xl font-extrabold text-[#0F172A]" />
@@ -409,7 +414,7 @@ export function CheckoutPage() {
             </span>
           </div>
           <button onClick={pay} disabled={paying || lines.length === 0} className="w-full bg-[#10B981] hover:bg-[#059669] text-white text-sm font-bold py-3 rounded-lg disabled:opacity-60 flex items-center justify-center gap-2">
-            {paying ? <><Loader2 className="h-4 w-4 animate-spin" /> Starting payment...</> : <><Lock className="h-4 w-4" /> Pay {currency === "NGN" ? <MarketPrice usd={totalUsd} /> : `₦${totalNgn.toLocaleString()}`}</>}
+            {paying ? <><Loader2 className="h-4 w-4 animate-spin" /> Starting payment...</> : <><Lock className="h-4 w-4" /> Pay {currency === "NGN" ? <MarketPrice usd={totalUsd} /> : <MarketPrice usd={totalUsd} />}</>}
           </button>
           <div className="flex items-center justify-center gap-1.5">
             {["VISA", "MASTERCARD", "VERVE"].map((b) => (
