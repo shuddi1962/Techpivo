@@ -1,5 +1,3 @@
-import { useEffect, useState } from "react"
-
 export const FX_CURRENCY_LABELS: Record<string, string> = {
   NGN: "Nigerian Naira", USD: "US Dollar", EUR: "Euro", GBP: "British Pound",
   GHS: "Ghanaian Cedi", KES: "Kenyan Shilling", ZAR: "South African Rand",
@@ -58,6 +56,8 @@ let fxStore: FxRateState = {
 function notify() {
   fxStore.listeners.forEach((fn) => fn())
 }
+
+export { fxStore, notify, refreshFxRate }
 
 export function getLiveNgnRate(): number {
   return fxStore.ngnRate
@@ -128,31 +128,4 @@ async function refreshFxRate(): Promise<void> {
 // Kick off the first fetch immediately (module load)
 if (typeof window !== "undefined" || typeof process !== "undefined") {
   void refreshFxRate()
-}
-
-export function useLiveNgnRate(): number {
-  const [rate, setRate] = useState<number>(fxStore.ngnRate)
-  useEffect(() => {
-    setRate(fxStore.ngnRate)
-    const unsub = subscribeToFxRate(() => setRate(fxStore.ngnRate))
-    // Refresh on mount and on focus
-    void refreshFxRate()
-    const onFocus = () => void refreshFxRate()
-    window.addEventListener("focus", onFocus)
-    return () => {
-      unsub()
-      window.removeEventListener("focus", onFocus)
-    }
-  }, [])
-  return rate
-}
-
-export function useLiveUsdRate(): number {
-  const [rate, setRate] = useState<number>(fxStore.usdRate)
-  useEffect(() => {
-    setRate(fxStore.usdRate)
-    const unsub = subscribeToFxRate(() => setRate(fxStore.usdRate))
-    return () => unsub()
-  }, [])
-  return rate
 }

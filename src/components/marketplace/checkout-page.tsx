@@ -8,7 +8,7 @@ import { createClient } from "@/lib/supabase/client"
 import { marketImage } from "@/lib/marketplace-images"
 import { clearCart, getCart, useMarketCart } from "@/lib/marketplace-cart"
 import { useMarketCurrency, useFxRate } from "@/lib/marketplace-pricing"
-import { useLiveNgnRate } from "@/lib/fx-shared"
+import { useLiveNgnRate } from "@/lib/fx-client"
 import { fxFormat } from "@/lib/fx-shared"
 import { MarketPrice } from "./market-price"
 import {

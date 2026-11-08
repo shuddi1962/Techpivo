@@ -20,9 +20,9 @@ import { cleanProductTitle } from "@/lib/marketplace-copy"
 import {
   formatMarketPrice,
   useMarketCurrency,
-  useFxRate,
   usdToNgn,
 } from "@/lib/marketplace-pricing"
+import { useLiveNgnRate } from "@/lib/fx-client"
 
 interface SuperDealProduct {
   id: string
@@ -102,7 +102,7 @@ export function SuperDealsSection() {
   const [config, setConfig] = useState<SuperDealsConfig>(EMPTY_CONFIG)
   const [loaded, setLoaded] = useState(false)
   const currency = useMarketCurrency()
-  const ngnRate = useFxRate("NGN")
+  const ngnRate = useLiveNgnRate()
   const railRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {

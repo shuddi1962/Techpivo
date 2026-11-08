@@ -9,7 +9,7 @@ import { openCheckout } from "@/lib/marketplace-events"
 import { marketImage } from "@/lib/marketplace-images"
 import { readShipSelection, shippingCost, FREE_SHIP_THRESHOLD_USD } from "@/lib/marketplace-shipping"
 import { useMarketCurrency, useFxRate } from "@/lib/marketplace-pricing"
-import { useLiveNgnRate } from "@/lib/fx-shared"
+import { useLiveNgnRate } from "@/lib/fx-client"
 import { fxFormat } from "@/lib/fx-shared"
 import { MarketPrice } from "./market-price"
 
