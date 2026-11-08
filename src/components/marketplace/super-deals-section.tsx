@@ -279,7 +279,12 @@ export function SuperDealsSection() {
             </div>
           ) : (
             <div className="relative block h-full w-full">
-              <div className="super-deals-rail flex min-w-0 flex-1 gap-4 overflow-x-auto pb-2 snap-x" ref={railRef}>
+              <div
+                className="super-deals-rail flex min-w-0 flex-1 gap-4 overflow-x-auto snap-x pb-2"
+                ref={railRef}
+                style={{ scrollbarWidth: "none" }}
+              >
+                <style>{`.super-deals-rail::-webkit-scrollbar{display:none}`}</style>
                 {products.map((p) => {
                   const href = /^[0-9a-f-]{36}$/i.test(p.id) ? `/marketplace/product/${p.id}` : undefined
                   const showSale =

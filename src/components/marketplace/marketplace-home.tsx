@@ -1027,8 +1027,9 @@ export function MarketplaceHome() {
 
         {/* tabbed products — live catalog */}
         <section id="trending" className="bg-white rounded-2xl p-5 shadow-sm border border-[#E2E8F0] scroll-mt-4">
+          <style>{`.tab-rail{scrollbar-width:none;-ms-overflow-style:none}.tab-rail::-webkit-scrollbar{display:none}`}</style>
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4">
-            <div className="flex items-center gap-1 bg-[#F8FAFC] border border-[#E2E8F0] p-1 rounded-xl overflow-x-auto">
+            <div className="flex items-center gap-1 bg-[#F8FAFC] border border-[#E2E8F0] p-1 rounded-xl overflow-x-auto pb-1 tab-rail">
               {([
                 { id: "new", label: "New Arrivals" },
                 { id: "featured", label: "Featured Products" },
@@ -1260,9 +1261,10 @@ export function MarketplaceHome() {
             </div>
             <div
               ref={storesRailRef}
-              className="flex gap-3 overflow-x-auto pb-1 snap-x"
+              className="flex gap-3 overflow-x-auto pb-1 snap-x stores-rail"
               style={{ scrollbarWidth: "none" }}
             >
+              <style>{`.stores-rail{scrollbar-width:none;-ms-overflow-style:none}.stores-rail::-webkit-scrollbar{display:none}`}</style>
               {vendors.map((v) => (
                 <Link
                   key={v.slug}
