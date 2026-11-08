@@ -967,14 +967,13 @@ export function MarketplaceHome() {
 
 {/* Super Deals promotional section — banner left, product carousel right */}
 <SuperDealsSection />
-<SectionDivider />
 
         {/* flash deals — live discounted products under an editable countdown banner.
             Admin → Marketplace → Banners → Flash sale. A banner image hides
             the badge + headline + countdown block (image links to Specials).
             Hidden publicly while the flash toggle is OFF. */}
         {banners.flash_enabled !== false && flashItems.length > 0 && (
-          <section id="flash-deals" className="overflow-hidden rounded-2xl border border-[#E2E8F0] bg-white shadow-sm scroll-mt-4">
+          <section id="flash-deals" className="overflow-hidden rounded-2xl bg-white shadow-sm scroll-mt-4">
             {banners.flash_banner_image?.trim() ? (
               <Link href={banners.specials_link || "/marketplace#flash-deals"} aria-label={banners.flash_title || "Flash Sale"}>
                 {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -1025,7 +1024,7 @@ export function MarketplaceHome() {
         <SectionDivider />
 
         {/* tabbed products — live catalog */}
-        <section id="trending" className="bg-white rounded-2xl p-5 shadow-sm border border-[#E2E8F0] scroll-mt-4">
+        <section id="trending" className="bg-white rounded-2xl p-5 shadow-sm scroll-mt-4">
           <style>{`.tab-rail{scrollbar-width:none;-ms-overflow-style:none}.tab-rail::-webkit-scrollbar{display:none}`}</style>
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4">
             <div className="flex items-center gap-1 bg-[#F8FAFC] border border-[#E2E8F0] p-1 rounded-xl overflow-x-auto pb-1 tab-rail">
@@ -1118,7 +1117,6 @@ export function MarketplaceHome() {
             </div>
           )}
         </section>
-        <SectionDivider />
 
         {/* feature panels — removed to avoid a duplicate New/Best/Featured section
             right after Shop by Collections; the tabbed products rail above
@@ -1129,7 +1127,7 @@ export function MarketplaceHome() {
         {(() => {
           if (trending.length < 2) return null
           return (
-          <section className="bg-white rounded-2xl p-5 shadow-sm border border-[#E2E8F0]">
+          <section className="bg-white rounded-2xl p-5 shadow-sm">
             <style>{`.trend-rail{scrollbar-width:none;-ms-overflow-style:none}.trend-rail::-webkit-scrollbar{display:none}`}</style>
             <div className="flex items-center justify-between mb-4">
               <div>
@@ -1221,7 +1219,7 @@ export function MarketplaceHome() {
 ) : strip2Slides.length > 0 ? (
   <section aria-label="Special offer" className="relative h-[92px] sm:h-[120px] overflow-hidden rounded-2xl shadow-sm">
     <BannerSlider slides={strip2Slides} alt="Special offer" {...strip2Props} />
-  </section>
+      </section>
 ) : (
   <section className="relative overflow-hidden rounded-2xl shadow-sm" style={{ background: "linear-gradient(100deg, #F59E0B 0%, #EA580C 60%, #DC2626 100%)" }}>
     <div className="flex h-[92px] sm:h-[120px] items-center gap-3 px-4 sm:gap-4 sm:px-6">
@@ -1245,13 +1243,10 @@ export function MarketplaceHome() {
     </div>
   </section>
 )}
-<SectionDivider />
-
-        <SectionDivider />
 
         {/* top stores — same card style as collections, as a slider */}
         {vendors.length > 0 && (
-          <section id="vendors" className="bg-white rounded-2xl p-5 shadow-sm border border-[#E2E8F0] scroll-mt-4">
+          <section id="vendors" className="bg-white rounded-2xl p-5 shadow-sm scroll-mt-4">
             <div className="flex items-center justify-between gap-3 mb-4">
               <div>
                 <span className="text-[#DC2626] text-[11px] font-bold uppercase tracking-wider block">Top rated this week</span>
@@ -1325,14 +1320,12 @@ export function MarketplaceHome() {
               </Link>
             </div>
           </div>
-        </section>
+          </section>
         ))}
-
-        <SectionDivider />
 
         {/* brands — live catalog brands only, with loading skeleton */}
         {!loaded ? (
-          <section aria-label="Loading brands" className="bg-white rounded-2xl p-5 shadow-sm border border-[#E2E8F0] animate-pulse" aria-hidden>
+          <section aria-label="Loading brands" className="bg-white rounded-2xl p-5 shadow-sm animate-pulse" aria-hidden>
             <div className="mb-4 h-6 w-40 rounded bg-slate-100" />
             <div className="flex gap-3 overflow-hidden">
               {Array.from({ length: 7 }).map((_, i) => (
@@ -1346,7 +1339,7 @@ export function MarketplaceHome() {
 
         {/* recently viewed — real local history */}
         {recentRows.length > 0 && (
-          <section className="bg-white rounded-2xl p-5 shadow-sm border border-[#E2E8F0]">
+          <section className="bg-white rounded-2xl p-5 shadow-sm">
             <h3 className="text-lg font-bold text-[#0F172A] mb-4">Recently Viewed Products</h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
               {recentRows.map((d) => {
@@ -1371,8 +1364,6 @@ export function MarketplaceHome() {
             </div>
           </section>
         )}
-
-        <SectionDivider />
 
         {/* store promise */}
         <p className="text-center text-[11px] text-slate-400 px-4">

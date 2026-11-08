@@ -229,7 +229,7 @@ export function CategoryShoppingSection({
   if (deptProducts.length === 0) return null
 
   return (
-    <section aria-label={`Shop ${dept.name}`} className="bg-white rounded-2xl p-0 shadow-sm border border-[#E2E8F0] overflow-hidden">
+    <section aria-label={`Shop ${dept.name}`} className="bg-white rounded-2xl p-0 shadow-sm overflow-hidden">
       {/* Heading row — department name left, subcategory links right */}
       <div className="px-5 py-4 border-b border-[#E2E8F0] flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2">
