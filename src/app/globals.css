@@ -1278,6 +1278,23 @@ body { position: relative; }
 .no-scrollbar { scrollbar-width: none; -ms-overflow-style: none; }
 .no-scrollbar::-webkit-scrollbar { display: none; }
 
+/* Marketplace: hide scrollbars on all horizontal product/category rails */
+.super-deals-rail,
+.showcase-rail,
+.trend-rail,
+.stores-rail,
+.tab-rail {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.super-deals-rail::-webkit-scrollbar,
+.showcase-rail::-webkit-scrollbar,
+.trend-rail::-webkit-scrollbar,
+.stores-rail::-webkit-scrollbar,
+.tab-rail::-webkit-scrollbar {
+  display: none;
+}
+
 /* Community markdown typography (rendered via CommunityMarkdown) */
 .community-markdown { line-height: 1.7; overflow-wrap: break-word; }
 .community-markdown p { margin: 0 0 12px; }
