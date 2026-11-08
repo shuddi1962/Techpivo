@@ -39,12 +39,16 @@ interface SuperDealsForm {
   autoplay: boolean
   autoplaySpeed: number
   products: SuperDealProduct[]
+  autoSelect: boolean
+  bgFrom: string
+  bgTo: string
+  accentColor: string
 }
 
 const INITIAL: SuperDealsForm = {
   enabled: true,
-  title: "Super Deals",
-  subtitle: "Up to 70% Off",
+  title: "SUPER DEAL",
+  subtitle: "UP TO 70% OFF",
   bannerImage: "",
   bannerLink: "/marketplace/deals",
   ctaText: "Shop Deals",
@@ -58,6 +62,10 @@ const INITIAL: SuperDealsForm = {
   autoplay: true,
   autoplaySpeed: 4,
   products: [],
+  autoSelect: false,
+  bgFrom: "#F59E0B",
+  bgTo: "#D97706",
+  accentColor: "#DC2626",
 }
 
 export function MarketplaceSuperDealsTab() {
@@ -361,6 +369,19 @@ export function MarketplaceSuperDealsTab() {
                   />
                   Carousel autoplay
                 </label>
+                <label className="inline-flex cursor-pointer items-center gap-2 text-sm w-full">
+                  <input
+                    type="checkbox"
+                    checked={config.autoSelect}
+                    onChange={() => toggleField("autoSelect", !config.autoSelect)}
+                    className="h-3.5 w-3.5 text-amber-600 border-slate-300 rounded focus:ring-amber-500"
+                  />
+                  Auto-select discounted products
+                </label>
+                <p className="text-[10px] text-slate-500 mt-1 col-span-2">
+                  When on, the storefront automatically shows active products
+                  with a discount instead of the manually picked list.
+                </p>
                 <div>
                   <label className="block text-xs font-bold text-slate-700 mb-1">Autoplay Speed (seconds)</label>
                   <input
@@ -406,6 +427,40 @@ export function MarketplaceSuperDealsTab() {
                   </p>
                 </div>
               )}
+            </div>
+          </div>
+
+          {/* Background Colors */}
+          <div className={cn(marketCardCls, "p-4")}>
+            <h3 className="font-bold text-slate-900 text-sm mb-3">Background Colors</h3>
+            <div className="space-y-3">
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">Gradient Start</label>
+                <input
+                  type="color"
+                  value={config.bgFrom}
+                  onChange={(e) => toggleField("bgFrom", e.target.value)}
+                  className="w-12 h-10 rounded-lg border-0 bg-transparent cursor-pointer p-0"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">Gradient End</label>
+                <input
+                  type="color"
+                  value={config.bgTo}
+                  onChange={(e) => toggleField("bgTo", e.target.value)}
+                  className="w-12 h-10 rounded-lg border-0 bg-transparent cursor-pointer p-0"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">Accent Color (timer badges)</label>
+                <input
+                  type="color"
+                  value={config.accentColor}
+                  onChange={(e) => toggleField("accentColor", e.target.value)}
+                  className="w-12 h-10 rounded-lg border-0 bg-transparent cursor-pointer p-0"
+                />
+              </div>
             </div>
           </div>
         </div>

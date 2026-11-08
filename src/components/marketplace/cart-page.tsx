@@ -23,7 +23,7 @@ interface Row {
 export function CartPage() {
   const cart = useMarketCart()
   const currency = useMarketCurrency()
-  const rate = useFxRate(currency)
+  const ngnRate = useFxRate("NGN")
   const [rows, setRows] = useState<Row[]>([])
   const [loading, setLoading] = useState(true)
   const [shipSel, setShipSel] = useState({ id: "standard", name: "Standard", feeUsd: 0 })
@@ -78,7 +78,7 @@ export function CartPage() {
       : shipSel.feeUsd
 
   const totalUsd = Math.max(0, subtotal + shipping)
-  const totalNgn = Math.round(totalUsd * rate)
+  const totalNgn = Math.round(totalUsd * ngnRate)
 
   if (loading) {
     return (

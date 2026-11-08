@@ -312,9 +312,7 @@ export function CategoryShoppingSection({
                 <p className="flex items-center px-4 text-sm text-slate-500">No products in this category yet.</p>
               )}
             </div>
-            {shown.length > 6 && (
-              <div className="absolute right-0 top-0 bottom-0 flex items-center px-2 bg-gradient-to-r from-white to-transparent pointer-events-none" />
-            )}
+
           </div>
         </div>
       </div>

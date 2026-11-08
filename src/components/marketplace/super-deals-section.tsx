@@ -3,7 +3,13 @@
 import Link from "next/link"
 import { useEffect, useMemo, useRef, useState } from "react"
 import {
-  ChevronLeft, ChevronRight, Clock, Flame, Package, ShoppingCart, Star,
+  ChevronLeft,
+  ChevronRight,
+  Clock,
+  Flame,
+  Package,
+  ShoppingCart,
+  Star,
 } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
 import { marketImage } from "@/lib/marketplace-images"
@@ -11,7 +17,12 @@ import { openQuickView } from "@/lib/marketplace-events"
 import { readCompare, toggleCompareStored } from "@/lib/marketplace-compare"
 import { MarketPrice } from "./market-price"
 import { cleanProductTitle } from "@/lib/marketplace-copy"
-import { formatMarketPrice, useMarketCurrency, useFxRate } from "@/lib/marketplace-pricing"
+import {
+  formatMarketPrice,
+  useMarketCurrency,
+  useFxRate,
+  usdToNgn,
+} from "@/lib/marketplace-pricing"
 
 interface SuperDealProduct {
   id: string
@@ -41,18 +52,24 @@ interface SuperDealsConfig {
   autoplay: boolean
   autoplaySpeed: number
   products: SuperDealProduct[]
+  autoSelect: boolean
+  bgFrom: string
+  bgTo: string
+  accentColor: string
 }
+
+const FALLBACK_END_AT = "2026-12-31T23:59:59"
 
 const EMPTY_CONFIG: SuperDealsConfig = {
   enabled: true,
-  title: "Super Deals",
-  subtitle: "Up to 70% Off",
+  title: "SUPER DEAL",
+  subtitle: "UP TO 70% OFF",
   bannerImage: "",
   bannerLink: "/marketplace/deals",
   ctaText: "Shop Deals",
   ctaLink: "/marketplace/deals",
   countdownEnabled: true,
-  endAt: "",
+  endAt: FALLBACK_END_AT,
   maxProducts: 8,
   showDiscountBadge: true,
   showRating: true,
@@ -60,6 +77,10 @@ const EMPTY_CONFIG: SuperDealsConfig = {
   autoplay: true,
   autoplaySpeed: 4,
   products: [],
+  autoSelect: false,
+  bgFrom: "#F59E0B",
+  bgTo: "#D97706",
+  accentColor: "#DC2626",
 }
 
 function splitCountdown(seconds: number) {
@@ -80,6 +101,7 @@ export function SuperDealsSection() {
   const [loaded, setLoaded] = useState(false)
   const currency = useMarketCurrency()
   const rate = useFxRate(currency)
+  const ngnRate = useFxRate("NGN")
   const railRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -104,71 +126,103 @@ export function SuperDealsSection() {
     load()
     const ch = createClient()
       .channel(`super_deals_${Date.now()}`)
-      .on("postgres_changes", { event: "*", schema: "public", table: "site_settings", filter: "key=eq.marketplace_super_deals" }, load)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "site_settings", filter: "key=eq.marketplace_super_deals" },
+        load
+      )
       .subscribe()
     return () => {
-      try { createClient().removeChannel(ch) } catch {}
+      try {
+        createClient().removeChannel(ch)
+      } catch {}
     }
   }, [])
 
-  const products = config.products.slice(0, config.maxProducts)
-
-  // Auto-rotate product rail
+  // Auto-select discounted products when enabled.
   useEffect(() => {
-    if (!loaded || !config.enabled || !config.autoplay || products.length <= config.maxProducts / 2) return
-    const el = railRef.current
-    if (!el) return
-    let max = el.scrollWidth - el.clientWidth
-    const t = setInterval(() => {
-      max = el.scrollWidth - el.clientWidth
-      if (max <= 0) return
-      if (el.scrollLeft >= max) el.scrollTo({ left: 0, behavior: "smooth" })
-      else el.scrollBy({ left: 320, behavior: "smooth" })
-    }, config.autoplaySpeed * 1000)
-    return () => clearInterval(t)
-  }, [loaded, config.enabled, products.length, config.autoplay, config.autoplaySpeed])
+    if (!loaded || !config.autoSelect) return
+    const fetchDiscounted = async () => {
+      try {
+        const supabase = createClient()
+        const { data } = await supabase
+          .from("affiliate_products")
+          .select("id,product_name,product_image_url,sale_price,original_price")
+          .eq("is_active", true)
+          .not("original_price", "is", null)
+          .order("original_price", { ascending: false })
+          .limit(config.maxProducts)
+        const rows = (data || []) as Array<{
+          id: string
+          product_name: string
+          product_image_url: string | null
+          sale_price: number | null
+          original_price: number | null
+        }>
+        const products: SuperDealProduct[] = rows
+          .filter((r) => Number(r.original_price ?? 0) > Number(r.sale_price ?? r.original_price ?? 0))
+          .map((r) => {
+            const sale = Number(r.sale_price ?? r.original_price ?? 0)
+            const orig = Number(r.original_price ?? 0)
+            return {
+              id: r.id,
+              name: r.product_name,
+              image: r.product_image_url || "",
+              price: sale,
+              oldPrice: orig > sale ? orig : undefined,
+              sale_pct: orig > sale ? Math.round(((orig - sale) / orig) * 100) : undefined,
+              rating: 0,
+              reviews: 0,
+            }
+          })
+        setConfig((c) => ({ ...c, products }))
+      } catch {
+        // keep existing products
+      }
+    }
+    fetchDiscounted()
+  }, [loaded, config.autoSelect, config.maxProducts])
 
   if (!loaded || !config.enabled) return null
+
+  const products = config.products.slice(0, config.maxProducts)
 
   const { days, hrs, mins, secs } = splitCountdown(
     config.countdownEnabled && config.endAt ? flashSecondsLeft(config.endAt) : 0
   )
-  const countdownActive = config.countdownEnabled && config.endAt && (days > 0 || hrs > 0 || mins > 0 || secs > 0)
+  const countdownActive =
+    config.countdownEnabled && config.endAt && (days > 0 || hrs > 0 || mins > 0 || secs > 0)
+  const promotionExpired = config.endAt && flashSecondsLeft(config.endAt) <= 0
 
   const formatPrice = (usd: number) => formatMarketPrice(usd, rate, currency)
 
-  return (
-    <section aria-label="Super Deals" className="bg-white rounded-2xl p-0 shadow-sm border border-[#E2E8F0] overflow-hidden">
-      <div className="px-5 py-4 border-b border-[#E2E8F0] flex items-start justify-between gap-4">
-        <div className="flex flex-col gap-1">
-          <span className="text-[#DC2626] text-[11px] font-bold uppercase tracking-wider">{config.title}</span>
-          <h2 className="text-lg font-extrabold text-[#0F172A] leading-tight">{config.subtitle}</h2>
-        </div>
-        {config.bannerImage && (
-          <Link
-            href={config.bannerLink || "/marketplace/deals"}
-            aria-label={config.title}
-            className="relative block w-[220px] shrink-0 overflow-hidden rounded-xl bg-[#F1F5F9] aspect-[16/9]"
-          >
-            <img
-              src={marketImage(config.bannerImage)}
-              alt={config.title}
-              loading="lazy"
-              decoding="async"
-              className="absolute inset-0 h-full w-full object-cover"
-            />
-          </Link>
-        )}
-      </div>
+  // Decorative blue gradient shapes (CSS-only, positioned toward the right).
+  const bgGradient = `linear-gradient(135deg, ${config.bgFrom} 0%, ${config.bgTo} 100%)`
 
-      <div className="px-5 py-5 flex flex-col lg:flex-row gap-6 items-stretch">
-        {/* Left: Promotional banner + countdown */}
-        <div className="flex-none lg:w-[23%] relative overflow-hidden rounded-xl bg-[#F1F5F9] min-h-[260px] lg:min-h-[320px] flex flex-col">
-          {config.bannerImage ? (
+  return (
+    <section
+      aria-label="Super Deals"
+      className="relative overflow-hidden rounded-2xl shadow-sm border border-[#E2E8F0]"
+      style={{ background: bgGradient }}
+    >
+      {/* Decorative blue shapes on the right side */}
+      <div className="absolute -top-16 -right-20 w-64 h-64 bg-blue-500/20 rounded-full blur-[100px]" />
+      <div className="absolute top-1/3 -right-16 w-48 h-48 bg-blue-400/15 rounded-full blur-[64px]" />
+      <div className="absolute bottom-8 -right-12 w-32 h-32 bg-blue-600/10 rounded-full blur-[40px]" />
+      <div className="relative z-10 flex flex-col lg:flex-row gap-6 p-6 sm:p-8">
+        {/* Left: Promotional area */}
+        <div className="flex-none lg:w-[42%] flex flex-col justify-center">
+          <div className="inline-flex items-center gap-2 rounded bg-white/15 px-3 py-1 text-[11px] font-bold uppercase tracking-wider text-white">
+            <Flame className="h-4 w-4" /> {config.title}
+          </div>
+          <h2 className="mt-2 text-3xl font-extrabold tracking-tight text-white sm:text-4xl leading-tight">
+            {config.subtitle}
+          </h2>
+          {config.bannerImage && (
             <Link
               href={config.bannerLink || "/marketplace/deals"}
               aria-label={config.title}
-              className="relative block h-[40%] w-full overflow-hidden"
+              className="mt-6 block shrink-0 overflow-hidden rounded-xl bg-white/10 aspect-[4/3]"
             >
               <img
                 src={marketImage(config.bannerImage)}
@@ -178,63 +232,70 @@ export function SuperDealsSection() {
                 className="absolute inset-0 h-full w-full object-cover"
               />
             </Link>
-          ) : (
-            <div className="relative h-[40%] w-full bg-gradient-to-br from-[#0F172A]/85 to-[#0F172A]/50 flex items-end p-4">
-              <span className="text-[#F59E0B] text-[11px] font-bold uppercase tracking-wider">{config.title}</span>
-              <h3 className="text-xl font-extrabold text-white mt-1 leading-tight">{config.subtitle}</h3>
+          )}
+          {!config.bannerImage && (
+            <div className="mt-6 h-48 w-full rounded-xl bg-white/10 flex items-center justify-center border border-white/20">
+              <Package className="h-10 w-10 text-white/40" />
+              <span className="ml-2 text-sm text-white/60">{cleanProductTitle("Featured Deal")}</span>
             </div>
           )}
-          <div className="flex-1 p-4 flex flex-col justify-between">
-            <div>
-              <p className="text-sm text-slate-600 leading-relaxed">
-                Amazing deals on top tech products. Limited time offers — shop now before they&apos;re gone.
-              </p>
-              {countdownActive && (
-                <div className="mt-4 flex items-center gap-1.5">
-                  {[
-                    { v: days, l: "D" },
-                    { v: hrs, l: "H" },
-                    { v: mins, l: "M" },
-                    { v: secs, l: "S" },
-                  ].map((x, i, arr) => (
-                    <span key={x.l} className="flex items-center gap-1">
-                      <span className="min-w-6 rounded-lg bg-[#F8FAFC] px-1.5 py-1 text-center text-[10px] font-bold tabular-nums text-[#DC2626]">
-                        {x.v}
-                      </span>
-                      {i < arr.length - 1 && <span className="text-[10px] font-bold text-slate-400">:</span>}
-                    </span>
-                  ))}
-                </div>
-              )}
-            </div>
-            <Link
-              href={config.ctaLink || "/marketplace/deals"}
-              className="inline-block bg-[#0F172A] text-white text-[12px] font-bold px-4 py-2 rounded hover:bg-[#1a202c] transition-colors text-center"
-            >
-              {config.ctaText || "Shop Deals"}
-            </Link>
+          <div className="mt-6 flex items-center gap-2">
+            <span className="text-xs font-bold text-white/70 uppercase tracking-wider">
+              Ends in
+            </span>
+            {countdownActive && !promotionExpired ? (
+              <div className="flex gap-1">
+                {[days, hrs, mins, secs].map((v, i) => (
+                  <span
+                    key={i}
+                    className="flex h-8 w-8 items-center justify-center rounded bg-[#DC2626] px-1.5 text-xs font-extrabold text-white shadow-lg"
+                  >
+                    {String(v).padStart(2, "0")}
+                  </span>
+                ))}
+                <span className="text-xs font-bold text-white/60 self-center">
+                  :
+                </span>
+              </div>
+            ) : (
+              <span className="text-xs font-medium text-white/60 italic">
+                {promotionExpired ? "Promotion expired" : "No end date set"}
+              </span>
+            )}
           </div>
+          <Link
+            href={config.ctaLink || "/marketplace/deals"}
+            className="mt-6 inline-block rounded bg-white px-5 py-2.5 text-sm font-bold text-[#0F172A] hover:bg-[#F59E0B] transition-colors"
+          >
+            {config.ctaText || "Shop Deals"}
+          </Link>
         </div>
 
         {/* Right: Product carousel */}
         <div className="flex-1 min-w-0 relative overflow-hidden">
           {products.length === 0 ? (
-            <div className="flex items-center justify-center py-10 text-slate-500 text-sm">
+            <div className="flex items-center justify-center py-12 text-white/60 text-sm">
               No promotional products configured. Add products in Admin → Marketing → Super Deals.
             </div>
           ) : (
             <div className="relative block h-full w-full">
-              <div className="super-deals-rail flex min-w-0 flex-1 gap-3 overflow-x-auto pb-1 snap-x" ref={railRef}>
+              <div className="super-deals-rail flex min-w-0 flex-1 gap-4 overflow-x-auto pb-2 snap-x" ref={railRef}>
                 {products.map((p) => {
                   const href = /^[0-9a-f-]{36}$/i.test(p.id) ? `/marketplace/product/${p.id}` : undefined
-                  const showSale = !!(p.sale_pct && p.sale_pct > 0) || !!(p.oldPrice && p.oldPrice > p.price)
-                  const discount = showSale ? (p.sale_pct ?? Math.round(((p.oldPrice ?? p.price) - p.price) / (p.oldPrice ?? p.price) * 100)) : 0
+                  const showSale =
+                    !!(p.sale_pct && p.sale_pct > 0) ||
+                    !!(p.oldPrice && p.oldPrice > p.price)
+                  const discount = showSale
+                    ? p.sale_pct ??
+                      Math.round(((p.oldPrice ?? p.price) - p.price) / (p.oldPrice ?? p.price) * 100)
+                    : 0
+                  const priceNgn = usdToNgn(p.price, ngnRate)
                   return (
-                    <div key={p.id} className="shrink-0 w-[150px] flex flex-col">
+                    <div key={p.id} className="shrink-0 w-[170px] flex flex-col">
                       <Link
                         href={href || "/marketplace"}
                         aria-label={p.name}
-                        className="block relative aspect-square w-full overflow-hidden rounded-lg bg-[#F8FAFC] group"
+                        className="block relative aspect-square w-full overflow-hidden rounded-xl bg-white shadow-sm border border-[#E2E8F0] group"
                       >
                         {p.image ? (
                           <img
@@ -242,47 +303,89 @@ export function SuperDealsSection() {
                             alt={p.name}
                             loading="lazy"
                             decoding="async"
-                            className="h-full w-full object-contain transition-transform duration-500 group-hover:scale-105"
+                            className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
                           />
                         ) : (
-                          <span className="flex h-full w-full items-center justify-center text-slate-300">
+                          <span className="flex h-full w-full items-center justify-center text-slate-200">
                             <Package className="h-8 w-8" />
                           </span>
                         )}
                         {showSale && config.showDiscountBadge && (
-                          <span className="absolute left-1.5 top-1.5 z-10 flex h-8 w-8 items-center justify-center rounded-full bg-[#F59E0B] text-[10px] font-extrabold text-[#0F172A] shadow-sm">
+                          <span className="absolute left-2 top-2 z-10 flex h-7 w-7 items-center justify-center rounded bg-[#DC2626] px-1 text-[9px] font-extrabold text-white shadow-sm">
                             -{discount}%
                           </span>
                         )}
                       </Link>
-                      <div className="mt-1.5 flex flex-col gap-0.5 px-1">
-                        <p title={p.name} className="line-clamp-2 text-[12px] font-semibold leading-tight text-[#0F172A] transition-colors group-hover:text-[#B45309]">
+                      <div className="mt-2 flex flex-col gap-1 px-1">
+                        <p
+                          title={p.name}
+                          className="line-clamp-2 text-[12px] font-semibold leading-tight text-white transition-colors group-hover:text-[#FCD34D]"
+                        >
                           {cleanProductTitle(p.name)}
                         </p>
-                        <div className="flex items-baseline gap-1">
+                        <div className="mt-1 flex items-baseline gap-1">
                           {config.showOriginalPrice && p.oldPrice && p.oldPrice > p.price && (
-                            <MarketPrice usd={p.oldPrice} className="text-[10px] tabular-nums text-slate-400 line-through" />
+                            <MarketPrice
+                              usd={p.oldPrice}
+                              className="text-[10px] tabular-nums text-white/50 line-through"
+                            />
                           )}
-                          <MarketPrice usd={p.price} className="text-[13px] font-extrabold tabular-nums text-[#0F172A]" />
+                          <span className="text-[13px] font-extrabold tabular-nums text-white">
+                            {formatPrice(p.price)}
+                          </span>
+                          {currency === "NGN" && (
+                            <span className="text-[10px] text-white/50 ml-1">
+                              ≈ {priceNgn}
+                            </span>
+                          )}
                         </div>
                         {config.showRating && p.rating && p.rating > 0 && (
-                          <div className="mt-0.5 flex items-center gap-1">
+                          <div className="mt-1 flex items-center gap-1">
                             <Star className="h-3.5 w-3.5 fill-[#F59E0B] text-[#F59E0B]" />
-                            <span className="text-[10px] font-medium text-slate-600">{p.rating.toFixed(1)}</span>
-                            {p.reviews && <span className="text-[10px] text-slate-400">({p.reviews})</span>}
+                            <span className="text-[10px] font-medium text-white/70">
+                              {p.rating.toFixed(1)}
+                            </span>
+                            {p.reviews && (
+                              <span className="text-[10px] text-white/40">({p.reviews})</span>
+                            )}
                           </div>
                         )}
                       </div>
                       {href ? (
-                        <Link href={href} aria-label={p.name} className="absolute inset-0 z-0 rounded-lg focus:outline-none" />
+                        <Link href={href} aria-label={p.name} className="absolute inset-0 z-0 rounded-xl focus:outline-none" />
                       ) : null}
                     </div>
                   )
                 })}
-                {products.length > 4 && (
-                  <div className="absolute right-0 top-0 bottom-0 flex items-center px-2 bg-gradient-to-r from-white to-transparent pointer-events-none" />
-                )}
               </div>
+              {products.length > 2 && (
+                <div className="absolute left-0 top-1/2 -translate-y-1/2 z-20 flex items-center gap-2 px-3 py-4 bg-gradient-to-r from-[#F59E0B] via-transparent to-transparent">
+                  <button
+                    onClick={() => {
+                      const el = railRef.current
+                      if (el) el.scrollBy({ left: -340, behavior: "smooth" })
+                    }}
+                    className="p-2 rounded-full bg-white text-[#0F172A] hover:bg-[#FCD34D] transition-colors shadow-sm"
+                    aria-label="Scroll left"
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                  </button>
+                </div>
+              )}
+              {products.length > 2 && (
+                <div className="absolute right-0 top-1/2 -translate-y-1/2 z-20 flex items-center gap-2 px-3 py-4 bg-gradient-to-l from-[#F59E0B] via-transparent to-transparent">
+                  <button
+                    onClick={() => {
+                      const el = railRef.current
+                      if (el) el.scrollBy({ left: 340, behavior: "smooth" })
+                    }}
+                    className="p-2 rounded-full bg-white text-[#0F172A] hover:bg-[#FCD34D] transition-colors shadow-sm"
+                    aria-label="Scroll right"
+                  >
+                    <ChevronRight className="h-4 w-4" />
+                  </button>
+                </div>
+              )}
             </div>
           )}
         </div>
