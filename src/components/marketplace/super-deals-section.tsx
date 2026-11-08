@@ -202,7 +202,7 @@ export function SuperDealsSection() {
   return (
     <section
       aria-label="Super Deals"
-      className="relative overflow-hidden rounded-2xl shadow-sm border border-[#E2E8F0]"
+      className="relative overflow-hidden rounded-2xl shadow-sm"
       style={{ background: bgGradient }}
     >
       {/* Decorative blue shapes on the right side */}

@@ -1021,7 +1021,6 @@ export function MarketplaceHome() {
             </div>
           </section>
         )}
-        <SectionDivider />
 
         {/* tabbed products — live catalog */}
         <section id="trending" className="bg-white rounded-2xl p-5 shadow-sm scroll-mt-4">
@@ -1151,10 +1150,10 @@ export function MarketplaceHome() {
             </div>
           </section>
           )
-        })()}
-        <SectionDivider />
+        })()
+        }
 
-{/* category shopping sections — split into two groups with slim banners between */}
+        {/* category shopping sections — split into two groups with slim banners between */}
 {departments.slice(0, 7).map((dep) => (
   <CategoryShoppingSection
     key={dep.slug}
