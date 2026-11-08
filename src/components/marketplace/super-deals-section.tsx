@@ -39,6 +39,7 @@ interface SuperDealsConfig {
   enabled: boolean
   title: string
   subtitle: string
+  kicker: string
   bannerImage: string
   bannerLink: string
   ctaText: string
@@ -62,11 +63,12 @@ const FALLBACK_END_AT = "2026-12-31T23:59:59"
 
 const EMPTY_CONFIG: SuperDealsConfig = {
   enabled: true,
-  title: "SUPER DEAL",
-  subtitle: "UP TO 70% OFF",
+  title: "Tech Drop",
+  subtitle: "Fresh Stock. Latest Gadgets. Bigger Possibilities.",
+  kicker: "New Season",
   bannerImage: "",
   bannerLink: "/marketplace/deals",
-  ctaText: "Shop Deals",
+  ctaText: "Shop Now",
   ctaLink: "/marketplace/deals",
   countdownEnabled: true,
   endAt: FALLBACK_END_AT,
@@ -100,7 +102,6 @@ export function SuperDealsSection() {
   const [config, setConfig] = useState<SuperDealsConfig>(EMPTY_CONFIG)
   const [loaded, setLoaded] = useState(false)
   const currency = useMarketCurrency()
-  const rate = useFxRate(currency)
   const ngnRate = useFxRate("NGN")
   const railRef = useRef<HTMLDivElement>(null)
 
@@ -194,9 +195,8 @@ export function SuperDealsSection() {
     config.countdownEnabled && config.endAt && (days > 0 || hrs > 0 || mins > 0 || secs > 0)
   const promotionExpired = config.endAt && flashSecondsLeft(config.endAt) <= 0
 
-  const formatPrice = (usd: number) => formatMarketPrice(usd, rate, currency)
+  const formatPrice = (usd: number) => formatMarketPrice(usd, ngnRate, currency)
 
-  // Decorative blue gradient shapes (CSS-only, positioned toward the right).
   const bgGradient = `linear-gradient(135deg, ${config.bgFrom} 0%, ${config.bgTo} 100%)`
 
   return (
@@ -205,24 +205,28 @@ export function SuperDealsSection() {
       className="relative overflow-hidden rounded-2xl shadow-sm"
       style={{ background: bgGradient }}
     >
-      {/* Decorative blue shapes on the right side */}
-      <div className="absolute -top-16 -right-20 w-64 h-64 bg-blue-500/20 rounded-full blur-[100px]" />
-      <div className="absolute top-1/3 -right-16 w-48 h-48 bg-blue-400/15 rounded-full blur-[64px]" />
-      <div className="absolute bottom-8 -right-12 w-32 h-32 bg-blue-600/10 rounded-full blur-[40px]" />
-      <div className="relative z-10 flex flex-col lg:flex-row gap-6 p-6 sm:p-8">
+      {/* Decorative blue gradient shapes on the right side */}
+      <div className="absolute -top-20 -right-24 w-80 h-80 bg-blue-500/20 rounded-full blur-[120px]" />
+      <div className="absolute top-1/4 -right-16 w-56 h-56 bg-blue-400/15 rounded-full blur-[80px]" />
+      <div className="absolute bottom-12 -right-12 w-40 h-40 bg-blue-600/10 rounded-full blur-[56px]" />
+
+      <div className="relative z-10 flex flex-col lg:flex-row gap-8 p-6 sm:p-10">
         {/* Left: Promotional area */}
-        <div className="flex-none lg:w-[42%] flex flex-col justify-center">
-          <div className="inline-flex items-center gap-2 rounded bg-white/15 px-3 py-1 text-[11px] font-bold uppercase tracking-wider text-white">
-            <Flame className="h-4 w-4" /> {config.title}
+        <div className="flex-none lg:w-[45%] flex flex-col justify-center">
+          <div className="inline-flex items-center gap-1.5 rounded bg-white/20 px-3 py-1 text-[11px] font-bold uppercase tracking-wider text-white">
+            <Flame className="h-4 w-4" /> {config.kicker}
           </div>
-          <h2 className="mt-2 text-3xl font-extrabold tracking-tight text-white sm:text-4xl leading-tight">
-            {config.subtitle}
+          <h2 className="mt-3 text-4xl font-extrabold tracking-tight text-white sm:text-5xl leading-tight">
+            {config.title}
           </h2>
+          <p className="mt-4 text-lg text-white/90 leading-relaxed">
+            {config.subtitle}
+          </p>
           {config.bannerImage && (
             <Link
               href={config.bannerLink || "/marketplace/deals"}
               aria-label={config.title}
-              className="mt-6 block shrink-0 overflow-hidden rounded-xl bg-white/10 aspect-[4/3]"
+              className="mt-8 block shrink-0 overflow-hidden rounded-2xl bg-white/15 aspect-[4/3]"
             >
               <img
                 src={marketImage(config.bannerImage)}
@@ -234,12 +238,12 @@ export function SuperDealsSection() {
             </Link>
           )}
           {!config.bannerImage && (
-            <div className="mt-6 h-48 w-full rounded-xl bg-white/10 flex items-center justify-center border border-white/20">
-              <Package className="h-10 w-10 text-white/40" />
-              <span className="ml-2 text-sm text-white/60">{cleanProductTitle("Featured Deal")}</span>
+            <div className="mt-8 h-64 w-full rounded-2xl bg-white/10 flex items-center justify-center border border-white/20">
+              <Package className="h-12 w-12 text-white/40" />
+              <span className="ml-3 text-sm text-white/60 font-medium">{cleanProductTitle("Featured Deal")}</span>
             </div>
           )}
-          <div className="mt-6 flex items-center gap-2">
+          <div className="mt-8 flex items-center gap-2">
             <span className="text-xs font-bold text-white/70 uppercase tracking-wider">
               Ends in
             </span>
@@ -248,12 +252,12 @@ export function SuperDealsSection() {
                 {[days, hrs, mins, secs].map((v, i) => (
                   <span
                     key={i}
-                    className="flex h-8 w-8 items-center justify-center rounded bg-[#DC2626] px-1.5 text-xs font-extrabold text-white shadow-lg"
+                    className="flex h-10 w-10 items-center justify-center rounded bg-[#DC2626] px-2 text-xs font-extrabold text-white shadow-lg"
                   >
                     {String(v).padStart(2, "0")}
                   </span>
                 ))}
-                <span className="text-xs font-bold text-white/60 self-center">
+                <span className="text-xs font-bold text-white/60 self-center mt-1">
                   :
                 </span>
               </div>
@@ -265,22 +269,22 @@ export function SuperDealsSection() {
           </div>
           <Link
             href={config.ctaLink || "/marketplace/deals"}
-            className="mt-6 inline-block rounded bg-white px-5 py-2.5 text-sm font-bold text-[#0F172A] hover:bg-[#F59E0B] transition-colors"
+            className="mt-8 inline-block rounded-full bg-white px-6 py-3 text-sm font-bold text-[#0F172A] hover:bg-[#FCD34D] transition-colors"
           >
-            {config.ctaText || "Shop Deals"}
+            {config.ctaText || "Shop Now"}
           </Link>
         </div>
 
         {/* Right: Product carousel */}
         <div className="flex-1 min-w-0 relative overflow-hidden">
           {products.length === 0 ? (
-            <div className="flex items-center justify-center py-12 text-white/60 text-sm">
+            <div className="flex items-center justify-center py-16 text-white/60 text-sm">
               No promotional products configured. Add products in Admin → Marketing → Super Deals.
             </div>
           ) : (
             <div className="relative block h-full w-full">
               <div
-                className="super-deals-rail flex min-w-0 flex-1 gap-4 overflow-x-auto snap-x pb-2"
+                className="super-deals-rail flex min-w-0 flex-1 gap-5 overflow-x-auto snap-x pb-2"
                 ref={railRef}
               >
                 {products.map((p) => {
@@ -294,11 +298,11 @@ export function SuperDealsSection() {
                     : 0
                   const priceNgn = usdToNgn(p.price, ngnRate)
                   return (
-                    <div key={p.id} className="shrink-0 w-[170px] flex flex-col">
+                    <div key={p.id} className="shrink-0 w-[200px] flex flex-col">
                       <Link
                         href={href || "/marketplace"}
                         aria-label={p.name}
-                        className="block relative aspect-square w-full overflow-hidden rounded-xl bg-white shadow-sm border border-[#E2E8F0] group"
+                        className="block relative aspect-[4/5] w-full overflow-hidden rounded-xl bg-white shadow-sm border border-[#E2E8F0] group"
                       >
                         {p.image ? (
                           <img
@@ -310,46 +314,46 @@ export function SuperDealsSection() {
                           />
                         ) : (
                           <span className="flex h-full w-full items-center justify-center text-slate-200">
-                            <Package className="h-8 w-8" />
+                            <Package className="h-10 w-10" />
                           </span>
                         )}
                         {showSale && config.showDiscountBadge && (
-                          <span className="absolute left-2 top-2 z-10 flex h-7 w-7 items-center justify-center rounded bg-[#DC2626] px-1 text-[9px] font-extrabold text-white shadow-sm">
+                          <span className="absolute left-3 top-3 z-10 flex h-8 w-8 items-center justify-center rounded bg-[#DC2626] px-1.5 text-[10px] font-extrabold text-white shadow-sm">
                             -{discount}%
                           </span>
                         )}
                       </Link>
-                      <div className="mt-2 flex flex-col gap-1 px-1">
+                      <div className="mt-3 flex flex-col gap-1 px-1">
                         <p
                           title={p.name}
-                          className="line-clamp-2 text-[12px] font-semibold leading-tight text-white transition-colors group-hover:text-[#FCD34D]"
+                          className="line-clamp-2 text-[13px] font-semibold leading-tight text-white transition-colors group-hover:text-[#FCD34D]"
                         >
                           {cleanProductTitle(p.name)}
                         </p>
-                        <div className="mt-1 flex items-baseline gap-1">
+                        <div className="mt-1.5 flex items-baseline gap-1">
                           {config.showOriginalPrice && p.oldPrice && p.oldPrice > p.price && (
                             <MarketPrice
                               usd={p.oldPrice}
-                              className="text-[10px] tabular-nums text-white/50 line-through"
+                              className="text-[11px] tabular-nums text-white/50 line-through"
                             />
                           )}
-                          <span className="text-[13px] font-extrabold tabular-nums text-white">
+                          <span className="text-[15px] font-extrabold tabular-nums text-white">
                             {formatPrice(p.price)}
                           </span>
                           {currency === "NGN" && (
-                            <span className="text-[10px] text-white/50 ml-1">
+                            <span className="text-[11px] text-white/50 ml-1">
                               ≈ {priceNgn}
                             </span>
                           )}
                         </div>
                         {config.showRating && p.rating && p.rating > 0 && (
                           <div className="mt-1 flex items-center gap-1">
-                            <Star className="h-3.5 w-3.5 fill-[#F59E0B] text-[#F59E0B]" />
-                            <span className="text-[10px] font-medium text-white/70">
+                            <Star className="h-4 w-4 fill-[#F59E0B] text-[#F59E0B]" />
+                            <span className="text-[11px] font-medium text-white/70">
                               {p.rating.toFixed(1)}
                             </span>
                             {p.reviews && (
-                              <span className="text-[10px] text-white/40">({p.reviews})</span>
+                              <span className="text-[11px] text-white/40">({p.reviews})</span>
                             )}
                           </div>
                         )}
@@ -362,30 +366,30 @@ export function SuperDealsSection() {
                 })}
               </div>
               {products.length > 2 && (
-                <div className="absolute left-0 top-1/2 -translate-y-1/2 z-20 flex items-center gap-2 px-3 py-4 bg-gradient-to-r from-[#F59E0B] via-transparent to-transparent">
+                <div className="absolute left-0 top-1/2 -translate-y-1/2 z-20 flex items-center gap-2 px-4 py-6 bg-gradient-to-r from-[#F59E0B] via-transparent to-transparent">
                   <button
                     onClick={() => {
                       const el = railRef.current
-                      if (el) el.scrollBy({ left: -340, behavior: "smooth" })
+                      if (el) el.scrollBy({ left: -400, behavior: "smooth" })
                     }}
-                    className="p-2 rounded-full bg-white text-[#0F172A] hover:bg-[#FCD34D] transition-colors shadow-sm"
+                    className="p-3 rounded-full bg-white text-[#0F172A] hover:bg-[#FCD34D] transition-colors shadow-lg"
                     aria-label="Scroll left"
                   >
-                    <ChevronLeft className="h-4 w-4" />
+                    <ChevronLeft className="h-5 w-5" />
                   </button>
                 </div>
               )}
               {products.length > 2 && (
-                <div className="absolute right-0 top-1/2 -translate-y-1/2 z-20 flex items-center gap-2 px-3 py-4 bg-gradient-to-l from-[#F59E0B] via-transparent to-transparent">
+                <div className="absolute right-0 top-1/2 -translate-y-1/2 z-20 flex items-center gap-2 px-4 py-6 bg-gradient-to-l from-[#F59E0B] via-transparent to-transparent">
                   <button
                     onClick={() => {
                       const el = railRef.current
-                      if (el) el.scrollBy({ left: 340, behavior: "smooth" })
+                      if (el) el.scrollBy({ left: 400, behavior: "smooth" })
                     }}
-                    className="p-2 rounded-full bg-white text-[#0F172A] hover:bg-[#FCD34D] transition-colors shadow-sm"
+                    className="p-3 rounded-full bg-white text-[#0F172A] hover:bg-[#FCD34D] transition-colors shadow-lg"
                     aria-label="Scroll right"
                   >
-                    <ChevronRight className="h-4 w-4" />
+                    <ChevronRight className="h-5 w-5" />
                   </button>
                 </div>
               )}

@@ -9,6 +9,7 @@ import { openCheckout } from "@/lib/marketplace-events"
 import { marketImage } from "@/lib/marketplace-images"
 import { readShipSelection, shippingCost, FREE_SHIP_THRESHOLD_USD } from "@/lib/marketplace-shipping"
 import { useMarketCurrency, useFxRate } from "@/lib/marketplace-pricing"
+import { useLiveNgnRate } from "@/lib/fx-shared"
 import { fxFormat } from "@/lib/fx-shared"
 import { MarketPrice } from "./market-price"
 
@@ -23,7 +24,7 @@ interface Row {
 export function CartPage() {
   const cart = useMarketCart()
   const currency = useMarketCurrency()
-  const ngnRate = useFxRate("NGN")
+  const ngnRate = useLiveNgnRate()
   const [rows, setRows] = useState<Row[]>([])
   const [loading, setLoading] = useState(true)
   const [shipSel, setShipSel] = useState({ id: "standard", name: "Standard", feeUsd: 0 })

@@ -26,6 +26,7 @@ interface SuperDealsForm {
   enabled: boolean
   title: string
   subtitle: string
+  kicker: string
   bannerImage: string
   bannerLink: string
   ctaText: string
@@ -47,11 +48,12 @@ interface SuperDealsForm {
 
 const INITIAL: SuperDealsForm = {
   enabled: true,
-  title: "SUPER DEAL",
+  title: "Tech Drop",
   subtitle: "UP TO 70% OFF",
+  kicker: "New Season",
   bannerImage: "",
   bannerLink: "/marketplace/deals",
-  ctaText: "Shop Deals",
+  ctaText: "Shop Now",
   ctaLink: "/marketplace/deals",
   countdownEnabled: true,
   endAt: "",
@@ -297,7 +299,16 @@ export function MarketplaceSuperDealsTab() {
                 <input
                   value={config.subtitle}
                   onChange={(e) => toggleField("subtitle", e.target.value)}
-                  placeholder="Up to 70% Off"
+                  placeholder="Fresh Stock. Latest Gadgets. Bigger Possibilities."
+                  className="w-full border rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:border-amber-500"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">Kicker / Badge</label>
+                <input
+                  value={config.kicker}
+                  onChange={(e) => toggleField("kicker", e.target.value)}
+                  placeholder="New Season"
                   className="w-full border rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:border-amber-500"
                 />
               </div>
@@ -306,7 +317,7 @@ export function MarketplaceSuperDealsTab() {
                 <input
                   value={config.ctaText}
                   onChange={(e) => toggleField("ctaText", e.target.value)}
-                  placeholder="Shop Deals"
+                  placeholder="Shop Now"
                   className="w-full border rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:border-amber-500"
                 />
               </div>

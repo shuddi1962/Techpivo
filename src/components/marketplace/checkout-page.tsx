@@ -8,6 +8,7 @@ import { createClient } from "@/lib/supabase/client"
 import { marketImage } from "@/lib/marketplace-images"
 import { clearCart, getCart, useMarketCart } from "@/lib/marketplace-cart"
 import { useMarketCurrency, useFxRate } from "@/lib/marketplace-pricing"
+import { useLiveNgnRate } from "@/lib/fx-shared"
 import { fxFormat } from "@/lib/fx-shared"
 import { MarketPrice } from "./market-price"
 import {
@@ -30,7 +31,7 @@ export function CheckoutPage() {
   const router = useRouter()
   const cart = useMarketCart()
   const currency = useMarketCurrency()
-  const ngnRate = useFxRate("NGN")
+  const ngnRate = useLiveNgnRate()
   const [rows, setRows] = useState<Row[]>([])
   const [loading, setLoading] = useState(true)
   const [paying, setPaying] = useState(false)

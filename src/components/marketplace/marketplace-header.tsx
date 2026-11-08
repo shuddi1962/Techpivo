@@ -13,7 +13,7 @@ import {
 import { MarketCategorySync, useMarketplaceTree } from "./market-category-store"
 import { MARKETPLACE_BRAND } from "@/lib/marketplace"
 import type { MarketBanners } from "@/lib/marketplace-banners"
-import { cartCount as countLines, useMarketCart } from "@/lib/marketplace-cart"
+import { cartCount as countLines, getCart, useMarketCart } from "@/lib/marketplace-cart"
 import { useCompareIds } from "@/lib/marketplace-compare"
 import { SuggestDropdown, useRemoteSuggest } from "./search-suggest"
 import { MarketCommerce } from "./market-commerce"
@@ -214,11 +214,39 @@ const [currencyOpen, setCurrencyOpen] = useState(false)
     }
   }, [])
 
-  // Live cart lines — always subscribed so the badge is correct on every
-  // store page even when the page doesn't pass cartCount.
-  const liveLines = useMarketCart()
-  const liveCount = countLines(liveLines)
-  const shownCartCount = cartCount ?? liveCount
+  // Cart badge — synced with localStorage so it stays correct even when
+  // items are added/removed from other tabs or pages.
+  const [cartBadgeCount, setCartBadgeCount] = useState<number>(() => {
+    try {
+      return countLines(getCart())
+    } catch {
+      return 0
+    }
+  })
+  useEffect(() => {
+    const refresh = () => {
+      try {
+        setCartBadgeCount(countLines(getCart()))
+      } catch {
+        setCartBadgeCount(0)
+      }
+    }
+    refresh()
+    const handleStorage = (e: StorageEvent) => {
+      if (e.key === "tp_market_cart_v1") refresh()
+    }
+    const handleCartEvent = () => refresh()
+    const handleFocus = () => refresh()
+    window.addEventListener("storage", handleStorage)
+    window.addEventListener("tp-market-cart", handleCartEvent)
+    window.addEventListener("focus", handleFocus)
+    return () => {
+      window.removeEventListener("storage", handleStorage)
+      window.removeEventListener("tp-market-cart", handleCartEvent)
+      window.removeEventListener("focus", handleFocus)
+    }
+  }, [])
+  const shownCartCount = cartCount ?? cartBadgeCount
 
   // Live wishlist count (same localStorage key the home grid writes).
   const [liveWish, setLiveWish] = useState(0)
