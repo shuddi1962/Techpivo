@@ -45,7 +45,7 @@ export function ShopCollections({
   const visible = showAll ? ordered : ordered.slice(0, 10)
 
   return (
-    <section aria-label="Shop by collections" className="bg-white rounded-2xl p-5 shadow-sm border border-[#E2E8F0]">
+    <section aria-label="Shop by collections" className="bg-white rounded-2xl p-5 shadow-sm">
       <div className="mb-4 flex items-center justify-between gap-3">
         <div className="flex items-center gap-2">
           <span className="flex h-7 w-7 items-center justify-center rounded-full bg-[#F59E0B]/10 text-[#F59E0B]">

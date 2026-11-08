@@ -844,7 +844,7 @@ export function MarketplaceHome() {
             and bottom edges; the main image fills its box edge to edge
             (display block, 100% x 100%, object-cover) with no white gap. */}
         <section className="w-full">
-        <div className="grid w-full grid-cols-1 lg:grid-cols-3 gap-4 items-stretch lg:h-[360px] xl:h-[400px]">
+        <div className="grid w-full grid-cols-1 lg:grid-cols-3 gap-4 items-stretch lg:h-[360px] xl:h-[400px] overflow-x-clip">
         {!loaded || !bannersReady ? (
           <div className="lg:col-span-2 overflow-hidden rounded-none bg-white shadow-sm aspect-[16/10] sm:aspect-[21/9] lg:aspect-auto lg:h-full animate-pulse" aria-hidden>
             <div className="h-full w-full bg-slate-100" />
@@ -948,10 +948,9 @@ export function MarketplaceHome() {
           </div>
         </div>
         </section>
-        <SectionDivider />
         {/* shop by collections — every real category node */}
         {!loaded ? (
-          <section aria-label="Loading collections" className="bg-white rounded-2xl p-5 shadow-sm border border-[#E2E8F0] animate-pulse" aria-hidden>
+          <section aria-label="Loading collections" className="bg-white rounded-2xl p-5 shadow-sm animate-pulse" aria-hidden>
             <div className="mb-4 h-6 w-48 rounded bg-slate-100" />
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
               {Array.from({ length: 14 }).map((_, i) => (
