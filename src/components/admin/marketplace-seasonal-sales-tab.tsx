@@ -235,6 +235,7 @@ export function MarketplaceSeasonalSalesTab(): JSX.Element | null {
       })
       const data = await res.json().catch(() => null)
       if (!res.ok) throw new Error(data?.error || "Save failed")
+      setCampaigns(configForList())
       setNotice("Campaign saved — live on the storefront instantly")
       setMode("list")
       setEditing(null)
