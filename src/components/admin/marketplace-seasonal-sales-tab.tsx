@@ -245,8 +245,11 @@ export function MarketplaceSeasonalSalesTab(): JSX.Element | null {
     }
   }
 
-  const configForList = (): SeasonalCampaignForm[] =>
-    campaigns.map((c) => (c.id === editing?.id ? editing! : c))
+  const configForList = (): SeasonalCampaignForm[] => {
+    const list = campaigns.map((c) => (c.id === editing?.id ? editing! : c))
+    if (editing && !list.some((c) => c.id === editing.id)) return [...list, editing]
+    return list
+  }
 
   const deleteCampaign = async (id: string) => {
     if (!window.confirm("Delete this campaign? This cannot be undone.")) return
