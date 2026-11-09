@@ -13,7 +13,7 @@ import {
 import { MarketCategorySync, useMarketplaceTree } from "./market-category-store"
 import { MARKETPLACE_BRAND } from "@/lib/marketplace"
 import type { MarketBanners } from "@/lib/marketplace-banners"
-import { cartCount as countLines, getCart, useMarketCart } from "@/lib/marketplace-cart"
+import { useMarketCart } from "@/lib/marketplace-cart"
 import { useCompareIds } from "@/lib/marketplace-compare"
 import { SuggestDropdown, useRemoteSuggest } from "./search-suggest"
 import { MarketCommerce } from "./market-commerce"
@@ -214,39 +214,14 @@ const [currencyOpen, setCurrencyOpen] = useState(false)
     }
   }, [])
 
-  // Cart badge — synced with localStorage so it stays correct even when
-  // items are added/removed from other tabs or pages.
-  const [cartBadgeCount, setCartBadgeCount] = useState<number>(() => {
-    try {
-      return countLines(getCart())
-    } catch {
-      return 0
-    }
-  })
-  useEffect(() => {
-    const refresh = () => {
-      try {
-        setCartBadgeCount(countLines(getCart()))
-      } catch {
-        setCartBadgeCount(0)
-      }
-    }
-    refresh()
-    const handleStorage = (e: StorageEvent) => {
-      if (e.key === "tp_market_cart_v1") refresh()
-    }
-    const handleCartEvent = () => refresh()
-    const handleFocus = () => refresh()
-    window.addEventListener("storage", handleStorage)
-    window.addEventListener("tp-market-cart", handleCartEvent)
-    window.addEventListener("focus", handleFocus)
-    return () => {
-      window.removeEventListener("storage", handleStorage)
-      window.removeEventListener("tp-market-cart", handleCartEvent)
-      window.removeEventListener("focus", handleFocus)
-    }
-  }, [])
-  const shownCartCount = cartCount ?? cartBadgeCount
+  // Cart badge — always derived from the live cart so it never shows stale
+  // items (e.g. after the last item is removed the badge goes to zero).
+  // The `cartCount` prop is intentionally ignored: it can be stale when
+  // passed from a parent render, while the live cart always reflects the
+  // current contents (including removals).
+  const cartLines = useMarketCart()
+  const liveCartCount = cartLines.reduce((s, l) => s + l.qty, 0)
+  const shownCartCount = liveCartCount
 
   // Live wishlist count (same localStorage key the home grid writes).
   const [liveWish, setLiveWish] = useState(0)

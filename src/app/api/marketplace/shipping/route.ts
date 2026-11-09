@@ -1,8 +1,25 @@
 import { NextRequest, NextResponse } from "next/server"
+import { createClient } from "@/lib/supabase/server"
 import { storeShipOptions, type ShipOption } from "@/lib/marketplace-shipping"
 import { supplierShipOptions } from "@/lib/marketplace-freight"
 
 export const dynamic = "force-dynamic"
+
+async function getFreeShipThreshold(): Promise<number> {
+  try {
+    const supabase = createClient()
+    const { data } = await supabase
+      .from("site_settings")
+      .select("value")
+      .eq("key", "marketplace_shipping_settings")
+      .maybeSingle()
+    const v = (data as { value?: unknown } | null)?.value as Record<string, unknown> | undefined
+    const t = v?.freeShipThresholdUsd
+    return Number.isFinite(Number(t)) ? Number(t) : 35
+  } catch {
+    return 35
+  }
+}
 
 // Unified delivery options: live supplier courier rates (with markup) +
 // the store's Standard / Express fallbacks (always present).
@@ -13,6 +30,7 @@ export const dynamic = "force-dynamic"
 export async function GET(request: NextRequest) {
   const params = new URL(request.url).searchParams
   const subtotal = Number(params.get("subtotal")) || 0
+  const thresholdUsd = await getFreeShipThreshold()
   const options = await optionsFor(
     [
       {
@@ -22,7 +40,8 @@ export async function GET(request: NextRequest) {
       },
     ],
     params.get("country") || "NG",
-    subtotal
+    subtotal,
+    thresholdUsd
   )
   return NextResponse.json({ options })
 }
@@ -34,6 +53,7 @@ export async function POST(request: NextRequest) {
     variant_vid?: string
     qty?: number
   }>
+  const thresholdUsd = await getFreeShipThreshold()
   const options = await optionsFor(
     items.slice(0, 50).map((i) => ({
       product_id: String(i.product_id || ""),
@@ -41,7 +61,8 @@ export async function POST(request: NextRequest) {
       qty: Math.max(1, Math.min(99, Math.floor(Number(i.qty) || 1))),
     })),
     String(body?.country || "NG"),
-    Number(body?.subtotal) || 0
+    Number(body?.subtotal) || 0,
+    thresholdUsd
   )
   return NextResponse.json({ options })
 }
@@ -49,9 +70,10 @@ export async function POST(request: NextRequest) {
 async function optionsFor(
   lines: Array<{ product_id: string; variant_vid: string; qty: number }>,
   country: string,
-  subtotal: number
+  subtotal: number,
+  thresholdUsd: number = 35
 ): Promise<ShipOption[]> {
-  const store = storeShipOptions(Number.isFinite(subtotal) && subtotal > 0 ? subtotal : 0)
+  const store = storeShipOptions(Number.isFinite(subtotal) && subtotal > 0 ? subtotal : 0, thresholdUsd)
   const live = await supplierShipOptions(lines, country)
   const seen = new Set<string>()
   const merged: ShipOption[] = []

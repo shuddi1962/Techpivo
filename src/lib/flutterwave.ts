@@ -76,8 +76,10 @@ interface FlutterwaveInitArgs {
   email: string
   name?: string
   phone?: string
-  /** Amount in NGN units (Flutterwave charges naira directly). */
-  amountNgn: number
+  /** Amount in USD units (Flutterwave charges the transaction currency directly). */
+  amountUsd: number
+  /** Transaction currency — USD is TechPivo's base/checkout currency. */
+  currency: string
   /** Our order reference (tx_ref). */
   reference: string
   redirectUrl: string
@@ -89,7 +91,8 @@ interface FlutterwaveInitArgs {
 export async function flutterwaveInit(args: FlutterwaveInitArgs): Promise<FlutterwaveInit> {
   const secret = await resolveFlutterwaveSecret()
   if (!isFlutterwaveConfigured(secret)) throw new Error("Card payments are not configured yet.")
-  const amount = Math.round(args.amountNgn)
+  const amount = Math.round(args.amountUsd * 100) / 100
+  const currency = (args.currency || "USD").toUpperCase()
   if (!Number.isFinite(amount) || amount <= 0) throw new Error("Invalid payment amount.")
   const res = await fetch(`${FLW_BASE}/payments`, {
     method: "POST",
@@ -97,7 +100,7 @@ export async function flutterwaveInit(args: FlutterwaveInitArgs): Promise<Flutte
     body: JSON.stringify({
       tx_ref: args.reference,
       amount,
-      currency: "NGN",
+      currency,
       redirect_url: args.redirectUrl,
       customer: {
         email: args.email,

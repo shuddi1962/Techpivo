@@ -21,7 +21,6 @@ interface NotifyOrder {
   subtotal_usd?: number | string | null
   shipping_usd?: number | string | null
   total_usd?: number | string | null
-  total_ngn?: number | string | null
   paystack_reference?: string | null
   ship_name?: string | null
   ship_phone?: string | null
@@ -87,7 +86,7 @@ export async function notifyMarketplacePaid(order: NotifyOrder): Promise<void> {
         bodyHtml: [
           `<p>Hi${order.ship_name ? ` ${escapeHtml(order.ship_name)}` : ""}, your payment was successful and your order is now being prepared.</p>`,
           `<table width="100%" cellpadding="0" cellspacing="0" role="presentation" style="margin:16px 0;border-top:1px solid #1E2D42;border-bottom:1px solid #1E2D42;">${lines}</table>`,
-          `<p>Subtotal: <strong style="color:#E2E8F0;">${money(order.subtotal_usd, "$")}</strong><br>Shipping${method ? ` (${escapeHtml(method)})` : ""}: <strong style="color:#E2E8F0;">${money(order.shipping_usd, "$")}</strong><br>Total charged: <strong style="color:#F59E0B;">${money(order.total_ngn, "₦")}</strong> <span style="color:#64748B;">(${money(order.total_usd, "$")})</span></p>`,
+          `<p>Subtotal: <strong style="color:#E2E8F0;">${money(order.subtotal_usd, "$")}</strong><br>Shipping${method ? ` (${escapeHtml(method)})` : ""}: <strong style="color:#E2E8F0;">${money(order.shipping_usd, "$")}</strong><br>Total charged: <strong style="color:#F59E0B;">${money(order.total_usd, "$")}</strong></p>`,
           `<p>Deliver to:<br>${addressBlock(order)}</p>`,
           `<p style="color:#64748B;font-size:13px;">Your tracking number appears on the tracking page once our fulfillment partner ships your parcel${order.ship_eta ? ` (ETA ${escapeHtml(order.ship_eta)})` : ""}. Keep your reference <strong style="color:#E2E8F0;">${escapeHtml(reference || order.id.slice(0, 8))}</strong>.</p>`,
         ].join(""),
@@ -103,11 +102,11 @@ export async function notifyMarketplacePaid(order: NotifyOrder): Promise<void> {
       const admin = await storeEmail()
       await sendBrandedEmail({
         to: admin,
-        subject: `New paid order ${reference} — ${money(order.total_ngn, "₦")}`,
+        subject: `New paid order ${reference} — ${money(order.total_usd, "$")}`,
         title: "New paid order",
         preheader: `Paid order ${reference} needs ${order.cj_order_id ? "no action (sent to CJ)" : "fulfillment attention"}.`,
         bodyHtml: [
-          `<p><strong style="color:#E2E8F0;">${escapeHtml(reference || order.id)}</strong> · ${money(order.total_ngn, "₦")} (${money(order.total_usd, "$")}) · ${escapeHtml(order.email)}</p>`,
+          `<p><strong style="color:#E2E8F0;">${escapeHtml(reference || order.id)}</strong> · ${money(order.total_usd, "$")} · ${escapeHtml(order.email)}</p>`,
           `<table width="100%" cellpadding="0" cellspacing="0" role="presentation" style="margin:16px 0;border-top:1px solid #1E2D42;border-bottom:1px solid #1E2D42;">${lines}</table>`,
           `<p>Ship to:<br>${addressBlock(order)}</p>`,
           `<p style="color:#64748B;font-size:13px;">Fulfillment: ${order.cj_order_id ? `sent to CJ (${escapeHtml(order.cj_order_id)})` : "<strong style=\"color:#F59E0B;\">MANUAL ACTION NEEDED</strong> — open Admin → Marketplace → Orders and press Retry."}</p>`,

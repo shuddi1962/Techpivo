@@ -77,10 +77,10 @@ export async function POST(request: NextRequest) {
         if (tx.status !== "successful") {
           return NextResponse.json({ received: true }, { status: 200 })
         }
-        if (tx.currency && tx.currency.toUpperCase() !== "NGN") {
+        if (tx.currency && tx.currency.toUpperCase() !== "USD") {
           return NextResponse.json({ received: false }, { status: 200 })
         }
-        const expected = Number(order.total_ngn) || 0
+        const expected = Number(order.total_usd) || 0
         if (expected > 0 && tx.amount + 1 < expected) {
           await supabase.from("marketplace_orders").update({ paystack_status: "amount_mismatch" }).eq("id", order.id)
           return NextResponse.json({ received: false }, { status: 200 })

@@ -9,6 +9,22 @@ import { checkRateLimit, clientIp } from "@/lib/rate-limiter"
 
 export const dynamic = "force-dynamic"
 
+async function getFreeShipThreshold(): Promise<number> {
+  try {
+    const supabase = createClient()
+    const { data } = await supabase
+      .from("site_settings")
+      .select("value")
+      .eq("key", "marketplace_shipping_settings")
+      .maybeSingle()
+    const v = (data as { value?: unknown } | null)?.value as Record<string, unknown> | undefined
+    const t = v?.freeShipThresholdUsd
+    return Number.isFinite(Number(t)) ? Number(t) : 35
+  } catch {
+    return 35
+  }
+}
+
 interface CheckoutItem {
   id: string
   qty: number
@@ -49,6 +65,11 @@ export async function POST(request: NextRequest) {
     if (!ship.name || !ship.phone || !ship.address || !ship.city) {
       return NextResponse.json({ error: "Name, phone, address and city are required." }, { status: 400 })
     }
+
+    // Display currency the shopper browsed in (USD base). Recorded for the
+    // order but never changes the USD order total — no double conversion.
+    const displayCurrency = String(body?.display_currency || "USD").toUpperCase().slice(0, 3)
+    const fxRate = Number(body?.fx_rate ?? 1) || 1
 
     const supabase = await createClient()
     const ids = [...new Set(items.map((i) => String(i.id)).filter(Boolean))].slice(0, 50)
@@ -174,11 +195,12 @@ export async function POST(request: NextRequest) {
     // Delivery: buyer's chosen option, re-resolved server-side (never trusted
     // from the client). Supplier courier rates carry store markup. The
     // resolved method name + ETA are stored for fulfillment + tracking.
+    const thresholdUsd = await getFreeShipThreshold()
     let shippingUsd = 0
     let shipMethodName = "Standard"
     let shipEta = "7–12 days"
     if (shippingId === "express") {
-      const opt = storeShipOptions(subtotal).find((o) => o.id === "express")
+      const opt = storeShipOptions(subtotal, thresholdUsd).find((o) => o.id === "express")
       shippingUsd = opt?.feeUsd ?? 19
       shipMethodName = "Express"
       shipEta = opt?.eta || "3–7 days"
@@ -193,26 +215,18 @@ export async function POST(request: NextRequest) {
         shipMethodName = match.name
         shipEta = match.eta
       } else {
-        const fb = storeShipOptions(subtotal).find((o) => o.id === "standard")
+        const fb = storeShipOptions(subtotal, thresholdUsd).find((o) => o.id === "standard")
         shippingUsd = fb?.feeUsd ?? 5
       }
     } else {
-      const opt = storeShipOptions(subtotal).find((o) => o.id === "standard")
+      const opt = storeShipOptions(subtotal, thresholdUsd).find((o) => o.id === "standard")
       shippingUsd = opt?.feeUsd ?? 5
       shipEta = opt?.eta || shipEta
     }
     const totalUsd = Math.max(0, Math.round((subtotal - discountUsd + shippingUsd) * 100) / 100)
 
-    // NGN total via live FX (fallback 1600) — the gateway charges naira units
-    let usdNgn = 1600
-    try {
-      const fx = await fetch(`${new URL(request.url).origin}/api/tools/fx?from=USD&to=NGN&amount=1`, { signal: AbortSignal.timeout(8000) }).then((r) => r.json())
-      const v = Number(fx?.rate)
-      if (Number.isFinite(v) && v > 0) usdNgn = v
-    } catch {
-      // fallback
-    }
-    const totalNgn = Math.max(100, Math.round(totalUsd * usdNgn))
+    // USD is the order / checkout / payment currency. Display currency
+    // (browsing) is recorded separately and never changes the order total.
     const reference = `TPM-${Date.now().toString(36).toUpperCase()}${Math.random().toString(36).slice(2, 6).toUpperCase()}`
 
     const admin = createAdmin()
@@ -222,8 +236,13 @@ export async function POST(request: NextRequest) {
       subtotal_usd: Math.round(subtotal * 100) / 100,
       shipping_usd: shippingUsd,
       total_usd: totalUsd,
-      total_ngn: totalNgn,
-      currency: "NGN",
+      // USD is the checkout / payment currency. Display currency (browsing)
+      // is recorded separately and never changes the order total.
+      currency: "USD",
+      payment_currency: "USD",
+      payment_amount_usd: totalUsd,
+      display_currency: displayCurrency,
+      fx_rate: Math.round(fxRate * 100000) / 100000,
       paystack_reference: reference,
       paystack_status: "pending",
       status: "pending",
@@ -237,8 +256,6 @@ export async function POST(request: NextRequest) {
       ship_method: shipMethodName,
       ship_eta: shipEta,
     }
-    // Coupon itemization needs migration 096 live — degrade gracefully
-    // (totals already reflect the discount) until it is applied.
     let order: { id: string } | null = null
     let orderError: { message?: string } | null = null
     {
@@ -284,7 +301,8 @@ export async function POST(request: NextRequest) {
         email,
         name: ship.name,
         phone: ship.phone,
-        amountNgn: totalNgn,
+        amountUsd: totalUsd,
+        currency: "USD",
         reference,
         redirectUrl: `${origin}/marketplace/checkout/success`,
         title: "TechPivo Market",
@@ -295,8 +313,9 @@ export async function POST(request: NextRequest) {
         order_id: order.id,
         reference,
         authorization_url: init.checkout_url,
-        total_ngn: totalNgn,
         total_usd: totalUsd,
+        currency: "USD",
+        payment_currency: "USD",
         coupon_code: couponCode,
         discount_usd: discountUsd,
       })

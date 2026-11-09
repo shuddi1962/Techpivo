@@ -6,13 +6,23 @@ import {
   notify,
   refreshFxRate,
   subscribeToFxRate,
+  getLiveRate,
 } from "@/lib/fx-shared"
 
 export function useLiveNgnRate(): number {
-  const [rate, setRate] = useState<number>(fxStore.ngnRate)
+  return useLiveFxRate("NGN")
+}
+
+export function useLiveUsdRate(): number {
+  return 1
+}
+
+/** Live conversion rate for any supported pair (USD base). USD base: rates[code] = units of `code` per 1 USD. */
+export function useLiveFxRate(to: string): number {
+  const [rate, setRate] = useState<number>(() => getLiveRate(to))
   useEffect(() => {
-    setRate(fxStore.ngnRate)
-    const unsub = subscribeToFxRate(() => setRate(fxStore.ngnRate))
+    setRate(getLiveRate(to))
+    const unsub = subscribeToFxRate(() => setRate(getLiveRate(to)))
     // Refresh on mount and on focus
     void refreshFxRate()
     const onFocus = () => void refreshFxRate()
@@ -21,16 +31,8 @@ export function useLiveNgnRate(): number {
       unsub()
       window.removeEventListener("focus", onFocus)
     }
-  }, [])
+  }, [to])
   return rate
 }
 
-export function useLiveUsdRate(): number {
-  const [rate, setRate] = useState<number>(fxStore.usdRate)
-  useEffect(() => {
-    setRate(fxStore.usdRate)
-    const unsub = subscribeToFxRate(() => setRate(fxStore.usdRate))
-    return () => unsub()
-  }, [])
-  return rate
-}
+export { getLiveRate, fxStore, notify, refreshFxRate }

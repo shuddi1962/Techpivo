@@ -2,15 +2,7 @@
 
 import Link from "next/link"
 import { useEffect, useMemo, useRef, useState } from "react"
-import {
-  ChevronLeft,
-  ChevronRight,
-  Clock,
-  Flame,
-  Package,
-  ShoppingCart,
-  Star,
-} from "lucide-react"
+import { Clock, Flame, Package, ShoppingCart, Star, Truck } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
 import { marketImage } from "@/lib/marketplace-images"
 import { openQuickView } from "@/lib/marketplace-events"
@@ -20,7 +12,6 @@ import { cleanProductTitle } from "@/lib/marketplace-copy"
 import {
   formatMarketPrice,
   useMarketCurrency,
-  usdToNgn,
 } from "@/lib/marketplace-pricing"
 import { useLiveNgnRate } from "@/lib/fx-client"
 
@@ -63,9 +54,9 @@ const FALLBACK_END_AT = "2026-12-31T23:59:59"
 
 const EMPTY_CONFIG: SuperDealsConfig = {
   enabled: true,
-  title: "Tech Drop",
-  subtitle: "Fresh Stock. Latest Gadgets. Bigger Possibilities.",
-  kicker: "New Season",
+  title: "SUPER DEAL",
+  subtitle: "UP TO 70% OFF",
+  kicker: "Super Deal",
   bannerImage: "",
   bannerLink: "/marketplace/deals",
   ctaText: "Shop Now",
@@ -80,7 +71,7 @@ const EMPTY_CONFIG: SuperDealsConfig = {
   autoplaySpeed: 4,
   products: [],
   autoSelect: false,
-  bgFrom: "#F59E0B",
+  bgFrom: "#FF6B00",
   bgTo: "#D97706",
   accentColor: "#DC2626",
 }
@@ -198,203 +189,215 @@ export function SuperDealsSection() {
   const formatPrice = (usd: number) => formatMarketPrice(usd, ngnRate, currency)
 
   const bgGradient = `linear-gradient(135deg, ${config.bgFrom} 0%, ${config.bgTo} 100%)`
+  const accent = config.accentColor || "#DC2626"
 
   return (
-    <section
-      aria-label="Super Deals"
-      className="relative overflow-hidden rounded-2xl shadow-sm"
-      style={{ background: bgGradient }}
-    >
-      {/* Decorative blue gradient shapes on the right side */}
-      <div className="absolute -top-20 -right-24 w-80 h-80 bg-blue-500/20 rounded-full blur-[120px]" />
-      <div className="absolute top-1/4 -right-16 w-56 h-56 bg-blue-400/15 rounded-full blur-[80px]" />
-      <div className="absolute bottom-12 -right-12 w-40 h-40 bg-blue-600/10 rounded-full blur-[56px]" />
+    <section aria-label="Super Deals" className="relative overflow-hidden mb-10 sm:mb-12 lg:mb-16">
+      {/* Full-width orange/yellow gradient background spanning the viewport width. */}
+      <div className="relative w-full overflow-hidden" style={{ background: bgGradient }}>
+        {/* Decorative blue gradient shapes toward the right side */}
+        <div className="absolute -top-32 -right-40 w-[600px] h-[600px] bg-blue-500/10 rounded-full blur-[200px] pointer-events-none" />
+        <div className="absolute top-1/3 -right-24 w-[320px] h-[320px] bg-blue-400/15 rounded-full blur-[120px] pointer-events-none" />
+        <div className="absolute bottom-20 -right-16 w-[240px] h-[240px] bg-blue-600/10 rounded-full blur-[96px] pointer-events-none" />
 
-      <div className="relative z-10 flex flex-col lg:flex-row gap-8 p-6 sm:p-10">
-        {/* Left: Promotional area */}
-        <div className="flex-none lg:w-[45%] flex flex-col justify-center">
-          <div className="inline-flex items-center gap-1.5 rounded bg-white/20 px-3 py-1 text-[11px] font-bold uppercase tracking-wider text-white">
-            <Flame className="h-4 w-4" /> {config.kicker}
-          </div>
-          <h2 className="mt-3 text-4xl font-extrabold tracking-tight text-white sm:text-5xl leading-tight">
-            {config.title}
-          </h2>
-          <p className="mt-4 text-lg text-white/90 leading-relaxed">
-            {config.subtitle}
-          </p>
-          {config.bannerImage && (
-            <Link
-              href={config.bannerLink || "/marketplace/deals"}
-              aria-label={config.title}
-              className="mt-8 block shrink-0 overflow-hidden rounded-2xl bg-white/15 aspect-[4/3]"
-            >
-              <img
-                src={marketImage(config.bannerImage)}
-                alt={config.title}
-                loading="lazy"
-                decoding="async"
-                className="absolute inset-0 h-full w-full object-cover"
-              />
-            </Link>
-          )}
-          {!config.bannerImage && (
-            <div className="mt-8 h-64 w-full rounded-2xl bg-white/10 flex items-center justify-center border border-white/20">
-              <Package className="h-12 w-12 text-white/40" />
-              <span className="ml-3 text-sm text-white/60 font-medium">{cleanProductTitle("Featured Deal")}</span>
-            </div>
-          )}
-          <div className="mt-8 flex items-center gap-2">
-            <span className="text-xs font-bold text-white/70 uppercase tracking-wider">
-              Ends in
-            </span>
-            {countdownActive && !promotionExpired ? (
-              <div className="flex gap-1">
-                {[days, hrs, mins, secs].map((v, i) => (
-                  <span
-                    key={i}
-                    className="flex h-10 w-10 items-center justify-center rounded bg-[#DC2626] px-2 text-xs font-extrabold text-white shadow-lg"
-                  >
-                    {String(v).padStart(2, "0")}
-                  </span>
-                ))}
-                <span className="text-xs font-bold text-white/60 self-center mt-1">
-                  :
-                </span>
+        <div className="relative z-10 mx-auto w-full max-w-[1440px] px-3 sm:px-6 lg:px-10 py-10 sm:py-14 lg:py-20">
+          <div className="flex flex-col lg:flex-row gap-12 items-start lg:items-center">
+            {/* Left: Promotional area with large image + countdown timer */}
+            <div className="flex-none lg:w-[44%] flex flex-col justify-center gap-4">
+              <div className="inline-flex items-center gap-1.5 rounded bg-[#DC2626] px-3 py-1 text-[11px] font-bold uppercase tracking-wider text-white mb-2">
+                <Flame className="h-4 w-4" /> {config.kicker}
               </div>
-            ) : (
-              <span className="text-xs font-medium text-white/60 italic">
-                {promotionExpired ? "Promotion expired" : "No end date set"}
-              </span>
-            )}
-          </div>
-          <Link
-            href={config.ctaLink || "/marketplace/deals"}
-            className="mt-8 inline-block rounded-full bg-white px-6 py-3 text-sm font-bold text-[#0F172A] hover:bg-[#FCD34D] transition-colors"
-          >
-            {config.ctaText || "Shop Now"}
-          </Link>
-        </div>
-
-        {/* Right: Product carousel */}
-        <div className="flex-1 min-w-0 relative overflow-hidden">
-          {products.length === 0 ? (
-            <div className="flex items-center justify-center py-16 text-white/60 text-sm">
-              No promotional products configured. Add products in Admin → Marketing → Super Deals.
-            </div>
-          ) : (
-            <div className="relative block h-full w-full">
-              <div
-                className="super-deals-rail flex min-w-0 flex-1 gap-5 overflow-x-auto snap-x pb-2"
-                ref={railRef}
-              >
-                {products.map((p) => {
-                  const href = /^[0-9a-f-]{36}$/i.test(p.id) ? `/marketplace/product/${p.id}` : undefined
-                  const showSale =
-                    !!(p.sale_pct && p.sale_pct > 0) ||
-                    !!(p.oldPrice && p.oldPrice > p.price)
-                  const discount = showSale
-                    ? p.sale_pct ??
-                      Math.round(((p.oldPrice ?? p.price) - p.price) / (p.oldPrice ?? p.price) * 100)
-                    : 0
-                  const priceNgn = usdToNgn(p.price, ngnRate)
-                  return (
-                    <div key={p.id} className="shrink-0 w-[200px] flex flex-col">
-                      <Link
-                        href={href || "/marketplace"}
-                        aria-label={p.name}
-                        className="block relative aspect-[4/5] w-full overflow-hidden rounded-xl bg-white shadow-sm border border-[#E2E8F0] group"
+              <h2 className="mt-0 mb-3 text-5xl font-black tracking-tight text-[#DC2626] sm:text-6xl lg:text-7xl leading-[1.05] drop-shadow-sm">
+                {config.title}
+              </h2>
+              <p className="mt-0 mb-6 text-xl font-semibold text-slate-800 sm:text-2xl tracking-wide">
+                {config.subtitle}
+              </p>
+              {config.bannerImage && (
+                <Link
+                  href={config.bannerLink || "/marketplace/deals"}
+                  aria-label={config.title}
+                  className="mt-0 block shrink-0 overflow-hidden rounded-xl border border-white/30 shadow-lg"
+                >
+                  <img
+                    src={marketImage(config.bannerImage)}
+                    alt={config.title}
+                    loading="lazy"
+                    decoding="async"
+                    className="h-[320px] w-full object-cover transition-transform duration-500 group-hover:scale-105"
+                  />
+                </Link>
+              )}
+              {!config.bannerImage && (
+                <div className="mt-0 h-[320px] w-full rounded-xl bg-white/20 border border-white/30 flex items-center justify-center shadow-inner">
+                  <Package className="h-16 w-16 text-slate-300" />
+                  <span className="ml-4 text-sm font-medium text-slate-600">
+                    {cleanProductTitle("Featured Deal")}
+                  </span>
+                </div>
+              )}
+              {/* Countdown timer — separate rectangular RED timer boxes below the image */}
+              <div className="mt-6 flex items-center gap-2">
+                <span className="text-xs font-black text-slate-800 uppercase tracking-wider leading-none">
+                  Ends in
+                </span>
+                {countdownActive && !promotionExpired ? (
+                  <div className="flex gap-1.5">
+                    {[
+                      { v: days, l: "D" },
+                      { v: hrs, l: "H" },
+                      { v: mins, l: "M" },
+                      { v: secs, l: "S" },
+                    ].map((x) => (
+                      <span
+                        key={x.l}
+                        className="flex h-12 w-12 items-center justify-center rounded-lg bg-[#DC2626] px-2 text-[18px] font-black text-white shadow-xl"
                       >
-                        {p.image ? (
-                          <img
-                            src={marketImage(p.image)}
-                            alt={p.name}
-                            loading="lazy"
-                            decoding="async"
-                            className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
-                          />
-                        ) : (
-                          <span className="flex h-full w-full items-center justify-center text-slate-200">
-                            <Package className="h-10 w-10" />
-                          </span>
-                        )}
-                        {showSale && config.showDiscountBadge && (
-                          <span className="absolute left-3 top-3 z-10 flex h-8 w-8 items-center justify-center rounded bg-[#DC2626] px-1.5 text-[10px] font-extrabold text-white shadow-sm">
-                            -{discount}%
-                          </span>
-                        )}
-                      </Link>
-                      <div className="mt-3 flex flex-col gap-1 px-1">
-                        <p
-                          title={p.name}
-                          className="line-clamp-2 text-[13px] font-semibold leading-tight text-white transition-colors group-hover:text-[#FCD34D]"
-                        >
-                          {cleanProductTitle(p.name)}
-                        </p>
-                        <div className="mt-1.5 flex items-baseline gap-1">
-                          {config.showOriginalPrice && p.oldPrice && p.oldPrice > p.price && (
-                            <MarketPrice
-                              usd={p.oldPrice}
-                              className="text-[11px] tabular-nums text-white/50 line-through"
-                            />
-                          )}
-                          <span className="text-[15px] font-extrabold tabular-nums text-white">
-                            {formatPrice(p.price)}
-                          </span>
-                          {currency === "NGN" && (
-                            <span className="text-[11px] text-white/50 ml-1">
-                              ≈ {priceNgn}
+                        {String(x.v).padStart(2, "0")}
+                      </span>
+                    ))}
+                  </div>
+                ) : (
+                  <span className="text-xs font-medium text-slate-600 italic">
+                    {promotionExpired ? "Promotion expired" : "No end date set"}
+                  </span>
+                )}
+              </div>
+              <Link
+                href={config.ctaLink || "/marketplace/deals"}
+                className="mt-8 inline-flex items-center justify-center gap-2 rounded-full bg-[#DC2626] px-8 py-3.5 text-sm font-black text-white hover:bg-[#B45309] transition-colors shadow-lg shadow-red-500/20"
+              >
+                {config.ctaText || "Shop Now"}
+              </Link>
+            </div>
+
+            {/* Right: Product carousel */}
+            <div className="flex-1 min-w-0 relative overflow-hidden">
+              {products.length === 0 ? (
+                <div className="flex items-center justify-center py-20 text-white/60 text-sm">
+                  No promotional products configured. Add products in Admin → Marketing → Super Deals.
+                </div>
+              ) : (
+                <div className="relative block h-full w-full">
+                  <div
+                    className="super-deals-rail flex min-w-0 flex-1 gap-6 overflow-x-auto snap-x pb-4"
+                    ref={railRef}
+                    style={{ scrollbarWidth: "none" }}
+                  >
+                    {products.map((p) => {
+                      const href = /^[0-9a-f-]{36}$/i.test(p.id) ? `/marketplace/product/${p.id}` : undefined
+                      const showSale =
+                        !!(p.sale_pct && p.sale_pct > 0) ||
+                        !!(p.oldPrice && p.oldPrice > p.price)
+                      const discount = showSale
+                        ? p.sale_pct ??
+                          Math.round(((p.oldPrice ?? p.price) - p.price) / (p.oldPrice ?? p.price) * 100)
+                        : 0
+                      const priceNgn = Math.max(1, Math.round(p.price * ngnRate))
+                      return (
+                        <div key={p.id} className="shrink-0 w-[200px] flex flex-col">
+                          <Link
+                            href={href || "/marketplace"}
+                            aria-label={p.name}
+                            className="block relative aspect-[4/5] w-full overflow-hidden rounded-xl bg-white shadow-sm border border-[#E2E8F0] group"
+                          >
+                            {p.image ? (
+                              <img
+                                src={marketImage(p.image)}
+                                alt={p.name}
+                                loading="lazy"
+                                decoding="async"
+                                className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+                              />
+                            ) : (
+                              <span className="flex h-full w-full items-center justify-center text-slate-200">
+                                <Package className="h-10 w-10" />
+                              </span>
+                            )}
+                            {showSale && config.showDiscountBadge && (
+                              <span className="absolute left-3 top-3 z-10 flex h-8 items-center justify-center rounded bg-[#DC2626] px-2 py-0.5 text-[10px] font-black text-white shadow-lg">
+                                -{discount}%
+                              </span>
+                            )}
+                            {/* Free delivery chip */}
+                            <span className="absolute right-3 bottom-3 z-10 flex h-7 items-center justify-center rounded bg-[#10B981]/90 backdrop-blur px-2 py-0.5 text-[10px] font-bold text-white shadow-md">
+                              <Truck className="h-3.5 w-3.5" />
                             </span>
-                          )}
-                        </div>
-                        {config.showRating && p.rating && p.rating > 0 && (
-                          <div className="mt-1 flex items-center gap-1">
-                            <Star className="h-4 w-4 fill-[#F59E0B] text-[#F59E0B]" />
-                            <span className="text-[11px] font-medium text-white/70">
-                              {p.rating.toFixed(1)}
-                            </span>
-                            {p.reviews && (
-                              <span className="text-[11px] text-white/40">({p.reviews})</span>
+                          </Link>
+                          <div className="mt-3 flex flex-col gap-1 px-1">
+                            <p
+                              title={p.name}
+                              className="line-clamp-2 text-[13px] font-semibold leading-tight text-[#0F172A] transition-colors group-hover:text-[#B45309]"
+                            >
+                              {cleanProductTitle(p.name)}
+                            </p>
+                            <div className="mt-1.5 flex items-baseline gap-1">
+                              {config.showOriginalPrice && p.oldPrice && p.oldPrice > p.price && (
+                                <MarketPrice
+                                  usd={p.oldPrice}
+                                  className="text-[11px] tabular-nums text-slate-400 line-through"
+                                />
+                              )}
+                              <span className="text-[16px] font-black tabular-nums text-[#DC2626]">
+                                {formatPrice(p.price)}
+                              </span>
+                              {currency === "NGN" && (
+                                <span className="text-[11px] text-slate-500 ml-1">
+                                  ≈ ₦{priceNgn.toLocaleString()}
+                                </span>
+                              )}
+                            </div>
+                            {config.showRating && p.rating && p.rating > 0 && (
+                              <div className="mt-1 flex items-center gap-1">
+                                <Star className="h-4 w-4 fill-[#F59E0B] text-[#F59E0B]" />
+                                <span className="text-[11px] font-medium text-slate-600">
+                                  {p.rating.toFixed(1)}
+                                </span>
+                                {p.reviews && (
+                                  <span className="text-[11px] text-slate-400">({p.reviews})</span>
+                                )}
+                              </div>
                             )}
                           </div>
-                        )}
-                      </div>
-                      {href ? (
-                        <Link href={href} aria-label={p.name} className="absolute inset-0 z-0 rounded-xl focus:outline-none" />
-                      ) : null}
+                          {href ? (
+                            <Link href={href} aria-label={p.name} className="absolute inset-0 z-0 rounded-xl focus:outline-none" />
+                          ) : null}
+                        </div>
+                      )
+                    })}
+                  </div>
+                  {products.length > 2 && (
+                    <div className="absolute left-0 top-1/2 -translate-y-1/2 z-20 flex items-center gap-2 px-4 py-8 bg-gradient-to-r from-[#FF6B00]/90 via-transparent">
+                      <button
+                        onClick={() => {
+                          const el = railRef.current
+                          if (el) el.scrollBy({ left: -420, behavior: "smooth" })
+                        }}
+                        className="p-3 rounded-full bg-white text-[#0F172A] hover:bg-[#FCD34D] transition-colors shadow-xl"
+                        aria-label="Scroll left"
+                      >
+                        <span className="text-[12px] font-black">‹</span>
+                      </button>
                     </div>
-                  )
-                })}
-              </div>
-              {products.length > 2 && (
-                <div className="absolute left-0 top-1/2 -translate-y-1/2 z-20 flex items-center gap-2 px-4 py-6 bg-gradient-to-r from-[#F59E0B] via-transparent to-transparent">
-                  <button
-                    onClick={() => {
-                      const el = railRef.current
-                      if (el) el.scrollBy({ left: -400, behavior: "smooth" })
-                    }}
-                    className="p-3 rounded-full bg-white text-[#0F172A] hover:bg-[#FCD34D] transition-colors shadow-lg"
-                    aria-label="Scroll left"
-                  >
-                    <ChevronLeft className="h-5 w-5" />
-                  </button>
-                </div>
-              )}
-              {products.length > 2 && (
-                <div className="absolute right-0 top-1/2 -translate-y-1/2 z-20 flex items-center gap-2 px-4 py-6 bg-gradient-to-l from-[#F59E0B] via-transparent to-transparent">
-                  <button
-                    onClick={() => {
-                      const el = railRef.current
-                      if (el) el.scrollBy({ left: 400, behavior: "smooth" })
-                    }}
-                    className="p-3 rounded-full bg-white text-[#0F172A] hover:bg-[#FCD34D] transition-colors shadow-lg"
-                    aria-label="Scroll right"
-                  >
-                    <ChevronRight className="h-5 w-5" />
-                  </button>
+                  )}
+                  {products.length > 2 && (
+                    <div className="absolute right-0 top-1/2 -translate-y-1/2 z-20 flex items-center gap-2 px-4 py-8 bg-gradient-to-l from-[#FF6B00]/90 via-transparent">
+                      <button
+                        onClick={() => {
+                          const el = railRef.current
+                          if (el) el.scrollBy({ left: 420, behavior: "smooth" })
+                        }}
+                        className="p-3 rounded-full bg-white text-[#0F172A] hover:bg-[#FCD34D] transition-colors shadow-xl"
+                        aria-label="Scroll right"
+                      >
+                        <span className="text-[12px] font-black">›</span>
+                      </button>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
-          )}
+          </div>
         </div>
       </div>
     </section>

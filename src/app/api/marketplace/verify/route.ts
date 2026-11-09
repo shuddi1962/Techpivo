@@ -54,13 +54,13 @@ export async function POST(request: NextRequest) {
       await supabase.from("marketplace_orders").update({ paystack_status: tx.status || "failed" }).eq("id", order.id)
       return NextResponse.json({ paid: false, status: tx.status })
     }
-    // Currency must match the order — a dollar charge is not a naira order.
-    if (tx.currency && tx.currency.toUpperCase() !== "NGN") {
+    // Currency must match the order — a dollar charge is the order currency.
+    if (tx.currency && tx.currency.toUpperCase() !== "USD") {
       await supabase.from("marketplace_orders").update({ paystack_status: "currency_mismatch" }).eq("id", order.id)
       return NextResponse.json({ paid: false, status: "currency_mismatch" })
     }
-    // Amount sanity: paid naira must cover the order total (tolerate FX drift).
-    const expected = Number(order.total_ngn) || 0
+    // Amount sanity: paid USD must cover the order total (tolerate FX drift).
+    const expected = Number(order.total_usd) || 0
     if (expected > 0 && tx.amount + 1 < expected) {
       await supabase.from("marketplace_orders").update({ paystack_status: "amount_mismatch" }).eq("id", order.id)
       return NextResponse.json({ paid: false, status: "amount_mismatch" })
