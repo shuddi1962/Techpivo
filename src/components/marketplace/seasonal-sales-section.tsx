@@ -115,7 +115,7 @@ function secondsLeft(endAt: string | null): number {
 }
 
 export function SeasonalSalesSection() {
-  const [config, setConfig] = useState<SeasonalCampaign>(EMPTY_CAMPAIGN)
+  const [config, setConfig] = useState<SeasonalCampaign | null>(null)
   const [loaded, setLoaded] = useState(false)
   const [products, setProducts] = useState<DbProductRow[]>([])
   const [reviews, setReviews] = useState<Record<string, { sum: number; n: number }>>({})
@@ -125,17 +125,26 @@ export function SeasonalSalesSection() {
   const [scrollPos, setScrollPos] = useState(0)
   const [impressionLogged, setImpressionLogged] = useState(false)
 
+  const campaigns = useMemo(() => {
+    if (!loaded || !config) return []
+    const arr = (config as unknown as { campaigns?: SeasonalCampaign[] }).campaigns
+    return Array.isArray(arr) ? arr : []
+  }, [config, loaded])
+
   const campaign = useMemo(() => {
     if (!loaded) return null
     const now = Date.now()
-    const start = config.startAt ? Date.parse(config.startAt) : 0
-    const end = config.endAt ? Date.parse(config.endAt) : 0
-    const active =
-      config.status === "published" &&
-      (!config.startAt || now >= start) &&
-      (!config.endAt || now <= end)
-    return active ? config : null
-  }, [config, loaded])
+    const active = campaigns.find((c) => {
+      const start = c.startAt ? Date.parse(c.startAt) : 0
+      const end = c.endAt ? Date.parse(c.endAt) : 0
+      return (
+        c.status === "published" &&
+        (!c.startAt || now >= start) &&
+        (!c.endAt || now <= end)
+      )
+    })
+    return active ?? null
+  }, [campaigns, loaded])
 
   const remaining = useMemo(() => {
     if (!campaign || !campaign.countdownEnabled || !campaign.endAt) return Infinity
@@ -234,7 +243,9 @@ export function SeasonalSalesSection() {
     setImpressionLogged(true)
   }, [campaign, impressionLogged])
 
-  if (!loaded || !config.settings?.sectionVisibility) return null
+  const sectionVisibility = campaign?.settings?.sectionVisibility ?? true
+
+  if (!loaded || !sectionVisibility) return null
   if (!campaign || expired || campaign.products.length === 0) return null
 
   const byId = new Map(products.map((p) => [p.id, p]))
