@@ -1,6 +1,16 @@
 // TechPivo Market delivery (CLIENT-SAFE).
 // Options mirror the supplier's courier rates with store markup, plus the
 // store's own Standard / Express fallbacks (always available).
+//
+// Shared shipping hook used by BOTH cart-page.tsx and checkout-page.tsx so
+// identical inputs always produce identical quotes (fixes the cart<->checkout
+// shipping mismatch):
+//   - useShippingCountry()   -> geo-detected ship-to country (cached)
+//   - useShippingOptions()   -> live supplier courier options + store fallback,
+//                               active pick resolved against stored selection
+//   - storeShipOptions(), visibleShipOptions(), resolveShipActive(), saveShipSelection()
+import { getGeoOnce } from "@/lib/tools-geo"
+
 export interface ShipOption {
   id: string
   name: string
@@ -194,13 +204,13 @@ export const SHIP_COUNTRIES: Array<{ code: string; name: string }> = [...SHIP_CO
 // Worldwide default when geo detection fails — never a single home market.
 export const DEFAULT_SHIP_COUNTRY = "US"
 
-export function standardFee(subtotalUsd: number): number {
-  return subtotalUsd >= FREE_SHIP_THRESHOLD_USD ? 0 : STANDARD_FLAT_USD
+export function standardFee(subtotalUsd: number, thresholdUsd: number = FREE_SHIP_THRESHOLD_USD): number {
+  return subtotalUsd >= thresholdUsd ? 0 : STANDARD_FLAT_USD
 }
 
-export function storeShipOptions(subtotalUsd: number): ShipOption[] {
+export function storeShipOptions(subtotalUsd: number, thresholdUsd: number = FREE_SHIP_THRESHOLD_USD): ShipOption[] {
   return [
-    { id: "standard", name: "Standard", eta: "7–12 days", feeUsd: standardFee(subtotalUsd), source: "store" },
+    { id: "standard", name: "Standard", eta: "7–12 days", feeUsd: standardFee(subtotalUsd, thresholdUsd), source: "store" },
     { id: "express", name: "Express", eta: "3–7 days", feeUsd: EXPRESS_FLAT_USD, source: "store" },
   ]
 }
@@ -232,6 +242,23 @@ export function shippingCost(subtotalUsd: number, method: ShipMethodId): number 
 export function readShipMethod(): ShipMethodId {
   const id = readShipSelection().id
   return id === "express" ? "express" : "standard"
+}
+
+// Shared country resolution used by BOTH the cart and the checkout page so the
+// shipping quote is computed against an identical destination in both places.
+// Geo detection is cached (tools-geo.getGeoOnce) so both pages observe the
+// same country and never diverge (cart CJPacket Postal vs checkout Standard).
+export function useShippingCountry(): string {
+  const [country, setCountry] = useState<string>(DEFAULT_SHIP_COUNTRY)
+  useEffect(() => {
+    getGeoOnce()
+      .then((g) => {
+        const code = g?.countryCode?.toUpperCase()
+        if (code && SHIP_COUNTRIES.some((c) => c.code === code)) setCountry(code)
+      })
+      .catch(() => {})
+  }, [])
+  return country
 }
 
 export function readShipSelection(): ShipSelection {
@@ -269,4 +296,89 @@ export function saveShipSelection(sel: ShipSelection) {
     // ignore
   }
   window.dispatchEvent(new Event("tp-market-ship"))
+}
+
+// ---------------------------------------------------------------------------
+// Shared shipping hook — used by BOTH the cart and the checkout page so the
+// buyer always sees one consistent quote and is charged exactly what is
+// displayed. Inputs (lines + country + subtotal) are identical → outputs are
+// identical, which is what fixes the cart↔checkout shipping mismatch.
+// ---------------------------------------------------------------------------
+import { useEffect, useState } from "react"
+
+interface ShippingLines {
+  product_id: string
+  variant_vid: string
+  qty: number
+}
+
+export interface UseShippingOptionsResult {
+  options: ShipOption[]
+  shownOptions: ShipOption[]
+  activePick: ShipOption | undefined
+  shipping: number
+  fetchOptions: () => void
+}
+
+/**
+ * Resolve live shipping options for a set of cart lines.
+ * `country` defaults to DEFAULT_SHIP_COUNTRY; `subtotal` is the cart subtotal in USD.
+ * Returns options + the active pick (resolved against the stored selection so
+ * the method the buyer sees is always the method they are charged for).
+ *
+ * Both the cart page and the checkout page call this with identical inputs so
+ * they always render the same quote — fixing the cart↔checkout shipping
+ * mismatch. The active pick is derived from the stored selection
+ * (readShipSelection) but falls back to the first available option when the
+ * stored method isn't offered for the current cart/country.
+ */
+export function useShippingOptions({
+  lines,
+  country,
+  subtotal,
+}: {
+  lines: ShippingLines[]
+  country: string
+  subtotal: number
+}): UseShippingOptionsResult {
+  const [options, setOptions] = useState<ShipOption[]>([])
+  const [mounted, setMounted] = useState(false)
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
+
+  const fetchOptions = () => {
+    if (lines.length === 0) {
+      setOptions([])
+      return
+    }
+    fetch("/api/marketplace/shipping", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ items: lines, country, subtotal }),
+    })
+      .then((r) => r.json())
+      .then((d) => {
+        if (mounted && Array.isArray(d?.options)) setOptions(d.options as ShipOption[])
+      })
+      .catch(() => {
+        // fallbacks below still render
+      })
+  }
+
+  useEffect(() => {
+    fetchOptions()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [JSON.stringify(lines), country, String(subtotal)])
+
+  const effectiveOptions = options.length > 0 ? options : storeShipOptions(subtotal)
+  const shownOptions = visibleShipOptions(effectiveOptions, [])
+  // Resolve the active method against the stored selection; if the stored
+  // method isn't offered for this cart/country, fall back to the first option
+  // so the buyer is always charged for a method that is actually shown.
+  const activePick = resolveShipActive(shownOptions, readShipSelection())
+  const shipping = activePick ? activePick.feeUsd : 0
+
+  return { options, shownOptions, activePick, shipping, fetchOptions }
 }
