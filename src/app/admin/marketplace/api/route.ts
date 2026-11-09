@@ -13,6 +13,16 @@ import { MARKET_CURRENCIES, type MarketCurrency } from "@/lib/marketplace-pricin
 // failed with "Failed to update product".
 
 // The CJ import/search round-trip is slow (auth + supplier catalogue +
+
+interface SeasonalSalesConfig {
+  campaigns: Array<{
+    id: string
+    status?: string
+    analytics?: { impressions?: number; clicks?: number; addToCart?: number }
+    [key: string]: unknown
+  }>
+  [key: string]: unknown
+}
 // category tree). Without an explicit budget Vercel kills the function at
 // the platform default and the browser sees a non-JSON error — which is how
 // "Search failed — check the CJ connection." used to appear.
@@ -598,6 +608,15 @@ export async function GET(request: NextRequest) {
     })
     // Admin-editable marketplace settings: base/display/checkout currency and
     // shipping thresholds. Read from site_settings (server-side, service role).
+    if (section === "seasonal-sales") {
+      const { data } = await supabase
+        .from("site_settings")
+        .select("value")
+        .eq("key", "marketplace_seasonal_sales")
+        .maybeSingle()
+      const val = (data as { value?: unknown } | null)?.value
+      return NextResponse.json({ success: true, seasonalSales: val && typeof val === "object" ? val : { campaigns: [] } })
+    }
     if (section === "market-settings") {
       const { data: cur } = await supabase.from("site_settings").select("value").eq("key", "marketplace_currency_settings").maybeSingle()
       const { data: ship } = await supabase.from("site_settings").select("value").eq("key", "marketplace_shipping_settings").maybeSingle()
@@ -746,6 +765,56 @@ export async function POST(request: NextRequest) {
       if (error) throw error
       revalidateStore()
       return NextResponse.json({ success: true, superDeals: body.superDeals })
+    }
+    // Save Seasonal Sales campaign configuration (CRUD + status toggle).
+    if (body.action === "seasonal-sales-save") {
+      const { error } = await supabase
+        .from("site_settings")
+        .upsert({ key: "marketplace_seasonal_sales", value: body.seasonalSales as unknown as never }, { onConflict: "key" })
+      if (error) throw error
+      revalidateStore()
+      return NextResponse.json({ success: true, seasonalSales: body.seasonalSales })
+    }
+    if (body.action === "seasonal-sales-delete") {
+      const campaignId = String(body?.campaignId || "")
+      if (!campaignId) return NextResponse.json({ error: "campaignId required" }, { status: 400 })
+      const { data } = await supabase
+        .from("site_settings")
+        .select("value")
+        .eq("key", "marketplace_seasonal_sales")
+        .maybeSingle()
+      const val = (data as { value?: unknown } | null)?.value as SeasonalSalesConfig | undefined
+      const campaigns = Array.isArray(val?.campaigns) ? val.campaigns : []
+      const next = campaigns.filter((c: { id: unknown }) => String(c.id) !== campaignId)
+      const { error } = await supabase
+        .from("site_settings")
+        .upsert({ key: "marketplace_seasonal_sales", value: { ...val, campaigns: next } as unknown as never }, { onConflict: "key" })
+      if (error) throw error
+      revalidateStore()
+      return NextResponse.json({ success: true })
+    }
+    if (body.action === "seasonal-sales-status") {
+      const campaignId = String(body?.campaignId || "")
+      const status = String(body?.status || "")
+      if (!campaignId || !["draft", "published", "paused", "expired"].includes(status)) {
+        return NextResponse.json({ error: "campaignId and valid status required" }, { status: 400 })
+      }
+      const { data } = await supabase
+        .from("site_settings")
+        .select("value")
+        .eq("key", "marketplace_seasonal_sales")
+        .maybeSingle()
+      const val = (data as { value?: unknown } | null)?.value as SeasonalSalesConfig | undefined
+      const campaigns = Array.isArray(val?.campaigns) ? val.campaigns : []
+      const next = campaigns.map((c: { id: unknown; status?: unknown }) =>
+        String(c.id) === campaignId ? { ...c, status } : c
+      )
+      const { error } = await supabase
+        .from("site_settings")
+        .upsert({ key: "marketplace_seasonal_sales", value: { ...val, campaigns: next } as unknown as never }, { onConflict: "key" })
+      if (error) throw error
+      revalidateStore()
+      return NextResponse.json({ success: true })
     }
     // Save marketplace currency + shipping settings (base currency fixed to USD;
     // checkout currency fixed to USD; display currencies + free-ship threshold editable).

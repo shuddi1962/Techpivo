@@ -24,7 +24,7 @@ import { MarketplaceFooter } from "./marketplace-header"
 import { BannerSlider } from "./banner-slider"
 import { WelcomePopupCard } from "./welcome-popup"
 import { ShopCollections, type CollectionItem } from "./shop-collections"
-import { SuperDealsSection } from "./super-deals-section"
+import { SeasonalSalesSection } from "./seasonal-sales-section"
 import { CategoryShoppingSection, CategoryProductCard } from "./marketplace-category-sections"
 import { BrandRail } from "./brand-rail"
 import { MarketPrice } from "./market-price"
@@ -965,8 +965,8 @@ export function MarketplaceHome() {
   <ShopCollections collections={collections} />
 )}
 
-{/* Super Deals promotional section — banner left, product carousel right */}
-<SuperDealsSection />
+{/* Seasonal Sales promotional section — banner left, product carousel right */}
+<SeasonalSalesSection />
 
         {/* flash deals — live discounted products under an editable countdown banner.
             Admin → Marketplace → Banners → Flash sale. A banner image hides

@@ -6,7 +6,7 @@ import { useSearchParams } from "next/navigation"
 import {
   Package, ReceiptText, MessageSquare, BadgePercent, LayoutGrid,
   ImagePlus, Plug, TrendingUp, CreditCard, Globe, ArrowLeft,
-  ExternalLink, LayoutDashboard, Store, Rss, Flame, type LucideIcon,
+  ExternalLink, LayoutDashboard, Store, Rss, Clock, type LucideIcon,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 
@@ -33,7 +33,7 @@ export const MARKET_SECTIONS: MarketSection[] = [
   { id: "reviews", label: "Reviews", desc: "Ratings & moderation", icon: MessageSquare, group: "Sell" },
   { id: "cj", label: "CJ Import", desc: "Supplier catalog sync", icon: Plug, group: "Sell" },
   { id: "promotions", label: "Promotions", desc: "Coupons & discounts", icon: BadgePercent, group: "Marketing" },
-  { id: "super-deals", label: "Super Deals", desc: "Promotional campaigns & countdown", icon: Flame, group: "Marketing" },
+  { id: "seasonal-sales", label: "Seasonal Sales", desc: "Premium seasonal campaigns & countdown", icon: Clock, group: "Marketing" },
   { id: "banners", label: "Banners & promos", desc: "Hero, promo bar, flash sale", icon: ImagePlus, group: "Marketing" },
   { id: "upsells", label: "Upsells", desc: "Complete-your-purchase", icon: TrendingUp, group: "Marketing" },
   { id: "categories", label: "Categories", desc: "Departments & mapping", icon: LayoutGrid, group: "Marketing" },
