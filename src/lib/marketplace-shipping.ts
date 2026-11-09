@@ -244,22 +244,11 @@ export function readShipMethod(): ShipMethodId {
   return id === "express" ? "express" : "standard"
 }
 
-// Shared country resolution used by BOTH the cart and the checkout page so the
-// shipping quote is computed against an identical destination in both places.
-// Geo detection is cached (tools-geo.getGeoOnce) so both pages observe the
-// same country and never diverge (cart CJPacket Postal vs checkout Standard).
-export function useShippingCountry(): string {
-  const [country, setCountry] = useState<string>(DEFAULT_SHIP_COUNTRY)
-  useEffect(() => {
-    getGeoOnce()
-      .then((g) => {
-        const code = g?.countryCode?.toUpperCase()
-        if (code && SHIP_COUNTRIES.some((c) => c.code === code)) setCountry(code)
-      })
-      .catch(() => {})
-  }, [])
-  return country
-}
+// ---------------------------------------------------------------------------
+// Shared shipping hook (client-only) — lives in marketplace-shipping-client.ts
+// because useShippingCountry / useShippingOptions use React hooks. This file
+// stays server-safe so api/marketplace/shipping/route.ts can import it.
+// ---------------------------------------------------------------------------
 
 export function readShipSelection(): ShipSelection {
   const fallback: ShipSelection = { id: "standard", name: "Standard", eta: "7–12 days", feeUsd: 0 }
@@ -298,87 +287,9 @@ export function saveShipSelection(sel: ShipSelection) {
   window.dispatchEvent(new Event("tp-market-ship"))
 }
 
+// Shared shipping hook (moved to marketplace-shipping-client.ts)
 // ---------------------------------------------------------------------------
-// Shared shipping hook — used by BOTH the cart and the checkout page so the
-// buyer always sees one consistent quote and is charged exactly what is
-// displayed. Inputs (lines + country + subtotal) are identical → outputs are
-// identical, which is what fixes the cart↔checkout shipping mismatch.
-// ---------------------------------------------------------------------------
-import { useEffect, useState } from "react"
-
-interface ShippingLines {
-  product_id: string
-  variant_vid: string
-  qty: number
-}
-
-export interface UseShippingOptionsResult {
-  options: ShipOption[]
-  shownOptions: ShipOption[]
-  activePick: ShipOption | undefined
-  shipping: number
-  fetchOptions: () => void
-}
-
 /**
- * Resolve live shipping options for a set of cart lines.
- * `country` defaults to DEFAULT_SHIP_COUNTRY; `subtotal` is the cart subtotal in USD.
- * Returns options + the active pick (resolved against the stored selection so
- * the method the buyer sees is always the method they are charged for).
- *
- * Both the cart page and the checkout page call this with identical inputs so
- * they always render the same quote — fixing the cart↔checkout shipping
- * mismatch. The active pick is derived from the stored selection
- * (readShipSelection) but falls back to the first available option when the
- * stored method isn't offered for the current cart/country.
+ * Resolve live shipping options for a set of cart lines (client-only hook).
+ * See marketplace-shipping-client.ts for the implementation.
  */
-export function useShippingOptions({
-  lines,
-  country,
-  subtotal,
-}: {
-  lines: ShippingLines[]
-  country: string
-  subtotal: number
-}): UseShippingOptionsResult {
-  const [options, setOptions] = useState<ShipOption[]>([])
-  const [mounted, setMounted] = useState(false)
-
-  useEffect(() => {
-    setMounted(true)
-  }, [])
-
-  const fetchOptions = () => {
-    if (lines.length === 0) {
-      setOptions([])
-      return
-    }
-    fetch("/api/marketplace/shipping", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ items: lines, country, subtotal }),
-    })
-      .then((r) => r.json())
-      .then((d) => {
-        if (mounted && Array.isArray(d?.options)) setOptions(d.options as ShipOption[])
-      })
-      .catch(() => {
-        // fallbacks below still render
-      })
-  }
-
-  useEffect(() => {
-    fetchOptions()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [JSON.stringify(lines), country, String(subtotal)])
-
-  const effectiveOptions = options.length > 0 ? options : storeShipOptions(subtotal)
-  const shownOptions = visibleShipOptions(effectiveOptions, [])
-  // Resolve the active method against the stored selection; if the stored
-  // method isn't offered for this cart/country, fall back to the first option
-  // so the buyer is always charged for a method that is actually shown.
-  const activePick = resolveShipActive(shownOptions, readShipSelection())
-  const shipping = activePick ? activePick.feeUsd : 0
-
-  return { options, shownOptions, activePick, shipping, fetchOptions }
-}

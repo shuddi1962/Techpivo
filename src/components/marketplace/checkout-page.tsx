@@ -10,10 +10,11 @@ import { clearCart, getCart, useMarketCart } from "@/lib/marketplace-cart"
 import { useMarketCurrency } from "@/lib/marketplace-pricing"
 import { MarketPrice } from "./market-price"
 import {
-  useShippingOptions, SHIP_COUNTRIES, FREE_SHIP_THRESHOLD_USD,
-  type ShipSelection, useShippingCountry, readShipSelection, saveShipSelection,
+  SHIP_COUNTRIES, FREE_SHIP_THRESHOLD_USD,
+  type ShipSelection, readShipSelection, saveShipSelection,
   storeShipOptions,
 } from "@/lib/marketplace-shipping"
+import { useShippingOptions, useShippingCountry } from "@/lib/marketplace-shipping-client"
 import { countryPreset, DIAL_CODES } from "@/lib/marketplace-locale"
 import { DeliveryPicker } from "./delivery-picker"
 

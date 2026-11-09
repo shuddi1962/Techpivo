@@ -8,10 +8,8 @@ import { getCart, removeFromCart, setQty, useMarketCart } from "@/lib/marketplac
 import { openCheckout } from "@/lib/marketplace-events"
 import { marketImage } from "@/lib/marketplace-images"
 import { MarketPrice } from "./market-price"
-import {
-  useShippingOptions, FREE_SHIP_THRESHOLD_USD,
-  useShippingCountry,
-} from "@/lib/marketplace-shipping"
+import { useShippingOptions, useShippingCountry } from "@/lib/marketplace-shipping-client"
+import { FREE_SHIP_THRESHOLD_USD } from "@/lib/marketplace-shipping"
 import { useMarketCurrency, useLiveNgnRate } from "@/lib/marketplace-pricing"
 
 interface Row {
