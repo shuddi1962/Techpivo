@@ -4,6 +4,7 @@ import { requireAdminRole, createServiceClient } from "@/lib/admin-auth"
 import { SITE_URL } from "@/lib/constants"
 import type { MarketDepartment } from "@/lib/marketplace-categories"
 import { cjListProducts, cjProductMatchesQuery, cjSearchProducts, cjStatus, mapCjToAffiliate, resolveCjApiKey } from "@/lib/cj"
+import { MARKET_CURRENCIES, type MarketCurrency } from "@/lib/marketplace-pricing"
 
 // All database work in this route runs through the service-role client.
 // The route is admin-guarded by `requireAdminRole`, and several marketplace
@@ -595,6 +596,26 @@ export async function GET(request: NextRequest) {
         pagePublished: (pages as { is_published?: boolean } | null)?.is_published ?? true,
       },
     })
+    // Admin-editable marketplace settings: base/display/checkout currency and
+    // shipping thresholds. Read from site_settings (server-side, service role).
+    if (section === "market-settings") {
+      const { data: cur } = await supabase.from("site_settings").select("value").eq("key", "marketplace_currency_settings").maybeSingle()
+      const { data: ship } = await supabase.from("site_settings").select("value").eq("key", "marketplace_shipping_settings").maybeSingle()
+      return NextResponse.json({
+        currency: (cur as { value?: unknown } | null)?.value ?? {
+          base: "USD",
+          checkout: "USD",
+          display: MARKET_CURRENCIES,
+          available: MARKET_CURRENCIES,
+        },
+        shipping: (ship as { value?: unknown } | null)?.value ?? {
+          freeShipThresholdUsd: 35,
+          standardFlatUsd: 9,
+          expressFlatUsd: 19,
+          freightMarkup: 1.35,
+        },
+      })
+    }
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : "Failed to load marketplace"
     return NextResponse.json({ error: msg }, { status: 500 })
@@ -725,6 +746,27 @@ export async function POST(request: NextRequest) {
       if (error) throw error
       revalidateStore()
       return NextResponse.json({ success: true, superDeals: body.superDeals })
+    }
+    // Save marketplace currency + shipping settings (base currency fixed to USD;
+    // checkout currency fixed to USD; display currencies + free-ship threshold editable).
+    if (body.action === "market-settings-save") {
+      const currency = body.currency || {}
+      const shipping = body.shipping || {}
+      const display = Array.isArray(currency.display)
+        ? currency.display.filter((c: string) => MARKET_CURRENCIES.includes(c as MarketCurrency))
+        : MARKET_CURRENCIES
+      const threshold = Number(shipping.freeShipThresholdUsd)
+      if (!Number.isFinite(threshold) || threshold < 0) {
+        return NextResponse.json({ error: "Free shipping threshold must be a number ≥ 0." }, { status: 400 })
+      }
+      await supabase
+        .from("site_settings")
+        .upsert({ key: "marketplace_currency_settings", value: { base: "USD", checkout: "USD", display, available: display } as unknown as never }, { onConflict: "key" })
+      await supabase
+        .from("site_settings")
+        .upsert({ key: "marketplace_shipping_settings", value: { freeShipThresholdUsd: threshold, standardFlatUsd: Number(shipping.standardFlatUsd) || 9, expressFlatUsd: Number(shipping.expressFlatUsd) || 19, freightMarkup: Number(shipping.freightMarkup) || 1.35 } as unknown as never }, { onConflict: "key" })
+      revalidateStore()
+      return NextResponse.json({ success: true, currency: { base: "USD", checkout: "USD", display, available: display }, shipping: { freeShipThresholdUsd: threshold } })
     }
     // Save per-product sale countdowns (productId → ISO end)
     if (body.action === "sales-save") {

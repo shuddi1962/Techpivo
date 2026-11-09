@@ -7,11 +7,12 @@ import { createClient } from "@/lib/supabase/client"
 import { getCart, removeFromCart, setQty, useMarketCart } from "@/lib/marketplace-cart"
 import { openCheckout } from "@/lib/marketplace-events"
 import { marketImage } from "@/lib/marketplace-images"
-import { readShipSelection, shippingCost, FREE_SHIP_THRESHOLD_USD } from "@/lib/marketplace-shipping"
-import { useMarketCurrency, useFxRate } from "@/lib/marketplace-pricing"
-import { useLiveNgnRate } from "@/lib/fx-client"
-import { fxFormat } from "@/lib/fx-shared"
 import { MarketPrice } from "./market-price"
+import {
+  useShippingOptions, FREE_SHIP_THRESHOLD_USD,
+  useShippingCountry,
+} from "@/lib/marketplace-shipping"
+import { useMarketCurrency, useLiveNgnRate } from "@/lib/marketplace-pricing"
 
 interface Row {
   id: string
@@ -27,30 +28,26 @@ export function CartPage() {
   const ngnRate = useLiveNgnRate()
   const [rows, setRows] = useState<Row[]>([])
   const [loading, setLoading] = useState(true)
-  const [shipSel, setShipSel] = useState({ id: "standard", name: "Standard", feeUsd: 0 })
+  // Shared shipping country — identical to the checkout page so the CJ quote
+  // (and the store fallback) is the same in cart and checkout.
+  const shipCountry = useShippingCountry()
 
   useEffect(() => {
-    const sync = () => {
-      const sel = readShipSelection()
-      setShipSel({ id: sel.id, name: sel.name || "Standard", feeUsd: Number.isFinite(sel.feeUsd) ? sel.feeUsd : 0 })
+    const handleStorage = (e: StorageEvent) => {
+      if (e.key === "tp_market_cart_v1") window.location.reload()
     }
-    sync()
-    window.addEventListener("tp-market-ship", sync)
-    window.addEventListener("storage", sync)
-    return () => {
-      window.removeEventListener("tp-market-ship", sync)
-      window.removeEventListener("storage", sync)
-    }
+    window.addEventListener("storage", handleStorage)
+    return () => window.removeEventListener("storage", handleStorage)
   }, [])
 
+  // Load live product details for cart items so prices/names resolve correctly.
   useEffect(() => {
-    const ids = getCart().map((l) => l.id)
+    const ids = cart.map((l) => l.id)
     if (ids.length === 0) {
       setRows([])
       setLoading(false)
       return
     }
-    setLoading(true)
     const supabase = createClient()
     supabase
       .from("affiliate_products")
@@ -63,23 +60,34 @@ export function CartPage() {
       })
   }, [cart.length])
 
-  const lines = useMemo(
+  // Cart line items resolved against live product prices (rows loaded from DB).
+  const cartLines = useMemo(
     () =>
       cart
         .map((l) => ({ ...l, product: rows.find((r) => r.id === l.id) }))
         .filter((l) => l.product),
     [cart, rows]
   )
-  const subtotal = lines.reduce((s, l) => s + Number(l.product!.sale_price ?? l.product!.original_price ?? 0) * l.qty, 0)
-  // Cart estimate: store methods priced by rule, supplier couriers by the
-  // snapshot saved on the product page (checkout re-prices authoritatively).
-  const shipping =
-    shipSel.id === "standard" || shipSel.id === "express"
-      ? shippingCost(subtotal, shipSel.id)
-      : shipSel.feeUsd
+  const subtotal = cartLines.reduce(
+    (s, l) => s + Number(l.product!.sale_price ?? l.product!.original_price ?? 0) * l.qty,
+    0
+  )
+
+  // Shipping lines sent to the quote endpoint (identical shape to checkout).
+  const shipLines = useMemo(
+    () => cart.map((l) => ({ product_id: l.id, variant_vid: (l.variant?.vid || ""), qty: l.qty })),
+    [cart]
+  )
+
+  // Single source of truth for shipping — shared with the checkout page so the
+  // quote is identical in cart and checkout (fixes the cart↔checkout mismatch).
+  const { shownOptions, activePick, shipping } = useShippingOptions({
+    lines: shipLines,
+    country: shipCountry,
+    subtotal,
+  })
 
   const totalUsd = Math.max(0, subtotal + shipping)
-  const totalNgn = Math.round(totalUsd * ngnRate)
 
   if (loading) {
     return (
@@ -89,7 +97,7 @@ export function CartPage() {
     )
   }
 
-  if (lines.length === 0) {
+  if (cartLines.length === 0) {
     return (
       <div className="bg-white rounded-2xl border border-[#E2E8F0] p-10 text-center">
         <ShoppingCart className="h-10 w-10 text-slate-300 mx-auto mb-3" />
@@ -106,7 +114,7 @@ export function CartPage() {
     <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
       <div className="lg:col-span-8 bg-white rounded-2xl border border-[#E2E8F0] p-4 sm:p-5">
         <div className="flex items-center justify-between mb-3">
-          <h1 className="text-xl font-extrabold text-[#0F172A]">Your Cart ({lines.reduce((s, l) => s + l.qty, 0)})</h1>
+          <h1 className="text-xl font-extrabold text-[#0F172A]">Your Cart ({cartLines.reduce((s, l) => s + l.qty, 0)})</h1>
           <Link href="/marketplace" className="text-sm text-[#B45309] font-semibold inline-flex items-center gap-1">
             <ArrowLeft className="h-4 w-4" /> Continue shopping
           </Link>
@@ -124,7 +132,7 @@ export function CartPage() {
           </div>
         )}
         <div className="divide-y divide-[#E2E8F0]">
-          {lines.map((l) => {
+          {cartLines.map((l) => {
             const unit = Number(l.product!.sale_price ?? l.product!.original_price ?? 0)
             const key = `${l.id}::${l.variant?.vid || ""}`
             return (
@@ -174,7 +182,7 @@ export function CartPage() {
             <MarketPrice usd={subtotal} className="font-semibold text-[#0F172A]" />
           </div>
           <div className="flex justify-between text-sm text-slate-600">
-            <span>Shipping ({shipSel.name})</span>
+            <span>Shipping{activePick ? ` (${activePick.name})` : ""}</span>
             {shipping === 0 ? (
               <span className="font-semibold text-[#0F172A]">FREE</span>
             ) : (
@@ -185,21 +193,8 @@ export function CartPage() {
           <div className="border-t border-[#E2E8F0] pt-2 flex justify-between items-baseline">
             <span className="text-sm font-bold text-[#0F172A]">Total</span>
             <span className="text-right">
-              {currency === "NGN" ? (
-                <>
-                  <MarketPrice usd={totalUsd} className="block text-xl font-extrabold text-[#0F172A]" />
-                  <span className="block text-xs text-slate-500">
-                    ≈ {fxFormat(totalNgn, "NGN", { maxFrac: 0 })} at checkout
-                  </span>
-                </>
-              ) : (
-                <>
-                  <MarketPrice usd={totalUsd} className="block text-xl font-extrabold text-[#0F172A]" />
-                  <span className="block text-xs text-slate-500">
-                    Charged at checkout ≈ <span className="font-extrabold text-[#DC2626]">{fxFormat(totalNgn, "NGN", { maxFrac: 0 })}</span>
-                  </span>
-                </>
-              )}
+              <MarketPrice usd={totalUsd} className="block text-xl font-extrabold text-[#0F172A]" />
+              <span className="block text-xs text-slate-500">Payment processed in USD</span>
             </span>
           </div>
           <button
@@ -218,7 +213,7 @@ export function CartPage() {
             ))}
           </div>
           <p className="text-[11px] text-slate-400 flex items-center gap-1 justify-center pt-1">
-            <ShieldCheck className="h-3.5 w-3.5" /> Secure checkout · pay in naira
+            <ShieldCheck className="h-3.5 w-3.5" /> Secure checkout · pay in USD
           </p>
           <div className="flex items-center justify-center gap-3 pt-1 text-[11px] text-slate-400">
             <span className="inline-flex items-center gap-1"><Truck className="h-3.5 w-3.5 text-[#F59E0B]" /> Tracked delivery</span>

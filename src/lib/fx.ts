@@ -1,5 +1,5 @@
 import "server-only"
-import { FX_FALLBACK_NGN } from "@/lib/fx-shared"
+import { FX_FALLBACK_USD_BASE } from "@/lib/fx-shared"
 
 const FX_API = "https://open.er-api.com/v6/latest/USD"
 const FX_FALLBACK_API = "https://api.frankfurter.app/latest?from=USD"
@@ -57,7 +57,16 @@ export async function getFxRatesPerNgn(): Promise<{ rates: Record<string, number
     } catch {
       /* both providers down — static fallback */
     }
-    return { rates: FX_FALLBACK_NGN, updatedAt: "", source: "fallback" }
+    // Static per-NGN fallback derived from the USD-base fallback rates
+    // (rate[code] = NGN per 1 USD ÷ NGN per 1 code), so NGN=1 and USD=1600.
+    const ngnPerUsd = Number(FX_FALLBACK_USD_BASE.NGN) || 1600
+    const fallbackPerNgn: Record<string, number> = { NGN: 1, USD: ngnPerUsd }
+    for (const [code, usdPerCode] of Object.entries(FX_FALLBACK_USD_BASE)) {
+      const r = Number(usdPerCode)
+      if (code === "NGN" || code === "USD" || !r || r <= 0) continue
+      fallbackPerNgn[code] = Math.round((ngnPerUsd / r) * 100000) / 100000
+    }
+    return { rates: fallbackPerNgn, updatedAt: "", source: "fallback" }
   }
 }
 

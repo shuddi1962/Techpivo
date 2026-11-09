@@ -1,15 +1,25 @@
 "use client"
 
-// TechPivo Market — multi-currency pricing (gateway charges NGN; CJ costs USD)
-// Rate source: /api/tools/fx (live) with 6h localStorage cache, static fallback.
+// TechPivo Market — multi-currency pricing.
+//
+// Currency architecture (USD is the GLOBAL BASE currency):
+//
+//   1. Base currency   = USD.  Product prices are stored and maintained in USD.
+//   2. Display currency= what the shopper browses in (USD, NGN, GBP, EUR, …).
+//      Prices are converted USD → display currency purely for DISPLAY.
+//      The original USD price is never overwritten.
+//   3. Checkout currency = USD.  The cart/checkout total is always USD.
+//   4. Payment transaction currency = USD (Flutterwave charges USD).
+//   5. Settlement currency = whatever the merchant's Flutterwave account settles in.
+//
+// Display currency selection never changes the underlying cart/order amount
+// and never triggers a double conversion. Rates are fetched once (USD base)
+// and shared across every display surface via the shared FX store.
 
 import { useEffect, useState } from "react"
-import { fxFormat } from "@/lib/fx-shared"
+import { fxFormat, getLiveRate, getLiveNgnRate, subscribeToFxRate, usdToNgn } from "@/lib/fx-shared"
 
-const RATE_KEY_PREFIX = "tp_market_fx_v2"
-const FALLBACK_USD_NGN = 1600
-
-export const MARKET_CURRENCY_KEY = "tp_market_currency_v1"
+const MARKET_CURRENCY_KEY = "tp_market_currency_v1"
 export type MarketCurrency = "USD" | "NGN" | "EUR" | "GBP" | "GHS" | "KES" | "ZAR" | "CAD" | "AUD" | "INR" | "JPY" | "AED"
 
 export const MARKET_CURRENCIES: MarketCurrency[] = [
@@ -66,55 +76,35 @@ export function useMarketCurrency(): MarketCurrency {
   return cur
 }
 
-let inflight: Record<string, Promise<{ from: string; to: string; rate: number } | null>> = {}
-
-function sharedRate(from: string, to: string): Promise<{ from: string; to: string; rate: number } | null> {
-  const key = `${from}:${to}`
-  if (!inflight[key]) {
-    inflight[key] = fetch(`/api/tools/fx?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}&amount=1`, { cache: "no-store" })
-      .then((r) => r.json())
-      .then((j) => {
-        const v = Number(j?.rate)
-        if (!Number.isFinite(v) || v <= 0) return null
-        return { from, to, rate: v }
-      })
-      .catch(() => null)
-      .finally(() => {
-        delete inflight[key]
-      })
-  }
-  return inflight[key].then((r) => (r && r.from === from && r.to === to ? r : null))
-}
-
-/** Live conversion rate for any supported pair (cached 6h, fallback static). */
+/** Live conversion rate USD → `to` (USD base). Shared across the whole app
+ *  so every surface shows identical converted prices — no double conversion. */
 export function useFxRate(to: MarketCurrency): number {
-  const from = "USD"
-  const [rate, setRate] = useState<number>(() => {
-    if (typeof window === "undefined") return to === "USD" ? 1 : FALLBACK_USD_NGN
-    if (to === "USD") return 1
-    // Never seed from a possibly-stale cache — start from fallback and let
-    // the effect below overwrite it with the live rate on mount.
-    return to === "NGN" ? FALLBACK_USD_NGN : 1
-  })
+  const [rate, setRate] = useState<number>(() => getLiveRate(to))
   useEffect(() => {
-    if (to === "USD") {
-      setRate(1)
-      return
-    }
-    let live = true
-    sharedRate(from, to).then((v) => {
-      if (live && v !== null) {
-        // Safety: an API rate of ~1 for NGN would override the 1600 fallback
-        // and make $29 show as ₦29. Clamp unreasonably low rates.
-        const safeRate = to === "NGN" && v.rate < 10 ? FALLBACK_USD_NGN : v.rate
-        setRate(safeRate)
+    setRate(getLiveRate(to))
+    const unsub = (() => {
+      let called = false
+      return () => {
+        if (called) return
+        called = true
       }
-    })
+    })()
+    // The shared store refreshes all rates on mount/focus; subscribe keeps
+    // this component in sync without issuing its own per-currency fetch.
+    const unsubSub = subscribeToFxRate(() => setRate(getLiveRate(to)))
+    const onFocus = () => setRate(getLiveRate(to))
+    window.addEventListener("focus", onFocus)
     return () => {
-      live = false
+      unsubSub()
+      window.removeEventListener("focus", onFocus)
     }
   }, [to])
   return rate
+}
+
+/** Back-compat: live NGN-per-USD rate (USD base). */
+export function useLiveNgnRate(): number {
+  return useFxRate("NGN")
 }
 
 /** Single-currency display honoring the header switch: "$4.92" / "₦7,872" / "€4.50" … */
@@ -122,10 +112,11 @@ export function formatMarketPrice(usd: number | null | undefined, rate: number, 
   const u = Number(usd ?? 0)
   if (!Number.isFinite(u) || u <= 0) return "—"
   if (currency === "USD") return fxFormat(u, "USD")
-  return fxFormat(Math.round(u * rate * 100) / 100, currency, { maxFrac: currency === "JPY" ? 0 : 2 })
+  const converted = Math.round(u * rate * 100) / 100
+  return fxFormat(converted, currency, { maxFrac: currency === "JPY" ? 0 : 2 })
 }
 
-/** Dual display: "$4.92 · ₦7,872". NGN has no kobo (gateway minimums are whole kobo anyway). */
+/** Dual display: "$4.92 · ₦7,872". NGN has no kobo. */
 export function dualPrice(usd: number | null | undefined, rate: number): string {
   const u = Number(usd ?? 0)
   if (!Number.isFinite(u) || u <= 0) return "—"
@@ -133,6 +124,8 @@ export function dualPrice(usd: number | null | undefined, rate: number): string 
 }
 
 /** Whole-naira amount for a USD value (gateway charges kobo = naira * 100). */
-export function usdToNgn(usd: number, rate: number): number {
-  return Math.max(1, Math.round(Number(usd || 0) * rate))
+export function usdToNgnAmount(usd: number): number {
+  return usdToNgn(usd)
 }
+
+export { getLiveNgnRate, getLiveRate, usdToNgn }

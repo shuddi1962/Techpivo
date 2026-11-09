@@ -7,15 +7,13 @@ import { ArrowLeft, Loader2, Lock, RotateCcw, ShieldCheck, Truck } from "lucide-
 import { createClient } from "@/lib/supabase/client"
 import { marketImage } from "@/lib/marketplace-images"
 import { clearCart, getCart, useMarketCart } from "@/lib/marketplace-cart"
-import { useMarketCurrency, useFxRate } from "@/lib/marketplace-pricing"
-import { useLiveNgnRate } from "@/lib/fx-client"
-import { fxFormat } from "@/lib/fx-shared"
+import { useMarketCurrency } from "@/lib/marketplace-pricing"
 import { MarketPrice } from "./market-price"
 import {
-  readShipSelection, saveShipSelection, storeShipOptions, visibleShipOptions, resolveShipActive, SHIP_COUNTRIES, DEFAULT_SHIP_COUNTRY, FREE_SHIP_THRESHOLD_USD,
-  type ShipOption, type ShipSelection,
+  useShippingOptions, SHIP_COUNTRIES, FREE_SHIP_THRESHOLD_USD,
+  type ShipSelection, useShippingCountry, readShipSelection, saveShipSelection,
+  storeShipOptions,
 } from "@/lib/marketplace-shipping"
-import { getGeoOnce } from "@/lib/tools-geo"
 import { countryPreset, DIAL_CODES } from "@/lib/marketplace-locale"
 import { DeliveryPicker } from "./delivery-picker"
 
@@ -30,21 +28,19 @@ interface Row {
 export function CheckoutPage() {
   const router = useRouter()
   const cart = useMarketCart()
-  const currency = useMarketCurrency()
-  const ngnRate = useLiveNgnRate()
   const [rows, setRows] = useState<Row[]>([])
   const [loading, setLoading] = useState(true)
   const [paying, setPaying] = useState(false)
   const [error, setError] = useState("")
-  const [form, setForm] = useState({ email: "", name: "", phone: "", dial: "", address: "", city: "", state: "", zip: "", country: DEFAULT_SHIP_COUNTRY })
+  const shipCountry = useShippingCountry()
+  const [form, setForm] = useState({ email: "", name: "", phone: "", dial: "", address: "", city: "", state: "", zip: "", country: shipCountry })
   const [dialTouched, setDialTouched] = useState(false)
   const preset = countryPreset(form.country)
   // Dial code follows the country until the buyer picks one manually.
   useEffect(() => {
     if (!dialTouched) setForm((f) => ({ ...f, dial: countryPreset(f.country).dial }))
   }, [form.country, dialTouched])
-  const [shipOptions, setShipOptions] = useState<ShipOption[]>([])
-  const [shipPick, setShipPick] = useState<ShipSelection | null>(null)
+  const [shipPick, setShipPick] = useState<ShipSelection | null>(() => readShipSelection())
   // Coupon (validated live; the server re-validates before charging).
   const [couponInput, setCouponInput] = useState("")
   const [coupon, setCoupon] = useState<{ code: string; discountUsd: number } | null>(null)
@@ -75,48 +71,22 @@ export function CheckoutPage() {
     [cart, rows]
   )
   const subtotal = lines.reduce((s, l) => s + Number(l.product!.sale_price ?? l.product!.original_price ?? 0) * l.qty, 0)
-  // Delivery options for the whole cart (supplier rates + store fallbacks).
-  useEffect(() => {
-    setShipPick(readShipSelection())
-    if (lines.length === 0) return
-    fetch("/api/marketplace/shipping", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        items: lines.map((l) => ({ product_id: l.id, variant_vid: l.variant?.vid || "", qty: l.qty })),
-        country: form.country,
-        subtotal,
-      }),
-    })
-      .then((r) => r.json())
-      .then((d) => {
-        if (Array.isArray(d?.options)) setShipOptions(d.options as ShipOption[])
-      })
-      .catch(() => {
-        // fallbacks below still render
-      })
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [loading, lines.length, form.country])
-  const effectiveOptions = shipOptions.length > 0 ? shipOptions : storeShipOptions(subtotal)
-  // Same visibility rule as the picker: live couriers replace store methods
-  // when present. Auto-sync the stored pick to the DISPLAYED method so the
-  // buyer is always charged for the courier they see (previously the picker
-  // showed the first courier while checkout charged stored "standard").
-  const shownOptions = useMemo(() => visibleShipOptions(effectiveOptions, []), [effectiveOptions])
-  const activePick = resolveShipActive(shownOptions, shipPick)
-  useEffect(() => {
-    if (!activePick) return
-    if ((shipPick?.id || "standard") !== activePick.id) {
-      const sel: ShipSelection = { id: activePick.id, name: activePick.name, eta: activePick.eta, feeUsd: activePick.feeUsd }
-      setShipPick(sel)
-      saveShipSelection(sel)
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activePick?.id])
-  const shipping = activePick ? activePick.feeUsd : 0
+
+  // Shipping lines sent to the quote endpoint (identical shape to cart page).
+  const shipLines = useMemo(
+    () => cart.map((l) => ({ product_id: l.id, variant_vid: l.variant?.vid || "", qty: l.qty })),
+    [cart]
+  )
+
+  // Single source of truth for shipping — shared with the cart page so the
+  // quote is identical in cart and checkout (fixes the cart↔checkout mismatch).
+  const { shownOptions, activePick, shipping } = useShippingOptions({
+    lines: shipLines,
+    country: form.country,
+    subtotal,
+  })
   const discountUsd = coupon ? Math.min(subtotal, coupon.discountUsd) : 0
   const totalUsd = Math.max(0, subtotal - discountUsd + shipping)
-  const totalNgn = Math.round(totalUsd * ngnRate)
 
   const applyCoupon = async () => {
     const code = couponInput.trim().toUpperCase()
@@ -143,20 +113,6 @@ export function CheckoutPage() {
       setCouponBusy(false)
     }
   }
-
-  // Default country follows the shopper's real location (worldwide store).
-  useEffect(() => {
-    getGeoOnce()
-      .then((g) => {
-        const code = g?.countryCode?.toUpperCase()
-        if (code && SHIP_COUNTRIES.some((c) => c.code === code)) {
-          setForm((f) => ({ ...f, country: code }))
-        }
-      })
-      .catch(() => {
-        // keep default
-      })
-  }, [])
 
   useEffect(() => {
     if (!loading && lines.length === 0) router.replace("/marketplace/cart")
@@ -291,8 +247,8 @@ export function CheckoutPage() {
           <DeliveryPicker
             country={form.country}
             onCountry={(code) => setForm((f) => ({ ...f, country: code }))}
-            options={shipOptions}
-            fallbackOptions={storeShipOptions(subtotal)}
+            options={shownOptions}
+            fallbackOptions={storeShipOptions(subtotal, FREE_SHIP_THRESHOLD_USD)}
             value={shipPick}
             onChange={(sel) => {
               setShipPick(sel)
@@ -397,25 +353,14 @@ export function CheckoutPage() {
           <div className="flex justify-between items-baseline">
             <span className="text-sm font-bold text-[#0F172A]">Total</span>
             <span className="text-right">
-              {currency === "NGN" ? (
-                <>
-                  <MarketPrice usd={totalUsd} className="block text-2xl font-extrabold text-[#0F172A]" />
-                  <span className="block text-xs text-slate-500">
-                    Charged at checkout ≈ <span className="font-extrabold text-[#DC2626]">{fxFormat(totalNgn, "NGN", { maxFrac: 0 })}</span>
-                  </span>
-                </>
-              ) : (
-                <>
-                  <MarketPrice usd={totalUsd} className="block text-2xl font-extrabold text-[#0F172A]" />
-                  <span className="block text-xs text-slate-500">
-                    Charged at checkout ≈ <span className="font-extrabold text-[#DC2626]">{fxFormat(totalNgn, "NGN", { maxFrac: 0 })}</span>
-                  </span>
-                </>
-              )}
+              <MarketPrice usd={totalUsd} className="block text-2xl font-extrabold text-[#0F172A]" />
+              <span className="block text-xs text-slate-500">
+                Payment processed in USD
+              </span>
             </span>
           </div>
           <button onClick={pay} disabled={paying || lines.length === 0} className="w-full bg-[#10B981] hover:bg-[#059669] text-white text-sm font-bold py-3 rounded-lg disabled:opacity-60 flex items-center justify-center gap-2">
-            {paying ? <><Loader2 className="h-4 w-4 animate-spin" /> Starting payment...</> : <><Lock className="h-4 w-4" /> Pay {currency === "NGN" ? <MarketPrice usd={totalUsd} className="block text-2xl font-extrabold text-[#0F172A]" /> : <MarketPrice usd={totalUsd} className="block text-2xl font-extrabold text-[#0F172A]" />}</>}
+            {paying ? <><Loader2 className="h-4 w-4 animate-spin" /> Starting payment...</> : <><Lock className="h-4 w-4" /> Pay <MarketPrice usd={totalUsd} className="block text-2xl font-extrabold text-[#0F172A]" /></>}
           </button>
           <div className="flex items-center justify-center gap-1.5">
             {["VISA", "MASTERCARD", "VERVE"].map((b) => (
