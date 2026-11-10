@@ -175,6 +175,11 @@ interface CategoryShoppingSectionProps {
   wished: Record<string, boolean>
   onWish: (id: string) => void
   added: Record<string, boolean>
+  /** Admin-uploaded sidebar banner for this department: shown clean (no
+      SALE overlay, text or button) as a narrow portrait strip next to the
+      department heading. Opens sideLink. Empty = no sidebar banner. */
+  sideBanner?: string
+  sideLink?: string
 }
 
 // One category shopping section per major department: heading with the
@@ -188,6 +193,8 @@ export function CategoryShoppingSection({
   wished,
   onWish,
   added,
+  sideBanner,
+  sideLink,
 }: CategoryShoppingSectionProps) {
   const railRef = useRef<HTMLDivElement>(null)
   const [activeSub, setActiveSub] = useState<string | null>(null)
@@ -267,6 +274,21 @@ export function CategoryShoppingSection({
             Shop all {dept.name} →
           </Link>
         </div>
+        {sideBanner && (
+          <Link
+            href={sideLink || `/marketplace/category/${dept.slug}`}
+            aria-label={`Shop ${dept.name} promotion`}
+            className="hidden sm:flex-shrink-0 relative aspect-[2/3] w-[180px] overflow-hidden rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] shadow-sm group"
+          >
+            <img
+              src={marketImage(sideBanner)}
+              alt={`${dept.name} promotion`}
+              loading="lazy"
+              decoding="async"
+              className="absolute inset-0 h-full w-full object-contain bg-[#F8FAFC] group-hover:scale-105 transition-transform duration-300"
+            />
+          </Link>
+        )}
       </div>
 
       {/* Content row — promo banner left, product carousel right */}

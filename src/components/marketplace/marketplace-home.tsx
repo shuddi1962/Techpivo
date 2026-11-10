@@ -1157,18 +1157,23 @@ export function MarketplaceHome() {
         }
 
         {/* category shopping sections — split into two groups with slim banners between */}
-{departments.slice(0, 7).map((dep) => (
-  <CategoryShoppingSection
-    key={dep.slug}
-    dept={dep}
-    products={liveProducts}
-    deptOf={deptOf}
-    onAdd={addToCart}
-    wished={wishlist}
-    onWish={toggleWish}
-    added={justAdded}
-  />
-))}
+        {departments.slice(0, 7).map((dep) => {
+          const sideBanner = banners.sidebar_banners?.[dep.slug] || ""
+          return (
+            <CategoryShoppingSection
+              key={dep.slug}
+              dept={dep}
+              products={liveProducts}
+              deptOf={deptOf}
+              onAdd={addToCart}
+              wished={wishlist}
+              onWish={toggleWish}
+              added={justAdded}
+              sideBanner={sideBanner}
+              sideLink={sideBanner ? linkOf(banners, sideBanner) : ""}
+            />
+          )
+        })}
 {/* slim banner strip 1 — between category groups */}
 {!bannersReady ? (
   <section aria-hidden className="h-[92px] sm:h-[120px] overflow-hidden rounded-2xl bg-white shadow-sm animate-pulse">
@@ -1201,18 +1206,23 @@ export function MarketplaceHome() {
     </div>
   </section>
 )}
-{departments.slice(7).map((dep) => (
-  <CategoryShoppingSection
-    key={dep.slug}
-    dept={dep}
-    products={liveProducts}
-    deptOf={deptOf}
-    onAdd={addToCart}
-    wished={wishlist}
-    onWish={toggleWish}
-    added={justAdded}
-  />
-))}
+        {departments.slice(7).map((dep) => {
+          const sideBanner = banners.sidebar_banners?.[dep.slug] || ""
+          return (
+            <CategoryShoppingSection
+              key={dep.slug}
+              dept={dep}
+              products={liveProducts}
+              deptOf={deptOf}
+              onAdd={addToCart}
+              wished={wishlist}
+              onWish={toggleWish}
+              added={justAdded}
+              sideBanner={sideBanner}
+              sideLink={sideBanner ? linkOf(banners, sideBanner) : ""}
+            />
+          )
+        })}
 {/* slim banner strip 2 — after second category group */}
 {!bannersReady ? (
   <section aria-hidden className="h-[92px] sm:h-[120px] overflow-hidden rounded-2xl bg-white shadow-sm animate-pulse">
