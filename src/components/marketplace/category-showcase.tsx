@@ -257,7 +257,7 @@ export function CategoryShowcase({
               alt={`${title} promotion`}
               loading="lazy"
               decoding="async"
-              className="absolute inset-0 h-full w-full object-cover"
+              className="absolute inset-0 h-full w-full object-contain bg-[#F8FAFC]"
             />
           </Link>
         ) : (

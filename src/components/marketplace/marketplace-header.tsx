@@ -596,33 +596,11 @@ const [currencyOpen, setCurrencyOpen] = useState(false)
                   setDeptOpen(!deptOpen);
                 }}
                 onMouseEnter={() => setDeptOpen(true)}
-                className={
-                  "mega-btn h-10 px-4 flex items-center gap-2 font-semibold text-sm cursor-pointer rounded-xl transition-colors" +
-                  (menuBg === "#1453D6"
-                    ? " text-white bg-[#FF6B00] hover:bg-[#e86000]"
-                    : " text-[" + menuText + "] bg-[" + menuBg + "] hover:bg-[" + menuBgHover + "]")
-                }
+                className="mega-btn text-white h-10 px-4 flex items-center gap-2 font-semibold text-sm cursor-pointer bg-[#FF6B00] rounded-xl hover:bg-[#e86000] transition-colors"
               >
-                <LayoutGrid
-                  className={
-                    "h-4 w-4" +
-                    (menuBg === "#1453D6" ? " text-white" : " text-[" + menuText + "]")
-                  }
-                />
-                <span
-                  className={
-                    menuBg === "#1453D6" ? "text-white" : "text-[" + menuText + "]"
-                  }
-                >
-                  All Departments
-                </span>
-                <ChevronDown
-                  className={
-                    "h-4 w-4 transition-transform" +
-                    (deptOpen ? " rotate-180" : "") +
-                    (menuBg === "#1453D6" ? " text-white" : " text-[" + menuText + "]")
-                  }
-                />
+                <LayoutGrid className="h-4 w-4 text-white" />
+                <span>All Departments</span>
+                <ChevronDown className={`h-4 w-4 transition-transform ${deptOpen ? "rotate-180" : ""} text-white`} />
               </button>
         {deptOpen && (
           <div
