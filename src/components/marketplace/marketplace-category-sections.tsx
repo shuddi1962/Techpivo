@@ -291,9 +291,6 @@ export function CategoryShoppingSection({
               decoding="async"
               className="absolute inset-0 h-full w-full object-cover"
             />
-            <div className="absolute inset-0 bg-[#0F172A]/10 flex items-end p-3">
-              <span className="text-white font-bold text-sm">Shop {dept.name}</span>
-            </div>
           </Link>
         </div>
         <div className="flex-1 min-w-0 relative overflow-hidden">
