@@ -132,6 +132,20 @@ interface CarouselProductsProps {
   ngnRate: number
 }
 
+interface DbProductRow {
+  id: string
+  product_name: string
+  product_image_url: string | null
+  original_price: number | null
+  sale_price: number | null
+  stock: number | null
+}
+
+function badgeFor(cp: SeasonalProduct) {
+  const custom = (cp.badgeText || "").trim()
+  return custom || cp.badge || "SPECIAL OFFER"
+}
+
 function CarouselProducts({
   campaignProducts,
   byId,
@@ -149,8 +163,6 @@ function CarouselProducts({
   currency,
   ngnRate,
 }: CarouselProductsProps) {
-  const badgeStyle = String(campaignSettings?.badgeStyle ?? "pill")
-
   return (
     <div className="relative">
       {campaignProducts.length > 1 && (
@@ -275,7 +287,7 @@ function CarouselProducts({
           )
         })}
       </div>
-      {campaignSettings?.paginationDots && campaignProducts.length > 1 && (
+      {Boolean(campaignSettings?.paginationDots) && campaignProducts.length > 1 && (
         <div className="mt-4 flex items-center justify-center gap-1.5">
           {[...Array(pageCount)].map((_, i) => (
             <button
@@ -295,20 +307,6 @@ function CarouselProducts({
       )}
     </div>
   )
-}
-
-interface DbProductRow {
-  id: string
-  product_name: string
-  product_image_url: string | null
-  original_price: number | null
-  sale_price: number | null
-  stock: number | null
-}
-
-function badgeFor(cp: SeasonalProduct) {
-  const custom = (cp.badgeText || "").trim()
-  return custom || cp.badge || "SPECIAL OFFER"
 }
 
 export function SeasonalSalesSection() {
@@ -351,6 +349,22 @@ export function SeasonalSalesSection() {
   const expired = useMemo(() => !campaign || remaining <= 0, [campaign, remaining])
 
   const countdown = useMemo(() => splitCountdown(remaining), [remaining])
+
+  const trackClick = (productId: string, event: "click" | "addToCart") => {
+    if (!campaign) return
+    void fetch("/api/marketplace/seasonal-sales/analytics", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: event, campaignId: campaign.id, productId }),
+      keepalive: true,
+    }).catch(() => {})
+  }
+
+  const addToCart = (productId: string) => {
+    addLine(productId, 1)
+    openCartPopup(productId)
+    trackClick(productId, "addToCart")
+  }
 
   useEffect(() => {
     const load = async () => {
