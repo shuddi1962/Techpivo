@@ -472,7 +472,6 @@ export function SeasonalSalesSection() {
 
   const pageCount = Math.max(1, Math.ceil(campaignProducts.length / 1))
   const activeDot = Math.min(pageCount - 1, Math.floor(scrollPos / 300))
-  const hasBanner = Boolean(campaign.bannerImage?.trim())
 
   const trackClick = (productId: string, event: "click" | "addToCart") => {
     if (!campaign) return
@@ -493,9 +492,9 @@ export function SeasonalSalesSection() {
   return (
     <section aria-label="Seasonal Sales" className="w-full bg-white py-10 sm:py-14 lg:py-16 overflow-x-clip">
       <div className="mx-auto w-full max-w-[1440px] px-3 sm:px-6 lg:px-10">
-        {/* Promotional header band */}
-        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-8 sm:mb-10 lg:mb-12">
-          <div className="flex flex-col gap-2">
+        {/* Side-by-side: promotional header on the left, product carousel on the right */}
+        <div className="lg:grid lg:grid-cols-2 lg:gap-12 items-start">
+          <div className="flex flex-col gap-4 mb-6 lg:mb-0">
             <div className="inline-flex items-center gap-2 rounded-full bg-[#EF4444] px-3 py-1 text-[11px] font-black uppercase tracking-wider text-white shadow-md shadow-red-500/25">
               <Clock className="h-3.5 w-3.5" /> {campaign.name || "SEASONAL SALE"}
             </div>
@@ -507,102 +506,60 @@ export function SeasonalSalesSection() {
                 {campaign.subtitle || "Limited Time."}
               </p>
             </div>
+            {campaign.countdownEnabled && !expired && (
+              <div className="flex flex-wrap items-center gap-3">
+                {[
+                  { v: countdown.days, l: "Days" },
+                  { v: countdown.hrs, l: "Hrs" },
+                  { v: countdown.mins, l: "Min" },
+                  { v: countdown.secs, l: "Sec" },
+                ].map((x) => (
+                  <div
+                    key={x.l}
+                    className="flex flex-col items-center gap-0.5 rounded-xl bg-white px-3 py-2 text-center border border-[#E2E8F0] shadow-sm"
+                  >
+                    <span className="text-2xl font-black tabular-nums text-[#0F172A]">
+                      {String(x.v).padStart(2, "0")}
+                    </span>
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                      {x.l}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+            {campaign.description && (
+              <p className="text-sm sm:text-base text-slate-500 leading-relaxed max-w-md">
+                {campaign.description}
+              </p>
+            )}
+            <Link
+              href={campaign.ctaLink || "/marketplace/deals"}
+              className="inline-flex items-center justify-center gap-2 rounded-full bg-[#0F172A] px-8 py-3 text-sm font-black text-white hover:bg-slate-800 transition-colors shadow-lg shadow-black/15"
+            >
+              {campaign.ctaText || "Shop the Sale"} <ArrowRight className="h-4 w-4" />
+            </Link>
           </div>
-          {campaign.countdownEnabled && !expired && (
-            <div className="flex flex-wrap items-center gap-3">
-              {[
-                { v: countdown.days, l: "Days" },
-                { v: countdown.hrs, l: "Hrs" },
-                { v: countdown.mins, l: "Min" },
-                { v: countdown.secs, l: "Sec" },
-              ].map((x) => (
-                <div
-                  key={x.l}
-                  className="flex flex-col items-center gap-0.5 rounded-xl bg-white px-3 py-2 text-center border border-[#E2E8F0] shadow-sm"
-                >
-                  <span className="text-2xl font-black tabular-nums text-[#0F172A]">
-                    {String(x.v).padStart(2, "0")}
-                  </span>
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                    {x.l}
-                  </span>
-                </div>
-              ))}
-            </div>
-          )}
-          {campaign.description && (
-            <p className="text-sm sm:text-base text-slate-500 leading-relaxed max-w-md">
-              {campaign.description}
-            </p>
-          )}
-          <Link
-            href={campaign.ctaLink || "/marketplace/deals"}
-            className="inline-flex items-center justify-center gap-2 rounded-full bg-[#0F172A] px-8 py-3 text-sm font-black text-white hover:bg-slate-800 transition-colors shadow-lg shadow-black/15"
-          >
-            {campaign.ctaText || "Shop the Sale"} <ArrowRight className="h-4 w-4" />
-          </Link>
+          <div className="flex-1 min-w-0 relative">
+            <CarouselProducts
+              campaignProducts={campaignProducts}
+              byId={byId}
+              reviews={reviews}
+              formatPrice={formatPrice}
+              accent={accent}
+              campaignSettings={campaign.settings}
+              carouselRef={carouselRef}
+              scrollPos={scrollPos}
+              setScrollPos={setScrollPos}
+              pageCount={pageCount}
+              activeDot={activeDot}
+              trackClick={trackClick}
+              addToCart={addToCart}
+              currency={currency}
+              ngnRate={ngnRate}
+            />
+          </div>
         </div>
-
-        {hasBanner ? (
-          <>
-            {/* Banner on LEFT, products on RIGHT — side by side */}
-            <div className="grid gap-8 sm:gap-10 lg:gap-16 items-start lg:items-center">
-              <div className="flex-none lg:w-[44%]">
-                <div className="relative h-[200px] sm:h-[280px] lg:h-[360px] w-full overflow-hidden rounded-2xl border border-[#E2E8F0] shadow-sm">
-                  <img
-                    src={marketImage(campaign.bannerImage!)}
-                    alt={campaign.heading}
-                    loading="lazy"
-                    decoding="async"
-                    className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
-                  />
-                </div>
-              </div>
-              <div className="flex-1 min-w-0 relative">
-                <CarouselProducts
-                  campaignProducts={campaignProducts}
-                  byId={byId}
-                  reviews={reviews}
-                  formatPrice={formatPrice}
-                  accent={accent}
-                  campaignSettings={campaign.settings}
-                  carouselRef={carouselRef}
-                  scrollPos={scrollPos}
-                  setScrollPos={setScrollPos}
-                  pageCount={pageCount}
-                  activeDot={activeDot}
-                  trackClick={trackClick}
-                  addToCart={addToCart}
-                  currency={currency}
-                  ngnRate={ngnRate}
-                />
-              </div>
-            </div>
-          </>
-        ) : (
-          <>
-            {/* No banner: products take full width */}
-            <div className="relative">
-              <CarouselProducts
-                campaignProducts={campaignProducts}
-                byId={byId}
-                reviews={reviews}
-                formatPrice={formatPrice}
-                accent={accent}
-                campaignSettings={campaign.settings}
-                carouselRef={carouselRef}
-                scrollPos={scrollPos}
-                setScrollPos={setScrollPos}
-                pageCount={pageCount}
-                activeDot={activeDot}
-                trackClick={trackClick}
-                addToCart={addToCart}
-                currency={currency}
-                ngnRate={ngnRate}
-              />
-            </div>
-          </>
-        )}
       </div>
     </section>
   )

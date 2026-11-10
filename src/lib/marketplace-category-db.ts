@@ -68,7 +68,7 @@ export function buildMarketplaceTree(rows: MarketCategoryRow[]): MarketDepartmen
   return depts.map((d) => ({
     name: d.name,
     slug: d.slug,
-    icon: d.icon || "LayoutGrid",
+    icon: d.icon || "",
     image: d.image_url || "",
     subs: subsOf(d.slug).map((s) => ({
       name: s.name,

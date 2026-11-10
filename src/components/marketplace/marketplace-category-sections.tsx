@@ -233,15 +233,13 @@ export function CategoryShoppingSection({
       {/* Heading row — department name left, subcategory links right */}
       <div className="px-5 py-4 border-b border-[#E2E8F0] flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2">
-          <div className="flex h-7 w-7 items-center justify-center rounded-full bg-[#F59E0B]/10 text-[#F59E0B]">
-            {resolveDeptIcon(dept.icon) ? (
+          {resolveDeptIcon(dept.icon) && (
+            <div className="flex h-7 w-7 items-center justify-center rounded-full bg-[#F59E0B]/10 text-[#F59E0B]">
               <span className="flex items-center gap-2 px-1" style={{ color: "#FF6B00" }}>
                 <Icon size={13} className="text-[#FF6B00]" />
               </span>
-            ) : (
-              <span className="text-[11px]">{dept.icon}</span>
-            )}
-          </div>
+            </div>
+          )}
           <h2 className="text-lg font-bold text-[#0F172A] leading-tight">{dept.name}</h2>
         </div>
         <div className="flex items-center gap-2 overflow-x-auto pb-1" style={{ scrollbarWidth: "none" }}>
