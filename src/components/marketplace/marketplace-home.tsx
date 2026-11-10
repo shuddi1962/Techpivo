@@ -16,6 +16,7 @@ import {
   MARKETPLACE_BRAND, MARKETPLACE_HERO, supplierDisplayName, type DemoProduct,
 } from "@/lib/marketplace"
 import { EMPTY_BANNERS, campaignView, flashSecondsLeft, linkOf, markPopupShown, parseBanners, pickPopupCampaign, slidesOfObjects, slotSliderProps, splitCountdown, stampPopup, type MarketBanners } from "@/lib/marketplace-banners"
+import { rotationBucket, takeTimeRotated } from "@/lib/marketplace-rotation"
 import { useMarketplaceTree } from "./market-category-store"
 import { marketImage, cleanSupplierText } from "@/lib/marketplace-images"
 import { cleanProductTitle, shortProductDescription } from "@/lib/marketplace-copy"
@@ -406,13 +407,8 @@ export function MarketplaceHome() {
   }, [showNotice, campaign, closeNotice])
   // Collection-cover rotation: every 10 minutes the tiles re-deal from each
   // node's own live photos, so covers change on their own over time.
-  const [rot, setRot] = useState(0)
-  useEffect(() => {
-    const t = setInterval(() => {
-      if (!document.hidden) setRot((r) => r + 1)
-    }, 600000)
-    return () => clearInterval(t)
-  }, [])
+  // Time-based bucket keeps all visitors in sync within each 10-minute window.
+  const bucket = rotationBucket()
   const t = useCountdown(banners.flash_end_at)
 
   useEffect(() => {
@@ -557,26 +553,28 @@ export function MarketplaceHome() {
     dbProducts.map((d) => [d.id, Number(d.clicks) || 0])
   )
   const usedIds = new Set<string>()
-  const flashItems = takeFresh(
+  const flashItems = takeTimeRotated(
     [...grid]
       .filter((p) => discountRateOf(p) > 0 && showSaleBadge(saleBadges, merch, p.id))
       .sort((a, b) => discountRateOf(b) - discountRateOf(a)),
-    usedIds,
-    8
+    bucket,
+    8,
+    usedIds
   )
-  const featured = takeFresh(grid.filter((p) => p.badge === "Featured"), usedIds, 8)
+  const featured = takeTimeRotated(grid.filter((p) => p.badge === "Featured"), bucket, 8, usedIds)
   const createdById = useMemo(
     () => new Map(dbProducts.map((d) => [d.id, d.created_at || ""])),
     [dbProducts]
   )
-  const newArrivals = takeFresh(
+  const newArrivals = takeTimeRotated(
     [...grid].sort(
       (a, b) =>
         Number(isNewPick(merch, b.id)) - Number(isNewPick(merch, a.id)) ||
         (createdById.get(b.id) || "").localeCompare(createdById.get(a.id) || "")
     ),
-    usedIds,
-    8
+    bucket,
+    8,
+    usedIds
   )
   const bestPool = [...grid].sort(
     (a, b) =>
@@ -586,16 +584,19 @@ export function MarketplaceHome() {
       discountRateOf(b) - discountRateOf(a) ||
       b.rating - a.rating
   )
-  const best = takeFresh(bestPool, usedIds, 8)
-  const trending = [...grid]
-    .filter((p) => !usedIds.has(p.id))
-    .sort(
-      (a, b) =>
-        (clicksById.get(b.id) || 0) - (clicksById.get(a.id) || 0) ||
-        discountRateOf(b) - discountRateOf(a)
-    )
-    .slice(0, 12)
-  trending.forEach((p) => usedIds.add(p.id))
+  const best = takeTimeRotated(bestPool, bucket, 8, usedIds)
+  const trending = takeTimeRotated(
+    [...grid]
+      .filter((p) => !usedIds.has(p.id))
+      .sort(
+        (a, b) =>
+          (clicksById.get(b.id) || 0) - (clicksById.get(a.id) || 0) ||
+          discountRateOf(b) - discountRateOf(a)
+      ),
+    bucket,
+    12,
+    usedIds
+  )
   const tabShown = tab === "new" ? newArrivals : tab === "featured" ? featured : best
 
   const q = query.trim().toLowerCase()
@@ -742,8 +743,8 @@ export function MarketplaceHome() {
     }
 
     const spin = (list: string[]): string[] => {
-      if (list.length < 2 || rot === 0) return list
-      const k = rot % list.length
+      if (list.length < 2 || bucket === 0) return list
+      const k = bucket % list.length
       return [...list.slice(k), ...list.slice(0, k)]
     }
     const claim = (cands: string[]): string | null => {
@@ -756,8 +757,9 @@ export function MarketplaceHome() {
       return null
     }
     // Rotate which departments show over time so a different set leads
-    // the collections section periodically.
-    const deptRotOffset = rot % Math.max(1, departments.length)
+    // the collections section periodically. Time-based bucket keeps all
+    // visitors in sync within each 10-minute window.
+    const deptRotOffset = bucket % Math.max(1, departments.length)
     return departments
       .slice(deptRotOffset).concat(departments.slice(0, deptRotOffset))
       .map((dep) => {
@@ -774,7 +776,7 @@ export function MarketplaceHome() {
           subs: (dep.subs || []).map((s) => ({ name: s.name, slug: s.slug })),
         }
       })
-  }, [scopeRows, departments, deptCover, rot, banners])
+  }, [scopeRows, departments, deptCover, bucket, banners])
 
   // Showcase sections: the 4 departments with the most live stock. Each
   // gets the showcase treatment with its stocked subcategories as pills.

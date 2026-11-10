@@ -1,9 +1,10 @@
 "use client"
 
 import Link from "next/link"
-import { useEffect, useMemo, useRef, useState } from "react"
+import { useMemo, useState } from "react"
 import { ChevronRight, ShoppingBag } from "lucide-react"
 import { marketImage } from "@/lib/marketplace-images"
+import { rotationBucket } from "@/lib/marketplace-rotation"
 
 export interface CollectionItem {
   name: string
@@ -22,7 +23,8 @@ export interface CollectionItem {
 // routes to the department. Shows 10 categories by default; tapping See
 // All reveals all departments. No subcategory chips are rendered beneath
 // the cards — only the category image and name.
-// Rotates which departments lead the section every 10 minutes.
+// Rotates which departments lead the section every 10 minutes via a
+// shared time bucket so all visitors see the same 10 during a window.
 export function ShopCollections({
   collections,
   seeAllHref = "/marketplace/shop",
@@ -31,20 +33,16 @@ export function ShopCollections({
   seeAllHref?: string
 }) {
   const [showAll, setShowAll] = useState(false)
-  const [rot, setRot] = useState(0)
 
-  // Rotate the lead category every 10 minutes so a different department
-  // shows first on each visit.
-  useEffect(() => {
-    const t = setInterval(() => setRot((r) => r + 1), 600000)
-    return () => clearInterval(t)
-  }, [])
+  // Time-based rotation: every 10 minutes the lead category changes so
+  // all active categories get their turn at the front of the section.
+  const bucket = rotationBucket()
 
   const ordered = useMemo(() => {
     if (collections.length <= 1) return collections
-    const k = rot % collections.length
+    const k = bucket % collections.length
     return [...collections.slice(k), ...collections.slice(0, k)]
-  }, [collections, rot])
+  }, [collections, bucket])
 
   if (collections.length === 0) return null
   const visible = showAll ? ordered : ordered.slice(0, 10)
