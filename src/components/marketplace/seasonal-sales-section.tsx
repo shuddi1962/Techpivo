@@ -80,8 +80,8 @@ const EMPTY_CAMPAIGN: SeasonalCampaign = {
     sectionVisibility: true,
     sectionHeading: "Special Deals.",
     sectionSubtitle: "Limited Time.",
-    desktopLayout: "banner-top",
-    tabletLayout: "banner-top",
+    desktopLayout: "side-by-side",
+    tabletLayout: "stacked",
     mobileLayout: "stacked",
     cardSpacing: "md",
     imagePresentation: "cover",
@@ -112,6 +112,203 @@ function splitCountdown(seconds: number) {
 function secondsLeft(endAt: string | null): number {
   if (!endAt) return 0
   return Math.max(0, Math.floor((Date.parse(endAt) - Date.now()) / 1000))
+}
+
+interface CarouselProductsProps {
+  campaignProducts: SeasonalProduct[]
+  byId: Map<string, DbProductRow>
+  reviews: Record<string, { sum: number; n: number }>
+  formatPrice: (usd: number | null | undefined) => string
+  accent: string
+  campaignSettings: Record<string, unknown>
+  carouselRef: React.RefObject<HTMLDivElement>
+  scrollPos: number
+  setScrollPos: (v: number) => void
+  pageCount: number
+  activeDot: number
+  trackClick: (productId: string, event: "click" | "addToCart") => void
+  addToCart: (productId: string) => void
+  currency: string
+  ngnRate: number
+}
+
+function CarouselProducts({
+  campaignProducts,
+  byId,
+  reviews,
+  formatPrice,
+  accent,
+  campaignSettings,
+  carouselRef,
+  scrollPos,
+  setScrollPos,
+  pageCount,
+  activeDot,
+  trackClick,
+  addToCart,
+  currency,
+  ngnRate,
+}: CarouselProductsProps) {
+  const badgeStyle = String(campaignSettings?.badgeStyle ?? "pill")
+
+  return (
+    <div className="relative">
+      {campaignProducts.length > 1 && (
+        <>
+          <button
+            onClick={() => {
+              const el = carouselRef.current
+              if (el) el.scrollBy({ left: -340, behavior: "smooth" })
+            }}
+            className="absolute left-0 top-1/2 -translate-y-1/2 z-20 flex items-center gap-2 px-4 py-8 bg-gradient-to-r from-white/90 via-transparent"
+            aria-label="Scroll left"
+            disabled={scrollPos <= 0}
+          >
+            <ChevronLeft className="h-5 w-5" />
+          </button>
+          <button
+            onClick={() => {
+              const el = carouselRef.current
+              if (el) el.scrollBy({ left: 340, behavior: "smooth" })
+            }}
+            className="absolute right-0 top-1/2 -translate-y-1/2 z-20 flex items-center gap-2 px-4 py-8 bg-gradient-to-l from-white/90 via-transparent"
+            aria-label="Scroll right"
+          >
+            <ChevronRight className="h-5 w-5" />
+          </button>
+        </>
+      )}
+      <div
+        ref={carouselRef}
+        className="seasonal-carousel flex min-w-0 flex-1 gap-5 overflow-x-auto snap-x pb-6 scroll-smooth"
+        style={{ scrollbarWidth: "none" }}
+        onScroll={(e) => setScrollPos((e.currentTarget as HTMLDivElement).scrollLeft)}
+      >
+        {campaignProducts.map((cp) => {
+          const p = byId.get(cp.productId)
+          if (!p) return null
+          const st = reviews[p.id]
+          const rating = st && st.n > 0 ? st.sum / st.n : 0
+          const reviewCount = st?.n ?? 0
+          const sale = Number(cp.promotionalPrice ?? p.sale_price ?? p.original_price ?? 0)
+          const orig = Number(p.original_price ?? 0)
+          const showStrike = orig > sale && orig > 0
+          const href = /^[0-9a-f-]{36}$/i.test(p.id) ? `/marketplace/product/${p.id}` : undefined
+          return (
+            <div key={p.id} className="shrink-0 w-[300px] flex flex-col">
+              <div className="relative aspect-video w-full overflow-hidden rounded-2xl bg-[#F8FAFC] border border-[#E2E8F0] shadow-sm group">
+                {p.product_image_url ? (
+                  <img
+                    src={marketImage(p.product_image_url)}
+                    alt={p.product_name}
+                    loading="lazy"
+                    decoding="async"
+                    className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+                  />
+                ) : (
+                  <div className="h-full w-full flex items-center justify-center text-slate-200">
+                    <RefreshCcw className="h-10 w-10" />
+                  </div>
+                )}
+                <span
+                  className="absolute left-2 top-2 z-10 inline-flex items-center gap-1 rounded-md bg-[#EF4444] px-2 py-1 text-[10px] font-black text-white shadow-sm tracking-wider uppercase"
+                  style={{ backgroundColor: cp.badgeColor || accent }}
+                >
+                  {badgeFor(cp)}
+                </span>
+              </div>
+              <div className="mt-3 flex flex-col gap-1 px-0">
+                <Link
+                  href={href || "/marketplace"}
+                  aria-label={p.product_name}
+                  className="block line-clamp-2 text-[13px] font-semibold leading-tight text-[#0F172A] transition-colors hover:text-[#EF4444]"
+                  onClick={() => trackClick(p.id, "click")}
+                >
+                  {cleanProductTitle(p.product_name)}
+                </Link>
+                {rating > 0 && (
+                  <div className="mt-1 flex items-center gap-1">
+                    <Star className="h-3.5 w-3.5 fill-[#F59E0B] text-[#F59E0B]" />
+                    <span className="text-[11px] font-medium text-slate-600">
+                      {rating.toFixed(1)}
+                    </span>
+                    {reviewCount > 0 && (
+                      <span className="text-[11px] text-slate-400">({reviewCount})</span>
+                    )}
+                  </div>
+                )}
+                <div className="mt-1.5 flex items-baseline gap-1.5">
+                  {showStrike && (
+                    <MarketPrice
+                      usd={orig}
+                      className="text-[11px] tabular-nums text-slate-400 line-through"
+                    />
+                  )}
+                  <span className="text-[17px] font-black tabular-nums" style={{ color: String(campaignSettings?.priceColor ?? accent) }}>
+                    {formatPrice(sale)}
+                  </span>
+                  {currency === "NGN" && (
+                    <span className="text-[11px] text-slate-500 ml-1">
+                      ≈ ₦{Math.max(1, Math.round(sale * ngnRate)).toLocaleString()}
+                    </span>
+                  )}
+                </div>
+              </div>
+              <div className="mt-3 flex flex-col gap-2 px-0">
+                <button
+                  type="button"
+                  onClick={() => addToCart(p.id)}
+                  className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#EF4444] px-3 py-2.5 text-sm font-black text-white hover:bg-[#DC2626] transition-colors shadow-md shadow-red-500/20 active:scale-[0.99]"
+                >
+                  <ShoppingCart className="h-3.5 w-3.5" /> Add to Cart
+                </button>
+                {href && (
+                  <Link
+                    href={href}
+                    className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-[#E2E8F0] bg-white px-3 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 hover:text-[#EF4444] hover:border-[#EF4444] transition-colors active:scale-[0.99]"
+                  >
+                    <Eye className="h-3.5 w-3.5" /> View Product
+                  </Link>
+                )}
+              </div>
+            </div>
+          )
+        })}
+      </div>
+      {campaignSettings?.paginationDots && campaignProducts.length > 1 && (
+        <div className="mt-4 flex items-center justify-center gap-1.5">
+          {[...Array(pageCount)].map((_, i) => (
+            <button
+              key={i}
+              type="button"
+              onClick={() => {
+                const el = carouselRef.current
+                if (el) el.scrollTo({ left: el.clientWidth * i, behavior: "smooth" })
+              }}
+              className={`w-2 h-2 rounded-full transition-colors ${
+                activeDot === i ? "bg-[#EF4444]" : "bg-slate-300"
+              }`}
+              aria-label={`Slide ${i + 1}`}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+interface DbProductRow {
+  id: string
+  product_name: string
+  product_image_url: string | null
+  original_price: number | null
+  sale_price: number | null
+  stock: number | null
+}
+
+function badgeFor(cp: SeasonalProduct) {
+  const custom = (cp.badgeText || "").trim()
+  return custom || cp.badge || "SPECIAL OFFER"
 }
 
 export function SeasonalSalesSection() {
@@ -243,14 +440,14 @@ export function SeasonalSalesSection() {
     setImpressionLogged(true)
   }, [campaign, impressionLogged])
 
-  const sectionVisibility = campaign?.settings?.sectionVisibility ?? true
-
-  if (!loaded || !sectionVisibility) return null
+  if (!loaded) return null
   if (!campaign || expired || campaign.products.length === 0) return null
 
+  const sectionVisibility = Boolean(campaign.settings?.sectionVisibility) ?? true
+  if (!sectionVisibility) return null
+
   const byId = new Map(products.map((p) => [p.id, p]))
-  const displayLimit = Number(campaign.settings?.displayLimit ?? campaign.displayLimit ?? 5)
-  const badgeStyle = String(campaign.settings?.badgeStyle ?? "pill")
+  const displayLimit = Number(campaign.settings?.displayLimit ?? campaign.displayLimit ?? 8)
   const accent = campaign.accentColor || "#EF4444"
 
   const campaignProducts = campaign.products
@@ -261,254 +458,100 @@ export function SeasonalSalesSection() {
   const formatPrice = (usd: number | null | undefined) =>
     formatMarketPrice(usd, ngnRate, currency)
 
-  const badgeFor = (cp: SeasonalProduct) => {
-    const custom = (cp.badgeText || "").trim()
-    return custom || cp.badge || "SPECIAL OFFER"
-  }
-
-  const trackClick = (productId: string, event: "click" | "addToCart") => {
-    void fetch("/api/marketplace/seasonal-sales/analytics", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action: event, campaignId: campaign.id, productId }),
-      keepalive: true,
-    }).catch(() => {})
-  }
-
-  const addToCart = (productId: string) => {
-    addLine(productId, 1)
-    openCartPopup(productId)
-    trackClick(productId, "addToCart")
-  }
-
   const pageCount = Math.max(1, Math.ceil(campaignProducts.length / 1))
   const activeDot = Math.min(pageCount - 1, Math.floor(scrollPos / 300))
+  const hasBanner = Boolean(campaign.bannerImage?.trim())
 
   return (
     <section aria-label="Seasonal Sales" className="w-full bg-white py-10 sm:py-14 lg:py-16 overflow-x-clip">
       <div className="mx-auto w-full max-w-[1440px] px-3 sm:px-6 lg:px-10">
-        {/* Hero banner band — full width, landscape */}
-        <div className="relative rounded-2xl border border-[#E2E8F0] bg-[#F8FAFC] shadow-sm overflow-hidden mb-8 sm:mb-10 lg:mb-12">
-          <div className="grid gap-6 sm:gap-8 lg:gap-12 items-start lg:items-center px-4 sm:px-6 lg:px-8 py-6 sm:py-8 lg:py-10">
-            {/* Left: Promotional copy */}
-            <div className="flex-none lg:w-[44%] flex flex-col gap-3">
-              <div className="inline-flex items-center gap-2 rounded-full bg-[#EF4444] px-3 py-1 text-[11px] font-black uppercase tracking-wider text-white shadow-md shadow-red-500/25">
-                <Clock className="h-3.5 w-3.5" /> {campaign.name || "SEASONAL SALE"}
-              </div>
-              <h2 className="mt-0 mb-2 text-3xl sm:text-4xl lg:text-5xl font-black tracking-tight text-[#0F172A] leading-[1.05]">
+        {/* Promotional header band */}
+        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-8 sm:mb-10 lg:mb-12">
+          <div className="flex flex-col gap-2">
+            <div className="inline-flex items-center gap-2 rounded-full bg-[#EF4444] px-3 py-1 text-[11px] font-black uppercase tracking-wider text-white shadow-md shadow-red-500/25">
+              <Clock className="h-3.5 w-3.5" /> {campaign.name || "SEASONAL SALE"}
+            </div>
+            <div className="flex flex-col gap-1">
+              <h2 className="mt-0 mb-1 text-3xl sm:text-4xl lg:text-5xl font-black tracking-tight text-[#0F172A] leading-[1.05]">
                 {campaign.heading || "Special Deals."}
               </h2>
               <p className="mt-0 mb-3 text-lg font-semibold text-slate-600 sm:text-xl">
                 {campaign.subtitle || "Limited Time."}
               </p>
-              {campaign.description && (
-                <p className="text-sm sm:text-base text-slate-500 leading-relaxed">
-                  {campaign.description}
-                </p>
-              )}
-              {campaign.countdownEnabled && !expired && (
-                <div className="mt-4 mb-4 flex flex-wrap items-center gap-3">
-                  {[
-                    { v: countdown.days, l: "Days" },
-                    { v: countdown.hrs, l: "Hrs" },
-                    { v: countdown.mins, l: "Min" },
-                    { v: countdown.secs, l: "Sec" },
-                  ].map((x) => (
-                    <div
-                      key={x.l}
-                      className="flex flex-col items-center gap-0.5 rounded-xl bg-white px-3 py-2 text-center border border-[#E2E8F0] shadow-sm"
-                    >
-                      <span className="text-2xl font-black tabular-nums text-[#0F172A]">
-                        {String(x.v).padStart(2, "0")}
-                      </span>
-                      <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                        {x.l}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              )}
-              <Link
-                href={campaign.ctaLink || "/marketplace/deals"}
-                className="mt-2 inline-flex items-center justify-center gap-2 rounded-full bg-[#0F172A] px-8 py-3 text-sm font-black text-white hover:bg-slate-800 transition-colors shadow-lg shadow-black/15"
-              >
-                {campaign.ctaText || "Shop the Sale"} <ArrowRight className="h-4 w-4" />
-              </Link>
             </div>
-            {/* Right: Banner image */}
-            <div className="flex-none lg:w-[56%]">
-              {campaign.bannerImage ? (
-                <div className="relative h-[200px] sm:h-[260px] lg:h-[320px] w-full overflow-hidden rounded-xl border border-[#E2E8F0] shadow-sm">
+          </div>
+          {campaign.description && (
+            <p className="text-sm sm:text-base text-slate-500 leading-relaxed max-w-md">
+              {campaign.description}
+            </p>
+          )}
+          <Link
+            href={campaign.ctaLink || "/marketplace/deals"}
+            className="inline-flex items-center justify-center gap-2 rounded-full bg-[#0F172A] px-8 py-3 text-sm font-black text-white hover:bg-slate-800 transition-colors shadow-lg shadow-black/15"
+          >
+            {campaign.ctaText || "Shop the Sale"} <ArrowRight className="h-4 w-4" />
+          </Link>
+        </div>
+
+        {hasBanner ? (
+          <>
+            <div className="grid gap-8 sm:gap-10 lg:gap-16 items-start lg:items-center">
+              <div className="flex-none lg:w-[44%]">
+                <div className="relative h-[200px] sm:h-[280px] lg:h-[360px] w-full overflow-hidden rounded-2xl border border-[#E2E8F0] shadow-sm">
                   <img
-                    src={marketImage(campaign.bannerImage)}
+                    src={marketImage(campaign.bannerImage!)}
                     alt={campaign.heading}
                     loading="lazy"
                     decoding="async"
                     className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
                   />
                 </div>
-              ) : (
-                <div className="h-[200px] sm:h-[260px] lg:h-[320px] w-full rounded-xl border border-[#E2E8F0] bg-[#E2E8F0] flex items-center justify-center text-slate-300">
-                  <RefreshCcw className="h-10 w-10" />
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-
-        {/* Landscape product carousel */}
-        <div className="relative">
-          {campaignProducts.length > 1 && (
-            <>
-              <button
-                onClick={() => {
-                  const el = carouselRef.current
-                  if (el) el.scrollBy({ left: -340, behavior: "smooth" })
-                }}
-                className="absolute left-0 top-1/2 -translate-y-1/2 z-20 flex items-center gap-2 px-4 py-8 bg-gradient-to-r from-white/90 via-transparent"
-                aria-label="Scroll left"
-                disabled={scrollPos <= 0}
-              >
-                <ChevronLeft className="h-5 w-5" />
-              </button>
-              <button
-                onClick={() => {
-                  const el = carouselRef.current
-                  if (el) el.scrollBy({ left: 340, behavior: "smooth" })
-                }}
-                className="absolute right-0 top-1/2 -translate-y-1/2 z-20 flex items-center gap-2 px-4 py-8 bg-gradient-to-l from-white/90 via-transparent"
-                aria-label="Scroll right"
-              >
-                <ChevronRight className="h-5 w-5" />
-              </button>
-            </>
-          )}
-          <div
-            ref={carouselRef}
-            className="seasonal-carousel flex min-w-0 flex-1 gap-5 overflow-x-auto snap-x pb-6 scroll-smooth"
-            style={{ scrollbarWidth: "none" }}
-            onScroll={(e) => setScrollPos((e.currentTarget as HTMLDivElement).scrollLeft)}
-          >
-            {campaignProducts.map((cp) => {
-              const p = byId.get(cp.productId)
-              if (!p) return null
-              const st = reviews[p.id]
-              const rating = st && st.n > 0 ? st.sum / st.n : 0
-              const reviewCount = st?.n ?? 0
-              const sale = Number(cp.promotionalPrice ?? p.sale_price ?? p.original_price ?? 0)
-              const orig = Number(p.original_price ?? 0)
-              const showStrike = orig > sale && orig > 0
-              const href = /^[0-9a-f-]{36}$/i.test(p.id) ? `/marketplace/product/${p.id}` : undefined
-              return (
-                <div key={p.id} className="shrink-0 w-[300px] flex flex-col">
-                  <div className="relative aspect-video w-full overflow-hidden rounded-2xl bg-[#F8FAFC] border border-[#E2E8F0] shadow-sm group">
-                    {p.product_image_url ? (
-                      <img
-                        src={marketImage(p.product_image_url)}
-                        alt={p.product_name}
-                        loading="lazy"
-                        decoding="async"
-                        className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
-                      />
-                    ) : (
-                      <div className="h-full w-full flex items-center justify-center text-slate-200">
-                        <RefreshCcw className="h-10 w-10" />
-                      </div>
-                    )}
-                    <span
-                      className="absolute left-2 top-2 z-10 inline-flex items-center gap-1 rounded-md bg-[#EF4444] px-2 py-1 text-[10px] font-black text-white shadow-sm tracking-wider uppercase"
-                      style={{ backgroundColor: cp.badgeColor || accent }}
-                    >
-                      {badgeFor(cp)}
-                    </span>
-                  </div>
-                  <div className="mt-3 flex flex-col gap-1 px-0">
-                    <Link
-                      href={href || "/marketplace"}
-                      aria-label={p.product_name}
-                      className="block line-clamp-2 text-[13px] font-semibold leading-tight text-[#0F172A] transition-colors hover:text-[#EF4444]"
-                      onClick={() => trackClick(p.id, "click")}
-                    >
-                      {cleanProductTitle(p.product_name)}
-                    </Link>
-                    {rating > 0 && (
-                      <div className="mt-1 flex items-center gap-1">
-                        <Star className="h-3.5 w-3.5 fill-[#F59E0B] text-[#F59E0B]" />
-                        <span className="text-[11px] font-medium text-slate-600">
-                          {rating.toFixed(1)}
-                        </span>
-                        {reviewCount > 0 && (
-                          <span className="text-[11px] text-slate-400">({reviewCount})</span>
-                        )}
-                      </div>
-                    )}
-                    <div className="mt-1.5 flex items-baseline gap-1.5">
-                      {showStrike && (
-                        <MarketPrice
-                          usd={orig}
-                          className="text-[11px] tabular-nums text-slate-400 line-through"
-                        />
-                      )}
-                      <span className="text-[17px] font-black tabular-nums" style={{ color: String(campaign.settings?.priceColor ?? accent) }}>
-                        {formatPrice(sale)}
-                      </span>
-                      {currency === "NGN" && (
-                        <span className="text-[11px] text-slate-500 ml-1">
-                          ≈ ₦{Math.max(1, Math.round(sale * ngnRate)).toLocaleString()}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                  <div className="mt-3 flex flex-col gap-2 px-0">
-                    <button
-                      type="button"
-                      onClick={() => addToCart(p.id)}
-                      className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#EF4444] px-3 py-2.5 text-sm font-black text-white hover:bg-[#DC2626] transition-colors shadow-md shadow-red-500/20 active:scale-[0.99]"
-                    >
-                      <ShoppingCart className="h-3.5 w-3.5" /> Add to Cart
-                    </button>
-                    {href && (
-                      <Link
-                        href={href}
-                        className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-[#E2E8F0] bg-white px-3 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 hover:text-[#EF4444] hover:border-[#EF4444] transition-colors active:scale-[0.99]"
-                      >
-                        <Eye className="h-3.5 w-3.5" /> View Product
-                      </Link>
-                    )}
-                  </div>
-                </div>
-              )
-            })}
-          </div>
-          {Boolean(campaign.settings?.paginationDots) && campaignProducts.length > 1 && (
-            <div className="mt-4 flex items-center justify-center gap-1.5">
-              {[...Array(pageCount)].map((_, i) => (
-                <button
-                  key={i}
-                  type="button"
-                  onClick={() => {
-                    const el = carouselRef.current
-                    if (el) el.scrollTo({ left: el.clientWidth * i, behavior: "smooth" })
-                  }}
-                  className={`w-2 h-2 rounded-full transition-colors ${
-                    activeDot === i ? "bg-[#EF4444]" : "bg-slate-300"
-                  }`}
-                  aria-label={`Slide ${i + 1}`}
+              </div>
+              <div className="flex-1 min-w-0 relative">
+                <CarouselProducts
+                  campaignProducts={campaignProducts}
+                  byId={byId}
+                  reviews={reviews}
+                  formatPrice={formatPrice}
+                  accent={accent}
+                  campaignSettings={campaign.settings}
+                  carouselRef={carouselRef}
+                  scrollPos={scrollPos}
+                  setScrollPos={setScrollPos}
+                  pageCount={pageCount}
+                  activeDot={activeDot}
+                  trackClick={trackClick}
+                  addToCart={addToCart}
+                  currency={currency}
+                  ngnRate={ngnRate}
                 />
-              ))}
+              </div>
             </div>
-          )}
-        </div>
+          </>
+        ) : (
+          <>
+            <div className="relative">
+              <CarouselProducts
+                campaignProducts={campaignProducts}
+                byId={byId}
+                reviews={reviews}
+                formatPrice={formatPrice}
+                accent={accent}
+                campaignSettings={campaign.settings}
+                carouselRef={carouselRef}
+                scrollPos={scrollPos}
+                setScrollPos={setScrollPos}
+                pageCount={pageCount}
+                activeDot={activeDot}
+                trackClick={trackClick}
+                addToCart={addToCart}
+                currency={currency}
+                ngnRate={ngnRate}
+              />
+            </div>
+          </>
+        )}
       </div>
     </section>
   )
-}
-
-interface DbProductRow {
-  id: string
-  product_name: string
-  product_image_url: string | null
-  original_price: number | null
-  sale_price: number | null
-  stock: number | null
 }

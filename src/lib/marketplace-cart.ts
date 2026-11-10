@@ -28,8 +28,11 @@ const KEY = "tp_market_cart_v1"
 // "Minified React error #185 / Maximum update depth exceeded" (infinite
 // re-render loop) on every store page as soon as any state update (product
 // load, countdown tick) triggered a re-render. Cache keyed on the raw
-// localStorage string: identical storage → identical array reference.
-let snapshotCache: { raw: string | null; lines: CartLine[] } | null = null
+// localStorage string plus a mutation version: identical storage + version
+// → identical array reference; any write bumps the version so React always
+// detects a cart change (fixes badge not dropping to zero when emptied).
+let snapshotCache: { raw: string | null; version: number; lines: CartLine[] } | null = null
+let cartVersion = 0
 
 function normalizeVariant(v: unknown): CartVariant | null {
   if (!v || typeof v !== "object") return null
@@ -70,9 +73,9 @@ function read(): CartLine[] {
   } catch {
     return snapshotCache?.lines ?? []
   }
-  if (snapshotCache && snapshotCache.raw === raw) return snapshotCache.lines
+  if (snapshotCache && snapshotCache.raw === raw && snapshotCache.version === cartVersion) return snapshotCache.lines
   const lines = parseLines(raw)
-  snapshotCache = { raw, lines }
+  snapshotCache = { raw, version: cartVersion, lines }
   return lines
 }
 
@@ -88,6 +91,8 @@ function write(lines: CartLine[]) {
   } catch {
     // storage full/blocked — cart just won't persist
   }
+  cartVersion++
+  snapshotCache = { raw: JSON.stringify(lines), version: cartVersion, lines }
   emit()
 }
 
