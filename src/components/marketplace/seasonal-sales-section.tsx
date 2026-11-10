@@ -346,25 +346,23 @@ export function SeasonalSalesSection() {
     return secondsLeft(campaign.endAt)
   }, [campaign])
 
-  const expired = useMemo(() => !campaign || remaining <= 0, [campaign, remaining])
+  // Tick the countdown every second so the live timer keeps updating.
+  const [tick, setTick] = useState(0)
+  useEffect(() => {
+    if (!campaign || !campaign.countdownEnabled || !campaign.endAt) return
+    const t = setInterval(() => setTick((n) => n + 1), 1000)
+    return () => clearInterval(t)
+  }, [campaign])
 
-  const countdown = useMemo(() => splitCountdown(remaining), [remaining])
+  const expired = useMemo(() => {
+    if (!campaign || !campaign.endAt) return false
+    return secondsLeft(campaign.endAt) <= 0
+  }, [campaign, tick])
 
-  const trackClick = (productId: string, event: "click" | "addToCart") => {
-    if (!campaign) return
-    void fetch("/api/marketplace/seasonal-sales/analytics", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action: event, campaignId: campaign.id, productId }),
-      keepalive: true,
-    }).catch(() => {})
-  }
-
-  const addToCart = (productId: string) => {
-    addLine(productId, 1)
-    openCartPopup(productId)
-    trackClick(productId, "addToCart")
-  }
+  const countdown = useMemo(() => {
+    if (!campaign || !campaign.endAt) return splitCountdown(0)
+    return splitCountdown(Math.max(0, secondsLeft(campaign.endAt)))
+  }, [campaign, tick])
 
   useEffect(() => {
     const load = async () => {
@@ -476,6 +474,22 @@ export function SeasonalSalesSection() {
   const activeDot = Math.min(pageCount - 1, Math.floor(scrollPos / 300))
   const hasBanner = Boolean(campaign.bannerImage?.trim())
 
+  const trackClick = (productId: string, event: "click" | "addToCart") => {
+    if (!campaign) return
+    void fetch("/api/marketplace/seasonal-sales/analytics", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: event, campaignId: campaign.id, productId }),
+      keepalive: true,
+    }).catch(() => {})
+  }
+
+  const addToCart = (productId: string) => {
+    addLine(productId, 1)
+    openCartPopup(productId)
+    trackClick(productId, "addToCart")
+  }
+
   return (
     <section aria-label="Seasonal Sales" className="w-full bg-white py-10 sm:py-14 lg:py-16 overflow-x-clip">
       <div className="mx-auto w-full max-w-[1440px] px-3 sm:px-6 lg:px-10">
@@ -494,6 +508,28 @@ export function SeasonalSalesSection() {
               </p>
             </div>
           </div>
+          {campaign.countdownEnabled && !expired && (
+            <div className="flex flex-wrap items-center gap-3">
+              {[
+                { v: countdown.days, l: "Days" },
+                { v: countdown.hrs, l: "Hrs" },
+                { v: countdown.mins, l: "Min" },
+                { v: countdown.secs, l: "Sec" },
+              ].map((x) => (
+                <div
+                  key={x.l}
+                  className="flex flex-col items-center gap-0.5 rounded-xl bg-white px-3 py-2 text-center border border-[#E2E8F0] shadow-sm"
+                >
+                  <span className="text-2xl font-black tabular-nums text-[#0F172A]">
+                    {String(x.v).padStart(2, "0")}
+                  </span>
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                    {x.l}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
           {campaign.description && (
             <p className="text-sm sm:text-base text-slate-500 leading-relaxed max-w-md">
               {campaign.description}
@@ -509,6 +545,7 @@ export function SeasonalSalesSection() {
 
         {hasBanner ? (
           <>
+            {/* Banner on LEFT, products on RIGHT — side by side */}
             <div className="grid gap-8 sm:gap-10 lg:gap-16 items-start lg:items-center">
               <div className="flex-none lg:w-[44%]">
                 <div className="relative h-[200px] sm:h-[280px] lg:h-[360px] w-full overflow-hidden rounded-2xl border border-[#E2E8F0] shadow-sm">
@@ -544,6 +581,7 @@ export function SeasonalSalesSection() {
           </>
         ) : (
           <>
+            {/* No banner: products take full width */}
             <div className="relative">
               <CarouselProducts
                 campaignProducts={campaignProducts}
