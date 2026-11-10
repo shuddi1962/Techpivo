@@ -269,12 +269,14 @@ const [currencyOpen, setCurrencyOpen] = useState(false)
   // read; promo switch hides promo surfaces publicly, default ON).
   const [promoBanners, setPromoBanners] = useState<MarketBanners | null>(null)
   const promoOn = promoBanners?.promo_enabled !== false
-  // Mega menu colours — TechPivo Market palette: blue = main, orange = accent.
-  // Restored to the original navy-blue menu background (#1453D6); orange stays
-  // reserved for sale/flash accents. Site-settings colour overrides are ignored
-  // here so the menu stays on-brand blue regardless of saved banner values.
-  const menuBg = "#1453D6"
-  const menuText = "#ffffff"
+  // Mega menu colours — driven by Admin → Marketplace → Banners ("Mega menu
+  // colours"). menu_bg colours the nav bar trigger + mega panel border /
+  // active row; menu_text colours nav links / buttons. Falls back to the
+  // kit defaults (#1453D6 / #ffffff) when unset. Saved values reflect on the
+  // storefront instantly because promoBanners refetches on focus / storage.
+  const menuBg = (promoBanners?.menu_bg || "#1453D6")
+  const menuText = (promoBanners?.menu_text || "#ffffff")
+  const menuBgHover = menuBg === "#1453D6" ? "#0B3A9A" : menuBg
   useEffect(() => {
     setLiveWish(readWishCount())
     setCurrency(readCurrency())
@@ -594,20 +596,42 @@ const [currencyOpen, setCurrencyOpen] = useState(false)
                   setDeptOpen(!deptOpen);
                 }}
                 onMouseEnter={() => setDeptOpen(true)}
-                className="mega-btn text-white h-10 px-4 flex items-center gap-2 font-semibold text-sm cursor-pointer bg-[#FF6B00] rounded-xl"
+                className={
+                  "mega-btn h-10 px-4 flex items-center gap-2 font-semibold text-sm cursor-pointer rounded-xl transition-colors" +
+                  (menuBg === "#1453D6"
+                    ? " text-white bg-[#FF6B00] hover:bg-[#e86000]"
+                    : " text-[" + menuText + "] bg-[" + menuBg + "] hover:bg-[" + menuBgHover + "]")
+                }
               >
-              <LayoutGrid className="h-4 w-4 text-white" />
-              <span>All Departments</span>
-              <ChevronDown className={`h-4 w-4 transition-transform ${deptOpen ? "rotate-180" : ""} text-white`} />
-            </button>
+                <LayoutGrid
+                  className={
+                    "h-4 w-4" +
+                    (menuBg === "#1453D6" ? " text-white" : " text-[" + menuText + "]")
+                  }
+                />
+                <span
+                  className={
+                    menuBg === "#1453D6" ? "text-white" : "text-[" + menuText + "]"
+                  }
+                >
+                  All Departments
+                </span>
+                <ChevronDown
+                  className={
+                    "h-4 w-4 transition-transform" +
+                    (deptOpen ? " rotate-180" : "") +
+                    (menuBg === "#1453D6" ? " text-white" : " text-[" + menuText + "]")
+                  }
+                />
+              </button>
         {deptOpen && (
           <div
-            className="absolute top-full left-0 border-t-2 border-[#FF6B00] rounded-b-2xl shadow-2xl z-50 flex animate-slide-down"
+            className="absolute top-full left-0 border-t-2 rounded-b-2xl shadow-2xl z-50 flex animate-slide-down"
             onMouseEnter={() => {
               setDeptOpen(true)
               if (!openDept && firstDeptSlug) setOpenDept(firstDeptSlug)
             }}
-            style={{ width: "1120px", borderTopColor: "#FF6B00" }}
+            style={{ width: "1120px", borderTopColor: menuBg }}
           >
             <div className="w-full max-w-[calc(100vw-2rem)]">
               <div className="border border-t-0 border-[#E2E8F0] bg-white p-6 lg:p-8 max-h-[86vh] overflow-y-auto">
@@ -616,13 +640,21 @@ const [currencyOpen, setCurrencyOpen] = useState(false)
                   <div className="w-[280px] border-r border-[#E2E8F0] flex flex-col shrink-0">
                     <div className="flex items-center justify-between px-4 py-3 border-b border-[#E2E8F0]">
                       <div className="flex items-center gap-2">
-                        <LayoutGrid className="h-4 w-4 text-[#FF6B00]" />
+                        <LayoutGrid
+                          className={
+                            "h-4 w-4" +
+                            (menuBg === "#1453D6" ? " text-[#FF6B00]" : " text-[" + menuText + "]")
+                          }
+                        />
                         <span className="text-xs font-bold uppercase tracking-wider text-slate-500">All Departments</span>
                       </div>
                       <button
                         type="button"
                         onClick={toggleSeeMore}
-                        className="text-xs font-medium text-[#FF6B00] underline-offset-4 hover:underline"
+                        className={
+                          "text-xs font-medium underline-offset-4 hover:underline" +
+                          (menuBg === "#1453D6" ? " text-[#FF6B00]" : " text-[" + menuText + "]")
+                        }
                       >
                         {seeMore ? "See Less" : "See More"}
                       </button>
@@ -635,18 +667,28 @@ const [currencyOpen, setCurrencyOpen] = useState(false)
                             <div
                               key={d.slug}
                               onMouseEnter={() => { setDeptOpen(true); setOpenDept(d.slug) }}
-                            className={`flex items-center gap-3 px-4 py-2.5 cursor-pointer transition-all duration-150 ${
-                              isActive
-                                ? `text-white bg-[#FF6B00] border border-[#FF6B00]/50 rounded-xl`
-                              : `text-slate-700 border border-transparent rounded-xl`}
-                          `}>
+                            className={
+                              "flex items-center gap-3 px-4 py-2.5 cursor-pointer transition-all duration-150" +
+                              (isActive
+                                ? " text-[" + menuText + "] bg-[" + menuBg + "] border border-[" + menuBg + "]/50 rounded-xl"
+                                : " text-slate-700 border border-transparent rounded-xl")
+                            }
+                          >
                               {Icon ? (
-                                <span className="flex items-center gap-2 px-1" style={{ color: isActive ? "#FF3B30" : "#94a3b8" }}>
-                                  <Icon size={13} className={isActive ? `text-[#FF6B00]` : "text-slate-400"} />
+                                <span className="flex items-center gap-2 px-1" style={{ color: isActive ? menuBg : "#94a3b8" }}>
+                                  <Icon
+                                    size={13}
+                                    className={
+                                      isActive ? "text-[" + menuBg + "]" : "text-slate-400"
+                                    }
+                                  />
                                 </span>
                               ) : null}
                               <span className="text-sm font-semibold truncate leading-none">{d.name}</span>
-                              <ChevronRight size={10} className={isActive ? `text-[#FF6B00]` : "text-slate-400"} />
+                              <ChevronRight
+                                size={10}
+                                className={isActive ? "text-[" + menuBg + "]" : "text-slate-400"}
+                              />
                             </div>
                           )
                       })}
@@ -796,11 +838,23 @@ const [currencyOpen, setCurrencyOpen] = useState(false)
             aria-label="Marketplace mobile"
           >
             <div className="flex items-center justify-between px-4 py-3 border-b border-[#E2E8F0]">
-              <span className="text-sm font-bold text-[#1453D6]">Menu</span>
+              <span
+                className={
+                  "text-sm font-bold" +
+                  (menuBg === "#1453D6" ? " text-[#1453D6]" : " text-[" + menuBg + "]")
+                }
+              >
+                Menu
+              </span>
               <button
                 type="button"
                 onClick={() => setOpen(false)}
-                className="p-2 rounded-lg border border-[#1453D6]/20 text-[#1453D6] bg-[#EFF6FF]/40"
+                className={
+                  "p-2 rounded-lg border" +
+                  (menuBg === "#1453D6"
+                    ? " border-[#1453D6]/20 text-[#1453D6] bg-[#EFF6FF]/40"
+                    : " border-[" + menuBg + "]/20 text-[" + menuBg + "] bg-[" + menuBg + "]/10")
+                }
                 aria-label="Close menu"
               >
                 <X className="h-5 w-5" />
@@ -815,7 +869,12 @@ const [currencyOpen, setCurrencyOpen] = useState(false)
                     target="_blank"
                     rel="noopener"
                     onClick={() => setOpen(false)}
-                    className="px-3 py-2.5 rounded-lg text-sm font-medium text-slate-700 hover:bg-[#EFF6FF] hover:text-[#1453D6] transition-colors"
+                    className={
+                      "px-3 py-2.5 rounded-lg text-sm font-medium text-slate-700 transition-colors" +
+                      (menuBg === "#1453D6"
+                        ? " hover:bg-[#EFF6FF] hover:text-[#1453D6]"
+                        : " hover:bg-[" + menuBg + "]/10 hover:text-[" + menuBg + "]")
+                    }
                   >
                     {item.label}
                   </a>
@@ -824,7 +883,12 @@ const [currencyOpen, setCurrencyOpen] = useState(false)
                     key={item.label}
                     href={item.href}
                     onClick={() => setOpen(false)}
-                    className="px-3 py-2.5 rounded-lg text-sm font-medium text-slate-700 hover:bg-[#EFF6FF] hover:text-[#1453D6] transition-colors"
+                    className={
+                      "px-3 py-2.5 rounded-lg text-sm font-medium text-slate-700 transition-colors" +
+                      (menuBg === "#1453D6"
+                        ? " hover:bg-[#EFF6FF] hover:text-[#1453D6]"
+                        : " hover:bg-[" + menuBg + "]/10 hover:text-[" + menuBg + "]")
+                    }
                   >
                     {item.label}
                   </Link>
@@ -841,7 +905,12 @@ const [currencyOpen, setCurrencyOpen] = useState(false)
                       type="button"
                       onClick={() => setMobileExpanded(expanded ? "" : d.slug)}
                       aria-expanded={expanded}
-                      className="w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm font-semibold text-[#1453D6] hover:bg-[#1453D6]/10 hover:text-[#0B3A9A] text-left transition-colors"
+                      className={
+                        "w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm font-semibold text-left transition-colors" +
+                        (menuBg === "#1453D6"
+                          ? " text-[#1453D6] hover:bg-[#1453D6]/10 hover:text-[#0B3A9A]"
+                          : " text-[" + menuBg + "] hover:bg-[" + menuBg + "]/10 hover:text-[" + menuBgHover + "]")
+                      }
                     >
                       {d.name}
                       <ChevronDown
@@ -853,7 +922,12 @@ const [currencyOpen, setCurrencyOpen] = useState(false)
                         <Link
                           href={`/marketplace/category/${d.slug}`}
                           onClick={() => setOpen(false)}
-                          className="block px-3 py-1.5 rounded-lg text-xs font-semibold text-[#1453D6] hover:bg-[#1453D6]/10 hover:text-[#0B3A9A] text-left transition-colors"
+                          className={
+                            "block px-3 py-1.5 rounded-lg text-xs font-semibold text-left transition-colors" +
+                            (menuBg === "#1453D6"
+                              ? " text-[#1453D6] hover:bg-[#1453D6]/10 hover:text-[#0B3A9A]"
+                              : " text-[" + menuBg + "] hover:bg-[" + menuBg + "]/10 hover:text-[" + menuBgHover + "]")
+                          }
                         >
                           All {d.name}
                         </Link>
