@@ -91,14 +91,14 @@ const EMPTY_CAMPAIGN: SeasonalCampaign = {
     priceColor: "#EF4444",
     countdownAppearance: "boxes",
     carouselArrows: true,
-    paginationDots: true,
+    paginationDots: false,
     autoRotation: false,
     transitionSpeed: 4,
-    visibleProducts: 8,
+    visibleProducts: 5,
     mobileProductsPerView: 2,
   },
   maxProducts: 20,
-  displayLimit: 8,
+  displayLimit: 5,
 }
 
 function splitCountdown(seconds: number) {
@@ -124,8 +124,6 @@ interface CarouselProductsProps {
   carouselRef: React.RefObject<HTMLDivElement>
   scrollPos: number
   setScrollPos: (v: number) => void
-  pageCount: number
-  activeDot: number
   trackClick: (productId: string, event: "click" | "addToCart") => void
   addToCart: (productId: string) => void
   currency: string
@@ -156,8 +154,6 @@ function CarouselProducts({
   carouselRef,
   scrollPos,
   setScrollPos,
-  pageCount,
-  activeDot,
   trackClick,
   addToCart,
   currency,
@@ -192,7 +188,7 @@ function CarouselProducts({
       )}
       <div
         ref={carouselRef}
-        className="seasonal-carousel flex min-w-0 flex-1 gap-5 overflow-x-auto snap-x pb-6 scroll-smooth"
+        className="seasonal-carousel flex min-w-0 flex-1 gap-5 items-stretch overflow-x-auto snap-x pb-6 scroll-smooth"
         style={{ scrollbarWidth: "none" }}
         onScroll={(e) => setScrollPos((e.currentTarget as HTMLDivElement).scrollLeft)}
       >
@@ -207,15 +203,15 @@ function CarouselProducts({
           const showStrike = orig > sale && orig > 0
           const href = /^[0-9a-f-]{36}$/i.test(p.id) ? `/marketplace/product/${p.id}` : undefined
           return (
-            <div key={p.id} className="shrink-0 w-[210px] sm:w-[240px] flex flex-col group">
-              <div className="relative aspect-square w-full overflow-hidden rounded-2xl bg-[#F8FAFC] border border-[#E2E8F0] shadow-sm group-hover:shadow-[0_20px_40px_-12px_rgba(239,68,68,0.15)] transition-all duration-300">
+            <div key={p.id} className="shrink-0 w-[200px] sm:w-[220px] flex flex-col h-full group">
+              <div className="relative aspect-square w-full overflow-hidden rounded-2xl bg-[#F8FAFC] border border-[#E2E8F0] shadow-sm group">
                 {p.product_image_url ? (
                   <img
                     src={marketImage(p.product_image_url)}
                     alt={p.product_name}
                     loading="lazy"
                     decoding="async"
-                    className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+                    className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
                   />
                 ) : (
                   <div className="h-full w-full flex items-center justify-center text-slate-200">
@@ -223,63 +219,63 @@ function CarouselProducts({
                   </div>
                 )}
                 <span
-                  className="absolute left-2 top-2 z-10 inline-flex items-center gap-1 rounded-full bg-[#EF4444] px-2.5 py-1 text-[11px] font-black text-white shadow-sm tracking-wider uppercase"
+                  className="absolute left-2 top-2 z-10 inline-flex items-center gap-1 rounded-full bg-[#EF4444] px-2 py-0.5 text-[10px] font-bold text-white shadow-sm tracking-wider uppercase"
                   style={{ backgroundColor: cp.badgeColor || accent }}
                 >
                   {badgeFor(cp)}
                 </span>
               </div>
-              <div className="mt-3 flex flex-col gap-1 px-0">
+              <div className="mt-2.5 flex flex-col gap-1 px-0 h-full">
                 <Link
                   href={href || "/marketplace"}
                   aria-label={p.product_name}
-                  className="block line-clamp-2 text-[13px] font-semibold leading-tight text-[#0F172A] transition-colors hover:text-[#EF4444]"
+                  className="block line-clamp-2 text-[12px] font-semibold leading-tight text-[#0F172A] transition-colors hover:text-[#EF4444]"
                   onClick={() => trackClick(p.id, "click")}
                 >
                   {cleanProductTitle(p.product_name)}
                 </Link>
                 {rating > 0 && (
                   <div className="mt-1 flex items-center gap-1">
-                    <Star className="h-3.5 w-3.5 fill-[#F59E0B] text-[#F59E0B]" />
-                    <span className="text-[11px] font-medium text-slate-600">
+                    <Star className="h-3 w-3 fill-[#F59E0B] text-[#F59E0B]" />
+                    <span className="text-[10px] font-medium text-slate-600">
                       {rating.toFixed(1)}
                     </span>
                     {reviewCount > 0 && (
-                      <span className="text-[11px] text-slate-400">({reviewCount})</span>
+                      <span className="text-[10px] text-slate-400">({reviewCount})</span>
                     )}
                   </div>
                 )}
-                <div className="mt-1.5 flex items-baseline gap-1.5">
+                <div className="mt-1 flex items-baseline gap-1">
                   {showStrike && (
                     <MarketPrice
                       usd={orig}
-                      className="text-[11px] tabular-nums text-slate-400 line-through"
+                      className="text-[10px] tabular-nums text-slate-400 line-through"
                     />
                   )}
-                  <span className="text-[18px] font-black tabular-nums" style={{ color: String(campaignSettings?.priceColor ?? accent) }}>
+                  <span className="text-[16px] font-black tabular-nums" style={{ color: String(campaignSettings?.priceColor ?? accent) }}>
                     {formatPrice(sale)}
                   </span>
                   {currency === "NGN" && (
-                    <span className="text-[11px] text-slate-500 ml-1">
+                    <span className="text-[10px] text-slate-500 ml-1">
                       ≈ ₦{Math.max(1, Math.round(sale * ngnRate)).toLocaleString()}
                     </span>
                   )}
                 </div>
               </div>
-              <div className="mt-3 flex flex-col gap-2 px-0">
+              <div className="mt-2.5 flex flex-col gap-2 px-0">
                 <button
                   type="button"
                   onClick={() => addToCart(p.id)}
-                  className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#EF4444] px-3 py-3 text-sm font-black text-white shadow-md shadow-red-500/25 hover:bg-[#DC2626] hover:shadow-red-500/40 transition-all active:scale-[0.98]"
+                  className="flex w-full items-center justify-center gap-1.5 rounded-xl bg-[#EF4444] px-2.5 py-2 text-xs font-black text-white shadow-sm shadow-red-500/15 hover:bg-[#DC2626] transition-colors active:scale-[0.98]"
                 >
-                  <ShoppingCart className="h-4 w-4" /> Add to Cart
+                  <ShoppingCart className="h-3 w-3" /> Add to Cart
                 </button>
                 {href && (
                   <Link
                     href={href}
-                    className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-[#E2E8F0] bg-white px-3 py-3 text-sm font-semibold text-slate-700 hover:bg-[#F1F5F9] hover:text-[#EF4444] hover:border-[#EF4444] hover:shadow-sm transition-all active:scale-[0.98]"
+                    className="flex w-full items-center justify-center gap-1 rounded-xl border border-[#E2E8F0] bg-white px-2.5 py-2 text-xs font-semibold text-slate-700 hover:bg-[#F8FAFC] hover:text-[#EF4444] hover:border-[#EF4444] transition-colors active:scale-[0.98]"
                   >
-                    <Eye className="h-4 w-4" /> View Product
+                    <Eye className="h-3 w-3" /> View Product
                   </Link>
                 )}
               </div>
@@ -287,24 +283,6 @@ function CarouselProducts({
           )
         })}
       </div>
-      {Boolean(campaignSettings?.paginationDots) && campaignProducts.length > 1 && (
-        <div className="mt-4 flex items-center justify-center gap-1.5">
-          {[...Array(pageCount)].map((_, i) => (
-            <button
-              key={i}
-              type="button"
-              onClick={() => {
-                const el = carouselRef.current
-                if (el) el.scrollTo({ left: el.clientWidth * i, behavior: "smooth" })
-              }}
-              className={`w-2 h-2 rounded-full transition-colors ${
-                activeDot === i ? "bg-[#EF4444]" : "bg-slate-300"
-              }`}
-              aria-label={`Slide ${i + 1}`}
-            />
-          ))}
-        </div>
-      )}
     </div>
   )
 }
@@ -470,9 +448,6 @@ export function SeasonalSalesSection() {
   const formatPrice = (usd: number | null | undefined) =>
     formatMarketPrice(usd, ngnRate, currency)
 
-  const pageCount = Math.max(1, Math.ceil(campaignProducts.length / 1))
-  const activeDot = Math.min(pageCount - 1, Math.floor(scrollPos / 300))
-
   const trackClick = (productId: string, event: "click" | "addToCart") => {
     if (!campaign) return
     void fetch("/api/marketplace/seasonal-sales/analytics", {
@@ -518,7 +493,7 @@ export function SeasonalSalesSection() {
                     key={x.l}
                     className="flex flex-col items-center gap-0.5 rounded-xl bg-[#F8FAFC] px-2 py-1.5 text-center border border-[#E2E8F0] shadow-sm"
                   >
-                    <span className="text-xl font-black tabular-nums text-[#EF4444]">
+                    <span className="text-xl font-black tabular-nums text-[#0F172A]">
                       {String(x.v).padStart(2, "0")}
                     </span>
                     <span className="text-[9px] font-bold uppercase tracking-wider text-slate-400">
@@ -535,9 +510,9 @@ export function SeasonalSalesSection() {
             )}
             <Link
               href={campaign.ctaLink || "/marketplace/deals"}
-              className="inline-flex items-center justify-center gap-2 rounded-2xl bg-[#EF4444] px-9 py-3.5 text-base font-black text-white shadow-lg shadow-red-500/35 hover:bg-[#DC2626] hover:shadow-red-500/50 transition-all active:scale-95"
+              className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#EF4444] px-8 py-3 text-sm font-black text-white shadow-md shadow-red-500/30 hover:bg-[#DC2626] transition-all active:scale-95"
             >
-              {campaign.ctaText || "Shop the Sale"} <ArrowRight className="h-4.5 w-4.5" />
+              {campaign.ctaText || "Shop the Sale"} <ArrowRight className="h-4 w-4" />
             </Link>
           </div>
           <div className="lg:col-span-2 flex-1 min-w-0 relative">
@@ -551,8 +526,6 @@ export function SeasonalSalesSection() {
               carouselRef={carouselRef}
               scrollPos={scrollPos}
               setScrollPos={setScrollPos}
-              pageCount={pageCount}
-              activeDot={activeDot}
               trackClick={trackClick}
               addToCart={addToCart}
               currency={currency}
