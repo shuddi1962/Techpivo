@@ -172,21 +172,21 @@ function CarouselProducts({
               const el = carouselRef.current
               if (el) el.scrollBy({ left: -340, behavior: "smooth" })
             }}
-            className="absolute left-0 top-1/2 -translate-y-1/2 z-20 flex items-center gap-2 px-4 py-8 bg-gradient-to-r from-white/90 via-transparent"
+            className="absolute left-0 top-1/2 -translate-y-1/2 z-30 flex items-center gap-2 px-3 py-6 rounded-r-full bg-white/95 backdrop-blur-md border border-[#E2E8F0] shadow-lg hover:bg-white hover:shadow-xl transition-all"
             aria-label="Scroll left"
             disabled={scrollPos <= 0}
           >
-            <ChevronLeft className="h-5 w-5" />
+            <ChevronLeft className="h-6 w-6 text-[#0F172A]" />
           </button>
           <button
             onClick={() => {
               const el = carouselRef.current
               if (el) el.scrollBy({ left: 340, behavior: "smooth" })
             }}
-            className="absolute right-0 top-1/2 -translate-y-1/2 z-20 flex items-center gap-2 px-4 py-8 bg-gradient-to-l from-white/90 via-transparent"
+            className="absolute right-0 top-1/2 -translate-y-1/2 z-30 flex items-center gap-2 px-3 py-6 rounded-l-full bg-white/95 backdrop-blur-md border border-[#E2E8F0] shadow-lg hover:bg-white hover:shadow-xl transition-all"
             aria-label="Scroll right"
           >
-            <ChevronRight className="h-5 w-5" />
+            <ChevronRight className="h-6 w-6 text-[#0F172A]" />
           </button>
         </>
       )}
@@ -207,8 +207,8 @@ function CarouselProducts({
           const showStrike = orig > sale && orig > 0
           const href = /^[0-9a-f-]{36}$/i.test(p.id) ? `/marketplace/product/${p.id}` : undefined
           return (
-            <div key={p.id} className="shrink-0 w-[300px] flex flex-col">
-              <div className="relative aspect-video w-full overflow-hidden rounded-2xl bg-[#F8FAFC] border border-[#E2E8F0] shadow-sm group">
+            <div key={p.id} className="shrink-0 w-[210px] sm:w-[240px] flex flex-col group">
+              <div className="relative aspect-square w-full overflow-hidden rounded-2xl bg-[#F8FAFC] border border-[#E2E8F0] shadow-sm group-hover:shadow-[0_20px_40px_-12px_rgba(239,68,68,0.15)] transition-all duration-300">
                 {p.product_image_url ? (
                   <img
                     src={marketImage(p.product_image_url)}
@@ -223,7 +223,7 @@ function CarouselProducts({
                   </div>
                 )}
                 <span
-                  className="absolute left-2 top-2 z-10 inline-flex items-center gap-1 rounded-md bg-[#EF4444] px-2 py-1 text-[10px] font-black text-white shadow-sm tracking-wider uppercase"
+                  className="absolute left-2 top-2 z-10 inline-flex items-center gap-1 rounded-full bg-[#EF4444] px-2.5 py-1 text-[11px] font-black text-white shadow-sm tracking-wider uppercase"
                   style={{ backgroundColor: cp.badgeColor || accent }}
                 >
                   {badgeFor(cp)}
@@ -256,7 +256,7 @@ function CarouselProducts({
                       className="text-[11px] tabular-nums text-slate-400 line-through"
                     />
                   )}
-                  <span className="text-[17px] font-black tabular-nums" style={{ color: String(campaignSettings?.priceColor ?? accent) }}>
+                  <span className="text-[18px] font-black tabular-nums" style={{ color: String(campaignSettings?.priceColor ?? accent) }}>
                     {formatPrice(sale)}
                   </span>
                   {currency === "NGN" && (
@@ -270,16 +270,16 @@ function CarouselProducts({
                 <button
                   type="button"
                   onClick={() => addToCart(p.id)}
-                  className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#EF4444] px-3 py-2.5 text-sm font-black text-white hover:bg-[#DC2626] transition-colors shadow-md shadow-red-500/20 active:scale-[0.99]"
+                  className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#EF4444] px-3 py-3 text-sm font-black text-white shadow-md shadow-red-500/25 hover:bg-[#DC2626] hover:shadow-red-500/40 transition-all active:scale-[0.98]"
                 >
-                  <ShoppingCart className="h-3.5 w-3.5" /> Add to Cart
+                  <ShoppingCart className="h-4 w-4" /> Add to Cart
                 </button>
                 {href && (
                   <Link
                     href={href}
-                    className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-[#E2E8F0] bg-white px-3 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 hover:text-[#EF4444] hover:border-[#EF4444] transition-colors active:scale-[0.99]"
+                    className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-[#E2E8F0] bg-white px-3 py-3 text-sm font-semibold text-slate-700 hover:bg-[#F1F5F9] hover:text-[#EF4444] hover:border-[#EF4444] hover:shadow-sm transition-all active:scale-[0.98]"
                   >
-                    <Eye className="h-3.5 w-3.5" /> View Product
+                    <Eye className="h-4 w-4" /> View Product
                   </Link>
                 )}
               </div>
@@ -490,13 +490,13 @@ export function SeasonalSalesSection() {
   }
 
   return (
-    <section aria-label="Seasonal Sales" className="w-full bg-white py-10 sm:py-14 lg:py-16 overflow-x-clip">
+    <section aria-label="Seasonal Sales" className="w-full bg-white py-8 sm:py-12 lg:py-16 overflow-x-clip">
       <div className="mx-auto w-full max-w-[1440px] px-3 sm:px-6 lg:px-10">
         {/* Side-by-side: promotional header on the left, product carousel on the right */}
-        <div className="lg:grid lg:grid-cols-2 lg:gap-12 items-start">
+        <div className="lg:grid lg:grid-cols-3 lg:gap-8 items-start">
           <div className="flex flex-col gap-4 mb-6 lg:mb-0">
-            <div className="inline-flex items-center gap-2 rounded-full bg-[#EF4444] px-3 py-1 text-[11px] font-black uppercase tracking-wider text-white shadow-md shadow-red-500/25">
-              <Clock className="h-3.5 w-3.5" /> {campaign.name || "SEASONAL SALE"}
+            <div className="inline-flex items-center gap-2 rounded-full bg-[#EF4444] px-3.5 py-1.5 text-[12px] font-black uppercase tracking-wider text-white shadow-lg shadow-red-500/30">
+              <Clock className="h-4 w-4" /> {campaign.name || "SEASONAL SALE"}
             </div>
             <div className="flex flex-col gap-1">
               <h2 className="mt-0 mb-1 text-3xl sm:text-4xl lg:text-5xl font-black tracking-tight text-[#0F172A] leading-[1.05]">
@@ -507,7 +507,7 @@ export function SeasonalSalesSection() {
               </p>
             </div>
             {campaign.countdownEnabled && !expired && (
-              <div className="flex flex-wrap items-center gap-3">
+              <div className="flex flex-wrap items-center gap-2 mb-2">
                 {[
                   { v: countdown.days, l: "Days" },
                   { v: countdown.hrs, l: "Hrs" },
@@ -516,12 +516,12 @@ export function SeasonalSalesSection() {
                 ].map((x) => (
                   <div
                     key={x.l}
-                    className="flex flex-col items-center gap-0.5 rounded-xl bg-white px-3 py-2 text-center border border-[#E2E8F0] shadow-sm"
+                    className="flex flex-col items-center gap-0.5 rounded-xl bg-[#F8FAFC] px-2 py-1.5 text-center border border-[#E2E8F0] shadow-sm"
                   >
-                    <span className="text-2xl font-black tabular-nums text-[#0F172A]">
+                    <span className="text-xl font-black tabular-nums text-[#EF4444]">
                       {String(x.v).padStart(2, "0")}
                     </span>
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                    <span className="text-[9px] font-bold uppercase tracking-wider text-slate-400">
                       {x.l}
                     </span>
                   </div>
@@ -535,12 +535,12 @@ export function SeasonalSalesSection() {
             )}
             <Link
               href={campaign.ctaLink || "/marketplace/deals"}
-              className="inline-flex items-center justify-center gap-2 rounded-full bg-[#0F172A] px-8 py-3 text-sm font-black text-white hover:bg-slate-800 transition-colors shadow-lg shadow-black/15"
+              className="inline-flex items-center justify-center gap-2 rounded-2xl bg-[#EF4444] px-9 py-3.5 text-base font-black text-white shadow-lg shadow-red-500/35 hover:bg-[#DC2626] hover:shadow-red-500/50 transition-all active:scale-95"
             >
-              {campaign.ctaText || "Shop the Sale"} <ArrowRight className="h-4 w-4" />
+              {campaign.ctaText || "Shop the Sale"} <ArrowRight className="h-4.5 w-4.5" />
             </Link>
           </div>
-          <div className="flex-1 min-w-0 relative">
+          <div className="lg:col-span-2 flex-1 min-w-0 relative">
             <CarouselProducts
               campaignProducts={campaignProducts}
               byId={byId}
