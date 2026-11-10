@@ -762,12 +762,15 @@ export function MarketplaceHome() {
       .slice(deptRotOffset).concat(departments.slice(0, deptRotOffset))
       .map((dep) => {
         const stock = banners.departments[dep.slug] || dep.image || ""
+        const sideBanner = banners.sidebar_banners?.[dep.slug] || ""
         const pool = pools.get(dep.slug) || []
         return {
           name: dep.name,
           slug: dep.slug,
           href: `/marketplace/category/${dep.slug}`,
           image: claim(pool) || deptCover.get(dep.slug) || stock,
+          sideBanner,
+          sideLink: sideBanner ? linkOf(banners, sideBanner) : "",
           subs: (dep.subs || []).map((s) => ({ name: s.name, slug: s.slug })),
         }
       })
