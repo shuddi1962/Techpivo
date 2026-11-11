@@ -166,23 +166,23 @@ function CarouselProducts({
           <button
             onClick={() => {
               const el = carouselRef.current
-              if (el) el.scrollBy({ left: -340, behavior: "smooth" })
+              if (el) el.scrollBy({ left: -260, behavior: "smooth" })
             }}
-            className="absolute left-0 top-1/2 -translate-y-1/2 z-30 flex items-center gap-2 px-3 py-6 rounded-r-full bg-white/95 backdrop-blur-md border border-[#E2E8F0] shadow-lg hover:bg-white hover:shadow-xl transition-all"
+            className="absolute left-0 top-1/2 -translate-y-1/2 z-30 flex items-center gap-2 px-2 md:px-3 py-3 md:py-6 rounded-r-full bg-white/95 backdrop-blur-md border border-[#E2E8F0] shadow-lg hover:bg-white hover:shadow-xl transition-all"
             aria-label="Scroll left"
             disabled={scrollPos <= 0}
           >
-            <ChevronLeft className="h-6 w-6 text-[#0F172A]" />
+            <ChevronLeft className="h-5 w-5 md:h-6 md:w-6 text-[#0F172A]" />
           </button>
           <button
             onClick={() => {
               const el = carouselRef.current
-              if (el) el.scrollBy({ left: 340, behavior: "smooth" })
+              if (el) el.scrollBy({ left: 260, behavior: "smooth" })
             }}
-            className="absolute right-0 top-1/2 -translate-y-1/2 z-30 flex items-center gap-2 px-3 py-6 rounded-l-full bg-white/95 backdrop-blur-md border border-[#E2E8F0] shadow-lg hover:bg-white hover:shadow-xl transition-all"
+            className="absolute right-0 top-1/2 -translate-y-1/2 z-30 flex items-center gap-2 px-2 md:px-3 py-3 md:py-6 rounded-l-full bg-white/95 backdrop-blur-md border border-[#E2E8F0] shadow-lg hover:bg-white hover:shadow-xl transition-all"
             aria-label="Scroll right"
           >
-            <ChevronRight className="h-6 w-6 text-[#0F172A]" />
+            <ChevronRight className="h-5 w-5 md:h-6 md:w-6 text-[#0F172A]" />
           </button>
         </>
       )}

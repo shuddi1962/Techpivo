@@ -257,13 +257,15 @@ export function CategoryShoppingSection({
             All {dept.name}
           </Link>
           {subLinks.map((s) => (
-            <Link
+            <button
               key={s.slug}
-              href={`/marketplace/category/${s.slug}`}
-              className="shrink-0 rounded-full px-3 py-1.5 text-[12px] font-medium text-slate-700 border border-[#E2E8F0] bg-white hover:border-[#F59E0B] hover:text-[#B45309] transition-colors"
+              type="button"
+              onClick={() => setActiveSub(s.slug)}
+              aria-pressed={activeSub === s.slug}
+              className={`shrink-0 rounded-full px-3 py-1.5 text-[12px] font-medium transition-colors ${activeSub === s.slug ? "text-white bg-[#DC2626] border-[#DC2626]" : "text-slate-700 border border-[#E2E8F0] bg-white hover:border-[#F59E0B] hover:text-[#B45309]"}`}
             >
               {s.name}
-            </Link>
+            </button>
           ))}
         </div>
         <div className="flex items-center gap-2">

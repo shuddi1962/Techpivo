@@ -2,21 +2,9 @@
 
 import Link from "next/link"
 import { useEffect, useState } from "react"
-import { Home, LayoutGrid, Search, ShoppingCart, Heart, User } from "lucide-react"
+import { Home, LayoutGrid, Search, ArrowLeftRight, User } from "lucide-react"
 import { useMarketCart } from "@/lib/marketplace-cart"
-
-const WISH_KEY = "tp_market_wish_v1"
-
-function readWishCount(): number {
-  if (typeof window === "undefined") return 0
-  try {
-    const raw = window.localStorage.getItem(WISH_KEY)
-    const arr = raw ? (JSON.parse(raw) as unknown) : []
-    return Array.isArray(arr) ? arr.length : 0
-  } catch {
-    return 0
-  }
-}
+import { useCompareIds } from "@/lib/marketplace-compare"
 
 const BOTTOM_NAV_ITEMS: Array<{
   id: string
@@ -28,8 +16,7 @@ const BOTTOM_NAV_ITEMS: Array<{
   { id: "home", href: "/marketplace", label: "Home", icon: Home },
   { id: "categories", href: "/marketplace/shop", label: "Categories", icon: LayoutGrid },
   { id: "search", href: "#", label: "Search", icon: Search },
-  { id: "cart", href: "/marketplace/cart", label: "Cart", icon: ShoppingCart },
-  { id: "wishlist", href: "/marketplace/wishlist", label: "Wishlist", icon: Heart },
+  { id: "compare", href: "/marketplace/compare", label: "Compare", icon: ArrowLeftRight },
   { id: "account", href: "#", label: "Account", icon: User },
 ]
 
@@ -41,21 +28,8 @@ interface MarketBottomNavProps {
 }
 
 export function MarketBottomNav({ onSearchToggle, active }: MarketBottomNavProps) {
-  const cartLines = useMarketCart()
-  const liveCartCount = cartLines.reduce((s, l) => s + l.qty, 0)
-  const [liveWish, setLiveWish] = useState(0)
+  const compareIds = useCompareIds()
   const [drawerOpen, setDrawerOpen] = useState(false)
-
-  useEffect(() => {
-    setLiveWish(readWishCount())
-    const sync = () => setLiveWish(readWishCount())
-    window.addEventListener("storage", sync)
-    window.addEventListener("focus", sync)
-    return () => {
-      window.removeEventListener("storage", sync)
-      window.removeEventListener("focus", sync)
-    }
-  }, [])
 
   const isActive = (id: string) => {
     if (active) return active === id
@@ -76,7 +50,7 @@ export function MarketBottomNav({ onSearchToggle, active }: MarketBottomNavProps
       >
         <div className="mx-auto w-full max-w-[1440px] px-3 sm:px-4 py-2 flex items-center justify-between gap-1">
           {BOTTOM_NAV_ITEMS.map((item) => {
-            const count = item.id === "cart" ? liveCartCount : item.id === "wishlist" ? liveWish : 0
+            const count = item.id === "compare" ? compareIds.length : 0
             const selected = isActive(item.id)
             const isSearch = item.id === "search"
             return (
@@ -115,9 +89,6 @@ export function MarketBottomNav({ onSearchToggle, active }: MarketBottomNavProps
 
       {/* Spacer so content isn't hidden behind the fixed bottom nav on mobile */}
       <div className="md:hidden h-[64px]" />
-
-      {/* Mobile account drawer (placeholder for sign-in / account menu on mobile) */}
-      {drawerOpen && false && null}
     </>
   )
 }

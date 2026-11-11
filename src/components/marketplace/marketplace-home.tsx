@@ -844,12 +844,9 @@ export function MarketplaceHome() {
           </div>
         )}
 
-        {/* hero — left main banner (2/3) + two stacked side promos (1/3).
-            Fixed row height on desktop so all three boxes share exact top
-            and bottom edges; the main image fills its box edge to edge
-            (display block, 100% x 100%, object-cover) with no white gap. */}
-        <section className="w-full">
-        <div className="grid w-full grid-cols-1 lg:grid-cols-3 gap-4 items-stretch lg:h-[360px] xl:h-[400px] overflow-x-clip">
+        {/* hero — mobile: single column with tight spacing; desktop: 3-col row */}
+        <section className="w-full mb-2 sm:mb-4">
+        <div className="grid w-full grid-cols-1 lg:grid-cols-3 gap-2 sm:gap-4 items-stretch lg:h-[320px] xl:h-[400px] overflow-x-clip">
         {!loaded || !bannersReady ? (
           <div className="lg:col-span-2 overflow-hidden rounded-none bg-white shadow-sm aspect-[16/10] sm:aspect-[21/9] lg:aspect-auto lg:h-full animate-pulse" aria-hidden>
             <div className="h-full w-full bg-slate-100" />
@@ -861,94 +858,81 @@ export function MarketplaceHome() {
             </div>
           </div>
         ) : (
-          <div className="lg:col-span-2 rounded-none relative overflow-hidden text-white min-h-[280px] lg:min-h-0 lg:h-full flex items-center" style={{ background: MARKETPLACE_BRAND.navy }}>
+          <div className="lg:col-span-2 rounded-none relative overflow-hidden text-white min-h-[200px] lg:min-h-0 lg:h-full flex items-center" style={{ background: MARKETPLACE_BRAND.navy }}>
             <div className="absolute -right-16 -top-16 w-72 h-72 rounded-full bg-[#F59E0B]/10 blur-3xl pointer-events-none" />
-            <div className="relative z-10 flex w-full flex-wrap items-center gap-x-5 gap-y-2 px-5 md:px-8 py-4">
-              <div className="hidden sm:block h-40 w-40 shrink-0 overflow-hidden rounded-xl bg-white/5">
+            <div className="relative z-10 flex w-full flex-wrap items-center gap-x-5 gap-y-2 px-4 md:px-8 py-3">
+              <div className="hidden sm:block h-32 w-32 shrink-0 overflow-hidden rounded-xl bg-white/5">
                 <img src={heroImg} alt="" loading="eager" decoding="async" className="h-full w-full object-cover" />
               </div>
               <div className="min-w-0 flex-1">
                 {banners.promo_enabled !== false && (
-                  <span className="text-[#EF4444] text-[11px] font-bold tracking-wide uppercase">{MARKETPLACE_HERO.kicker}</span>
+                  <span className="text-[#EF4444] text-[10px] font-bold tracking-wide uppercase">{MARKETPLACE_HERO.kicker}</span>
                 )}
                 <h1 className="text-xl md:text-2xl font-extrabold tracking-tight leading-tight">
                   {MARKETPLACE_HERO.titleA} <span className="text-[#F59E0B]">{MARKETPLACE_HERO.titleB}</span>
                 </h1>
               </div>
               <span className="text-xl font-extrabold whitespace-nowrap">{MARKETPLACE_HERO.price}</span>
-              <Link href="#trending" className="bg-[#F59E0B] hover:bg-[#D97706] text-[#0F172A] text-[13px] font-bold px-4 py-2.5 rounded-lg transition-colors inline-flex items-center gap-1.5 shrink-0">
+              <Link href="#trending" className="bg-[#F59E0B] hover:bg-[#D97706] text-[#0F172A] text-[12px] font-bold px-3 py-2 rounded-lg transition-colors inline-flex items-center gap-1 shrink-0">
                 Shop the Drop <ArrowRight className="h-4 w-4" />
               </Link>
             </div>
           </div>
         )}
 
-          {/* hero side promos — two equal boxes that together match the
-              main banner height exactly (flex-1 pair, shared gap).
-              Skeleton until live banner settings arrive (no stale flash). */}
-          <div className="lg:col-span-1 flex flex-col gap-4 lg:h-full lg:min-h-0">
+          {/* hero side promos — desktop: stacked pair; mobile: horizontal scroll row */}
+          <div className="lg:col-span-1 flex flex-col gap-4 lg:h-full lg:min-h-0 md:flex-row md:gap-2 md:h-auto md:min-h-0 overflow-hidden">
             {!bannersReady ? (
-              <>
-                <div className="flex-1 min-h-[140px] lg:min-h-0 overflow-hidden rounded-none bg-white shadow-sm animate-pulse" aria-hidden>
-                  <div className="h-full w-full bg-slate-100" />
-                </div>
-                <div className="flex-1 min-h-[140px] lg:min-h-0 overflow-hidden rounded-none bg-white shadow-sm animate-pulse" aria-hidden>
-                  <div className="h-full w-full bg-slate-100" />
-                </div>
-              </>
+              <div className="flex-1 min-h-[120px] md:min-h-0 overflow-hidden rounded-none bg-white shadow-sm animate-pulse" aria-hidden>
+                <div className="h-full w-full bg-slate-100" />
+              </div>
             ) : (
-              <>
-            <PromoBox
-              href="/marketplace/deals"
-              linked={dealsSlides.some((s) => !!s.link)}
-              label="Mega Deal — up to 50% off"
-              className="relative flex-1 min-h-[140px] lg:min-h-0 overflow-hidden rounded-none p-4 text-white shadow-sm transition-shadow hover:shadow-md flex items-center gap-3"
-              style={{ background: "linear-gradient(150deg, #DC2626 0%, #991B1B 100%)" }}
-            >
-              {dealsSlides.length > 0 ? (
-                // Uploaded banner(s) show clean — no overlay text, icons or
-                // buttons — each opening its own link. Multiple uploads
-                // slide with this slot's own settings (Admin → Banners).
-                <BannerSlider slides={dealsSlides} alt="Mega Deal — up to 50% off" {...dealsProps} />
-              ) : (
-                <>
-                  <span className="relative flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-white/20">
-                    <Flame className="h-5 w-5" />
-                  </span>
-                  <span className="relative min-w-0 flex-1">
-                    <span className="block text-[15px] font-extrabold leading-tight">Mega Deal — Up to 50% Off</span>
-                    <span className="block text-xs text-white/80">Today only — biggest price drops</span>
-                  </span>
-                  <ArrowRight className="relative h-4 w-4 shrink-0 transition-transform group-hover:translate-x-0.5" />
-                </>
-              )}
-            </PromoBox>
-            <PromoBox
-              href="/marketplace/new-arrivals"
-              linked={newSlides.some((s) => !!s.link)}
-              label="New Season Tech Drop"
-              className="relative flex-1 min-h-[140px] lg:min-h-0 overflow-hidden rounded-none p-4 text-white shadow-sm transition-shadow hover:shadow-md flex items-center gap-3"
-              style={{ background: "linear-gradient(150deg, #F59E0B 0%, #F97316 100%)" }}
-            >
-              {newSlides.length > 0 ? (
-                // Uploaded banner(s) show clean — no overlay text, icons or
-                // buttons — each opening its own link. Multiple uploads
-                // slide with this slot's own settings (Admin → Banners).
-                <BannerSlider slides={newSlides} alt="New Season Tech Drop" {...newProps} />
-              ) : (
-                <>
-                  <span className="relative flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-black/20">
-                    <Zap className="h-5 w-5" />
-                  </span>
-                  <span className="relative min-w-0 flex-1">
-                    <span className="block text-[15px] font-extrabold leading-tight">New Season Tech Drop</span>
-                    <span className="block text-xs text-white/85">Fresh stock, first to own</span>
-                  </span>
-                  <ArrowRight className="relative h-4 w-4 shrink-0 transition-transform group-hover:translate-x-0.5" />
-                </>
-              )}
-            </PromoBox>
-              </>
+              <div className="flex gap-2 flex-1 min-w-0 overflow-x-auto pb-2 scroll-smooth snap-x" style={{ scrollbarWidth: "none" }}>
+                <PromoBox
+                  href="/marketplace/deals"
+                  linked={dealsSlides.some((s) => !!s.link)}
+                  label="Mega Deal — up to 50% off"
+                  className="relative shrink-0 w-[200px] sm:w-[240px] min-h-[120px] overflow-hidden rounded-none p-4 text-white shadow-sm transition-shadow hover:shadow-md flex items-center gap-3 snap-start"
+                  style={{ background: "linear-gradient(150deg, #DC2626 0%, #991B1B 100%)" }}
+                >
+                  {dealsSlides.length > 0 ? (
+                    <BannerSlider slides={dealsSlides} alt="Mega Deal — up to 50% off" {...dealsProps} />
+                  ) : (
+                    <>
+                      <span className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white/20">
+                        <Flame className="h-5 w-5" />
+                      </span>
+                      <span className="relative min-w-0 flex-1">
+                        <span className="block text-[13px] font-extrabold leading-tight">Mega Deal — Up to 50% Off</span>
+                        <span className="block text-xs text-white/80">Today only</span>
+                      </span>
+                      <ArrowRight className="relative h-4 w-4 shrink-0 transition-transform group-hover:translate-x-0.5" />
+                    </>
+                  )}
+                </PromoBox>
+                <PromoBox
+                  href="/marketplace/new-arrivals"
+                  linked={newSlides.some((s) => !!s.link)}
+                  label="New Season Tech Drop"
+                  className="relative shrink-0 w-[200px] sm:w-[240px] min-h-[120px] overflow-hidden rounded-none p-4 text-white shadow-sm transition-shadow hover:shadow-md flex items-center gap-3 snap-start"
+                  style={{ background: "linear-gradient(150deg, #F59E0B 0%, #F97316 100%)" }}
+                >
+                  {newSlides.length > 0 ? (
+                    <BannerSlider slides={newSlides} alt="New Season Tech Drop" {...newProps} />
+                  ) : (
+                    <>
+                      <span className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-black/20">
+                        <Zap className="h-5 w-5" />
+                      </span>
+                      <span className="relative min-w-0 flex-1">
+                        <span className="block text-[13px] font-extrabold leading-tight">New Season Tech Drop</span>
+                        <span className="block text-xs text-white/85">Fresh stock</span>
+                      </span>
+                      <ArrowRight className="relative h-4 w-4 shrink-0 transition-transform group-hover:translate-x-0.5" />
+                    </>
+                  )}
+                </PromoBox>
+              </div>
             )}
           </div>
         </div>
@@ -1042,7 +1026,7 @@ export function MarketplaceHome() {
                 <button
                   key={b.id}
                   onClick={() => setTab(b.id)}
-                  className={`text-sm font-semibold px-4 py-2 rounded-lg transition-colors whitespace-nowrap ${tab === b.id ? "text-white bg-[#DC2626]" : "text-slate-500 hover:text-[#0F172A]"}`}
+                  className={`text-xs font-semibold px-2.5 py-1.5 rounded-lg transition-colors whitespace-nowrap shrink-0 ${tab === b.id ? "text-white bg-[#DC2626]" : "text-slate-500 hover:text-[#0F172H200]"}`}
                 >
                   {b.label}
                 </button>

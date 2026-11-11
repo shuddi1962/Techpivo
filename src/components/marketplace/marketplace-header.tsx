@@ -182,6 +182,7 @@ export function MarketplaceHeader({
 const [mobileExpanded, setMobileExpanded] = useState("")
 const [seeMore, setSeeMore] = useState(false)
 const [currency, setCurrency] = useState<MarketCurrency>(readMarketCurrency())
+const [promoBarDismissed, setPromoBarDismissed] = useState(false)
 const [currencyOpen, setCurrencyOpen] = useState(false)
   // Live, admin-editable category tree (falls back to the bundled tree).
   const departments = useMarketplaceTree()
@@ -401,7 +402,8 @@ const [currencyOpen, setCurrencyOpen] = useState(false)
       {/* Keeps the department menu in sync with Admin → Categories */}
       <MarketCategorySync />
       <MarketCommerce />
-      {/* utility bar — blue Limited Deal / Black Friday banner, always live */}
+      {/* utility bar — blue Limited Deal / Black Friday banner, dismissable */}
+      {!promoBarDismissed && (
       <div className="marketplace-promo-bar relative z-[60] w-full text-white shadow-lg border-b border-white/25" style={{ backgroundImage: `linear-gradient(90deg, ${promoBanners?.promo_bar_from || "#1668DC"}, ${promoBanners?.promo_bar_to || "#0F4FB3"})` }}>
         <div className="mx-auto w-full max-w-[1440px] px-3 sm:px-6 lg:px-10 flex items-center justify-between h-12 text-[11px] sm:text-xs gap-4">
           <div className="flex items-center gap-2.5 min-w-0">
@@ -457,8 +459,17 @@ const [currencyOpen, setCurrencyOpen] = useState(false)
               Help Center
             </Link>
           </div>
+          <button
+            type="button"
+            onClick={() => setPromoBarDismissed(true)}
+            aria-label="Dismiss offer banner"
+            className="p-1.5 hover:bg-white/20 rounded-full"
+          >
+            <X className="h-4 w-4 text-white" />
+          </button>
         </div>
       </div>
+      )}
 
       {/* sticky main header — logo/search/menu stay visible while scrolling */}
       <header className="sticky top-0 z-50 w-full bg-white shadow-[0_2px_12px_rgba(0,0,0,0.08)]">
@@ -511,41 +522,69 @@ const [currencyOpen, setCurrencyOpen] = useState(false)
           </div>
 
           <div className="flex items-center gap-1 sm:gap-2 shrink-0">
-            <Link href="/marketplace/wishlist" aria-label="Wishlist" className="relative p-2 rounded-full hover:bg-slate-100 flex items-center justify-center">
-              <Heart className="h-6 w-6 text-slate-600" />
-              {shownWishCount > 0 && (
-                <span className="absolute -top-0.5 -right-0.5 bg-[#EF4444] text-white text-[10px] min-w-5 h-5 px-1 rounded-full flex items-center justify-center font-bold shadow-sm">{shownWishCount}</span>
-              )}
-            </Link>
-            <Link href="/marketplace/compare" aria-label={compareIds.length > 0 ? `Compare ${compareIds.length} products` : "Compare products"} className="relative p-2 rounded-full hover:bg-slate-100 hidden sm:flex items-center justify-center">
-              <ArrowLeftRight className="h-6 w-6 text-slate-600" />
+            {/* Mobile-only search + compare icons placed near logo */}
+            <button
+              type="button"
+              onClick={() => {
+                setOpen(false)
+                setSuggestOpen(true)
+                mobileSearchInputRef.current?.focus()
+              }}
+              aria-label="Search"
+              className="md:hidden p-2 rounded-full hover:bg-slate-100 flex items-center justify-center text-slate-600"
+            >
+              <Search className="h-5 w-5" />
+            </button>
+            <Link
+              href="/marketplace/compare"
+              aria-label={compareIds.length > 0 ? `Compare ${compareIds.length} products` : "Compare products"}
+              className="md:hidden relative p-2 rounded-full hover:bg-slate-100 flex items-center justify-center"
+            >
+              <ArrowLeftRight className="h-5 w-5 text-slate-600" />
               {compareIds.length > 0 && (
-                <span className="absolute -top-0.5 -right-0.5 bg-[#EF4444] text-white text-[10px] min-w-5 h-5 px-1 rounded-full flex items-center justify-center font-bold shadow-sm">{compareIds.length}</span>
+                <span className="absolute -top-0.5 -right-0.5 bg-[#EF4444] text-white text-[9px] min-w-[14px] h-[14px] rounded-full flex items-center justify-center font-bold shadow-sm px-0.5">
+                  {Math.min(compareIds.length, 9)}
+                </span>
               )}
             </Link>
-            <Link href="/marketplace/cart" aria-label={`Your basket, ${shownCartCount} item${shownCartCount === 1 ? "" : "s"}`} className="relative p-2 rounded-full hover:bg-slate-100 flex items-center justify-center">
-              <ShoppingBasket className="h-6 w-6 text-slate-600" />
-              {shownCartCount > 0 && (
-                <span className="absolute -top-0.5 -right-0.5 bg-[#EF4444] text-white text-[10px] min-w-5 h-5 px-1 rounded-full flex items-center justify-center font-bold shadow-sm tabular-nums">{shownCartCount}</span>
-              )}
-            </Link>
-            <div className="h-8 w-px bg-[#E2E8F0] hidden sm:block" />
-            <Link href={acctName ? "/marketplace/account" : "/login"} className="hidden sm:flex items-center gap-2 hover:opacity-90 p-1" aria-label={acctName ? `My marketplace account (${acctName})` : "Sign in"}>
-              <span className="w-8 h-8 rounded-full bg-white flex items-center justify-center shrink-0 overflow-hidden shadow-sm border border-[#E2E8F0]">
-                {acctAvatar ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={acctAvatar} alt="" className="h-full w-full object-cover" />
-                ) : acctFirst ? (
-                  <span className="text-sm font-extrabold text-black">{acctFirst.charAt(0).toUpperCase()}</span>
-                ) : (
-                  <User className="h-4 w-4 text-black" />
+            {/* Desktop icons row — wishlist, compare, cart, account, hamburger */}
+            <div className="hidden md:flex items-center gap-1">
+              <Link href="/marketplace/wishlist" aria-label="Wishlist" className="relative p-2 rounded-full hover:bg-slate-100 flex items-center justify-center">
+                <Heart className="h-6 w-6 text-slate-600" />
+                {shownWishCount > 0 && (
+                  <span className="absolute -top-0.5 -right-0.5 bg-[#EF4444] text-white text-[10px] min-w-5 h-5 px-1 rounded-full flex items-center justify-center font-bold shadow-sm">{shownWishCount}</span>
                 )}
-              </span>
-              <span className="hidden xl:flex flex-col text-left max-w-[140px]">
-                <span className="text-[11px] text-black uppercase leading-none">{acctFirst ? `Hi, ${acctFirst}` : "Sign In"}</span>
-                <span className="text-sm font-semibold text-black leading-tight truncate">{acctName || "My Account"}</span>
-              </span>
-            </Link>
+              </Link>
+              <Link href="/marketplace/compare" aria-label={compareIds.length > 0 ? `Compare ${compareIds.length} products` : "Compare products"} className="relative p-2 rounded-full hover:bg-slate-100 flex items-center justify-center">
+                <ArrowLeftRight className="h-6 w-6 text-slate-600" />
+                {compareIds.length > 0 && (
+                  <span className="absolute -top-0.5 -right-0.5 bg-[#EF4444] text-white text-[10px] min-w-5 h-5 px-1 rounded-full flex items-center justify-center font-bold shadow-sm">{compareIds.length}</span>
+                )}
+              </Link>
+              <Link href="/marketplace/cart" aria-label={`Your basket, ${shownCartCount} item${shownCartCount === 1 ? "" : "s"}`} className="relative p-2 rounded-full hover:bg-slate-100 flex items-center justify-center">
+                <ShoppingBasket className="h-6 w-6 text-slate-600" />
+                {shownCartCount > 0 && (
+                  <span className="absolute -top-0.5 -right-0.5 bg-[#EF4444] text-white text-[10px] min-w-5 h-5 px-1 rounded-full flex items-center justify-center font-bold shadow-sm tabular-nums">{shownCartCount}</span>
+                )}
+              </Link>
+              <div className="h-8 w-px bg-[#E2E8F0]" />
+              <Link href={acctName ? "/marketplace/account" : "/login"} className="hidden xl:flex items-center gap-2 hover:opacity-90 p-1" aria-label={acctName ? `My marketplace account (${acctName})` : "Sign in"}>
+                <span className="w-8 h-8 rounded-full bg-white flex items-center justify-center shrink-0 overflow-hidden shadow-sm border border-[#E2E8F0]">
+                  {acctAvatar ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={acctAvatar} alt="" className="h-full w-full object-cover" />
+                  ) : acctFirst ? (
+                    <span className="text-sm font-extrabold text-black">{acctFirst.charAt(0).toUpperCase()}</span>
+                  ) : (
+                    <User className="h-4 w-4 text-black" />
+                  )}
+                </span>
+                <span className="hidden xl:flex flex-col text-left max-w-[140px]">
+                  <span className="text-[11px] text-black uppercase leading-none">{acctFirst ? `Hi, ${acctFirst}` : "Sign In"}</span>
+                  <span className="text-sm font-semibold text-black leading-tight truncate">{acctName || "My Account"}</span>
+                </span>
+              </Link>
+            </div>
             <div className="h-8 w-px bg-[#E2E8F0] hidden sm:block" />
             <button
               className="md:hidden p-2 rounded-lg border border-[#1668DC] bg-[#1668DC] text-white shadow-md hover:bg-[#0F4FB3] transition-all duration-200"
@@ -1000,7 +1039,7 @@ export function MarketplaceFooter() {
     }
   }
   return (
-    <footer className="mt-12 w-full">
+    <footer className="mt-12 w-full overflow-x-hidden">
       {/* perks strip — full width */}
       <div className="w-full border-y border-[#E2E8F0] bg-white">
         <div className="mx-auto grid w-full max-w-[1440px] grid-cols-1 gap-5 px-3 py-6 sm:grid-cols-2 sm:px-6 lg:grid-cols-4 lg:px-10">
@@ -1011,7 +1050,7 @@ export function MarketplaceFooter() {
                 </div>
                 <div>
                   <h4 className="text-sm font-bold text-[#0F172A]">{p.title}</h4>
-                  <p className="text-sm text-[#0F172A]">{p.copy}</p>
+                  <p className="text-[11px] text-[#0F172A]">{p.copy}</p>
                 </div>
               </div>
           ))}
@@ -1019,7 +1058,7 @@ export function MarketplaceFooter() {
       </div>
       {/* main footer — formal charcoal */}
       <div className="w-full text-white" style={{ background: "linear-gradient(180deg, " + MARKETPLACE_BRAND.navy + " 0%, " + MARKETPLACE_BRAND.navyDeep + " 100%)" }}>
-        <div className="mx-auto grid w-full max-w-[1440px] grid-cols-1 gap-10 px-3 py-12 sm:px-6 md:grid-cols-2 lg:grid-cols-4 lg:px-10">
+        <div className="mx-auto grid w-full max-w-[1440px] grid-cols-1 gap-8 px-3 py-8 sm:px-6 md:grid-cols-2 lg:grid-cols-4 lg:px-10">
           <div className="space-y-4 lg:col-span-1">
           <div className="flex items-center gap-2">
             <span className="inline-flex rounded-xl bg-white px-2.5 py-1.5">
@@ -1027,26 +1066,26 @@ export function MarketplaceFooter() {
             <img src="/market-logo.svg" alt="TechPivo Market" className="h-9 w-auto" />
             </span>
           </div>
-            <p className="text-sm leading-relaxed text-slate-300">Curated tech products, reviewed by the TechPivo editorial team. Every purchase supports independent tech journalism.</p>
+            <p className="text-[12px] leading-relaxed text-slate-300">Curated tech products, reviewed by the TechPivo editorial team. Every purchase supports independent tech journalism.</p>
             {store.contact_visible !== false && (
-            <div className="space-y-2 text-sm text-slate-300">
+            <div className="space-y-2 text-[12px] text-slate-300">
               <div className="flex items-start gap-2"><MapPin className="mt-0.5 h-4 w-4 shrink-0 text-[#1668DC]" /><span>{store.address}</span></div>
-              <div className="flex items-center gap-2"><Phone className="h-4 w-4 shrink-0 text-[#1668DC}" /><span>{store.phone}</span></div>
-              <div className="flex items-center gap-2"><Mail className="h-4 w-4 shrink-0 text-[#1668DC}" /><span>{store.email}</span></div>
+              <div className="flex items-center gap-2"><Phone className="h-4 w-4 shrink-0 text-[#1668DC]" /><span>{store.phone}</span></div>
+              <div className="flex items-center gap-2"><Mail className="h-4 w-4 shrink-0 text-[#1668DC]" /><span>{store.email}</span></div>
             </div>
             )}
           </div>
           <nav aria-label="Shop departments">
-            <h5 className="mb-4 text-sm font-bold uppercase tracking-wider text-white">Shop</h5>
-            <ul className="grid grid-cols-1 gap-2.5 text-sm text-slate-300">
+            <h5 className="mb-3 text-[11px] font-bold uppercase tracking-wider text-white">Shop</h5>
+            <ul className="grid grid-cols-1 gap-2 text-[12px] text-slate-300">
               {departments.map((d) => (
                 <li key={d.slug}><Link className="transition-colors hover:text-[#1668DC]" href={"/marketplace/category/" + d.slug}>{d.name}</Link></li>
               ))}
             </ul>
           </nav>
           <nav aria-label="Customer service">
-            <h5 className="mb-4 text-sm font-bold uppercase tracking-wider text-white">Customer Service</h5>
-            <ul className="grid grid-cols-1 gap-2.5 text-sm text-slate-300">
+            <h5 className="mb-3 text-[11px] font-bold uppercase tracking-wider text-white">Customer Service</h5>
+            <ul className="grid grid-cols-1 gap-2 text-[12px] text-slate-300">
               <li><Link className="transition-colors hover:text-[#1668DC]" href="/marketplace/help">Help Center</Link></li>
               <li><Link className="transition-colors hover:text-[#1668DC]" href="/marketplace/faq">FAQ</Link></li>
               <li><Link className="transition-colors hover:text-[#1668DC]" href="/marketplace/track">Order Tracking</Link></li>
@@ -1060,8 +1099,8 @@ export function MarketplaceFooter() {
             </ul>
           </nav>
           <div>
-            <h5 className="mb-4 text-sm font-bold uppercase tracking-wider text-white">Newsletter</h5>
-            <p className="mb-3 text-sm text-white/90">Weekly tech drops and member coupons.</p>
+            <h5 className="mb-3 text-[11px] font-bold uppercase tracking-wider text-white">Newsletter</h5>
+            <p className="mb-3 text-[12px] text-white/90">Weekly tech drops and member coupons.</p>
             <form className="space-y-2" onSubmit={subscribe}>
               <input value={email} onChange={(e) => setEmail(e.target.value)} className="w-full rounded-lg border border-white/15 bg-white/10 px-3 py-2.5 text-sm text-white placeholder:text-slate-400 focus:border-[#1668DC] focus:outline-none" placeholder="Your email" type="email" aria-label="Email" />
               <button className="w-full rounded-lg bg-[#EF4444] py-2.5 text-sm font-bold text-white transition-colors hover:bg-[#DC2626] disabled:opacity-60" type="submit" disabled={subBusy}>
@@ -1074,9 +1113,9 @@ export function MarketplaceFooter() {
       </div>
       {/* bottom bar — full width */}
       <div className="w-full text-white" style={{ background: MARKETPLACE_BRAND.navyDeep }}>
-        <div className="mx-auto flex w-full max-w-[1440px] flex-col items-center justify-between gap-2 px-3 py-5 text-xs sm:flex-row sm:px-6 sm:text-sm lg:px-10">
+        <div className="mx-auto flex w-full max-w-[1440px] flex-col items-center justify-between gap-3 px-3 py-5 text-[11px] sm:flex-row sm:px-6 sm:text-sm lg:px-10">
           <p className="text-slate-400">© {new Date().getFullYear()} TechPivo Market. All rights reserved.</p>
-          <p className="text-[11px] leading-relaxed text-slate-500">Quality-checked products · secure payment · tracked delivery on every order.</p>
+          <p className="text-[10px] leading-relaxed text-slate-500 text-center sm:text-left">Quality-checked products · secure payment · tracked delivery on every order.</p>
         </div>
       </div>
     </footer>
