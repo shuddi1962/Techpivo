@@ -82,8 +82,8 @@ function ProductCard({ p, onAdd, wished, onWish, added, href }: { p: DemoProduct
         {showSale && (
           <span className="absolute left-3 top-3 z-10 rounded-full bg-[#DC2626] px-2.5 py-1 text-[11px] font-extrabold tracking-wide text-white shadow-sm">-{discount}%</span>
         )}
-        {/* top-right icon stack — wishlist / quick view / compare */}
-        <div className="absolute right-3 top-3 z-10 flex flex-col gap-2.5 opacity-0 translate-y-1 transition-all duration-300 group-hover:translate-y-0 group-hover:opacity-100 group-focus-within:translate-y-0 group-focus-within:opacity-100 max-md:translate-y-0 max-md:opacity-100">
+        {/* top-right icon stack — wishlist / quick view / compare (desktop hover only; hidden on mobile & tablet) */}
+        <div className="absolute right-3 top-3 z-10 flex flex-col gap-2.5 opacity-0 translate-y-1 transition-all duration-300 group-hover:translate-y-0 group-hover:opacity-100 group-focus-within:translate-y-0 group-focus-within:opacity-100 md:block">
           <button
             type="button"
             onClick={onWish}

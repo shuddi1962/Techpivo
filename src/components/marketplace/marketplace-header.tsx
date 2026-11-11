@@ -927,11 +927,69 @@ const [currencyOpen, setCurrencyOpen] = useState(false)
             </div>
           </nav>
         </div>
-      </div>
-      </header>
-    </>
-  )
-}
+        </div>
+       </header>
+
+       {/* sticky bottom mobile nav — Jumia/Amazon/Temu style; desktop never sees it */}
+       <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-50 h-[60px] bg-white border-t border-[#E2E8F0] shadow-[0_-4px_12px_rgba(15,23,42,0.08)]">
+         <div className="flex w-full items-center justify-around py-1.5 text-[11px] sm:text-xs">
+           <Link
+             href="/marketplace"
+             onClick={() => setOpen(false)}
+             className="flex flex-col items-center gap-1 text-slate-500 hover:text-[#0F172A] transition-colors"
+             aria-label="Home"
+           >
+             <Home className="h-5 w-5" />
+             <span className="leading-none">Home</span>
+           </Link>
+           <Link
+             href="/marketplace/shop"
+             onClick={() => setOpen(false)}
+             className="flex flex-col items-center gap-1 text-slate-500 hover:text-[#0F172A] transition-colors"
+             aria-label="Categories"
+           >
+             <LayoutGrid className="h-5 w-5" />
+             <span className="leading-none">Categories</span>
+           </Link>
+           <Link
+             href="/marketplace/cart"
+             onClick={() => setOpen(false)}
+             className={`relative flex flex-col items-center gap-1 ${shownCartCount > 0 ? "text-[#F59E0B]" : "text-slate-500 hover:text-[#0F172A]"} transition-colors`}
+             aria-label={`Cart, ${shownCartCount} item${shownCartCount === 1 ? "" : "s"}`}
+           >
+             <ShoppingCart className="h-5 w-5" />
+             {shownCartCount > 0 && (
+               <span className="absolute top-1 right-1 bg-[#F59E0B] text-[8px] font-bold text-white min-w-[14px] h-[14px] rounded-full flex items-center justify-center px-0.5 shadow-sm">+{Math.min(shownCartCount, 9)}</span>
+             )}
+             <span className="leading-none">Cart</span>
+           </Link>
+           <Link
+             href="/marketplace/wishlist"
+             onClick={() => setOpen(false)}
+             className="flex flex-col items-center gap-1 text-slate-500 hover:text-[#0F172A] transition-colors"
+             aria-label="Wishlist"
+           >
+             <Heart className="h-5 w-5" />
+             {shownWishCount > 0 && (
+               <span className="absolute top-1 right-1 bg-[#F59E0B] text-[8px] font-bold text-white min-w-[14px] h-[14px] rounded-full flex items-center justify-center px-0.5 shadow-sm">+{Math.min(shownWishCount, 9)}</span>
+             )}
+             <span className="leading-none">Wishlist</span>
+           </Link>
+           <Link
+             href={acctName ? "/marketplace/account" : "/login"}
+             onClick={() => setOpen(false)}
+             className="flex flex-col items-center gap-1 text-slate-500 hover:text-[#0F172A] transition-colors"
+             aria-label={acctName ? "My account" : "Sign in"}
+           >
+             <User className="h-5 w-5" />
+             <span className="leading-none">{acctName ? "Account" : "Sign in"}</span>
+           </Link>
+         </div>
+       </nav>
+       <div className="lg:hidden h-[60px]" />
+     </>
+   )
+ }
 
 const PERKS = [
   { icon: Truck, title: "Free Shipping", copy: "On all orders over $35" },

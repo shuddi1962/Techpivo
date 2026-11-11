@@ -491,7 +491,7 @@ export function ProductDetail({
   }
 
   return (
-    <div className="space-y-4 marketplace-body">
+    <div className="space-y-4 marketplace-body product-detail">
       <section className="bg-white rounded-2xl border border-[#E2E8F0] p-4 sm:p-6 grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div>
           <div className="flex gap-3">
@@ -769,6 +769,30 @@ export function ProductDetail({
           </div>
         </div>
       </section>
+
+      {/* sticky bottom mobile action bar — Jumia/Temu/Amazon style */}
+      <div className="lg:hidden fixed bottom-0 left-0 right-0 z-50 h-[88px] bg-white border-t border-[#E2E8F0] shadow-[0_-4px_16px_rgba(15,23,42,0.12)]">
+        <div className="grid grid-cols-4 gap-0.5 px-3 py-2.5">
+          <button onClick={doAdd} className="flex flex-col items-center gap-0.5 rounded-lg bg-[#F59E0B] px-2 py-2 text-xs font-bold text-[#0F172A] shadow-md">
+            <ShoppingCart className="h-4 w-4" />
+            <span>Add to Bag</span>
+          </button>
+          <button onClick={buyNow} className="flex flex-col items-center gap-0.5 rounded-lg bg-[#0B0F19] px-2 py-2 text-xs font-bold text-white shadow-md">
+            <Zap className="h-4 w-4" />
+            <span>Buy Now</span>
+          </button>
+          <button onClick={() => { setWished((w) => { const next = !w; try { const raw = window.localStorage.getItem(WISH_KEY); const arr = (raw ? JSON.parse(raw) : []) as string[]; const ids = Array.isArray(arr) ? arr.filter((x) => x !== p.id) : []; if (next) ids.push(p.id); window.localStorage.setItem(WISH_KEY, JSON.stringify(ids)); } catch {}; return next; }) }} aria-label={wished ? "Remove from wishlist" : "Add to wishlist"} className={`flex flex-col items-center gap-0.5 rounded-lg px-2 py-2 text-xs transition-colors ${wished ? "text-[#EF4444] bg-[#FEF2F2]" : "text-slate-500 hover:text-[#EF4444] hover:bg-slate-100"}`}>
+            <Heart className={`h-4 w-4 ${wished ? "fill-current" : ""}`} />
+            <span>{wished ? "Saved" : "Save"}</span>
+          </button>
+          <button className="flex flex-col items-center gap-0.5 rounded-lg bg-[#0F172A] px-2 py-2 text-xs font-bold text-white">
+            <Truck className="h-4 w-4" />
+            <span>Ship</span>
+          </button>
+        </div>
+      </div>
+
+      <div className="lg:hidden h-[88px]" />
 
       <ProductDetailsTabs
         description={p.product_description}
