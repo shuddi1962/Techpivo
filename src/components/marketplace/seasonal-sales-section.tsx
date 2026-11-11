@@ -203,7 +203,7 @@ function CarouselProducts({
           const showStrike = orig > sale && orig > 0
           const href = /^[0-9a-f-]{36}$/i.test(p.id) ? `/marketplace/product/${p.id}` : undefined
           return (
-            <div key={p.id} className="shrink-0 w-[200px] sm:w-[220px] flex flex-col h-full group">
+            <div key={p.id} className="shrink-0 w-[200px] sm:w-[220px] md:w-[240px] flex flex-col h-full group">
               <div className="relative aspect-square w-full overflow-hidden rounded-2xl bg-[#F8FAFC] border border-[#E2E8F0] shadow-sm group">
                 {p.product_image_url ? (
                   <img

@@ -109,7 +109,7 @@ export function CartPage() {
   }
 
   return (
-    <div className="grid grid-cols-1 gap-4 lg:grid-cols-12">
+    <div id="cart-page" className="cart-page grid grid-cols-1 gap-4 lg:grid-cols-12">
       <div className="lg:col-span-8 bg-white rounded-2xl border border-[#E2E8F0] p-4 sm:p-5">
         <div className="flex items-center justify-between mb-3">
           <h1 className="text-xl font-extrabold text-[#0F172A]">Your Cart ({cartLines.reduce((s, l) => s + l.qty, 0)})</h1>

@@ -967,7 +967,9 @@ export function MarketplaceHome() {
             </div>
           </section>
 ) : (
-  <ShopCollections collections={collections} />
+  <section id="shop-collections" className="shop-collections">
+    <ShopCollections collections={collections} />
+  </section>
 )}
 
 {/* Seasonal Sales promotional section — banner left, product carousel right */}
@@ -1162,18 +1164,19 @@ export function MarketplaceHome() {
         {departments.slice(0, 7).map((dep) => {
           const sideBanner = banners.sidebar_banners?.[dep.slug] || ""
           return (
-            <CategoryShoppingSection
-              key={dep.slug}
-              dept={dep}
-              products={liveProducts}
-              deptOf={deptOf}
-              onAdd={addToCart}
-              wished={wishlist}
-              onWish={toggleWish}
-              added={justAdded}
-              sideBanner={sideBanner}
-              sideLink={sideBanner ? linkOf(banners, sideBanner) : ""}
-            />
+            <div key={dep.slug} className="category-shopping mb-6 sm:mb-8">
+              <CategoryShoppingSection
+                dept={dep}
+                products={liveProducts}
+                deptOf={deptOf}
+                onAdd={addToCart}
+                wished={wishlist}
+                onWish={toggleWish}
+                added={justAdded}
+                sideBanner={sideBanner}
+                sideLink={sideBanner ? linkOf(banners, sideBanner) : ""}
+              />
+            </div>
           )
         })}
 {/* slim banner strip 1 — between category groups */}
@@ -1211,18 +1214,19 @@ export function MarketplaceHome() {
         {departments.slice(7).map((dep) => {
           const sideBanner = banners.sidebar_banners?.[dep.slug] || ""
           return (
-            <CategoryShoppingSection
-              key={dep.slug}
-              dept={dep}
-              products={liveProducts}
-              deptOf={deptOf}
-              onAdd={addToCart}
-              wished={wishlist}
-              onWish={toggleWish}
-              added={justAdded}
-              sideBanner={sideBanner}
-              sideLink={sideBanner ? linkOf(banners, sideBanner) : ""}
-            />
+            <div key={dep.slug} className="category-shopping mb-6 sm:mb-8">
+              <CategoryShoppingSection
+                dept={dep}
+                products={liveProducts}
+                deptOf={deptOf}
+                onAdd={addToCart}
+                wished={wishlist}
+                onWish={toggleWish}
+                added={justAdded}
+                sideBanner={sideBanner}
+                sideLink={sideBanner ? linkOf(banners, sideBanner) : ""}
+              />
+            </div>
           )
         })}
 {/* slim banner strip 2 — after second category group */}

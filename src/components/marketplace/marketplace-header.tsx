@@ -548,7 +548,7 @@ const [currencyOpen, setCurrencyOpen] = useState(false)
             </Link>
             <div className="h-8 w-px bg-[#E2E8F0] hidden sm:block" />
             <button
-              className="lg:hidden p-2 rounded-lg border border-[#1668DC] bg-[#1668DC] text-white shadow-md hover:bg-[#0F4FB3] transition-all duration-200"
+              className="md:hidden p-2 rounded-lg border border-[#1668DC] bg-[#1668DC] text-white shadow-md hover:bg-[#0F4FB3] transition-all duration-200"
               onClick={() => setOpen((v) => !v)}
               aria-label={open ? "Close menu" : "Open menu"}
               aria-expanded={open}
@@ -588,8 +588,8 @@ const [currencyOpen, setCurrencyOpen] = useState(false)
       </div>
 
       {/* nav bar — single row, never wraps: horizontal scroll instead of pushing content down */}
-      <div className="relative hidden w-full border-b border-[#E2E8F0] shadow-sm lg:block bg-white">
-        <div className="mx-auto w-full max-w-[1440px] px-3 sm:px-6 lg:px-10 hidden lg:flex items-center justify-between h-14 gap-3">
+      <div className="relative hidden w-full border-b border-[#E2E8F0] shadow-sm md:block bg-white">
+        <div className="mx-auto w-full max-w-[1440px] px-3 sm:px-6 lg:px-10 hidden md:flex items-center justify-between h-14 gap-3">
           <div className="flex items-center gap-3 min-w-0 flex-1">
             <div
           ref={deptWrapRef}
@@ -809,7 +809,7 @@ const [currencyOpen, setCurrencyOpen] = useState(false)
         </div>
 
         {/* mobile nav drawer — slides in from the left on mobile */}
-        <div className="lg:hidden">
+        <div className="md:hidden">
           {open && (
             <div
               className="fixed inset-0 z-40 bg-[#0B3A9A]/45 backdrop-blur-sm transition-opacity duration-300"

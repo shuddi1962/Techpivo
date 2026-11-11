@@ -199,7 +199,7 @@ export default async function MarketplaceProductPage({ params }: { params: { id:
   }
 
   return (
-    <div className="w-full bg-[#F8FAFC] min-h-screen">
+    <div className="w-full bg-[#F8FAFC] min-h-screen marketplace-body">
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
       <MarketplaceHeader />
       <main className="mx-auto w-full max-w-[1400px] px-3 sm:px-6 lg:px-10 py-6 sm:py-8 space-y-6 sm:space-y-8">

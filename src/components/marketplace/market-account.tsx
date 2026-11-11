@@ -200,7 +200,7 @@ export function MarketAccount() {
       </section>
 
       {/* live stats */}
-      <section className="grid grid-cols-2 gap-3 sm:grid-cols-4" aria-label="Account stats">
+      <section className="grid grid-cols-2 gap-3 sm:grid-cols-4 account-stats" aria-label="Account stats">
         {[
           { label: "Cart items", value: String(cartQty), href: "/marketplace/cart", icon: ShoppingCart },
           { label: "Wishlist", value: String(wishCount), href: "/marketplace/wishlist", icon: Heart },

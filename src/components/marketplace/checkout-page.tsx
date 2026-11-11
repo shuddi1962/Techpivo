@@ -172,7 +172,7 @@ export function CheckoutPage() {
   }
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+    <div id="checkout-page" className="checkout-page grid grid-cols-1 lg:grid-cols-12 gap-4">
       <div className="lg:col-span-7 bg-white rounded-2xl border border-[#E2E8F0] p-4 sm:p-6 space-y-4">
         <div className="flex items-center gap-2">
           <Link href="/marketplace/cart" className="text-sm text-[#B45309] font-semibold inline-flex items-center gap-1">

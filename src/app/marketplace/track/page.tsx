@@ -18,7 +18,7 @@ export const revalidate = 60
 export default async function MarketplaceTrackRoute() {
   const banners = await fetchMarketBanners()
   return (
-    <div className="w-full bg-[#F8FAFC] min-h-screen">
+    <div className="w-full bg-[#F8FAFC] min-h-screen marketplace-body">
       <MarketplaceHeader />
       <main className="mx-auto w-full max-w-[1400px] px-3 sm:px-6 lg:px-10 py-6 sm:py-8 space-y-6 sm:space-y-8">
         <nav aria-label="Breadcrumb" className="flex items-center gap-1.5 text-xs text-slate-500">

@@ -76,7 +76,7 @@ export function WishlistPage() {
   }
 
       return (
-        <div className="bg-white rounded-2xl border border-[#E2E8F0] p-4 sm:p-5">
+        <div id="wishlist-page" className="wishlist-page bg-white rounded-2xl border border-[#E2E8F0] p-4 sm:p-5">
       <h1 className="text-xl font-extrabold text-[#0F172A] mb-4">Your Wishlist ({rows.length})</h1>
       <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-5 gap-3">
         {rows.map((p) => {

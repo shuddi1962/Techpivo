@@ -71,7 +71,7 @@ export function MarketBottomNav({ onSearchToggle, active }: MarketBottomNavProps
   return (
     <>
       <nav
-        className="lg:hidden fixed bottom-0 left-0 right-0 z-50 h-[64px] bg-white/95 backdrop-blur-md border-t border-[#E2E8F0] shadow-[0_-4px_16px_rgba(15,23,42,0.10)]"
+        className="md:hidden fixed bottom-0 left-0 right-0 z-50 h-[64px] bg-white/95 backdrop-blur-md border-t border-[#E2E8F0] shadow-[0_-4px_16px_rgba(15,23,42,0.10)]"
         aria-label="Marketplace bottom navigation"
       >
         <div className="mx-auto w-full max-w-[1440px] px-3 sm:px-4 py-2 flex items-center justify-between gap-1">
@@ -114,7 +114,7 @@ export function MarketBottomNav({ onSearchToggle, active }: MarketBottomNavProps
       </nav>
 
       {/* Spacer so content isn't hidden behind the fixed bottom nav on mobile */}
-      <div className="lg:hidden h-[64px]" />
+      <div className="md:hidden h-[64px]" />
 
       {/* Mobile account drawer (placeholder for sign-in / account menu on mobile) */}
       {drawerOpen && false && null}
