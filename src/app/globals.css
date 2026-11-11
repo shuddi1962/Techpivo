@@ -341,392 +341,392 @@ body { position: relative; }
    All rules are scoped to .marketplace-body and gated by max-width media
    queries. Nothing here touches desktop (>=1024px) or the main site. */
 
-/* ---------- Mobile (< 768px) ---------- */
-@media (max-width: 767px) {
-  /* Prevent any horizontal overflow on mobile marketplace pages */
-  .marketplace-body,
-  .marketplace-body main {
-    overflow-x: hidden !important;
-  }
+ /* ---------- Mobile (< 768px) ---------- */
+ @media (max-width: 767px) {
+   /* Prevent any horizontal overflow on mobile marketplace pages */
+   .marketplace-body,
+   .marketplace-body main {
+     overflow-x: hidden !important;
+   }
 
-  /* Compact containers: tighter padding on small screens */
-  .marketplace-body main .max-w-\\[1480px\\],
-  .marketplace-body main .max-w-\\[1440px\\] {
-    padding-left: 0.75rem !important;
-    padding-right: 0.75rem !important;
-  }
+   /* Compact containers: tighter padding on small screens */
+   .marketplace-body main [class*="max-w-\[1480px\]"],
+   .marketplace-body main [class*="max-w-\[1440px\]"] {
+     padding-left: 0.75rem !important;
+     padding-right: 0.75rem !important;
+   }
 
-  /* Hero banner: stack vertically on mobile, full width, readable text */
-  .marketplace-body .grid-cols-1.lg\\:grid-cols-3 > div {
-    min-height: 200px !important;
-  }
-  .marketplace-body .aspect-\\[16/10\\],
-  .marketplace-body .aspect-\\[21/9\\] {
-    aspect-ratio: 16 / 9 !important;
-    min-height: 200px !important;
-  }
+   /* Hero banner: stack vertically on mobile, full width, readable text */
+   .marketplace-body [class*="grid-cols-1"][class*="lg:grid-cols-3"] > div {
+     min-height: 200px !important;
+   }
+   .marketplace-body [class*="aspect-\[16/10\]"],
+   .marketplace-body [class*="aspect-\[21/9\]"] {
+     aspect-ratio: 16 / 9 !important;
+     min-height: 200px !important;
+   }
 
-  /* Product cards: images large enough, names wrap, prices not clipped */
-  .marketplace-body .product-card .aspect-square {
-    aspect-ratio: 1 / 1 !important;
-    min-height: 220px !important;
-  }
-  .marketplace-body .product-card h3,
-  .marketplace-body .product-card h5 {
-    font-size: 14px !important;
-    line-height: 1.3 !important;
-  }
-  .marketplace-body .product-card .text-\\[15px\\] {
-    font-size: 15px !important;
-  }
+   /* Product cards: images large enough, names wrap, prices not clipped */
+   .marketplace-body .product-card .aspect-square {
+     aspect-ratio: 1 / 1 !important;
+     min-height: 220px !important;
+   }
+   .marketplace-body .product-card h3,
+   .marketplace-body .product-card h5 {
+     font-size: 14px !important;
+     line-height: 1.3 !important;
+   }
+   .marketplace-body .product-card [class*="text-\[15px\]"] {
+     font-size: 15px !important;
+   }
 
-  /* Sale badge never overlaps image corners */
-  .marketplace-body .product-card .absolute.left-3.top-3 {
-    left: 0.75rem !important;
-    top: 0.75rem !important;
-    font-size: 10px !important;
-    padding: 2px 8px !important;
-  }
+   /* Sale badge never overlaps image corners */
+   .marketplace-body .product-card .absolute.left-3.top-3 {
+     left: 0.75rem !important;
+     top: 0.75rem !important;
+     font-size: 10px !important;
+     padding: 2px 8px !important;
+   }
 
-  /* Mobile add button: full width, prominent */
-  .marketplace-body .product-card .md\\:hidden button {
-    width: 100% !important;
-    padding: 1rem !important;
-    font-size: 15px !important;
-  }
+   /* Mobile add button: full width, prominent */
+   .marketplace-body .product-card [class*="md:hidden"] button {
+     width: 100% !important;
+     padding: 1rem !important;
+     font-size: 15px !important;
+   }
 
-  /* Grid: 2 columns on mobile, consistent card height */
-  .marketplace-body .grid-cols-2.sm\\:grid-cols-3,
-  .marketplace-body .grid-cols-2.sm\\:grid-cols-3.lg\\:grid-cols-4,
-  .marketplace-body .grid-cols-2.sm\\:grid-cols-3.lg\\:grid-cols-5 {
-    grid-template-columns: repeat(2, 1fr) !important;
-    gap: 0.75rem !important;
-  }
+   /* Grid: 2 columns on mobile, consistent card height */
+   .marketplace-body [class*="grid-cols-2"][class*="sm:grid-cols-3"],
+   .marketplace-body [class*="grid-cols-2"][class*="sm:grid-cols-3"][class*="lg:grid-cols-4"],
+   .marketplace-body [class*="grid-cols-2"][class*="sm:grid-cols-3"][class*="lg:grid-cols-5"] {
+     grid-template-columns: repeat(2, 1fr) !important;
+     gap: 0.75rem !important;
+   }
 
-  /* Shop by collections: 2 columns on mobile */
-  .marketplace-body .shop-collections .grid-cols-2.sm\\:grid-cols-3.md\\:grid-cols-4.lg\\:grid-cols-5 {
-    grid-template-columns: repeat(2, 1fr) !important;
-    gap: 0.75rem !important;
-  }
+   /* Shop by collections: 2 columns on mobile */
+   .marketplace-body .shop-collections [class*="grid-cols-2"][class*="sm:grid-cols-3"][class*="md:grid-cols-4"][class*="lg:grid-cols-5"] {
+     grid-template-columns: repeat(2, 1fr) !important;
+     gap: 0.75rem !important;
+   }
 
-  /* Flash deals grid: 2 columns on mobile */
-  .marketplace-body #flash-deals .grid-cols-2.gap-3.p-4,
-  .marketplace-body #flash-deals .grid-cols-2.gap-3.sm\\:p-5.lg\\:grid-cols-4 {
-    grid-template-columns: repeat(2, 1fr) !important;
-    gap: 0.75rem !important;
-    padding: 0.75rem !important;
-  }
+   /* Flash deals grid: 2 columns on mobile */
+   .marketplace-body #flash-deals .grid-cols-2.gap-3.p-4,
+   .marketplace-body #flash-deals [class*="grid-cols-2"][class*="gap-3"][class*="sm:p-5"][class*="lg:grid-cols-4"] {
+     grid-template-columns: repeat(2, 1fr) !important;
+     gap: 0.75rem !important;
+     padding: 0.75rem !important;
+   }
 
-  /* Flash deals countdown: readable, stacked */
-  .marketplace-body #flash-deals .flex.flex-col.gap-3.p-5 {
-    gap: 1rem !important;
-    padding: 1rem !important;
-  }
-  .marketplace-body #flash-deals .text-xl.font-extrabold {
-    font-size: 1.25rem !important;
-  }
-  .marketplace-body #flash-deals .countdown .min-w-12 {
-    min-width: 44px !important;
-  }
-  .marketplace-body #flash-deals .block.text-lg.font-extrabold {
-    font-size: 1.125rem !important;
-  }
+   /* Flash deals countdown: readable, stacked */
+   .marketplace-body #flash-deals .flex.flex-col.gap-3.p-5 {
+     gap: 1rem !important;
+     padding: 1rem !important;
+   }
+   .marketplace-body #flash-deals .text-xl.font-extrabold {
+     font-size: 1.25rem !important;
+   }
+   .marketplace-body #flash-deals [class*="countdown"] [class*="min-w-12"] {
+     min-width: 44px !important;
+   }
+   .marketplace-body #flash-deals .block.text-lg.font-extrabold {
+     font-size: 1.125rem !important;
+   }
 
-  /* Category tabs / pills: scrollable, readable */
-  .marketplace-body .overflow-x-auto.pb-1.tab-rail,
-  .marketplace-body .flex.items-center.gap-2.overflow-x-auto.pb-1 {
-    gap: 0.5rem !important;
-    padding-bottom: 0.5rem !important;
-  }
-  .marketplace-body .tab-rail button,
-  .marketplace-body .overflow-x-auto.pb-1 button {
-    font-size: 13px !important;
-    padding: 0.5rem 1rem !important;
-    white-space: nowrap !important;
-  }
+   /* Category tabs / pills: scrollable, readable */
+   .marketplace-body .overflow-x-auto.pb-1.tab-rail,
+   .marketplace-body .flex.items-center.gap-2.overflow-x-auto.pb-1 {
+     gap: 0.5rem !important;
+     padding-bottom: 0.5rem !important;
+   }
+   .marketplace-body .tab-rail button,
+   .marketplace-body .overflow-x-auto.pb-1 button {
+     font-size: 13px !important;
+     padding: 0.5rem 1rem !important;
+     white-space: nowrap !important;
+   }
 
-  /* Department showcase: stacked layout on mobile */
-  .marketplace-body .category-shopping .px-5.py-5.flex.flex-col.lg\\:flex-row {
-    flex-direction: column !important;
-  }
-  .marketplace-body .category-shopping .flex-none.lg\\:w-\\[35\\%] {
-    width: 100% !important;
-    min-height: 160px !important;
-    max-height: 220px !important;
-  }
+   /* Department showcase: stacked layout on mobile */
+   .marketplace-body .category-shopping .px-5.py-5.flex.flex-col[class*="lg:flex-row"] {
+     flex-direction: column !important;
+   }
+   .marketplace-body .category-shopping [class*="flex-none"][class*="lg:w-\[35\%\]"] {
+     width: 100% !important;
+     min-height: 160px !important;
+     max-height: 220px !important;
+   }
 
-  /* Top stores / brand rail: horizontal scroll, larger touch targets */
-  .marketplace-body .stores-rail,
-  .marketplace-body .brand-rail-track {
-    gap: 0.75rem !important;
-    padding-bottom: 0.5rem !important;
-  }
-  .marketplace-body .brand-rail-track .group {
-    width: 88px !important;
-    min-width: 88px !important;
-  }
+   /* Top stores / brand rail: horizontal scroll, larger touch targets */
+   .marketplace-body .stores-rail,
+   .marketplace-body .brand-rail-track {
+     gap: 0.75rem !important;
+     padding-bottom: 0.5rem !important;
+   }
+   .marketplace-body .brand-rail-track .group {
+     width: 88px !important;
+     min-width: 88px !important;
+   }
 
-  /* Recently viewed: 2 columns on mobile */
-  .marketplace-body .grid-cols-1.sm\\:grid-cols-2.lg\\:grid-cols-4 {
-    grid-template-columns: repeat(2, 1fr) !important;
-    gap: 0.75rem !important;
-  }
+   /* Recently viewed: 2 columns on mobile */
+   .marketplace-body [class*="grid-cols-1"][class*="sm:grid-cols-2"][class*="lg:grid-cols-4"] {
+     grid-template-columns: repeat(2, 1fr) !important;
+     gap: 0.75rem !important;
+   }
 
-  /* Wishlist grid: 2 columns on mobile */
-  .marketplace-body .wishlist-page .grid-cols-2.sm\\:grid-cols-3.xl\\:grid-cols-5,
-  .marketplace-body .grid.grid-cols-2.sm\\:grid-cols-3.xl\\:grid-cols-5.gap-3 {
-    grid-template-columns: repeat(2, 1fr) !important;
-    gap: 0.75rem !important;
-  }
+   /* Wishlist grid: 2 columns on mobile */
+   .marketplace-body .wishlist-page [class*="grid-cols-2"][class*="sm:grid-cols-3"][class*="xl:grid-cols-5"],
+   .marketplace-body .grid [class*="grid-cols-2"][class*="sm:grid-cols-3"][class*="xl:grid-cols-5"].gap-3 {
+     grid-template-columns: repeat(2, 1fr) !important;
+     gap: 0.75rem !important;
+   }
 
-  /* Account stats: 2 columns on mobile */
-  .marketplace-body .account-stats .grid-cols-2.gap-3.sm\\:grid-cols-4 {
-    grid-template-columns: repeat(2, 1fr) !important;
-    gap: 0.5rem !important;
-  }
+   /* Account stats: 2 columns on mobile */
+   .marketplace-body .account-stats .grid-cols-2.gap-3[class*="sm:grid-cols-4"] {
+     grid-template-columns: repeat(2, 1fr) !important;
+     gap: 0.5rem !important;
+   }
 
-  /* Cart: single column, images readable, qty stepper touch-friendly */
-  .marketplace-body .cart-page .grid-cols-1.lg\\:grid-cols-12 {
-    gap: 1rem !important;
-  }
-  .marketplace-body .cart-page .w-20.h-20,
-  .marketplace-body .cart-page .sm\\:w-16.sm\\:h-16 {
-    width: 72px !important;
-    height: 72px !important;
-    min-width: 72px !important;
-    min-height: 72px !important;
-  }
-  .marketplace-body .cart-page .flex.items-center.border.rounded-lg.overflow-hidden > * {
-    min-width: 40px !important;
-    height: 44px !important;
-  }
-  .marketplace-body .cart-page .line-clamp-2 {
-    font-size: 14px !important;
-  }
+   /* Cart: single column, images readable, qty stepper touch-friendly */
+   .marketplace-body .cart-page [class*="grid-cols-1"][class*="lg:grid-cols-12"] {
+     gap: 1rem !important;
+   }
+   .marketplace-body .cart-page .w-20.h-20,
+   .marketplace-body .cart-page [class*="sm:w-16"][class*="sm:h-16"] {
+     width: 72px !important;
+     height: 72px !important;
+     min-width: 72px !important;
+     min-height: 72px !important;
+   }
+   .marketplace-body .cart-page .flex.items-center.border.rounded-lg.overflow-hidden > * {
+     min-width: 40px !important;
+     height: 44px !important;
+   }
+   .marketplace-body .cart-page .line-clamp-2 {
+     font-size: 14px !important;
+   }
 
-  /* Checkout: single column, full-width form fields, stacked summary */
-  .marketplace-body .checkout-page .grid-cols-1.lg\\:grid-cols-12 {
-    gap: 1rem !important;
-  }
-  .marketplace-body .checkout-page .grid.grid-cols-1.sm\\:grid-cols-2.gap-3 {
-    grid-template-columns: 1fr !important;
-    gap: 0.75rem !important;
-  }
-  .marketplace-body .checkout-page .w-44.sm\\:w-full {
-    width: 100% !important;
-  }
-  .marketplace-body .checkout-page .sticky.top-4 {
-    position: static !important;
-    top: auto !important;
-  }
-  .marketplace-body .checkout-page .w-full.py-3.rounded-lg {
-    padding: 1rem !important;
-    font-size: 16px !important; /* prevents iOS zoom on focus */
-  }
-  .marketplace-body .checkout-page input,
-  .marketplace-body .checkout-page select,
-  .marketplace-body .checkout-page textarea {
-    font-size: 16px !important;
-  }
+   /* Checkout: single column, full-width form fields, stacked summary */
+   .marketplace-body .checkout-page [class*="grid-cols-1"][class*="lg:grid-cols-12"] {
+     gap: 1rem !important;
+   }
+   .marketplace-body .checkout-page .grid.grid-cols-1[class*="sm:grid-cols-2"].gap-3 {
+     grid-template-columns: 1fr !important;
+     gap: 0.75rem !important;
+   }
+   .marketplace-body .checkout-page [class*="w-44"][class*="sm:w-full"] {
+     width: 100% !important;
+   }
+   .marketplace-body .checkout-page .sticky.top-4 {
+     position: static !important;
+     top: auto !important;
+   }
+   .marketplace-body .checkout-page .w-full.py-3.rounded-lg {
+     padding: 1rem !important;
+     font-size: 16px !important;
+   }
+   .marketplace-body .checkout-page input,
+   .marketplace-body .checkout-page select,
+   .marketplace-body .checkout-page textarea {
+     font-size: 16px !important;
+   }
 
-  /* Product detail: mobile sticky action bar already exists; gallery touch-friendly */
-  .marketplace-body .product-detail .flex.w-16.sm\\:w-20.shrink-0 {
-    max-height: 320px !important;
-  }
-  .marketplace-body .product-detail .relative.aspect-square {
-    min-height: 320px !important;
-  }
-  .marketplace-body .product-detail .grid-cols-1.lg\\:grid-cols-2 {
-    grid-template-columns: 1fr !important;
-    gap: 0.75rem !important;
-  }
-  .marketplace-body .product-detail .text-2xl.sm\\:text-3xl {
-    font-size: 1.75rem !important;
-  }
-  .marketplace-body .product-detail .text-3xl.font-extrabold {
-    font-size: 1.875rem !important;
-  }
-  .marketplace-body .product-detail .flex.flex-col.sm\\:flex-row.gap-2.mt-4 {
-    flex-direction: column !important;
-  }
-  .marketplace-body .product-detail .flex.flex-col.sm\\:flex-row.gap-2.mt-4 > button {
-    width: 100% !important;
-    padding: 1rem !important;
-    font-size: 16px !important;
-  }
+   /* Product detail: mobile sticky action bar already exists; gallery touch-friendly */
+   .marketplace-body .product-detail .flex.w-16.sm\:w-20.shrink-0 {
+     max-height: 320px !important;
+   }
+   .marketplace-body .product-detail .relative.aspect-square {
+     min-height: 320px !important;
+   }
+   .marketplace-body .product-detail [class*="grid-cols-1"][class*="lg:grid-cols-2"] {
+     grid-template-columns: 1fr !important;
+     gap: 0.75rem !important;
+   }
+   .marketplace-body .product-detail .text-2xl[class*="sm:text-3xl"] {
+     font-size: 1.75rem !important;
+   }
+   .marketplace-body .product-detail .text-3xl.font-extrabold {
+     font-size: 1.875rem !important;
+   }
+   .marketplace-body .product-detail .flex.flex-col[class*="sm:flex-row"].gap-2.mt-4 {
+     flex-direction: column !important;
+   }
+   .marketplace-body .product-detail .flex.flex-col[class*="sm:flex-row"].gap-2.mt-4 > button {
+     width: 100% !important;
+     padding: 1rem !important;
+     font-size: 16px !important;
+   }
 
-  /* Touch targets: minimum 44px for primary buttons */
-  .marketplace-body button,
-  .marketplace-body a[role="button"],
-  .marketplace-body .market-bottom-nav button {
-    min-height: 44px !important;
-  }
+   /* Touch targets: minimum 44px for primary buttons */
+   .marketplace-body button,
+   .marketplace-body a[role="button"],
+   .marketplace-body .market-bottom-nav button {
+     min-height: 44px !important;
+   }
 
-  /* Bottom nav: safe areas, no content covered */
-  .marketplace-body .market-bottom-nav nav.lg\\:hidden.fixed.bottom-0 {
-    padding-bottom: max(0.5rem, env(safe-area-inset-bottom)) !important;
-    padding-top: 0.5rem !important;
-  }
-  .marketplace-body .market-bottom-nav .h-\\[64px\\] {
-    height: 64px !important;
-  }
+   /* Bottom nav: safe areas, no content covered */
+   .marketplace-body .market-bottom-nav nav[class*="lg:hidden"].fixed.bottom-0 {
+     padding-bottom: max(0.5rem, env(safe-area-inset-bottom)) !important;
+     padding-top: 0.5rem !important;
+   }
+   .marketplace-body .market-bottom-nav [class*="h-\[64px\]"] {
+     height: 64px !important;
+   }
 
-  /* Text wrapping: no clipped text */
-  .marketplace-body .truncate,
-  .marketplace-body .line-clamp-1,
-  .marketplace-body .line-clamp-2 {
-    overflow-wrap: anywhere !important;
-  }
+   /* Text wrapping: no clipped text */
+   .marketplace-body .truncate,
+   .marketplace-body .line-clamp-1,
+   .marketplace-body .line-clamp-2 {
+     overflow-wrap: anywhere !important;
+   }
 
-  /* Modal/drawer: easy to close, fits viewport */
-  .marketplace-body .fixed.inset-0.z-\\[40\\] {
-    backdrop-filter: blur(8px) !important;
-    background: rgba(11, 58, 154, 0.45) !important;
-  }
-  .marketplace-body nav[aria-label="Marketplace mobile"] {
-    width: 92vw !important;
-    max-width: 360px !important;
-  }
-}
+   /* Modal/drawer: easy to close, fits viewport */
+   .marketplace-body .fixed.inset-0[class*="z-\[40\]"] {
+     backdrop-filter: blur(8px) !important;
+     background: rgba(11, 58, 154, 0.45) !important;
+   }
+   .marketplace-body nav[aria-label="Marketplace mobile"] {
+     width: 92vw !important;
+     max-width: 360px !important;
+   }
+ }
 
-/* ---------- Tablet (768px - 1023px) ---------- */
-@media (min-width: 768px) and (max-width: 1023px) {
-  .marketplace-body {
-    overflow-x: hidden !important;
-  }
+ /* ---------- Tablet (768px - 1023px) ---------- */
+ @media (min-width: 768px) and (max-width: 1023px) {
+   .marketplace-body {
+     overflow-x: hidden !important;
+   }
 
-  /* Containers: comfortable tablet padding */
-  .marketplace-body main .max-w-\\[1480px\\],
-  .marketplace-body main .max-w-\\[1440px\\] {
-    padding-left: 1rem !important;
-    padding-right: 1rem !important;
-  }
+   /* Containers: comfortable tablet padding */
+   .marketplace-body main [class*="max-w-\[1480px\]"],
+   .marketplace-body main [class*="max-w-\[1440px\]"] {
+     padding-left: 1rem !important;
+     padding-right: 1rem !important;
+   }
 
-  /* Hero: 2 columns on tablet (main + side) */
-  .marketplace-body .grid-cols-1.lg\\:grid-cols-3 {
-    grid-template-columns: 1fr 1fr !important;
-    gap: 0.75rem !important;
-  }
-  .marketplace-body .grid-cols-1.lg\\:grid-cols-3 > div:nth-child(2) {
-    grid-column: span 2 !important;
-  }
-  .marketplace-body .grid-cols-1.lg\\:grid-cols-3 > div:nth-child(3) {
-    display: none !important;
-  }
-  .marketplace-body .aspect-\\[16/10\\],
-  .marketplace-body .aspect-\\[21/9\\] {
-    aspect-ratio: 16 / 9 !important;
-    min-height: 260px !important;
-  }
+   /* Hero: 2 columns on tablet (main + side) */
+   .marketplace-body [class*="grid-cols-1"][class*="lg:grid-cols-3"] {
+     grid-template-columns: 1fr 1fr !important;
+     gap: 0.75rem !important;
+   }
+   .marketplace-body [class*="grid-cols-1"][class*="lg:grid-cols-3"] > div:nth-child(2) {
+     grid-column: span 2 !important;
+   }
+   .marketplace-body [class*="grid-cols-1"][class*="lg:grid-cols-3"] > div:nth-child(3) {
+     display: none !important;
+   }
+   .marketplace-body [class*="aspect-\[16/10\]"],
+   .marketplace-body [class*="aspect-\[21/9\]"] {
+     aspect-ratio: 16 / 9 !important;
+     min-height: 260px !important;
+   }
 
-  /* Product grids: 3 columns on tablet */
-  .marketplace-body .grid-cols-2.sm\\:grid-cols-3.lg\\:grid-cols-4,
-  .marketplace-body .grid-cols-2.sm\\:grid-cols-3.lg\\:grid-cols-5 {
-    grid-template-columns: repeat(3, 1fr) !important;
-    gap: 0.75rem !important;
-  }
-  .marketplace-body #flash-deals .grid-cols-2.gap-3.sm\\:p-5.lg\\:grid-cols-4 {
-    grid-template-columns: repeat(3, 1fr) !important;
-    gap: 0.75rem !important;
-  }
+   /* Product grids: 3 columns on tablet */
+   .marketplace-body [class*="grid-cols-2"][class*="sm:grid-cols-3"][class*="lg:grid-cols-4"],
+   .marketplace-body [class*="grid-cols-2"][class*="sm:grid-cols-3"][class*="lg:grid-cols-5"] {
+     grid-template-columns: repeat(3, 1fr) !important;
+     gap: 0.75rem !important;
+   }
+   .marketplace-body #flash-deals [class*="grid-cols-2"][class*="gap-3"][class*="sm:p-5"][class*="lg:grid-cols-4"] {
+     grid-template-columns: repeat(3, 1fr) !important;
+     gap: 0.75rem !important;
+   }
 
-  /* Shop by collections: 4 columns on tablet */
-  .marketplace-body .shop-collections .grid-cols-2.sm\\:grid-cols-3.md\\:grid-cols-4.lg\\:grid-cols-5 {
-    grid-template-columns: repeat(4, 1fr) !important;
-    gap: 0.75rem !important;
-  }
+   /* Shop by collections: 4 columns on tablet */
+   .marketplace-body .shop-collections [class*="grid-cols-2"][class*="sm:grid-cols-3"][class*="md:grid-cols-4"][class*="lg:grid-cols-5"] {
+     grid-template-columns: repeat(4, 1fr) !important;
+     gap: 0.75rem !important;
+   }
 
-  /* Department showcase: side-by-side on tablet */
-  .marketplace-body .category-shopping .px-5.py-5.flex.flex-col.lg\\:flex-row {
-    flex-direction: row !important;
-  }
-  .marketplace-body .category-shopping .flex-none.lg\\:w-\\[35\\%] {
-    width: 35% !important;
-    min-height: 200px !important;
-  }
+   /* Department showcase: side-by-side on tablet */
+   .marketplace-body .category-shopping .px-5.py-5.flex.flex-col[class*="lg:flex-row"] {
+     flex-direction: row !important;
+   }
+   .marketplace-body .category-shopping [class*="flex-none"][class*="lg:w-\[35\%\]"] {
+     width: 35% !important;
+     min-height: 200px !important;
+   }
 
-  /* Top stores / brands: 5-6 columns on tablet */
-  .marketplace-body .stores-rail .group {
-    width: 140px !important;
-  }
-  .marketplace-body .brand-rail-track .group {
-    width: 110px !important;
-  }
+   /* Top stores / brands: 5-6 columns on tablet */
+   .marketplace-body .stores-rail .group {
+     width: 140px !important;
+   }
+   .marketplace-body .brand-rail-track .group {
+     width: 110px !important;
+   }
 
-  /* Wishlist: 3 columns on tablet */
-  .marketplace-body .grid-cols-2.sm\\:grid-cols-3.xl\\:grid-cols-5.gap-3 {
-    grid-template-columns: repeat(3, 1fr) !important;
-    gap: 0.75rem !important;
-  }
+   /* Wishlist: 3 columns on tablet */
+   .marketplace-body [class*="grid-cols-2"][class*="sm:grid-cols-3"][class*="xl:grid-cols-5"].gap-3 {
+     grid-template-columns: repeat(3, 1fr) !important;
+     gap: 0.75rem !important;
+   }
 
-  /* Account stats: 4 columns on tablet */
-  .marketplace-body .account-stats .grid-cols-2.gap-3.sm\\:grid-cols-4 {
-    grid-template-columns: repeat(4, 1fr) !important;
-    gap: 0.5rem !important;
-  }
+   /* Account stats: 4 columns on tablet */
+   .marketplace-body .account-stats .grid-cols-2.gap-3[class*="sm:grid-cols-4"] {
+     grid-template-columns: repeat(4, 1fr) !important;
+     gap: 0.5rem !important;
+   }
 
-  /* Cart: 2 columns on tablet (items + summary) */
-  .marketplace-body .cart-page .grid-cols-1.lg\\:grid-cols-12 {
-    grid-template-columns: repeat(12, 1fr) !important;
-    gap: 1rem !important;
-  }
-  .marketplace-body .cart-page .lg\\:col-span-8 {
-    grid-column: span 8 !important;
-  }
-  .marketplace-body .cart-page .lg\\:col-span-4 {
-    grid-column: span 4 !important;
-    position: sticky !important;
-    top: 1rem !important;
-  }
+   /* Cart: 2 columns on tablet (items + summary) */
+   .marketplace-body .cart-page [class*="grid-cols-1"][class*="lg:grid-cols-12"] {
+     grid-template-columns: repeat(12, 1fr) !important;
+     gap: 1rem !important;
+   }
+   .marketplace-body .cart-page [class*="lg:col-span-8"] {
+     grid-column: span 8 !important;
+   }
+   .marketplace-body .cart-page [class*="lg:col-span-4"] {
+     grid-column: span 4 !important;
+     position: sticky !important;
+     top: 1rem !important;
+   }
 
-  /* Checkout: 2 columns on tablet */
-  .marketplace-body .checkout-page .grid-cols-1.lg\\:grid-cols-12 {
-    grid-template-columns: repeat(12, 1fr) !important;
-    gap: 1rem !important;
-  }
-  .marketplace-body .checkout-page .lg\\:col-span-7 {
-    grid-column: span 7 !important;
-  }
-  .marketplace-body .checkout-page .lg\\:col-span-5 {
-    grid-column: span 5 !important;
-    position: sticky !important;
-    top: 1rem !important;
-  }
-  .marketplace-body .checkout-page .sticky.top-4 {
-    position: sticky !important;
-    top: 1rem !important;
-  }
+   /* Checkout: 2 columns on tablet */
+   .marketplace-body .checkout-page [class*="grid-cols-1"][class*="lg:grid-cols-12"] {
+     grid-template-columns: repeat(12, 1fr) !important;
+     gap: 1rem !important;
+   }
+   .marketplace-body .checkout-page [class*="lg:col-span-7"] {
+     grid-column: span 7 !important;
+   }
+   .marketplace-body .checkout-page [class*="lg:col-span-5"] {
+     grid-column: span 5 !important;
+     position: sticky !important;
+     top: 1rem !important;
+   }
+   .marketplace-body .checkout-page .sticky.top-4 {
+     position: sticky !important;
+     top: 1rem !important;
+   }
 
-  /* Product detail: 2 columns on tablet */
-  .marketplace-body .product-detail .grid-cols-1.lg\\:grid-cols-2 {
-    grid-template-columns: 1fr 1fr !important;
-    gap: 1rem !important;
-  }
-  .marketplace-body .product-detail .relative.aspect-square {
-    min-height: 400px !important;
-  }
-  .marketplace-body .product-detail .flex.flex-col.sm\\:flex-row.gap-2.mt-4 {
-    flex-direction: row !important;
-  }
-  .marketplace-body .product-detail .flex.flex-col.sm\\:flex-row.gap-2.mt-4 > button {
-    width: auto !important;
-    flex: 1 !important;
-  }
+   /* Product detail: 2 columns on tablet */
+   .marketplace-body .product-detail [class*="grid-cols-1"][class*="lg:grid-cols-2"] {
+     grid-template-columns: 1fr 1fr !important;
+     gap: 1rem !important;
+   }
+   .marketplace-body .product-detail .relative.aspect-square {
+     min-height: 400px !important;
+   }
+   .marketplace-body .product-detail .flex.flex-col[class*="sm:flex-row"].gap-2.mt-4 {
+     flex-direction: row !important;
+   }
+   .marketplace-body .product-detail .flex.flex-col[class*="sm:flex-row"].gap-2.mt-4 > button {
+     width: auto !important;
+     flex: 1 !important;
+   }
 
-  /* Recently viewed: 3 columns on tablet */
-  .marketplace-body .grid-cols-1.sm\\:grid-cols-2.lg\\:grid-cols-4 {
-    grid-template-columns: repeat(3, 1fr) !important;
-    gap: 0.75rem !important;
-  }
+   /* Recently viewed: 3 columns on tablet */
+   .marketplace-body [class*="grid-cols-1"][class*="sm:grid-cols-2"][class*="lg:grid-cols-4"] {
+     grid-template-columns: repeat(3, 1fr) !important;
+     gap: 0.75rem !important;
+   }
 
-  /* Tablet: hide mobile bottom nav, show top navigation */
-  .marketplace-body .market-bottom-nav nav.lg\\:hidden.fixed.bottom-0 {
-    display: none !important;
-  }
-  .marketplace-body .market-bottom-nav .h-\\[64px\\] {
-    display: none !important;
-  }
-}
+   /* Tablet: hide mobile bottom nav, show top navigation */
+   .marketplace-body .market-bottom-nav nav[class*="lg:hidden"].fixed.bottom-0 {
+     display: none !important;
+   }
+   .marketplace-body .market-bottom-nav [class*="h-\[64px\]"] {
+     display: none !important;
+   }
+ }
 
 /* Marketplace mega-menu — blue glow on the All Departments trigger */
 .market-menu-glow { box-shadow: 0 0 0 rgba(20,83,214,0); }
