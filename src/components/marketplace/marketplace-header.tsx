@@ -182,7 +182,7 @@ export function MarketplaceHeader({
 const [mobileExpanded, setMobileExpanded] = useState("")
 const [seeMore, setSeeMore] = useState(false)
 const [currency, setCurrency] = useState<MarketCurrency>(readMarketCurrency())
-const [promoBarDismissed, setPromoBarDismissed] = useState(false)
+
 const [currencyOpen, setCurrencyOpen] = useState(false)
 const [showBackToTop, setShowBackToTop] = useState(false)
   // Live, admin-editable category tree (falls back to the bundled tree).
@@ -416,17 +416,15 @@ const [showBackToTop, setShowBackToTop] = useState(false)
       {/* Keeps the department menu in sync with Admin → Categories */}
       <MarketCategorySync />
       <MarketCommerce />
-      {/* utility bar — blue Limited Deal / Black Friday banner, dismissable */}
-      {!promoBarDismissed && (
-      <div className="marketplace-promo-bar relative z-[60] w-full text-white shadow-lg border-b border-white/25" style={{ backgroundImage: `linear-gradient(90deg, ${promoBanners?.promo_bar_from || "#1668DC"}, ${promoBanners?.promo_bar_to || "#0F4FB3"})` }}>
+      {/* utility bar — blue Limited Deal / Black Friday banner (desktop only) */}
+      <div className="marketplace-promo-bar hidden md:block relative z-[60] w-full text-white shadow-lg border-b border-white/25" style={{ backgroundImage: `linear-gradient(90deg, ${promoBanners?.promo_bar_from || "#1668DC"}, ${promoBanners?.promo_bar_to || "#0F4FB3"})` }}>
         <div className="mx-auto w-full max-w-[1440px] px-3 sm:px-6 lg:px-10 flex items-center justify-between h-12 text-[11px] sm:text-xs gap-4">
           <div className="flex items-center gap-2.5 min-w-0">
             <span className="marketplace-badge-pill shrink-0" style={{ backgroundColor: promoBanners?.promo_badge_bg || "#FF3B30" }}>
               <span className="mp-dot" aria-hidden="true" />
               {promoBanners?.promo_badge_text || "Limited Deal"}
             </span>
-            <p className="marketplace-promo-text text-white/95 hidden sm:block truncate">{promoBanners?.promo_message || "Black Friday Sale! Special offers up to 50% Off at TechPivo Market"}</p>
-            <p className="marketplace-promo-text-mobile text-white/90 sm:hidden truncate">{promoBanners?.promo_message_mobile || "Up to 50% Off at TechPivo Market"}</p>
+            <p className="marketplace-promo-text text-white/95 hidden md:block truncate">{promoBanners?.promo_message || "Black Friday Sale! Special offers up to 50% Off at TechPivo Market"}</p>
           </div>
           <div className="flex items-center gap-2.5 shrink-0 text-white/90">
               <div ref={currencyWrapRef} className="relative z-[50] group">
@@ -473,17 +471,8 @@ const [showBackToTop, setShowBackToTop] = useState(false)
               Help Center
             </Link>
           </div>
-          <button
-            type="button"
-            onClick={() => setPromoBarDismissed(true)}
-            aria-label="Dismiss offer banner"
-            className="p-1.5 hover:bg-white/20 rounded-full"
-          >
-            <X className="h-4 w-4 text-white" />
-          </button>
         </div>
       </div>
-      )}
 
       {/* sticky main header — logo/search/menu stay visible while scrolling */}
       <header className="sticky top-0 z-50 w-full bg-white shadow-[0_2px_12px_rgba(0,0,0,0.08)]">
