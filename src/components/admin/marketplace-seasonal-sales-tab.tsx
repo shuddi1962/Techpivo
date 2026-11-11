@@ -223,6 +223,18 @@ export function MarketplaceSeasonalSalesTab(): JSX.Element | null {
 
   const now = () => new Date().toISOString().slice(0, 16)
 
+  const nowMs = () => Date.now()
+
+  // Effective status auto-expires campaigns past their end date and marks
+  // not-yet-started published campaigns as draft so the admin list never
+  // shows "Live" for a campaign that has already ended.
+  const effectiveStatus = (c: SeasonalCampaignForm): SeasonalCampaignForm["status"] => {
+    if (c.status === "draft" || c.status === "paused") return c.status
+    if (c.endAt && nowMs() > Date.parse(c.endAt)) return "expired"
+    if (c.startAt && nowMs() < Date.parse(c.startAt)) return "draft"
+    return c.status
+  }
+
   const save = async () => {
     if (!editing) return
     setSaving(true)
@@ -421,7 +433,7 @@ export function MarketplaceSeasonalSalesTab(): JSX.Element | null {
 
   if (loading) return <MarketLoading label="Loading Seasonal Sales..." />
 
-  const publishedCount = campaigns.filter((c) => c.status === "published").length
+  const publishedCount = campaigns.filter((c) => effectiveStatus(c) === "published").length
   const nowIso = now()
 
   // ================= LIST VIEW =================
@@ -481,7 +493,7 @@ export function MarketplaceSeasonalSalesTab(): JSX.Element | null {
                 ) : (
                   campaigns.map((c) => {
                     const a = analyticsFor(c.id)
-                    const { label, tone } = statusBadge(c.status)
+                    const { label, tone } = statusBadge(effectiveStatus(c))
                     const ends = c.endAt ? `ends ${new Date(c.endAt).toLocaleString()}` : "no end date"
                     const starts = c.startAt ? `starts ${new Date(c.startAt).toLocaleString()}` : "draft"
                     return (
@@ -522,11 +534,14 @@ export function MarketplaceSeasonalSalesTab(): JSX.Element | null {
                             </button>
                             <button
                               type="button"
-                              onClick={() => toggleStatus(c.id, c.status === "published" ? "paused" : "published")}
+                              onClick={() => {
+                                const eff = effectiveStatus(c)
+                                toggleStatus(c.id, eff === "published" ? "paused" : "published")
+                              }}
                               className="marketIconBtnCls px-2 py-1.5 text-slate-600 hover:bg-slate-100 hover:text-slate-900"
-                              title={c.status === "published" ? "Pause" : "Publish"}
+                              title={effectiveStatus(c) === "published" ? "Pause" : "Publish"}
                             >
-                              {c.status === "published" ? <User className="h-4 w-4" /> : <ArrowRight className="h-4 w-4" />}
+                              {effectiveStatus(c) === "published" ? <User className="h-4 w-4" /> : <ArrowRight className="h-4 w-4" />}
                             </button>
                             <button
                               type="button"
