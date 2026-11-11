@@ -845,7 +845,7 @@ export function MarketplaceHome() {
         )}
 
         {/* hero — mobile: single column; desktop: 3-col row (unchanged) */}
-        <section className="w-full mb-2 sm:mb-4">
+        <section className="w-full mb-0 sm:mb-4">
         <div className="grid w-full grid-cols-1 lg:grid-cols-3 gap-4 items-stretch lg:h-[360px] xl:h-[400px] overflow-x-clip">
         {!loaded || !bannersReady ? (
           <div className="lg:col-span-2 overflow-hidden rounded-none bg-white shadow-sm aspect-[16/10] sm:aspect-[21/9] lg:aspect-auto lg:h-full animate-pulse" aria-hidden>

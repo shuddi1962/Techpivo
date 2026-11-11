@@ -70,11 +70,13 @@ export function ShopCollections({
           {showAll ? "See Less" : "See All"} <ChevronRight className="h-4 w-4" />
         </button>
       </div>
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
+
+      {/* Desktop: single column stack */}
+      <div className="md:flex md:flex-col md:gap-3">
         {visible.map((c) => {
           const hasSide = Boolean(c.sideBanner?.trim())
           return (
-            <div key={c.slug} className="min-w-0 group flex flex-col items-start gap-3">
+            <div key={c.slug} className="min-w-0 group flex flex-col md:flex-row items-start md:items-center gap-3 md:gap-4">
               {/* Department tile — square product/department image + name */}
               <div className="min-w-0">
                 <Link
@@ -82,39 +84,53 @@ export function ShopCollections({
                   aria-label={`View ${c.name} collection`}
                   className="block min-w-0"
                 >
-                  <span className="block relative aspect-[1/1] w-full overflow-hidden rounded-xl bg-[#F1F5F9] p-4 transition-all duration-300 group-hover:bg-[#E8EEF4] group-hover:-translate-y-1 group-hover:shadow-md">
-                    {c.image ? (
-                      <img
-                        src={marketImage(c.image)}
-                        alt=""
-                        loading="lazy"
-                        decoding="async"
-                        className="h-full w-full object-contain transition-transform duration-500 group-hover:scale-105"
-                      />
-                    ) : (
-                      <div className="h-full w-full flex items-center justify-center text-slate-300 rounded-xl">
-                        <span className="text-xs font-medium text-slate-500">No image</span>
-                      </div>
-                    )}
-                    <span className="absolute bottom-3 right-3 z-20 flex h-8 w-8 items-center justify-center rounded-full bg-white/95 text-[#0F172A] shadow-md opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                      <ShoppingBag className="h-4 w-4" />
-                    </span>
+                  {c.image ? (
+                    <img
+                      src={marketImage(c.image)}
+                      alt=""
+                      loading="lazy"
+                      decoding="async"
+                      className="relative aspect-[1/1] w-full sm:w-20 md:w-[200px] overflow-hidden rounded-xl bg-[#F1F5F9] p-4 md:p-0 transition-all duration-300 group-hover:bg-[#E8EEF4] group-hover:-translate-y-1 group-hover:shadow-md object-contain"
+                    />
+                  ) : (
+                    <div className="h-48 w-full sm:w-20 md:w-[200px] flex items-center justify-center text-slate-300 rounded-xl">
+                      <span className="text-xs font-medium text-slate-500">No image</span>
+                    </div>
+                  )}
+                  <span className="absolute bottom-2 right-2 z-20 flex h-7 w-7 items-center justify-center rounded-full bg-white/95 text-[#0F172A] shadow-md opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                    <ShoppingBag className="h-3.5 w-3.5" />
                   </span>
                 </Link>
                 <div className="mt-2 flex justify-center">
                   <Link
                     href={c.href}
                     title={c.name}
-                    className="max-w-full line-clamp-2 text-center text-[13px] font-medium text-slate-700 transition-colors hover:text-[#B45309]"
+                    className="max-w-full line-clamp-1 text-center text-[13px] font-medium text-slate-700 transition-colors hover:text-[#B45309]"
                   >
                     {c.name}
                   </Link>
                 </div>
               </div>
+              {hasSide && (
+                <Link
+                  href={c.sideLink || c.href}
+                  aria-label={`View ${c.name} promotion`}
+                  className="hidden md:flex-shrink-0 relative aspect-[2/3] w-[170px] overflow-hidden rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] shadow-sm group"
+                >
+                  <img
+                    src={marketImage(c.sideBanner!)}
+                    alt={`${c.name} promotion`}
+                    loading="lazy"
+                    decoding="async"
+                    className="absolute inset-0 h-full w-full object-contain bg-[#F8FAFC] group-hover:scale-105 transition-transform duration-300"
+                  />
+                </Link>
+              )}
             </div>
           )
         })}
       </div>
+
       {/* Mobile: horizontal slide row of collection tiles */}
       <div className="md:hidden overflow-x-auto pb-2 snap-x scroll-smooth" style={{ scrollbarWidth: "none" }}>
         <div className="flex gap-3 min-w-max">

@@ -1003,7 +1003,6 @@ export function MarketplaceFooter() {
   const [email, setEmail] = useState("")
   const [subMsg, setSubMsg] = useState("")
   const [subBusy, setSubBusy] = useState(false)
-  const [openSections, setOpenSections] = useState<Set<string>>(new Set())
   // Live, admin-editable department tree.
   const departments = useMarketplaceTree()
   // Store contact info — editable in Admin → Marketplace → Banners
@@ -1032,15 +1031,6 @@ export function MarketplaceFooter() {
       window.removeEventListener("focus", load)
     }
   }, [])
-  const toggleSection = (id: string) => {
-    setOpenSections((prev) => {
-      const next = new Set(prev)
-      if (next.has(id)) next.delete(id)
-      else next.add(id)
-      return next
-    })
-  }
-  const isOpen = (id: string) => openSections.has(id)
   const subscribe = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!email.trim() || subBusy) return
@@ -1094,62 +1084,44 @@ export function MarketplaceFooter() {
             <img src="/market-logo.svg" alt="TechPivo Market" className="h-9 w-auto" />
             </span>
           </div>
-            <p className="text-[12px] leading-relaxed text-slate-300">Curated tech products, reviewed by the TechPivo editorial team. Every purchase supports independent tech journalism.</p>
+            <p className="text-sm leading-relaxed text-slate-300">Curated tech products, reviewed by the TechPivo editorial team. Every purchase supports independent tech journalism.</p>
             {store.contact_visible !== false && (
-            <div className="space-y-2 text-[12px] text-slate-300">
+            <div className="space-y-2 text-sm text-slate-300">
               <div className="flex items-start gap-2"><MapPin className="mt-0.5 h-4 w-4 shrink-0 text-[#1668DC]" /><span className="max-w-[calc(100vw-3rem)] truncate">{store.address}</span></div>
               <div className="flex items-center gap-2"><Phone className="h-4 w-4 shrink-0 text-[#1668DC]" /><span>{store.phone}</span></div>
               <div className="flex items-center gap-2"><Mail className="h-4 w-4 shrink-0 text-[#1668DC]" /><span>{store.email}</span></div>
             </div>
             )}
           </div>
-          {/* Column 2: Shop departments — collapsible on mobile */}
+          {/* Column 2: Shop departments — always visible */}
           <div className="space-y-4 lg:col-span-1">
-            <button
-              onClick={() => toggleSection("shop")}
-              aria-expanded={isOpen("shop")}
-              className="flex w-full items-center justify-between gap-2"
-            >
-              <h5 className="mb-0 text-[11px] font-bold uppercase tracking-wider text-white">Shop</h5>
-              <ChevronDown className={`h-4 w-4 text-slate-400 transition-transform ${isOpen("shop") ? "rotate-180" : ""}`} />
-            </button>
-            {isOpen("shop") && (
-              <ul className="mt-2 grid grid-cols-1 gap-2 text-[12px] text-slate-300">
-                {departments.map((d) => (
-                  <li key={d.slug}><Link className="transition-colors hover:text-[#1668DC]" href={"/marketplace/category/" + d.slug}>{d.name}</Link></li>
-                ))}
-              </ul>
-            )}
+            <h5 className="mb-3 text-sm font-bold uppercase tracking-wider text-white">Shop</h5>
+            <ul className="grid grid-cols-1 gap-2 text-sm text-slate-300">
+              {departments.map((d) => (
+                <li key={d.slug}><Link className="transition-colors hover:text-[#1668DC]" href={"/marketplace/category/" + d.slug}>{d.name}</Link></li>
+              ))}
+            </ul>
           </div>
-          {/* Column 3: Customer service — collapsible on mobile */}
+          {/* Column 3: Customer service — always visible */}
           <div className="space-y-4 lg:col-span-1">
-            <button
-              onClick={() => toggleSection("service")}
-              aria-expanded={isOpen("service")}
-              className="flex w-full items-center justify-between gap-2"
-            >
-              <h5 className="mb-0 text-[11px] font-bold uppercase tracking-wider text-white">Customer Service</h5>
-              <ChevronDown className={`h-4 w-4 text-slate-400 transition-transform ${isOpen("service") ? "rotate-180" : ""}`} />
-            </button>
-            {isOpen("service") && (
-              <ul className="mt-2 grid grid-cols-1 gap-2 text-[12px] text-slate-300">
-                <li><Link className="transition-colors hover:text-[#1668DC]" href="/marketplace/help">Help Center</Link></li>
-                <li><Link className="transition-colors hover:text-[#1668DC]" href="/marketplace/faq">FAQ</Link></li>
-                <li><Link className="transition-colors hover:text-[#1668DC]" href="/marketplace/track">Order Tracking</Link></li>
-                <li><Link className="transition-colors hover:text-[#1668DC]" href="/marketplace/cart">Your Cart</Link></li>
-                <li><Link className="transition-colors hover:text-[#1668DC]" href="/marketplace/wishlist">Your Wishlist</Link></li>
-                <li><Link className="transition-colors hover:text-[#1668DC]" href="/marketplace/compare">Compare Products</Link></li>
-                <li><Link className="transition-colors hover:text-[#1668DC]" href="/marketplace/faq">Returns & Warranty</Link></li>
-                <li><Link className="transition-colors hover:text-[#1668DC]" href="/privacy-policy">Privacy Policy</Link></li>
-                <li><Link className="transition-colors hover:text-[#1668DC]" href="/terms-of-use">Terms of Use</Link></li>
-                <li><a className="transition-colors hover:text-[#1668DC]" href="https://techpivo.com/" target="_blank" rel="noopener">Blog</a></li>
-              </ul>
-            )}
+            <h5 className="mb-3 text-sm font-bold uppercase tracking-wider text-white">Customer Service</h5>
+            <ul className="grid grid-cols-1 gap-2 text-sm text-slate-300">
+              <li><Link className="transition-colors hover:text-[#1668DC]" href="/marketplace/help">Help Center</Link></li>
+              <li><Link className="transition-colors hover:text-[#1668DC]" href="/marketplace/faq">FAQ</Link></li>
+              <li><Link className="transition-colors hover:text-[#1668DC]" href="/marketplace/track">Order Tracking</Link></li>
+              <li><Link className="transition-colors hover:text-[#1668DC]" href="/marketplace/cart">Your Cart</Link></li>
+              <li><Link className="transition-colors hover:text-[#1668DC]" href="/marketplace/wishlist">Your Wishlist</Link></li>
+              <li><Link className="transition-colors hover:text-[#1668DC]" href="/marketplace/compare">Compare Products</Link></li>
+              <li><Link className="transition-colors hover:text-[#1668DC]" href="/marketplace/faq">Returns & Warranty</Link></li>
+              <li><Link className="transition-colors hover:text-[#1668DC]" href="/privacy-policy">Privacy Policy</Link></li>
+              <li><Link className="transition-colors hover:text-[#1668DC]" href="/terms-of-use">Terms of Use</Link></li>
+              <li><a className="transition-colors hover:text-[#1668DC]" href="https://techpivo.com/" target="_blank" rel="noopener">Blog</a></li>
+            </ul>
           </div>
           {/* Column 4: Newsletter — premium */}
           <div className="space-y-4 lg:col-span-1">
-            <h5 className="mb-2 text-[11px] font-bold uppercase tracking-wider text-white">Newsletter</h5>
-            <p className="mb-3 text-[12px] text-white/90">Weekly tech drops and member coupons.</p>
+            <h5 className="mb-3 text-sm font-bold uppercase tracking-wider text-white">Newsletter</h5>
+            <p className="mb-3 text-sm text-white/90">Weekly tech drops and member coupons.</p>
             <form className="space-y-2" onSubmit={subscribe}>
               <div className="relative">
                 <input value={email} onChange={(e) => setEmail(e.target.value)} className="w-full rounded-lg border border-white/15 bg-white/10 px-4 py-3 text-sm text-white placeholder:text-slate-400 focus:border-[#1668DC] focus:outline-none focus:ring-1 focus:ring-[#1668DC]" placeholder="Your email" type="email" aria-label="Email" />
@@ -1157,16 +1129,16 @@ export function MarketplaceFooter() {
                   {subBusy ? "Subscribing..." : "Subscribe"}
                 </button>
               </div>
-              {subMsg && <p className="text-xs text-slate-300">{subMsg}</p>}
+              {subMsg && <p className="text-sm text-slate-300">{subMsg}</p>}
             </form>
           </div>
         </div>
       </div>
       {/* bottom bar — full width */}
       <div className="w-full text-white" style={{ background: MARKETPLACE_BRAND.navyDeep }}>
-        <div className="mx-auto flex w-full max-w-[1440px] flex-col items-center justify-between gap-3 px-3 py-5 text-[11px] sm:flex-row sm:px-6 sm:text-sm lg:px-10">
-          <p className="text-slate-400">© {new Date().getFullYear()} TechPivo Market. All rights reserved.</p>
-          <p className="text-[10px] leading-relaxed text-slate-500 text-center sm:text-left">Quality-checked products · secure payment · tracked delivery on every order.</p>
+        <div className="mx-auto flex w-full max-w-[1440px] flex-col items-center justify-between gap-3 px-3 py-5 text-sm sm:flex-row sm:px-6 sm:text-base lg:px-10">
+          <p className="text-sm text-slate-400">© {new Date().getFullYear()} TechPivo Market. All rights reserved.</p>
+          <p className="text-sm leading-relaxed text-slate-500 text-center sm:text-left">Quality-checked products · secure payment · tracked delivery on every order.</p>
         </div>
       </div>
     </footer>
