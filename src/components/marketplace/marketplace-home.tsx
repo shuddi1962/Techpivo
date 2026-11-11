@@ -4,7 +4,7 @@ import Link from "next/link"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import {
   ArrowLeftRight, ArrowRight, Check, ChevronLeft, ChevronRight, Eye, Flame,
-  Heart, Home, LayoutGrid, Package, Search, ShoppingCart, ShieldCheck, User,
+  Heart, Package, ShoppingCart, ShieldCheck,
   X, Zap,
   BadgeCheck, Truck,
 } from "lucide-react"
@@ -1384,34 +1384,7 @@ export function MarketplaceHome() {
           Every order is quality-checked, securely paid and delivered with tracking — shop with confidence on TechPivo Market.
         </p>
 
-        {/* mobile bottom navigation — modern shopping app style */}
-        <nav className="md:hidden fixed bottom-0 left-0 right-0 z-40 border-t border-[#E2E8F0] bg-white/95 backdrop-blur-md">
-          <div className="mx-auto w-full max-w-[1440px] px-3 py-2.5 flex justify-around items-center gap-2">
-            <Link href="/marketplace" className="flex flex-col items-center gap-1 text-[#FF6B00]">
-              <Home className="h-5 w-5" />
-              <span className="text-[10px] font-semibold">Home</span>
-            </Link>
-            <Link href="/marketplace/shop" className="flex flex-col items-center gap-1 text-slate-600">
-              <LayoutGrid className="h-5 w-5" />
-              <span className="text-[10px] font-semibold">Categories</span>
-            </Link>
-            <button className="flex flex-col items-center gap-1 text-slate-600" onClick={() => { /* header search is mobile-native */ }}>
-              <Search className="h-5 w-5" />
-              <span className="text-[10px] font-semibold">Search</span>
-            </button>
-            <Link href="/marketplace/wishlist" className="relative flex flex-col items-center gap-1 text-slate-600">
-              <Heart className="h-5 w-5" />
-              {Object.keys(wishlist).length > 0 && (
-                <span className="absolute -top-1 -right-1 bg-[#EF4444] text-white text-[9px] min-w-4 h-4 px-0.5 rounded-full flex items-center justify-center font-bold">{Object.keys(wishlist).length}</span>
-              )}
-              <span className="text-[10px] font-semibold">Wishlist</span>
-            </Link>
-            <Link href="/marketplace/account" className="flex flex-col items-center gap-1 text-slate-600">
-              <User className="h-5 w-5" />
-              <span className="text-[10px] font-semibold">Account</span>
-            </Link>
-          </div>
-        </nav>
+        {/* bottom nav is provided by MarketplaceHeader (shared across all pages) */}
       </main>
       <MarketplaceFooter />
     </div>

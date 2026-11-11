@@ -109,7 +109,7 @@ export function CartPage() {
   }
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+    <div className="grid grid-cols-1 gap-4 lg:grid-cols-12">
       <div className="lg:col-span-8 bg-white rounded-2xl border border-[#E2E8F0] p-4 sm:p-5">
         <div className="flex items-center justify-between mb-3">
           <h1 className="text-xl font-extrabold text-[#0F172A]">Your Cart ({cartLines.reduce((s, l) => s + l.qty, 0)})</h1>
@@ -134,8 +134,8 @@ export function CartPage() {
             const unit = Number(l.product!.sale_price ?? l.product!.original_price ?? 0)
             const key = `${l.id}::${l.variant?.vid || ""}`
             return (
-              <div key={key} className="py-3 flex gap-3">
-                <Link href={`/marketplace/product/${l.id}`} className="w-20 h-20 rounded-lg bg-[#F8FAFC] border border-[#E2E8F0] overflow-hidden shrink-0">
+              <div key={key} className="py-3 flex gap-3 sm:flex-col sm:gap-2">
+                <Link href={`/marketplace/product/${l.id}`} className="w-20 h-20 sm:w-16 sm:h-16 rounded-lg bg-[#F8FAFC] border border-[#E2E8F0] overflow-hidden shrink-0">
                   {(l.variant?.image || l.product!.product_image_url) ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img src={marketImage(l.variant?.image || l.product!.product_image_url || "")} alt={l.variant?.label ? `${l.product!.product_name} — ${l.variant.label}` : l.product!.product_name} loading="lazy" decoding="async" className="w-full h-full object-cover" />
@@ -153,27 +153,27 @@ export function CartPage() {
                   <p className="text-sm font-bold text-[#0F172A] mt-1"><MarketPrice usd={unit} /></p>
                   <div className="flex items-center justify-between mt-2 flex-wrap gap-2">
                     <div className="flex items-center border border-[#CBD5E1] rounded-lg overflow-hidden">
-                      <button onClick={() => setQty(l.id, l.qty - 1, l.variant)} className="px-2.5 py-1.5 hover:bg-slate-100" aria-label="Decrease quantity">
-                        <Minus className="h-3.5 w-3.5" />
+                      <button onClick={() => setQty(l.id, l.qty - 1, l.variant)} className="px-3 py-2 sm:px-2.5 hover:bg-slate-100" aria-label="Decrease quantity">
+                        <Minus className="h-4 w-4 sm:h-3.5 sm:w-3.5" />
                       </button>
-                      <span className="w-8 text-center text-sm font-bold tabular-nums">{l.qty}</span>
-                      <button onClick={() => setQty(l.id, l.qty + 1, l.variant)} className="px-2.5 py-1.5 hover:bg-slate-100" aria-label="Increase quantity">
-                        <Plus className="h-3.5 w-3.5" />
+                      <span className="w-10 sm:w-8 text-center text-sm font-bold tabular-nums">{l.qty}</span>
+                      <button onClick={() => setQty(l.id, l.qty + 1, l.variant)} className="px-3 py-2 sm:px-2.5 hover:bg-slate-100" aria-label="Increase quantity">
+                        <Plus className="h-4 w-4 sm:h-3.5 sm:w-3.5" />
                       </button>
                     </div>
                     <button onClick={() => removeFromCart(l.id, l.variant)} className="text-xs text-slate-400 hover:text-[#EF4444] inline-flex items-center gap-1" aria-label={`Remove ${l.product!.product_name}`}>
-                      <Trash2 className="h-3.5 w-3.5" /> Remove
+                      <Trash2 className="h-4 w-4 sm:h-3.5 sm:w-3.5" /> Remove
                     </button>
                   </div>
                 </div>
-                <p className="text-sm font-extrabold text-[#0F172A] whitespace-nowrap"><MarketPrice usd={unit * l.qty} /></p>
+                <p className="text-sm font-extrabold text-[#0F172A] whitespace-nowrap sm:text-right"><MarketPrice usd={unit * l.qty} /></p>
               </div>
             )
           })}
         </div>
       </div>
       <div className="lg:col-span-4">
-        <div className="bg-white rounded-2xl border border-[#E2E8F0] p-4 sm:p-5 sticky top-4 space-y-2">
+        <div className="bg-white rounded-2xl border border-[#E2E8F0] p-4 sm:p-5 sticky top-4 sm:sticky-top-4 space-y-2">
           <h2 className="font-bold text-[#0F172A]">Order summary</h2>
           <div className="flex justify-between text-sm text-slate-600">
             <span>Subtotal</span>

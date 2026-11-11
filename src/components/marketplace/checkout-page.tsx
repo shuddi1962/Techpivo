@@ -201,12 +201,12 @@ export function CheckoutPage() {
           </label>
           <div className="text-sm">
             <span className="font-semibold text-slate-700">Phone *</span>
-            <div className="mt-1 flex gap-2">
+            <div className="mt-1 flex gap-2 sm:flex-col sm:gap-2">
               <select
                 value={form.dial || preset.dial}
                 onChange={(e) => { setDialTouched(true); setForm((f) => ({ ...f, dial: e.target.value })) }}
                 aria-label="Country dial code"
-                className="w-44 shrink-0 cursor-pointer border rounded-lg px-2 py-2.5 bg-white focus:outline-none focus:border-[#F59E0B]"
+                className="w-44 sm:w-full shrink-0 cursor-pointer border rounded-lg px-2 py-2.5 bg-white focus:outline-none focus:border-[#F59E0B]"
               >
                 {DIAL_CODES.map((d) => (
                   <option key={`${d.code}-${d.dial}`} value={d.dial}>{d.dial}</option>
@@ -277,7 +277,7 @@ export function CheckoutPage() {
           <div className="space-y-2">
             {lines.map((l) => (
               <div key={`${l.id}::${l.variant?.vid || ""}`} className="flex items-center gap-2.5">
-                <span className="relative h-12 w-12 shrink-0 overflow-hidden rounded-lg border border-[#E2E8F0] bg-[#F8FAFC]">
+                <span className="relative h-10 w-10 sm:h-12 sm:w-12 shrink-0 overflow-hidden rounded-lg border border-[#E2E8F0] bg-[#F8FAFC]">
                   {(l.variant?.image || l.product!.product_image_url) ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img src={marketImage(l.variant?.image || l.product!.product_image_url || "")} alt="" loading="lazy" decoding="async" className="h-full w-full object-cover" />

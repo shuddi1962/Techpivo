@@ -11,6 +11,7 @@ import {
   Book, ShoppingBag, Clock, Sparkles, Star, Gift,
 } from "lucide-react"
 import { MarketCategorySync, useMarketplaceTree } from "./market-category-store"
+import { MarketBottomNav } from "./market-bottom-nav"
 import { MARKETPLACE_BRAND } from "@/lib/marketplace"
 import type { MarketBanners } from "@/lib/marketplace-banners"
 import { useMarketCart } from "@/lib/marketplace-cart"
@@ -192,6 +193,7 @@ const [currencyOpen, setCurrencyOpen] = useState(false)
   const [suggestOpen, setSuggestOpen] = useState(false)
   const searchBoxRef = useRef<HTMLDivElement>(null)
   const mobileBoxRef = useRef<HTMLDivElement>(null)
+  const mobileSearchInputRef = useRef<HTMLInputElement>(null)
   useEffect(() => {
     if (query.trim().length >= 2) setSuggestOpen(true)
     else setSuggestOpen(false)
@@ -274,9 +276,12 @@ const [currencyOpen, setCurrencyOpen] = useState(false)
   // active row; menu_text colours nav links / buttons. Falls back to the
   // kit defaults (#1453D6 / #ffffff) when unset. Saved values reflect on the
   // storefront instantly because promoBanners refetches on focus / storage.
-  const menuBg = (promoBanners?.menu_bg || "#1453D6")
-  const menuText = (promoBanners?.menu_text || "#ffffff")
-  const menuBgHover = menuBg === "#1453D6" ? "#0B3A9A" : menuBg
+  const menuBg = (promoBanners?.menu_bg || "#1453D6");
+  const menuText = (promoBanners?.menu_text || "#ffffff");
+  const menuBgHover = menuBg === "#1453D6" ? "#0B3A9A" : menuBg;
+  const isPrimary = menuBg === "#1453D6";
+  const navLinkActive = isPrimary ? "hover:bg-[#EFF6FF] hover:text-[#1453D6]" : "hover:bg-[" + menuBg + "]/10 hover:text-[" + menuBg + "]";
+  const navLinkCls = "px-3 py-2.5 rounded-lg text-sm font-medium text-slate-700 transition-colors " + navLinkActive;
   useEffect(() => {
     setLiveWish(readWishCount())
     setCurrency(readCurrency())
@@ -561,6 +566,7 @@ const [currencyOpen, setCurrencyOpen] = useState(false)
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               onFocus={() => { if (query.trim().length >= 2) setSuggestOpen(true) }}
+              ref={mobileSearchInputRef}
               className="flex-1 bg-transparent px-3 text-sm focus:outline-none"
               placeholder="Search TechPivo Market..."
             />
@@ -816,23 +822,13 @@ const [currencyOpen, setCurrencyOpen] = useState(false)
             aria-label="Marketplace mobile"
           >
             <div className="flex items-center justify-between px-4 py-3 border-b border-[#E2E8F0]">
-              <span
-                className={
-                  "text-sm font-bold" +
-                  (menuBg === "#1453D6" ? " text-[#1453D6]" : " text-[" + menuBg + "]")
-                }
-              >
+              <span className={"text-sm font-bold " + (isPrimary ? "text-[#1453D6]" : "text-[" + menuBg + "]")}>
                 Menu
               </span>
               <button
                 type="button"
                 onClick={() => setOpen(false)}
-                className={
-                  "p-2 rounded-lg border" +
-                  (menuBg === "#1453D6"
-                    ? " border-[#1453D6]/20 text-[#1453D6] bg-[#EFF6FF]/40"
-                    : " border-[" + menuBg + "]/20 text-[" + menuBg + "] bg-[" + menuBg + "]/10")
-                }
+                className={"p-2 rounded-lg border " + (isPrimary ? "border-[#1453D6]/20 text-[#1453D6] bg-[#EFF6FF]/40" : "border-[" + menuBg + "]/20 text-[" + menuBg + "] bg-[" + menuBg + "]/10")}
                 aria-label="Close menu"
               >
                 <X className="h-5 w-5" />
@@ -847,12 +843,7 @@ const [currencyOpen, setCurrencyOpen] = useState(false)
                     target="_blank"
                     rel="noopener"
                     onClick={() => setOpen(false)}
-                    className={
-                      "px-3 py-2.5 rounded-lg text-sm font-medium text-slate-700 transition-colors" +
-                      (menuBg === "#1453D6"
-                        ? " hover:bg-[#EFF6FF] hover:text-[#1453D6]"
-                        : " hover:bg-[" + menuBg + "]/10 hover:text-[" + menuBg + "]")
-                    }
+                    className={"px-3 py-2.5 rounded-lg text-sm font-medium text-slate-700 transition-colors " + (isPrimary ? "hover:bg-[#EFF6FF] hover:text-[#1453D6]" : "hover:bg-[" + menuBg + "]/10 hover:text-[" + menuBg + "]")}
                   >
                     {item.label}
                   </a>
@@ -861,12 +852,7 @@ const [currencyOpen, setCurrencyOpen] = useState(false)
                     key={item.label}
                     href={item.href}
                     onClick={() => setOpen(false)}
-                    className={
-                      "px-3 py-2.5 rounded-lg text-sm font-medium text-slate-700 transition-colors" +
-                      (menuBg === "#1453D6"
-                        ? " hover:bg-[#EFF6FF] hover:text-[#1453D6]"
-                        : " hover:bg-[" + menuBg + "]/10 hover:text-[" + menuBg + "]")
-                    }
+                    className={navLinkCls}
                   >
                     {item.label}
                   </Link>
@@ -877,45 +863,53 @@ const [currencyOpen, setCurrencyOpen] = useState(false)
             <div className="px-2 pb-4 grid gap-1">
               {departments.map((d) => {
                 const expanded = mobileExpanded === d.slug;
+                const Icon = resolveDeptIcon(d);
+                const isPrimary = menuBg === "#1453D6";
+                const btnBase = "w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-sm font-semibold text-left transition-colors";
+                const btnActive = isPrimary ? "text-[#1453D6] hover:bg-[#1453D6]/10 hover:text-[#0B3A9A]" : "text-[" + menuBg + "] hover:bg-[" + menuBg + "]/10 hover:text-[" + menuBgHover + "]";
+                const btnCls = btnBase + " " + btnActive;
+                const linkActive = isPrimary ? "text-[#1453D6] hover:bg-[#1453D6]/10 hover:text-[#0B3A9A]" : "text-[" + menuBg + "] hover:bg-[" + menuBg + "]/10 hover:text-[" + menuBgHover + "]";
+                const linkCls = "flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold text-left transition-colors " + linkActive;
                 return (
                   <div key={d.slug}>
                     <button
                       type="button"
                       onClick={() => setMobileExpanded(expanded ? "" : d.slug)}
                       aria-expanded={expanded}
-                      className={
-                        "w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm font-semibold text-left transition-colors" +
-                        (menuBg === "#1453D6"
-                          ? " text-[#1453D6] hover:bg-[#1453D6]/10 hover:text-[#0B3A9A]"
-                          : " text-[" + menuBg + "] hover:bg-[" + menuBg + "]/10 hover:text-[" + menuBgHover + "]")
-                      }
+                      className={btnCls}
                     >
+                      {Icon && (
+                        <span className="flex items-center justify-center w-6 h-6 rounded-lg bg-[#F8FAFC] text-slate-500 shrink-0">
+                          <Icon size={14} />
+                        </span>
+                      )}
                       {d.name}
                       <ChevronDown
-                        className={`h-4 w-4 text-slate-400 transition-transform ${expanded ? "rotate-180" : ""}`}
+                        className={"h-4 w-4 text-slate-400 transition-transform " + (expanded ? "rotate-180" : "")}
                       />
                     </button>
                     {expanded && (
-                      <div className="pl-5 grid">
+                      <div className="pl-4 space-y-0.5">
                         <Link
-                          href={`/marketplace/category/${d.slug}`}
+                          href={"/marketplace/category/" + d.slug}
                           onClick={() => setOpen(false)}
-                          className={
-                            "block px-3 py-1.5 rounded-lg text-xs font-semibold text-left transition-colors" +
-                            (menuBg === "#1453D6"
-                              ? " text-[#1453D6] hover:bg-[#1453D6]/10 hover:text-[#0B3A9A]"
-                              : " text-[" + menuBg + "] hover:bg-[" + menuBg + "]/10 hover:text-[" + menuBgHover + "]")
-                          }
+                          className={linkCls}
                         >
+                          <span className="w-5 h-5 shrink-0 opacity-50">
+                            <Package size={12} />
+                          </span>
                           All {d.name}
                         </Link>
                         {d.subs.map((s) => (
-                          <Link
-                            key={s.slug}
-                            href={`/marketplace/category/${s.slug}`}
-                            onClick={() => setOpen(false)}
-                            className="block px-3 py-1.5 rounded-lg text-xs text-[#111827] hover:bg-[#FFF1F2] hover:text-[#FF3B30] text-left transition-colors"
-                          >
+                            <Link
+                              key={s.slug}
+                              href={"/marketplace/category/" + s.slug}
+                              onClick={() => setOpen(false)}
+                              className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs text-[#111827] hover:bg-[#FFF1F2] hover:text-[#FF3B30] text-left transition-colors"
+                            >
+                            <span className="w-5 h-5 shrink-0 opacity-40">
+                              <LayoutGrid size={12} />
+                            </span>
                             {s.name}
                           </Link>
                         ))}
@@ -930,66 +924,17 @@ const [currencyOpen, setCurrencyOpen] = useState(false)
         </div>
        </header>
 
-       {/* sticky bottom mobile nav — Jumia/Amazon/Temu style; desktop never sees it */}
-       <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-50 h-[60px] bg-white border-t border-[#E2E8F0] shadow-[0_-4px_12px_rgba(15,23,42,0.08)]">
-         <div className="flex w-full items-center justify-around py-1.5 text-[11px] sm:text-xs">
-           <Link
-             href="/marketplace"
-             onClick={() => setOpen(false)}
-             className="flex flex-col items-center gap-1 text-slate-500 hover:text-[#0F172A] transition-colors"
-             aria-label="Home"
-           >
-             <Home className="h-5 w-5" />
-             <span className="leading-none">Home</span>
-           </Link>
-           <Link
-             href="/marketplace/shop"
-             onClick={() => setOpen(false)}
-             className="flex flex-col items-center gap-1 text-slate-500 hover:text-[#0F172A] transition-colors"
-             aria-label="Categories"
-           >
-             <LayoutGrid className="h-5 w-5" />
-             <span className="leading-none">Categories</span>
-           </Link>
-           <Link
-             href="/marketplace/cart"
-             onClick={() => setOpen(false)}
-             className={`relative flex flex-col items-center gap-1 ${shownCartCount > 0 ? "text-[#F59E0B]" : "text-slate-500 hover:text-[#0F172A]"} transition-colors`}
-             aria-label={`Cart, ${shownCartCount} item${shownCartCount === 1 ? "" : "s"}`}
-           >
-             <ShoppingCart className="h-5 w-5" />
-             {shownCartCount > 0 && (
-               <span className="absolute top-1 right-1 bg-[#F59E0B] text-[8px] font-bold text-white min-w-[14px] h-[14px] rounded-full flex items-center justify-center px-0.5 shadow-sm">+{Math.min(shownCartCount, 9)}</span>
-             )}
-             <span className="leading-none">Cart</span>
-           </Link>
-           <Link
-             href="/marketplace/wishlist"
-             onClick={() => setOpen(false)}
-             className="flex flex-col items-center gap-1 text-slate-500 hover:text-[#0F172A] transition-colors"
-             aria-label="Wishlist"
-           >
-             <Heart className="h-5 w-5" />
-             {shownWishCount > 0 && (
-               <span className="absolute top-1 right-1 bg-[#F59E0B] text-[8px] font-bold text-white min-w-[14px] h-[14px] rounded-full flex items-center justify-center px-0.5 shadow-sm">+{Math.min(shownWishCount, 9)}</span>
-             )}
-             <span className="leading-none">Wishlist</span>
-           </Link>
-           <Link
-             href={acctName ? "/marketplace/account" : "/login"}
-             onClick={() => setOpen(false)}
-             className="flex flex-col items-center gap-1 text-slate-500 hover:text-[#0F172A] transition-colors"
-             aria-label={acctName ? "My account" : "Sign in"}
-           >
-             <User className="h-5 w-5" />
-             <span className="leading-none">{acctName ? "Account" : "Sign in"}</span>
-           </Link>
-         </div>
-       </nav>
-       <div className="lg:hidden h-[60px]" />
-     </>
-   )
- }
+      {/* sticky bottom mobile nav — shared across all marketplace pages */}
+      <MarketBottomNav
+        onSearchToggle={() => {
+          setOpen(false)
+          mobileSearchInputRef.current?.focus()
+          setSuggestOpen(false)
+        }}
+      />
+    </>
+    )
+  }
 
 const PERKS = [
   { icon: Truck, title: "Free Shipping", copy: "On all orders over $35" },
@@ -1073,7 +1018,7 @@ export function MarketplaceFooter() {
         </div>
       </div>
       {/* main footer — formal charcoal */}
-      <div className="w-full text-white" style={{ background: `linear-gradient(180deg, ${MARKETPLACE_BRAND.navy} 0%, ${MARKETPLACE_BRAND.navyDeep} 100%)` }}>
+      <div className="w-full text-white" style={{ background: "linear-gradient(180deg, " + MARKETPLACE_BRAND.navy + " 0%, " + MARKETPLACE_BRAND.navyDeep + " 100%)" }}>
         <div className="mx-auto grid w-full max-w-[1440px] grid-cols-1 gap-10 px-3 py-12 sm:px-6 md:grid-cols-2 lg:grid-cols-4 lg:px-10">
           <div className="space-y-4 lg:col-span-1">
           <div className="flex items-center gap-2">
@@ -1095,7 +1040,7 @@ export function MarketplaceFooter() {
             <h5 className="mb-4 text-sm font-bold uppercase tracking-wider text-white">Shop</h5>
             <ul className="grid grid-cols-1 gap-2.5 text-sm text-slate-300">
               {departments.map((d) => (
-                <li key={d.slug}><Link className="transition-colors hover:text-[#1668DC]" href={`/marketplace/category/${d.slug}`}>{d.name}</Link></li>
+                <li key={d.slug}><Link className="transition-colors hover:text-[#1668DC]" href={"/marketplace/category/" + d.slug}>{d.name}</Link></li>
               ))}
             </ul>
           </nav>
