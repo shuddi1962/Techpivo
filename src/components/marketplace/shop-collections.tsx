@@ -70,7 +70,7 @@ export function ShopCollections({
           {showAll ? "See Less" : "See All"} <ChevronRight className="h-4 w-4" />
         </button>
       </div>
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 md:hidden">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
         {visible.map((c) => {
           const hasSide = Boolean(c.sideBanner?.trim())
           return (
