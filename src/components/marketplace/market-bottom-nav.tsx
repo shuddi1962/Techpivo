@@ -17,7 +17,7 @@ const BOTTOM_NAV_ITEMS: Array<{
   { id: "categories", href: "/marketplace/shop", label: "Categories", icon: LayoutGrid },
   { id: "search", href: "#", label: "Search", icon: Search },
   { id: "compare", href: "/marketplace/compare", label: "Compare", icon: ArrowLeftRight },
-  { id: "account", href: "#", label: "Account", icon: User },
+  { id: "account", href: "/marketplace/account", label: "Account", icon: User },
 ]
 
 interface MarketBottomNavProps {

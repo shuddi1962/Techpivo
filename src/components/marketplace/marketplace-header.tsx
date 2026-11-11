@@ -4,7 +4,7 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useEffect, useRef, useState } from "react"
 import {
-  Search, Heart, User, ShoppingBasket, Menu, X,   ChevronDown, ChevronRight,
+  Search, Heart, User, ShoppingBasket, Menu, X,   ChevronDown, ChevronRight, ChevronUp,
   Flame, MapPin, Phone, Mail, Truck, RefreshCcw, Headset, ShieldCheck,
   ArrowLeftRight, LayoutGrid, Cpu, Smartphone, Laptop, Car, Wrench, Monitor,
   Package, Globe, CreditCard, ShoppingCart, Home, Trophy, Shirt, Baby, Hammer,
@@ -184,6 +184,7 @@ const [seeMore, setSeeMore] = useState(false)
 const [currency, setCurrency] = useState<MarketCurrency>(readMarketCurrency())
 const [promoBarDismissed, setPromoBarDismissed] = useState(false)
 const [currencyOpen, setCurrencyOpen] = useState(false)
+const [showBackToTop, setShowBackToTop] = useState(false)
   // Live, admin-editable category tree (falls back to the bundled tree).
   const departments = useMarketplaceTree()
   const deptWrapRef = useRef<HTMLDivElement>(null)
@@ -375,6 +376,19 @@ const [currencyOpen, setCurrencyOpen] = useState(false)
     }
   }
 
+  // Back-to-top button visibility
+  useEffect(() => {
+    const onScroll = () => {
+      setShowBackToTop(window.scrollY > 300)
+    }
+    window.addEventListener("scroll", onScroll, { passive: true })
+    return () => window.removeEventListener("scroll", onScroll)
+  }, [])
+
+  const scrollToTop = () => {
+    window.scrollTo({ top: 0, behavior: "smooth" })
+  }
+
   const setCurrencyChoice = (code: string) => {
     setCurrency(code as MarketCurrency)
     setCurrencyOpen(false)
@@ -475,13 +489,40 @@ const [currencyOpen, setCurrencyOpen] = useState(false)
       <header className="sticky top-0 z-50 w-full bg-white shadow-[0_2px_12px_rgba(0,0,0,0.08)]">
       {/* main bar — full width */}
       <div className="w-full bg-white">
-        <div className="mx-auto w-full max-w-[1440px] px-3 sm:px-6 lg:px-10 flex items-center justify-between gap-4 h-16 md:h-20">
+        <div className="mx-auto w-full max-w-[1440px] px-3 sm:px-6 lg:px-10 flex items-center justify-between gap-2 h-14 sm:h-16 md:h-20">
+          {/* Hamburger menu — first on mobile */}
+          <button
+            className="md:hidden p-2 rounded-lg border border-[#1668DC] bg-[#1668DC] text-white shadow-md hover:bg-[#0F4FB3] transition-all duration-200"
+            onClick={() => setOpen((v) => !v)}
+            aria-label={open ? "Close menu" : "Open menu"}
+            aria-expanded={open}
+          >
+            {open ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+          </button>
+
+          {/* Logo — centered on mobile */}
           <Link href="/marketplace" className="flex items-center shrink-0" aria-label="TechPivo Market home">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src="/market-logo.svg" alt="TechPivo Market" className="h-10 w-auto sm:h-11" />
           </Link>
 
-          {/* search (desktop) with live AJAX suggestions */}
+          {/* Mobile icons: Wishlist + Cart */}
+          <div className="flex items-center gap-1 sm:gap-2 shrink-0 md:hidden">
+            <Link href="/marketplace/wishlist" aria-label="Wishlist" className="relative p-2 rounded-full hover:bg-slate-100 flex items-center justify-center">
+              <Heart className="h-5 w-5 text-slate-600" />
+              {shownWishCount > 0 && (
+                <span className="absolute -top-0.5 -right-0.5 bg-[#EF4444] text-white text-[10px] min-w-5 h-5 px-1 rounded-full flex items-center justify-center font-bold shadow-sm">{shownWishCount}</span>
+              )}
+            </Link>
+            <Link href="/marketplace/cart" aria-label={`Your basket, ${shownCartCount} item${shownCartCount === 1 ? "" : "s"}`} className="relative p-2 rounded-full hover:bg-slate-100 flex items-center justify-center">
+              <ShoppingBasket className="h-5 w-5 text-slate-600" />
+              {shownCartCount > 0 && (
+                <span className="absolute -top-0.5 -right-0.5 bg-[#EF4444] text-white text-[10px] min-w-5 h-5 px-1 rounded-full flex items-center justify-center font-bold shadow-sm tabular-nums">{shownCartCount}</span>
+              )}
+            </Link>
+          </div>
+
+          {/* Desktop search (hidden on mobile) */}
           <div ref={searchBoxRef} className="hidden md:flex flex-1 max-w-2xl relative">
           <form
             className="flex w-full h-12 rounded-lg border border-[#CBD5E1] bg-[#F8FAFC] overflow-hidden focus-within:border-[#1668DC] focus-within:ring-2 focus-within:ring-[#1668DC]/20"
@@ -521,92 +562,56 @@ const [currencyOpen, setCurrencyOpen] = useState(false)
           )}
           </div>
 
-          <div className="flex items-center gap-1 sm:gap-2 shrink-0">
-            {/* Mobile-only search + compare icons placed near logo */}
-            <button
-              type="button"
-              onClick={() => {
-                setOpen(false)
-                setSuggestOpen(true)
-                mobileSearchInputRef.current?.focus()
-              }}
-              aria-label="Search"
-              className="md:hidden p-2 rounded-full hover:bg-slate-100 flex items-center justify-center text-slate-600"
-            >
-              <Search className="h-5 w-5" />
-            </button>
-            <Link
-              href="/marketplace/compare"
-              aria-label={compareIds.length > 0 ? `Compare ${compareIds.length} products` : "Compare products"}
-              className="md:hidden relative p-2 rounded-full hover:bg-slate-100 flex items-center justify-center"
-            >
-              <ArrowLeftRight className="h-5 w-5 text-slate-600" />
-              {compareIds.length > 0 && (
-                <span className="absolute -top-0.5 -right-0.5 bg-[#EF4444] text-white text-[9px] min-w-[14px] h-[14px] rounded-full flex items-center justify-center font-bold shadow-sm px-0.5">
-                  {Math.min(compareIds.length, 9)}
-                </span>
+          {/* Desktop icons row — wishlist, compare, cart, account */}
+          <div className="hidden md:flex items-center gap-1">
+            <Link href="/marketplace/wishlist" aria-label="Wishlist" className="relative p-2 rounded-full hover:bg-slate-100 flex items-center justify-center">
+              <Heart className="h-6 w-6 text-slate-600" />
+              {shownWishCount > 0 && (
+                <span className="absolute -top-0.5 -right-0.5 bg-[#EF4444] text-white text-[10px] min-w-5 h-5 px-1 rounded-full flex items-center justify-center font-bold shadow-sm">{shownWishCount}</span>
               )}
             </Link>
-            {/* Desktop icons row — wishlist, compare, cart, account, hamburger */}
-            <div className="hidden md:flex items-center gap-1">
-              <Link href="/marketplace/wishlist" aria-label="Wishlist" className="relative p-2 rounded-full hover:bg-slate-100 flex items-center justify-center">
-                <Heart className="h-6 w-6 text-slate-600" />
-                {shownWishCount > 0 && (
-                  <span className="absolute -top-0.5 -right-0.5 bg-[#EF4444] text-white text-[10px] min-w-5 h-5 px-1 rounded-full flex items-center justify-center font-bold shadow-sm">{shownWishCount}</span>
+            <Link href="/marketplace/compare" aria-label={compareIds.length > 0 ? `Compare ${compareIds.length} products` : "Compare products"} className="relative p-2 rounded-full hover:bg-slate-100 flex items-center justify-center">
+              <ArrowLeftRight className="h-6 w-6 text-slate-600" />
+              {compareIds.length > 0 && (
+                <span className="absolute -top-0.5 -right-0.5 bg-[#EF4444] text-white text-[10px] min-w-5 h-5 px-1 rounded-full flex items-center justify-center font-bold shadow-sm">{compareIds.length}</span>
+              )}
+            </Link>
+            <Link href="/marketplace/cart" aria-label={`Your basket, ${shownCartCount} item${shownCartCount === 1 ? "" : "s"}`} className="relative p-2 rounded-full hover:bg-slate-100 flex items-center justify-center">
+              <ShoppingBasket className="h-6 w-6 text-slate-600" />
+              {shownCartCount > 0 && (
+                <span className="absolute -top-0.5 -right-0.5 bg-[#EF4444] text-white text-[10px] min-w-5 h-5 px-1 rounded-full flex items-center justify-center font-bold shadow-sm tabular-nums">{shownCartCount}</span>
+              )}
+            </Link>
+            <div className="h-8 w-px bg-[#E2E8F0]" />
+            <Link href={acctName ? "/marketplace/account" : "/login"} className="hidden xl:flex items-center gap-2 hover:opacity-90 p-1" aria-label={acctName ? `My marketplace account (${acctName})` : "Sign in"}>
+              <span className="w-8 h-8 rounded-full bg-white flex items-center justify-center shrink-0 overflow-hidden shadow-sm border border-[#E2E8F0]">
+                {acctAvatar ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={acctAvatar} alt="" className="h-full w-full object-cover" />
+                ) : acctFirst ? (
+                  <span className="text-sm font-extrabold text-black">{acctFirst.charAt(0).toUpperCase()}</span>
+                ) : (
+                  <User className="h-4 w-4 text-black" />
                 )}
-              </Link>
-              <Link href="/marketplace/compare" aria-label={compareIds.length > 0 ? `Compare ${compareIds.length} products` : "Compare products"} className="relative p-2 rounded-full hover:bg-slate-100 flex items-center justify-center">
-                <ArrowLeftRight className="h-6 w-6 text-slate-600" />
-                {compareIds.length > 0 && (
-                  <span className="absolute -top-0.5 -right-0.5 bg-[#EF4444] text-white text-[10px] min-w-5 h-5 px-1 rounded-full flex items-center justify-center font-bold shadow-sm">{compareIds.length}</span>
-                )}
-              </Link>
-              <Link href="/marketplace/cart" aria-label={`Your basket, ${shownCartCount} item${shownCartCount === 1 ? "" : "s"}`} className="relative p-2 rounded-full hover:bg-slate-100 flex items-center justify-center">
-                <ShoppingBasket className="h-6 w-6 text-slate-600" />
-                {shownCartCount > 0 && (
-                  <span className="absolute -top-0.5 -right-0.5 bg-[#EF4444] text-white text-[10px] min-w-5 h-5 px-1 rounded-full flex items-center justify-center font-bold shadow-sm tabular-nums">{shownCartCount}</span>
-                )}
-              </Link>
-              <div className="h-8 w-px bg-[#E2E8F0]" />
-              <Link href={acctName ? "/marketplace/account" : "/login"} className="hidden xl:flex items-center gap-2 hover:opacity-90 p-1" aria-label={acctName ? `My marketplace account (${acctName})` : "Sign in"}>
-                <span className="w-8 h-8 rounded-full bg-white flex items-center justify-center shrink-0 overflow-hidden shadow-sm border border-[#E2E8F0]">
-                  {acctAvatar ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={acctAvatar} alt="" className="h-full w-full object-cover" />
-                  ) : acctFirst ? (
-                    <span className="text-sm font-extrabold text-black">{acctFirst.charAt(0).toUpperCase()}</span>
-                  ) : (
-                    <User className="h-4 w-4 text-black" />
-                  )}
-                </span>
-                <span className="hidden xl:flex flex-col text-left max-w-[140px]">
-                  <span className="text-[11px] text-black uppercase leading-none">{acctFirst ? `Hi, ${acctFirst}` : "Sign In"}</span>
-                  <span className="text-sm font-semibold text-black leading-tight truncate">{acctName || "My Account"}</span>
-                </span>
-              </Link>
-            </div>
-            <div className="h-8 w-px bg-[#E2E8F0] hidden sm:block" />
-            <button
-              className="md:hidden p-2 rounded-lg border border-[#1668DC] bg-[#1668DC] text-white shadow-md hover:bg-[#0F4FB3] transition-all duration-200"
-              onClick={() => setOpen((v) => !v)}
-              aria-label={open ? "Close menu" : "Open menu"}
-              aria-expanded={open}
-            >
-              {open ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-            </button>
+              </span>
+              <span className="hidden xl:flex flex-col text-left max-w-[140px]">
+                <span className="text-[11px] text-black uppercase leading-none">{acctFirst ? `Hi, ${acctFirst}` : "Sign In"}</span>
+                <span className="text-sm font-semibold text-black leading-tight truncate">{acctName || "My Account"}</span>
+              </span>
+            </Link>
           </div>
         </div>
 
-        {/* mobile search with live AJAX suggestions */}
-        <div className="md:hidden px-4 pb-3">
-          <div ref={mobileBoxRef} className="relative">
-          <form className="flex h-11 rounded-lg border border-[#CBD5E1] bg-[#F8FAFC] overflow-hidden" onSubmit={submitSearch} role="search">
+        {/* mobile search with live AJAX suggestions — full width, clean */}
+        <div className="md:hidden px-4 pb-4">
+          <div ref={mobileBoxRef} className="relative w-full">
+          <form className="flex h-11 rounded-xl border border-[#CBD5E1] bg-[#F8FAFC] overflow-hidden" onSubmit={submitSearch} role="search">
             <input
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               onFocus={() => { if (query.trim().length >= 2) setSuggestOpen(true) }}
               ref={mobileSearchInputRef}
-              className="flex-1 bg-transparent px-3 text-sm focus:outline-none"
+              className="flex-1 bg-transparent px-4 text-sm text-black placeholder:text-slate-600 focus:outline-none"
               placeholder="Search TechPivo Market..."
             />
             <button type="submit" aria-label="Search" className={`bg-[${menuBg}] hover:opacity-90 text-[${menuText}] px-4 flex items-center justify-center transition-all duration-200 shadow-md hover:bg-[${menuBg}] hover:shadow-lg rounded-r-xl`}>
@@ -971,6 +976,18 @@ const [currencyOpen, setCurrencyOpen] = useState(false)
           setSuggestOpen(false)
         }}
       />
+
+      {/* Back-to-top button — mobile/tablet only, sits above bottom nav */}
+      {showBackToTop && (
+        <button
+          type="button"
+          onClick={scrollToTop}
+          aria-label="Scroll to top"
+          className="md:hidden fixed bottom-[24px] right-[4px] z-40 w-10 h-10 rounded-full bg-[#0F172A] text-white flex items-center justify-center shadow-lg transition-all hover:bg-[#FF6B00] active:scale-95"
+        >
+          <ChevronUp className="h-5 w-5" />
+        </button>
+      )}
     </>
     )
   }
@@ -986,6 +1003,7 @@ export function MarketplaceFooter() {
   const [email, setEmail] = useState("")
   const [subMsg, setSubMsg] = useState("")
   const [subBusy, setSubBusy] = useState(false)
+  const [openSections, setOpenSections] = useState<Set<string>>(new Set())
   // Live, admin-editable department tree.
   const departments = useMarketplaceTree()
   // Store contact info — editable in Admin → Marketplace → Banners
@@ -1014,6 +1032,15 @@ export function MarketplaceFooter() {
       window.removeEventListener("focus", load)
     }
   }, [])
+  const toggleSection = (id: string) => {
+    setOpenSections((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+  const isOpen = (id: string) => openSections.has(id)
   const subscribe = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!email.trim() || subBusy) return
@@ -1058,7 +1085,8 @@ export function MarketplaceFooter() {
       </div>
       {/* main footer — formal charcoal */}
       <div className="w-full text-white" style={{ background: "linear-gradient(180deg, " + MARKETPLACE_BRAND.navy + " 0%, " + MARKETPLACE_BRAND.navyDeep + " 100%)" }}>
-        <div className="mx-auto grid w-full max-w-[1440px] grid-cols-1 gap-8 px-3 py-8 sm:px-6 md:grid-cols-2 lg:grid-cols-4 lg:px-10">
+        <div className="mx-auto w-full max-w-[1440px] grid grid-cols-1 gap-8 px-3 py-8 sm:px-6 md:grid-cols-2 lg:grid-cols-4 lg:px-10">
+          {/* Column 1: Logo + description + contact */}
           <div className="space-y-4 lg:col-span-1">
           <div className="flex items-center gap-2">
             <span className="inline-flex rounded-xl bg-white px-2.5 py-1.5">
@@ -1069,43 +1097,66 @@ export function MarketplaceFooter() {
             <p className="text-[12px] leading-relaxed text-slate-300">Curated tech products, reviewed by the TechPivo editorial team. Every purchase supports independent tech journalism.</p>
             {store.contact_visible !== false && (
             <div className="space-y-2 text-[12px] text-slate-300">
-              <div className="flex items-start gap-2"><MapPin className="mt-0.5 h-4 w-4 shrink-0 text-[#1668DC]" /><span>{store.address}</span></div>
+              <div className="flex items-start gap-2"><MapPin className="mt-0.5 h-4 w-4 shrink-0 text-[#1668DC]" /><span className="max-w-[calc(100vw-3rem)] truncate">{store.address}</span></div>
               <div className="flex items-center gap-2"><Phone className="h-4 w-4 shrink-0 text-[#1668DC]" /><span>{store.phone}</span></div>
               <div className="flex items-center gap-2"><Mail className="h-4 w-4 shrink-0 text-[#1668DC]" /><span>{store.email}</span></div>
             </div>
             )}
           </div>
-          <nav aria-label="Shop departments">
-            <h5 className="mb-3 text-[11px] font-bold uppercase tracking-wider text-white">Shop</h5>
-            <ul className="grid grid-cols-1 gap-2 text-[12px] text-slate-300">
-              {departments.map((d) => (
-                <li key={d.slug}><Link className="transition-colors hover:text-[#1668DC]" href={"/marketplace/category/" + d.slug}>{d.name}</Link></li>
-              ))}
-            </ul>
-          </nav>
-          <nav aria-label="Customer service">
-            <h5 className="mb-3 text-[11px] font-bold uppercase tracking-wider text-white">Customer Service</h5>
-            <ul className="grid grid-cols-1 gap-2 text-[12px] text-slate-300">
-              <li><Link className="transition-colors hover:text-[#1668DC]" href="/marketplace/help">Help Center</Link></li>
-              <li><Link className="transition-colors hover:text-[#1668DC]" href="/marketplace/faq">FAQ</Link></li>
-              <li><Link className="transition-colors hover:text-[#1668DC]" href="/marketplace/track">Order Tracking</Link></li>
-              <li><Link className="transition-colors hover:text-[#1668DC]" href="/marketplace/cart">Your Cart</Link></li>
-              <li><Link className="transition-colors hover:text-[#1668DC]" href="/marketplace/wishlist">Your Wishlist</Link></li>
-              <li><Link className="transition-colors hover:text-[#1668DC]" href="/marketplace/compare">Compare Products</Link></li>
-              <li><Link className="transition-colors hover:text-[#1668DC]" href="/marketplace/faq">Returns & Warranty</Link></li>
-              <li><Link className="transition-colors hover:text-[#1668DC]" href="/privacy-policy">Privacy Policy</Link></li>
-              <li><Link className="transition-colors hover:text-[#1668DC]" href="/terms-of-use">Terms of Use</Link></li>
-              <li><a className="transition-colors hover:text-[#1668DC]" href="https://techpivo.com/" target="_blank" rel="noopener">Blog</a></li>
-            </ul>
-          </nav>
-          <div>
-            <h5 className="mb-3 text-[11px] font-bold uppercase tracking-wider text-white">Newsletter</h5>
+          {/* Column 2: Shop departments — collapsible on mobile */}
+          <div className="space-y-4 lg:col-span-1">
+            <button
+              onClick={() => toggleSection("shop")}
+              aria-expanded={isOpen("shop")}
+              className="flex w-full items-center justify-between gap-2"
+            >
+              <h5 className="mb-0 text-[11px] font-bold uppercase tracking-wider text-white">Shop</h5>
+              <ChevronDown className={`h-4 w-4 text-slate-400 transition-transform ${isOpen("shop") ? "rotate-180" : ""}`} />
+            </button>
+            {isOpen("shop") && (
+              <ul className="mt-2 grid grid-cols-1 gap-2 text-[12px] text-slate-300">
+                {departments.map((d) => (
+                  <li key={d.slug}><Link className="transition-colors hover:text-[#1668DC]" href={"/marketplace/category/" + d.slug}>{d.name}</Link></li>
+                ))}
+              </ul>
+            )}
+          </div>
+          {/* Column 3: Customer service — collapsible on mobile */}
+          <div className="space-y-4 lg:col-span-1">
+            <button
+              onClick={() => toggleSection("service")}
+              aria-expanded={isOpen("service")}
+              className="flex w-full items-center justify-between gap-2"
+            >
+              <h5 className="mb-0 text-[11px] font-bold uppercase tracking-wider text-white">Customer Service</h5>
+              <ChevronDown className={`h-4 w-4 text-slate-400 transition-transform ${isOpen("service") ? "rotate-180" : ""}`} />
+            </button>
+            {isOpen("service") && (
+              <ul className="mt-2 grid grid-cols-1 gap-2 text-[12px] text-slate-300">
+                <li><Link className="transition-colors hover:text-[#1668DC]" href="/marketplace/help">Help Center</Link></li>
+                <li><Link className="transition-colors hover:text-[#1668DC]" href="/marketplace/faq">FAQ</Link></li>
+                <li><Link className="transition-colors hover:text-[#1668DC]" href="/marketplace/track">Order Tracking</Link></li>
+                <li><Link className="transition-colors hover:text-[#1668DC]" href="/marketplace/cart">Your Cart</Link></li>
+                <li><Link className="transition-colors hover:text-[#1668DC]" href="/marketplace/wishlist">Your Wishlist</Link></li>
+                <li><Link className="transition-colors hover:text-[#1668DC]" href="/marketplace/compare">Compare Products</Link></li>
+                <li><Link className="transition-colors hover:text-[#1668DC]" href="/marketplace/faq">Returns & Warranty</Link></li>
+                <li><Link className="transition-colors hover:text-[#1668DC]" href="/privacy-policy">Privacy Policy</Link></li>
+                <li><Link className="transition-colors hover:text-[#1668DC]" href="/terms-of-use">Terms of Use</Link></li>
+                <li><a className="transition-colors hover:text-[#1668DC]" href="https://techpivo.com/" target="_blank" rel="noopener">Blog</a></li>
+              </ul>
+            )}
+          </div>
+          {/* Column 4: Newsletter — premium */}
+          <div className="space-y-4 lg:col-span-1">
+            <h5 className="mb-2 text-[11px] font-bold uppercase tracking-wider text-white">Newsletter</h5>
             <p className="mb-3 text-[12px] text-white/90">Weekly tech drops and member coupons.</p>
             <form className="space-y-2" onSubmit={subscribe}>
-              <input value={email} onChange={(e) => setEmail(e.target.value)} className="w-full rounded-lg border border-white/15 bg-white/10 px-3 py-2.5 text-sm text-white placeholder:text-slate-400 focus:border-[#1668DC] focus:outline-none" placeholder="Your email" type="email" aria-label="Email" />
-              <button className="w-full rounded-lg bg-[#EF4444] py-2.5 text-sm font-bold text-white transition-colors hover:bg-[#DC2626] disabled:opacity-60" type="submit" disabled={subBusy}>
-                {subBusy ? "Subscribing..." : "Subscribe"}
-              </button>
+              <div className="relative">
+                <input value={email} onChange={(e) => setEmail(e.target.value)} className="w-full rounded-lg border border-white/15 bg-white/10 px-4 py-3 text-sm text-white placeholder:text-slate-400 focus:border-[#1668DC] focus:outline-none focus:ring-1 focus:ring-[#1668DC]" placeholder="Your email" type="email" aria-label="Email" />
+                <button className="absolute right-1 top-1 rounded-lg bg-[#EF4444] px-4 py-2.5 text-sm font-bold text-white transition-colors hover:bg-[#DC2626] disabled:opacity-60" type="submit" disabled={subBusy}>
+                  {subBusy ? "Subscribing..." : "Subscribe"}
+                </button>
+              </div>
               {subMsg && <p className="text-xs text-slate-300">{subMsg}</p>}
             </form>
           </div>

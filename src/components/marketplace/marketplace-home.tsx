@@ -531,7 +531,7 @@ export function MarketplaceHome() {
         return {
           id: d.id,
           name: cleanSupplierText(d.product_name) || d.product_name,
-          category: supplierDisplayName(d.program_key),
+          category: d.subcategory_slug ?? "",
           price: Number(d.sale_price ?? d.original_price ?? 0),
           oldPrice: d.original_price && Number(d.original_price) > Number(d.sale_price ?? d.original_price ?? 0)
             ? Number(d.original_price)
@@ -881,9 +881,9 @@ export function MarketplaceHome() {
         )}
 
           {/* hero side promos — desktop: stacked pair; mobile: horizontal scroll row */}
-          <div className="lg:col-span-1 flex flex-col gap-4 lg:h-full lg:min-h-0 sm:flex-row sm:gap-2 sm:h-auto sm:min-h-0 sm:overflow-hidden sm:overflow-x-auto sm:snap-x sm:pb-2 sm:scroll-smooth" style={{ scrollbarWidth: "none" }}>
+          <div className="lg:col-span-1 flex flex-row gap-2 overflow-x-auto pb-2 snap-x scroll-smooth md:flex-col md:gap-4 md:h-full md:min-h-0 md:overflow-hidden" style={{ scrollbarWidth: "none" }}>
             {!bannersReady ? (
-              <div className="flex-1 min-h-[120px] md:min-h-0 overflow-hidden rounded-none bg-white shadow-sm animate-pulse" aria-hidden>
+              <div className="shrink-0 w-[200px] min-h-[120px] md:flex-1 md:w-auto md:min-h-0 overflow-hidden rounded-none bg-white shadow-sm animate-pulse" aria-hidden>
                 <div className="h-full w-full bg-slate-100" />
               </div>
             ) : (
