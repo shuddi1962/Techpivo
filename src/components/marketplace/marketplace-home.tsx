@@ -881,7 +881,7 @@ export function MarketplaceHome() {
         )}
 
           {/* hero side promos — desktop: stacked pair; mobile: horizontal scroll row */}
-          <div className="lg:col-span-1 flex flex-col gap-4 lg:h-full lg:min-h-0 md:flex-row md:gap-2 md:h-auto md:min-h-0 overflow-hidden md:overflow-x-auto md:pb-2 md:snap-x md:scroll-smooth" style={{ scrollbarWidth: "none" }}>
+          <div className="lg:col-span-1 flex flex-col gap-4 lg:h-full lg:min-h-0 sm:flex-row sm:gap-2 sm:h-auto sm:min-h-0 sm:overflow-hidden sm:overflow-x-auto sm:snap-x sm:pb-2 sm:scroll-smooth" style={{ scrollbarWidth: "none" }}>
             {!bannersReady ? (
               <div className="flex-1 min-h-[120px] md:min-h-0 overflow-hidden rounded-none bg-white shadow-sm animate-pulse" aria-hidden>
                 <div className="h-full w-full bg-slate-100" />
@@ -892,7 +892,7 @@ export function MarketplaceHome() {
                   href="/marketplace/deals"
                   linked={dealsSlides.some((s) => !!s.link)}
                   label="Mega Deal — up to 50% off"
-                  className="relative flex-1 min-h-[140px] lg:min-h-0 overflow-hidden rounded-none p-4 text-white shadow-sm transition-shadow hover:shadow-md flex items-center gap-3 md:shrink-0 md:w-[200px] sm:w-[240px]"
+                  className="relative shrink-0 w-[200px] min-h-[140px] md:flex-1 md:w-auto md:min-h-0 overflow-hidden rounded-none p-4 text-white shadow-sm transition-shadow hover:shadow-md flex items-center gap-3 sm:w-[240px]"
                   style={{ background: "linear-gradient(150deg, #DC2626 0%, #991B1B 100%)" }}
                 >
                   {dealsSlides.length > 0 ? (
@@ -914,7 +914,7 @@ export function MarketplaceHome() {
                   href="/marketplace/new-arrivals"
                   linked={newSlides.some((s) => !!s.link)}
                   label="New Season Tech Drop"
-                  className="relative flex-1 min-h-[140px] lg:min-h-0 overflow-hidden rounded-none p-4 text-white shadow-sm transition-shadow hover:shadow-md flex items-center gap-3 md:shrink-0 md:w-[200px] sm:w-[240px]"
+                  className="relative shrink-0 w-[200px] min-h-[140px] md:flex-1 md:w-auto md:min-h-0 overflow-hidden rounded-none p-4 text-white shadow-sm transition-shadow hover:shadow-md flex items-center gap-3 sm:w-[240px]"
                   style={{ background: "linear-gradient(150deg, #F59E0B 0%, #F97316 100%)" }}
                 >
                   {newSlides.length > 0 ? (
