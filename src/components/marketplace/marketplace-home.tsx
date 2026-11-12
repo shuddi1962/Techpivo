@@ -850,7 +850,7 @@ export function MarketplaceHome() {
             from the desktop hero (Admin → Banners → Mobile Hero Banners).
             Falls back to desktop hero image when no mobile upload exists.
             Hidden on desktop/tablet. */}
-        <MobileHeroCarousel className="hidden md:block" banners={banners} />
+        <MobileHeroCarousel className="md:hidden" banners={banners} />
 
         {/* Desktop hero — unchanged layout, hidden on phones */}
         <section className="w-full mb-0 sm:mb-4 hidden md:block">
@@ -889,9 +889,9 @@ export function MarketplaceHome() {
         )}
 
           {/* hero side promos — desktop only */}
-          <div className="hidden md:block lg:col-span-1 flex flex-row gap-2 overflow-x-auto pb-2 snap-x scroll-smooth md:flex-col md:gap-4 md:h-full md:min-h-0 md:overflow-hidden" style={{ scrollbarWidth: "none" }}>
+          <div className="hidden md:block lg:col-span-1 flex flex-row gap-2 overflow-x-auto pb-2 snap-x scroll-smooth" style={{ scrollbarWidth: "none" }}>
             {!bannersReady ? (
-              <div className="shrink-0 w-[200px] min-h-[120px] md:flex-1 md:w-auto md:min-h-0 overflow-hidden rounded-none bg-white shadow-sm animate-pulse" aria-hidden>
+              <div className="shrink-0 w-[200px] min-h-[120px] overflow-hidden rounded-none bg-white shadow-sm animate-pulse" aria-hidden>
                 <div className="h-full w-full bg-slate-100" />
               </div>
             ) : (
@@ -900,7 +900,7 @@ export function MarketplaceHome() {
                   href="/marketplace/deals"
                   linked={dealsSlides.some((s) => !!s.link)}
                   label="Mega Deal — up to 50% off"
-                  className="relative shrink-0 w-[200px] min-h-[140px] md:flex-1 md:w-auto md:min-h-0 overflow-hidden rounded-none p-4 text-white shadow-sm transition-shadow hover:shadow-md flex items-center gap-3 sm:w-[240px]"
+                  className="relative shrink-0 w-[200px] min-h-[140px] overflow-hidden rounded-none p-4 text-white shadow-sm transition-shadow hover:shadow-md flex items-center gap-3 sm:w-[240px]"
                   style={{ background: "linear-gradient(150deg, #DC2626 0%, #991B1B 100%)" }}
                 >
                   {dealsSlides.length > 0 ? (
@@ -922,7 +922,7 @@ export function MarketplaceHome() {
                   href="/marketplace/new-arrivals"
                   linked={newSlides.some((s) => !!s.link)}
                   label="New Season Tech Drop"
-                  className="relative shrink-0 w-[200px] min-h-[140px] md:flex-1 md:w-auto md:min-h-0 overflow-hidden rounded-none p-4 text-white shadow-sm transition-shadow hover:shadow-md flex items-center gap-3 sm:w-[240px]"
+                  className="relative shrink-0 w-[200px] min-h-[140px] overflow-hidden rounded-none p-4 text-white shadow-sm transition-shadow hover:shadow-md flex items-center gap-3 sm:w-[240px]"
                   style={{ background: "linear-gradient(150deg, #F59E0B 0%, #F97316 100%)" }}
                 >
                   {newSlides.length > 0 ? (
