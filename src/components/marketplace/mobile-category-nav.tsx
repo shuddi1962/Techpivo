@@ -6,8 +6,6 @@ import { ChevronRight, LayoutGrid } from "lucide-react"
 import { useMarketplaceTree } from "@/components/marketplace/market-category-store"
 import type { MarketDepartment, MarketSub } from "@/lib/marketplace-categories"
 import { marketImage } from "@/lib/marketplace-images"
-import { fetchStoreProducts } from "@/lib/marketplace-products"
-import { priceOf, type StoreProduct } from "@/lib/marketplace-catalog"
 
 interface SubImageRotation {
   subSlug: string
@@ -60,18 +58,18 @@ export function MobileCategoryNav({ onClose }: MobileCategoryNavProps) {
 
       for (const sub of subs) {
         try {
-          const products = await fetchStoreProducts({
-            slugs: [sub.slug],
-            limit: 8,
-          })
-          const imgs = products
-            .filter((p) => p.product_image_url)
-            .map((p) => p.product_image_url!)
+          const res = await fetch(
+            `/api/marketplace/subcategory-images?slug=${encodeURIComponent(
+              sub.slug
+            )}`,
+            { cache: "no-store" }
+          )
+          const data = await res.json().catch(() => null)
+          const imgs = Array.isArray(data?.images) ? data.images : []
           if (imgs.length > 0) {
             images.set(sub.slug, imgs)
             idx.set(sub.slug, 0)
           } else {
-            // No products — fall back to department image or empty.
             images.set(sub.slug, [selectedDept.image])
             idx.set(sub.slug, 0)
           }
