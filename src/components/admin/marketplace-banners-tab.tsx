@@ -1107,6 +1107,8 @@ export function MarketplaceBannersTab() {
         patchCampaign(uploadTarget.slice(9), { image: url })
       } else if (uploadTarget.startsWith("side:")) {
         setSideBanner(uploadTarget.slice(5), url)
+      } else if (uploadTarget.startsWith("mobile-hero-cover")) {
+        setBanners((b) => ({ ...b, mobile_hero_image: url }))
       } else if (uploadTarget.startsWith("slides:")) {
         const [, key] = uploadTarget.split(":") as [string, SliderSlotKey]
         setBanners((b) => {
@@ -1633,6 +1635,80 @@ export function MarketplaceBannersTab() {
             </div>
             </div>
           </div>
+        </div>
+        {/* 5a — Mobile hero banners (separate from desktop hero) */}
+        <div className="rounded-xl border border-amber-200 bg-amber-50/50 p-4">
+          <div className="flex items-center justify-between gap-2 mb-3">
+            <div>
+              <p className="text-sm font-bold text-slate-900">Mobile hero banners</p>
+              <p className="text-xs text-slate-500">Separate carousel on the mobile homepage — independent of desktop hero images. Recommended 1200 × 600 px (2:1 landscape). Only active banners show.</p>
+            </div>
+            <label className="flex cursor-pointer items-center gap-2 text-xs font-bold text-slate-700">
+              <input
+                type="checkbox"
+                checked={banners.mobile_hero_enabled !== false}
+                onChange={(e) => setBanners((b) => ({ ...b, mobile_hero_enabled: e.target.checked }))}
+                className="h-4 w-4 accent-[#F59E0B]"
+              />
+              Mobile hero carousel on
+            </label>
+          </div>
+          <div className="space-y-3">
+            {/* Cover image (slide 1) */}
+            <div className="rounded-lg border bg-white p-3">
+              <div className="flex items-center gap-2 mb-2">
+                <span className="h-2 w-2 shrink-0 rounded-full bg-slate-300" />
+                <span className="text-sm font-bold text-slate-900">Banner 1 (cover)</span>
+              </div>
+              <div className="flex gap-2">
+                <input
+                  value={banners.mobile_hero_image || ""}
+                  onChange={(e) => setBanners((b) => ({ ...b, mobile_hero_image: e.target.value }))}
+                  placeholder="https://… — mobile hero banner 1 (empty = desktop hero shows)"
+                  className={`${inputCls} min-w-0 flex-1 text-xs ${banners.mobile_hero_image && !isUrl(banners.mobile_hero_image) ? "border-red-300" : ""}`}
+                />
+                <button type="button" onClick={() => pickUpload("mobile-hero-cover")} disabled={uploading === "mobile-hero-cover"} className={miniBtn}>
+                  {uploading === "mobile-hero-cover" ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <ImagePlus className="h-3.5 w-3.5" />}
+                  {uploading === "mobile-hero-cover" ? "…" : "Upload"}
+                </button>
+                {(banners.mobile_hero_image || "").trim() && (
+                  <button type="button" onClick={() => setBanners((b) => ({ ...b, mobile_hero_image: "" }))} title="Back to desktop hero fallback" className="rounded-lg border p-2 text-slate-400 hover:bg-slate-50">
+                    <RotateCcw className="h-3.5 w-3.5" />
+                  </button>
+                )}
+              </div>
+              <div className="mt-2">
+                <LinkField
+                  value={banners.links?.[banners.mobile_hero_image] || ""}
+                  onChange={(v) => setLink(banners.mobile_hero_image, v)}
+                />
+              </div>
+              {(banners.mobile_hero_image || "").trim() && isUrl(banners.mobile_hero_image || "") && (
+                <div className="mt-2">
+                  <img
+                    src={(banners.mobile_hero_image || "").trim()}
+                    alt="Mobile hero banner 1 preview"
+                    className="h-24 w-full rounded-lg border object-cover" loading="lazy"
+                  />
+                  <p className="mt-1 text-[11px] text-slate-400">Mobile hero cover — 1200 × 600 px recommended (2:1). Falls back to desktop hero image on mobile when empty.</p>
+                </div>
+              )}
+            </div>
+
+            {/* Extra slides */}
+            <div>
+              <div className="flex items-center gap-2 mb-2">
+                <span className="h-2 w-2 shrink-0 rounded-full bg-slate-300" />
+                <span className="text-sm font-bold text-slate-900">Additional carousel slides</span>
+                <span className="ml-auto text-[11px] text-slate-400">{extrasOf("mobile_hero_slides").length} extra slide{extrasOf("mobile_hero_slides").length !== 1 ? "s" : ""}</span>
+              </div>
+              <SlideExtras
+                slides={extrasOf("mobile_hero_slides")}
+                onChange={(next) => setExtras("mobile_hero_slides", next)}
+              />
+            </div>
+          </div>
+          <p className="mt-2 text-[11px] text-slate-400">Mobile banners use their own image set — desktop hero images are never shown on mobile unless no mobile banner is uploaded (then the desktop hero image is used as fallback).</p>
         </div>
         <div className="rounded-xl border bg-white p-4">
           <div className="flex items-center justify-between gap-2">

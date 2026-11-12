@@ -33,6 +33,8 @@ import { SaleCountdown, useSaleEnd } from "./sale-countdown"
 import { isNewPick, isBestsellerPick, showSaleBadge, salePctOf } from "@/lib/marketplace-merch"
 import { useMarketMerch, useSaleBadge, useProductDiscount } from "./market-flags"
 import { FeaturePanels } from "./feature-panels"
+import { MobileCategoryDiscovery } from "./mobile-category-discovery"
+import { MobileHeroCarousel } from "./mobile-hero-carousel"
 
 type ScopeRow = {
   category_slug: string | null;
@@ -844,8 +846,13 @@ export function MarketplaceHome() {
           </div>
         )}
 
-        {/* hero — mobile: single column; desktop: 3-col row (unchanged) */}
-        <section className="w-full mb-0 sm:mb-4">
+        {/* Mobile hero carousel — mobile only. Separate mobile banner images
+            from the desktop hero (Admin → Banners → Mobile Hero Banners).
+            Falls back to desktop hero image when no mobile upload exists. */}
+        <MobileHeroCarousel banners={banners} />
+
+        {/* Desktop hero — unchanged layout, hidden on phones */}
+        <section className="w-full mb-0 sm:mb-4 hidden md:block">
         <div className="grid w-full grid-cols-1 lg:grid-cols-3 gap-4 items-stretch lg:h-[360px] xl:h-[400px] overflow-x-clip">
         {!loaded || !bannersReady ? (
           <div className="lg:col-span-2 overflow-hidden rounded-none bg-white shadow-sm aspect-[16/10] sm:aspect-[21/9] lg:aspect-auto lg:h-full animate-pulse" aria-hidden>
@@ -880,8 +887,8 @@ export function MarketplaceHome() {
           </div>
         )}
 
-          {/* hero side promos — desktop: stacked pair; mobile: horizontal scroll row */}
-          <div className="lg:col-span-1 flex flex-row gap-2 overflow-x-auto pb-2 snap-x scroll-smooth md:flex-col md:gap-4 md:h-full md:min-h-0 md:overflow-hidden" style={{ scrollbarWidth: "none" }}>
+          {/* hero side promos — desktop only */}
+          <div className="hidden md:block lg:col-span-1 flex flex-row gap-2 overflow-x-auto pb-2 snap-x scroll-smooth md:flex-col md:gap-4 md:h-full md:min-h-0 md:overflow-hidden" style={{ scrollbarWidth: "none" }}>
             {!bannersReady ? (
               <div className="shrink-0 w-[200px] min-h-[120px] md:flex-1 md:w-auto md:min-h-0 overflow-hidden rounded-none bg-white shadow-sm animate-pulse" aria-hidden>
                 <div className="h-full w-full bg-slate-100" />
@@ -937,9 +944,13 @@ export function MarketplaceHome() {
           </div>
         </div>
         </section>
-        {/* shop by collections — every real category node */}
+        {/* Mobile category discovery — mobile only. 16 items in a 4-col grid.
+            Replaces the desktop Shop by Collection on phones. */}
+        <MobileCategoryDiscovery className="md:hidden" />
+
+        {/* Shop by collections — desktop only, hidden on phones */}
         {!loaded ? (
-          <section aria-label="Loading collections" className="bg-white rounded-2xl p-5 shadow-sm animate-pulse" aria-hidden>
+          <section aria-label="Loading collections" className="bg-white rounded-2xl p-5 shadow-sm animate-pulse hidden md:block" aria-hidden>
             <div className="mb-4 h-6 w-48 rounded bg-slate-100" />
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
               {Array.from({ length: 14 }).map((_, i) => (
@@ -951,7 +962,7 @@ export function MarketplaceHome() {
             </div>
           </section>
 ) : (
-  <section id="shop-collections" className="shop-collections">
+  <section id="shop-collections" className="shop-collections hidden md:block">
     <ShopCollections collections={collections} />
   </section>
 )}

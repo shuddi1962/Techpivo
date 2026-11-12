@@ -103,6 +103,7 @@ export const DEFAULT_SLOT_SLIDER: SlotSlider = {
 /** Slots that can hold several sliding images, each with its own settings. */
 export const SLIDER_SLOT_KEYS = [
   "hero_slides",
+  "mobile_hero_slides",
   "promo_slides",
   "promo_deals_slides",
   "promo_new_slides",
@@ -163,10 +164,18 @@ export interface MarketBanners {
   /** Background behind the flash headline block (gradient mode only).
       Empty = transparent over the banner gradient. */
   flash_text_bg: string
+  /** Mobile hero banner — separate from desktop hero. Single cover image
+      plus extra slides. Recommended 1200 × 600 px (2:1 landscape).
+      Mobile homepage renders these instead of the desktop hero when set. */
+  mobile_hero_image: string
+  mobile_hero_slides: BannerSlide[]
+  /** Whether the mobile hero carousel shows publicly. False = mobile
+      hero section hidden on the storefront. */
+  mobile_hero_enabled: boolean
   /** "Specials" menu pill (storefront header, next to Departments).
       Fully admin-editable: full label text, destination (any in-store
       path, #anchor, category page or https link) and on/off switch.
-      False = hidden publicly, instantly. */
+      False = hidden publicly. */
   specials_enabled: boolean
   specials_label: string
   specials_link: string
@@ -270,6 +279,9 @@ export const EMPTY_BANNERS: MarketBanners = {
   specials_enabled: true,
   specials_label: "Flash Sale Specials",
   specials_link: "/marketplace#flash-deals",
+  mobile_hero_image: "",
+  mobile_hero_slides: [],
+  mobile_hero_enabled: true,
   popup_enabled: true,
   popup_image: "",
   popup_title: "Welcome to TechPivo Market",
@@ -564,12 +576,14 @@ export function parseBanners(raw: unknown): MarketBanners {
     thumbs: r.slider_thumbs === true,
   }
   const hero_slides = slideArr(r.hero_slides)
+  const mobile_hero_slides = slideArr(r.mobile_hero_slides)
   const promo_slides = slideArr(r.promo_slides)
   const promo_deals_slides = slideArr(r.promo_deals_slides)
   const promo_new_slides = slideArr(r.promo_new_slides)
   const strip1_slides = slideArr(r.strip1_slides)
   const strip2_slides = slideArr(r.strip2_slides)
   const hero_image = str(r.hero_image).trim()
+  const mobile_hero_image = str(r.mobile_hero_image).trim()
   const promo_image = str(r.promo_image).trim()
   const promo_deals_image = str(r.promo_deals_image).trim()
   const promo_new_image = str(r.promo_new_image).trim()
@@ -584,7 +598,7 @@ export function parseBanners(raw: unknown): MarketBanners {
   const track_image = str(r.track_image).trim()
   // Keep only links that point at an image still in use (kills orphans).
   const live = new Set<string>([
-    hero_image, promo_image, promo_deals_image, promo_new_image,
+    hero_image, mobile_hero_image, promo_image, promo_deals_image, promo_new_image,
     strip1_image, strip2_image, category_default,
     shop_image, deals_image, best_sellers_image,
     new_arrivals_image, top_stores_image, track_image,
@@ -596,6 +610,7 @@ export function parseBanners(raw: unknown): MarketBanners {
     ...promo_new_slides.map((s) => s.image),
     ...strip1_slides.map((s) => s.image),
     ...strip2_slides.map((s) => s.image),
+    ...mobile_hero_slides.map((s) => s.image),
   ].filter(Boolean))
   const links: Record<string, string> = {}
   if (r.links && typeof r.links === "object") {
@@ -635,6 +650,9 @@ export function parseBanners(raw: unknown): MarketBanners {
     specials_enabled: typeof r.specials_enabled === "boolean" ? r.specials_enabled : true,
     specials_label: str(r.specials_label).trim().slice(0, 40) || EMPTY_BANNERS.specials_label,
     specials_link: cleanBannerLink(r.specials_link) || EMPTY_BANNERS.specials_link,
+    mobile_hero_image: str(r.mobile_hero_image).trim().slice(0, 500),
+    mobile_hero_slides: slideArr(r.mobile_hero_slides),
+    mobile_hero_enabled: typeof r.mobile_hero_enabled === "boolean" ? r.mobile_hero_enabled : true,
     popup_enabled: typeof r.popup_enabled === "boolean" ? r.popup_enabled : true,
     popup_image: str(r.popup_image).trim(),
     popup_title: str(r.popup_title).trim().slice(0, 80) || EMPTY_BANNERS.popup_title,
