@@ -888,8 +888,8 @@ export function MarketplaceHome() {
           </div>
         )}
 
-          {/* hero side promos — desktop only */}
-          <div className="hidden md:block lg:col-span-1 flex flex-row gap-2 overflow-x-auto pb-2 snap-x scroll-smooth" style={{ scrollbarWidth: "none" }}>
+          {/* hero side promos — desktop only, stacked full-height on right */}
+          <div className="hidden md:block lg:col-span-1 flex flex-col gap-4 lg:h-full lg:min-h-0">
             {!bannersReady ? (
               <div className="shrink-0 w-[200px] min-h-[120px] overflow-hidden rounded-none bg-white shadow-sm animate-pulse" aria-hidden>
                 <div className="h-full w-full bg-slate-100" />
