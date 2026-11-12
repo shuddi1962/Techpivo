@@ -12,6 +12,9 @@ import {
 } from "lucide-react"
 import { MarketCategorySync, useMarketplaceTree } from "./market-category-store"
 import { MarketBottomNav } from "./market-bottom-nav"
+import { MobilePromoNotice } from "./mobile-promo-notice"
+import { MobileAnnouncement } from "./mobile-announcement"
+import { MobileCategoryNav } from "./mobile-category-nav"
 import { MARKETPLACE_BRAND } from "@/lib/marketplace"
 import type { MarketBanners } from "@/lib/marketplace-banners"
 import { useMarketCart } from "@/lib/marketplace-cart"
@@ -20,6 +23,7 @@ import { SuggestDropdown, useRemoteSuggest } from "./search-suggest"
 import { MarketCommerce } from "./market-commerce"
 import { readMarketCurrency, setMarketCurrency, MARKET_CURRENCIES, type MarketCurrency } from "@/lib/marketplace-pricing"
 import { MARKET_STORE_DEFAULTS } from "@/lib/marketplace-store"
+import type { MarketMobileSettings } from "@/lib/marketplace-mobile"
 
 const NAV: Array<{ label: string; href: string; external?: boolean }> = [
   { label: "Home", href: "/marketplace" },
@@ -273,6 +277,10 @@ const [showBackToTop, setShowBackToTop] = useState(false)
   // read; promo switch hides promo surfaces publicly, default ON).
   const [promoBanners, setPromoBanners] = useState<MarketBanners | null>(null)
   const promoOn = promoBanners?.promo_enabled !== false
+  // Mobile experience settings (promo notice + announcement strip) — read
+  // from site_settings key "marketplace_mobile". Mobile-only surfaces.
+  const [mobileSettings, setMobileSettings] = useState<MarketMobileSettings | null>(null)
+  const [categoryNavOpen, setCategoryNavOpen] = useState(false)
   // Mega menu colours — driven by Admin → Marketplace → Banners ("Mega menu
   // colours"). menu_bg colours the nav bar trigger + mega panel border /
   // active row; menu_text colours nav links / buttons. Falls back to the
@@ -301,16 +309,26 @@ const [showBackToTop, setShowBackToTop] = useState(false)
       try {
         const { createClient } = await import("@/lib/supabase/client")
         const { parseBanners } = await import("@/lib/marketplace-banners")
-        const { data } = await createClient()
-          .from("site_settings")
-          .select("value")
-          .eq("key", "marketplace_banners")
-          .maybeSingle()
-        const b = parseBanners((data as { value?: unknown } | null)?.value)
+        const { parseMobileSettings } = await import("@/lib/marketplace-mobile")
+        const [bannersRes, mobileRes] = await Promise.all([
+          createClient()
+            .from("site_settings")
+            .select("value")
+            .eq("key", "marketplace_banners")
+            .maybeSingle(),
+          createClient()
+            .from("site_settings")
+            .select("value")
+            .eq("key", "marketplace_mobile")
+            .maybeSingle(),
+        ])
+        const b = parseBanners((bannersRes as { data: { value?: unknown } | null })?.data?.value)
         if (b.departments) setDeptCovers(b.departments)
         setPromoBanners(b)
+        const m = parseMobileSettings((mobileRes as { data: { value?: unknown } | null })?.data?.value)
+        setMobileSettings(m)
       } catch {
-        // banners unavailable — built-in photos stay, promo stays on
+        // banners/mobile unavailable — built-in photos stay, promo stays on
       }
     })()
     return () => {
@@ -413,6 +431,36 @@ const [showBackToTop, setShowBackToTop] = useState(false)
 
   return (
     <>
+      {/* Mobile promotional notice bar — admin-configurable, mobile only */}
+      <MobilePromoNotice
+        enabled={mobileSettings?.promo_notice.enabled ?? false}
+        logo={mobileSettings?.promo_notice.logo || undefined}
+        heading={mobileSettings?.promo_notice.heading || undefined}
+        description={mobileSettings?.promo_notice.description || undefined}
+        buttonLabel={mobileSettings?.promo_notice.button_label || undefined}
+        buttonUrl={mobileSettings?.promo_notice.button_url || undefined}
+        showButton={mobileSettings?.promo_notice.show_button ?? true}
+        showClose={mobileSettings?.promo_notice.show_close ?? true}
+        bgColor={mobileSettings?.promo_notice.bg_color || undefined}
+        textColor={mobileSettings?.promo_notice.text_color || undefined}
+        btnBgColor={mobileSettings?.promo_notice.btn_bg_color || undefined}
+        btnTextColor={mobileSettings?.promo_notice.btn_text_color || undefined}
+        startAt={mobileSettings?.promo_notice.start_at || undefined}
+        endAt={mobileSettings?.promo_notice.end_at || undefined}
+      />
+
+      {/* Mobile announcement strip — admin-configurable, mobile only */}
+      <MobileAnnouncement
+        enabled={mobileSettings?.announcement.enabled ?? false}
+        text={mobileSettings?.announcement.text || undefined}
+        actionText={mobileSettings?.announcement.action_text || undefined}
+        actionUrl={mobileSettings?.announcement.action_url || undefined}
+        bgColor={mobileSettings?.announcement.bg_color || undefined}
+        textColor={mobileSettings?.announcement.text_color || undefined}
+        startAt={mobileSettings?.announcement.start_at || undefined}
+        endAt={mobileSettings?.announcement.end_at || undefined}
+      />
+
       {/* Keeps the department menu in sync with Admin → Categories */}
       <MarketCategorySync />
       <MarketCommerce />
@@ -964,6 +1012,7 @@ const [showBackToTop, setShowBackToTop] = useState(false)
           mobileSearchInputRef.current?.focus()
           setSuggestOpen(false)
         }}
+        onCategoryOpen={() => setCategoryNavOpen(true)}
       />
 
       {/* Back-to-top button — mobile/tablet only, sits above bottom nav */}
@@ -976,6 +1025,11 @@ const [showBackToTop, setShowBackToTop] = useState(false)
         >
           <ChevronUp className="h-5 w-5" />
         </button>
+      )}
+
+      {/* Mobile category nav overlay — Temu-style split category discovery */}
+      {categoryNavOpen && (
+        <MobileCategoryNav onClose={() => setCategoryNavOpen(false)} />
       )}
     </>
     )

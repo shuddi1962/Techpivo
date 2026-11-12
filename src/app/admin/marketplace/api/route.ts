@@ -328,6 +328,11 @@ export async function GET(request: NextRequest) {
       const { parseBanners } = await import("@/lib/marketplace-banners")
       return NextResponse.json({ banners: parseBanners((data as { value?: unknown } | null)?.value) })
     }
+    if (section === "mobile-settings") {
+      const { data } = await supabase.from("site_settings").select("value").eq("key", "marketplace_mobile").maybeSingle()
+      const { parseMobileSettings } = await import("@/lib/marketplace-mobile")
+      return NextResponse.json({ settings: parseMobileSettings((data as { value?: unknown } | null)?.value) })
+    }
     if (section === "sales") {
       const { data } = await supabase.from("site_settings").select("value").eq("key", "marketplace_sales").maybeSingle()
       const { parseMarketSales } = await import("@/lib/marketplace-sales")
@@ -756,6 +761,17 @@ export async function POST(request: NextRequest) {
       if (error) throw error
       revalidateStore()
       return NextResponse.json({ success: true, banners })
+    }
+    // Save mobile settings (promo notice, announcement strip, rotation interval)
+    if (body.action === "mobile-settings-save") {
+      const { parseMobileSettings } = await import("@/lib/marketplace-mobile")
+      const settings = parseMobileSettings(body.settings)
+      const { error } = await supabase
+        .from("site_settings")
+        .upsert({ key: "marketplace_mobile", value: settings as unknown as never }, { onConflict: "key" })
+      if (error) throw error
+      revalidateStore()
+      return NextResponse.json({ success: true, settings })
     }
     // Save Super Deals promotional configuration
     if (body.action === "super-deals-save") {

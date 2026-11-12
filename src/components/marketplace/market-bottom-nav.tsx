@@ -25,9 +25,11 @@ interface MarketBottomNavProps {
   onSearchToggle?: () => void
   /** When set, highlights that nav item as active. */
   active?: string
+  /** When set, clicking the Categories item opens this callback instead of navigating. */
+  onCategoryOpen?: () => void
 }
 
-export function MarketBottomNav({ onSearchToggle, active }: MarketBottomNavProps) {
+export function MarketBottomNav({ onSearchToggle, active, onCategoryOpen }: MarketBottomNavProps) {
   const compareIds = useCompareIds()
   const [drawerOpen, setDrawerOpen] = useState(false)
 
@@ -42,6 +44,12 @@ export function MarketBottomNav({ onSearchToggle, active }: MarketBottomNavProps
     setDrawerOpen(false)
   }
 
+  const handleCategoryClick = (e: React.MouseEvent) => {
+    e.preventDefault()
+    onCategoryOpen?.()
+    setDrawerOpen(false)
+  }
+
   return (
     <>
       <nav
@@ -53,15 +61,23 @@ export function MarketBottomNav({ onSearchToggle, active }: MarketBottomNavProps
             const count = item.id === "compare" ? compareIds.length : 0
             const selected = isActive(item.id)
             const isSearch = item.id === "search"
+            const isCategory = item.id === "categories"
             return (
               <button
                 key={item.id}
                 type="button"
-                onClick={isSearch ? handleSearch : undefined}
+                onClick={
+                  isSearch
+                    ? handleSearch
+                    : isCategory
+                    ? handleCategoryClick
+                    : undefined
+                }
                 onKeyDown={(e) => {
                   if (isSearch && e.key === "Enter") handleSearch(e as unknown as React.MouseEvent)
+                  if (isCategory && e.key === "Enter") handleCategoryClick(e as unknown as React.MouseEvent)
                 }}
-                role={isSearch ? "button" : undefined}
+                role="button"
                 aria-label={`${item.label}${selected ? ", active" : ""}${count > 0 ? `, ${count} items` : ""}`}
                 aria-expanded={isSearch ? drawerOpen : undefined}
                 className={`flex flex-col items-center gap-1 px-2 py-1.5 text-xs font-semibold transition-colors min-w-[48px] ${
