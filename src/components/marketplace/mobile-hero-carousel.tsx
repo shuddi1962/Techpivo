@@ -46,8 +46,6 @@ export function MobileHeroCarousel({ banners }: { banners: MarketBanners }) {
     return out
   }, [banners])
 
-  if (!enabled || slides.length === 0) return null
-
   const [index, setIndex] = useState(0)
   const [active, setActive] = useState(0)
   const containerRef = useRef<HTMLDivElement>(null)
@@ -89,7 +87,6 @@ export function MobileHeroCarousel({ banners }: { banners: MarketBanners }) {
     })
     return () => {
       el.removeEventListener("scrollend", onScrollEnd)
-      el.removeEventListener("scroll", () => {})
     }
   }, [onScrollEnd, slideWidth, slides.length])
 
@@ -101,6 +98,8 @@ export function MobileHeroCarousel({ banners }: { banners: MarketBanners }) {
     const left = i * slideWidth
     el.scrollTo({ left, behavior: "smooth" })
   }
+
+  if (!enabled || slides.length === 0) return null
 
   return (
     <section className="w-full mb-4">
