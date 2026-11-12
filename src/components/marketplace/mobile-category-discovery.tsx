@@ -5,6 +5,7 @@ import { useMemo } from "react"
 import { MARKET_DEPARTMENTS, type MarketDepartment } from "@/lib/marketplace-categories"
 import { marketImage } from "@/lib/marketplace-images"
 import { cn } from "@/lib/utils"
+import { rotationBucket } from "@/lib/marketplace-rotation"
 
 interface CategoryPick {
   name: string
@@ -19,36 +20,52 @@ const MOBILE_SUBCATEGORY_PICKS: Array<{ dept: MarketDepartment; subName: string;
   { dept: MARKET_DEPARTMENTS[1], subName: "Mobile Phones", subSlug: "mobile-phones" },
 ]
 
+interface MobileCategoryDiscoveryProps {
+  /** Department slug -> real product cover image URL (rotates over time). */
+  covers?: Map<string, string>
+}
+
 /**
  * Mobile-only Shop by Collections replacement.
  *
  * 16 category discovery items (14 departments + 2 subcategories) in a
  * 4-column grid. Each item is a circular image + name, clickable to its
  * category/subcategory listing page. Hidden on desktop/tablet.
+ *
+ * Category images rotate through real products from that category using a
+ * shared 10-minute time bucket so all visitors see the same image during a
+ * window, and different products take their turn over time.
  */
-export function MobileCategoryDiscovery({ className }: { className?: string }) {
+export function MobileCategoryDiscovery({
+  className,
+  covers,
+}: { className?: string } & MobileCategoryDiscoveryProps) {
   const depts = MARKET_DEPARTMENTS
+  const bucket = rotationBucket()
 
   const picks = useMemo<CategoryPick[]>(() => {
     const out: CategoryPick[] = []
     for (const d of depts) {
+      // Rotate through real product images from this category over time.
+      const deptProducts = covers?.get(d.slug)
       out.push({
         name: d.name,
         slug: d.slug,
-        image: d.image,
+        image: deptProducts || d.image,
         href: `/marketplace/category/${d.slug}`,
       })
     }
     for (const p of MOBILE_SUBCATEGORY_PICKS) {
+      const subProducts = covers?.get(p.subSlug)
       out.push({
         name: p.subName,
         slug: p.subSlug,
-        image: p.dept.image,
+        image: subProducts || p.dept.image,
         href: `/marketplace/category/${p.dept.slug}/${p.subSlug}`,
       })
     }
     return out
-  }, [depts])
+  }, [depts, covers, bucket])
 
   return (
     <section className={cn("bg-white mb-4", className)}>

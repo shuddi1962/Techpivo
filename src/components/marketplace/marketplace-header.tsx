@@ -495,18 +495,18 @@ const [showBackToTop, setShowBackToTop] = useState(false)
             <img src="/market-logo.svg" alt="TechPivo Market" className="h-10 w-auto sm:h-11" />
           </Link>
 
-          {/* Mobile icons: Wishlist + Cart */}
+          {/* Mobile icons: Wishlist + Cart — same height, right after logo */}
           <div className="flex items-center gap-1 sm:gap-2 shrink-0 md:hidden">
-            <Link href="/marketplace/wishlist" aria-label="Wishlist" className="relative p-2 rounded-full hover:bg-slate-100 flex items-center justify-center">
+            <Link href="/marketplace/wishlist" aria-label="Wishlist" className="relative p-2 rounded-full hover:bg-slate-100 flex items-center justify-center h-8 w-8 shrink-0">
               <Heart className="h-5 w-5 text-slate-600" />
               {shownWishCount > 0 && (
-                <span className="absolute -top-0.5 -right-0.5 bg-[#EF4444] text-white text-[10px] min-w-5 h-5 px-1 rounded-full flex items-center justify-center font-bold shadow-sm">{shownWishCount}</span>
+                <span className="absolute -top-1 -right-1 bg-[#EF4444] text-white text-[10px] min-w-5 h-5 px-1 rounded-full flex items-center justify-center font-bold shadow-sm">{shownWishCount}</span>
               )}
             </Link>
-            <Link href="/marketplace/cart" aria-label={`Your basket, ${shownCartCount} item${shownCartCount === 1 ? "" : "s"}`} className="relative p-2 rounded-full hover:bg-slate-100 flex items-center justify-center">
+            <Link href="/marketplace/cart" aria-label={`Your basket, ${shownCartCount} item${shownCartCount === 1 ? "" : "s"}`} className="relative p-2 rounded-full hover:bg-slate-100 flex items-center justify-center h-8 w-8 shrink-0">
               <ShoppingBasket className="h-5 w-5 text-slate-600" />
               {shownCartCount > 0 && (
-                <span className="absolute -top-0.5 -right-0.5 bg-[#EF4444] text-white text-[10px] min-w-5 h-5 px-1 rounded-full flex items-center justify-center font-bold shadow-sm tabular-nums">{shownCartCount}</span>
+                <span className="absolute -top-1 -right-1 bg-[#EF4444] text-white text-[10px] min-w-5 h-5 px-1 rounded-full flex items-center justify-center font-bold shadow-sm tabular-nums">{shownCartCount}</span>
               )}
             </Link>
           </div>
@@ -592,18 +592,18 @@ const [showBackToTop, setShowBackToTop] = useState(false)
         </div>
 
         {/* mobile search with live AJAX suggestions — full width, clean */}
-        <div className="md:hidden px-4 pb-4">
+        <div className="md:hidden px-4 pb-3">
           <div ref={mobileBoxRef} className="relative w-full">
-          <form className="flex h-11 rounded-xl border border-[#CBD5E1] bg-[#F8FAFC] overflow-hidden" onSubmit={submitSearch} role="search">
+          <form className="flex h-10 rounded-xl border border-[#CBD5E1] bg-[#F8FAFC] overflow-hidden" onSubmit={submitSearch} role="search">
             <input
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               onFocus={() => { if (query.trim().length >= 2) setSuggestOpen(true) }}
               ref={mobileSearchInputRef}
-              className="flex-1 bg-transparent px-4 text-sm text-black placeholder:text-slate-600 focus:outline-none"
+              className="flex-1 bg-transparent px-3.5 text-sm text-black placeholder:text-slate-600 focus:outline-none"
               placeholder="Search TechPivo Market..."
             />
-            <button type="submit" aria-label="Search" className={`bg-[${menuBg}] hover:opacity-90 text-[${menuText}] px-4 flex items-center justify-center transition-all duration-200 shadow-md hover:bg-[${menuBg}] hover:shadow-lg rounded-r-xl`}>
+            <button type="submit" aria-label="Search" className={`bg-[#F59E0B] hover:bg-[#e86000] text-white px-3.5 flex items-center justify-center transition-all duration-200 shadow-sm rounded-r-xl`}>
               <Search className="h-5 w-5" />
             </button>
           </form>

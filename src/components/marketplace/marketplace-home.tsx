@@ -945,8 +945,9 @@ export function MarketplaceHome() {
         </div>
         </section>
         {/* Mobile category discovery — mobile only. 16 items in a 4-col grid.
-            Replaces the desktop Shop by Collection on phones. */}
-        <MobileCategoryDiscovery className="md:hidden" />
+            Replaces the desktop Shop by Collection on phones. Category images
+            rotate through real products from each department. */}
+        <MobileCategoryDiscovery className="md:hidden" covers={deptCover} />
 
         {/* Shop by collections — desktop only, hidden on phones */}
         {!loaded ? (

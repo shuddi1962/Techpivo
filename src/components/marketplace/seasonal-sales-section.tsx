@@ -465,24 +465,25 @@ export function SeasonalSalesSection() {
   }
 
   return (
-    <section aria-label="Seasonal Sales" className="w-full bg-white py-8 sm:py-12 lg:py-16 overflow-x-clip">
+    <section aria-label="Seasonal Sales" className="w-full bg-white py-6 sm:py-8 lg:py-12 overflow-x-clip">
       <div className="mx-auto w-full max-w-[1440px] px-3 sm:px-6 lg:px-10">
-        {/* Side-by-side: promotional header on the left, product carousel on the right */}
-        <div className="lg:grid lg:grid-cols-3 lg:gap-8 items-start">
-          <div className="flex flex-col gap-4 mb-6 lg:mb-0">
-            <div className="inline-flex items-center gap-2 rounded-full bg-[#EF4444] px-3.5 py-1.5 text-[12px] font-black uppercase tracking-wider text-white shadow-lg shadow-red-500/30">
-              <Clock className="h-4 w-4" /> {campaign.name || "SEASONAL SALE"}
+        {/* Mobile: countdown + products stacked compactly (time not separate from products).
+            Desktop: side-by-side layout unchanged. */}
+        <div className="lg:flex lg:flex-row lg:gap-8 lg:items-start flex-col gap-4 sm:gap-5">
+          <div className="flex flex-col gap-3 sm:gap-4 mb-0 lg:mb-0">
+            <div className="inline-flex items-center gap-2 rounded-full bg-[#EF4444] px-3 py-1 text-[11px] font-bold uppercase tracking-wider text-white shadow-sm shadow-red-500/30">
+              <Clock className="h-3.5 w-3.5" /> {campaign.name || "SEASONAL SALE"}
             </div>
-            <div className="flex flex-col gap-1">
-              <h2 className="mt-0 mb-1 text-3xl sm:text-4xl lg:text-5xl font-black tracking-tight text-[#0F172A] leading-[1.05]">
+            <div className="flex flex-col gap-1.5">
+              <h2 className="mt-0 mb-1 text-2xl sm:text-3xl font-black tracking-tight text-[#0F172A] leading-[1.05]">
                 {campaign.heading || "Special Deals."}
               </h2>
-              <p className="mt-0 mb-3 text-lg font-semibold text-slate-600 sm:text-xl">
+              <p className="mt-0 mb-2 text-sm sm:text-base font-semibold text-slate-600">
                 {campaign.subtitle || "Limited Time."}
               </p>
             </div>
             {campaign.countdownEnabled && !expired && (
-              <div className="flex flex-wrap items-center gap-2 mb-2">
+              <div className="flex flex-wrap items-center gap-2 mb-0 sm:mb-3">
                 {[
                   { v: countdown.days, l: "Days" },
                   { v: countdown.hrs, l: "Hrs" },
@@ -491,9 +492,9 @@ export function SeasonalSalesSection() {
                 ].map((x) => (
                   <div
                     key={x.l}
-                    className="flex flex-col items-center gap-0.5 rounded-xl bg-[#F8FAFC] px-2 py-1.5 text-center border border-[#E2E8F0] shadow-sm"
+                    className="flex flex-col items-center gap-0.5 rounded-xl bg-[#F8FAFC] px-2 py-1 text-center border border-[#E2E8F0] shadow-sm"
                   >
-                    <span className="text-xl font-black tabular-nums text-[#0F172A]">
+                    <span className="text-lg sm:text-xl font-black tabular-nums text-[#0F172A]">
                       {String(x.v).padStart(2, "0")}
                     </span>
                     <span className="text-[9px] font-bold uppercase tracking-wider text-slate-400">
@@ -504,18 +505,18 @@ export function SeasonalSalesSection() {
               </div>
             )}
             {campaign.description && (
-              <p className="text-sm sm:text-base text-slate-500 leading-relaxed max-w-md">
+              <p className="text-xs sm:text-sm text-slate-500 leading-relaxed max-w-md">
                 {campaign.description}
               </p>
             )}
             <Link
               href={campaign.ctaLink || "/marketplace/deals"}
-              className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#EF4444] px-8 py-3 text-sm font-black text-white shadow-md shadow-red-500/30 hover:bg-[#DC2626] transition-all active:scale-95"
+              className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#EF4444] px-6 py-2 text-sm font-black text-white shadow-md shadow-red-500/30 hover:bg-[#DC2626] transition-all active:scale-95"
             >
               {campaign.ctaText || "Shop the Sale"} <ArrowRight className="h-4 w-4" />
             </Link>
           </div>
-          <div className="lg:col-span-2 flex-1 min-w-0 relative">
+          <div className="flex-1 min-w-0 relative lg:col-span-2">
             <CarouselProducts
               campaignProducts={campaignProducts}
               byId={byId}
