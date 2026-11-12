@@ -7,12 +7,6 @@ import { useMarketplaceTree } from "@/components/marketplace/market-category-sto
 import type { MarketDepartment, MarketSub } from "@/lib/marketplace-categories"
 import { marketImage } from "@/lib/marketplace-images"
 
-interface SubImageRotation {
-  subSlug: string
-  images: string[]
-  index: number
-}
-
 interface MobileCategoryNavProps {
   onClose: () => void
 }
@@ -23,19 +17,34 @@ const DEFAULT_ROTATION_INTERVAL_MS = 10_000
  * Mobile-only category navigation — Temu-style split view.
  *
  * Left column: scrollable list of all major categories (departments).
+ *   Each department shows a REAL product image from that department,
+ *   rotated every 10 seconds. No pixel/placeholder images.
  * Right column: scrollable grid of the selected category's subcategories,
- * each with a rotating real product image.
+ *   each with a REAL product image from that subcategory, rotated every
+ *   10 seconds. No fallback to department images — only real product
+ *   images are shown.
  *
- * Hidden on desktop/tablet via `md:hidden` — mounted only from the mobile
- * bottom nav "Categories" button.
+ * Hidden on desktop/tablet via `md:hidden`.
  */
 export function MobileCategoryNav({ onClose }: MobileCategoryNavProps) {
   const departments = useMarketplaceTree()
-  const [selectedDept, setSelectedDept] = useState<MarketDepartment | null>(null)
+  const [selectedDept, setSelectedDept] = useState<MarketDepartment | null>(
+    null
+  )
+  // deptSlug -> image URLs (real products only)
+  const [deptImages, setDeptImages] = useState<Map<string, string[]>>(
+    new Map()
+  )
+  // deptSlug -> current rotation index
+  const [deptRotation, setDeptRotation] = useState<Map<string, number>>(
+    new Map()
+  )
+  // subSlug -> image URLs (real products only)
   const [subImages, setSubImages] = useState<Map<string, string[]>>(
     new Map()
   )
-  const [rotationIndex, setRotationIndex] = useState<Map<string, number>>(
+  // subSlug -> current rotation index
+  const [subRotation, setSubRotation] = useState<Map<string, number>>(
     new Map()
   )
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
@@ -43,11 +52,44 @@ export function MobileCategoryNav({ onClose }: MobileCategoryNavProps) {
 
   const intervalMs = DEFAULT_ROTATION_INTERVAL_MS
 
-  // Build subcategory → product image map for the selected department.
+  // ---- Load department images (for the left sidebar tiles) ----
+  useEffect(() => {
+    const loadDeptImages = async () => {
+      const images = new Map<string, string[]>()
+      const idx = new Map<string, number>()
+
+      for (const dept of departments) {
+        try {
+          const res = await fetch(
+            `/api/marketplace/department-images?slug=${encodeURIComponent(
+              dept.slug
+            )}`,
+            { cache: "no-store" }
+          )
+          const data = await res.json().catch(() => null)
+          const imgs = Array.isArray(data?.images) ? data.images : []
+          if (imgs.length > 0) {
+            images.set(dept.slug, imgs)
+            idx.set(dept.slug, 0)
+          }
+        } catch {
+          // silently skip — department just won't show an image
+        }
+      }
+
+      if (mountedRef.current) {
+        setDeptImages(images)
+        setDeptRotation(idx)
+      }
+    }
+    void loadDeptImages()
+  }, [departments])
+
+  // ---- Load subcategory images for the selected department ----
   useEffect(() => {
     if (!selectedDept) {
       setSubImages(new Map())
-      setRotationIndex(new Map())
+      setSubRotation(new Map())
       return
     }
 
@@ -69,30 +111,49 @@ export function MobileCategoryNav({ onClose }: MobileCategoryNavProps) {
           if (imgs.length > 0) {
             images.set(sub.slug, imgs)
             idx.set(sub.slug, 0)
-          } else {
-            images.set(sub.slug, [selectedDept.image])
-            idx.set(sub.slug, 0)
           }
         } catch {
-          images.set(sub.slug, [selectedDept.image])
-          idx.set(sub.slug, 0)
+          // silently skip
         }
       }
 
       if (mountedRef.current) {
         setSubImages(images)
-        setRotationIndex(idx)
+        setSubRotation(idx)
       }
     }
     void load()
-  }, [selectedDept, selectedDept?.subs, selectedDept?.image])
+  }, [selectedDept, selectedDept?.subs])
 
-  // Auto-rotate subcategory images every intervalMs.
+  // ---- Auto-rotate department images ----
+  useEffect(() => {
+    if (!mountedRef.current || deptImages.size === 0) return
+
+    intervalRef.current = setInterval(() => {
+      setDeptRotation((prev) => {
+        const next = new Map(prev)
+        let changed = false
+        for (const [deptSlug, imgs] of deptImages) {
+          if (imgs.length <= 1) continue
+          const cur = next.get(deptSlug) ?? 0
+          next.set(deptSlug, (cur + 1) % imgs.length)
+          changed = true
+        }
+        return changed ? next : prev
+      })
+    }, intervalMs)
+
+    return () => {
+      if (intervalRef.current) clearInterval(intervalRef.current)
+    }
+  }, [deptImages, intervalMs])
+
+  // ---- Auto-rotate subcategory images ----
   useEffect(() => {
     if (!mountedRef.current || subImages.size === 0) return
 
     intervalRef.current = setInterval(() => {
-      setRotationIndex((prev) => {
+      setSubRotation((prev) => {
         const next = new Map(prev)
         let changed = false
         for (const [subSlug, imgs] of subImages) {
@@ -110,7 +171,7 @@ export function MobileCategoryNav({ onClose }: MobileCategoryNavProps) {
     }
   }, [subImages, intervalMs])
 
-  // Pause rotation when the component is hidden.
+  // Pause rotation when hidden.
   useEffect(() => {
     mountedRef.current = true
     return () => {
@@ -124,20 +185,19 @@ export function MobileCategoryNav({ onClose }: MobileCategoryNavProps) {
     return selectedDept.subs
   }, [selectedDept])
 
+  // Current subcategory images (rotated).
   const activeSubImages = useMemo(() => {
     const map = new Map<string, string>()
     for (const sub of subsForDept) {
       const imgs = subImages.get(sub.slug)
-      const idx = rotationIndex.get(sub.slug) ?? 0
-      const list = imgs && imgs.length > 0 ? imgs : [selectedDept?.image ?? ""]
-      map.set(sub.slug, list[Math.max(0, Math.min(idx, list.length - 1))])
+      const idx = subRotation.get(sub.slug) ?? 0
+      if (!imgs || imgs.length === 0) continue
+      map.set(sub.slug, imgs[Math.max(0, Math.min(idx, imgs.length - 1))])
     }
     return map
-  }, [subsForDept, subImages, rotationIndex, selectedDept?.image])
+  }, [subsForDept, subImages, subRotation])
 
-  const deptList = useMemo(() => {
-    return departments
-  }, [departments])
+  const deptList = useMemo(() => departments, [departments])
 
   return (
     <div className="fixed inset-0 z-[70] bg-white flex flex-col md:hidden">
@@ -156,46 +216,59 @@ export function MobileCategoryNav({ onClose }: MobileCategoryNavProps) {
       </div>
 
       <div className="flex-1 overflow-hidden flex">
-        {/* LEFT: Main categories sidebar */}
-        <div className="w-[115px] border-r border-[#E2E8F0] bg-[#F8FAFC] overflow-y-auto shrink-0">
+        {/* LEFT: Main categories sidebar — real product images per dept */}
+        <div className="w-[120px] border-r border-[#E2E8F0] bg-[#F8FAFC] overflow-y-auto shrink-0">
           <div className="py-2">
             {deptList.map((dept) => {
               const isActive = selectedDept?.slug === dept.slug
+              const imgs = deptImages.get(dept.slug)
+              const deptIdx = deptRotation.get(dept.slug) ?? 0
+              const currentImg =
+                imgs && imgs.length > 0
+                  ? imgs[Math.max(0, Math.min(deptIdx, imgs.length - 1))]
+                  : null
               return (
                 <button
                   key={dept.slug}
                   type="button"
                   onClick={() => setSelectedDept(dept)}
                   aria-pressed={isActive}
-                  className={`flex items-center gap-2 px-3 py-2.5 text-sm transition-colors ${
+                  className={`flex flex-col items-center gap-1 px-2 py-2.5 transition-colors ${
                     isActive
                       ? "bg-[#FFF1F2] text-[#FF6B00]"
                       : "text-slate-700 hover:bg-[#F1F5F9]"
                   }`}
                 >
-                  <div className="w-5 h-5 shrink-0 rounded-full bg-white border border-[#E2E8F0] flex items-center justify-center">
-                    {dept.icon ? (
-                      // eslint-disable-next-line @next/next/no-img-element
+                  <div className="relative w-10 h-10 shrink-0 overflow-hidden rounded-full bg-white border border-[#E2E8F0]">
+                    {currentImg ? (
                       <img
-                        src={marketImage(dept.image)}
+                        src={marketImage(currentImg)}
                         alt=""
-                        className="h-4 w-4 object-cover rounded-full"
+                        loading="lazy"
+                        decoding="async"
+                        className="w-full h-full object-cover"
                       />
                     ) : (
-                      <span className="text-[10px]">{dept.name.charAt(0)}</span>
+                      <div className="w-full h-full flex items-center justify-center text-slate-300">
+                        <span className="text-[10px]">
+                          {dept.name.charAt(0)}
+                        </span>
+                      </div>
                     )}
                   </div>
-                  <span className={`truncate ${isActive ? "font-semibold" : "font-medium"}`}>
+                  <span className={`truncate text-[11px] leading-tight text-center ${
+                    isActive ? "font-semibold" : "font-medium"
+                  }`}>
                     {dept.name}
                   </span>
-                  <ChevronRight className="h-3.5 w-3.5 shrink-0 text-slate-400" />
+                  <ChevronRight className="h-3 w-3 shrink-0 text-slate-400" />
                 </button>
               )
             })}
           </div>
         </div>
 
-        {/* RIGHT: Subcategories grid */}
+        {/* RIGHT: Subcategories grid — real product images only */}
         <div className="flex-1 overflow-y-auto bg-white">
           {selectedDept ? (
             <div className="px-3 py-3">
@@ -207,55 +280,65 @@ export function MobileCategoryNav({ onClose }: MobileCategoryNavProps) {
                   {subsForDept.length} subcategories
                 </p>
               </div>
-              <div className="grid grid-cols-3 gap-2.5">
-                {subsForDept.map((sub) => {
-                  const img = activeSubImages.get(sub.slug)
-                  const hasRotating =
-                    (subImages.get(sub.slug)?.length ?? 0) > 1
-                  return (
-                    <Link
-                      key={sub.slug}
-                      href={`/marketplace/category/${sub.slug}`}
-                      className="flex flex-col items-center gap-1.5"
-                    >
-                      <div className="relative w-full aspect-square overflow-hidden rounded-xl bg-[#F1F5F9] group">
+              {subsForDept.length === 0 ? (
+                <div className="px-6 py-12 text-center">
+                  <div className="w-12 h-12 rounded-full bg-[#F1F5F9] flex items-center justify-center mx-auto mb-3">
+                    <LayoutGrid className="h-6 w-6 text-slate-400" />
+                  </div>
+                  <h3 className="text-base font-bold text-[#0F172A]">
+                    No subcategories
+                  </h3>
+                  <p className="text-sm text-slate-500 mt-1">
+                    No subcategories found for {selectedDept.name}.
+                  </p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-3 gap-2.5">
+                  {subsForDept.map((sub) => {
+                    const img = activeSubImages.get(sub.slug)
+                    const hasRotating =
+                      (subImages.get(sub.slug)?.length ?? 0) > 1
+                    return (
+                      <Link
+                        key={sub.slug}
+                        href={`/marketplace/category/${sub.slug}`}
+                        className="flex flex-col items-center gap-1.5"
+                      >
                         {img ? (
-                          <img
-                            src={marketImage(img)}
-                            alt=""
-                            loading="lazy"
-                            decoding="async"
-                            className={`w-full h-full object-cover transition-opacity duration-500 ${
-                              hasRotating ? "group-hover:opacity-90" : ""
-                            }`}
-                          />
-                        ) : (
-                          <div className="h-full w-full flex items-center justify-center text-slate-300">
-                            <span className="text-[10px]">
-                              {sub.name.charAt(0)}
-                            </span>
+                          <div className="relative w-full aspect-square overflow-hidden rounded-xl bg-white border border-[#E2E8F0] group">
+                            <img
+                              src={marketImage(img)}
+                              alt=""
+                              loading="lazy"
+                              decoding="async"
+                              className={`w-full h-full object-cover transition-opacity duration-500 ${
+                                hasRotating ? "group-hover:opacity-90" : ""
+                              }`}
+                            />
+                            {hasRotating && (
+                              <span className="absolute top-2 right-2 z-10 bg-[#FF6B00] text-white text-[10px] font-bold px-1.5 py-0.5 rounded">
+                                NEW
+                              </span>
+                            )}
                           </div>
-                        )}
-                        {hasRotating && (
-                          <span className="absolute top-2 right-2 z-10 bg-[#FF6B00] text-white text-[10px] font-bold px-1.5 py-0.5 rounded">
-                            NEW
-                          </span>
-                        )}
-                      </div>
-                      <span className="text-[11px] font-medium text-[#0F172A] leading-tight text-center line-clamp-2">
-                        {sub.name}
-                      </span>
-                    </Link>
-                  )
-                })}
-              </div>
+                        ) : null}
+                        <span className="text-[11px] font-medium text-[#0F172A] leading-tight text-center line-clamp-2">
+                          {sub.name}
+                        </span>
+                      </Link>
+                    )
+                  })}
+                </div>
+              )}
             </div>
           ) : (
             <div className="px-6 py-12 text-center">
               <div className="w-12 h-12 rounded-full bg-[#F1F5F9] flex items-center justify-center mx-auto mb-3">
                 <LayoutGrid className="h-6 w-6 text-slate-400" />
               </div>
-              <h3 className="text-base font-bold text-[#0F172A]">Select a category</h3>
+              <h3 className="text-base font-bold text-[#0F172A]">
+                Select a category
+              </h3>
               <p className="text-sm text-slate-500 mt-1">
                 Tap a category on the left to browse its subcategories.
               </p>
