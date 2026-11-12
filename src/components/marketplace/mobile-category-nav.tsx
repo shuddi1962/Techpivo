@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
-import { ChevronRight, LayoutGrid } from "lucide-react"
+import { LayoutGrid } from "lucide-react"
 import { useMarketplaceTree } from "@/components/marketplace/market-category-store"
 import type { MarketDepartment, MarketSub } from "@/lib/marketplace-categories"
 import { marketImage } from "@/lib/marketplace-images"
@@ -11,17 +11,17 @@ interface MobileCategoryNavProps {
   onClose: () => void
 }
 
-const DEFAULT_ROTATION_INTERVAL_MS = 10_000
+const DEFAULT_ROTATION_INTERVAL_MS = 600_000 // 10 minutes
 
 /**
  * Mobile-only category navigation — Temu-style split view.
  *
  * Left column: scrollable list of all major categories (departments).
  *   Each department shows a REAL product image from that department,
- *   rotated every 10 seconds. No pixel/placeholder images.
+ *   rotated every 10 minutes. No pixel/placeholder images, no arrows.
  * Right column: scrollable grid of the selected category's subcategories,
  *   each with a REAL product image from that subcategory, rotated every
- *   10 seconds. No fallback to department images — only real product
+ *   10 minutes. No fallback to department images — only real product
  *   images are shown.
  *
  * Hidden on desktop/tablet via `md:hidden`.
@@ -39,7 +39,7 @@ export function MobileCategoryNav({ onClose }: MobileCategoryNavProps) {
   const [deptRotation, setDeptRotation] = useState<Map<string, number>>(
     new Map()
   )
-  // subSlug -> image URLs (real products only)
+  // subSlug -> image URLs (real products only) — ALL departments pre-loaded
   const [subImages, setSubImages] = useState<Map<string, string[]>>(
     new Map()
   )
@@ -52,30 +52,32 @@ export function MobileCategoryNav({ onClose }: MobileCategoryNavProps) {
 
   const intervalMs = DEFAULT_ROTATION_INTERVAL_MS
 
-  // ---- Load department images (for the left sidebar tiles) ----
+  // ---- Load ALL department images on mount ----
   useEffect(() => {
     const loadDeptImages = async () => {
       const images = new Map<string, string[]>()
       const idx = new Map<string, number>()
 
-      for (const dept of departments) {
-        try {
-          const res = await fetch(
-            `/api/marketplace/department-images?slug=${encodeURIComponent(
-              dept.slug
-            )}`,
-            { cache: "no-store" }
-          )
-          const data = await res.json().catch(() => null)
-          const imgs = Array.isArray(data?.images) ? data.images : []
-          if (imgs.length > 0) {
-            images.set(dept.slug, imgs)
-            idx.set(dept.slug, 0)
+      await Promise.all(
+        departments.map(async (dept) => {
+          try {
+            const res = await fetch(
+              `/api/marketplace/department-images?slug=${encodeURIComponent(
+                dept.slug
+              )}`,
+              { cache: "no-store" }
+            )
+            const data = await res.json().catch(() => null)
+            const imgs = Array.isArray(data?.images) ? data.images : []
+            if (imgs.length > 0) {
+              images.set(dept.slug, imgs)
+              idx.set(dept.slug, 0)
+            }
+          } catch {
+            // silently skip
           }
-        } catch {
-          // silently skip — department just won't show an image
-        }
-      }
+        })
+      )
 
       if (mountedRef.current) {
         setDeptImages(images)
@@ -85,47 +87,45 @@ export function MobileCategoryNav({ onClose }: MobileCategoryNavProps) {
     void loadDeptImages()
   }, [departments])
 
-  // ---- Load subcategory images for the selected department ----
+  // ---- Load ALL subcategory images for ALL departments on mount ----
+  // so clicking any department shows images instantly (no delay).
   useEffect(() => {
-    if (!selectedDept) {
-      setSubImages(new Map())
-      setSubRotation(new Map())
-      return
-    }
-
-    const load = async () => {
-      const subs = selectedDept.subs
+    const loadAllSubImages = async () => {
       const images = new Map<string, string[]>()
       const idx = new Map<string, number>()
 
-      for (const sub of subs) {
-        try {
-          const res = await fetch(
-            `/api/marketplace/subcategory-images?slug=${encodeURIComponent(
-              sub.slug
-            )}`,
-            { cache: "no-store" }
-          )
-          const data = await res.json().catch(() => null)
-          const imgs = Array.isArray(data?.images) ? data.images : []
-          if (imgs.length > 0) {
-            images.set(sub.slug, imgs)
-            idx.set(sub.slug, 0)
-          }
-        } catch {
-          // silently skip
-        }
-      }
+      await Promise.all(
+        departments.flatMap((dept) =>
+          dept.subs.map(async (sub) => {
+            try {
+              const res = await fetch(
+                `/api/marketplace/subcategory-images?slug=${encodeURIComponent(
+                  sub.slug
+                )}`,
+                { cache: "no-store" }
+              )
+              const data = await res.json().catch(() => null)
+              const imgs = Array.isArray(data?.images) ? data.images : []
+              if (imgs.length > 0) {
+                images.set(sub.slug, imgs)
+                idx.set(sub.slug, 0)
+              }
+            } catch {
+              // silently skip
+            }
+          })
+        )
+      )
 
       if (mountedRef.current) {
         setSubImages(images)
         setSubRotation(idx)
       }
     }
-    void load()
-  }, [selectedDept, selectedDept?.subs])
+    void loadAllSubImages()
+  }, [departments])
 
-  // ---- Auto-rotate department images ----
+  // ---- Auto-rotate department images every intervalMs ----
   useEffect(() => {
     if (!mountedRef.current || deptImages.size === 0) return
 
@@ -148,7 +148,7 @@ export function MobileCategoryNav({ onClose }: MobileCategoryNavProps) {
     }
   }, [deptImages, intervalMs])
 
-  // ---- Auto-rotate subcategory images ----
+  // ---- Auto-rotate subcategory images every intervalMs ----
   useEffect(() => {
     if (!mountedRef.current || subImages.size === 0) return
 
@@ -217,7 +217,7 @@ export function MobileCategoryNav({ onClose }: MobileCategoryNavProps) {
 
       <div className="flex-1 overflow-hidden flex">
         {/* LEFT: Main categories sidebar — real product images per dept */}
-        <div className="w-[120px] border-r border-[#E2E8F0] bg-[#F8FAFC] overflow-y-auto shrink-0">
+        <div className="w-[115px] border-r border-[#E2E8F0] bg-[#F8FAFC] overflow-y-auto shrink-0">
           <div className="py-2">
             {deptList.map((dept) => {
               const isActive = selectedDept?.slug === dept.slug
@@ -239,7 +239,7 @@ export function MobileCategoryNav({ onClose }: MobileCategoryNavProps) {
                       : "text-slate-700 hover:bg-[#F1F5F9]"
                   }`}
                 >
-                  <div className="relative w-10 h-10 shrink-0 overflow-hidden rounded-full bg-white border border-[#E2E8F0]">
+                  <div className="relative w-9 h-9 shrink-0 overflow-hidden rounded-full bg-white border border-[#E2E8F0]">
                     {currentImg ? (
                       <img
                         src={marketImage(currentImg)}
@@ -250,18 +250,17 @@ export function MobileCategoryNav({ onClose }: MobileCategoryNavProps) {
                       />
                     ) : (
                       <div className="w-full h-full flex items-center justify-center text-slate-300">
-                        <span className="text-[10px]">
+                        <span className="text-[9px]">
                           {dept.name.charAt(0)}
                         </span>
                       </div>
                     )}
                   </div>
-                  <span className={`truncate text-[11px] leading-tight text-center ${
+                  <span className={`truncate text-[10px] leading-tight text-center ${
                     isActive ? "font-semibold" : "font-medium"
                   }`}>
                     {dept.name}
                   </span>
-                  <ChevronRight className="h-3 w-3 shrink-0 text-slate-400" />
                 </button>
               )
             })}
