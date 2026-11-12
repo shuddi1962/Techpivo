@@ -85,20 +85,16 @@ export function MobilePromoNotice({
     [buttonUrl]
   )
 
-  if (!visible) return null
-
-  const textStyle = useMemo(
-    () => ({ color: textColor }),
-    [textColor]
-  )
+  // Styles computed unconditionally so hooks run in the same order on every
+  // render (the early return below must never skip them).
+  const textStyle = useMemo(() => ({ color: textColor }), [textColor])
   const btnStyle = useMemo(
     () => ({ backgroundColor: btnBgColor, color: btnTextColor }),
     [btnBgColor, btnTextColor]
   )
-  const containerStyle = useMemo(
-    () => ({ backgroundColor: bgColor }),
-    [bgColor]
-  )
+  const containerStyle = useMemo(() => ({ backgroundColor: bgColor }), [bgColor])
+
+  if (!visible) return null
 
   return (
     <div className="md:hidden shrink-0" style={containerStyle}>
