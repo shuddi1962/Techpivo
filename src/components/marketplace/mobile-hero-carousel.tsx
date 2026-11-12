@@ -3,6 +3,7 @@
 import Link from "next/link"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { marketImage } from "@/lib/marketplace-images"
+import { cn } from "@/lib/utils"
 import { type BannerSlide, type MarketBanners } from "@/lib/marketplace-banners"
 
 /**
@@ -19,7 +20,7 @@ import { type BannerSlide, type MarketBanners } from "@/lib/marketplace-banners"
  * - Rounded corners, no stretched images
  * - Hidden on desktop/tablet (md+)
  */
-export function MobileHeroCarousel({ banners }: { banners: MarketBanners }) {
+export function MobileHeroCarousel({ className, banners }: { className?: string; banners: MarketBanners }) {
   const enabled = banners.mobile_hero_enabled !== false
 
   // Normalise slides: mobile cover first, then extra mobile slides.
@@ -102,7 +103,7 @@ export function MobileHeroCarousel({ banners }: { banners: MarketBanners }) {
   if (!enabled || slides.length === 0) return null
 
   return (
-    <section className="w-full mb-4">
+    <section className={cn("w-full mb-4", className)}>
       <div className="relative w-full overflow-hidden rounded-2xl bg-[#F8FAFC] border border-[#E2E8F0]">
         <div
           ref={containerRef}

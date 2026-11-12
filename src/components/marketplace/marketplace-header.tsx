@@ -592,7 +592,7 @@ const [showBackToTop, setShowBackToTop] = useState(false)
         </div>
 
         {/* mobile search with live AJAX suggestions — full width, clean */}
-        <div className="md:hidden px-4 pb-3">
+        <div className="md:hidden px-4 pb-2">
           <div ref={mobileBoxRef} className="relative w-full">
           <form className="flex h-10 rounded-xl border border-[#CBD5E1] bg-[#F8FAFC] overflow-hidden" onSubmit={submitSearch} role="search">
             <input

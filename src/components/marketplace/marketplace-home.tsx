@@ -848,8 +848,9 @@ export function MarketplaceHome() {
 
         {/* Mobile hero carousel — mobile only. Separate mobile banner images
             from the desktop hero (Admin → Banners → Mobile Hero Banners).
-            Falls back to desktop hero image when no mobile upload exists. */}
-        <MobileHeroCarousel banners={banners} />
+            Falls back to desktop hero image when no mobile upload exists.
+            Hidden on desktop/tablet. */}
+        <MobileHeroCarousel className="hidden md:block" banners={banners} />
 
         {/* Desktop hero — unchanged layout, hidden on phones */}
         <section className="w-full mb-0 sm:mb-4 hidden md:block">
