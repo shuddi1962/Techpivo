@@ -287,7 +287,7 @@ export function BannerSlider({
   const activeLink = norm[idx]?.link || ""
   const external = /^https?:\/\//i.test(activeLink)
   const frameProps = {
-    className: fill === "fill" ? `absolute inset-0 ${className}` : `relative w-full ${className}`,
+    className: fill === "fill" ? `absolute inset-0 overflow-hidden ${className}` : `relative w-full overflow-hidden ${className}`,
     role: "region" as const,
     "aria-roledescription": "carousel",
     "aria-label": `${alt} — banner ${idx + 1} of ${count}`,

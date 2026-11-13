@@ -256,7 +256,7 @@ export function MobileCategoryNav({ onClose }: MobileCategoryNavProps) {
                       </div>
                     )}
                   </div>
-                  <span className={`truncate whitespace-nowrap text-[10px] leading-none text-center ${
+                  <span className={`min-w-0 truncate whitespace-nowrap text-[10px] leading-none text-center ${
                     isActive ? "font-semibold" : "font-medium"
                   }`}>
                     {dept.name}
