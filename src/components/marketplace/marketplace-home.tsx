@@ -885,7 +885,7 @@ export function MarketplaceHome() {
 
         {/* Desktop hero — main banner left, two stacked promo banners right */}
         <section className="w-full mb-0 hidden md:block">
-        <div className="grid w-full grid-cols-1 lg:grid-cols-3 gap-2 items-stretch lg:h-[360px] xl:h-[400px] overflow-hidden">
+        <div className="grid w-full grid-cols-1 lg:grid-cols-3 gap-2 items-stretch lg:min-h-[360px] xl:min-h-[400px]">
         {!loaded || !bannersReady ? (
           <div className="lg:col-span-2 overflow-hidden rounded-none bg-white shadow-sm aspect-[16/10] sm:aspect-[21/9] lg:aspect-auto lg:h-full animate-pulse" aria-hidden>
             <div className="h-full w-full bg-slate-100" />
@@ -919,8 +919,8 @@ export function MarketplaceHome() {
           </div>
         )}
 
-          {/* hero side promos — desktop only, stacked full-height on right, flush with main banner */}
-          <div className="hidden md:block lg:col-span-1 flex flex-col gap-2 items-stretch lg:h-full lg:h-[360px] xl:h-[400px] flex-1">
+          {/* hero side promos — desktop only, stacked vertically on right, flush with main banner */}
+          <div className="hidden md:block lg:col-span-1 flex flex-col gap-2 items-stretch flex-1">
             {!bannersReady ? (
               <div className="flex-1 h-full min-h-0 overflow-hidden rounded-none bg-white shadow-sm animate-pulse" aria-hidden>
                 <div className="h-full w-full bg-slate-100" />
@@ -931,11 +931,11 @@ export function MarketplaceHome() {
                   href="/marketplace/deals"
                   linked={dealsSlides.some((s) => !!s.link)}
                   label="Mega Deal — up to 50% off"
-                  className="flex-1 h-full relative overflow-hidden rounded-none p-4 text-white shadow-sm transition-shadow hover:shadow-md flex items-center gap-3"
+                  className="relative overflow-hidden rounded-none p-4 text-white shadow-sm transition-shadow hover:shadow-md flex items-center gap-3"
                   style={{ background: "linear-gradient(150deg, #DC2626 0%, #991B1B 100%)" }}
                 >
                   {dealsSlides.length > 0 ? (
-                    <BannerSlider slides={dealsSlides} alt="Mega Deal — up to 50% off" {...dealsProps} />
+                    <BannerSlider fill="natural" slides={dealsSlides} alt="Mega Deal — up to 50% off" {...dealsProps} />
                   ) : (
                     <>
                       <span className="relative flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-white/20">
@@ -953,11 +953,11 @@ export function MarketplaceHome() {
                   href="/marketplace/new-arrivals"
                   linked={newSlides.some((s) => !!s.link)}
                   label="New Season Tech Drop"
-                  className="flex-1 h-full relative overflow-hidden rounded-none p-4 text-white shadow-sm transition-shadow hover:shadow-md flex items-center gap-3"
+                  className="relative overflow-hidden rounded-none p-4 text-white shadow-sm transition-shadow hover:shadow-md flex items-center gap-3"
                   style={{ background: "linear-gradient(150deg, #F59E0B 0%, #F97316 100%)" }}
                 >
                   {newSlides.length > 0 ? (
-                    <BannerSlider slides={newSlides} alt="New Season Tech Drop" {...newProps} />
+                    <BannerSlider fill="natural" slides={newSlides} alt="New Season Tech Drop" {...newProps} />
                   ) : (
                     <>
                       <span className="relative flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-black/20">
