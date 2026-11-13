@@ -186,7 +186,7 @@ export function MobileCategoryDiscovery({
                     </div>
                   )}
                 </span>
-                <span className="min-w-0 text-[10px] font-medium text-[#0F172A] leading-none text-center line-clamp-1 whitespace-nowrap truncate max-w-[64px]">
+                <span className="min-w-0 text-[10px] font-medium text-[#0F172A] leading-none text-center line-clamp-3 max-w-[64px]">
                   {c.name}
                 </span>
               </Link>

@@ -867,7 +867,7 @@ export function MarketplaceHome() {
           top padding cannot open a gap under the header. */}
       <MobileHeroCarousel className="md:hidden" banners={banners} />
 
-      <main className="mx-auto w-full max-w-[1480px] px-3 sm:px-6 lg:px-10 py-4 sm:py-6 lg:py-8 space-y-4 sm:space-y-6 lg:space-y-8">
+      <main className="mx-auto w-full max-w-[1480px] px-3 sm:px-6 lg:px-10 pb-4 sm:pb-6 lg:pb-8 space-y-4 sm:space-y-6 lg:space-y-8">
 
         {/* welcome popup — once per visit, fully driven by Admin →
             Banners → Welcome popup (layout, style, text, link, timing). */}
@@ -884,14 +884,14 @@ export function MarketplaceHome() {
         )}
 
         {/* Desktop hero — main banner left, two stacked promo banners right */}
-        <section className="w-full mb-0 sm:mb-4 hidden md:block">
-        <div className="grid w-full grid-cols-1 lg:grid-cols-3 gap-0 items-stretch lg:min-h-[360px] xl:min-h-[400px] overflow-x-clip">
+        <section className="w-full mb-0 hidden md:block">
+        <div className="grid w-full grid-cols-1 lg:grid-cols-10 gap-0 items-stretch lg:h-[360px] xl:h-[400px] overflow-hidden">
         {!loaded || !bannersReady ? (
           <div className="lg:col-span-2 overflow-hidden rounded-none bg-white shadow-sm aspect-[16/10] sm:aspect-[21/9] lg:aspect-auto lg:h-full animate-pulse" aria-hidden>
             <div className="h-full w-full bg-slate-100" />
           </div>
         ) : heroSlides.length > 0 ? (
-          <div className="lg:col-span-2 overflow-hidden rounded-none bg-white shadow-sm aspect-[16/10] sm:aspect-[21/9] lg:aspect-auto lg:h-full">
+          <div className="lg:col-span-7 overflow-hidden rounded-none bg-white shadow-sm aspect-[16/10] sm:aspect-[21/9] lg:aspect-auto lg:h-full">
             <div className="relative block h-full w-full">
               <BannerSlider slides={heroSlides} alt="TechPivo Market — shop the collection" {...heroProps} />
             </div>
@@ -920,7 +920,7 @@ export function MarketplaceHome() {
         )}
 
           {/* hero side promos — desktop only, stacked full-height on right, flush with main banner */}
-          <div className="hidden md:block lg:col-span-1 flex flex-col gap-0 items-stretch lg:h-full lg:min-h-[360px] xl:min-h-[400px] flex-1">
+          <div className="hidden md:block lg:col-span-3 flex flex-col gap-0 items-stretch lg:h-full lg:h-[360px] xl:h-[400px] flex-1">
             {!bannersReady ? (
               <div className="flex-1 h-full min-h-0 overflow-hidden rounded-none bg-white shadow-sm animate-pulse" aria-hidden>
                 <div className="h-full w-full bg-slate-100" />

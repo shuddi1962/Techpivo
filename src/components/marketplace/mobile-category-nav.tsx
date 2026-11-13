@@ -322,7 +322,7 @@ export function MobileCategoryNav({ onClose }: MobileCategoryNavProps) {
                             </span>
                           </div>
                         )}
-                        <span className="text-[11px] font-medium text-[#0F172A] leading-none text-center line-clamp-1 whitespace-nowrap truncate">
+                        <span className="min-w-0 text-[11px] font-medium text-[#0F172A] leading-none text-center line-clamp-3">
                           {sub.name}
                         </span>
                       </Link>
