@@ -240,7 +240,7 @@ export default function MarketplaceComparePage() {
   return (
     <div className="min-h-screen w-full bg-[#F8FAFC]">
       <MarketplaceHeader />
-      <main className="mx-auto w-full max-w-[1200px] px-3 py-6 sm:px-6 lg:px-10 sm:py-8">
+      <main className="mx-auto w-full max-w-[1200px] px-3 pt-2 pb-6 sm:px-6 lg:px-10 sm:pt-3 sm:pb-8">
         <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
           <div>
             <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-[#B45309]">Side by side</p>
