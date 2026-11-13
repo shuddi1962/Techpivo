@@ -891,9 +891,9 @@ export function MarketplaceHome() {
             <div className="h-full w-full bg-slate-100" />
           </div>
         ) : heroSlides.length > 0 ? (
-          <div className="lg:col-span-2 overflow-hidden rounded-none bg-white shadow-sm aspect-[16/10] sm:aspect-[21/9] lg:aspect-auto lg:h-full">
-            <div className="relative block h-full w-full">
-              <BannerSlider slides={heroSlides} alt="TechPivo Market — shop the collection" {...heroProps} />
+          <div className="lg:col-span-2 overflow-hidden rounded-none bg-white shadow-sm aspect-[16/10] sm:aspect-[21/9] lg:aspect-auto">
+            <div className="relative block w-full">
+              <BannerSlider fill="natural" slides={heroSlides} alt="TechPivo Market — shop the collection" {...heroProps} />
             </div>
           </div>
         ) : (
@@ -932,7 +932,6 @@ export function MarketplaceHome() {
                   linked={dealsSlides.some((s) => !!s.link)}
                   label="Mega Deal — up to 50% off"
                   className="relative overflow-hidden rounded-none p-4 text-white shadow-sm transition-shadow hover:shadow-md flex items-center gap-3"
-                  style={{ background: "linear-gradient(150deg, #DC2626 0%, #991B1B 100%)" }}
                 >
                   {dealsSlides.length > 0 ? (
                     <BannerSlider fill="natural" slides={dealsSlides} alt="Mega Deal — up to 50% off" {...dealsProps} />
@@ -954,7 +953,6 @@ export function MarketplaceHome() {
                   linked={newSlides.some((s) => !!s.link)}
                   label="New Season Tech Drop"
                   className="relative overflow-hidden rounded-none p-4 text-white shadow-sm transition-shadow hover:shadow-md flex items-center gap-3"
-                  style={{ background: "linear-gradient(150deg, #F59E0B 0%, #F97316 100%)" }}
                 >
                   {newSlides.length > 0 ? (
                     <BannerSlider fill="natural" slides={newSlides} alt="New Season Tech Drop" {...newProps} />
