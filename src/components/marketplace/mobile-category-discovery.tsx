@@ -156,18 +156,20 @@ export function MobileCategoryDiscovery({
         </h2>
       </div>
       <div className="pb-1">
-        {/* 4 columns on mobile, expand gracefully on wider viewports */}
-        <div className="grid grid-cols-4 gap-3 sm:gap-3 md:gap-4">
-          {picks.map((c) => {
+        {/* 4 columns on mobile, expand gracefully on wider viewports.
+            Tiles stay compact so circles always sit on the same line and
+            every category gets a real product photo (or a letter chip). */}
+              <div className="grid grid-cols-4 gap-2 sm:gap-2 md:gap-3 align-stretch">
+            {picks.map((c) => {
             const image = currentFor(c)
             return (
               <Link
                 key={c.key}
                 href={c.href}
                 aria-label={`Shop ${c.name}`}
-                className="flex flex-col items-center gap-1.5"
+                className="flex flex-col items-center justify-center gap-1 h-full min-h-[120px]"
               >
-                <span className="relative block w-16 h-16 shrink-0 overflow-hidden rounded-full bg-[#F1F5F9] border border-[#E2E8F0] shadow-sm">
+                <span className="relative block w-14 h-14 shrink-0 overflow-hidden rounded-full bg-[#F1F5F9] border border-[#E2E8F0] shadow-sm flex-shrink-0">
                   {image ? (
                     <img
                       src={marketImage(image)}
@@ -178,13 +180,13 @@ export function MobileCategoryDiscovery({
                     />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center text-slate-400">
-                      <span className="text-xs font-semibold">
+                      <span className="text-[10px] font-semibold">
                         {c.name.charAt(0)}
                       </span>
                     </div>
                   )}
                 </span>
-                <span className="text-[11px] font-medium text-[#0F172A] leading-tight text-center line-clamp-2 max-w-[80px]">
+                <span className="text-[10px] font-medium text-[#0F172A] leading-none text-center line-clamp-1 whitespace-nowrap truncate max-w-[64px]">
                   {c.name}
                 </span>
               </Link>

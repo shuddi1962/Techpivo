@@ -29,7 +29,7 @@ const DEFAULT_ROTATION_INTERVAL_MS = 600_000 // 10 minutes
 export function MobileCategoryNav({ onClose }: MobileCategoryNavProps) {
   const departments = useMarketplaceTree()
   const [selectedDept, setSelectedDept] = useState<MarketDepartment | null>(
-    null
+    departments[0] ?? null
   )
   // deptSlug -> image URLs (real products only)
   const [deptImages, setDeptImages] = useState<Map<string, string[]>>(
@@ -233,13 +233,13 @@ export function MobileCategoryNav({ onClose }: MobileCategoryNavProps) {
                   type="button"
                   onClick={() => setSelectedDept(dept)}
                   aria-pressed={isActive}
-                  className={`flex flex-col items-center gap-1 px-2 py-2.5 transition-colors ${
+                  className={`flex flex-col items-center gap-1 px-2 py-2.5 min-h-[88px] transition-colors ${
                     isActive
                       ? "bg-[#FFF1F2] text-[#FF6B00]"
                       : "text-slate-700 hover:bg-[#F1F5F9]"
                   }`}
                 >
-                  <div className="relative w-9 h-9 shrink-0 overflow-hidden rounded-full bg-white border border-[#E2E8F0]">
+                  <div className="relative w-9 h-9 shrink-0 overflow-hidden rounded-full bg-white border border-[#E2E8F0] flex-shrink-0">
                     {currentImg ? (
                       <img
                         src={marketImage(currentImg)}
@@ -250,13 +250,13 @@ export function MobileCategoryNav({ onClose }: MobileCategoryNavProps) {
                       />
                     ) : (
                       <div className="w-full h-full flex items-center justify-center text-slate-300">
-                        <span className="text-[9px]">
+                        <span className="text-[9px] font-semibold">
                           {dept.name.charAt(0)}
                         </span>
                       </div>
                     )}
                   </div>
-                  <span className={`truncate text-[10px] leading-tight text-center ${
+                  <span className={`truncate whitespace-nowrap text-[10px] leading-none text-center ${
                     isActive ? "font-semibold" : "font-medium"
                   }`}>
                     {dept.name}
@@ -301,7 +301,7 @@ export function MobileCategoryNav({ onClose }: MobileCategoryNavProps) {
                       <Link
                         key={sub.slug}
                         href={`/marketplace/category/${sub.slug}`}
-                        className="flex flex-col items-center gap-1.5"
+                        className="flex flex-col items-center gap-1.5 min-h-[110px]"
                       >
                         {img ? (
                           <div className="relative w-full aspect-square overflow-hidden rounded-xl bg-white border border-[#E2E8F0] group">
@@ -315,8 +315,14 @@ export function MobileCategoryNav({ onClose }: MobileCategoryNavProps) {
                               }`}
                             />
                           </div>
-                        ) : null}
-                        <span className="text-[11px] font-medium text-[#0F172A] leading-tight text-center line-clamp-2">
+                        ) : (
+                          <div className="relative w-full aspect-square overflow-hidden rounded-xl bg-[#F1F5F9] border border-[#E2E8F0] flex items-center justify-center text-slate-300">
+                            <span className="text-[10px] font-semibold">
+                              {sub.name.charAt(0)}
+                            </span>
+                          </div>
+                        )}
+                        <span className="text-[11px] font-medium text-[#0F172A] leading-none text-center line-clamp-1 whitespace-nowrap truncate">
                           {sub.name}
                         </span>
                       </Link>

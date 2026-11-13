@@ -349,6 +349,27 @@ body { position: relative; }
      overflow-x: hidden !important;
    }
 
+   /* Mobile hero carousel — flush under header, no gaps above/below */
+   .marketplace-body > section.w-full.mt-0.mb-0,
+   .marketplace-body > section[class*="mobile-hero"],
+   .marketplace-body section.w-full.mt-0.mb-0 {
+     margin-top: 0 !important;
+     margin-bottom: 0 !important;
+     padding-top: 0 !important;
+     padding-bottom: 0 !important;
+   }
+
+   /* Remove any margin from the first section child (mobile hero) */
+   .marketplace-body > section:first-child {
+     margin-top: 0 !important;
+     margin-bottom: 0 !important;
+   }
+
+   /* Tighten main top padding on mobile so hero sits close to header */
+   .marketplace-body main {
+     padding-top: 0.5rem !important;
+   }
+
    /* Compact containers: tighter padding on small screens */
    .marketplace-body main [class*="max-w-\[1480px\]"],
    .marketplace-body main [class*="max-w-\[1440px\]"] {

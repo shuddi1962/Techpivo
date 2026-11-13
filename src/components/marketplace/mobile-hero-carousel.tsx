@@ -103,11 +103,11 @@ export function MobileHeroCarousel({ className, banners }: { className?: string;
   if (!enabled || slides.length === 0) return null
 
   return (
-    <section className={cn("w-full", className)}>
-      <div className="relative w-full overflow-hidden bg-[#F8FAFC]">
+    <section className={cn("w-full overflow-x-clip mt-0 mb-0 pt-0 pb-0", className)} style={{ marginTop: 0, marginBottom: 0, paddingTop: 0, paddingBottom: 0 }}>
+      <div className="relative w-full overflow-hidden">
         <div
           ref={containerRef}
-          className="flex w-full snap-x scroll-smooth no-scrollbar"
+          className="flex w-full snap-x scroll-smooth no-scrollbar overflow-x-clip"
           style={{ scrollbarWidth: "none" }}
         >
           {slides.map((s, i) => {
@@ -117,7 +117,7 @@ export function MobileHeroCarousel({ className, banners }: { className?: string;
             return (
               <div
                 key={`mobile-hero-${i}`}
-                className="flex-shrink-0 w-full min-w-[100%]"
+                className="flex-shrink-0 w-full min-w-[100%] max-w-[100vw]"
               >
                 {href ? (
                   <Link
