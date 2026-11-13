@@ -709,6 +709,35 @@ export function MarketplaceHome() {
     return m
   }, [dbProducts, deptOf])
 
+  // Real product photos per category (department AND subcategory) for the
+  // mobile discovery grid. Every entry is a live catalogue photo — never a
+  // stock or placeholder image. Keyed by both the department slug and the
+  // subcategory slug so a subcategory tile resolves its OWN products.
+  const categoryCovers = useMemo(() => {
+    // slug -> owning department slug (departments and their subcategories).
+    const owner = new Map<string, string>()
+    for (const d of departments) {
+      owner.set(d.slug, d.slug)
+      for (const s of d.subs || []) owner.set(s.slug, d.slug)
+    }
+    const m = new Map<string, string[]>()
+    const add = (slug: string | null | undefined, img: string | null | undefined) => {
+      if (!slug || !img) return
+      const list = m.get(slug) || []
+      if (list.length < 12 && !list.includes(img)) list.push(img)
+      m.set(slug, list)
+    }
+    scopeRows.forEach((r) => {
+      const img = r.product_image_url
+      if (!img) return
+      add(r.subcategory_slug, img)
+      add(r.category_slug, img)
+      const dept = owner.get(r.category_slug || "") || owner.get(r.subcategory_slug || "")
+      if (dept) add(dept, img)
+    })
+    return m
+  }, [scopeRows, departments])
+
   const heroImg = banners.hero_image || MARKETPLACE_HERO.image
   // Banner slides per slot: cover first, then extra admin uploads, each
   // with its own destination link. Every slot slides with its OWN
@@ -830,7 +859,15 @@ export function MarketplaceHome() {
   return (
     <div className="w-full bg-[#F8FAFC] min-h-screen overflow-x-clip marketplace-body">
 
-      <main className="mx-auto w-full max-w-[1480px] px-3 sm:px-6 lg:px-10 py-6 sm:py-8 space-y-6 sm:space-y-8">
+      {/* Mobile hero carousel — mobile only, full-bleed and flush against the
+          header (no gap, no side inset). Separate mobile banner images from
+          the desktop hero (Admin → Banners → Mobile Hero Banners). Falls back
+          to the desktop hero image when no mobile upload exists.
+          Hidden on desktop/tablet. Rendered OUTSIDE <main> so the page's
+          top padding cannot open a gap under the header. */}
+      <MobileHeroCarousel className="md:hidden" banners={banners} />
+
+      <main className="mx-auto w-full max-w-[1480px] px-3 sm:px-6 lg:px-10 py-4 sm:py-6 lg:py-8 space-y-4 sm:space-y-6 lg:space-y-8">
 
         {/* welcome popup — once per visit, fully driven by Admin →
             Banners → Welcome popup (layout, style, text, link, timing). */}
@@ -845,12 +882,6 @@ export function MarketplaceHome() {
             <WelcomePopupCard b={campaignView(campaign)} countdownEndAt={campaign.countdown_end_at} onClose={closeNotice} onCta={trackPopupClick} />
           </div>
         )}
-
-        {/* Mobile hero carousel — mobile only. Separate mobile banner images
-            from the desktop hero (Admin → Banners → Mobile Hero Banners).
-            Falls back to desktop hero image when no mobile upload exists.
-            Hidden on desktop/tablet. */}
-        <MobileHeroCarousel className="md:hidden" banners={banners} />
 
         {/* Desktop hero — unchanged layout, hidden on phones */}
         <section className="w-full mb-0 sm:mb-4 hidden md:block">
@@ -948,7 +979,7 @@ export function MarketplaceHome() {
         {/* Mobile category discovery — mobile only. 16 items in a 4-col grid.
             Replaces the desktop Shop by Collection on phones. Category images
             rotate through real products from each department. */}
-        <MobileCategoryDiscovery className="md:hidden" covers={deptCover} />
+        <MobileCategoryDiscovery className="md:hidden" covers={categoryCovers} />
 
         {/* Shop by collections — desktop only, hidden on phones */}
         {!loaded ? (
@@ -1161,7 +1192,7 @@ export function MarketplaceHome() {
         {departments.slice(0, 7).map((dep) => {
           const sideBanner = banners.sidebar_banners?.[dep.slug] || ""
           return (
-            <div key={dep.slug} className="category-shopping mb-6 sm:mb-8">
+            <div key={dep.slug} className="category-shopping">
               <CategoryShoppingSection
                 dept={dep}
                 products={liveProducts}
@@ -1211,7 +1242,7 @@ export function MarketplaceHome() {
         {departments.slice(7).map((dep) => {
           const sideBanner = banners.sidebar_banners?.[dep.slug] || ""
           return (
-            <div key={dep.slug} className="category-shopping mb-6 sm:mb-8">
+            <div key={dep.slug} className="category-shopping">
               <CategoryShoppingSection
                 dept={dep}
                 products={liveProducts}

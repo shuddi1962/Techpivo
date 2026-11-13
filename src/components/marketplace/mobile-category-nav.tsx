@@ -314,11 +314,6 @@ export function MobileCategoryNav({ onClose }: MobileCategoryNavProps) {
                                 hasRotating ? "group-hover:opacity-90" : ""
                               }`}
                             />
-                            {hasRotating && (
-                              <span className="absolute top-2 right-2 z-10 bg-[#FF6B00] text-white text-[10px] font-bold px-1.5 py-0.5 rounded">
-                                NEW
-                              </span>
-                            )}
                           </div>
                         ) : null}
                         <span className="text-[11px] font-medium text-[#0F172A] leading-tight text-center line-clamp-2">

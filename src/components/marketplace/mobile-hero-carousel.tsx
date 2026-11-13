@@ -57,12 +57,12 @@ export function MobileHeroCarousel({ className, banners }: { className?: string;
     return containerRef.current.clientWidth
   }, [])
 
-  // Auto-rotate every 5 seconds.
+  // Auto-rotate every 10 minutes.
   useEffect(() => {
     if (slides.length <= 1) return
     intervalRef.current = setInterval(() => {
       setIndex((i) => (i + 1) % slides.length)
-    }, 5000)
+    }, 600000)
     return () => {
       if (intervalRef.current) clearInterval(intervalRef.current)
     }
@@ -103,8 +103,8 @@ export function MobileHeroCarousel({ className, banners }: { className?: string;
   if (!enabled || slides.length === 0) return null
 
   return (
-    <section className={cn("w-full mb-4", className)}>
-      <div className="relative w-full overflow-hidden rounded-2xl bg-[#F8FAFC] border border-[#E2E8F0]">
+    <section className={cn("w-full", className)}>
+      <div className="relative w-full overflow-hidden bg-[#F8FAFC]">
         <div
           ref={containerRef}
           className="flex w-full snap-x scroll-smooth no-scrollbar"
@@ -125,7 +125,7 @@ export function MobileHeroCarousel({ className, banners }: { className?: string;
                     aria-label={`Banner ${i + 1}`}
                     className="block"
                   >
-                    <div className="relative aspect-[2/1] w-full overflow-hidden rounded-2xl bg-slate-100 group">
+                    <div className="relative aspect-[2/1] w-full overflow-hidden bg-slate-100 group">
                       <img
                         src={image}
                         alt=""
@@ -137,7 +137,7 @@ export function MobileHeroCarousel({ className, banners }: { className?: string;
                     </div>
                   </Link>
                 ) : (
-                  <div className="relative aspect-[2/1] w-full overflow-hidden rounded-2xl bg-slate-100">
+                  <div className="relative aspect-[2/1] w-full overflow-hidden bg-slate-100">
                     <img
                       src={image}
                       alt=""
