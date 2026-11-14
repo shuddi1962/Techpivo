@@ -885,15 +885,15 @@ export function MarketplaceHome() {
 
         {/* Desktop hero — main banner left, two stacked promo banners right */}
         <section className="w-full mb-0 hidden md:block">
-        <div className="grid w-full grid-cols-1 lg:grid-cols-3 gap-1 items-stretch">
+        <div className="grid w-full grid-cols-1 lg:grid-cols-3 gap-2 items-stretch lg:min-h-[360px] xl:min-h-[400px]">
         {!loaded || !bannersReady ? (
-          <div className="lg:col-span-2 min-w-0 overflow-hidden rounded-none bg-white shadow-sm aspect-[16/10] sm:aspect-[21/9] lg:aspect-[16/5] animate-pulse" aria-hidden>
+          <div className="lg:col-span-2 overflow-hidden rounded-none bg-white shadow-sm aspect-[16/10] sm:aspect-[21/9] lg:aspect-auto lg:h-full animate-pulse" aria-hidden>
             <div className="h-full w-full bg-slate-100" />
           </div>
         ) : heroSlides.length > 0 ? (
-          <div className="lg:col-span-2 min-w-0 overflow-hidden rounded-none bg-white shadow-sm aspect-[16/10] sm:aspect-[21/9] lg:aspect-[16/5]">
-            <div className="relative block h-full w-full">
-              <BannerSlider slides={heroSlides} alt="TechPivo Market — shop the collection" {...heroProps} />
+          <div className="lg:col-span-2 overflow-hidden rounded-none bg-white shadow-sm aspect-[16/10] sm:aspect-[21/9] lg:aspect-auto">
+            <div className="relative block w-full">
+              <BannerSlider fill="natural" slides={heroSlides} alt="TechPivo Market — shop the collection" {...heroProps} />
             </div>
           </div>
         ) : (
@@ -920,7 +920,7 @@ export function MarketplaceHome() {
         )}
 
           {/* hero side promos — desktop only, stacked vertically on right, flush with main banner */}
-          <div className="hidden md:block lg:col-span-1 min-w-0 flex flex-col gap-1 items-stretch">
+          <div className="hidden md:block lg:col-span-1 flex flex-col gap-2 items-stretch flex-1">
             {!bannersReady ? (
               <div className="flex-1 h-full min-h-0 overflow-hidden rounded-none bg-white shadow-sm animate-pulse" aria-hidden>
                 <div className="h-full w-full bg-slate-100" />
@@ -931,20 +931,20 @@ export function MarketplaceHome() {
                   href="/marketplace/deals"
                   linked={dealsSlides.some((s) => !!s.link)}
                   label="Mega Deal — up to 50% off"
-                  className="relative flex-1 min-h-0 overflow-hidden rounded-none text-white"
+                  className="relative overflow-hidden rounded-none p-4 text-white shadow-sm transition-shadow hover:shadow-md flex items-center gap-3"
                 >
                   {dealsSlides.length > 0 ? (
-                    <BannerSlider slides={dealsSlides} alt="Mega Deal — up to 50% off" {...dealsProps} />
+                    <BannerSlider fill="natural" slides={dealsSlides} alt="Mega Deal — up to 50% off" {...dealsProps} />
                   ) : (
                     <>
-                      <span className="absolute left-3 top-1/2 flex h-11 w-11 -translate-y-1/2 shrink-0 items-center justify-center rounded-full bg-white/20">
+                      <span className="relative flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-white/20">
                         <Flame className="h-5 w-5" />
                       </span>
-                      <span className="absolute left-20 right-12 top-1/2 min-w-0 -translate-y-1/2">
+                      <span className="relative min-w-0 flex-1">
                         <span className="block text-[15px] font-extrabold leading-tight">Mega Deal — Up to 50% Off</span>
                         <span className="block text-xs text-white/80">Today only — biggest price drops</span>
                       </span>
-                      <ArrowRight className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 shrink-0 transition-transform group-hover:translate-x-0.5" />
+                      <ArrowRight className="relative h-4 w-4 shrink-0 transition-transform group-hover:translate-x-0.5" />
                     </>
                   )}
                 </PromoBox>
@@ -952,20 +952,20 @@ export function MarketplaceHome() {
                   href="/marketplace/new-arrivals"
                   linked={newSlides.some((s) => !!s.link)}
                   label="New Season Tech Drop"
-                  className="relative flex-1 min-h-0 overflow-hidden rounded-none text-white"
+                  className="relative overflow-hidden rounded-none p-4 text-white shadow-sm transition-shadow hover:shadow-md flex items-center gap-3"
                 >
                   {newSlides.length > 0 ? (
-                    <BannerSlider slides={newSlides} alt="New Season Tech Drop" {...newProps} />
+                    <BannerSlider fill="natural" slides={newSlides} alt="New Season Tech Drop" {...newProps} />
                   ) : (
                     <>
-                      <span className="absolute left-3 top-1/2 flex h-11 w-11 -translate-y-1/2 shrink-0 items-center justify-center rounded-full bg-black/20">
+                      <span className="relative flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-black/20">
                         <Zap className="h-5 w-5" />
                       </span>
-                      <span className="absolute left-20 right-12 top-1/2 min-w-0 -translate-y-1/2">
+                      <span className="relative min-w-0 flex-1">
                         <span className="block text-[15px] font-extrabold leading-tight">New Season Tech Drop</span>
                         <span className="block text-xs text-white/85">Fresh stock, first to own</span>
                       </span>
-                      <ArrowRight className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 shrink-0 transition-transform group-hover:translate-x-0.5" />
+                      <ArrowRight className="relative h-4 w-4 shrink-0 transition-transform group-hover:translate-x-0.5" />
                     </>
                   )}
                 </PromoBox>
