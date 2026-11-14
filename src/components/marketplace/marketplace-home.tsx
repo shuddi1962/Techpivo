@@ -885,7 +885,7 @@ export function MarketplaceHome() {
 
         {/* Desktop hero — main banner left, two stacked promo banners right */}
         <section className="w-full mb-0 hidden md:block">
-        <div className="grid w-full grid-cols-1 lg:grid-cols-3 gap-2 items-stretch lg:min-h-[360px] xl:min-h-[400px]">
+        <div className="grid w-full grid-cols-1 lg:grid-cols-3 gap-2 items-stretch">
         {!loaded || !bannersReady ? (
           <div className="lg:col-span-2 overflow-hidden rounded-none bg-white aspect-[16/9] animate-pulse" aria-hidden>
             <div className="h-full w-full bg-slate-100" />
