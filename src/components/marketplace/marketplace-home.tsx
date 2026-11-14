@@ -884,8 +884,8 @@ export function MarketplaceHome() {
         )}
 
         {/* Desktop hero — main banner left (~67%), two stacked promo banners right (~33%) */}
-        <section className="w-full mb-0 hidden md:block">
-        <div className="grid w-full grid-cols-1 lg:grid-cols-[3fr_2fr] gap-2 items-stretch">
+        <section className="w-full hidden md:block">
+        <div className="grid w-full grid-cols-1 lg:grid-cols-[3fr_2fr] gap-2 items-stretch lg:min-h-[320px] xl:min-h-[400px]">
         {!loaded || !bannersReady ? (
           <div className="lg:col-span-3 overflow-hidden bg-white aspect-[16/9] animate-pulse" aria-hidden>
             <div className="h-full w-full bg-slate-100" />
@@ -898,12 +898,12 @@ export function MarketplaceHome() {
             </div>
 
             {/* Right: two smaller banners stacked vertically, equal heights, combined height = left banner */}
-            <div className="hidden md:block lg:col-span-2 flex flex-col gap-2 items-stretch">
+            <div className="hidden md:block lg:col-span-2 flex flex-col gap-2">
               <PromoBox
                 href="/marketplace/deals"
                 linked={dealsSlides.some((s) => !!s.link)}
                 label="Mega Deal — up to 50% off"
-                className="flex-1 relative overflow-hidden bg-white"
+                className="flex-1 relative overflow-hidden bg-white aspect-[3/2]"
               >
                 {dealsSlides.length > 0 ? (
                   <BannerSlider slides={dealsSlides} alt="Mega Deal" {...dealsProps} objectFit="contain" />
@@ -924,7 +924,7 @@ export function MarketplaceHome() {
                 href="/marketplace/new-arrivals"
                 linked={newSlides.some((s) => !!s.link)}
                 label="New Season Tech Drop"
-                className="flex-1 relative overflow-hidden bg-white"
+                className="flex-1 relative overflow-hidden bg-white aspect-[3/2]"
               >
                 {newSlides.length > 0 ? (
                   <BannerSlider slides={newSlides} alt="New Season Tech Drop" {...newProps} objectFit="contain" />
