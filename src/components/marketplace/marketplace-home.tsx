@@ -892,7 +892,7 @@ export function MarketplaceHome() {
           </div>
         ) : heroSlides.length > 0 ? (
           <div className="lg:col-span-2 relative overflow-hidden rounded-none bg-white aspect-[16/9]">
-            <BannerSlider slides={heroSlides} alt="TechPivo Market — shop the collection" {...heroProps} />
+            <BannerSlider slides={heroSlides} alt="TechPivo Market — shop the collection" {...heroProps} objectFit="contain" />
           </div>
         ) : (
           <div className="lg:col-span-2 rounded-none relative overflow-hidden text-white min-h-[280px] lg:min-h-0 lg:h-full flex items-center" style={{ background: MARKETPLACE_BRAND.navy }}>
@@ -932,7 +932,7 @@ export function MarketplaceHome() {
                   className="relative overflow-hidden rounded-none text-white flex-1 w-full"
                 >
                   {dealsSlides.length > 0 ? (
-                    <BannerSlider slides={dealsSlides} alt="Mega Deal — up to 50% off" {...dealsProps} />
+                    <BannerSlider slides={dealsSlides} alt="Mega Deal — up to 50% off" {...dealsProps} objectFit="contain" />
                   ) : (
                     <>
                       <span className="relative flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-white/20">
@@ -953,7 +953,7 @@ export function MarketplaceHome() {
                   className="relative overflow-hidden rounded-none text-white flex-1 w-full"
                 >
                   {newSlides.length > 0 ? (
-                    <BannerSlider slides={newSlides} alt="New Season Tech Drop" {...newProps} />
+                    <BannerSlider slides={newSlides} alt="New Season Tech Drop" {...newProps} objectFit="contain" />
                   ) : (
                     <>
                       <span className="relative flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-black/20">

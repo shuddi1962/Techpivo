@@ -20,6 +20,7 @@ interface BannerSliderProps {
   showProgress: boolean
   showThumbs: boolean
   fill?: "fill" | "natural"
+  objectFit?: "cover" | "contain"
   className?: string
 }
 
@@ -50,6 +51,7 @@ export function BannerSlider({
   showProgress,
   showThumbs,
   fill = "fill",
+  objectFit = "cover",
   className = "",
 }: BannerSliderProps) {
   // Normalise once: every slide is { image, link } from here on.
@@ -261,8 +263,8 @@ export function BannerSlider({
         draggable={false}
         className={
           fill === "fill"
-            ? `absolute inset-0 block h-full w-full object-cover ${className}`
-            : `block h-auto w-full ${className}`
+            ? `absolute inset-0 block h-full w-full object-${objectFit} ${className}`
+            : `block h-auto w-full object-${objectFit} ${className}`
         }
       />
     )
@@ -303,13 +305,13 @@ export function BannerSlider({
       {fx ? (
         // Overlay transition running: one static base + the fx layer.
         // eslint-disable-next-line @next/next/no-img-element
-        <img
-          src={marketImage(baseSrc)}
-          alt={alt}
-          aria-hidden
-          draggable={false}
-          className="absolute inset-0 block h-full w-full object-cover"
-        />
+          <img
+            src={marketImage(baseSrc)}
+            alt={alt}
+            aria-hidden
+            draggable={false}
+            className={`absolute inset-0 block h-full w-full object-${objectFit}`}
+          />
       ) : (
         norm.map((s, i) => (
           // eslint-disable-next-line @next/next/no-img-element
@@ -322,7 +324,7 @@ export function BannerSlider({
             decoding="async"
             draggable={false}
             style={stackStyle(i)}
-            className={`absolute inset-0 block h-full w-full object-cover ${
+            className={`absolute inset-0 block h-full w-full object-${objectFit} ${
               eff === "kenburns" && i === shown ? "bp-kenburns" : ""
             }`}
           />
@@ -414,7 +416,7 @@ export function BannerSlider({
               }`}
             >
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={marketImage(s.image)} alt="" aria-hidden draggable={false} className="block h-full w-full object-cover" />
+              <img src={marketImage(s.image)} alt="" aria-hidden draggable={false} className={`block h-full w-full object-${objectFit}`} />
             </button>
           ))}
         </div>
