@@ -883,93 +883,67 @@ export function MarketplaceHome() {
           </div>
         )}
 
-        {/* Desktop hero — main banner left, two stacked promo banners right */}
+        {/* Desktop hero — main banner left (~60%), two stacked promo banners right (~40%) */}
         <section className="w-full mb-0 hidden md:block">
-        <div className="grid w-full grid-cols-1 lg:grid-cols-3 gap-2 items-stretch">
+        <div className="grid w-full grid-cols-1 lg:grid-cols-[3fr_2fr] gap-2 items-stretch">
         {!loaded || !bannersReady ? (
-          <div className="lg:col-span-2 overflow-hidden rounded-none bg-white aspect-[16/9] animate-pulse" aria-hidden>
+          <div className="lg:col-span-3 overflow-hidden bg-white aspect-[16/9] animate-pulse" aria-hidden>
             <div className="h-full w-full bg-slate-100" />
           </div>
-        ) : heroSlides.length > 0 ? (
-          <div className="lg:col-span-2 relative overflow-hidden rounded-none bg-white aspect-[16/9]">
-            <BannerSlider slides={heroSlides} alt="TechPivo Market — shop the collection" {...heroProps} objectFit="contain" />
-          </div>
         ) : (
-          <div className="lg:col-span-2 rounded-none relative overflow-hidden text-white min-h-[280px] lg:min-h-0 lg:h-full flex items-center" style={{ background: MARKETPLACE_BRAND.navy }}>
-            <div className="absolute -right-16 -top-16 w-72 h-72 rounded-full bg-[#F59E0B]/10 blur-3xl pointer-events-none" />
-            <div className="relative z-10 flex w-full flex-wrap items-center gap-x-5 gap-y-2 px-5 md:px-8 py-4">
-              <div className="hidden sm:block h-40 w-40 shrink-0 overflow-hidden rounded-xl bg-white/5">
-                <img src={heroImg} alt="" loading="eager" decoding="async" className="h-full w-full object-cover" />
-              </div>
-              <div className="min-w-0 flex-1">
-                {banners.promo_enabled !== false && (
-                  <span className="text-[#EF4444] text-[11px] font-bold tracking-wide uppercase">{MARKETPLACE_HERO.kicker}</span>
-                )}
-                <h1 className="text-xl md:text-2xl font-extrabold tracking-tight leading-tight">
-                  {MARKETPLACE_HERO.titleA} <span className="text-[#F59E0B]">{MARKETPLACE_HERO.titleB}</span>
-                </h1>
-              </div>
-              <span className="text-xl font-extrabold whitespace-nowrap">{MARKETPLACE_HERO.price}</span>
-              <Link href="#trending" className="bg-[#F59E0B] hover:bg-[#D97706] text-[#0F172A] text-[13px] font-bold px-4 py-2.5 rounded-lg transition-colors inline-flex items-center gap-1.5 shrink-0">
-                Shop the Drop <ArrowRight className="h-4 w-4" />
-              </Link>
+          <>
+            {/* Left: single large hero banner, full image (no crop), 60% width */}
+            <div className="lg:col-span-3 relative overflow-hidden bg-white aspect-[16/9]">
+              <BannerSlider slides={heroSlides} alt="TechPivo Market — shop the collection" {...heroProps} objectFit="contain" />
             </div>
-          </div>
-        )}
 
-          {/* hero side promos — desktop only, stacked vertically on right, flush with main banner */}
-          <div className="hidden md:block lg:col-span-1 flex flex-col gap-0">
-            {!bannersReady ? (
-              <div className="flex-1 h-full min-h-0 overflow-hidden rounded-none bg-white animate-pulse" aria-hidden>
-                <div className="h-full w-full bg-slate-100" />
-              </div>
-            ) : (
-              <>
-                <PromoBox
-                  href="/marketplace/deals"
-                  linked={dealsSlides.some((s) => !!s.link)}
-                  label="Mega Deal — up to 50% off"
-                  className="relative overflow-hidden rounded-none text-white flex-1 w-full"
-                >
-                  {dealsSlides.length > 0 ? (
-                    <BannerSlider slides={dealsSlides} alt="Mega Deal — up to 50% off" {...dealsProps} objectFit="contain" />
-                  ) : (
-                    <>
-                      <span className="relative flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-white/20">
-                        <Flame className="h-5 w-5" />
-                      </span>
-                      <span className="relative min-w-0 flex-1">
-                        <span className="block text-[15px] font-extrabold leading-tight">Mega Deal — Up to 50% Off</span>
-                        <span className="block text-xs text-white/80">Today only — biggest price drops</span>
-                      </span>
-                      <ArrowRight className="relative h-4 w-4 shrink-0 transition-transform group-hover:translate-x-0.5" />
-                    </>
-                  )}
-                </PromoBox>
-                <PromoBox
-                  href="/marketplace/new-arrivals"
-                  linked={newSlides.some((s) => !!s.link)}
-                  label="New Season Tech Drop"
-                  className="relative overflow-hidden rounded-none text-white flex-1 w-full"
-                >
-                  {newSlides.length > 0 ? (
-                    <BannerSlider slides={newSlides} alt="New Season Tech Drop" {...newProps} objectFit="contain" />
-                  ) : (
-                    <>
-                      <span className="relative flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-black/20">
-                        <Zap className="h-5 w-5" />
-                      </span>
-                      <span className="relative min-w-0 flex-1">
-                        <span className="block text-[15px] font-extrabold leading-tight">New Season Tech Drop</span>
-                        <span className="block text-xs text-white/85">Fresh stock, first to own</span>
-                      </span>
-                      <ArrowRight className="relative h-4 w-4 shrink-0 transition-transform group-hover:translate-x-0.5" />
-                    </>
-                  )}
-                </PromoBox>
-              </>
-            )}
-          </div>
+            {/* Right: two smaller banners stacked vertically, 40% width, equal heights, combined height = left banner */}
+            <div className="hidden md:block lg:col-span-2 flex flex-col gap-2 items-stretch">
+              <PromoBox
+                href="/marketplace/deals"
+                linked={dealsSlides.some((s) => !!s.link)}
+                label="Mega Deal — up to 50% off"
+                className="flex-1 relative overflow-hidden bg-white"
+              >
+                {dealsSlides.length > 0 ? (
+                  <BannerSlider slides={dealsSlides} alt="Mega Deal — up to 50% off" {...dealsProps} objectFit="contain" />
+                ) : (
+                  <div className="flex-1 items-center justify-center text-white">
+                    <span className="relative flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-white/20">
+                      <Flame className="h-5 w-5" />
+                    </span>
+                    <span className="relative min-w-0 flex-1">
+                      <span className="block text-[15px] font-extrabold leading-tight">Mega Deal — Up to 50% Off</span>
+                      <span className="block text-xs text-white/80">Today only — biggest price drops</span>
+                    </span>
+                    <ArrowRight className="relative h-4 w-4 shrink-0 transition-transform group-hover:translate-x-0.5" />
+                  </div>
+                )}
+              </PromoBox>
+              <PromoBox
+                href="/marketplace/new-arrivals"
+                linked={newSlides.some((s) => !!s.link)}
+                label="New Season Tech Drop"
+                className="flex-1 relative overflow-hidden bg-white"
+              >
+                {newSlides.length > 0 ? (
+                  <BannerSlider slides={newSlides} alt="New Season Tech Drop" {...newProps} objectFit="contain" />
+                ) : (
+                  <div className="flex-1 items-center justify-center text-white">
+                    <span className="relative flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-black/20">
+                      <Zap className="h-5 w-5" />
+                    </span>
+                    <span className="relative min-w-0 flex-1">
+                      <span className="block text-[15px] font-extrabold leading-tight">New Season Tech Drop</span>
+                      <span className="block text-xs text-white/85">Fresh stock, first to own</span>
+                    </span>
+                    <ArrowRight className="relative h-4 w-4 shrink-0 transition-transform group-hover:translate-x-0.5" />
+                  </div>
+                )}
+              </PromoBox>
+            </div>
+          </>
+        )}
         </div>
         </section>
         {/* Mobile category discovery — mobile only. 16 items in a 4-col grid.
