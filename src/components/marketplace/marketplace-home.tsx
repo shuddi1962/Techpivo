@@ -891,7 +891,7 @@ export function MarketplaceHome() {
             <div className="h-full w-full bg-slate-100" />
           </div>
         ) : heroSlides.length > 0 ? (
-          <div className="lg:col-span-2 overflow-hidden rounded-none bg-white aspect-[16/9]">
+          <div className="lg:col-span-2 relative overflow-hidden rounded-none bg-white aspect-[16/9]">
             <BannerSlider slides={heroSlides} alt="TechPivo Market — shop the collection" {...heroProps} />
           </div>
         ) : (
@@ -929,7 +929,7 @@ export function MarketplaceHome() {
                   href="/marketplace/deals"
                   linked={dealsSlides.some((s) => !!s.link)}
                   label="Mega Deal — up to 50% off"
-                  className="relative overflow-hidden rounded-none text-white h-full w-full"
+                  className="relative overflow-hidden rounded-none text-white flex-1 w-full"
                 >
                   {dealsSlides.length > 0 ? (
                     <BannerSlider slides={dealsSlides} alt="Mega Deal — up to 50% off" {...dealsProps} />
@@ -950,7 +950,7 @@ export function MarketplaceHome() {
                   href="/marketplace/new-arrivals"
                   linked={newSlides.some((s) => !!s.link)}
                   label="New Season Tech Drop"
-                  className="relative overflow-hidden rounded-none text-white h-full w-full"
+                  className="relative overflow-hidden rounded-none text-white flex-1 w-full"
                 >
                   {newSlides.length > 0 ? (
                     <BannerSlider slides={newSlides} alt="New Season Tech Drop" {...newProps} />
