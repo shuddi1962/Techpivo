@@ -592,14 +592,134 @@ body { position: relative; }
      height: 64px !important;
    }
 
-   /* Text wrapping: no clipped text */
-   .marketplace-body .truncate,
-   .marketplace-body .line-clamp-1,
-   .marketplace-body .line-clamp-2 {
-     overflow-wrap: anywhere !important;
-   }
+    /* Text wrapping: no clipped text */
+    .marketplace-body .truncate,
+    .marketplace-body .line-clamp-1,
+    .marketplace-body .line-clamp-2 {
+      overflow-wrap: anywhere !important;
+    }
 
-   /* Modal/drawer: easy to close, fits viewport */
+    /* ---------- Compact mobile spacing (remove unnecessary gaps) ---------- */
+    .marketplace-body main {
+      padding-top: 0.25rem !important;
+    }
+    .marketplace-body main > section,
+    .marketplace-body main > div > section {
+      padding-top: 0.5rem !important;
+      padding-bottom: 0.5rem !important;
+      margin-top: 0.25rem !important;
+      margin-bottom: 0.25rem !important;
+    }
+    .marketplace-body section[id="trending"],
+    .marketplace-body section[id="flash-deals"],
+    .marketplace-body section[id="vendors"],
+    .marketplace-body section[id="shop-collections"] {
+      padding-top: 0.5rem !important;
+      padding-bottom: 0.5rem !important;
+    }
+    .marketplace-body h1,
+    .marketplace-body h2,
+    .marketplace-body h3 {
+      margin-top: 0.5rem !important;
+      margin-bottom: 0.5rem !important;
+    }
+    .marketplace-body h1 {
+      font-size: 1.5rem !important;
+      line-height: 1.2 !important;
+    }
+    .marketplace-body h2 {
+      font-size: 1.25rem !important;
+      line-height: 1.25 !important;
+    }
+    .marketplace-body h3 {
+      font-size: 1.125rem !important;
+      line-height: 1.3 !important;
+    }
+    .marketplace-body [class*="space-y-4"],
+    .marketplace-body [class*="space-y-6"],
+    .marketplace-body [class*="space-y-8"] {
+      --tw-space-y-reverse: 0 !important;
+    }
+    /* Compact category cards and rails only */
+    .marketplace-body .category-shopping .px-5.py-4,
+    .marketplace-body .category-shopping .px-5.py-5 {
+      padding: 0.75rem !important;
+    }
+    .marketplace-body .category-shopping h2 {
+      font-size: 1.125rem !important;
+    }
+    /* Hero section heading area — no extra gap */
+    .marketplace-body section.relative.overflow-hidden.rounded-2xl.p-6,
+    .marketplace-body section.relative.overflow-hidden.rounded-2xl.p-6.sm\:p-8 {
+      padding: 1rem !important;
+    }
+    .marketplace-body section.relative.overflow-hidden.rounded-2xl.p-6.sm\:p-8 > div {
+      gap: 0.75rem !important;
+    }
+    /* Flash deals — compact */
+    .marketplace-body #flash-deals .flex.flex-col.gap-3.p-5,
+    .marketplace-body #flash-deals .flex.flex-col.gap-3.p-5.sm\:flex-row {
+      padding: 0.75rem !important;
+      gap: 0.5rem !important;
+    }
+    .marketplace-body #flash-deals .grid.grid-cols-2.gap-3.p-4 {
+      gap: 0.5rem !important;
+      padding: 0.5rem !important;
+    }
+    /* Slim banner strips — smaller on mobile */
+    .marketplace-body [class*="h-\[92px\]"],
+    .marketplace-body [class*="sm:h-\[120px\]"] {
+      height: 72px !important;
+    }
+    .marketplace-body sm\:h-\[120px\] {
+      height: 96px !important;
+    }
+    /* Seasonal sales strip */
+    .marketplace-body [class*="aspect-\[16/5\]"] {
+      aspect-ratio: 16 / 6 !important;
+      min-height: 96px !important;
+    }
+    /* Trending/top stores rails — tighter */
+    .marketplace-body .trend-rail,
+    .marketplace-body .stores-rail {
+      gap: 0.5rem !important;
+      padding-bottom: 0.25rem !important;
+    }
+    /* Bottom nav spacer matches new height */
+    .marketplace-body .md\:hidden.h-\[70px\] {
+      height: 70px !important;
+    }
+
+    /* Touch targets — every tappable element at least 44x44px on mobile */
+    .marketplace-body button,
+    .marketplace-body a[role="button"],
+    .marketplace-body .market-bottom-nav button,
+    .marketplace-body nav[aria-label="Marketplace mobile"] button,
+    .marketplace-body nav[aria-label="Marketplace mobile"] a,
+    .marketplace-body .market-bottom-nav [role="button"] {
+      min-height: 44px !important;
+      min-width: 44px !important;
+    }
+
+    /* Category discovery tiles — visible, well-sized circles */
+    .marketplace-body [class*="grid-cols-4"] [class*="w-14"],
+    .marketplace-body [class*="grid-cols-4"] [class*="h-14"] {
+      width: 56px !important;
+      height: 56px !important;
+      min-width: 56px !important;
+      min-height: 56px !important;
+    }
+    .marketplace-body [class*="grid-cols-4"] span.text-\[10px\] {
+      font-size: 11px !important;
+      line-height: 1.2 !important;
+    }
+
+    /* Category tile names — never clipped */
+    .marketplace-body [class*="grid-cols-4"] [class*="line-clamp-3"] {
+      -webkit-line-clamp: 2 !important;
+    }
+
+    /* Modal/drawer: easy to close, fits viewport */
    .marketplace-body .fixed.inset-0[class*="z-\[40\]"] {
      backdrop-filter: blur(8px) !important;
      background: rgba(11, 58, 154, 0.45) !important;

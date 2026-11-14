@@ -22,3 +22,14 @@ export function writeWish(ids: string[]): void {
     // ignore
   }
 }
+
+export function readWishCount(): number {
+  if (typeof window === "undefined") return 0
+  try {
+    const raw = window.localStorage.getItem(WISH_KEY)
+    const arr = raw ? JSON.parse(raw) : []
+    return Array.isArray(arr) ? arr.length : 0
+  } catch {
+    return 0
+  }
+}

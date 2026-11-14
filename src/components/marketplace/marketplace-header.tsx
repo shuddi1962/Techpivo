@@ -363,6 +363,16 @@ const [showBackToTop, setShowBackToTop] = useState(false)
     }
   }, [])
 
+  // Prevent background scroll while the mobile drawer is open.
+  useEffect(() => {
+    if (!open) return
+    const prev = document.body.style.overflow
+    document.body.style.overflow = "hidden"
+    return () => {
+      document.body.style.overflow = prev
+    }
+  }, [open])
+
   const submitSearch = (e: React.FormEvent) => {
     e.preventDefault()
     setSuggestOpen(false)
@@ -526,37 +536,44 @@ const [showBackToTop, setShowBackToTop] = useState(false)
       <header className="sticky top-0 z-50 w-full bg-white shadow-[0_2px_12px_rgba(0,0,0,0.08)]">
       {/* main bar — full width */}
       <div className="w-full bg-white">
-        <div className="mx-auto w-full max-w-[1440px] px-3 sm:px-6 lg:px-10 flex items-center justify-between gap-2 h-14 sm:h-16 md:h-20">
-          {/* Hamburger menu — first on mobile */}
-          <button
-            className="md:hidden p-2 rounded-lg border border-[#1668DC] bg-[#1668DC] text-white shadow-md hover:bg-[#0F4FB3] transition-all duration-200"
-            onClick={() => setOpen((v) => !v)}
-            aria-label={open ? "Close menu" : "Open menu"}
-            aria-expanded={open}
-          >
-            {open ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-          </button>
-
+        <div className="mx-auto w-full max-w-[1440px] px-3 sm:px-6 lg:px-10 flex items-center justify-between gap-2 h-14 sm:h-16 md:h-20 relative">
           {/* Logo — centered on mobile */}
-          <Link href="/marketplace" className="flex items-center shrink-0" aria-label="TechPivo Market home">
+          <Link href="/marketplace" className="flex items-center shrink-0 self-center" aria-label="TechPivo Market home">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src="/market-logo.svg" alt="TechPivo Market" className="h-10 w-auto sm:h-11" />
           </Link>
 
-          {/* Mobile icons: Wishlist + Cart — same height, right after logo */}
-          <div className="flex items-center gap-1 sm:gap-2 shrink-0 md:hidden">
-            <Link href="/marketplace/wishlist" aria-label="Wishlist" className="relative p-2 rounded-full hover:bg-slate-100 flex items-center justify-center h-8 w-8 shrink-0">
-              <Heart className="h-5 w-5 text-slate-600" />
+          {/* Mobile icons row: LOGO | WISHLIST | CART | MENU (hamburger on far right) */}
+          <div className="flex items-center gap-2 shrink-0 md:hidden">
+            <Link
+              href="/marketplace/wishlist"
+              aria-label={`Wishlist${shownWishCount > 0 ? `, ${shownWishCount} saved` : ""}`}
+              className="relative flex items-center justify-center rounded-full hover:bg-[#FF6B00]/10 transition-colors h-12 w-12 shrink-0 min-h-[48px] min-w-[48px] p-2"
+            >
+              <Heart className="h-6 w-6 text-slate-600" />
               {shownWishCount > 0 && (
-                <span className="absolute -top-1 -right-1 bg-[#EF4444] text-white text-[10px] min-w-5 h-5 px-1 rounded-full flex items-center justify-center font-bold shadow-sm">{shownWishCount}</span>
+                <span className="absolute -top-1 -right-1 bg-[#EF4444] text-white text-[10px] min-w-5 h-5 px-1 rounded-full flex items-center justify-center font-bold shadow-sm ring-2 ring-white">{shownWishCount}</span>
               )}
             </Link>
-            <Link href="/marketplace/cart" aria-label={`Your basket, ${shownCartCount} item${shownCartCount === 1 ? "" : "s"}`} className="relative p-2 rounded-full hover:bg-slate-100 flex items-center justify-center h-8 w-8 shrink-0">
-              <ShoppingBasket className="h-5 w-5 text-slate-600" />
+            <Link
+              href="/marketplace/cart"
+              aria-label={`Your basket, ${shownCartCount} item${shownCartCount === 1 ? "" : "s"}`}
+              className="relative flex items-center justify-center rounded-full hover:bg-[#FF6B00]/10 transition-colors h-12 w-12 shrink-0 min-h-[48px] min-w-[48px] p-2"
+            >
+              <ShoppingBasket className="h-6 w-6 text-slate-600" />
               {shownCartCount > 0 && (
-                <span className="absolute -top-1 -right-1 bg-[#EF4444] text-white text-[10px] min-w-5 h-5 px-1 rounded-full flex items-center justify-center font-bold shadow-sm tabular-nums">{shownCartCount}</span>
+                <span className="absolute -top-1 -right-1 bg-[#EF4444] text-white text-[10px] min-w-5 h-5 px-1 rounded-full flex items-center justify-center font-bold shadow-sm ring-2 ring-white tabular-nums">{shownCartCount}</span>
               )}
             </Link>
+            <button
+              type="button"
+              onClick={() => setOpen((v) => !v)}
+              aria-label={open ? "Close menu" : "Open menu"}
+              aria-expanded={open}
+              className="relative flex items-center justify-center rounded-full border border-[#1668DC] bg-[#1668DC] text-white shadow-md hover:bg-[#0F4FB3] transition-all duration-200 h-12 w-12 shrink-0 min-h-[48px] min-w-[48px] p-2"
+            >
+              {open ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
+            </button>
           </div>
 
           {/* Desktop search (hidden on mobile) */}
@@ -640,19 +657,19 @@ const [showBackToTop, setShowBackToTop] = useState(false)
         </div>
 
         {/* mobile search with live AJAX suggestions — full width, clean */}
-        <div className="md:hidden px-4 pb-2">
+        <div className="md:hidden px-3 pb-2">
           <div ref={mobileBoxRef} className="relative w-full">
-          <form className="flex h-10 rounded-xl border border-[#CBD5E1] bg-[#F8FAFC] overflow-hidden" onSubmit={submitSearch} role="search">
+          <form className="flex h-10 rounded-xl border border-[#CBD5E1] bg-[#F8FAFC] overflow-hidden focus-within:border-[#FF6B00] focus-within:ring-1 focus-within:ring-[#FF6B00]/30" onSubmit={submitSearch} role="search">
             <input
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               onFocus={() => { if (query.trim().length >= 2) setSuggestOpen(true) }}
               ref={mobileSearchInputRef}
-              className="flex-1 bg-transparent px-3.5 text-sm text-black placeholder:text-slate-600 focus:outline-none"
+              className="flex-1 bg-transparent px-4 text-sm text-black placeholder:text-slate-600 focus:outline-none"
               placeholder="Search TechPivo Market..."
             />
-            <button type="submit" aria-label="Search" className={`bg-[#F59E0B] hover:bg-[#e86000] text-white px-3.5 flex items-center justify-center transition-all duration-200 shadow-sm rounded-r-xl`}>
-              <Search className="h-5 w-5" />
+            <button type="submit" aria-label="Search" className="bg-[#FF6B00] hover:bg-[#e86000] text-white px-5 flex items-center justify-center transition-all duration-200 rounded-r-xl h-full min-h-[44px]">
+              <Search className="h-6 w-6" />
             </button>
           </form>
           {suggestOpen && (
@@ -893,38 +910,81 @@ const [showBackToTop, setShowBackToTop] = useState(false)
         <div className="md:hidden">
           {open && (
             <div
-              className="fixed inset-0 z-40 bg-[#0B3A9A]/45 backdrop-blur-sm transition-opacity duration-300"
+              className="fixed inset-0 z-40 bg-[#0B3A9A]/50 backdrop-blur-sm transition-opacity duration-300"
               onClick={() => setOpen(false)}
               aria-hidden="true"
             />
           )}
           <nav
-            className={`fixed top-0 left-0 z-50 h-full w-[85%] max-w-[360px] overflow-y-auto bg-white shadow-2xl transform transition-transform duration-300 ${open ? "translate-x-0 opacity-100" : "-translate-x-full opacity-0 pointer-events-none"}`}
+            className={`fixed top-0 left-0 z-50 h-full w-[88%] max-w-[360px] overflow-y-auto bg-white shadow-2xl transform transition-transform duration-300 ease-out ${open ? "translate-x-0 opacity-100" : "-translate-x-full opacity-0 pointer-events-none"}`}
             aria-label="Marketplace mobile"
+            style={{ touchAction: "pan-y" }}
           >
-            <div className="flex items-center justify-between px-4 py-3 border-b border-[#E2E8F0]">
-              <span className={"text-sm font-bold " + (isPrimary ? "text-[#1453D6]" : "text-[" + menuBg + "]")}>
-                Menu
-              </span>
+            {/* Drawer header: logo + close */}
+            <div className="flex items-center justify-between px-4 py-4 border-b border-[#E2E8F0] bg-white">
+              <Link href="/marketplace" className="flex items-center gap-2" onClick={() => setOpen(false)} aria-label="TechPivo Market home">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src="/market-logo.svg" alt="TechPivo Market" className="h-8 w-auto" />
+                <span className="text-sm font-bold text-[#0F172A] tracking-tight">TechPivo Market</span>
+              </Link>
               <button
                 type="button"
                 onClick={() => setOpen(false)}
-                className={"p-2 rounded-lg border " + (isPrimary ? "border-[#1453D6]/20 text-[#1453D6] bg-[#EFF6FF]/40" : "border-[" + menuBg + "]/20 text-[" + menuBg + "] bg-[" + menuBg + "]/10")}
+                className="p-2 rounded-full border border-[#E2E8F0] bg-[#F8FAFC] text-slate-600 hover:bg-[#E2E8F0] transition-colors h-10 w-10 min-h-[44px] min-w-[44px] flex items-center justify-center"
                 aria-label="Close menu"
               >
-                <X className="h-5 w-5" />
+                <X className="h-6 w-6" />
               </button>
             </div>
-            <div className="px-2 py-3 grid gap-1">
-              {NAV.map((item) => (
-                item.external ? (
+
+            {/* Currency switcher — uses existing currency-switching functionality */}
+            <div className="px-4 py-3 border-b border-[#E2E8F0] bg-[#F8FAFC]">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Currency</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-semibold text-[#0F172A]">{currency}</span>
+                <button
+                  type="button"
+                  onClick={() => setCurrencyOpen((o) => !o)}
+                  className="p-2 rounded-full border border-[#E2E8F0] bg-white text-slate-600 hover:bg-[#FF3B30]/10 hover:text-[#FF3B30] transition-colors h-9 w-9 min-h-[36px] min-w-[36px] flex items-center justify-center"
+                  aria-expanded={currencyOpen}
+                >
+                  <ChevronDown className="h-4 w-4 text-slate-500" />
+                </button>
+              </div>
+              {currencyOpen && (
+                <div className="mt-3 space-y-1">
+                  {MARKET_CURRENCIES.map((code) => (
+                    <button
+                      key={code}
+                      type="button"
+                      role="option"
+                      aria-selected={currency === code}
+                      onClick={() => setCurrencyChoice(code)}
+                      className={`block w-full px-3 py-2 text-left text-sm font-semibold transition-colors rounded-lg ${currency === code ? "text-[#FF6B00] bg-[#FFF1F2] border-r-2 border-[#FF6B00]" : "text-slate-800 hover:bg-[#FFF1F2] hover:text-[#FF6B00]"}`}
+                    >
+                      <span className="font-medium">{code}</span>
+                      <span className="ml-2 text-xs text-slate-400">{CURRENCY_LABEL[code]}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Main navigation links */}
+            <div className="px-3 py-3 grid gap-1">
+              {NAV.map((item) => {
+                const isExternal = item.external;
+                const cls = "px-3 py-2.5 rounded-lg text-sm font-medium text-slate-700 transition-colors " + (isPrimary ? "hover:bg-[#EFF6FF] hover:text-[#1453D6]" : "hover:bg-[" + menuBg + "]/10 hover:text-[" + menuBg + "]");
+                return isExternal ? (
                   <a
                     key={item.label}
                     href={item.href}
                     target="_blank"
                     rel="noopener"
                     onClick={() => setOpen(false)}
-                    className={"px-3 py-2.5 rounded-lg text-sm font-medium text-slate-700 transition-colors " + (isPrimary ? "hover:bg-[#EFF6FF] hover:text-[#1453D6]" : "hover:bg-[" + menuBg + "]/10 hover:text-[" + menuBg + "]")}
+                    className={cls}
                   >
                     {item.label}
                   </a>
@@ -933,14 +993,49 @@ const [showBackToTop, setShowBackToTop] = useState(false)
                     key={item.label}
                     href={item.href}
                     onClick={() => setOpen(false)}
-                    className={navLinkCls}
+                    className={cls}
                   >
                     {item.label}
                   </Link>
                 )
-              ))}
+              })}
             </div>
-            <p className="px-4 pt-2 text-[11px] font-bold uppercase tracking-wider text-slate-400">Departments</p>
+
+            {/* Customer pages */}
+            <div className="px-3 pt-3 pb-1">
+              <p className="px-3 pb-1 text-[11px] font-bold uppercase tracking-wider text-slate-400">Account &amp; help</p>
+            </div>
+            <div className="px-2 pb-3 grid gap-1">
+              {[
+                { label: "My Account", href: acctName ? "/marketplace/account" : "/login", icon: User },
+                { label: "My Orders", href: "/marketplace/track", icon: Clock },
+                { label: "Wishlist", href: "/marketplace/wishlist", icon: Heart },
+                { label: "Shopping Cart", href: "/marketplace/cart", icon: ShoppingCart },
+                { label: "Contact Us", href: "/contact", icon: Mail },
+                { label: "Help Centre", href: "/marketplace/help", icon: Headset },
+                { label: "About Us", href: "/about", icon: Package },
+                { label: "Privacy Policy", href: "/privacy-policy", icon: ShieldCheck },
+                { label: "Terms and Conditions", href: "/terms-of-use", icon: Book },
+              ].map((item) => {
+                const cls = "flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm font-medium text-slate-700 transition-colors hover:bg-[#FFF1F2] hover:text-[#FF6B00]";
+                return (
+                  <Link
+                    key={item.label}
+                    href={item.href}
+                    onClick={() => setOpen(false)}
+                    className={cls}
+                  >
+                    <item.icon className="h-4 w-4 shrink-0 text-slate-500" />
+                    {item.label}
+                  </Link>
+                )
+              })}
+            </div>
+
+            {/* Departments */}
+            <div className="px-3 pt-3 pb-1">
+              <p className="px-3 pb-1 text-[11px] font-bold uppercase tracking-wider text-slate-400">Departments</p>
+            </div>
             <div className="px-2 pb-4 grid gap-1">
               {departments.map((d) => {
                 const expanded = mobileExpanded === d.slug;
@@ -1000,6 +1095,7 @@ const [showBackToTop, setShowBackToTop] = useState(false)
                 );
               })}
             </div>
+            <div className="pb-6" />
           </nav>
         </div>
         </div>

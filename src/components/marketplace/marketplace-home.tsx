@@ -35,6 +35,7 @@ import { useMarketMerch, useSaleBadge, useProductDiscount } from "./market-flags
 import { FeaturePanels } from "./feature-panels"
 import { MobileCategoryDiscovery } from "./mobile-category-discovery"
 import { MobileHeroCarousel } from "./mobile-hero-carousel"
+import { MobileBanners } from "./mobile-banners"
 
 type ScopeRow = {
   category_slug: string | null;
@@ -859,15 +860,20 @@ export function MarketplaceHome() {
   return (
     <div className="w-full bg-[#F8FAFC] min-h-screen overflow-x-clip marketplace-body">
 
-      {/* Mobile hero carousel — mobile only, full-bleed and flush against the
-          header (no gap, no side inset). Separate mobile banner images from
-          the desktop hero (Admin → Banners → Mobile Hero Banners). Falls back
-          to the desktop hero image when no mobile upload exists.
-          Hidden on desktop/tablet. Rendered OUTSIDE <main> so the page's
-          top padding cannot open a gap under the header. */}
-      <MobileHeroCarousel className="md:hidden" banners={banners} />
+      {/* Mobile banner carousel — mobile only, full-bleed and flush against the
+          header (no gap, no side inset). Prefers the dedicated mobile banner
+          system (Admin → Banners → Mobile Banners), which is independent of
+          the desktop banner system. Falls back to the legacy mobile hero
+          image/slides when no mobile banners are configured yet. Hidden on
+          desktop/tablet. Rendered OUTSIDE <main> so the page's top padding
+          cannot open a gap under the header. */}
+      {banners.mobile_hero_image || (banners.mobile_hero_slides || []).length > 0 ? (
+        <MobileHeroCarousel className="md:hidden" banners={banners} />
+      ) : (
+        <MobileBanners className="md:hidden" />
+      )}
 
-      <main className="mx-auto w-full max-w-[1480px] px-3 sm:px-6 lg:px-10 pb-4 sm:pb-6 lg:pb-8 space-y-4 sm:space-y-6 lg:space-y-8">
+      <main className="mx-auto w-full max-w-[1480px] px-3 pb-3 sm:px-6 lg:px-10 pb-3 sm:pb-5 lg:pb-7 space-y-3 sm:space-y-5 lg:space-y-7">
 
         {/* welcome popup — once per visit, fully driven by Admin →
             Banners → Welcome popup (layout, style, text, link, timing). */}

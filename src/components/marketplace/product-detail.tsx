@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { useEffect, useMemo, useRef, useState } from "react"
-import { Check, Heart, Minus, Play, Plus, RotateCcw, ShieldCheck, ShoppingCart, Star, Truck, Zap } from "lucide-react"
+import { Check, Heart, Minus, Play, Plus, RotateCcw, ShieldCheck, ShoppingCart, Star, Truck, Zap, X } from "lucide-react"
 import { addToCart } from "@/lib/marketplace-cart"
 import { openCartPopup, openCheckout } from "@/lib/marketplace-events"
 import { CompletePurchase } from "./complete-purchase"
@@ -412,6 +412,7 @@ export function ProductDetail({
   })()
 
   const [activeMedia, setActiveMedia] = useState<GalleryItem>({ type: "image", src: p.product_image_url || "" })
+  const [zoomOpen, setZoomOpen] = useState(false)
 
   useEffect(() => {
     if (selected?.image) setActiveMedia({ type: "image", src: selected.image })
@@ -524,7 +525,10 @@ export function ProductDetail({
                 ))}
               </div>
             )}
-            <div className="relative flex-1 min-w-0 rounded-xl overflow-hidden bg-[#F8FAFC] border border-[#E2E8F0] aspect-square">
+            <div
+              className="relative flex-1 min-w-0 rounded-xl overflow-hidden bg-[#F8FAFC] border border-[#E2E8F0] aspect-square cursor-pointer"
+              onClick={() => activeMedia.type === "image" && setZoomOpen(true)}
+            >
               {activeMedia.type === "video" ? (
                 <video src={activeMedia.src} controls playsInline preload="metadata" className="w-full h-full object-cover" />
               ) : activeMedia.src ? (
@@ -793,6 +797,37 @@ export function ProductDetail({
       </div>
 
       <div className="lg:hidden h-[88px]" />
+
+      {/* Full-screen image viewer (mobile) — pinch-to-zoom style tap to enlarge */}
+      {zoomOpen && activeMedia.type === "image" && (
+        <div
+          className="fixed inset-0 z-[100] bg-black/[95] flex flex-col items-center justify-center p-4"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Full-screen product image"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setZoomOpen(false)
+          }}
+        >
+          <button
+            type="button"
+            onClick={() => setZoomOpen(false)}
+            className="absolute top-4 left-4 z-10 w-10 h-10 rounded-full bg-white/20 text-white flex items-center justify-center"
+            aria-label="Close image"
+          >
+            <X className="h-5 w-5" />
+          </button>
+          <img
+            src={activeMedia.src}
+            alt={p.product_name}
+            className="relative z-0 max-w-full max-h-[85vh] object-contain"
+            onClick={() => setZoomOpen(false)}
+          />
+          <span className="mt-3 text-xs text-white/70">
+            {gallery.findIndex((g) => g.src === activeMedia.src) + 1} / {gallery.filter((g) => g.type === "image").length}
+          </span>
+        </div>
+      )}
 
       <ProductDetailsTabs
         description={p.product_description}

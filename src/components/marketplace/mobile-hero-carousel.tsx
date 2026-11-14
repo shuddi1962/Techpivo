@@ -17,7 +17,7 @@ import { type BannerSlide, type MarketBanners } from "@/lib/marketplace-banners"
  * - Horizontal scroll-snap swipe carousel
  * - Auto-rotation with pagination dots
  * - Clickable banner destinations
- * - Rounded corners, no stretched images
+ * - No partially visible slides, no horizontal overflow
  * - Hidden on desktop/tablet (md+)
  */
 export function MobileHeroCarousel({ className, banners }: { className?: string; banners: MarketBanners }) {
@@ -103,12 +103,12 @@ export function MobileHeroCarousel({ className, banners }: { className?: string;
   if (!enabled || slides.length === 0) return null
 
   return (
-    <section className={cn("w-full overflow-x-clip mt-0 mb-0 pt-0 pb-0", className)} style={{ marginTop: 0, marginBottom: 0, paddingTop: 0, paddingBottom: 0 }}>
-      <div className="relative w-full overflow-hidden">
+    <section className={cn("w-full overflow-x-clip mt-0 mb-0 pt-0 pb-0 border-b border-[#E2E8F0]", className)} style={{ marginTop: 0, marginBottom: 0, paddingTop: 0, paddingBottom: 0 }}>
+      <div className="relative w-full overflow-hidden bg-[#F8FAFC]">
         <div
           ref={containerRef}
-          className="flex w-full snap-x scroll-smooth no-scrollbar overflow-x-clip"
-          style={{ scrollbarWidth: "none" }}
+          className="flex w-full snap-x snap-mandatory scroll-smooth overflow-x-auto overflow-y-hidden no-scrollbar"
+          style={{ scrollbarWidth: "none", WebkitOverflowScrolling: "touch" }}
         >
           {slides.map((s, i) => {
             const href = s.link ? cleanLink(s.link) : ""
@@ -117,7 +117,7 @@ export function MobileHeroCarousel({ className, banners }: { className?: string;
             return (
               <div
                 key={`mobile-hero-${i}`}
-                className="flex-shrink-0 w-full min-w-[100%] max-w-[100vw]"
+                className="flex-shrink-0 w-full snap-center"
               >
                 {href ? (
                   <Link
@@ -125,7 +125,7 @@ export function MobileHeroCarousel({ className, banners }: { className?: string;
                     aria-label={`Banner ${i + 1}`}
                     className="block"
                   >
-                    <div className="relative aspect-[2/1] w-full overflow-hidden bg-slate-100 group">
+                    <div className="relative aspect-[2/1] w-full overflow-hidden bg-[#F8FAFC] group">
                       <img
                         src={image}
                         alt=""
@@ -137,7 +137,7 @@ export function MobileHeroCarousel({ className, banners }: { className?: string;
                     </div>
                   </Link>
                 ) : (
-                  <div className="relative aspect-[2/1] w-full overflow-hidden bg-slate-100">
+                  <div className="relative aspect-[2/1] w-full overflow-hidden bg-[#F8FAFC]">
                     <img
                       src={image}
                       alt=""
@@ -147,10 +147,6 @@ export function MobileHeroCarousel({ className, banners }: { className?: string;
                     />
                     <span className="absolute inset-0 bg-black/5" />
                   </div>
-                )}
-                {/* Single slide edge peek when multiple slides exist */}
-                {slides.length > 1 && (
-                  <div className="absolute -right-2 top-1/2 -translate-y-1/2 w-1 h-full pointer-events-none" />
                 )}
               </div>
             )

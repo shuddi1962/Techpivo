@@ -42,6 +42,7 @@ import {
   type SliderSlotKey,
   type SlotSlider,
 } from "@/lib/marketplace-banners"
+import { parseMobileBanners, type MobileBanner } from "@/lib/marketplace-mobile-banners"
 import { BannerSlider } from "@/components/marketplace/banner-slider"
 import { WelcomePopupCard } from "@/components/marketplace/welcome-popup"
 import { createClient } from "@/lib/supabase/client"
@@ -80,6 +81,10 @@ const inputCls =
   "w-full border rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:border-amber-500"
 const miniBtn =
   "inline-flex shrink-0 items-center gap-1 rounded-lg border bg-white px-2.5 py-1.5 text-xs font-bold hover:bg-slate-100 disabled:opacity-60"
+
+function nextBannerId(): string {
+  return `mb-${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`
+}
 
 // ---------------------------------------------------------------------------
 // Destination picker: preset dropdown (+ departments) with a custom-URL
@@ -562,6 +567,128 @@ function SingleBannerRow({
   )
 }
 
+function MobileBannerEditor({
+  banner,
+  updateBanner,
+  deleteBanner,
+  uploadImage,
+  uploading,
+  moveBanner,
+}: {
+  banner: MobileBanner
+  updateBanner: (next: MobileBanner) => void
+  deleteBanner: () => void
+  uploadImage: (target: string) => void
+  uploading: boolean
+  moveBanner: (dir: -1 | 1) => void
+}) {
+  return (
+    <div className="overflow-hidden rounded-xl border bg-white">
+      <div className="flex items-center gap-2.5 p-3">
+        <span className={`h-2.5 w-2.5 shrink-0 rounded-full ${banner.enabled ? "bg-emerald-500" : "bg-slate-300"}`} />
+        {banner.image && isUrl(banner.image) ? (
+          <img
+            // eslint-disable-next-line @next/next/no-img-element
+            src={banner.image}
+            alt=""
+            className="h-12 w-16 shrink-0 rounded-md border object-cover"
+            loading="lazy"
+          />
+        ) : (
+          <span className="flex h-12 w-16 shrink-0 items-center justify-center rounded-md border bg-slate-50 text-[10px] font-bold text-slate-400">
+            NO IMAGE
+          </span>
+        )}
+        <div className="min-w-0 flex-1">
+          <input
+            value={banner.name}
+            onChange={(e) =>
+              updateBanner({ ...banner, name: e.target.value.slice(0, 60) })
+            }
+            placeholder="Banner name (admin only)"
+            className={`${inputCls} text-xs`}
+          />
+          <div className="mt-2 flex gap-2">
+            <input
+              value={banner.image}
+              onChange={(e) => updateBanner({ ...banner, image: e.target.value })}
+              placeholder="https://… banner image URL"
+              className={`${inputCls} min-w-0 flex-1 text-xs ${banner.image && !isUrl(banner.image) ? "border-red-300" : ""}`}
+            />
+            <button
+              type="button"
+              onClick={() => uploadImage(`mobile-banner:${banner.id}`)}
+              disabled={uploading}
+              className={miniBtn}
+            >
+              {uploading ? (
+                <Loader2 className="h-3 w-3 animate-spin" />
+              ) : (
+                <ImagePlus className="h-3 w-3" />
+              )}
+              {uploading ? "…" : "Upload"}
+            </button>
+            <label className="inline-flex cursor-pointer items-center gap-1.5 text-[11px] font-bold text-slate-600">
+              <input
+                type="checkbox"
+                checked={banner.enabled}
+                onChange={(e) => updateBanner({ ...banner, enabled: e.target.checked })}
+                className="h-4 w-4 accent-[#F59E0B]"
+              />
+              {banner.enabled ? "On" : "Off"}
+            </label>
+            <button
+              type="button"
+              onClick={deleteBanner}
+              className="rounded-md border p-1.5 text-red-500 hover:bg-red-50"
+              title="Delete banner"
+            >
+              <Trash2 className="h-3 w-3" />
+            </button>
+          </div>
+          <div className="mt-2">
+            <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Opens</p>
+            <LinkField value={banner.link} onChange={(v) => updateBanner({ ...banner, link: v })} />
+          </div>
+          <div className="mt-2 flex items-center gap-2 text-xs text-slate-500">
+            <span>Order <span className="font-semibold text-slate-900">{banner.order}</span></span>
+            <button
+              type="button"
+              onClick={() => moveBanner(-1)}
+              disabled={banner.order === 0}
+              className="rounded-md border p-1 text-slate-500 hover:bg-slate-100 disabled:opacity-30"
+              title="Move up"
+            >
+              <ChevronUp className="h-3 w-3" />
+            </button>
+            <button
+              type="button"
+              onClick={() => moveBanner(1)}
+              disabled={banner.order === 999}
+              className="rounded-md border p-1 text-slate-500 hover:bg-slate-100 disabled:opacity-30"
+              title="Move down"
+            >
+              <ChevronDown className="h-3 w-3" />
+            </button>
+            {banner.image && isUrl(banner.image) && (
+              <div className="mt-2">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  // eslint-disable-next-line @next/next/no-img-element
+                  src={banner.image}
+                  alt="Mobile banner preview"
+                  className="h-24 w-full rounded-lg border object-cover"
+                  loading="lazy"
+                />
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function Section({
   step,
   title,
@@ -956,6 +1083,38 @@ export function MarketplaceBannersTab() {
       // stats simply stay empty until the next refresh
     }
   }
+  // Mobile homepage banners — independent of the desktop banner system.
+  const [mobileBanners, setMobileBanners] = useState<MobileBanner[]>([])
+  const [mobileLoading, setMobileLoading] = useState(true)
+  const [mobileSaving, setMobileSaving] = useState(false)
+  const loadMobileBanners = async () => {
+    try {
+      const r = await fetch("/admin/marketplace/api?section=mobile-banners")
+      const d = await r.json().catch(() => null)
+      if (r.ok && Array.isArray(d?.banners)) setMobileBanners(d.banners as MobileBanner[])
+    } catch {
+      // ignore
+    } finally {
+      setMobileLoading(false)
+    }
+  }
+  const saveMobileBanners = async () => {
+    setMobileSaving(true)
+    try {
+      const res = await fetch("/admin/marketplace/api", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "mobile-banners-save", banners: mobileBanners }),
+      })
+      const data = await res.json().catch(() => null)
+      if (!res.ok) throw new Error(data?.error || "Save failed")
+      flash("Mobile banners saved — live on the mobile homepage instantly")
+    } catch (err) {
+      flash(err instanceof Error ? err.message : "Save failed")
+    } finally {
+      setMobileSaving(false)
+    }
+  }
   const [openSlot, setOpenSlot] = useState<string>("hero_image")
   const [openSlider, setOpenSlider] = useState<string | null>(null)
   const fileRef = useRef<HTMLInputElement>(null)
@@ -987,6 +1146,7 @@ export function MarketplaceBannersTab() {
         .finally(() => setLoading(false))
     }
     loadBanners()
+    loadMobileBanners()
     fetch("/admin/marketplace/api?section=store")
       .then((r) => r.json())
       .then((d) => {
@@ -1116,6 +1276,16 @@ export function MarketplaceBannersTab() {
           if (cur.length < 10) cur.push({ image: url, link: "" })
           return { ...b, [key]: cur }
         })
+      } else if (uploadTarget.startsWith("mobile-banner:")) {
+        const rest = uploadTarget.slice("mobile-banner:".length)
+        if (rest === "new") {
+          setMobileBanners((list) => [
+            ...list,
+            { id: nextBannerId(), name: "New mobile banner", image: url, link: "", enabled: true, order: list.length },
+          ])
+        } else {
+          setMobileBanners((list) => list.map((b) => (b.id === rest ? { ...b, image: url } : b)))
+        }
       } else {
         setSlot(uploadTarget, url)
       }
@@ -1822,6 +1992,83 @@ export function MarketplaceBannersTab() {
             department rows and the desktop nav links. Leave at the defaults for the TechPivo kit palette.
           </p>
         </div>
+      </Section>
+
+      {/* 7 — Mobile homepage banners (independent of desktop banners) */}
+      <Section
+        step="7"
+        title="Mobile homepage banners"
+        desc="Swipeable carousel on the mobile homepage only. Upload many, set order, enable/disable, add a destination link — desktop banners are never touched."
+        open={section === "mobile-banners"}
+        onToggle={() => setSection(section === "mobile-banners" ? "" : "mobile-banners")}
+      >
+        {mobileLoading ? (
+          <div className="h-32 flex items-center justify-center text-xs text-slate-500">Loading mobile banners…</div>
+        ) : (
+          <div className="space-y-2">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-xs font-bold text-slate-700">
+                {mobileBanners.length} mobile banner{mobileBanners.length === 1 ? "" : "s"}
+              </span>
+              {mobileBanners.length > 0 && (
+                <button
+                  type="button"
+                  onClick={saveMobileBanners}
+                  disabled={mobileSaving}
+                  className="ml-2 inline-flex shrink-0 items-center gap-1 rounded-lg border border-[#F59E0B] bg-amber-50 px-2.5 py-1.5 text-[11px] font-bold text-[#F59E0B] hover:bg-[#F59E0B]/10 disabled:opacity-60"
+                >
+                  {mobileSaving ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />}{" "}
+                  {mobileSaving ? "Saving…" : "Save mobile banners"}
+                </button>
+              )}
+              {mobileBanners.length === 0 && (
+                <p className="ml-2 text-xs text-slate-500">
+                  No mobile banners yet. Add one below — it appears on the mobile homepage carousel.
+                </p>
+              )}
+              <button
+                type="button"
+                onClick={() => {
+                  pickUpload("mobile-banner:new")
+                  const id = nextBannerId()
+                  setMobileBanners((list) => [
+                    ...list,
+                    { id, name: `Mobile banner ${list.length + 1}`, image: "", link: "", enabled: true, order: list.length },
+                  ])
+                  flash("New banner added — upload an image, set its link, then Save mobile banners")
+                }}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-dashed border-slate-300 bg-white px-3 py-1.5 text-xs font-bold text-slate-600 hover:border-[#F59E0B] hover:text-[#0F172A]"
+              >
+                <Plus className="h-3 w-3" /> Add mobile banner
+              </button>
+            </div>
+            <div className="space-y-2">
+              {mobileBanners.map((b) => (
+                <MobileBannerEditor
+                  key={b.id}
+                  banner={b}
+                  updateBanner={(next) => setMobileBanners((list) => list.map((x) => (x.id === b.id ? next : x)))}
+                  deleteBanner={() => setMobileBanners((list) => list.filter((x) => x.id !== b.id))}
+                  uploadImage={pickUpload}
+                  uploading={uploading === `mobile-banner:${b.id}`}
+                  moveBanner={(dir) =>
+                    setMobileBanners((list) => {
+                      const next = [...list]
+                      const i = next.findIndex((x) => x.id === b.id)
+                      const j = i + dir
+                      if (i < 0 || j < 0 || j >= next.length) return list
+                      ;[next[i], next[j]] = [next[j], next[i]]
+                      return next.map((x, k) => ({ ...x, order: k }))
+                    })
+                  }
+                />
+              ))}
+            </div>
+          </div>
+        )}
+        <p className="mt-2 text-[11px] text-slate-500">
+          Mobile banners are stored separately from desktop banners (a different site_settings key). Desktop keeps showing its existing hero/promo banners exactly as before. Empty image = banner is hidden.
+        </p>
       </Section>
     </div>
   )

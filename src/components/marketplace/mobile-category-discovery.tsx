@@ -16,6 +16,8 @@ interface CategoryPick {
   href: string
   /** "dept" tiles read the department feed, "sub" tiles the subcategory feed. */
   kind: "dept" | "sub"
+  /** Owning department slug — used as image fallback when a subcategory has no photo. */
+  deptSlug?: string
 }
 
 /**
@@ -54,6 +56,7 @@ export function MobileCategoryDiscovery({
         slug: d.slug,
         href: `/marketplace/category/${d.slug}`,
         kind: "dept",
+        deptSlug: d.slug,
       })
     }
     for (const d of departments) {
@@ -66,6 +69,7 @@ export function MobileCategoryDiscovery({
           slug: s.slug,
           href: `/marketplace/category/${d.slug}/${s.slug}`,
           kind: "sub",
+          deptSlug: d.slug,
         })
       }
     }
@@ -141,9 +145,16 @@ export function MobileCategoryDiscovery({
   }, [])
 
   const currentFor = (p: CategoryPick): string => {
-    const list = fetched.get(p.slug) || covers?.get(p.slug)
-    if (!list || list.length === 0) return ""
-    return list[rot % list.length] || ""
+    // 1. Subcategory's own photos first.
+    const own = fetched.get(p.slug) || covers?.get(p.slug)
+    if (own && own.length > 0) return own[rot % own.length]
+    // 2. Fall back to the parent department's photos so every tile shows a
+    //    real image instead of a letter chip.
+    if (p.kind === "sub" && p.deptSlug) {
+      const dept = fetched.get(p.deptSlug) || covers?.get(p.deptSlug)
+      if (dept && dept.length > 0) return dept[rot % dept.length]
+    }
+    return ""
   }
 
   return (

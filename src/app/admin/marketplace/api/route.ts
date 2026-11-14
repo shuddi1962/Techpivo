@@ -5,6 +5,7 @@ import { SITE_URL } from "@/lib/constants"
 import type { MarketDepartment } from "@/lib/marketplace-categories"
 import { cjListProducts, cjProductMatchesQuery, cjSearchProducts, cjStatus, mapCjToAffiliate, resolveCjApiKey } from "@/lib/cj"
 import { MARKET_CURRENCIES, type MarketCurrency } from "@/lib/marketplace-pricing"
+import { MARKETPLACE_MOBILE_BANNERS_KEY } from "@/lib/marketplace-mobile-banners"
 
 // All database work in this route runs through the service-role client.
 // The route is admin-guarded by `requireAdminRole`, and several marketplace
@@ -327,6 +328,11 @@ export async function GET(request: NextRequest) {
       const { data } = await supabase.from("site_settings").select("value").eq("key", "marketplace_banners").maybeSingle()
       const { parseBanners } = await import("@/lib/marketplace-banners")
       return NextResponse.json({ banners: parseBanners((data as { value?: unknown } | null)?.value) })
+    }
+    if (section === "mobile-banners") {
+      const { data } = await supabase.from("site_settings").select("value").eq("key", MARKETPLACE_MOBILE_BANNERS_KEY).maybeSingle()
+      const { parseMobileBanners } = await import("@/lib/marketplace-mobile-banners")
+      return NextResponse.json({ banners: parseMobileBanners((data as { value?: unknown } | null)?.value) })
     }
     if (section === "mobile-settings") {
       const { data } = await supabase.from("site_settings").select("value").eq("key", "marketplace_mobile").maybeSingle()
@@ -761,6 +767,17 @@ export async function POST(request: NextRequest) {
       if (error) throw error
       revalidateStore()
       return NextResponse.json({ success: true, banners })
+    }
+    // Save the mobile homepage banner list (independent of desktop banners).
+    if (body.action === "mobile-banners-save") {
+      const { parseMobileBanners } = await import("@/lib/marketplace-mobile-banners")
+      const list = parseMobileBanners(Array.isArray(body.banners) ? body.banners : [])
+      const { error } = await supabase
+        .from("site_settings")
+        .upsert({ key: MARKETPLACE_MOBILE_BANNERS_KEY, value: list as unknown as never }, { onConflict: "key" })
+      if (error) throw error
+      revalidateStore()
+      return NextResponse.json({ success: true, banners: list })
     }
     // Save mobile settings (promo notice, announcement strip, rotation interval)
     if (body.action === "mobile-settings-save") {
