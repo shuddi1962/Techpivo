@@ -892,12 +892,12 @@ export function MarketplaceHome() {
           </div>
         ) : (
           <>
-            {/* Left: single large hero banner, full image (no crop), 60% width */}
+            {/* Left: large hero banner, full image, no crop */}
             <div className="lg:col-span-3 relative overflow-hidden bg-white aspect-[16/9]">
-              <BannerSlider slides={heroSlides} alt="TechPivo Market — shop the collection" {...heroProps} objectFit="contain" />
+              <BannerSlider slides={heroSlides} alt="TechPivo Market" {...heroProps} objectFit="contain" />
             </div>
 
-            {/* Right: two smaller banners stacked vertically, 40% width, equal heights, combined height = left banner */}
+            {/* Right: two smaller banners stacked vertically, equal heights */}
             <div className="hidden md:block lg:col-span-2 flex flex-col gap-2 items-stretch">
               <PromoBox
                 href="/marketplace/deals"
@@ -906,7 +906,7 @@ export function MarketplaceHome() {
                 className="flex-1 relative overflow-hidden bg-white"
               >
                 {dealsSlides.length > 0 ? (
-                  <BannerSlider slides={dealsSlides} alt="Mega Deal — up to 50% off" {...dealsProps} objectFit="contain" />
+                  <BannerSlider slides={dealsSlides} alt="Mega Deal" {...dealsProps} objectFit="contain" />
                 ) : (
                   <div className="flex-1 items-center justify-center text-white">
                     <span className="relative flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-white/20">
