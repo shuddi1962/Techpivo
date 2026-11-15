@@ -141,13 +141,16 @@ export function MarketplaceHeader({
   wishCount,
   onSearch,
   onShopDept,
+  hideBottomNav,
 }: {
   cartCount?: number
-  /** Legacy — the header now shows the live item count, never a price. */
   cartTotal?: string
   wishCount?: number
   onSearch?: (q: string) => void
   onShopDept?: (slug: string | null) => void
+  /** Hide the sticky bottom nav (used on product pages that have their own
+   *  sticky purchase bar, to avoid overlapping bottom bars on mobile). */
+  hideBottomNav?: boolean
 }) {
   // ├──────────────────────────────────────────────────────────────────────┤
   // │ MarketplaceHeader — 3‑level cascade mega‑menu + mobile drawer       │
@@ -1115,14 +1118,16 @@ const [showBackToTop, setShowBackToTop] = useState(false)
       </div>
 
       {/* sticky bottom mobile nav — shared across all marketplace pages */}
-      <MarketBottomNav
-        onSearchToggle={() => {
-          setOpen(false)
-          mobileSearchInputRef.current?.focus()
-          setSuggestOpen(false)
-        }}
-        onCategoryOpen={() => setCategoryNavOpen(true)}
-      />
+      {!hideBottomNav && (
+        <MarketBottomNav
+          onSearchToggle={() => {
+            setOpen(false)
+            mobileSearchInputRef.current?.focus()
+            setSuggestOpen(false)
+          }}
+          onCategoryOpen={() => setCategoryNavOpen(true)}
+        />
+      )}
 
       {/* Back-to-top button — mobile/tablet only, sits above bottom nav */}
       {showBackToTop && (
