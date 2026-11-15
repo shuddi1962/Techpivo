@@ -926,19 +926,19 @@ export function MarketplaceHome() {
               </Link>
             ) : (
             <div
-              className="flex flex-col gap-3 p-5 sm:flex-row sm:items-center sm:justify-between md:px-6"
+              className="flex flex-col gap-2 p-3 sm:flex-row sm:items-center sm:justify-between sm:gap-3 md:px-6"
               style={{ background: `linear-gradient(100deg, ${banners.flash_bg_from || "#DC2626"} 0%, ${banners.flash_bg_to || "#991B1B"} 100%)` }}
             >
-              <div className="flex items-center gap-3">
-                <span className="inline-flex items-center gap-1.5 rounded bg-white px-2.5 py-1 text-[11px] font-bold uppercase text-[#991B1B]">
-                  <Flame className="h-3.5 w-3.5" /> {banners.flash_badge || "Flash Sale"}
+              <div className="flex items-center gap-2">
+                <span className="inline-flex items-center gap-1 rounded bg-white px-2 py-1 text-[10px] font-bold uppercase text-[#991B1B]">
+                  <Flame className="h-3 w-3" /> {banners.flash_badge || "Flash Sale"}
                 </span>
                 <div
                   className={banners.flash_text_bg?.trim() ? "rounded-xl px-3 py-1.5" : undefined}
                   style={banners.flash_text_bg?.trim() ? { background: banners.flash_text_bg.trim() } : undefined}
                 >
-                  <h3 className="text-xl font-extrabold tracking-tight text-white sm:text-2xl">{banners.flash_title || "Special Offer — Up to 50% Off"}</h3>
-                  <p className="text-xs text-white/80">{banners.flash_subtitle || "Hurry — discounted stock goes fast"}</p>
+                  <h3 className="text-lg font-extrabold tracking-tight text-white sm:text-xl">{banners.flash_title || "Special Offer — Up to 50% Off"}</h3>
+                  <p className="text-[10px] text-white/80">{banners.flash_subtitle || "Hurry — discounted stock goes fast"}</p>
                 </div>
               </div>
               <div className="flex items-center gap-1.5" aria-label="Offer countdown">
@@ -959,7 +959,7 @@ export function MarketplaceHome() {
               </div>
             </div>
             )}
-            <div className="grid grid-cols-2 gap-3 p-4 sm:p-5 lg:grid-cols-4">
+            <div className="grid grid-cols-2 gap-2 p-3 sm:p-4 lg:grid-cols-4">
               {flashItems.map((p) => (
                 <ProductCard key={p.id} {...cardProps(p)} />
               ))}

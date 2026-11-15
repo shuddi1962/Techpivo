@@ -139,7 +139,7 @@ function ListingBody({ products }: { products: StoreProduct[] }) {
             ))}
           </div>
         ) : (
-          <div className="rounded-2xl border border-[#E2E8F0] bg-white px-6 py-14 text-center">
+          <div className="rounded-2xl border border-[#E2E8F0] bg-white px-4 py-8 sm:py-14 text-center">
             <PackageSearch className="mx-auto mb-3 h-10 w-10 text-slate-300" />
             <p className="font-bold text-[#0F172A]">No products match your filters</p>
             <p className="mt-1 text-sm text-slate-500">Try widening the price range or clearing a filter or two.</p>
