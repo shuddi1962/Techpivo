@@ -35,7 +35,6 @@ import { useMarketMerch, useSaleBadge, useProductDiscount } from "./market-flags
 import { FeaturePanels } from "./feature-panels"
 import { MobileCategoryDiscovery } from "./mobile-category-discovery"
 import { MobileHeroCarousel } from "./mobile-hero-carousel"
-import { MobileBanners } from "./mobile-banners"
 
 type ScopeRow = {
   category_slug: string | null;
@@ -861,17 +860,11 @@ export function MarketplaceHome() {
     <div className="w-full bg-[#F8FAFC] min-h-screen overflow-x-clip marketplace-body">
 
       {/* Mobile banner carousel — mobile only, full-bleed and flush against the
-          header (no gap, no side inset). Prefers the dedicated mobile banner
-          system (Admin → Banners → Mobile Banners), which is independent of
-          the desktop banner system. Falls back to the legacy mobile hero
-          image/slides when no mobile banners are configured yet. Hidden on
-          desktop/tablet. Rendered OUTSIDE <main> so the page's top padding
-          cannot open a gap under the header. */}
-      {banners.mobile_hero_image || (banners.mobile_hero_slides || []).length > 0 ? (
-        <MobileHeroCarousel className="md:hidden" banners={banners} />
-      ) : (
-        <MobileBanners className="md:hidden" />
-      )}
+          header (no gap, no side inset). MobileHeroCarousel handles its own
+          fallback: mobile_hero_image/slides first, then desktop hero_image.
+          Hidden on desktop/tablet. Rendered OUTSIDE <main> so the page's
+          top padding cannot open a gap under the header. */}
+      <MobileHeroCarousel className="md:hidden" banners={banners} />
 
       <main className="mx-auto w-full max-w-[1480px] px-3 pb-3 sm:px-6 lg:px-10 pb-3 sm:pb-5 lg:pb-7 space-y-3 sm:space-y-5 lg:space-y-7">
 

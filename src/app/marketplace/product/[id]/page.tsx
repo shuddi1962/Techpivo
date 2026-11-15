@@ -202,7 +202,7 @@ export default async function MarketplaceProductPage({ params }: { params: { id:
     <div className="w-full bg-[#F8FAFC] min-h-screen marketplace-body">
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
       <MarketplaceHeader />
-      <main className="mx-auto w-full max-w-[1400px] px-3 pt-2 sm:px-6 lg:px-10 sm:pt-3 pb-6 sm:pb-8 space-y-6 sm:space-y-8">
+      <main className="mx-auto w-full max-w-[1400px] px-3 pt-0 sm:px-6 lg:px-10 sm:pt-2 pb-6 sm:pb-8 space-y-5 sm:space-y-7">
         <nav aria-label="Breadcrumb" className="flex items-center gap-1.5 text-xs text-slate-500 flex-wrap">
           <Link href="/marketplace" className="hover:text-[#0F172A]">Home</Link>
           <ChevronRight className="h-3 w-3" />

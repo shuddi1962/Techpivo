@@ -570,9 +570,9 @@ const [showBackToTop, setShowBackToTop] = useState(false)
               onClick={() => setOpen((v) => !v)}
               aria-label={open ? "Close menu" : "Open menu"}
               aria-expanded={open}
-              className="relative flex items-center justify-center rounded-full border border-[#1668DC] bg-[#1668DC] text-white shadow-md hover:bg-[#0F4FB3] transition-all duration-200 h-12 w-12 shrink-0 min-h-[48px] min-w-[48px] p-2"
+              className="relative flex items-center justify-center rounded-full hover:bg-[#FF6B00]/10 transition-colors h-12 w-12 shrink-0 min-h-[48px] min-w-[48px] p-2"
             >
-              {open ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
+              {open ? <X className="h-6 w-6 text-slate-600" /> : <Menu className="h-6 w-6 text-slate-600" />}
             </button>
           </div>
 
@@ -657,18 +657,18 @@ const [showBackToTop, setShowBackToTop] = useState(false)
         </div>
 
         {/* mobile search with live AJAX suggestions — full width, clean */}
-        <div className="md:hidden px-3 pb-2">
+        <div className="md:hidden px-3">
           <div ref={mobileBoxRef} className="relative w-full">
-          <form className="flex h-10 rounded-xl border border-[#CBD5E1] bg-[#F8FAFC] overflow-hidden focus-within:border-[#FF6B00] focus-within:ring-1 focus-within:ring-[#FF6B00]/30" onSubmit={submitSearch} role="search">
+          <form className="flex w-full h-11 rounded-xl border border-[#CBD5E1] bg-[#F8FAFC] overflow-hidden focus-within:border-[#FF6B00] focus-within:ring-1 focus-within:ring-[#FF6B00]/30" onSubmit={submitSearch} role="search">
             <input
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               onFocus={() => { if (query.trim().length >= 2) setSuggestOpen(true) }}
               ref={mobileSearchInputRef}
-              className="flex-1 bg-transparent px-4 text-sm text-black placeholder:text-slate-600 focus:outline-none"
+              className="flex-1 bg-transparent px-4 text-sm text-black placeholder:text-slate-600 focus:outline-none h-full"
               placeholder="Search TechPivo Market..."
             />
-            <button type="submit" aria-label="Search" className="bg-[#FF6B00] hover:bg-[#e86000] text-white px-5 flex items-center justify-center transition-all duration-200 rounded-r-xl h-full min-h-[44px]">
+            <button type="submit" aria-label="Search" className="bg-[#FF6B00] hover:bg-[#e86000] text-white px-5 flex items-center justify-center transition-all duration-200 rounded-r-xl h-full">
               <Search className="h-6 w-6" />
             </button>
           </form>
@@ -906,200 +906,201 @@ const [showBackToTop, setShowBackToTop] = useState(false)
           )}
         </div>
 
-        {/* mobile nav drawer — slides in from the left on mobile */}
-        <div className="md:hidden">
-          {open && (
-            <div
-              className="fixed inset-0 z-40 bg-[#0B3A9A]/50 backdrop-blur-sm transition-opacity duration-300"
+        </div>
+       </header>
+
+      {/* mobile nav drawer — slides in from the left on mobile (outside header to avoid z-50 clipping) */}
+      <div className="md:hidden">
+        {open && (
+          <div
+            className="fixed inset-0 z-[60] bg-[#0B3A9A]/50 backdrop-blur-sm transition-opacity duration-300"
+            onClick={() => setOpen(false)}
+            aria-hidden="true"
+          />
+        )}
+        <nav
+          className={`fixed top-0 left-0 z-[60] h-full w-[88%] max-w-[360px] overflow-y-auto bg-white shadow-2xl transform transition-transform duration-300 ease-out ${open ? "translate-x-0 opacity-100" : "-translate-x-full opacity-0 pointer-events-none"}`}
+          aria-label="Marketplace mobile"
+          style={{ touchAction: "pan-y" }}
+        >
+          {/* Drawer header: logo + close */}
+          <div className="flex items-center justify-between px-4 py-4 border-b border-[#E2E8F0] bg-white">
+            <Link href="/marketplace" className="flex items-center gap-2" onClick={() => setOpen(false)} aria-label="TechPivo Market home">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/market-logo.svg" alt="TechPivo Market" className="h-8 w-auto" />
+              <span className="text-sm font-bold text-[#0F172A] tracking-tight">TechPivo Market</span>
+            </Link>
+            <button
+              type="button"
               onClick={() => setOpen(false)}
-              aria-hidden="true"
-            />
-          )}
-          <nav
-            className={`fixed top-0 left-0 z-50 h-full w-[88%] max-w-[360px] overflow-y-auto bg-white shadow-2xl transform transition-transform duration-300 ease-out ${open ? "translate-x-0 opacity-100" : "-translate-x-full opacity-0 pointer-events-none"}`}
-            aria-label="Marketplace mobile"
-            style={{ touchAction: "pan-y" }}
-          >
-            {/* Drawer header: logo + close */}
-            <div className="flex items-center justify-between px-4 py-4 border-b border-[#E2E8F0] bg-white">
-              <Link href="/marketplace" className="flex items-center gap-2" onClick={() => setOpen(false)} aria-label="TechPivo Market home">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src="/market-logo.svg" alt="TechPivo Market" className="h-8 w-auto" />
-                <span className="text-sm font-bold text-[#0F172A] tracking-tight">TechPivo Market</span>
-              </Link>
+              className="p-2 rounded-full border border-[#E2E8F0] bg-[#F8FAFC] text-slate-600 hover:bg-[#E2E8F0] transition-colors h-10 w-10 min-h-[44px] min-w-[44px] flex items-center justify-center"
+              aria-label="Close menu"
+            >
+              <X className="h-6 w-6" />
+            </button>
+          </div>
+
+          {/* Currency switcher — uses existing currency-switching functionality */}
+          <div className="px-4 py-3 border-b border-[#E2E8F0] bg-[#F8FAFC]">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Currency</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-semibold text-[#0F172A]">{currency}</span>
               <button
                 type="button"
-                onClick={() => setOpen(false)}
-                className="p-2 rounded-full border border-[#E2E8F0] bg-[#F8FAFC] text-slate-600 hover:bg-[#E2E8F0] transition-colors h-10 w-10 min-h-[44px] min-w-[44px] flex items-center justify-center"
-                aria-label="Close menu"
+                onClick={() => setCurrencyOpen((o) => !o)}
+                className="p-2 rounded-full border border-[#E2E8F0] bg-white text-slate-600 hover:bg-[#FF3B30]/10 hover:text-[#FF3B30] transition-colors h-9 w-9 min-h-[36px] min-w-[36px] flex items-center justify-center"
+                aria-expanded={currencyOpen}
               >
-                <X className="h-6 w-6" />
+                <ChevronDown className="h-4 w-4 text-slate-500" />
               </button>
             </div>
-
-            {/* Currency switcher — uses existing currency-switching functionality */}
-            <div className="px-4 py-3 border-b border-[#E2E8F0] bg-[#F8FAFC]">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Currency</span>
+            {currencyOpen && (
+              <div className="mt-3 space-y-1">
+                {MARKET_CURRENCIES.map((code) => (
+                  <button
+                    key={code}
+                    type="button"
+                    role="option"
+                    aria-selected={currency === code}
+                    onClick={() => setCurrencyChoice(code)}
+                    className={`block w-full px-3 py-2 text-left text-sm font-semibold transition-colors rounded-lg ${currency === code ? "text-[#FF6B00] bg-[#FFF1F2] border-r-2 border-[#FF6B00]" : "text-slate-800 hover:bg-[#FFF1F2] hover:text-[#FF6B00]"}`}
+                  >
+                    <span className="font-medium">{code}</span>
+                    <span className="ml-2 text-xs text-slate-400">{CURRENCY_LABEL[code]}</span>
+                  </button>
+                ))}
               </div>
-              <div className="flex items-center gap-2">
-                <span className="text-sm font-semibold text-[#0F172A]">{currency}</span>
-                <button
-                  type="button"
-                  onClick={() => setCurrencyOpen((o) => !o)}
-                  className="p-2 rounded-full border border-[#E2E8F0] bg-white text-slate-600 hover:bg-[#FF3B30]/10 hover:text-[#FF3B30] transition-colors h-9 w-9 min-h-[36px] min-w-[36px] flex items-center justify-center"
-                  aria-expanded={currencyOpen}
+            )}
+          </div>
+
+          {/* Main navigation links */}
+          <div className="px-3 py-3 grid gap-1">
+            {NAV.map((item) => {
+              const isExternal = item.external;
+              const cls = "px-3 py-2.5 rounded-lg text-sm font-medium text-slate-700 transition-colors " + (isPrimary ? "hover:bg-[#EFF6FF] hover:text-[#1453D6]" : "hover:bg-[" + menuBg + "]/10 hover:text-[" + menuBg + "]");
+              return isExternal ? (
+                <a
+                  key={item.label}
+                  href={item.href}
+                  target="_blank"
+                  rel="noopener"
+                  onClick={() => setOpen(false)}
+                  className={cls}
                 >
-                  <ChevronDown className="h-4 w-4 text-slate-500" />
-                </button>
-              </div>
-              {currencyOpen && (
-                <div className="mt-3 space-y-1">
-                  {MARKET_CURRENCIES.map((code) => (
-                    <button
-                      key={code}
-                      type="button"
-                      role="option"
-                      aria-selected={currency === code}
-                      onClick={() => setCurrencyChoice(code)}
-                      className={`block w-full px-3 py-2 text-left text-sm font-semibold transition-colors rounded-lg ${currency === code ? "text-[#FF6B00] bg-[#FFF1F2] border-r-2 border-[#FF6B00]" : "text-slate-800 hover:bg-[#FFF1F2] hover:text-[#FF6B00]"}`}
-                    >
-                      <span className="font-medium">{code}</span>
-                      <span className="ml-2 text-xs text-slate-400">{CURRENCY_LABEL[code]}</span>
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
+                  {item.label}
+                </a>
+              ) : (
+                <Link
+                  key={item.label}
+                  href={item.href}
+                  onClick={() => setOpen(false)}
+                  className={cls}
+                >
+                  {item.label}
+                </Link>
+              )
+            })}
+          </div>
 
-            {/* Main navigation links */}
-            <div className="px-3 py-3 grid gap-1">
-              {NAV.map((item) => {
-                const isExternal = item.external;
-                const cls = "px-3 py-2.5 rounded-lg text-sm font-medium text-slate-700 transition-colors " + (isPrimary ? "hover:bg-[#EFF6FF] hover:text-[#1453D6]" : "hover:bg-[" + menuBg + "]/10 hover:text-[" + menuBg + "]");
-                return isExternal ? (
-                  <a
-                    key={item.label}
-                    href={item.href}
-                    target="_blank"
-                    rel="noopener"
-                    onClick={() => setOpen(false)}
-                    className={cls}
-                  >
-                    {item.label}
-                  </a>
-                ) : (
-                  <Link
-                    key={item.label}
-                    href={item.href}
-                    onClick={() => setOpen(false)}
-                    className={cls}
-                  >
-                    {item.label}
-                  </Link>
-                )
-              })}
-            </div>
+          {/* Customer pages */}
+          <div className="px-3 pt-3 pb-1">
+            <p className="px-3 pb-1 text-[11px] font-bold uppercase tracking-wider text-slate-400">Account &amp; help</p>
+          </div>
+          <div className="px-2 pb-3 grid gap-1">
+            {[
+              { label: "My Account", href: acctName ? "/marketplace/account" : "/login", icon: User },
+              { label: "My Orders", href: "/marketplace/track", icon: Clock },
+              { label: "Wishlist", href: "/marketplace/wishlist", icon: Heart },
+              { label: "Shopping Cart", href: "/marketplace/cart", icon: ShoppingCart },
+              { label: "Contact Us", href: "/contact", icon: Mail },
+              { label: "Help Centre", href: "/marketplace/help", icon: Headset },
+              { label: "About Us", href: "/about", icon: Package },
+              { label: "Privacy Policy", href: "/privacy-policy", icon: ShieldCheck },
+              { label: "Terms and Conditions", href: "/terms-of-use", icon: Book },
+            ].map((item) => {
+              const cls = "flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm font-medium text-slate-700 transition-colors hover:bg-[#FFF1F2] hover:text-[#FF6B00]";
+              return (
+                <Link
+                  key={item.label}
+                  href={item.href}
+                  onClick={() => setOpen(false)}
+                  className={cls}
+                >
+                  <item.icon className="h-4 w-4 shrink-0 text-slate-500" />
+                  {item.label}
+                </Link>
+              )
+            })}
+          </div>
 
-            {/* Customer pages */}
-            <div className="px-3 pt-3 pb-1">
-              <p className="px-3 pb-1 text-[11px] font-bold uppercase tracking-wider text-slate-400">Account &amp; help</p>
-            </div>
-            <div className="px-2 pb-3 grid gap-1">
-              {[
-                { label: "My Account", href: acctName ? "/marketplace/account" : "/login", icon: User },
-                { label: "My Orders", href: "/marketplace/track", icon: Clock },
-                { label: "Wishlist", href: "/marketplace/wishlist", icon: Heart },
-                { label: "Shopping Cart", href: "/marketplace/cart", icon: ShoppingCart },
-                { label: "Contact Us", href: "/contact", icon: Mail },
-                { label: "Help Centre", href: "/marketplace/help", icon: Headset },
-                { label: "About Us", href: "/about", icon: Package },
-                { label: "Privacy Policy", href: "/privacy-policy", icon: ShieldCheck },
-                { label: "Terms and Conditions", href: "/terms-of-use", icon: Book },
-              ].map((item) => {
-                const cls = "flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm font-medium text-slate-700 transition-colors hover:bg-[#FFF1F2] hover:text-[#FF6B00]";
-                return (
-                  <Link
-                    key={item.label}
-                    href={item.href}
-                    onClick={() => setOpen(false)}
-                    className={cls}
+          {/* Departments */}
+          <div className="px-3 pt-3 pb-1">
+            <p className="px-3 pb-1 text-[11px] font-bold uppercase tracking-wider text-slate-400">Departments</p>
+          </div>
+          <div className="px-2 pb-4 grid gap-1">
+            {departments.map((d) => {
+              const expanded = mobileExpanded === d.slug;
+              const Icon = resolveDeptIcon(d);
+              const isPrimary = menuBg === "#1453D6";
+              const btnBase = "w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-sm font-semibold text-left transition-colors";
+              const btnActive = isPrimary ? "text-[#1453D6] hover:bg-[#1453D6]/10 hover:text-[#0B3A9A]" : "text-[" + menuBg + "] hover:bg-[" + menuBg + "]/10 hover:text-[" + menuBgHover + "]";
+              const btnCls = btnBase + " " + btnActive;
+              const linkActive = isPrimary ? "text-[#1453D6] hover:bg-[#1453D6]/10 hover:text-[#0B3A9A]" : "text-[" + menuBg + "] hover:bg-[" + menuBg + "]/10 hover:text-[" + menuBgHover + "]";
+              const linkCls = "flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold text-left transition-colors " + linkActive;
+              return (
+                <div key={d.slug}>
+                  <button
+                    type="button"
+                    onClick={() => setMobileExpanded(expanded ? "" : d.slug)}
+                    aria-expanded={expanded}
+                    className={btnCls}
                   >
-                    <item.icon className="h-4 w-4 shrink-0 text-slate-500" />
-                    {item.label}
-                  </Link>
-                )
-              })}
-            </div>
-
-            {/* Departments */}
-            <div className="px-3 pt-3 pb-1">
-              <p className="px-3 pb-1 text-[11px] font-bold uppercase tracking-wider text-slate-400">Departments</p>
-            </div>
-            <div className="px-2 pb-4 grid gap-1">
-              {departments.map((d) => {
-                const expanded = mobileExpanded === d.slug;
-                const Icon = resolveDeptIcon(d);
-                const isPrimary = menuBg === "#1453D6";
-                const btnBase = "w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-sm font-semibold text-left transition-colors";
-                const btnActive = isPrimary ? "text-[#1453D6] hover:bg-[#1453D6]/10 hover:text-[#0B3A9A]" : "text-[" + menuBg + "] hover:bg-[" + menuBg + "]/10 hover:text-[" + menuBgHover + "]";
-                const btnCls = btnBase + " " + btnActive;
-                const linkActive = isPrimary ? "text-[#1453D6] hover:bg-[#1453D6]/10 hover:text-[#0B3A9A]" : "text-[" + menuBg + "] hover:bg-[" + menuBg + "]/10 hover:text-[" + menuBgHover + "]";
-                const linkCls = "flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold text-left transition-colors " + linkActive;
-                return (
-                  <div key={d.slug}>
-                    <button
-                      type="button"
-                      onClick={() => setMobileExpanded(expanded ? "" : d.slug)}
-                      aria-expanded={expanded}
-                      className={btnCls}
-                    >
-                      {Icon && (
-                        <span className="flex items-center justify-center w-6 h-6 rounded-lg bg-[#F8FAFC] text-slate-500 shrink-0">
-                          <Icon size={14} />
+                    {Icon && (
+                      <span className="flex items-center justify-center w-6 h-6 rounded-lg bg-[#F8FAFC] text-slate-500 shrink-0">
+                        <Icon size={14} />
+                      </span>
+                    )}
+                    {d.name}
+                    <ChevronDown
+                      className={"h-4 w-4 text-slate-400 transition-transform " + (expanded ? "rotate-180" : "")}
+                    />
+                  </button>
+                  {expanded && (
+                    <div className="pl-4 space-y-0.5">
+                      <Link
+                        href={"/marketplace/category/" + d.slug}
+                        onClick={() => setOpen(false)}
+                        className={linkCls}
+                      >
+                        <span className="w-5 h-5 shrink-0 opacity-50">
+                          <Package size={12} />
                         </span>
-                      )}
-                      {d.name}
-                      <ChevronDown
-                        className={"h-4 w-4 text-slate-400 transition-transform " + (expanded ? "rotate-180" : "")}
-                      />
-                    </button>
-                    {expanded && (
-                      <div className="pl-4 space-y-0.5">
-                        <Link
-                          href={"/marketplace/category/" + d.slug}
-                          onClick={() => setOpen(false)}
-                          className={linkCls}
-                        >
-                          <span className="w-5 h-5 shrink-0 opacity-50">
-                            <Package size={12} />
-                          </span>
-                          All {d.name}
-                        </Link>
-                        {d.subs.map((s) => (
-                            <Link
-                              key={s.slug}
-                              href={"/marketplace/category/" + s.slug}
-                              onClick={() => setOpen(false)}
-                              className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs text-[#111827] hover:bg-[#FFF1F2] hover:text-[#FF3B30] text-left transition-colors"
-                            >
+                        All {d.name}
+                      </Link>
+                      {d.subs.map((s) => (
+                          <Link
+                            key={s.slug}
+                            href={"/marketplace/category/" + s.slug}
+                            onClick={() => setOpen(false)}
+                            className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs text-[#111827] hover:bg-[#FFF1F2] hover:text-[#FF3B30] text-left transition-colors"
+                          >
                             <span className="w-5 h-5 shrink-0 opacity-40">
                               <LayoutGrid size={12} />
                             </span>
                             {s.name}
                           </Link>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-            <div className="pb-6" />
-          </nav>
-        </div>
-        </div>
-       </header>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+          <div className="pb-6" />
+        </nav>
+      </div>
 
       {/* sticky bottom mobile nav — shared across all marketplace pages */}
       <MarketBottomNav
