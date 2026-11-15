@@ -89,7 +89,7 @@ export function CartPage() {
 
   if (loading) {
     return (
-      <div className="bg-white rounded-2xl border border-[#E2E8F0] p-10 text-center text-sm text-slate-500">
+      <div className="bg-white rounded-2xl border border-[#E2E8F0] p-4 sm:p-6 text-center text-sm text-slate-500">
         Loading your cart...
       </div>
     )
@@ -97,7 +97,7 @@ export function CartPage() {
 
   if (cartLines.length === 0) {
     return (
-      <div className="bg-white rounded-2xl border border-[#E2E8F0] p-10 text-center">
+      <div className="bg-white rounded-2xl border border-[#E2E8F0] p-4 sm:p-6 text-center">
         <ShoppingCart className="h-10 w-10 text-slate-300 mx-auto mb-3" />
         <p className="font-bold text-[#0F172A] text-lg">Your cart is empty</p>
         <p className="text-sm text-slate-500 mt-1">Discover curated tech products below.</p>
@@ -112,7 +112,7 @@ export function CartPage() {
     <div id="cart-page" className="cart-page grid grid-cols-1 gap-4 lg:grid-cols-12">
       <div className="lg:col-span-8 bg-white rounded-2xl border border-[#E2E8F0] p-4 sm:p-5">
         <div className="flex items-center justify-between mb-3">
-          <h1 className="text-xl font-extrabold text-[#0F172A]">Your Cart ({cartLines.reduce((s, l) => s + l.qty, 0)})</h1>
+          <h1 className="text-lg font-extrabold text-[#0F172A]">Your Cart ({cartLines.reduce((s, l) => s + l.qty, 0)})</h1>
           <Link href="/marketplace" className="text-sm text-[#B45309] font-semibold inline-flex items-center gap-1">
             <ArrowLeft className="h-4 w-4" /> Continue shopping
           </Link>
