@@ -656,8 +656,8 @@ const [showBackToTop, setShowBackToTop] = useState(false)
           </div>
         </div>
 
-        {/* mobile search with live AJAX suggestions — full width, clean */}
-        <div className="md:hidden px-3">
+        {/* mobile search with live AJAX suggestions — full width, clean, flush */}
+        <div className="md:hidden w-full">
           <div ref={mobileBoxRef} className="relative w-full">
           <form className="flex w-full h-11 rounded-xl border border-[#CBD5E1] bg-[#F8FAFC] overflow-hidden focus-within:border-[#FF6B00] focus-within:ring-1 focus-within:ring-[#FF6B00]/30" onSubmit={submitSearch} role="search">
             <input
@@ -913,40 +913,48 @@ const [showBackToTop, setShowBackToTop] = useState(false)
       <div className="md:hidden">
         {open && (
           <div
-            className="fixed inset-0 z-[60] bg-[#0B3A9A]/50 backdrop-blur-sm transition-opacity duration-300"
+            className="fixed inset-0 z-[60] bg-[#0F172A]/55 backdrop-blur-md transition-opacity duration-300"
             onClick={() => setOpen(false)}
             aria-hidden="true"
           />
         )}
         <nav
-          className={`fixed top-0 left-0 z-[60] h-full w-[88%] max-w-[360px] overflow-y-auto bg-white shadow-2xl transform transition-transform duration-300 ease-out ${open ? "translate-x-0 opacity-100" : "-translate-x-full opacity-0 pointer-events-none"}`}
+          className={`fixed top-0 left-0 z-[60] h-full w-[92%] max-w-[380px] overflow-y-auto bg-white shadow-2xl transform transition-transform duration-300 ease-out ${open ? "translate-x-0 opacity-100" : "-translate-x-full opacity-0 pointer-events-none"}`}
           aria-label="Marketplace mobile"
           style={{ touchAction: "pan-y" }}
         >
-          {/* Drawer header: logo + close */}
-          <div className="flex items-center justify-between px-4 py-4 border-b border-[#E2E8F0] bg-white">
+          {/* Drawer header — premium brand bar */}
+          <div className="flex items-center justify-between px-4 py-4 border-b border-[#E2E8F0] bg-[#F8FAFC]">
             <Link href="/marketplace" className="flex items-center gap-2" onClick={() => setOpen(false)} aria-label="TechPivo Market home">
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="/market-logo.svg" alt="TechPivo Market" className="h-8 w-auto" />
+              <img src="/market-logo.svg" alt="TechPivo Market" className="h-9 w-auto" />
               <span className="text-sm font-bold text-[#0F172A] tracking-tight">TechPivo Market</span>
             </Link>
             <button
               type="button"
               onClick={() => setOpen(false)}
-              className="p-2 rounded-full border border-[#E2E8F0] bg-[#F8FAFC] text-slate-600 hover:bg-[#E2E8F0] transition-colors h-10 w-10 min-h-[44px] min-w-[44px] flex items-center justify-center"
+              className="p-2.5 rounded-full border border-[#E2E8F0] bg-white text-slate-600 hover:bg-[#E2E8F0] transition-colors h-11 w-11 min-h-[44px] min-w-[44px] flex items-center justify-center shadow-sm"
               aria-label="Close menu"
             >
               <X className="h-6 w-6" />
             </button>
           </div>
 
-          {/* Currency switcher — uses existing currency-switching functionality */}
-          <div className="px-4 py-3 border-b border-[#E2E8F0] bg-[#F8FAFC]">
+          {/* Currency switcher */}
+          <div className="px-4 py-4 border-b border-[#E2E8F0] bg-[#F8FAFC]">
             <div className="flex items-center justify-between mb-2">
-              <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Currency</span>
+              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Currency</span>
+              <button
+                type="button"
+                onClick={() => setCurrencyOpen((o) => !o)}
+                className="text-xs font-semibold text-[#FF6B00] hover:text-[#e86000]"
+                aria-expanded={currencyOpen}
+              >
+                {currencyOpen ? "Collapse" : "Change"}
+              </button>
             </div>
             <div className="flex items-center gap-2">
-              <span className="text-sm font-semibold text-[#0F172A]">{currency}</span>
+              <span className="text-sm font-bold text-[#0F172A]">{currency}</span>
               <button
                 type="button"
                 onClick={() => setCurrencyOpen((o) => !o)}
@@ -975,11 +983,11 @@ const [showBackToTop, setShowBackToTop] = useState(false)
             )}
           </div>
 
-          {/* Main navigation links */}
-          <div className="px-3 py-3 grid gap-1">
+          {/* Main navigation */}
+          <div className="px-4 py-3 space-y-1">
             {NAV.map((item) => {
               const isExternal = item.external;
-              const cls = "px-3 py-2.5 rounded-lg text-sm font-medium text-slate-700 transition-colors " + (isPrimary ? "hover:bg-[#EFF6FF] hover:text-[#1453D6]" : "hover:bg-[" + menuBg + "]/10 hover:text-[" + menuBg + "]");
+              const cls = "px-3 py-2.5 rounded-lg text-sm font-medium text-slate-700 transition-colors flex items-center gap-2 " + (isPrimary ? "hover:bg-[#EFF6FF] hover:text-[#1453D6]" : "hover:bg-[" + menuBg + "]/10 hover:text-[" + menuBg + "]");
               return isExternal ? (
                 <a
                   key={item.label}
@@ -1005,100 +1013,104 @@ const [showBackToTop, setShowBackToTop] = useState(false)
           </div>
 
           {/* Customer pages */}
-          <div className="px-3 pt-3 pb-1">
-            <p className="px-3 pb-1 text-[11px] font-bold uppercase tracking-wider text-slate-400">Account &amp; help</p>
-          </div>
-          <div className="px-2 pb-3 grid gap-1">
-            {[
-              { label: "My Account", href: acctName ? "/marketplace/account" : "/login", icon: User },
-              { label: "My Orders", href: "/marketplace/track", icon: Clock },
-              { label: "Wishlist", href: "/marketplace/wishlist", icon: Heart },
-              { label: "Shopping Cart", href: "/marketplace/cart", icon: ShoppingCart },
-              { label: "Contact Us", href: "/contact", icon: Mail },
-              { label: "Help Centre", href: "/marketplace/help", icon: Headset },
-              { label: "About Us", href: "/about", icon: Package },
-              { label: "Privacy Policy", href: "/privacy-policy", icon: ShieldCheck },
-              { label: "Terms and Conditions", href: "/terms-of-use", icon: Book },
-            ].map((item) => {
-              const cls = "flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm font-medium text-slate-700 transition-colors hover:bg-[#FFF1F2] hover:text-[#FF6B00]";
-              return (
-                <Link
-                  key={item.label}
-                  href={item.href}
-                  onClick={() => setOpen(false)}
-                  className={cls}
-                >
-                  <item.icon className="h-4 w-4 shrink-0 text-slate-500" />
-                  {item.label}
-                </Link>
-              )
-            })}
+          <div className="px-4">
+            <div className="flex items-center gap-2 px-3 py-2 mb-1">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Account &amp; help</span>
+            </div>
+            <div className="px-2 space-y-0.5">
+              {[
+                { label: "My Account", href: acctName ? "/marketplace/account" : "/login", icon: User },
+                { label: "My Orders", href: "/marketplace/track", icon: Clock },
+                { label: "Wishlist", href: "/marketplace/wishlist", icon: Heart },
+                { label: "Shopping Cart", href: "/marketplace/cart", icon: ShoppingCart },
+                { label: "Contact Us", href: "/contact", icon: Mail },
+                { label: "Help Centre", href: "/marketplace/help", icon: Headset },
+                { label: "About Us", href: "/about", icon: Package },
+                { label: "Privacy Policy", href: "/privacy-policy", icon: ShieldCheck },
+                { label: "Terms and Conditions", href: "/terms-of-use", icon: Book },
+              ].map((item) => {
+                const cls = "flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm font-medium text-slate-700 transition-colors hover:bg-[#FFF1F2] hover:text-[#FF6B00]";
+                return (
+                  <Link
+                    key={item.label}
+                    href={item.href}
+                    onClick={() => setOpen(false)}
+                    className={cls}
+                  >
+                    <item.icon className="h-4 w-4 shrink-0 text-slate-500" />
+                    {item.label}
+                  </Link>
+                )
+              })}
+            </div>
           </div>
 
           {/* Departments */}
-          <div className="px-3 pt-3 pb-1">
-            <p className="px-3 pb-1 text-[11px] font-bold uppercase tracking-wider text-slate-400">Departments</p>
-          </div>
-          <div className="px-2 pb-4 grid gap-1">
-            {departments.map((d) => {
-              const expanded = mobileExpanded === d.slug;
-              const Icon = resolveDeptIcon(d);
-              const isPrimary = menuBg === "#1453D6";
-              const btnBase = "w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-sm font-semibold text-left transition-colors";
-              const btnActive = isPrimary ? "text-[#1453D6] hover:bg-[#1453D6]/10 hover:text-[#0B3A9A]" : "text-[" + menuBg + "] hover:bg-[" + menuBg + "]/10 hover:text-[" + menuBgHover + "]";
-              const btnCls = btnBase + " " + btnActive;
-              const linkActive = isPrimary ? "text-[#1453D6] hover:bg-[#1453D6]/10 hover:text-[#0B3A9A]" : "text-[" + menuBg + "] hover:bg-[" + menuBg + "]/10 hover:text-[" + menuBgHover + "]";
-              const linkCls = "flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold text-left transition-colors " + linkActive;
-              return (
-                <div key={d.slug}>
-                  <button
-                    type="button"
-                    onClick={() => setMobileExpanded(expanded ? "" : d.slug)}
-                    aria-expanded={expanded}
-                    className={btnCls}
-                  >
-                    {Icon && (
-                      <span className="flex items-center justify-center w-6 h-6 rounded-lg bg-[#F8FAFC] text-slate-500 shrink-0">
-                        <Icon size={14} />
-                      </span>
-                    )}
-                    {d.name}
-                    <ChevronDown
-                      className={"h-4 w-4 text-slate-400 transition-transform " + (expanded ? "rotate-180" : "")}
-                    />
-                  </button>
-                  {expanded && (
-                    <div className="pl-4 space-y-0.5">
-                      <Link
-                        href={"/marketplace/category/" + d.slug}
-                        onClick={() => setOpen(false)}
-                        className={linkCls}
-                      >
-                        <span className="w-5 h-5 shrink-0 opacity-50">
-                          <Package size={12} />
+          <div className="px-4">
+            <div className="flex items-center gap-2 px-3 py-2 mb-1 border-t border-[#E2E8F0]">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Departments</span>
+            </div>
+            <div className="px-2 space-y-0.5">
+              {departments.map((d) => {
+                const expanded = mobileExpanded === d.slug;
+                const Icon = resolveDeptIcon(d);
+                const isPrimary = menuBg === "#1453D6";
+                const btnBase = "w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-sm font-semibold text-left transition-colors";
+                const btnActive = isPrimary ? "text-[#1453D6] hover:bg-[#1453D6]/10 hover:text-[#0B3A9A]" : "text-[" + menuBg + "] hover:bg-[" + menuBg + "]/10 hover:text-[" + menuBgHover + "]";
+                const btnCls = btnBase + " " + btnActive;
+                const linkActive = isPrimary ? "text-[#1453D6] hover:bg-[#1453D6]/10 hover:text-[#0B3A9A]" : "text-[" + menuBg + "] hover:bg-[" + menuBg + "]/10 hover:text-[" + menuBgHover + "]";
+                const linkCls = "flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold text-left transition-colors " + linkActive;
+                return (
+                  <div key={d.slug}>
+                    <button
+                      type="button"
+                      onClick={() => setMobileExpanded(expanded ? "" : d.slug)}
+                      aria-expanded={expanded}
+                      className={btnCls}
+                    >
+                      {Icon && (
+                        <span className="flex items-center justify-center w-6 h-6 rounded-lg bg-[#F8FAFC] text-slate-500 shrink-0">
+                          <Icon size={14} />
                         </span>
-                        All {d.name}
-                      </Link>
-                      {d.subs.map((s) => (
-                          <Link
-                            key={s.slug}
-                            href={"/marketplace/category/" + s.slug}
-                            onClick={() => setOpen(false)}
-                            className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs text-[#111827] hover:bg-[#FFF1F2] hover:text-[#FF3B30] text-left transition-colors"
-                          >
-                            <span className="w-5 h-5 shrink-0 opacity-40">
-                              <LayoutGrid size={12} />
-                            </span>
-                            {s.name}
-                          </Link>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              );
-            })}
+                      )}
+                      {d.name}
+                      <ChevronDown
+                        className={"h-4 w-4 text-slate-400 transition-transform " + (expanded ? "rotate-180" : "")}
+                      />
+                    </button>
+                    {expanded && (
+                      <div className="pl-4 space-y-0.5 pt-1">
+                        <Link
+                          href={"/marketplace/category/" + d.slug}
+                          onClick={() => setOpen(false)}
+                          className={linkCls}
+                        >
+                          <span className="w-5 h-5 shrink-0 opacity-50">
+                            <Package size={12} />
+                          </span>
+                          All {d.name}
+                        </Link>
+                        {d.subs.map((s) => (
+                            <Link
+                              key={s.slug}
+                              href={"/marketplace/category/" + s.slug}
+                              onClick={() => setOpen(false)}
+                              className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs text-[#111827] hover:bg-[#FFF1F2] hover:text-[#FF3B30] text-left transition-colors"
+                            >
+                              <span className="w-5 h-5 shrink-0 opacity-40">
+                                <LayoutGrid size={12} />
+                              </span>
+                              {s.name}
+                            </Link>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
           </div>
-          <div className="pb-6" />
+          <div className="pb-8" />
         </nav>
       </div>
 

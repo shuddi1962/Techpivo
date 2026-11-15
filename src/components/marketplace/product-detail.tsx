@@ -554,7 +554,7 @@ export function ProductDetail({
             {sold > 0 && <span><strong className="text-[#0F172A]">{sold}</strong> sold</span>}
             {hasSupplier && <span>Ships from: <strong className="text-[#0F172A]">China</strong></span>}
           </div>
-          <h1 className="text-2xl sm:text-3xl font-extrabold text-[#0F172A] tracking-tight leading-tight">{rewritten.title}</h1>
+          <h1 className="text-lg sm:text-2xl font-extrabold text-[#0F172A] tracking-tight leading-tight">{rewritten.title}</h1>
           {rewritten.short && (
             <p className="mt-1 rounded-lg border border-[#F59E0B]/20 bg-[#FFFBEB]/50 px-3.5 py-2 text-sm text-slate-700 leading-relaxed">
               {rewritten.short}

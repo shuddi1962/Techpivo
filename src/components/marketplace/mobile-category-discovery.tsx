@@ -153,6 +153,14 @@ export function MobileCategoryDiscovery({
     if (p.kind === "sub" && p.deptSlug) {
       const dept = fetched.get(p.deptSlug) || covers?.get(p.deptSlug)
       if (dept && dept.length > 0) return dept[rot % dept.length]
+      // 3. Final fallback: use the department's own banner image so we never
+      //    show a letter chip when real artwork exists.
+      const deptNode = departments.find((d) => d.slug === p.deptSlug)
+      if (deptNode?.image) return deptNode.image
+    }
+    if (p.kind === "dept") {
+      const deptNode = departments.find((d) => d.slug === p.slug)
+      if (deptNode?.image) return deptNode.image
     }
     return ""
   }
