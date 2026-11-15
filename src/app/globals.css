@@ -365,10 +365,10 @@ body { position: relative; }
      margin-bottom: 0 !important;
    }
 
-   /* Tighten main top padding on mobile so hero sits close to header */
-   .marketplace-body main {
-     padding-top: 0.5rem !important;
-   }
+    /* Tighten main top padding on mobile so hero sits close to header */
+    .marketplace-body main {
+      padding-top: 0 !important;
+    }
 
    /* Compact containers: tighter padding on small screens */
    .marketplace-body main [class*="max-w-\[1480px\]"],

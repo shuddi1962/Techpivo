@@ -547,7 +547,7 @@ const [showBackToTop, setShowBackToTop] = useState(false)
           </Link>
 
           {/* Mobile icons row: LOGO | WISHLIST | CART | MENU (hamburger on far right) */}
-          <div className="flex items-center gap-2 shrink-0 md:hidden">
+          <div className="flex items-center gap-1 shrink-0 md:hidden">
             <Link
               href="/marketplace/wishlist"
               aria-label={`Wishlist${shownWishCount > 0 ? `, ${shownWishCount} saved` : ""}`}
@@ -660,18 +660,18 @@ const [showBackToTop, setShowBackToTop] = useState(false)
         </div>
 
         {/* mobile search with live AJAX suggestions — full width, clean, flush */}
-        <div className="md:hidden w-full">
-          <div ref={mobileBoxRef} className="relative w-full">
-          <form className="flex w-full h-11 rounded-xl border border-[#CBD5E1] bg-[#F8FAFC] overflow-hidden focus-within:border-[#FF6B00] focus-within:ring-1 focus-within:ring-[#FF6B00]/30" onSubmit={submitSearch} role="search">
+        <div className="md:hidden w-full mt-0">
+          <div ref={mobileBoxRef} className="relative w-full mt-0">
+          <form className="flex w-full h-11 rounded-xl border border-[#CBD5E1] bg-[#F8FAFC] overflow-hidden focus-within:border-[#FF6B00] focus-within:ring-1 focus-within:ring-[#FF6B00]/30 m-0" onSubmit={submitSearch} role="search">
             <input
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               onFocus={() => { if (query.trim().length >= 2) setSuggestOpen(true) }}
               ref={mobileSearchInputRef}
-              className="flex-1 bg-transparent px-4 text-sm text-black placeholder:text-slate-600 focus:outline-none h-full"
+              className="flex-1 bg-transparent px-4 text-sm text-black placeholder:text-slate-600 focus:outline-none h-full m-0"
               placeholder="Search TechPivo Market..."
             />
-            <button type="submit" aria-label="Search" className="bg-[#FF6B00] hover:bg-[#e86000] text-white px-5 flex items-center justify-center transition-all duration-200 rounded-r-xl h-full">
+            <button type="submit" aria-label="Search" className="bg-[#FF6B00] hover:bg-[#e86000] text-white px-5 flex items-center justify-center transition-all duration-200 rounded-r-xl h-full m-0">
               <Search className="h-6 w-6" />
             </button>
           </form>
