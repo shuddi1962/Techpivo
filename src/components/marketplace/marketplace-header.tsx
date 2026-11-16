@@ -15,6 +15,7 @@ import { MarketBottomNav } from "./market-bottom-nav"
 import { MobilePromoNotice } from "./mobile-promo-notice"
 import { MobileAnnouncement } from "./mobile-announcement"
 import { MobileCategoryNav } from "./mobile-category-nav"
+import { MobileHomeHeader } from "./mobile-home-header"
 import { MARKETPLACE_BRAND } from "@/lib/marketplace"
 import type { MarketBanners } from "@/lib/marketplace-banners"
 import { useMarketCart } from "@/lib/marketplace-cart"
@@ -202,7 +203,6 @@ const [showBackToTop, setShowBackToTop] = useState(false)
   const [suggestOpen, setSuggestOpen] = useState(false)
   const searchBoxRef = useRef<HTMLDivElement>(null)
   const mobileBoxRef = useRef<HTMLDivElement>(null)
-  const mobileSearchInputRef = useRef<HTMLInputElement>(null)
   useEffect(() => {
     if (query.trim().length >= 2) setSuggestOpen(true)
     else setSuggestOpen(false)
@@ -376,13 +376,18 @@ const [showBackToTop, setShowBackToTop] = useState(false)
     }
   }, [open])
 
-  const submitSearch = (e: React.FormEvent) => {
-    e.preventDefault()
+  const submitSearch = (input: string | React.FormEvent) => {
     setSuggestOpen(false)
-    const q = query.trim()
+    let q: string
+    if (typeof input === "string") {
+      q = input.trim()
+    } else {
+      input.preventDefault()
+      q = query.trim()
+    }
     if (onSearch) {
       // Homepage: filter the live grid in place.
-      onSearch(query)
+      onSearch(q)
       const params = new URLSearchParams()
       if (q) params.set("q", q)
       if (dept) params.set("dept", dept)
@@ -546,38 +551,8 @@ const [showBackToTop, setShowBackToTop] = useState(false)
             <img src="/market-logo.svg" alt="TechPivo Market" className="h-10 w-auto sm:h-11" />
           </Link>
 
-          {/* Mobile icons row: LOGO | WISHLIST | CART | MENU (hamburger on far right) */}
-          <div className="flex items-center gap-1 shrink-0 md:hidden">
-            <Link
-              href="/marketplace/wishlist"
-              aria-label={`Wishlist${shownWishCount > 0 ? `, ${shownWishCount} saved` : ""}`}
-              className="relative flex items-center justify-center rounded-full hover:bg-[#FF6B00]/10 transition-colors h-12 w-12 shrink-0 min-h-[48px] min-w-[48px] p-2"
-            >
-              <Heart className="h-6 w-6 text-slate-600" />
-              {shownWishCount > 0 && (
-                <span className="absolute -top-1 -right-1 bg-[#EF4444] text-white text-[10px] min-w-5 h-5 px-1 rounded-full flex items-center justify-center font-bold shadow-sm ring-2 ring-white">{shownWishCount}</span>
-              )}
-            </Link>
-            <Link
-              href="/marketplace/cart"
-              aria-label={`Your basket, ${shownCartCount} item${shownCartCount === 1 ? "" : "s"}`}
-              className="relative flex items-center justify-center rounded-full hover:bg-[#FF6B00]/10 transition-colors h-12 w-12 shrink-0 min-h-[48px] min-w-[48px] p-2"
-            >
-              <ShoppingBasket className="h-6 w-6 text-slate-600" />
-              {shownCartCount > 0 && (
-                <span className="absolute -top-1 -right-1 bg-[#EF4444] text-white text-[10px] min-w-5 h-5 px-1 rounded-full flex items-center justify-center font-bold shadow-sm ring-2 ring-white tabular-nums">{shownCartCount}</span>
-              )}
-            </Link>
-            <button
-              type="button"
-              onClick={() => setOpen((v) => !v)}
-              aria-label={open ? "Close menu" : "Open menu"}
-              aria-expanded={open}
-              className="relative flex items-center justify-center rounded-full hover:bg-[#FF6B00]/10 transition-colors h-12 w-12 shrink-0 min-h-[48px] min-w-[48px] p-2"
-            >
-              {open ? <X className="h-6 w-6 text-slate-600" /> : <Menu className="h-6 w-6 text-slate-600" />}
-            </button>
-          </div>
+          {/* Mobile header — new compact header with search, wishlist, cart, menu */}
+          <MobileHomeHeader onSearch={submitSearch} onMenuToggle={() => setOpen((v) => !v)} />
 
           {/* Desktop search (hidden on mobile) */}
           <div ref={searchBoxRef} className="hidden md:flex flex-1 max-w-2xl relative">
@@ -658,35 +633,7 @@ const [showBackToTop, setShowBackToTop] = useState(false)
             </Link>
           </div>
         </div>
-
-        {/* mobile search with live AJAX suggestions — full width, clean, flush */}
-        <div className="md:hidden w-full mt-0">
-          <div ref={mobileBoxRef} className="relative w-full mt-0">
-          <form className="flex w-full h-11 rounded-xl border border-[#CBD5E1] bg-[#F8FAFC] overflow-hidden focus-within:border-[#FF6B00] focus-within:ring-1 focus-within:ring-[#FF6B00]/30 m-0" onSubmit={submitSearch} role="search">
-            <input
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              onFocus={() => { if (query.trim().length >= 2) setSuggestOpen(true) }}
-              ref={mobileSearchInputRef}
-              className="flex-1 bg-transparent px-4 text-sm text-black placeholder:text-slate-600 focus:outline-none h-full m-0"
-              placeholder="Search TechPivo Market..."
-            />
-            <button type="submit" aria-label="Search" className="bg-[#FF6B00] hover:bg-[#e86000] text-white px-4 flex items-center justify-center transition-all duration-200 rounded-r-xl h-full m-0">
-              <Search className="h-6 w-6 shrink-0" />
-            </button>
-          </form>
-          {suggestOpen && (
-            <SuggestDropdown
-              items={suggestItems}
-              loading={suggestLoading}
-              query={query}
-              onPick={() => setSuggestOpen(false)}
-              onSubmitAll={() => { setSuggestOpen(false); submitSearch({ preventDefault: () => {} } as React.FormEvent) }}
-            />
-          )}
-          </div>
         </div>
-      </div>
 
       {/* nav bar — single row, never wraps: horizontal scroll instead of pushing content down */}
       <div className="relative hidden w-full border-b border-[#E2E8F0] shadow-sm md:block bg-white">
@@ -1122,7 +1069,6 @@ const [showBackToTop, setShowBackToTop] = useState(false)
         <MarketBottomNav
           onSearchToggle={() => {
             setOpen(false)
-            mobileSearchInputRef.current?.focus()
             setSuggestOpen(false)
           }}
           onCategoryOpen={() => setCategoryNavOpen(true)}

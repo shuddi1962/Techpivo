@@ -34,7 +34,7 @@ import { isNewPick, isBestsellerPick, showSaleBadge, salePctOf } from "@/lib/mar
 import { useMarketMerch, useSaleBadge, useProductDiscount } from "./market-flags"
 import { FeaturePanels } from "./feature-panels"
 import { MobileCategoryDiscovery } from "./mobile-category-discovery"
-import { MobileHeroCarousel } from "./mobile-hero-carousel"
+import { MobileSlideBanner } from "./mobile-slide-banner"
 
 type ScopeRow = {
   category_slug: string | null;
@@ -864,7 +864,7 @@ export function MarketplaceHome() {
           fallback chain: mobile_hero_image → mobile_hero_slides → desktop
           hero_image. Rendered OUTSIDE <main> so the page's top padding
           cannot open a gap under the header. */}
-      <MobileHeroCarousel className="md:hidden" banners={banners} />
+      <MobileSlideBanner className="md:hidden" banners={banners} />
 
       <main className="mx-auto w-full max-w-[1480px] px-3 pb-3 sm:px-6 lg:px-10 pb-3 sm:pb-5 lg:pb-7 space-y-3 sm:space-y-5 lg:space-y-7">
 
