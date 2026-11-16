@@ -59,7 +59,16 @@ export async function fetchMarketplaceCategoryRows(includeInactive = false): Pro
   }
 }
 
-/** Build the nested tree shape the storefront expects from flat rows. */
+/** Bundled code-tree sub images used as fallback when a DB row has no image_url,
+ *  so category tiles never fall back to a letter chip just because the admin
+ *  hasn't uploaded a subcategory photo yet. */
+const bundledSubImage = new Map<string, string>()
+for (const d of MARKET_DEPARTMENTS) {
+  for (const s of d.subs) {
+    if (s.image) bundledSubImage.set(s.slug, s.image)
+  }
+}
+
 export function buildMarketplaceTree(rows: MarketCategoryRow[]): MarketDepartment[] {
   const depts = rows.filter((r) => r.depth === 0)
   if (depts.length === 0) return []
@@ -73,6 +82,7 @@ export function buildMarketplaceTree(rows: MarketCategoryRow[]): MarketDepartmen
     subs: subsOf(d.slug).map((s) => ({
       name: s.name,
       slug: s.slug,
+      image: s.image_url || bundledSubImage.get(s.slug) || "",
       items: leavesOf(s.slug).map((l) => ({ name: l.name, slug: l.slug })),
     })),
   }))
