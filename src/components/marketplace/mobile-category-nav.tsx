@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { LayoutGrid } from "lucide-react"
 import { useMarketplaceTree } from "@/components/marketplace/market-category-store"
 import type { MarketDepartment, MarketSub } from "@/lib/marketplace-categories"
+import { bundledSubImage } from "@/lib/marketplace-category-db"
 import { marketImage } from "@/lib/marketplace-images"
 
 interface MobileCategoryNavProps {
@@ -191,8 +192,15 @@ export function MobileCategoryNav({ onClose }: MobileCategoryNavProps) {
     for (const sub of subsForDept) {
       const imgs = subImages.get(sub.slug)
       const idx = subRotation.get(sub.slug) ?? 0
-      if (!imgs || imgs.length === 0) continue
-      map.set(sub.slug, imgs[Math.max(0, Math.min(idx, imgs.length - 1))])
+      if (imgs && imgs.length > 0) {
+        map.set(sub.slug, imgs[Math.max(0, Math.min(idx, imgs.length - 1))])
+      } else {
+        // Fall back to the bundled subcategory image when the DB/API has no
+        // product photos for this subcategory — the tile never shows a blank
+        // letter chip just because the admin hasn't uploaded a sub photo.
+        const bundled = bundledSubImage.get(sub.slug)
+        if (bundled) map.set(sub.slug, bundled)
+      }
     }
     return map
   }, [subsForDept, subImages, subRotation])

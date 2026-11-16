@@ -45,7 +45,7 @@ const leaf = (names: string[]): MarketLeaf[] => {
   return out
 }
 
-const px = (id: number, w = 800) =>
+export const px = (id: number, w = 800) =>
   `https://images.pexels.com/photos/${id}/pexels-photo-${id}.jpeg?auto=compress&cs=tinysrgb&w=${w}`
 
 export const MARKET_DEPARTMENTS: MarketDepartment[] = [

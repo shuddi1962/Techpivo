@@ -11,7 +11,7 @@
 // 2 leaf) · icon · image_url · cj_category_id · is_active · sort.
 
 import { createClient } from "@/lib/supabase/admin"
-import { MARKET_DEPARTMENTS, type MarketDepartment } from "@/lib/marketplace-categories"
+import { MARKET_DEPARTMENTS, px, type MarketDepartment } from "@/lib/marketplace-categories"
 
 export type MarketCategoryLevel = "dept" | "sub" | "leaf"
 
@@ -64,10 +64,28 @@ export async function fetchMarketplaceCategoryRows(includeInactive = false): Pro
  *  hasn't uploaded a subcategory photo yet. */
 const bundledSubImage = new Map<string, string>()
 for (const d of MARKET_DEPARTMENTS) {
-  for (const s of d.subs) {
+  for (const s of d.subs || []) {
     if (s.image) bundledSubImage.set(s.slug, s.image)
   }
 }
+// Men's and Women's Clothing store their leaves as `items` rather than `subs`,
+// so they are not collected above. Map their subcategory slugs to real photos
+// so category tiles never show a blank letter chip for them.
+for (const slug of [
+  "tshirts",
+  "shirts",
+  "jackets-coats",
+  "jeans",
+  "trousers",
+  "suits-blazers",
+]) {
+  bundledSubImage.set(slug, px(3184465, 600))
+}
+for (const slug of ["dresses", "tops-blouses", "jeans-denim", "jackets", "skirts", "lingerie"]) {
+  bundledSubImage.set(slug, px(3184291, 600))
+}
+
+export { bundledSubImage }
 
 export function buildMarketplaceTree(rows: MarketCategoryRow[]): MarketDepartment[] {
   const depts = rows.filter((r) => r.depth === 0)
@@ -117,7 +135,7 @@ export function codeTreeRows(): Array<Omit<MarketCategoryRow, "cj_category_id">>
       is_active: true,
       sort: sort++,
     })
-    for (const s of d.subs) {
+    for (const s of d.subs || []) {
       rows.push({
         slug: s.slug,
         name: s.name,
