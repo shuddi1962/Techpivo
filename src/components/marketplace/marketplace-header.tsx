@@ -545,8 +545,8 @@ const [showBackToTop, setShowBackToTop] = useState(false)
       {/* main bar — full width */}
       <div className="w-full bg-white">
         <div className="mx-auto w-full max-w-[1440px] px-3 sm:px-6 lg:px-10 flex items-center justify-between gap-2 h-14 sm:h-16 md:h-20 relative">
-          {/* Logo — centered on mobile */}
-          <Link href="/marketplace" className="flex items-center shrink-0 self-center" aria-label="TechPivo Market home">
+          {/* Logo — hidden on mobile (MobileHomeHeader provides it); desktop only */}
+          <Link href="/marketplace" className="flex items-center shrink-0 self-center hidden md:block" aria-label="TechPivo Market home">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src="/market-logo.svg" alt="TechPivo Market" className="h-10 w-auto sm:h-11" />
           </Link>

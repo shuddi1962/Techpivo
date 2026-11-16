@@ -51,7 +51,7 @@ export function MobileHomeHeader({
   }
 
   return (
-    <header className="w-full bg-white sticky top-0 z-50 shadow-[0_2px_12px_rgba(0,0,0,0.08)]">
+    <header className="w-full bg-white shadow-[0_2px_12px_rgba(0,0,0,0.08)]">
       <div className="mx-auto w-full max-w-[1440px] px-3 sm:px-6 lg:px-10 flex items-center justify-between gap-2 h-14 relative">
         {/* Logo — centered on mobile */}
         <Link href="/marketplace" className="flex items-center shrink-0 self-center" aria-label="TechPivo Market home">
