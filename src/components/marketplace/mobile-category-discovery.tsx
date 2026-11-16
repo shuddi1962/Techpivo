@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from "react"
 import { useMarketplaceTree } from "./market-category-store"
 import { marketImage } from "@/lib/marketplace-images"
 import { cn } from "@/lib/utils"
+import { bundledSubImage } from "@/lib/marketplace-category-db"
 
 const ROTATE_MS = 600_000 // 10 minutes
 const MAX_TILES = 16
@@ -156,6 +157,10 @@ export function MobileCategoryDiscovery({
       const deptNode = departments.find((d) => d.slug === p.deptSlug)
       if (deptNode?.image) return deptNode.image
       if (deptNode?.banner_image) return deptNode.banner_image
+      // Bundled real product photo for known subcategory slugs — never show a
+      // letter chip when a genuine catalogue photo exists.
+      const bundled = bundledSubImage.get(p.slug)
+      if (bundled) return bundled
     }
     if (p.kind === "dept") {
       const deptNode = departments.find((d) => d.slug === p.slug)
@@ -178,7 +183,7 @@ export function MobileCategoryDiscovery({
         {/* 4 columns on mobile, expand gracefully on wider viewports.
             Tiles stay compact so circles always sit on the same line and
             every category gets a real product photo (or a letter chip). */}
-              <div className="grid grid-cols-4 gap-2 sm:gap-2 md:gap-3 align-stretch">
+              <div className="grid grid-cols-4 gap-3 sm:gap-3 md:gap-4 align-stretch">
             {picks.map((c) => {
             const image = currentFor(c)
             return (
@@ -186,9 +191,9 @@ export function MobileCategoryDiscovery({
                 key={c.key}
                 href={c.href}
                 aria-label={`Shop ${c.name}`}
-                className="flex flex-col items-center justify-center gap-1 h-full min-h-[120px]"
+                className="flex flex-col items-center justify-center gap-1.5 h-full min-h-[140px]"
               >
-                <span className="relative block w-14 h-14 shrink-0 overflow-hidden rounded-full bg-[#F1F5F9] border border-[#E2E8F0] shadow-sm flex-shrink-0">
+                <span className="relative block w-16 h-16 shrink-0 overflow-hidden rounded-full bg-[#F1F5F9] border border-[#E2E8F0] shadow-sm flex-shrink-0">
                   {image ? (
                     <img
                       src={marketImage(image)}
@@ -198,14 +203,14 @@ export function MobileCategoryDiscovery({
                       className="w-full h-full object-cover"
                     />
                   ) : (
-                    <div className="w-full h-full flex items-center justify-center text-slate-400">
-                      <span className="text-[10px] font-semibold">
+                    <div className="w-full h-full flex items-center justify-center text-slate-300">
+                      <span className="text-[11px] font-semibold">
                         {c.name.charAt(0)}
                       </span>
                     </div>
                   )}
                 </span>
-                <span className="min-w-0 text-[10px] font-medium text-[#0F172A] leading-none text-center line-clamp-3 max-w-[64px]">
+                <span className="min-w-0 text-[11px] font-medium text-[#0F172A] leading-none text-center line-clamp-2 max-w-[72px]">
                   {c.name}
                 </span>
               </Link>

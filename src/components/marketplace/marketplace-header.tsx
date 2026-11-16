@@ -671,8 +671,8 @@ const [showBackToTop, setShowBackToTop] = useState(false)
               className="flex-1 bg-transparent px-4 text-sm text-black placeholder:text-slate-600 focus:outline-none h-full m-0"
               placeholder="Search TechPivo Market..."
             />
-            <button type="submit" aria-label="Search" className="bg-[#FF6B00] hover:bg-[#e86000] text-white px-5 flex items-center justify-center transition-all duration-200 rounded-r-xl h-full m-0">
-              <Search className="h-6 w-6" />
+            <button type="submit" aria-label="Search" className="bg-[#FF6B00] hover:bg-[#e86000] text-white px-4 flex items-center justify-center transition-all duration-200 rounded-r-xl h-full m-0">
+              <Search className="h-6 w-6 shrink-0" />
             </button>
           </form>
           {suggestOpen && (

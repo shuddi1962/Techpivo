@@ -131,7 +131,7 @@ export function MobileHeroCarousel({ className, banners }: { className?: string;
                         alt=""
                         loading="lazy"
                         decoding="async"
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                        className="w-full h-full object-contain group-hover:scale-105 transition-transform duration-500"
                       />
                       <span className="absolute inset-0 bg-black/10 group-hover:bg-black/5 transition-colors" />
                     </div>
@@ -143,7 +143,7 @@ export function MobileHeroCarousel({ className, banners }: { className?: string;
                       alt=""
                       loading="lazy"
                       decoding="async"
-                      className="w-full h-full object-cover"
+                      className="w-full h-full object-contain"
                     />
                     <span className="absolute inset-0 bg-black/5" />
                   </div>

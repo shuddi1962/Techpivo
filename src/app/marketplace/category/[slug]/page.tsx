@@ -121,7 +121,7 @@ export default async function MarketplaceCategoryPage({ params }: { params: { sl
           <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#FF6B00]">
             {found.kind === "sub" ? found.dept.name : "Department"}
           </p>
-          <h1 className="mt-0.5 text-xl font-extrabold tracking-tight text-white sm:text-2xl">{title}</h1>
+          <h1 className="mt-0.5 text-xl font-extrabold tracking-tight text-white sm:text-2xl drop-shadow-md">{title}</h1>
           <p className="mt-0.5 text-sm text-white/90">
             Quality-checked, securely paid, delivered with tracking.
           </p>
