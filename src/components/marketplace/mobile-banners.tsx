@@ -3,6 +3,7 @@
 import Link from "next/link"
 import { useCallback, useEffect, useRef, useState } from "react"
 import { marketImage } from "@/lib/marketplace-images"
+import { cn } from "@/lib/utils"
 import { type MobileBanner } from "@/lib/marketplace-mobile-banners"
 
 /**
@@ -82,7 +83,7 @@ export function MobileBanners({ className }: { className?: string }) {
   if (banners.length === 0) return null
 
   return (
-    <section className={className}>
+    <section className={cn("w-full overflow-x-clip", className)}>
       <div className="relative w-full overflow-hidden bg-[#F8FAFC]">
         <div
           ref={containerRef}

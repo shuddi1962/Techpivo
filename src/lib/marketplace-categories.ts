@@ -10,6 +10,7 @@ export interface MarketLeaf {
 export interface MarketSub {
   name: string
   slug: string
+  image?: string
   items: MarketLeaf[]
 }
 
@@ -56,31 +57,37 @@ export const MARKET_DEPARTMENTS: MarketDepartment[] = [
     subs: [
       {
         name: "Smart Electronics",
+        image: px(1181671, 600),
         slug: "smart-electronics",
         items: leaf(["Wearable Devices", "Smart Home Appliances", "Smart Wearable Accessories", "Smart Wristbands", "Smart Watches", "Smart Remote Controls"]),
       },
       {
         name: "Camera & Photo",
+        image: px(1181671, 600),
         slug: "camera-photo",
         items: leaf(["Photo Studio", "Camera Drones", "Camera & Photo Accessories", "Digital Cameras", "Action Cameras", "Camcorders"]),
       },
       {
         name: "Accessories & Parts",
+        image: px(1181671, 600),
         slug: "accessories-parts",
         items: leaf(["Digital Cables", "Home Electronic Accessories", "Audio & Video Cables", "Charger", "Batteries", "Digital Gear Bags"]),
       },
       {
         name: "Video Games",
+        image: px(1181671, 600),
         slug: "video-games",
         items: leaf(["Gamepads", "Handheld Game Players", "Video Game Consoles", "Stickers", "Joysticks"]),
       },
       {
         name: "Home Audio & Video",
+        image: px(1181671, 600),
         slug: "home-audio-video",
         items: leaf(["Projectors", "Television", "TV Receivers", "Audio Amplifiers", "Projectors & Accessories", "TV Sticks"]),
       },
       {
         name: "Portable Audio & Video",
+        image: px(1181671, 600),
         slug: "portable-audio-video",
         items: leaf(["Microphones", "Speakers", "Earphones & Headphones", "VR & AR Devices", "MP3 Players"]),
       },
@@ -94,16 +101,19 @@ export const MARKET_DEPARTMENTS: MarketDepartment[] = [
     subs: [
       {
         name: "Mobile Phone Parts",
+        image: px(1181671, 600),
         slug: "mobile-phone-parts",
         items: leaf(["SIM Card & Tools", "Mobile Batteries", "Housings", "LCDs", "Flex Cables", "Touch Panel"]),
       },
       {
         name: "Mobile Phones",
+        image: px(1181671, 600),
         slug: "mobile-phones",
         items: leaf(["Quad Core", "Single SIM Card", "Dual SIM Card", "3GB RAM", "Octa Core", "5-inch Display"]),
       },
       {
         name: "Mobile Phone Accessories",
+        image: px(1181671, 600),
         slug: "mobile-phone-accessories",
         items: leaf([
           "Cables", "Power Bank", "Screen Protectors", "Lenses", "Holders & Stands", "Chargers",
@@ -123,31 +133,37 @@ export const MARKET_DEPARTMENTS: MarketDepartment[] = [
     subs: [
       {
         name: "Storage Devices",
+        image: px(1181671, 600),
         slug: "storage-devices",
         items: leaf(["SSD", "USB Flash Drives", "HDD Enclosures", "Memory Cards", "External Hard Drives"]),
       },
       {
         name: "Tablet & Laptop Accessories",
+        image: px(1181671, 600),
         slug: "tablet-laptop-accessories",
         items: leaf(["Tablet LCD Screens", "Laptop Batteries", "Laptop Bags & Cases", "Tablet Cases", "Tablet Accessories"]),
       },
       {
         name: "Security & Protection",
+        image: px(1181671, 600),
         slug: "security-protection",
         items: leaf(["Alarm & Sensor", "Fire Protection", "Workplace Safety Supplies", "Door Intercom", "Surveillance Products"]),
       },
       {
         name: "Laptops & Tablets",
+        image: px(1181671, 600),
         slug: "laptops-tablets",
         items: leaf(["Phone Call Tablets", "2 in 1 Tablets", "Laptops", "Tablets", "Gaming Laptops"]),
       },
       {
         name: "Office Electronics",
+        image: px(1181671, 600),
         slug: "office-electronics",
         items: leaf(["Office & School Supplies", "Computer Tablet Accessories", "Printer Supplies", "3D Printers", "3D Pens", "Printers", "Scanners"]),
       },
       {
         name: "Networking",
+        image: px(1181671, 600),
         slug: "networking",
         items: leaf(["Modem-Router Combos", "Wireless Routers", "Networking Tools", "3G Modems", "Network Cards"]),
       },
@@ -161,31 +177,37 @@ export const MARKET_DEPARTMENTS: MarketDepartment[] = [
     subs: [
       {
         name: "Interior Accessories",
+        image: px(3184291, 600),
         slug: "interior-accessories",
         items: leaf(["Floor Mats", "Car Aromatherapy", "Car Perfume", "Key Case for Car", "Steering Covers", "Automobiles Seat Covers", "Stowing Tidying"]),
       },
       {
         name: "Motorcycle Accessories & Parts",
+        image: px(3184291, 600),
         slug: "motorcycle-accessories-parts",
         items: leaf(["Lighting", "Exhaust & Exhaust Systems", "Motor Brake System", "Motorcycle Seat Covers", "Other Motorcycle Accessories", "Helmet Headset", "Body & Frame"]),
       },
       {
         name: "Auto Replacement Parts",
+        image: px(3184291, 600),
         slug: "auto-replacement-parts",
         items: leaf(["Interior Parts", "Car Brake System", "Spark Plugs & Ignition System", "Automobiles Sensors", "Exterior Parts", "Other Replacement Parts", "Car Lights", "Windscreen Wipers & Windows"]),
       },
       {
         name: "Tools, Maintenance & Care",
+        image: px(3184291, 600),
         slug: "tools-maintenance-care",
         items: leaf(["Car Washer", "Diagnostic Tools", "Paint Care", "Other Maintenance Products"]),
       },
       {
         name: "Car Electronics",
+        image: px(3184291, 600),
         slug: "car-electronics",
         items: leaf(["Vehicle Camera", "DVR & Dash Camera", "Car Monitors", "Vehicle GPS", "Car Mirror Video", "Car Radios", "GPS Trackers", "Car Multimedia Player", "Alarm Systems & Security", "Jump Starter"]),
       },
       {
         name: "Exterior Accessories",
+        image: px(3184291, 600),
         slug: "exterior-accessories",
         items: leaf(["Car Stickers", "Other Exterior Accessories", "Car Covers"]),
       },
@@ -199,26 +221,31 @@ export const MARKET_DEPARTMENTS: MarketDepartment[] = [
     subs: [
       {
         name: "Outdoor Lighting",
+        image: px(3184291, 600),
         slug: "outdoor-lighting",
         items: leaf(["Flashlights & Torches", "Floodlights", "Underwater Lights", "String Lights", "Solar Lamps"]),
       },
       {
         name: "Home Appliances",
+        image: px(3184291, 600),
         slug: "home-appliances",
         items: leaf(["Personal Care Appliances", "Cleaning Appliances", "Air Conditioning Appliances", "Home Appliance Parts", "Kitchen Appliances"]),
       },
       {
         name: "Indoor Lighting",
+        image: px(3184291, 600),
         slug: "indoor-lighting",
         items: leaf(["Chandeliers", "Pendant Lights", "Downlights", "Night Lights", "Wall Lamps", "Ceiling Lights"]),
       },
       {
         name: "LED Lighting",
+        image: px(3184291, 600),
         slug: "led-lighting",
         items: leaf(["LED Spotlights"]),
       },
       {
         name: "Tools",
+        image: px(3184291, 600),
         slug: "tools",
         items: leaf([
           "Home Improvement Materials", "Measurement & Analysis", "Welding & Soldering Supplies",
@@ -237,16 +264,19 @@ export const MARKET_DEPARTMENTS: MarketDepartment[] = [
       {
         name: "Men's Clothing",
         slug: "mens-clothing",
+        image: px(3184465, 600),
         items: leaf(["T-Shirts", "Shirts", "Jackets & Coats", "Jeans", "Trousers", "Suits & Blazers"]),
       },
       {
         name: "Women's Clothing",
         slug: "womens-clothing",
+        image: px(3184291, 600),
         items: leaf(["Dresses", "Tops & Blouses", "Jeans & Denim", "Jackets", "Skirts", "Lingerie"]),
       },
       {
         name: "Shoes",
         slug: "shoes",
+        image: px(1181671, 600),
         items: leaf(["Sneakers", "Boots", "Sandals", "Loafers", "Heels", "Running Shoes"]),
       },
     ],
@@ -259,16 +289,19 @@ export const MARKET_DEPARTMENTS: MarketDepartment[] = [
     subs: [
       {
         name: "Skincare",
+        image: px(3184291, 600),
         slug: "skincare",
         items: leaf(["Moisturizers", "Cleansers", "Serums", "Sunscreen", "Eye Creams"]),
       },
       {
         name: "Makeup",
+        image: px(3184291, 600),
         slug: "makeup",
         items: leaf(["Lipstick", "Foundation", "Eyeshadow", "Mascara", "Blush", "Makeup Brushes"]),
       },
       {
         name: "Hair Care",
+        image: px(3184291, 600),
         slug: "hair-care",
         items: leaf(["Shampoo", "Conditioner", "Hair Styling", "Hair Color", "Hair Tools"]),
       },
@@ -282,16 +315,19 @@ export const MARKET_DEPARTMENTS: MarketDepartment[] = [
     subs: [
       {
         name: "Fitness",
+        image: px(3184291, 600),
         slug: "fitness",
         items: leaf(["Dumbbells", "Treadmills", "Yoga Mats", "Resistance Bands", "Exercise Bikes"]),
       },
       {
         name: "Outdoor",
+        image: px(3184291, 600),
         slug: "outdoor",
         items: leaf(["Camping", "Hiking", "Tents", "Sleeping Bags", "Backpacks"]),
       },
       {
         name: "Sports Gear",
+        image: px(3184291, 600),
         slug: "sports-gear",
         items: leaf(["Footballs", "Basketballs", "Tennis Rackets", "Golf Clubs", "Bicycles"]),
       },
@@ -305,16 +341,19 @@ export const MARKET_DEPARTMENTS: MarketDepartment[] = [
     subs: [
       {
         name: "Furniture",
+        image: px(3184291, 600),
         slug: "furniture",
         items: leaf(["Sofas", "Dining Tables", "Chairs", "Beds", "Wardrobes"]),
       },
       {
         name: "Garden",
+        image: px(3184291, 600),
         slug: "garden",
         items: leaf(["Planters", "Garden Tools", "Outdoor Decor", "Lawn Mowers", "Fencing"]),
       },
       {
         name: "Decor",
+        image: px(3184291, 600),
         slug: "decor",
         items: leaf(["Wall Art", "Mirrors", "Clocks", "Candles", "Rugs"]),
       },
@@ -328,16 +367,19 @@ export const MARKET_DEPARTMENTS: MarketDepartment[] = [
     subs: [
       {
         name: "Hand Tools",
+        image: px(3184291, 600),
         slug: "hand-tools",
         items: leaf(["Screwdrivers", "Pliers", "Hammers", "Wrenches", "Tool Sets"]),
       },
       {
         name: "Power Tools",
+        image: px(3184291, 600),
         slug: "power-tools",
         items: leaf(["Drills", "Saws", "Sanders", "Nail Guns", "Grinders"]),
       },
       {
         name: "Hardware",
+        image: px(3184291, 600),
         slug: "hardware",
         items: leaf(["Nails", "Screws", "Bolts", "Hinges", "Locks"]),
       },
@@ -351,16 +393,19 @@ export const MARKET_DEPARTMENTS: MarketDepartment[] = [
     subs: [
       {
         name: "Books",
+        image: px(3184291, 600),
         slug: "books",
         items: leaf(["Fiction", "Non-Fiction", "Textbooks", "Children's Books", "Comics"]),
       },
       {
         name: "Movies & Music",
+        image: px(3184291, 600),
         slug: "movies-music",
         items: leaf(["DVDs", "Blu-rays", "CDs", "Vinyl Records"]),
       },
       {
         name: "Games",
+        image: px(3184291, 600),
         slug: "games",
         items: leaf(["Board Games", "Card Games", "Puzzles", "Video Games"]),
       },
@@ -374,16 +419,19 @@ export const MARKET_DEPARTMENTS: MarketDepartment[] = [
     subs: [
       {
         name: "Handbags",
+        image: px(3184291, 600),
         slug: "handbags",
         items: leaf(["Tote Bags", "Shoulder Bags", "Clutches", "Backpacks"]),
       },
       {
         name: "Luggage",
+        image: px(3184291, 600),
         slug: "luggage",
         items: leaf(["Suitcases", "Carry-Ons", "Travel Bags", "Luggage Sets"]),
       },
       {
         name: "Wallets",
+        image: px(3184291, 600),
         slug: "wallets",
         items: leaf(["Wallets", "Card Holders", "Passport Holders"]),
       },
@@ -397,16 +445,19 @@ export const MARKET_DEPARTMENTS: MarketDepartment[] = [
     subs: [
       {
         name: "Baby Gear",
+        image: px(3184291, 600),
         slug: "baby-gear",
         items: leaf(["Strollers", "Car Seats", "Cribs", "High Chairs"]),
       },
       {
         name: "Toys",
+        image: px(3184291, 600),
         slug: "toys",
         items: leaf(["Action Figures", "Dolls", "Building Blocks", "Remote Control Toys"]),
       },
       {
         name: "Kids Clothing",
+        image: px(3184291, 600),
         slug: "kids-clothing",
         items: leaf(["Baby Onesies", "Kids Shoes", "Kids Dresses", "School Uniforms"]),
       },
@@ -420,11 +471,13 @@ export const MARKET_DEPARTMENTS: MarketDepartment[] = [
     subs: [
       {
         name: "Watches",
+        image: px(3184291, 600),
         slug: "watches",
         items: leaf(["Men's Watches", "Women's Watches", "Smart Watches", "Luxury Watches"]),
       },
       {
         name: "Jewelry",
+        image: px(3184291, 600),
         slug: "jewelry",
         items: leaf(["Necklaces", "Rings", "Earrings", "Bracelets"]),
       },
