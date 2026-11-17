@@ -44,15 +44,16 @@ export function MobileHomeHeader({
   }
 
   return (
-    <div className={cn("w-full bg-white mt-0 mb-0 pt-0 pb-0", className)} style={{ marginTop: 0, marginBottom: 0, paddingTop: 0, paddingBottom: 0, overflow: "hidden" }}>
-      <form className="flex w-full h-11 rounded-xl border border-[#CBD5E1] bg-[#F8FAFC] overflow-hidden focus-within:border-[#FF6B00] focus-within:ring-1 focus-within:ring-[#FF6B00]/30 m-0" onSubmit={submit} role="search">
+    <div className={cn("w-full bg-white mt-0 mb-0 pt-0 pb-0", className)} style={{ marginTop: 0, marginBottom: 0, paddingTop: 0, paddingBottom: 0 }}>
+      <div className="rounded-xl overflow-hidden border border-[#CBD5E1] bg-[#F8FAFC]">
+        <form className="flex w-full h-11 m-0" onSubmit={submit} role="search">
         <input
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           className="flex-1 min-w-0 bg-transparent px-4 text-sm text-black placeholder:text-slate-600 focus:outline-none h-full m-0"
           placeholder="Search TechPivo Market..."
         />
-        <button type="submit" aria-label="Search" className="bg-[#FF6B00] hover:bg-[#e86000] text-white px-3 flex items-center justify-center transition-all duration-200 h-full m-0">
+        <button type="submit" aria-label="Search" className="rounded-none bg-[#FF6B00] hover:bg-[#e86000] text-white px-3 flex items-center justify-center transition-all duration-200 h-full m-0">
           <Search className="h-6 w-6 shrink-0" />
         </button>
       </form>
