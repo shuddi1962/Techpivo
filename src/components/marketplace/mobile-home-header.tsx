@@ -53,7 +53,7 @@ export function MobileHomeHeader({
             className="flex-1 min-w-0 bg-transparent px-4 text-sm text-black placeholder:text-slate-600 focus:outline-none h-full m-0 pr-14"
             placeholder="Search TechPivo Market..."
           />
-          <button type="submit" aria-label="Search" className="absolute right-0 top-0 bottom-0 w-12 rounded-none border-0 bg-[#FF6B00] hover:bg-[#e86000] text-white flex items-center justify-center">
+          <button type="submit" aria-label="Search" className="absolute right-0 top-0 bottom-0 w-12 rounded-none border-0 bg-[#FF6B00] hover:bg-[#e86000] text-white flex items-center justify-center px-3">
             <Search className="h-6 w-6 shrink-0" />
           </button>
         </form>
