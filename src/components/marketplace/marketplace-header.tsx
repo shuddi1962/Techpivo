@@ -541,20 +541,48 @@ const [showBackToTop, setShowBackToTop] = useState(false)
       </div>
 
       {/* sticky main header — logo/search/menu stay visible while scrolling */}
-      <header className="sticky top-0 z-50 w-full bg-white shadow-[0_2px_12px_rgba(0,0,0,0.08)]">
+      <header className="sticky top-0 z-50 w-full bg-white shadow-[0_2px_12px_rgba(0,0,0,0.08)] hidden md:block">
       {/* main bar — full width */}
       <div className="w-full bg-white">
         <div className="mx-auto w-full max-w-[1440px] px-3 sm:px-6 lg:px-10 flex items-center justify-between gap-2 h-14 sm:h-16 md:h-20 relative">
-          {/* Logo — hidden on mobile (MobileHomeHeader provides it); desktop only */}
-          <Link href="/marketplace" className="flex items-center shrink-0 self-center hidden md:block" aria-label="TechPivo Market home">
+          {/* Logo — centered on mobile */}
+          <Link href="/marketplace" className="flex items-center shrink-0 self-center" aria-label="TechPivo Market home">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src="/market-logo.svg" alt="TechPivo Market" className="h-10 w-auto sm:h-11" />
           </Link>
 
-          {/* Mobile header — new compact header with search, wishlist, cart, menu */}
-          <MobileHomeHeader onSearch={submitSearch} onMenuToggle={() => setOpen((v) => !v)} />
-
-          {/* Desktop search (hidden on mobile) */}
+          {/* Mobile icons row: LOGO | WISHLIST | CART | MENU (hamburger on far right) */}
+          <div className="flex items-center gap-1 shrink-0 md:hidden">
+            <Link
+              href="/marketplace/wishlist"
+              aria-label={`Wishlist${shownWishCount > 0 ? `, ${shownWishCount} saved` : ""}`}
+              className="relative flex items-center justify-center rounded-full hover:bg-[#FF6B00]/10 transition-colors h-12 w-12 shrink-0 min-h-[48px] min-w-[48px] p-2"
+            >
+              <Heart className="h-6 w-6 text-slate-600" />
+              {shownWishCount > 0 && (
+                <span className="absolute -top-1 -right-1 bg-[#EF4444] text-white text-[10px] min-w-5 h-5 px-1 rounded-full flex items-center justify-center font-bold shadow-sm ring-2 ring-white">{shownWishCount}</span>
+              )}
+            </Link>
+            <Link
+              href="/marketplace/cart"
+              aria-label={`Your basket, ${shownCartCount} item${shownCartCount === 1 ? "" : "s"}`}
+              className="relative flex items-center justify-center rounded-full hover:bg-[#FF6B00]/10 transition-colors h-12 w-12 shrink-0 min-h-[48px] min-w-[48px] p-2"
+            >
+              <ShoppingBasket className="h-6 w-6 text-slate-600" />
+              {shownCartCount > 0 && (
+                <span className="absolute -top-1 -right-1 bg-[#EF4444] text-white text-[10px] min-w-5 h-5 px-1 rounded-full flex items-center justify-center font-bold shadow-sm ring-2 ring-white tabular-nums">{shownCartCount}</span>
+              )}
+            </Link>
+            <button
+              type="button"
+              onClick={() => setOpen((v) => !v)}
+              aria-label={open ? "Close menu" : "Open menu"}
+              aria-expanded={open}
+              className="relative flex items-center justify-center rounded-full hover:bg-[#FF6B00]/10 transition-colors h-12 w-12 shrink-0 min-h-[48px] min-w-[48px] p-2"
+            >
+              {open ? <X className="h-6 w-6 text-slate-600" /> : <Menu className="h-6 w-6 text-slate-600" />}
+            </button>
+          </div>
           <div ref={searchBoxRef} className="hidden md:flex flex-1 max-w-2xl relative">
           <form
             className="flex w-full h-12 rounded-lg border border-[#CBD5E1] bg-[#F8FAFC] overflow-hidden focus-within:border-[#1668DC] focus-within:ring-2 focus-within:ring-[#1668DC]/20"

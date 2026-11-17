@@ -135,7 +135,7 @@ export function MobileSlideBanner({
             return (
               <div
                 key={`mobile-slide-${i}`}
-                className="flex-shrink-0 w-full snap-center"
+                className="flex-shrink-0 w-full max-w-[100vw] snap-center"
               >
                 {href ? (
                   <Link

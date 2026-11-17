@@ -4,6 +4,7 @@ import Link from "next/link"
 import { useState } from "react"
 import { Heart, Menu, Search, ShoppingBasket, X } from "lucide-react"
 import { useMarketCart } from "@/lib/marketplace-cart"
+import { cn } from "@/lib/utils"
 
 const WISH_KEY = "tp_market_wish_v1"
 
@@ -31,9 +32,11 @@ function readWishCount(): number {
  *   hideBottomNav  — reserved for future use (kept for signature compatibility)
  */
 export function MobileHomeHeader({
+  className,
   onSearch,
   onMenuToggle,
 }: {
+  className?: string
   onSearch?: (q: string) => void
   onMenuToggle?: () => void
 }) {
@@ -51,7 +54,7 @@ export function MobileHomeHeader({
   }
 
   return (
-    <header className="w-full bg-white shadow-[0_2px_12px_rgba(0,0,0,0.08)]">
+    <header className={cn("w-full bg-white shadow-[0_2px_12px_rgba(0,0,0,0.08)]", className)}>
       <div className="mx-auto w-full max-w-[1440px] px-3 sm:px-6 lg:px-10 flex items-center justify-between gap-2 h-14 relative">
         {/* Logo — centered on mobile */}
         <Link href="/marketplace" className="flex items-center shrink-0 self-center" aria-label="TechPivo Market home">
@@ -107,7 +110,7 @@ export function MobileHomeHeader({
             className="flex-1 bg-transparent px-4 text-sm text-black placeholder:text-slate-600 focus:outline-none h-full m-0"
             placeholder="Search TechPivo Market..."
           />
-          <button type="submit" aria-label="Search" className="bg-[#FF6B00] hover:bg-[#e86000] text-white px-4 flex items-center justify-center transition-all duration-200 rounded-r-xl h-full m-0">
+          <button type="submit" aria-label="Search" className="bg-[#FF6B00] hover:bg-[#e86000] text-white px-3 flex items-center justify-center transition-all duration-200 rounded-r-xl h-full m-0">
             <Search className="h-6 w-6 shrink-0" />
           </button>
         </form>
