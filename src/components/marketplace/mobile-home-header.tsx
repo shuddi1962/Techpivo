@@ -58,5 +58,6 @@ export function MobileHomeHeader({
         </button>
       </form>
     </div>
+  </div>
   )
 }
