@@ -95,36 +95,47 @@ export function MobileHeroBanner({ className }: { className?: string }) {
   }
 
   const count = banners.length
-  const canRotate = count > 1 && transition.autoplay && !isTransitioning
+  const displayCount = count > 0 ? count : 1
+
+  const fallbackBanner: MobileBanner = {
+    id: "fallback",
+    name: "TechPivo Market",
+    image: "https://images.pexels.com/photos/3184291/pexels-photo-3184291.jpeg?auto=compress&cs=tinysrgb&w=1080",
+    link: "/marketplace",
+    enabled: true,
+    order: 0,
+  }
+
+  const displayBanners = count > 0 ? banners : [fallbackBanner]
+
+  const canRotate = displayCount > 1 && transition.autoplay && !isTransitioning
 
   // Auto-rotate. Paused while a transition is running or user interacts.
   useEffect(() => {
     if (!canRotate) return
     const ms = Math.max(1000, transition.intervalSec * 1000)
     intervalRef.current = setInterval(() => {
-      setActive((i) => (i + 1) % count)
+      setActive((i) => (i + 1) % displayCount)
     }, ms)
     return () => {
       if (intervalRef.current) clearInterval(intervalRef.current)
     }
-  }, [canRotate, count, transition.intervalSec, isTransitioning])
+    }, [canRotate, displayCount, transition.intervalSec, isTransitioning])
 
   const goTo = useCallback(
     (index: number) => {
-      if (count === 0) return
-      const next = ((index % count) + count) % count
+      if (displayCount === 0) return
+      const next = ((index % displayCount) + displayCount) % displayCount
       if (next === active) return
       setIsTransitioning(true)
       setActive(next)
       setTimeout(() => setIsTransitioning(false), transition.durationMs)
     },
-    [active, count, transition.durationMs]
+    [active, displayCount, transition.durationMs]
   )
 
   const prev = useCallback(() => goTo(active - 1), [active, goTo])
   const next = useCallback(() => goTo(active + 1), [active, goTo])
-
-  if (count === 0) return null
 
   const isSlide = transition.effect === "slide"
   const activeIndex = active
@@ -169,7 +180,7 @@ export function MobileHeroBanner({ className }: { className?: string }) {
         <div
           className="flex w-full transition-transform duration-[400ms] ease-in-out overflow-hidden"
           style={{
-            width: isSlide ? `${count * 100}%` : "100%",
+            width: isSlide ? `${displayCount * 100}%` : "100%",
             height: "100%",
             display: "flex",
             flexDirection: "row",
@@ -179,7 +190,7 @@ export function MobileHeroBanner({ className }: { className?: string }) {
             willChange: isSlide ? "transform" : "auto",
           }}
         >
-          {banners.map((banner, i) => {
+          {displayBanners.map((banner, i) => {
             const href = banner.link ? cleanLink(banner.link) : ""
             const image = marketImage(banner.image)
             const isActiveSlide = i === activeIndex
@@ -253,9 +264,9 @@ export function MobileHeroBanner({ className }: { className?: string }) {
         </div>
 
         {/* Pagination dots — only when more than one slide */}
-        {count > 1 && transition.showDots && (
+        {displayCount > 1 && transition.showDots && (
           <div className="absolute bottom-3 left-1/2 -translate-x-1/2 z-30 flex gap-2">
-            {banners.map((_, i) => (
+            {displayBanners.map((_, i) => (
               <button
                 key={i}
                 type="button"
@@ -273,7 +284,7 @@ export function MobileHeroBanner({ className }: { className?: string }) {
         )}
 
         {/* Navigation arrows — only when more than one slide */}
-        {count > 1 && transition.showArrows && (
+        {displayCount > 1 && transition.showArrows && (
           <>
             <button
               type="button"
