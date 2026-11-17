@@ -1264,8 +1264,8 @@ export function MarketplaceFooter() {
           </div>
         </div>
       </div>
-      {/* bottom bar — full width */}
-      <div className="w-full text-white" style={{ background: MARKETPLACE_BRAND.navyDeep }}>
+      {/* bottom bar — full width (desktop only; hidden on mobile to avoid extra space above search bar) */}
+      <div className="hidden md:block w-full text-white" style={{ background: MARKETPLACE_BRAND.navyDeep }}>
         <div className="mx-auto flex w-full max-w-[1440px] flex-col items-center justify-between gap-3 px-3 py-5 text-sm sm:flex-row sm:px-6 sm:text-base lg:px-10">
           <p className="text-sm text-slate-400">© {new Date().getFullYear()} TechPivo Market. All rights reserved.</p>
           <p className="text-sm leading-relaxed text-slate-500 text-center sm:text-left">Quality-checked products · secure payment · tracked delivery on every order.</p>

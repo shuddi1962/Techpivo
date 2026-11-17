@@ -61,12 +61,18 @@ export function MobileSlideBanner({
 
   const [index, setIndex] = useState(0)
   const [active, setActive] = useState(0)
+  const [slideWidth, setSlideWidth] = useState(0)
   const containerRef = useRef<HTMLDivElement>(null)
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
-  const slideWidth = useMemo(() => {
-    if (!containerRef.current) return 0
-    return containerRef.current.clientWidth
+  useEffect(() => {
+    const measure = () => {
+      if (!containerRef.current) return
+      setSlideWidth(containerRef.current.clientWidth)
+    }
+    measure()
+    window.addEventListener("resize", measure)
+    return () => window.removeEventListener("resize", measure)
   }, [])
 
   // Auto-rotate every 6 seconds.
@@ -125,8 +131,8 @@ export function MobileSlideBanner({
       <div className="relative w-full overflow-hidden bg-[#F8FAFC]">
         <div
           ref={containerRef}
-          className="flex w-full snap-x snap-mandatory overflow-x-clip overflow-y-hidden no-scrollbar"
-          style={{ scrollbarWidth: "none", WebkitOverflowScrolling: "touch", overflow: "hidden", maxWidth: "100vw" }}
+          className="flex w-full max-w-full snap-x snap-mandatory overflow-x-hidden overflow-y-hidden no-scrollbar"
+          style={{ scrollbarWidth: "none", WebkitOverflowScrolling: "touch", overflow: "hidden" }}
         >
           {slides.map((s, i) => {
             const href = s.link ? cleanLink(s.link) : ""
@@ -135,7 +141,7 @@ export function MobileSlideBanner({
             return (
               <div
                 key={`mobile-slide-${i}`}
-                className="flex-shrink-0 w-full max-w-[100vw] snap-center"
+                className="flex-shrink-0 w-full snap-center"
               >
                 {href ? (
                   <Link

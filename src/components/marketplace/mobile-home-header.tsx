@@ -49,7 +49,7 @@ export function MobileHomeHeader({
         <input
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          className="flex-1 bg-transparent px-4 text-sm text-black placeholder:text-slate-600 focus:outline-none h-full m-0"
+          className="flex-1 min-w-0 bg-transparent px-4 text-sm text-black placeholder:text-slate-600 focus:outline-none h-full m-0"
           placeholder="Search TechPivo Market..."
         />
         <button type="submit" aria-label="Search" className="bg-[#FF6B00] hover:bg-[#e86000] text-white px-3 flex items-center justify-center transition-all duration-200 rounded-r-xl h-full m-0">
