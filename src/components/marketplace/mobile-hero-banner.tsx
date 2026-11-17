@@ -143,7 +143,7 @@ export function MobileHeroBanner({ className }: { className?: string }) {
   return (
     <section
       className={cn("w-full overflow-hidden md:hidden bg-[#F8FAFC] aspect-[2.4/1]", className)}
-      style={{ width: "100%", maxWidth: "100vw" }}
+      style={{ width: "100%" }}
     >
       <div
         ref={containerRef}
@@ -152,7 +152,6 @@ export function MobileHeroBanner({ className }: { className?: string }) {
           position: "relative",
           overflow: "hidden",
           width: "100%",
-          maxWidth: "100vw",
           display: "block",
         }}
         onMouseEnter={() => {
