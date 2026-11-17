@@ -540,7 +540,7 @@ const [showBackToTop, setShowBackToTop] = useState(false)
       </div>
 
       {/* sticky main header — logo/search/menu stay visible while scrolling */}
-      <header className="sticky top-0 z-50 w-full bg-white shadow-[0_2px_12px_rgba(0,0,0,0.08)]">
+      <header className="sticky top-0 z-50 w-full bg-white shadow-[0_2px_12px_rgba(0,0,0,0.08)]" style={{ marginBottom: 0 }}>
       {/* main bar — full width */}
       <div className="w-full bg-white">
         <div className="mx-auto w-full max-w-[1440px] px-3 sm:px-6 lg:px-10 flex items-center justify-between gap-2 h-14 sm:h-16 md:h-20 relative">

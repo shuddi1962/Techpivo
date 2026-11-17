@@ -125,8 +125,8 @@ export function MobileSlideBanner({
       <div className="relative w-full overflow-hidden bg-[#F8FAFC]">
         <div
           ref={containerRef}
-          className="flex w-full snap-x snap-mandatory overflow-x-hidden overflow-y-hidden no-scrollbar"
-          style={{ scrollbarWidth: "none", WebkitOverflowScrolling: "touch" }}
+          className="flex w-full snap-x snap-mandatory overflow-x-clip overflow-y-hidden no-scrollbar"
+          style={{ scrollbarWidth: "none", WebkitOverflowScrolling: "touch", overflow: "hidden", maxWidth: "100vw" }}
         >
           {slides.map((s, i) => {
             const href = s.link ? cleanLink(s.link) : ""
