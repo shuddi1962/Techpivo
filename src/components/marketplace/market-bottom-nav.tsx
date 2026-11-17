@@ -118,7 +118,7 @@ export function MarketBottomNav({ onSearchToggle, onCategoryOpen }: MarketBottom
       </nav>
 
       {/* Spacer so content isn't hidden behind the fixed bottom nav on mobile */}
-      <div className="md:hidden h-[76px]" />
+      <div className="md:hidden h-0" />
     </>
   )
 }

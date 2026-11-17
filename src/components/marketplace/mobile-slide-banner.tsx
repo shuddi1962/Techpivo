@@ -116,7 +116,7 @@ export function MobileSlideBanner({
   return (
     <section
       className={cn(
-        "w-full overflow-x-clip mt-0 mb-0 pt-0 pb-0",
+        "w-full overflow-x-hidden mt-0 mb-0 pt-0 pb-0",
         "md:hidden",
         className
       )}
