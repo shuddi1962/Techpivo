@@ -44,7 +44,7 @@ export function MobileHomeHeader({
   }
 
   return (
-    <div className={cn("w-full bg-white", className)}>
+    <div className={cn("w-full bg-white mt-0 mb-0", className)}>
       <form className="flex w-full h-11 rounded-xl border border-[#CBD5E1] bg-[#F8FAFC] overflow-hidden focus-within:border-[#FF6B00] focus-within:ring-1 focus-within:ring-[#FF6B00]/30 m-0" onSubmit={submit} role="search">
         <input
           value={query}
