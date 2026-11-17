@@ -42,7 +42,7 @@ import {
   type SliderSlotKey,
   type SlotSlider,
 } from "@/lib/marketplace-banners"
-import { parseMobileBanners, type MobileBanner, type MobileBannerSettings, EMPTY_MOBILE_BANNER_SETTINGS } from "@/lib/marketplace-mobile-banners"
+import { parseMobileBanners, type MobileBanner, type MobileBannerSettings, EMPTY_MOBILE_BANNER_SETTINGS, mobileBannerAllowedExtensions } from "@/lib/marketplace-mobile-banners"
 import { BannerSlider } from "@/components/marketplace/banner-slider"
 import { WelcomePopupCard } from "@/components/marketplace/welcome-popup"
 import { createClient } from "@/lib/supabase/client"
