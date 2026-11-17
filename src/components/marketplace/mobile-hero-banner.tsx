@@ -223,7 +223,7 @@ export function MobileHeroBanner({ className }: { className?: string }) {
                 onError={(e) => {
                   const target = e.target as HTMLImageElement
                   // Graceful handling: hide broken image, keep slide visible
-                  ;(target.style as Record<string, string>).display = "none"
+                  target.style.display = "none"
                 }}
               />
             )
