@@ -138,13 +138,27 @@ export function MobileSlideBanner({
         "md:hidden",
         className
       )}
-      style={{ marginTop: 0, marginBottom: 0, paddingTop: 0, paddingBottom: 0 }}
+      style={{
+        marginTop: 0,
+        marginBottom: 0,
+        paddingTop: 0,
+        paddingBottom: 0,
+        overflow: "hidden",
+        width: "100%",
+        maxWidth: "100%",
+      }}
     >
-      <div className="relative w-full overflow-hidden bg-[#F8FAFC]">
+      <div className="relative w-full overflow-hidden bg-[#F8FAFC]" style={{ overflow: "hidden", width: "100%" }}>
         <div
           ref={containerRef}
-          className="flex w-full max-w-full snap-x snap-mandatory overflow-x-hidden overflow-y-hidden no-scrollbar"
-          style={{ scrollbarWidth: "none", WebkitOverflowScrolling: "touch", overflow: "hidden" }}
+          className="flex w-full max-w-full snap-x snap-mandatory overflow-hidden overflow-y-hidden no-scrollbar"
+          style={{
+            scrollbarWidth: "none",
+            WebkitOverflowScrolling: "touch",
+            overflow: "hidden",
+            width: "100%",
+            maxWidth: "100%",
+          }}
         >
           {slides.map((s, i) => {
             const href = s.link ? cleanLink(s.link) : ""
@@ -153,7 +167,8 @@ export function MobileSlideBanner({
             return (
               <div
                 key={`mobile-slide-${i}`}
-                className="flex-shrink-0 w-full snap-center"
+                className="flex-shrink-0 snap-center"
+                style={{ width: "100%", minWidth: "100%" }}
               >
                 {href ? (
                   <Link
