@@ -42,7 +42,7 @@ import {
   type SliderSlotKey,
   type SlotSlider,
 } from "@/lib/marketplace-banners"
-import { parseMobileBanners, type MobileBanner } from "@/lib/marketplace-mobile-banners"
+import { parseMobileBanners, type MobileBanner, type MobileBannerSettings } from "@/lib/marketplace-mobile-banners"
 import { BannerSlider } from "@/components/marketplace/banner-slider"
 import { WelcomePopupCard } from "@/components/marketplace/welcome-popup"
 import { createClient } from "@/lib/supabase/client"
@@ -1084,14 +1084,16 @@ export function MarketplaceBannersTab() {
     }
   }
   // Mobile homepage banners — independent of the desktop banner system.
-  const [mobileBanners, setMobileBanners] = useState<MobileBanner[]>([])
+  const [mobileSettings, setMobileSettings] = useState<MobileBannerSettings | null>(null)
   const [mobileLoading, setMobileLoading] = useState(true)
   const [mobileSaving, setMobileSaving] = useState(false)
   const loadMobileBanners = async () => {
     try {
       const r = await fetch("/admin/marketplace/api?section=mobile-banners")
       const d = await r.json().catch(() => null)
-      if (r.ok && Array.isArray(d?.banners)) setMobileBanners(d.banners as MobileBanner[])
+      if (r.ok && d) {
+        setMobileSettings(d as MobileBannerSettings)
+      }
     } catch {
       // ignore
     } finally {
@@ -1099,12 +1101,13 @@ export function MarketplaceBannersTab() {
     }
   }
   const saveMobileBanners = async () => {
+    if (!mobileSettings) return
     setMobileSaving(true)
     try {
       const res = await fetch("/admin/marketplace/api", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "mobile-banners-save", banners: mobileBanners }),
+        body: JSON.stringify({ action: "mobile-banners-save", banners: mobileSettings }),
       })
       const data = await res.json().catch(() => null)
       if (!res.ok) throw new Error(data?.error || "Save failed")
@@ -1267,8 +1270,6 @@ export function MarketplaceBannersTab() {
         patchCampaign(uploadTarget.slice(9), { image: url })
       } else if (uploadTarget.startsWith("side:")) {
         setSideBanner(uploadTarget.slice(5), url)
-      } else if (uploadTarget.startsWith("mobile-hero-cover")) {
-        setBanners((b) => ({ ...b, mobile_hero_image: url }))
       } else if (uploadTarget.startsWith("slides:")) {
         const [, key] = uploadTarget.split(":") as [string, SliderSlotKey]
         setBanners((b) => {
@@ -1278,13 +1279,20 @@ export function MarketplaceBannersTab() {
         })
       } else if (uploadTarget.startsWith("mobile-banner:")) {
         const rest = uploadTarget.slice("mobile-banner:".length)
+        if (!mobileSettings) return
         if (rest === "new") {
-          setMobileBanners((list) => [
-            ...list,
-            { id: nextBannerId(), name: "New mobile banner", image: url, link: "", enabled: true, order: list.length },
-          ])
+          setMobileSettings((s) => ({
+            ...s,
+            banners: [
+              ...s.banners,
+              { id: nextBannerId(), name: "New mobile banner", image: url, link: "", enabled: true, order: s.banners.length },
+            ],
+          }))
         } else {
-          setMobileBanners((list) => list.map((b) => (b.id === rest ? { ...b, image: url } : b)))
+          setMobileSettings((s) => ({
+            ...s,
+            banners: s.banners.map((b) => (b.id === rest ? { ...b, image: url } : b)),
+          }))
         }
       } else {
         setSlot(uploadTarget, url)
@@ -1806,80 +1814,7 @@ export function MarketplaceBannersTab() {
             </div>
           </div>
         </div>
-        {/* 5a — Mobile hero banners (separate from desktop hero) */}
-        <div className="rounded-xl border border-amber-200 bg-amber-50/50 p-4">
-          <div className="flex items-center justify-between gap-2 mb-3">
-            <div>
-              <p className="text-sm font-bold text-slate-900">Mobile hero banners</p>
-              <p className="text-xs text-slate-500">Separate carousel on the mobile homepage — independent of desktop hero images. Recommended 1200 × 600 px (2:1 landscape). Only active banners show.</p>
-            </div>
-            <label className="flex cursor-pointer items-center gap-2 text-xs font-bold text-slate-700">
-              <input
-                type="checkbox"
-                checked={banners.mobile_hero_enabled !== false}
-                onChange={(e) => setBanners((b) => ({ ...b, mobile_hero_enabled: e.target.checked }))}
-                className="h-4 w-4 accent-[#F59E0B]"
-              />
-              Mobile hero carousel on
-            </label>
-          </div>
-          <div className="space-y-3">
-            {/* Cover image (slide 1) */}
-            <div className="rounded-lg border bg-white p-3">
-              <div className="flex items-center gap-2 mb-2">
-                <span className="h-2 w-2 shrink-0 rounded-full bg-slate-300" />
-                <span className="text-sm font-bold text-slate-900">Banner 1 (cover)</span>
-              </div>
-              <div className="flex gap-2">
-                <input
-                  value={banners.mobile_hero_image || ""}
-                  onChange={(e) => setBanners((b) => ({ ...b, mobile_hero_image: e.target.value }))}
-                  placeholder="https://… — mobile hero banner 1 (empty = desktop hero shows)"
-                  className={`${inputCls} min-w-0 flex-1 text-xs ${banners.mobile_hero_image && !isUrl(banners.mobile_hero_image) ? "border-red-300" : ""}`}
-                />
-                <button type="button" onClick={() => pickUpload("mobile-hero-cover")} disabled={uploading === "mobile-hero-cover"} className={miniBtn}>
-                  {uploading === "mobile-hero-cover" ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <ImagePlus className="h-3.5 w-3.5" />}
-                  {uploading === "mobile-hero-cover" ? "…" : "Upload"}
-                </button>
-                {(banners.mobile_hero_image || "").trim() && (
-                  <button type="button" onClick={() => setBanners((b) => ({ ...b, mobile_hero_image: "" }))} title="Back to desktop hero fallback" className="rounded-lg border p-2 text-slate-400 hover:bg-slate-50">
-                    <RotateCcw className="h-3.5 w-3.5" />
-                  </button>
-                )}
-              </div>
-              <div className="mt-2">
-                <LinkField
-                  value={banners.links?.[banners.mobile_hero_image] || ""}
-                  onChange={(v) => setLink(banners.mobile_hero_image, v)}
-                />
-              </div>
-              {(banners.mobile_hero_image || "").trim() && isUrl(banners.mobile_hero_image || "") && (
-                <div className="mt-2">
-                  <img
-                    src={(banners.mobile_hero_image || "").trim()}
-                    alt="Mobile hero banner 1 preview"
-                    className="h-24 w-full rounded-lg border object-cover" loading="lazy"
-                  />
-                  <p className="mt-1 text-[11px] text-slate-400">Mobile hero cover — 1200 × 600 px recommended (2:1). Falls back to desktop hero image on mobile when empty.</p>
-                </div>
-              )}
-            </div>
-
-            {/* Extra slides */}
-            <div>
-              <div className="flex items-center gap-2 mb-2">
-                <span className="h-2 w-2 shrink-0 rounded-full bg-slate-300" />
-                <span className="text-sm font-bold text-slate-900">Additional carousel slides</span>
-                <span className="ml-auto text-[11px] text-slate-400">{extrasOf("mobile_hero_slides").length} extra slide{extrasOf("mobile_hero_slides").length !== 1 ? "s" : ""}</span>
-              </div>
-              <SlideExtras
-                slides={extrasOf("mobile_hero_slides")}
-                onChange={(next) => setExtras("mobile_hero_slides", next)}
-              />
-            </div>
-          </div>
-          <p className="mt-2 text-[11px] text-slate-400">Mobile banners use their own image set — desktop hero images are never shown on mobile unless no mobile banner is uploaded (then the desktop hero image is used as fallback).</p>
-        </div>
+      {/* 6 — Mega menu colours (All Departments) */}
         <div className="rounded-xl border bg-white p-4">
           <div className="flex items-center justify-between gap-2">
             <div>
@@ -2004,71 +1939,352 @@ export function MarketplaceBannersTab() {
       >
         {mobileLoading ? (
           <div className="h-32 flex items-center justify-center text-xs text-slate-500">Loading mobile banners…</div>
-        ) : (
-          <div className="space-y-2">
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="text-xs font-bold text-slate-700">
-                {mobileBanners.length} mobile banner{mobileBanners.length === 1 ? "" : "s"}
-              </span>
-              {mobileBanners.length > 0 && (
+        ) : mobileSettings ? (
+          <div className="space-y-4">
+            {/* 7a — Upload configuration */}
+            <div className="rounded-xl border bg-white p-4">
+              <p className="text-sm font-bold text-slate-900 mb-3">Image upload settings</p>
+              <p className="text-xs text-slate-500 mb-3">
+                Validation applied before a mobile banner image is accepted. Recommended: 1080 × 450 px (≈2.4:1).
+              </p>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div>
+                  <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1">
+                    Max file size (MB)
+                  </label>
+                  <input
+                    type="number"
+                    min={1}
+                    max={20}
+                    value={mobileSettings.upload.maxFileSizeMB}
+                    onChange={(e) => {
+                      const n = Number(e.target.value)
+                      setMobileSettings((s) => ({
+                        ...s,
+                        upload: { ...s.upload, maxFileSizeMB: Number.isFinite(n) && n > 0 ? Math.round(n) : 2 },
+                      }))
+                    }}
+                    className={inputCls}
+                  />
+                </div>
+                <div className="sm:col-span-2">
+                  <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1">
+                    Accepted formats
+                  </label>
+                  <div className="flex flex-wrap gap-2">
+                    {mobileBannerAllowedExtensions(mobileSettings.upload.acceptedFormats).map((ext) => (
+                      <span key={ext} className="inline-flex items-center gap-1 rounded border bg-slate-50 px-2 py-1 text-[10px] font-bold text-slate-700">
+                        .{ext}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1">
+                    Recommended width (px)
+                  </label>
+                  <input
+                    type="number"
+                    min={100}
+                    max={2000}
+                    value={mobileSettings.upload.recommendedWidth}
+                    onChange={(e) => {
+                      const n = Number(e.target.value)
+                      setMobileSettings((s) => ({
+                        ...s,
+                        upload: { ...s.upload, recommendedWidth: Number.isFinite(n) && n > 0 ? Math.round(n) : 1080 },
+                      }))
+                    }}
+                    className={inputCls}
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1">
+                    Recommended height (px)
+                  </label>
+                  <input
+                    type="number"
+                    min={100}
+                    max={2000}
+                    value={mobileSettings.upload.recommendedHeight}
+                    onChange={(e) => {
+                      const n = Number(e.target.value)
+                      setMobileSettings((s) => ({
+                        ...s,
+                        upload: { ...s.upload, recommendedHeight: Number.isFinite(n) && n > 0 ? Math.round(n) : 450 },
+                      }))
+                    }}
+                    className={inputCls}
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1">
+                    Aspect ratio (w/h)
+                  </label>
+                  <input
+                    type="number"
+                    min={0.5}
+                    max={5}
+                    step={0.1}
+                    value={mobileSettings.upload.aspectRatio}
+                    onChange={(e) => {
+                      const n = Number(e.target.value)
+                      setMobileSettings((s) => ({
+                        ...s,
+                        upload: { ...s.upload, aspectRatio: Number.isFinite(n) && n > 0 ? n : 2.4 },
+                      }))
+                    }}
+                    className={inputCls}
+                  />
+                  <p className="mt-1 text-[10px] text-slate-500">1080 ÷ 450 ≈ 2.4</p>
+                </div>
+                <div>
+                  <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1">
+                    Image quality (0–1)
+                  </label>
+                  <input
+                    type="number"
+                    min={0.1}
+                    max={1}
+                    step={0.05}
+                    value={mobileSettings.upload.quality}
+                    onChange={(e) => {
+                      const n = Number(e.target.value)
+                      setMobileSettings((s) => ({
+                        ...s,
+                        upload: { ...s.upload, quality: Number.isFinite(n) && n > 0 && n <= 1 ? n : 0.85 },
+                      }))
+                    }}
+                    className={inputCls}
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* 7b — Transition settings */}
+            <div className="rounded-xl border bg-white p-4">
+              <p className="text-sm font-bold text-slate-900 mb-3">Carousel transition settings</p>
+              <p className="text-xs text-slate-500 mb-3">Controls how the mobile hero carousel behaves on the storefront.</p>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div>
+                  <label className="flex cursor-pointer items-center gap-2 text-xs font-bold text-slate-700">
+                    <input
+                      type="checkbox"
+                      checked={mobileSettings.transition.autoplay}
+                      onChange={(e) =>
+                        setMobileSettings((s) => ({
+                          ...s,
+                          transition: { ...s.transition, autoplay: e.target.checked },
+                        }))
+                      }
+                      className="h-4 w-4 accent-[#F59E0B]"
+                    />
+                    Auto-slide
+                  </label>
+                </div>
+                <div>
+                  <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1">
+                    Slide interval (seconds)
+                  </label>
+                  <input
+                    type="number"
+                    min={1}
+                    max={60}
+                    value={mobileSettings.transition.intervalSec}
+                    onChange={(e) => {
+                      const n = Number(e.target.value)
+                      setMobileSettings((s) => ({
+                        ...s,
+                        transition: {
+                          ...s.transition,
+                          intervalSec: Number.isFinite(n) && n > 0 ? Math.min(60, Math.round(n)) : 5,
+                        },
+                      }))
+                    }}
+                    className={inputCls}
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1">
+                    Transition duration (ms)
+                  </label>
+                  <input
+                    type="number"
+                    min={100}
+                    max={3000}
+                    step={50}
+                    value={mobileSettings.transition.durationMs}
+                    onChange={(e) => {
+                      const n = Number(e.target.value)
+                      setMobileSettings((s) => ({
+                        ...s,
+                        transition: {
+                          ...s.transition,
+                          durationMs: Number.isFinite(n) && n > 0 ? Math.min(3000, Math.max(100, Math.round(n / 50) * 50)) : 400,
+                        },
+                      }))
+                    }}
+                    className={inputCls}
+                  />
+                </div>
+                <div className="sm:col-span-2">
+                  <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1">
+                    Transition effect
+                  </label>
+                  <select
+                    value={mobileSettings.transition.effect}
+                    onChange={(e) =>
+                      setMobileSettings((s) => ({
+                        ...s,
+                        transition: { ...s.transition, effect: e.target.value as "slide" | "fade" },
+                      }))
+                    }
+                    className={inputCls}
+                  >
+                    <option value="slide">Slide</option>
+                    <option value="fade">Fade</option>
+                  </select>
+                </div>
+                <div className="sm:col-span-2">
+                  <label className="flex cursor-pointer items-center gap-2 text-xs font-bold text-slate-700">
+                    <input
+                      type="checkbox"
+                      checked={mobileSettings.transition.showArrows}
+                      onChange={(e) =>
+                        setMobileSettings((s) => ({
+                          ...s,
+                          transition: { ...s.transition, showArrows: e.target.checked },
+                        }))
+                      }
+                      className="h-4 w-4 accent-[#F59E0B]"
+                    />
+                    Navigation arrows
+                  </label>
+                </div>
+                <div className="sm:col-span-2">
+                  <label className="flex cursor-pointer items-center gap-2 text-xs font-bold text-slate-700">
+                    <input
+                      type="checkbox"
+                      checked={mobileSettings.transition.showDots}
+                      onChange={(e) =>
+                        setMobileSettings((s) => ({
+                          ...s,
+                          transition: { ...s.transition, showDots: e.target.checked },
+                        }))
+                      }
+                      className="h-4 w-4 accent-[#F59E0B]"
+                    />
+                    Pagination dots
+                  </label>
+                </div>
+                <div className="sm:col-span-2">
+                  <label className="flex cursor-pointer items-center gap-2 text-xs font-bold text-slate-700">
+                    <input
+                      type="checkbox"
+                      checked={mobileSettings.transition.pauseOnInteraction}
+                      onChange={(e) =>
+                        setMobileSettings((s) => ({
+                          ...s,
+                          transition: { ...s.transition, pauseOnInteraction: e.target.checked },
+                        }))
+                      }
+                      className="h-4 w-4 accent-[#F59E0B]"
+                    />
+                    Pause on interaction
+                  </label>
+                </div>
+              </div>
+            </div>
+
+            {/* 7c — Banner list */}
+            <div className="space-y-2">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-xs font-bold text-slate-700">
+                  {mobileSettings.banners.length} mobile banner{mobileSettings.banners.length === 1 ? "" : "s"}
+                </span>
+                {mobileSettings.banners.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={saveMobileBanners}
+                    disabled={mobileSaving}
+                    className="ml-2 inline-flex shrink-0 items-center gap-1 rounded-lg border border-[#F59E0B] bg-amber-50 px-2.5 py-1.5 text-[11px] font-bold text-[#F59E0B] hover:bg-[#F59E0B]/10 disabled:opacity-60"
+                  >
+                    {mobileSaving ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />}{" "}
+                    {mobileSaving ? "Saving…" : "Save mobile banners"}
+                  </button>
+                )}
+                {mobileSettings.banners.length === 0 && (
+                  <p className="ml-2 text-xs text-slate-500">
+                    No mobile banners yet. Add one below — it appears on the mobile homepage carousel.
+                  </p>
+                )}
                 <button
                   type="button"
-                  onClick={saveMobileBanners}
-                  disabled={mobileSaving}
-                  className="ml-2 inline-flex shrink-0 items-center gap-1 rounded-lg border border-[#F59E0B] bg-amber-50 px-2.5 py-1.5 text-[11px] font-bold text-[#F59E0B] hover:bg-[#F59E0B]/10 disabled:opacity-60"
+                  onClick={() => {
+                    pickUpload("mobile-banner:new")
+                    const id = nextBannerId()
+                    setMobileSettings((s) => ({
+                      ...s,
+                      banners: [
+                        ...s.banners,
+                        {
+                          id,
+                          name: `Mobile banner ${s.banners.length + 1}`,
+                          image: "",
+                          link: "",
+                          enabled: true,
+                          order: s.banners.length,
+                        },
+                      ],
+                    }))
+                    flash("New banner added — upload an image, set its link, then Save mobile banners")
+                  }}
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-dashed border-slate-300 bg-white px-3 py-1.5 text-xs font-bold text-slate-600 hover:border-[#F59E0B] hover:text-[#0F172A]"
                 >
-                  {mobileSaving ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />}{" "}
-                  {mobileSaving ? "Saving…" : "Save mobile banners"}
+                  <Plus className="h-3 w-3" /> Add mobile banner
                 </button>
-              )}
-              {mobileBanners.length === 0 && (
-                <p className="ml-2 text-xs text-slate-500">
-                  No mobile banners yet. Add one below — it appears on the mobile homepage carousel.
-                </p>
-              )}
-              <button
-                type="button"
-                onClick={() => {
-                  pickUpload("mobile-banner:new")
-                  const id = nextBannerId()
-                  setMobileBanners((list) => [
-                    ...list,
-                    { id, name: `Mobile banner ${list.length + 1}`, image: "", link: "", enabled: true, order: list.length },
-                  ])
-                  flash("New banner added — upload an image, set its link, then Save mobile banners")
-                }}
-                className="inline-flex items-center gap-1.5 rounded-lg border border-dashed border-slate-300 bg-white px-3 py-1.5 text-xs font-bold text-slate-600 hover:border-[#F59E0B] hover:text-[#0F172A]"
-              >
-                <Plus className="h-3 w-3" /> Add mobile banner
-              </button>
+              </div>
+              <div className="space-y-2">
+                {mobileSettings.banners.map((b) => (
+                  <MobileBannerEditor
+                    key={b.id}
+                    banner={b}
+                    updateBanner={(next) =>
+                      setMobileSettings((s) => ({
+                        ...s,
+                        banners: s.banners.map((x) => (x.id === b.id ? next : x)),
+                      }))
+                    }
+                    deleteBanner={() =>
+                      setMobileSettings((s) => ({
+                        ...s,
+                        banners: s.banners.filter((x) => x.id !== b.id),
+                      }))
+                    }
+                    uploadImage={pickUpload}
+                    uploading={uploading === `mobile-banner:${b.id}`}
+                    moveBanner={(dir) =>
+                      setMobileSettings((s) => {
+                        const next = [...s.banners]
+                        const i = next.findIndex((x) => x.id === b.id)
+                        const j = i + dir
+                        if (i < 0 || j < 0 || j >= next.length) return s
+                        ;[next[i], next[j]] = [next[j], next[i]]
+                        return {
+                          ...s,
+                          banners: next.map((x, k) => ({ ...x, order: k })),
+                        }
+                      })
+                    }
+                  />
+                ))}
+              </div>
             </div>
-            <div className="space-y-2">
-              {mobileBanners.map((b) => (
-                <MobileBannerEditor
-                  key={b.id}
-                  banner={b}
-                  updateBanner={(next) => setMobileBanners((list) => list.map((x) => (x.id === b.id ? next : x)))}
-                  deleteBanner={() => setMobileBanners((list) => list.filter((x) => x.id !== b.id))}
-                  uploadImage={pickUpload}
-                  uploading={uploading === `mobile-banner:${b.id}`}
-                  moveBanner={(dir) =>
-                    setMobileBanners((list) => {
-                      const next = [...list]
-                      const i = next.findIndex((x) => x.id === b.id)
-                      const j = i + dir
-                      if (i < 0 || j < 0 || j >= next.length) return list
-                      ;[next[i], next[j]] = [next[j], next[i]]
-                      return next.map((x, k) => ({ ...x, order: k }))
-                    })
-                  }
-                />
-              ))}
-            </div>
+            <p className="mt-2 text-[11px] text-slate-500">
+              Mobile banners are stored separately from desktop banners (a different site_settings key). Desktop keeps showing its existing hero/promo banners exactly as before. Empty image = banner is hidden.
+            </p>
           </div>
-        )}
-        <p className="mt-2 text-[11px] text-slate-500">
-          Mobile banners are stored separately from desktop banners (a different site_settings key). Desktop keeps showing its existing hero/promo banners exactly as before. Empty image = banner is hidden.
-        </p>
+        ) : null}
       </Section>
     </div>
   )

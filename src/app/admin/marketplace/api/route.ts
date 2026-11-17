@@ -768,16 +768,17 @@ export async function POST(request: NextRequest) {
       revalidateStore()
       return NextResponse.json({ success: true, banners })
     }
-    // Save the mobile homepage banner list (independent of desktop banners).
+    // Save the mobile homepage banner settings (banners + transition + upload),
+    // independent of the desktop banner system.
     if (body.action === "mobile-banners-save") {
       const { parseMobileBanners } = await import("@/lib/marketplace-mobile-banners")
-      const list = parseMobileBanners(Array.isArray(body.banners) ? body.banners : [])
+      const settings = parseMobileBanners(body.banners)
       const { error } = await supabase
         .from("site_settings")
-        .upsert({ key: MARKETPLACE_MOBILE_BANNERS_KEY, value: list as unknown as never }, { onConflict: "key" })
+        .upsert({ key: MARKETPLACE_MOBILE_BANNERS_KEY, value: settings as unknown as never }, { onConflict: "key" })
       if (error) throw error
       revalidateStore()
-      return NextResponse.json({ success: true, banners: list })
+      return NextResponse.json({ success: true, banners: settings })
     }
     // Save mobile settings (promo notice, announcement strip, rotation interval)
     if (body.action === "mobile-settings-save") {
