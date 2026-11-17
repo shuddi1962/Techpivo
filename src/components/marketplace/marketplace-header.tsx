@@ -202,7 +202,6 @@ const [showBackToTop, setShowBackToTop] = useState(false)
   const [suggestOpen, setSuggestOpen] = useState(false)
   const searchBoxRef = useRef<HTMLDivElement>(null)
   const mobileBoxRef = useRef<HTMLDivElement>(null)
-  const mobileSearchInputRef = useRef<HTMLInputElement>(null)
   useEffect(() => {
     if (query.trim().length >= 2) setSuggestOpen(true)
     else setSuggestOpen(false)
@@ -582,21 +581,6 @@ const [showBackToTop, setShowBackToTop] = useState(false)
             >
               {open ? <X className="h-6 w-6 text-slate-600" /> : <Menu className="h-6 w-6 text-slate-600" />}
             </button>
-          </div>
-          {/* Mobile search — full width search bar below the icon row */}
-          <div className="md:hidden w-full mt-0">
-            <form className="flex w-full h-11 rounded-xl border border-[#CBD5E1] bg-[#F8FAFC] overflow-hidden focus-within:border-[#FF6B00] focus-within:ring-1 focus-within:ring-[#FF6B00]/30 m-0" onSubmit={submitSearch} role="search">
-              <input
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                ref={mobileSearchInputRef}
-                className="flex-1 bg-transparent px-4 text-sm text-black placeholder:text-slate-600 focus:outline-none h-full m-0"
-                placeholder="Search TechPivo Market..."
-              />
-              <button type="submit" aria-label="Search" className="bg-[#FF6B00] hover:bg-[#e86000] text-white px-3 flex items-center justify-center transition-all duration-200 rounded-r-xl h-full m-0">
-                <Search className="h-6 w-6 shrink-0" />
-              </button>
-            </form>
           </div>
           <div ref={searchBoxRef} className="hidden md:flex flex-1 max-w-2xl relative">
           <form
