@@ -1,31 +1,29 @@
 "use client"
 
 import Link from "next/link"
-import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { useMemo } from "react"
 import { marketImage } from "@/lib/marketplace-images"
 import { cn } from "@/lib/utils"
 import { type BannerSlide, type MarketBanners } from "@/lib/marketplace-banners"
 
 /**
- * NEW MOBILE SLIDE BANNER — homepage hero carousel.
+ * NEW MOBILE SLIDE BANNER — homepage hero banner.
  *
- * Renders flush against the header (zero top space) as a full-width
- * scroll-snap swipe carousel on mobile only; hidden on desktop/tablet (md+).
+ * Renders flush against the header (zero top space) as a single full-width
+ * static banner on mobile only; hidden on desktop/tablet (md+).
+ *
+ * Only the FIRST slide is rendered — any additional configured slides are
+ * deliberately not shown, so no neighbouring banner can peek in from the
+ * carousel edge and no horizontal overflow is possible.
  *
  * Slide source chain:
  *   1. banners.mobile_hero_image  (single cover)
- *   2. banners.mobile_hero_slides  (extra slides)
+ *   2. banners.mobile_hero_slides  (extra slides — only the first is shown)
  *   3. banners.hero_image          (desktop fallback)
  *   4. MARKETPLACE_HERO.image      (hardcoded fallback)
  *
- * Sizing is exact: every slide is the full container width, the scroll
- * container never exceeds the viewport (no 100vw which includes scrollbar
- * width), and the slide width is re-measured on mount and on window resize
- * so scroll-snap stays aligned after portrait<->landscape rotation.
- *
- * - Auto-rotation every 6 seconds
- * - Pagination dots when more than one slide
- * - Touch/swipe scroll-snap, no partially visible slides, no overflow
+ * - No scroll container, no flex, no snap, no rotation — impossible for
+ *   partial slides or white space to appear
  * - Images use object-contain so aspect ratio is never distorted
  * - Admin uploads (mobile-hero-cover + mobile_hero_slides) display as-is
  */
@@ -68,68 +66,13 @@ export function MobileSlideBanner({
     return out
   }, [banners])
 
-  const [index, setIndex] = useState(0)
-  const [active, setActive] = useState(0)
-  const [slideWidth, setSlideWidth] = useState(0)
-  const containerRef = useRef<HTMLDivElement>(null)
-  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  // Render only the first slide — kills any neighbouring banner and
+  // guarantees no partial slide or horizontal overflow on mobile.
+  const first = slides[0]
+  if (!enabled || !first) return null
 
-  // Measure slide width on mount and on every resize/rotation so snap points
-  // always match the actual viewport width.
-  useEffect(() => {
-    const measure = () => {
-      if (!containerRef.current) return
-      setSlideWidth(containerRef.current.clientWidth)
-    }
-    measure()
-    window.addEventListener("resize", measure)
-    return () => window.removeEventListener("resize", measure)
-  }, [])
-
-  // Auto-rotate every 6 seconds.
-  useEffect(() => {
-    if (slides.length <= 1) return
-    intervalRef.current = setInterval(() => {
-      setIndex((i) => (i + 1) % slides.length)
-    }, 6000)
-    return () => {
-      if (intervalRef.current) clearInterval(intervalRef.current)
-    }
-  }, [slides.length])
-
-  // Snap to nearest slide on scroll end.
-  const onScrollEnd = useCallback(() => {
-    const el = containerRef.current
-    if (!el || slideWidth <= 0) return
-    const next = Math.round(el.scrollLeft / slideWidth)
-    setIndex(Math.max(0, Math.min(slides.length - 1, next)))
-    setActive(Math.max(0, Math.min(slides.length - 1, next)))
-  }, [slideWidth, slides.length])
-
-  useEffect(() => {
-    const el = containerRef.current
-    if (!el) return
-    el.addEventListener("scrollend", onScrollEnd)
-    el.addEventListener("scroll", () => {
-      const el2 = containerRef.current
-      if (!el2) return
-      setActive(Math.max(0, Math.min(slides.length - 1, Math.round(el2.scrollLeft / slideWidth))))
-    })
-    return () => {
-      el.removeEventListener("scrollend", onScrollEnd)
-    }
-  }, [onScrollEnd, slideWidth, slides.length])
-
-  const goTo = (i: number) => {
-    setIndex(i)
-    setActive(i)
-    const el = containerRef.current
-    if (!el) return
-    const left = i * el.clientWidth
-    el.scrollTo({ left, behavior: "smooth" })
-  }
-
-  if (!enabled || slides.length === 0) return null
+  const href = first.link ? cleanLink(first.link) : ""
+  const image = marketImage(first.image)
 
   return (
     <section
@@ -148,79 +91,45 @@ export function MobileSlideBanner({
         maxWidth: "100%",
       }}
     >
-      <div className="relative w-full overflow-hidden bg-[#F8FAFC]" style={{ overflow: "hidden", width: "100%" }}>
-        <div
-          ref={containerRef}
-          className="flex w-full max-w-full snap-x snap-mandatory overflow-hidden overflow-y-hidden no-scrollbar"
-          style={{
-            scrollbarWidth: "none",
-            WebkitOverflowScrolling: "touch",
-            overflow: "hidden",
-            width: "100%",
-            maxWidth: "100%",
-          }}
-        >
-          {slides.map((s, i) => {
-            const href = s.link ? cleanLink(s.link) : ""
-            const image = marketImage(s.image)
-            const isActive = i === active
-            return (
-              <div
-                key={`mobile-slide-${i}`}
-                className="flex-shrink-0 snap-center"
-                style={{ width: "100%", minWidth: "100%" }}
-              >
-                {href ? (
-                  <Link
-                    href={href}
-                    aria-label={`Banner ${i + 1}`}
-                    className="block"
-                  >
-                    <div className="relative aspect-[2/1] w-full overflow-hidden bg-[#F8FAFC] group">
-                      <img
-                        src={image}
-                        alt=""
-                        loading="lazy"
-                        decoding="async"
-                        className="w-full h-full object-contain group-hover:scale-105 transition-transform duration-500"
-                      />
-                      <span className="absolute inset-0 bg-black/10 group-hover:bg-black/5 transition-colors" />
-                    </div>
-                  </Link>
-                ) : (
-                  <div className="relative aspect-[2/1] w-full overflow-hidden bg-[#F8FAFC]">
-                    <img
-                      src={image}
-                      alt=""
-                      loading="lazy"
-                      decoding="async"
-                      className="w-full h-full object-contain"
-                    />
-                    <span className="absolute inset-0 bg-black/5" />
-                  </div>
-                )}
-              </div>
-            )
-          })}
-        </div>
-
-        {/* Pagination dots — only when more than one slide */}
-        {slides.length > 1 && (
-          <div className="absolute bottom-3 left-1/2 -translate-x-1/2 z-20 flex gap-1.5">
-            {slides.map((_, i) => (
-              <button
-                key={i}
-                type="button"
-                onClick={() => goTo(i)}
-                aria-label={`Slide ${i + 1}`}
-                aria-current={i === active ? "true" : undefined}
-                className={`w-2 h-2 rounded-full transition-all ${
-                  i === active
-                    ? "bg-[#FF6B00] shadow-[0_0_0_4px_rgba(255,107,0,0.3)]"
-                    : "bg-white/60 hover:bg-white/80"
-                }`}
+      <div
+        className="relative w-full overflow-hidden bg-[#F8FAFC]"
+        style={{ overflow: "hidden", width: "100%", maxWidth: "100%" }}
+      >
+        {href ? (
+          <Link
+            href={href}
+            aria-label="Banner"
+            className="block"
+            style={{ display: "block", width: "100%" }}
+          >
+            <div className="relative aspect-[2/1] w-full overflow-hidden bg-[#F8FAFC]">
+              <img
+                src={image}
+                alt=""
+                loading="lazy"
+                decoding="async"
+                className="w-full h-full object-contain"
+                style={{
+                  width: "100%",
+                  height: "100%",
+                  display: "block",
+                  overflow: "hidden",
+                }}
               />
-            ))}
+              <span className="absolute inset-0 bg-black/5" />
+            </div>
+          </Link>
+        ) : (
+          <div className="relative aspect-[2/1] w-full overflow-hidden bg-[#F8FAFC]">
+            <img
+              src={image}
+              alt=""
+              loading="lazy"
+              decoding="async"
+              className="w-full h-full object-contain"
+              style={{ width: "100%", height: "100%", display: "block" }}
+            />
+            <span className="absolute inset-0 bg-black/5" />
           </div>
         )}
       </div>
