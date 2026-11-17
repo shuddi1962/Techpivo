@@ -42,7 +42,7 @@ import {
   type SliderSlotKey,
   type SlotSlider,
 } from "@/lib/marketplace-banners"
-import { parseMobileBanners, type MobileBanner, type MobileBannerSettings } from "@/lib/marketplace-mobile-banners"
+import { parseMobileBanners, type MobileBanner, type MobileBannerSettings, EMPTY_MOBILE_BANNER_SETTINGS } from "@/lib/marketplace-mobile-banners"
 import { BannerSlider } from "@/components/marketplace/banner-slider"
 import { WelcomePopupCard } from "@/components/marketplace/welcome-popup"
 import { createClient } from "@/lib/supabase/client"
@@ -1084,7 +1084,7 @@ export function MarketplaceBannersTab() {
     }
   }
   // Mobile homepage banners — independent of the desktop banner system.
-  const [mobileSettings, setMobileSettings] = useState<MobileBannerSettings | null>(null)
+  const [mobileSettings, setMobileSettings] = useState<MobileBannerSettings>(EMPTY_MOBILE_BANNER_SETTINGS)
   const [mobileLoading, setMobileLoading] = useState(true)
   const [mobileSaving, setMobileSaving] = useState(false)
   const loadMobileBanners = async () => {
@@ -1101,7 +1101,6 @@ export function MarketplaceBannersTab() {
     }
   }
   const saveMobileBanners = async () => {
-    if (!mobileSettings) return
     setMobileSaving(true)
     try {
       const res = await fetch("/admin/marketplace/api", {
@@ -1279,7 +1278,6 @@ export function MarketplaceBannersTab() {
         })
       } else if (uploadTarget.startsWith("mobile-banner:")) {
         const rest = uploadTarget.slice("mobile-banner:".length)
-        if (!mobileSettings) return
         if (rest === "new") {
           setMobileSettings((s) => ({
             ...s,
@@ -1939,7 +1937,7 @@ export function MarketplaceBannersTab() {
       >
         {mobileLoading ? (
           <div className="h-32 flex items-center justify-center text-xs text-slate-500">Loading mobile banners…</div>
-        ) : mobileSettings ? (
+        ) : (
           <div className="space-y-4">
             {/* 7a — Upload configuration */}
             <div className="rounded-xl border bg-white p-4">
@@ -2284,7 +2282,7 @@ export function MarketplaceBannersTab() {
               Mobile banners are stored separately from desktop banners (a different site_settings key). Desktop keeps showing its existing hero/promo banners exactly as before. Empty image = banner is hidden.
             </p>
           </div>
-        ) : null}
+        )}
       </Section>
     </div>
   )
