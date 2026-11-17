@@ -7,14 +7,10 @@ import { cn } from "@/lib/utils"
 import { type BannerSlide, type MarketBanners } from "@/lib/marketplace-banners"
 
 /**
- * NEW MOBILE SLIDE BANNER — homepage hero banner.
+ * NEW MOBILE SLIDE BANNER — single full-width static banner.
  *
- * Renders flush against the header (zero top space) as a single full-width
- * static banner on mobile only; hidden on desktop/tablet (md+).
- *
- * Only the FIRST slide is rendered — any additional configured slides are
- * deliberately not shown, so no neighbouring banner can peek in from the
- * carousel edge and no horizontal overflow is possible.
+ * Renders flush against the header (zero top space) on mobile only;
+ * hidden on desktop/tablet (md+).
  *
  * Slide source chain:
  *   1. banners.mobile_hero_image  (single cover)
@@ -22,9 +18,12 @@ import { type BannerSlide, type MarketBanners } from "@/lib/marketplace-banners"
  *   3. banners.hero_image          (desktop fallback)
  *   4. MARKETPLACE_HERO.image      (hardcoded fallback)
  *
- * - No scroll container, no flex, no snap, no rotation — impossible for
- *   partial slides or white space to appear
- * - Images use object-contain so aspect ratio is never distorted
+ * Only the FIRST slide is rendered — any additional configured slides are
+ * deliberately not shown, so no neighbouring banner can peek in and no
+ * horizontal overflow is possible.
+ *
+ * - No scroll container, no flex, no snap, no rotation, no dots
+ * - object-fit: cover fills the entire container with no letterboxing
  * - Admin uploads (mobile-hero-cover + mobile_hero_slides) display as-is
  */
 export function MobileSlideBanner({
@@ -57,7 +56,6 @@ export function MobileSlideBanner({
       }
     }
 
-    // Desktop hero image fallback when no mobile banner is configured.
     if (out.length === 0) {
       const desktop = (banners.hero_image || "").trim()
       if (desktop) out.push({ image: desktop, link: "" })
@@ -66,8 +64,6 @@ export function MobileSlideBanner({
     return out
   }, [banners])
 
-  // Render only the first slide — kills any neighbouring banner and
-  // guarantees no partial slide or horizontal overflow on mobile.
   const first = slides[0]
   if (!enabled || !first) return null
 
@@ -91,45 +87,30 @@ export function MobileSlideBanner({
         maxWidth: "100%",
       }}
     >
-      <div
-        className="relative w-full overflow-hidden bg-[#F8FAFC]"
-        style={{ overflow: "hidden", width: "100%", maxWidth: "100%" }}
-      >
+      <div className="relative w-full overflow-hidden bg-[#F8FAFC]" style={{ overflow: "hidden", width: "100%", maxWidth: "100%" }}>
         {href ? (
-          <Link
-            href={href}
-            aria-label="Banner"
-            className="block"
-            style={{ display: "block", width: "100%" }}
-          >
-            <div className="relative aspect-[2/1] w-full overflow-hidden bg-[#F8FAFC]">
+          <Link href={href} aria-label="Banner" className="block" style={{ display: "block", width: "100%" }}>
+            <div className="relative w-full overflow-hidden bg-[#F8FAFC]">
               <img
                 src={image}
                 alt=""
                 loading="lazy"
                 decoding="async"
-                className="w-full h-full object-contain"
-                style={{
-                  width: "100%",
-                  height: "100%",
-                  display: "block",
-                  overflow: "hidden",
-                }}
+                className="w-full h-full object-cover"
+                style={{ width: "100%", height: "100%", display: "block" }}
               />
-              <span className="absolute inset-0 bg-black/5" />
             </div>
           </Link>
         ) : (
-          <div className="relative aspect-[2/1] w-full overflow-hidden bg-[#F8FAFC]">
+          <div className="relative w-full overflow-hidden bg-[#F8FAFC]">
             <img
               src={image}
               alt=""
               loading="lazy"
               decoding="async"
-              className="w-full h-full object-contain"
+              className="w-full h-full object-cover"
               style={{ width: "100%", height: "100%", display: "block" }}
             />
-            <span className="absolute inset-0 bg-black/5" />
           </div>
         )}
       </div>
@@ -137,7 +118,6 @@ export function MobileSlideBanner({
   )
 }
 
-/** Allow in-store paths, anchors, and https links — drop anything unsafe. */
 function cleanLink(v: string): string {
   const t = v.trim()
   if (!t || /\s/.test(t)) return ""
