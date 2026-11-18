@@ -175,11 +175,12 @@ export function MobileHeroBanner({ className }: { className?: string }) {
           }
         }}
       >
-        {/* Slide track — each slide is exactly 100% wide for slide effect */}
+        {/* Slide track — width 100%, slides each flex 0 0 100%, transform shifts by viewport width.
+            Container (parent) has overflow-hidden and clips neighbouring slides. */}
         <div
-          className="flex w-full transition-transform duration-[400ms] ease-in-out overflow-hidden"
+          className="flex w-full transition-transform duration-[400ms] ease-in-out"
           style={{
-            width: isSlide ? `${displayCount * 100}%` : "100%",
+            width: "100%",
             height: "100%",
             display: "flex",
             flexDirection: "row",
