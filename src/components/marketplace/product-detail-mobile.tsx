@@ -151,6 +151,7 @@ export function ProductDetailMobile({
   const [qty, setQty] = useState(1)
   const [added, setAdded] = useState(false)
   const lastAddRef = useRef(0)
+  const galleryTouchRef = useRef(0)
   const [wished, setWished] = useState(() => readWish(p.id))
   const [reviews, setReviews] = useState<Review[]>(initialReviews)
   const [variants, setVariants] = useState<VariantOpt[]>([])
@@ -170,7 +171,11 @@ export function ProductDetailMobile({
     variants.length > 0 && labelParts.length > 0
       ? variants.find((v) => {
           const vp = v.label.split(/[/;|]+/).map((x) => x.trim()).filter(Boolean)
-          return vp.length === labelParts.length && vp.every((part, i) => part === (picked[Object.keys(picked)[i]] || ""))
+          if (vp.length !== labelParts.length) return false
+          return vp.every((part, i) => {
+            const attrName = variants[0]?.label.split(/[/;|]+/).map((x) => x.trim()).filter(Boolean)[i]
+            return part === (picked[attrName || ""] || "")
+          })
         }) || null
       : null
   const price = selected?.price ?? basePrice
@@ -360,8 +365,17 @@ export function ProductDetailMobile({
                     className="w-full h-full object-contain"
                     loading="eager"
                     decoding="async"
-                    {...galleryStart}
-                    {...galleryEnd}
+                    onTouchStart={(e) => {
+                      galleryTouchRef.current = e.touches[0].clientX
+                      galleryStart(e)
+                    }}
+                    onTouchEnd={(e) => {
+                      galleryEnd(e)
+                      // Only prevent default on horizontal swipes, allow vertical scroll
+                      if (Math.abs(galleryTouchRef.current - e.changedTouches[0].clientX) > 40) {
+                        e.preventDefault()
+                      }
+                    }}
                   />
                 )}
                 {showSale && (
@@ -424,8 +438,8 @@ export function ProductDetailMobile({
 
       {/* ================= Product info ================= */}
       <section className="px-4 space-y-3 pb-2">
-        {/* Product title — clean, not bold */}
-        <h1 className="text-[17px] font-medium text-[#222222] leading-[1.4] font-sans">
+        {/* Product title — clean, light */}
+        <h1 className="text-[16px] font-normal text-[#333333] leading-[1.4] font-sans">
           {rewritten.title || p.product_name || "Product"}
         </h1>
 
@@ -512,6 +526,7 @@ export function ProductDetailMobile({
           <label className="text-[10px] font-medium text-slate-500 block mb-1 uppercase tracking-wider">Quantity</label>
           <div className="flex items-center gap-1.5">
             <button
+              type="button"
               onClick={() => setQty((q) => Math.max(1, q - 1))}
               disabled={!inStock}
               className="w-8 h-8 rounded-lg border border-[#CBD5E1] bg-white flex items-center justify-center text-[#0F172A] font-medium disabled:opacity-40 disabled:pointer-events-none"
@@ -521,6 +536,7 @@ export function ProductDetailMobile({
             </button>
             <span className="w-7 text-center text-sm font-bold tabular-nums text-[#0F172A]">{qty}</span>
             <button
+              type="button"
               onClick={() => setQty((q) => Math.min(99, q + 1))}
               disabled={!inStock || (selected?.stock != null && qty >= selected.stock)}
               className="w-8 h-8 rounded-lg border border-[#CBD5E1] bg-white flex items-center justify-center text-[#0F172A] font-medium disabled:opacity-40 disabled:pointer-events-none"
