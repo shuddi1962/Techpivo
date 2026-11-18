@@ -64,7 +64,7 @@ export function AffiliateProductCard({ product, compact }: AffiliateProductCardP
 
             <h3
               className={cn(
-                "font-semibold leading-tight line-clamp-2",
+                "font-medium leading-tight line-clamp-2 text-[#222222]",
                 compact ? "text-sm" : "text-base"
               )}
             >

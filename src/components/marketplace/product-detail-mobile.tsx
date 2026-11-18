@@ -425,7 +425,7 @@ export function ProductDetailMobile({
       {/* ================= Product info ================= */}
       <section className="px-4 space-y-3 pb-2">
         {/* Product title — clean, not bold */}
-        <h1 className="text-[20px] font-medium text-[#222222] leading-[1.4] font-sans">
+        <h1 className="text-[17px] font-medium text-[#222222] leading-[1.4] font-sans">
           {rewritten.title || p.product_name || "Product"}
         </h1>
 
@@ -818,9 +818,9 @@ export function ProductDetailMobile({
             <button
               onClick={buyNow}
               disabled={!inStock}
-              className="w-full h-10 rounded-lg border border-[#E2E8F0] bg-white font-medium text-[11px] transition-all flex items-center justify-center gap-1.5 text-[#0F172A] disabled:opacity-40 disabled:pointer-events-none"
+              className="w-full h-10 rounded-lg border border-[#DC2626] bg-[#DC2626] font-medium text-[11px] transition-all flex items-center justify-center gap-1.5 text-white disabled:opacity-40 disabled:pointer-events-none"
             >
-              <Zap className="h-3 w-3" /> <span>Buy Now</span>
+              <Zap className="h-3 w-3 text-white" /> <span className="text-white">Buy Now</span>
             </button>
           </div>
           {!inStock && (

@@ -76,7 +76,7 @@ export function AffiliateWidget({ categoryId }: AffiliateWidgetProps) {
         </div>
 
         {/* Name */}
-        <h4 className="text-sm font-semibold leading-tight line-clamp-2">
+        <h4 className="text-sm font-medium leading-tight line-clamp-2 text-[#222222]">
           {product.product_name}
         </h4>
 

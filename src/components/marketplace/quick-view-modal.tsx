@@ -187,7 +187,7 @@ function QuickViewBody({ productId, onClose }: { productId: string; onClose: () 
       </div>
 
       <div className="flex min-w-0 flex-col">
-        <h3 className="text-lg font-extrabold leading-snug text-[#0F172A]">{product.product_name}</h3>
+        <h3 className="text-base font-medium leading-snug text-[#222222]">{product.product_name}</h3>
         <span className="mt-1 flex items-center gap-1.5 text-xs text-slate-500">
           <Star className={`h-3.5 w-3.5 ${reviews > 0 ? "fill-[#F59E0B] text-[#F59E0B]" : "text-slate-300"}`} />
           {reviews > 0 ? `${rating.toFixed(1)} · ${reviews} review${reviews === 1 ? "" : "s"}` : "No reviews yet"}
