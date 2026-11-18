@@ -5,7 +5,7 @@ import { useEffect, useMemo, useRef, useState, useCallback } from "react"
 import {
   ShoppingCart, Zap, X, ChevronLeft, ChevronRight,
   Truck, ShieldCheck, RotateCcw, Minus, Plus, Clock, Check, MapPin,
-  Star as StarIcon, RefreshCw, Copy, Link as LinkIcon, Play,
+  Star as StarIcon, RefreshCw, Copy, Play,
   Package, Store, Sparkles, Settings,
 } from "lucide-react"
 import { addToCart } from "@/lib/marketplace-cart"
@@ -17,6 +17,7 @@ import { useProductDiscount } from "./market-flags"
 import { useSaleEnd } from "./sale-countdown"
 import { formatWeight, neutralSku } from "./product-detail"
 import { rewriteProduct } from "@/lib/marketplace-copy"
+import { CompletePurchase } from "@/components/marketplace/complete-purchase"
 
 interface Review {
   id: string
@@ -63,34 +64,6 @@ interface VariantOpt {
 }
 
 const WISH_KEY = "tp_market_wish_v1"
-const SWATCH_HEX: Record<string, string> = {
-  black: "#1F2937", white: "#FFFFFF", red: "#DC2626", blue: "#2563EB",
-  green: "#16A34A", yellow: "#EAB308", pink: "#EC4899", purple: "#9333EA",
-  orange: "#F97316", gray: "#9CA3AF", grey: "#9CA3AF", silver: "#C0C0C0",
-  gold: "#C9A227", brown: "#92400E", beige: "#E7D8C3", navy: "#1E3A8A",
-}
-
-function swatchFor(value: string): string | null {
-  const v = value.toLowerCase()
-  for (const [k, hex] of Object.entries(SWATCH_HEX)) {
-    if (v.includes(k)) return hex
-  }
-  return null
-}
-
-const splitParts = (s: string): string[] =>
-  s.split(/[/;|]+/).map((x) => x.trim()).filter(Boolean)
-
-function recordRecent(id: string) {
-  try {
-    const raw = window.localStorage.getItem("tp_market_recent_v1")
-    const arr = (raw ? JSON.parse(raw) : []) as string[]
-    const next = [id, ...arr.filter((x) => x !== id)].slice(0, 8)
-    window.localStorage.setItem("tp_market_recent_v1", JSON.stringify(next))
-  } catch {
-    // ignore
-  }
-}
 
 function readWish(id: string): boolean {
   try {
@@ -116,7 +89,7 @@ function toggleWish(id: string): boolean {
   return next
 }
 
-function Stars({ value, size = 16 }: { value: number; size?: number }) {
+function Stars({ value, size = 14 }: { value: number; size?: number }) {
   return (
     <span className="flex items-center gap-0.5" aria-label={`${value} out of 5 stars`}>
       {Array.from({ length: 5 }).map((_, i) => (
@@ -133,7 +106,6 @@ function clipNumber(n: number): string {
   return n >= 1000 ? `${(n / 1000).toFixed(1)}K` : String(n)
 }
 
-// Touch-swipe helpers shared by gallery + full-screen viewer.
 function useSwipeCallbacks(onLeft: () => void, onRight: () => void) {
   const startRef = useRef(0)
   const onStart = useCallback((e: React.TouchEvent) => {
@@ -182,7 +154,6 @@ export function ProductDetailMobile({
   const [wished, setWished] = useState(() => readWish(p.id))
   const [reviews, setReviews] = useState<Review[]>(initialReviews)
   const [variants, setVariants] = useState<VariantOpt[]>([])
-  const [attrs, setAttrs] = useState<Array<{ name: string; values: string[] }>>([])
   const [picked, setPicked] = useState<Record<string, string>>({})
   const [liveDetail, setLiveDetail] = useState<{ short: string; paras: string[]; images: string[]; video?: string; material?: string; weightGrams?: number | null } | null>(null)
   const [galleryIndex, setGalleryIndex] = useState(0)
@@ -194,11 +165,12 @@ export function ProductDetailMobile({
   const [reviewRating, setReviewRating] = useState(0)
 
   const basePrice = Number(p.sale_price ?? p.original_price ?? 0)
+  const labelParts = variants.length > 0 ? variants[0].label.split(/[/;|]+/).map((x) => x.trim()).filter(Boolean) : []
   const selected: VariantOpt | null =
-    variants.length > 0
+    variants.length > 0 && labelParts.length > 0
       ? variants.find((v) => {
-          const parts = splitParts(v.label)
-          return attrs.every((a, i) => !picked[a.name] || parts[i] === picked[a.name])
+          const vp = v.label.split(/[/;|]+/).map((x) => x.trim()).filter(Boolean)
+          return vp.length === labelParts.length && vp.every((part, i) => part === (picked[Object.keys(picked)[i]] || ""))
         }) || null
       : null
   const price = selected?.price ?? basePrice
@@ -230,16 +202,13 @@ export function ProductDetailMobile({
     () => setGalleryIndex((i) => (i === 0 ? gallery.length - 1 : i - 1))
   )
 
-  // Live supplier options.
   useEffect(() => {
-    recordRecent(p.id)
     fetch(`/api/marketplace/variants?product_id=${encodeURIComponent(p.id)}`)
       .then((r) => r.json())
       .then((d) => {
         if (Array.isArray(d?.variants) && d.variants.length > 0) {
           setVariants(d.variants as VariantOpt[])
           const at = (Array.isArray(d?.attributes) ? d.attributes : []) as Array<{ name: string; values: string[] }>
-          setAttrs(at)
           const init: Record<string, string> = {}
           at.forEach((a) => { if (a.values[0]) init[a.name] = a.values[0] })
           setPicked(init)
@@ -266,7 +235,6 @@ export function ProductDetailMobile({
       .catch(() => {})
   }, [p.id])
 
-  // Live reviews (realtime + focus refresh).
   useEffect(() => {
     let alive = true
     const reload = () => {
@@ -308,13 +276,12 @@ export function ProductDetailMobile({
   const detailEff = liveDetail || detail
 
   const stockFor = (name: string, value: string): number | null => {
-    const idx = attrs.findIndex((a) => a.name === name)
-    if (idx < 0) return null
-    const parts = value.split(/[/;|]+/).map((x) => x.trim()).filter(Boolean)
-    return variants.find((v) => {
-      const vp = splitParts(v.label)
-      return vp[idx] === parts[0] && attrs.every((a, i) => !picked[a.name] || vp[i] === picked[a.name])
-    })?.stock ?? null
+    const variant = variants.find((v) => {
+      const vp = v.label.split(/[/;|]+/).map((x) => x.trim()).filter(Boolean)
+      const sv = value.split(/[/;|]+/).map((x) => x.trim()).filter(Boolean)
+      return vp.length === sv.length && vp.every((part, i) => part === sv[i])
+    })
+    return variant?.stock ?? null
   }
 
   const doAdd = useCallback(() => {
@@ -322,17 +289,31 @@ export function ProductDetailMobile({
     if (now - lastAddRef.current < 400) return
     lastAddRef.current = now
     if (!inStock) return
-    addToCart(p.id, qty, selected ? { vid: selected.vid, label: selected.label, image: selected.image || null } : null)
+    const variantPick = variants.length > 0
+      ? variants.find((v) => {
+          const vp = v.label.split(/[/;|]+/).map((x) => x.trim()).filter(Boolean)
+          const sp = Object.values(picked)
+          return vp.length === sp.length && vp.every((part, i) => part === sp[i])
+        })
+      : null
+    addToCart(p.id, qty, variantPick ? { vid: variantPick.vid, label: variantPick.label, image: variantPick.image || null } : null)
     setAdded(true)
     setTimeout(() => setAdded(false), 1400)
     openCartPopup(p.id)
-  }, [p.id, qty, selected, inStock])
+  }, [p.id, qty, variants, picked, inStock])
 
   const buyNow = useCallback(() => {
     if (!inStock) return
-    addToCart(p.id, qty, selected ? { vid: selected.vid, label: selected.label, image: selected.image || null } : null)
+    const variantPick = variants.length > 0
+      ? variants.find((v) => {
+          const vp = v.label.split(/[/;|]+/).map((x) => x.trim()).filter(Boolean)
+          const sp = Object.values(picked)
+          return vp.length === sp.length && vp.every((part, i) => part === sp[i])
+        })
+      : null
+    addToCart(p.id, qty, variantPick ? { vid: variantPick.vid, label: variantPick.label, image: variantPick.image || null } : null)
     openCheckout()
-  }, [p.id, qty, selected, inStock])
+  }, [p.id, qty, variants, picked, inStock])
 
   function submitReviewMobile() {
     const textarea = document.getElementById("review-text") as HTMLTextAreaElement | null
@@ -371,9 +352,9 @@ export function ProductDetailMobile({
     <div className="bg-[#F8FAFC] min-h-screen marketplace-body product-detail-mobile">
       {/* ================= Gallery ================= */}
       <section className="px-0 pt-0 pb-2">
-        <div className="relative">
+        <div className="relative w-full">
           <div
-            className="aspect-video bg-[#F1F5F9] rounded-3xl border border-[#E2E8F0] overflow-hidden relative"
+            className="aspect-video bg-[#F1F5F9] border border-[#E2E8F0] overflow-hidden relative"
             onDoubleClick={() => setZoomOpen((o) => !o)}
           >
             {gallery.length > 0 ? (
@@ -397,35 +378,35 @@ export function ProductDetailMobile({
                   />
                 )}
                 {showSale && (
-                  <span className="absolute top-3 left-3 z-20 bg-[#EF4444] text-white text-[10px] font-bold px-2 py-1 rounded-full shadow-sm">
+                  <span className="absolute top-3 left-3 z-20 bg-[#EF4444] text-white text-[10px] font-semibold px-2 py-1 rounded-full shadow-sm">
                     -{discount}%
                   </span>
                 )}
-                <span className="absolute bottom-3 right-3 z-20 bg-black/60 backdrop-blur-sm text-white text-[10px] font-bold px-2 py-1.5 rounded-full shadow-sm">
+                <span className="absolute bottom-3 right-3 z-20 bg-black/50 backdrop-blur-sm text-white text-[10px] font-semibold px-2 py-1.5 rounded-full shadow-sm">
                   {galleryIndex + 1} / {gallery.length}
                 </span>
                 {gallery.length > 1 && (
                   <>
                     <button
                       onClick={() => setGalleryIndex((i) => (i === 0 ? gallery.length - 1 : i - 1))}
-                      className="absolute left-3 top-1/2 -translate-y-1/2 z-30 w-10 h-10 rounded-full bg-white/95 text-[#0F172A] flex items-center justify-center shadow-md hover:scale-105 active:scale-95 transition-transform"
+                      className="absolute left-2 top-1/2 -translate-y-1/2 z-30 w-9 h-9 rounded-full bg-white/95 text-[#0F172A] flex items-center justify-center shadow-md hover:scale-105 active:scale-95 transition-transform"
                       aria-label="Previous image"
                     >
-                      <ChevronLeft className="h-5 w-5" />
+                      <ChevronLeft className="h-4 w-4" />
                     </button>
                     <button
                       onClick={() => setGalleryIndex((i) => (i === gallery.length - 1 ? 0 : i + 1))}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 z-30 w-10 h-10 rounded-full bg-white/95 text-[#0F172A] flex items-center justify-center shadow-md hover:scale-105 active:scale-95 transition-transform"
+                      className="absolute right-2 top-1/2 -translate-y-1/2 z-30 w-9 h-9 rounded-full bg-white/95 text-[#0F172A] flex items-center justify-center shadow-md hover:scale-105 active:scale-95 transition-transform"
                       aria-label="Next image"
                     >
-                      <ChevronRight className="h-5 w-5" />
+                      <ChevronRight className="h-4 w-4" />
                     </button>
                     <button
                       onClick={() => setZoomOpen(true)}
-                      className="absolute top-3 right-3 z-30 w-10 h-10 rounded-full bg-white/95 text-[#0F172A] flex items-center justify-center shadow-md hover:scale-105 active:scale-95 transition-transform"
+                      className="absolute top-3 right-2 z-30 w-9 h-9 rounded-full bg-white/95 text-[#0F172A] flex items-center justify-center shadow-md hover:scale-105 active:scale-95 transition-transform"
                       aria-label="View full screen"
                     >
-                      <RefreshCw className="h-5 w-5" />
+                      <RefreshCw className="h-4 w-4" />
                     </button>
                   </>
                 )}
@@ -446,11 +427,11 @@ export function ProductDetailMobile({
                   type="button"
                   onClick={() => setGalleryIndex(i)}
                   aria-pressed={galleryIndex === i}
-                  className={`shrink-0 w-14 h-14 rounded-2xl border-2 overflow-hidden bg-[#F8FAFC] transition-all ${galleryIndex === i ? "border-[#FF6B00] shadow-sm" : "border-[#E2E8F0] hover:border-slate-400"}`}
+                  className={`shrink-0 w-12 h-12 rounded-xl border-2 overflow-hidden bg-[#F8FAFC] transition-all ${galleryIndex === i ? "border-[#FF6B00] shadow-sm" : "border-[#E2E8F0] hover:border-slate-400"}`}
                 >
                   {g.type === "video" ? (
                     <div className="w-full h-full bg-[#0F172A] flex items-center justify-center">
-                      <Play className="h-4 w-4 text-white" />
+                      <Play className="h-3.5 w-3.5 text-white" />
                     </div>
                   ) : (
                     // eslint-disable-next-line @next/next/no-img-element
@@ -461,9 +442,9 @@ export function ProductDetailMobile({
             </div>
           )}
 
-          {/* Gallery action row: stock chip + sold */}
-          <div className="mt-3 flex items-center justify-between gap-2 px-3">
-            <span className="flex items-center gap-1.5 text-xs font-bold text-[#0F172A]">
+          {/* Stock + sold */}
+          <div className="mt-3 flex items-center justify-between gap-2 px-4">
+            <span className="flex items-center gap-1 text-xs font-medium text-[#0F172A]">
               <span className={`h-1.5 w-1.5 rounded-full ${inStock ? "bg-[#10B981]" : "bg-[#CBD5E1]"}`} />
               {inStock ? "In stock" : "Made to order"}
             </span>
@@ -473,209 +454,167 @@ export function ProductDetailMobile({
       </section>
 
       {/* ================= Product info ================= */}
-      <section className="px-4 pb-2 space-y-4">
-        {/* Back to category (subtle, no header duplication) */}
-        {deptSlug && (
-          <Link
-            href={`/marketplace/category/${deptSlug}`}
-            className="inline-flex items-center gap-1 text-xs text-[#FF6B00] font-semibold hover:underline"
-          >
-            <ChevronLeft className="h-3 w-3" />
-            <span>Back to {deptName || "Category"}</span>
-          </Link>
-        )}
-
+      <section className="px-4 space-y-4 pb-2">
+        {/* SKU line (subtle) */}
         <div className="flex items-center gap-1.5 text-[10px] text-slate-500">
           <span>SKU: <strong className="text-[#0F172A]">{neutralSku(p.id)}</strong></span>
-          {hasSupplier && <span className="h-3 w-px bg-[#CBD5E1] shrink-0" />}
-          {hasSupplier && <span>Ships from supplier</span>}
+          {hasSupplier && <span className="h-3 w-[1px] bg-[#CBD5E1] shrink-0" />}
+          {hasSupplier && <span className="text-slate-400">Supplier item</span>}
         </div>
 
-        <h1 className="text-[18px] font-extrabold text-[#0F172A] leading-snug">
+        <h1 className="text-[16px] font-semibold text-[#0F172A] leading-tight">
           {rewritten.title || p.product_name || "Product"}
         </h1>
 
-        <div className="flex items-center gap-1.5 text-[11px]">
-          <span className="font-bold text-[#0F172A]">{brandName}</span>
-          <span className="h-3 w-px bg-[#CBD5E1] shrink-0" />
-          <span className="text-slate-500">TechPivo Marketplace seller</span>
+        <div className="flex items-center gap-2 mt-1">
+          <Stars value={avg} size={14} />
+          <span className="text-xs font-medium text-[#0F172A]">{avg.toFixed(1)}</span>
+          <span className="text-[10px] text-slate-500">({reviews.length})</span>
+          {reviews.length > 0 && <span className="text-[9px] bg-[#10B981]/10 text-[#10B981] px-2 py-0.5 rounded-full">Verified buyers</span>}
         </div>
 
-        <div className="flex items-center gap-2 mt-2">
-          <Stars value={avg} size={18} />
-          <span className="text-sm font-semibold text-[#0F172A]">{avg.toFixed(1)}</span>
-          <span className="text-slate-500">({reviews.length})</span>
-          {reviews.length > 0 && <span className="text-[10px] bg-[#10B981]/10 text-[#10B981] px-2 py-0.5 rounded-full">Verified buyers</span>}
-        </div>
-
-        <div className="flex items-baseline gap-2 mt-4">
-          <MarketPrice usd={price} className={`text-[30px] font-extrabold tabular-nums ${showSale ? "text-[#EF4444]" : "text-[#0F172A]"}`} />
+        <div className="flex items-baseline gap-2 mt-3">
+          <MarketPrice usd={price} className={`text-[24px] font-bold tabular-nums ${showSale ? "text-[#EF4444]" : "text-[#0F172A]"}`} />
           {oldPrice && showSale && (
-            <MarketPrice usd={oldPrice} className="text-sm text-slate-400 line-through" />
+            <MarketPrice usd={oldPrice} className="text-xs text-slate-400 line-through" />
           )}
           {showSale && (
-            <span className="text-[10px] font-bold text-white bg-[#EF4444] px-1.5 py-0.5 rounded">-{discount}%</span>
+            <span className="text-[10px] font-semibold text-white bg-[#EF4444] px-1.5 py-0.5 rounded">-{discount}%</span>
           )}
         </div>
 
         {saleEnd.trim() && (
-          <div className="mt-2 inline-flex items-center gap-1 rounded-full bg-[#0F172A] px-2.5 py-0.5">
-            <Clock className="h-3 w-3 text-[#F59E0B]" />
-            <span className="text-[10px] text-white font-bold">Sale ends {saleEnd}</span>
+          <div className="mt-2 inline-flex items-center gap-1 rounded-full bg-[#0F172A] px-2 py-0.5">
+            <Clock className="h-2.5 w-2.5 text-[#F59E0B]" />
+            <span className="text-[10px] text-white font-semibold">Sale ends {saleEnd}</span>
           </div>
         )}
 
         {/* Short description / highlights */}
         {(rewritten.short || detailEff.short) && (
-          <div className="mt-4 rounded-2xl border border-[#FF6B00]/20 bg-[#FFF7ED]/50 px-3.5 py-3">
+          <div className="mt-3 rounded-2xl border border-[#FF6B00]/20 bg-[#FFF7ED]/40 px-3 py-2.5">
             <p className="text-sm text-slate-700 leading-relaxed">
               {rewritten.short || detailEff.short}
             </p>
           </div>
         )}
 
-        {/* Variations */}
-        {attrs.length > 0 && (
+        {/* Variations — dropdown select */}
+        {variants.length > 0 && (
           <section className="mt-2 rounded-2xl border border-[#E2E8F0] bg-white p-3.5">
-            <p className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-3">Choose an option</p>
-            <div className="space-y-2.5">
-              {attrs.map((a) => {
-                const isColor = a.name.toLowerCase() === "color"
-                return (
-                  <div key={a.name}>
-                    <p className="text-xs font-bold text-[#0F172A] mb-2">{a.name}</p>
-                    <div className="flex flex-wrap gap-1.5">
-                      {a.values.map((v) => {
-                        const on = picked[a.name] === v
-                        const opt = variants.find((vv) => splitParts(vv.label)[attrs.indexOf(a)] === v)
-                        const hex = swatchFor(v)
-                        const disabled = stockFor(a.name, v) === 0
-                        if (isColor && opt?.image && !disabled) {
-                          return (
-                            <button
-                              key={v}
-                              type="button"
-                              disabled={disabled}
-                              onClick={() => setPicked((m) => ({ ...m, [a.name]: v }))}
-                              aria-pressed={on}
-                              aria-disabled={disabled}
-                              className={`h-11 w-11 shrink-0 rounded-2xl overflow-hidden border-2 transition-all ${on ? "scale-105 border-[#FF6B00] ring-1 ring-[#FF6B00]" : disabled ? "border-[#E2E8F0] opacity-50 grayscale" : "border-[#E2E8F0] hover:border-slate-400"}`}
-                            >
-                              <img src={opt.image} alt={v} className="w-full h-full object-cover" loading="lazy" />
-                              {on && <Check className="absolute -right-1 -bottom-1 h-4 w-4 fill-white text-[#10B981] bg-white rounded-full shadow" />}
-                              {disabled && <span className="absolute inset-0 bg-black/40 text-[9px] font-bold flex items-center justify-center">Sold out</span>}
-                            </button>
-                          )
-                        }
-                        if (isColor) {
-                          return (
-                            <button
-                              key={v}
-                              type="button"
-                              disabled={disabled}
-                              onClick={() => setPicked((m) => ({ ...m, [a.name]: v }))}
-                              aria-pressed={on}
-                              aria-disabled={disabled}
-                              className={`flex h-10 items-center gap-1.5 rounded-full border-2 px-2.5 py-1 transition-all ${on ? "border-[#FF6B00] bg-[#FFF7ED]" : disabled ? "border-[#E2E8F0] opacity-50 grayscale" : "border-[#E2E8F0] hover:border-slate-400"}`}
-                            >
-                              <span className="h-5 w-5 rounded-full border border-black/10 shrink-0" style={{ background: hex || "#F1F5F9" }} />
-                              <span className={`text-xs font-semibold ${disabled ? "text-slate-400" : "text-[#0F172A]"}`}>{v}</span>
-                            </button>
-                          )
-                        }
-                        return (
-                          <button
-                            key={v}
-                            type="button"
-                            disabled={disabled}
-                            onClick={() => setPicked((m) => ({ ...m, [a.name]: v }))}
-                            aria-pressed={on}
-                            aria-disabled={disabled}
-                            className={`min-w-[48px] rounded-xl border px-3 py-1.5 text-xs font-bold transition-all ${on ? "border-[#FF6B00] bg-[#FF6B00] text-white" : disabled ? "border-[#E2E8F0] opacity-50 grayscale text-slate-400" : "border-[#CBD5E1] bg-white text-slate-600 hover:border-[#FF6B00]"}`}
-                          >
-                            {v}
-                          </button>
-                        )
-                      })}
-                    </div>
-                    {selected?.stock != null && (
-                      <p className="text-[10px] mt-1.5 text-slate-500">
-                        {selected.stock > 0 ? `${selected.stock} available` : "Made to order"}
-                      </p>
-                    )}
-                  </div>
-                )
-              })}
-            </div>
+            <p className="text-[10px] font-medium uppercase tracking-wider text-slate-500 mb-3">Choose an option</p>
+            <select
+              value={Object.values(picked).join(" / ") || variants[0]?.label || ""}
+              onChange={(e) => {
+                const val = e.target.value
+                const variant = variants.find((v) => v.label === val)
+                if (variant) {
+                  setPicked({})
+                }
+              }}
+              className="w-full rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] px-3 py-2.5 text-sm text-[#0F172A] focus:outline-none focus:border-[#FF6B00] appearance-none cursor-pointer"
+            >
+              {variants.map((v) => (
+                <option key={v.vid} value={v.label}>
+                  {v.label} — {formatMarketPrice(Number(v.price ?? basePrice), rate, currency)}{v.stock != null && v.stock <= 0 ? " (unavailable)" : ""}
+                </option>
+              ))}
+            </select>
+            {selected?.stock != null && (
+              <p className="text-[10px] mt-2 text-slate-500">
+                {selected.stock > 0 ? `${selected.stock} available` : "Made to order"}
+              </p>
+            )}
           </section>
         )}
 
-        {/* Delivery & seller */}
-        <section className="mt-2 rounded-2xl border border-[#E2E8F0] bg-white p-4">
-          <p className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-3.5 flex items-center gap-2">
-            <Truck className="h-3.5 w-3.5 text-[#FF6B00]" />
-            Delivery &amp; seller
-          </p>
-          <div className="space-y-2.5">
-            <div className="flex items-start gap-3 text-sm">
-              <MapPin className="h-4 w-4 shrink-0 text-[#B45309] mt-0.5" />
-              <div>
-                <div className="font-semibold text-[#0F172A]">Sold by {brandName}</div>
-                <div className="text-[11px] text-slate-500">TechPivo Marketplace seller · trackable delivery</div>
-              </div>
-            </div>
-            <div className="flex items-start gap-3 text-sm">
-              <Truck className="h-4 w-4 shrink-0 text-[#10B981] mt-0.5" />
-              <div>
-                <div className="font-semibold text-[#0F172A]">Standard delivery</div>
-                <div className="text-[11px] text-slate-500">7–12 days, tracked worldwide</div>
-              </div>
-            </div>
-            <div className="flex items-start gap-3 text-sm">
-              <ShieldCheck className="h-4 w-4 shrink-0 text-[#0F172A] mt-0.5" />
-              <div>
-                <div className="font-semibold text-[#0F172A]">Secure checkout</div>
-                <div className="text-[11px] text-slate-500">Payments by Flutterwave · card, bank &amp; mobile money</div>
-              </div>
-            </div>
-            <div className="flex items-start gap-3 text-sm">
-              <RotateCcw className="h-4 w-4 shrink-0 text-[#F59E0B] mt-0.5" />
-              <div>
-                <div className="font-semibold text-[#0F172A]">30-day returns</div>
-                <div className="text-[11px] text-slate-500">Easy returns on eligible items · start in your orders</div>
-              </div>
-            </div>
-          </div>
-        </section>
-
         {/* Quantity */}
         <div className="mt-2">
-          <label className="text-xs font-bold uppercase tracking-wider text-slate-500 block mb-1.5">Quantity</label>
+          <label className="text-[10px] font-medium uppercase tracking-wider text-slate-500 block mb-1">Quantity</label>
           <div className="flex items-center gap-2">
             <button
               onClick={() => setQty((q) => Math.max(1, q - 1))}
               disabled={!inStock}
-              className="w-10 h-10 rounded-xl border border-[#CBD5E1] bg-white flex items-center justify-center text-[#0F172A] font-bold disabled:opacity-40 disabled:pointer-events-none"
+              className="w-9 h-9 rounded-xl border border-[#CBD5E1] bg-white flex items-center justify-center text-[#0F172A] font-medium disabled:opacity-40 disabled:pointer-events-none"
               aria-label="Decrease quantity"
             >
-              <Minus className="h-4 w-4" />
+              <Minus className="h-3.5 w-3.5" />
             </button>
-            <span className="w-10 text-center text-lg font-bold tabular-nums text-[#0F172A]">{qty}</span>
+            <span className="w-8 text-center text-base font-bold tabular-nums text-[#0F172A]">{qty}</span>
             <button
               onClick={() => setQty((q) => Math.min(99, q + 1))}
               disabled={!inStock || (selected?.stock != null && qty >= selected.stock)}
-              className="w-10 h-10 rounded-xl border border-[#CBD5E1] bg-white flex items-center justify-center text-[#0F172A] font-bold disabled:opacity-40 disabled:pointer-events-none"
+              className="w-9 h-9 rounded-xl border border-[#CBD5E1] bg-white flex items-center justify-center text-[#0F172A] font-medium disabled:opacity-40 disabled:pointer-events-none"
               aria-label="Increase quantity"
             >
-              <Plus className="h-4 w-4" />
+              <Plus className="h-3.5 w-3.5" />
             </button>
           </div>
           {!inStock && (
-            <p className="mt-1.5 text-[10px] text-slate-500">This option is currently unavailable.</p>
+            <p className="mt-1 text-[10px] text-slate-500">This option is currently unavailable.</p>
           )}
         </div>
 
         <div className="pb-[100px]" />
+      </section>
+
+      {/* ================= Upsell: Complete your purchase ================= */}
+      <section className="px-4 space-y-2 pb-2">
+        <CompletePurchase
+          productId={p.id}
+          mainName={p.product_name}
+          mainPrice={price}
+          mainWas={oldPrice && showSale ? oldPrice : undefined}
+          mainVariant={
+            selected
+              ? { vid: selected.vid, label: selected.label, image: selected.image || null }
+              : null
+          }
+          mainQty={qty}
+        />
+      </section>
+
+      {/* ================= Seller Information (moved up) ================= */}
+      <section className="px-4 space-y-2 pb-2">
+        <div className="rounded-2xl border border-[#E2E8F0] bg-white p-3.5">
+          <div className="flex items-start gap-2 text-sm">
+            <StoreIcon className="h-4 w-4 shrink-0 text-slate-400 mt-0.5" />
+            <div>
+              <div className="font-medium text-[#0F172A]">{brandName}</div>
+              <div className="text-[10px] text-slate-500">TechPivo Marketplace seller</div>
+            </div>
+          </div>
+          <div className="flex items-start gap-2 mt-3">
+            <LinkIcon className="h-4 w-4 shrink-0 text-slate-400 mt-0.5" />
+            <Link href={deptSlug ? `/marketplace/category/${deptSlug}` : "/marketplace"} className="text-sm text-[#FF6B00] hover:underline">
+              Browse store
+            </Link>
+          </div>
+        </div>
+      </section>
+
+      {/* ================= Delivery & seller ================= */}
+      <section className="px-4 space-y-2 pb-2">
+        <div className="rounded-2xl border border-[#E2E8F0] bg-white p-3.5">
+          <p className="text-[10px] font-medium uppercase tracking-wider text-slate-500 mb-3 flex items-center gap-2">
+            <Truck className="h-3.5 w-3.5 text-[#FF6B00]" />
+            Delivery &amp; returns
+          </p>
+          <div className="space-y-2">
+            <div className="flex items-start gap-2 text-sm">
+              <Clock className="h-3.5 w-3.5 shrink-0 text-[#B45309] mt-0.5" />
+              <span className="text-slate-700">Standard delivery 7–12 days, tracked worldwide. Express 3–7 days.</span>
+            </div>
+            <div className="flex items-start gap-2 text-sm">
+              <RotateCcw className="h-3.5 w-3.5 shrink-0 text-[#F59E0B] mt-0.5" />
+              <span className="text-slate-700">30-day easy returns on eligible items. Start a return from your orders page.</span>
+            </div>
+            <div className="flex items-start gap-2 text-sm">
+              <ShieldCheck className="h-3.5 w-3.5 shrink-0 text-[#10B981] mt-0.5" />
+              <span className="text-slate-700">Secure payments via Flutterwave — card, bank transfer and mobile money.</span>
+            </div>
+          </div>
+        </div>
       </section>
 
       {/* ================= Collapsible info sections ================= */}
@@ -724,7 +663,7 @@ export function ProductDetailMobile({
               <tbody>
                 {specRows(detailEff, p).map((row) => (
                   <tr key={row.k} className="border-t border-[#E2E8F0]">
-                    <th className="w-1/3 bg-[#F8FAFC] px-3 py-2 text-left font-semibold text-slate-600">{row.k}</th>
+                    <th className="w-1/3 bg-[#F8FAFC] px-3 py-2 text-left font-medium text-slate-600">{row.k}</th>
                     <td className="px-3 py-2 text-slate-800">{row.v}</td>
                   </tr>
                 ))}
@@ -763,50 +702,30 @@ export function ProductDetailMobile({
             </div>
           </div>
         </Accordion>
-
-        <Accordion
-          title="Seller Information"
-          icon={<StoreIcon className="h-4 w-4" />}
-          open={isOpen("seller")}
-          onToggle={() => toggleSection("seller")}
-        >
-          <div className="space-y-2 text-sm">
-            <div className="flex items-start gap-2">
-              <StoreIcon className="h-4 w-4 shrink-0 text-slate-400 mt-0.5" />
-              <span className="text-slate-700">This item is sold by <strong className="text-[#0F172A]">{brandName}</strong>, a TechPivo Marketplace seller.</span>
-            </div>
-            <div className="flex items-start gap-2">
-              <LinkIcon className="h-4 w-4 shrink-0 text-slate-400 mt-0.5" />
-              <Link href={deptSlug ? `/marketplace/category/${deptSlug}` : "/marketplace"} className="text-sm text-[#FF6B00] hover:underline">
-                Browse store
-              </Link>
-            </div>
-          </div>
-        </Accordion>
       </section>
 
       {/* ================= Reviews ================= */}
       <section className="px-4 space-y-3 pb-[130px]">
         <div className="flex items-center justify-between mb-1">
-          <h2 className="text-sm font-bold text-[#0F172A]">Customer reviews</h2>
-          <span className="text-[11px] text-slate-500">{reviews.length} review{reviews.length === 1 ? "" : "s"}</span>
+          <h2 className="text-sm font-medium text-[#0F172A]">Customer reviews</h2>
+          <span className="text-[10px] text-slate-500">{reviews.length} review{reviews.length === 1 ? "" : "s"}</span>
         </div>
         <div className="grid grid-cols-2 gap-3 mb-3">
           <div className="rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] p-3">
             <div className="flex items-baseline gap-1 mb-2">
-              <span className="text-3xl font-extrabold text-[#0F172A]">{avg.toFixed(1)}</span>
-              <span className="text-sm text-slate-500">/ 5</span>
+              <span className="text-2xl font-bold text-[#0F172A]">{avg.toFixed(1)}</span>
+              <span className="text-xs text-slate-500">/ 5</span>
             </div>
-            <Stars value={avg} size={20} />
+            <Stars value={avg} size={18} />
           </div>
           <div className="rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] p-3 flex flex-col justify-center">
             <div className="flex items-center justify-between text-xs text-slate-500">
               <span>5 ★</span>
-              <span className="font-semibold text-[#0F172A]">{reviews.length ? Math.round((reviews.filter((r) => r.rating === 5).length / reviews.length) * 100) : 0}%</span>
+              <span className="font-medium text-[#0F172A]">{reviews.length ? Math.round((reviews.filter((r) => r.rating === 5).length / reviews.length) * 100) : 0}%</span>
             </div>
             <div className="flex items-center justify-between text-xs text-slate-500 mt-1">
               <span>4 ★</span>
-              <span className="font-semibold text-[#0F172A]">{reviews.length ? Math.round((reviews.filter((r) => r.rating === 4).length / reviews.length) * 100) : 0}%</span>
+              <span className="font-medium text-[#0F172A]">{reviews.length ? Math.round((reviews.filter((r) => r.rating === 4).length / reviews.length) * 100) : 0}%</span>
             </div>
           </div>
         </div>
@@ -817,11 +736,11 @@ export function ProductDetailMobile({
             {reviews.slice(0, 6).map((r) => (
               <div key={r.id} className="border border-[#E2E8F0] rounded-xl p-2.5">
                 <div className="flex items-center gap-2 mb-1">
-                  <span className="text-xs font-bold text-[#0F172A]">{r.author_name}</span>
-                  <Stars value={r.rating} size={14} />
+                  <span className="text-xs font-medium text-[#0F172A]">{r.author_name}</span>
+                  <Stars value={r.rating} size={12} />
                   <span className="ml-auto text-[10px] text-slate-400">{new Date(r.created_at).toLocaleDateString()}</span>
                 </div>
-                {r.title && <p className="text-sm font-semibold text-slate-700">{r.title}</p>}
+                {r.title && <p className="text-sm font-medium text-slate-700">{r.title}</p>}
                 {r.comment && <p className="text-sm text-slate-600 mt-1 leading-relaxed">{r.comment}</p>}
               </div>
             ))}
@@ -829,7 +748,7 @@ export function ProductDetailMobile({
         )}
 
         <div className="mt-4 border-t border-[#E2E8F0] pt-3 space-y-2">
-          <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500">Write a review</h3>
+          <h3 className="text-[10px] font-medium uppercase tracking-wider text-slate-500">Write a review</h3>
           <textarea
             id="review-text"
             placeholder="What did you think of this product?"
@@ -849,13 +768,13 @@ export function ProductDetailMobile({
                 <StarIcon />
               </button>
             ))}
-            <span className="ml-auto text-[11px] text-slate-500">{reviewRating || 0} / 5</span>
+            <span className="ml-auto text-[10px] text-slate-500">{reviewRating || 0} / 5</span>
           </div>
-          {rNotice && <p className="text-[11px] text-slate-600">{rNotice}</p>}
+          {rNotice && <p className="text-[10px] text-slate-600">{rNotice}</p>}
           <button
             onClick={submitReviewMobile}
             disabled={rSending}
-            className="w-full bg-[#FF6B00] hover:bg-[#e86000] text-[#0F172A] text-xs font-bold py-2.5 rounded-xl disabled:opacity-50"
+            className="w-full bg-[#FF6B00] hover:bg-[#e86000] text-[#0F172A] text-xs font-medium py-2.5 rounded-xl disabled:opacity-50"
           >
             {rSending ? "Posting…" : "Post review"}
           </button>
@@ -866,9 +785,9 @@ export function ProductDetailMobile({
       {related.length > 0 && (
         <section className="px-4 space-y-2 pb-[130px]">
           <div className="flex items-center justify-between mb-2">
-            <h2 className="text-sm font-bold text-[#0F172A]">Similar products</h2>
+            <h2 className="text-sm font-medium text-[#0F172A]">Similar products</h2>
             {deptSlug && (
-              <Link href={`/marketplace/category/${deptSlug}`} className="text-[11px] text-[#FF6B00] font-bold hover:underline">
+              <Link href={`/marketplace/category/${deptSlug}`} className="text-[10px] text-[#FF6B00] font-medium hover:underline">
                 Shop all →
               </Link>
             )}
@@ -883,12 +802,12 @@ export function ProductDetailMobile({
                 <div className="aspect-[4/5] bg-white rounded-2xl border border-[#E2E8F0] overflow-hidden mb-2 relative">
                   {r.product_image_url ? (
                     // eslint-disable-next-line @next/next/no-img-element
-                    <img src={marketImage(r.product_image_url)} alt={r.product_name} className="w-full h-full object-cover" loading="lazy" />
+                    <img src={marketImage(r.product_image_url)} alt={r.product_name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" loading="lazy" />
                   ) : (
                     <div className="w-full h-full bg-[#F1F5F9] flex items-center justify-center text-[10px] text-slate-400">-</div>
                   )}
                 </div>
-                <h3 className="text-xs font-semibold text-[#0F172A] line-clamp-2 leading-tight">{r.product_name}</h3>
+                <h3 className="text-xs font-medium text-[#0F172A] line-clamp-2 leading-tight">{r.product_name}</h3>
                 <p className="text-sm font-bold text-[#0F172A] mt-0.5"><MarketPrice usd={Number(r.sale_price ?? r.original_price ?? 0)} /></p>
               </Link>
             ))}
@@ -900,29 +819,29 @@ export function ProductDetailMobile({
       <div className="fixed bottom-0 left-0 right-0 z-50 border-t border-[#E2E8F0] bg-white px-4 py-3 [padding-bottom:env(safe-area-inset-bottom)] shadow-[0_-10px_30px_rgba(15,23,42,0.12)]">
         <div className="max-w-[520px] mx-auto">
           <div className="flex items-baseline justify-between gap-3 mb-2.5">
-            <span className="text-[26px] font-extrabold tabular-nums text-[#0F172A]">
+            <span className="text-[22px] font-bold tabular-nums text-[#0F172A]">
               {formatMarketPrice(price, rate, currency)}
             </span>
-            {!inStock && <span className="text-[11px] font-bold text-[#EF4444]">Unavailable</span>}
+            {!inStock && <span className="text-[10px] font-bold text-[#EF4444]">Unavailable</span>}
           </div>
           <div className="grid grid-cols-2 gap-2">
             <button
               onClick={doAdd}
               disabled={!inStock || added}
-              className={`w-full h-12 rounded-xl font-bold text-xs transition-all flex items-center justify-center gap-2 disabled:opacity-40 disabled:pointer-events-none ${
+              className={`w-full h-11 rounded-xl font-medium text-xs transition-all flex items-center justify-center gap-2 disabled:opacity-40 disabled:pointer-events-none ${
                 added
                   ? "bg-[#0F172A] text-white"
                   : "bg-[#FF6B00] text-[#0F172A] hover:bg-[#e86000]"
               }`}
             >
-              {added ? (<><Check className="h-4 w-4" strokeWidth={3} /> <span>Added</span></>) : (<><ShoppingCart className="h-4 w-4" /> <span>Add to Cart</span></>)}
+              {added ? (<><Check className="h-3.5 w-3.5" strokeWidth={3} /> <span>Added</span></>) : (<><ShoppingCart className="h-3.5 w-3.5" /> <span>Add to Cart</span></>)}
             </button>
             <button
               onClick={buyNow}
               disabled={!inStock}
-              className="w-full h-12 rounded-xl border border-[#E2E8F0] bg-white font-bold text-xs transition-all flex items-center justify-center gap-2 text-[#0F172A] disabled:opacity-40 disabled:pointer-events-none"
+              className="w-full h-11 rounded-xl border border-[#E2E8F0] bg-white font-medium text-xs transition-all flex items-center justify-center gap-2 text-[#0F172A] disabled:opacity-40 disabled:pointer-events-none"
             >
-              <Zap className="h-4 w-4" /> <span>Buy Now</span>
+              <Zap className="h-3.5 w-3.5" /> <span>Buy Now</span>
             </button>
           </div>
           {!inStock && (
@@ -998,12 +917,15 @@ function PackageIcon({ className }: { className?: string }) {
 function StoreIcon({ className }: { className?: string }) {
   return <svg className={className} fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M3 10h18a2 2 0 012 2v2a2 2 0 01-2 2H3a2 2 0 01-2-2v-2a2 2 0 012-2zM3 7a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2zM3 13a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H5a2 2 0 01-2-2v-2zM3 19a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H5a2 2 0 01-2-2v-2z" /></svg>
 }
+function LinkIcon({ className }: { className?: string }) {
+  return <svg className={className} fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M13.19 8.688a3 3 0 014.243 4.243M9.88 8.688a3 3 0 000 4.243M12 18a9 9 0 100-18 9 9 0 000 18z" /></svg>
+}
 
 function Accordion({ children, title, icon, open, onToggle }: { children: React.ReactNode; title: string; icon: React.ReactNode; open: boolean; onToggle: () => void }) {
   return (
     <div className="rounded-xl border border-[#E2E8F0] bg-white overflow-hidden">
       <button onClick={onToggle} className="w-full flex items-center justify-between gap-2 px-3 py-2.5 text-left transition-background hover:bg-[#F8FAFC]" aria-expanded={open}>
-        <div className="flex items-center gap-2">{icon} <span className="text-sm font-semibold text-[#0F172A]">{title}</span></div>
+        <div className="flex items-center gap-2">{icon} <span className="text-sm font-medium text-[#0F172A]">{title}</span></div>
         <svg className={`w-4 h-4 shrink-0 transition-transform ${open ? "rotate-180" : ""}`} fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" /></svg>
       </button>
       <div className={`border-t border-[#E2E8F0] ${open ? "" : "hidden"}`}>{children}</div>
@@ -1047,7 +969,7 @@ function ShareSheet({ url, title, onClose }: { url: string; title: string; onClo
     <div className="fixed inset-0 z-[101] flex flex-col" onClick={(e) => { if (e.target === e.currentTarget) onClose() }}>
       <div className="flex-1 bg-black/40 backdrop-blur-sm" onClick={(e) => e.stopPropagation()} />
       <div className="bg-white border-t border-[#E2E8F0] rounded-t-3xl p-3 shadow-lg" onClick={(e) => e.stopPropagation()}>
-        <p className="text-sm font-semibold text-[#0F172A] mb-3">Share {title}</p>
+        <p className="text-sm font-medium text-[#0F172A] mb-3">Share {title}</p>
         <div className="grid grid-cols-3 gap-2">
           {[
             { label: "WhatsApp", url: `https://wa.me/?text=${encodeURIComponent(title + " " + url)}`, icon: <Phone className="h-5 w-5" /> },
@@ -1073,7 +995,7 @@ function ShareSheet({ url, title, onClose }: { url: string; title: string; onClo
               <span className="text-[#0F172A] font-medium">{s.label}</span>
             </button>
           ))}
-          <button onClick={onClose} className="mt-2 w-full py-2 rounded-xl border border-[#E2E8F0] text-xs font-semibold text-slate-600">Cancel</button>
+          <button onClick={onClose} className="mt-2 w-full py-2 rounded-xl border border-[#E2E8F0] text-xs font-medium text-slate-600">Cancel</button>
         </div>
       </div>
     </div>
