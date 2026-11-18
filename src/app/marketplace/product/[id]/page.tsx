@@ -10,6 +10,7 @@ import { marketImage, cleanSupplierText } from "@/lib/marketplace-images"
 import { supplierDisplayName } from "@/lib/marketplace"
 import { MarketplaceFooter, MarketplaceHeader } from "@/components/marketplace/marketplace-header"
 import { ProductDetail, type ProductDetailData } from "@/components/marketplace/product-detail"
+import { ProductDetailMobile } from "@/components/marketplace/product-detail-mobile"
 import { MarketMerchProvider } from "@/components/marketplace/market-flags"
 import { fetchMarketMerch } from "@/lib/marketplace-products"
 import { SITE_URL } from "@/lib/constants"
@@ -215,7 +216,14 @@ export default async function MarketplaceProductPage({ params }: { params: { id:
           <span className="text-[#0F172A] font-medium line-clamp-1 max-w-[60vw]">{cleanSupplierText(product.product_name) || product.product_name}</span>
         </nav>
         <MarketMerchProvider initial={initialMerch}>
-          <ProductDetail product={p} reviews={reviews || []} related={related || []} deptSlug={deptSlug} detail={detail} sold={sold} hasSupplier={!!p.cj_pid} />
+          {/* Desktop & tablet layout — existing component, untouched. */}
+          <div className="hidden lg:block">
+            <ProductDetail product={p} reviews={reviews || []} related={related || []} deptSlug={deptSlug} detail={detail} sold={sold} hasSupplier={!!p.cj_pid} />
+          </div>
+          {/* Mobile-only premium redesign — lg:hidden so larger screens are never affected. */}
+          <div className="block lg:hidden">
+            <ProductDetailMobile product={p} reviews={reviews || []} related={related || []} deptSlug={deptSlug} deptName={deptName} detail={detail} sold={sold} hasSupplier={!!p.cj_pid} />
+          </div>
         </MarketMerchProvider>
         <p className="text-center text-[11px] text-slate-400 px-4">
           Every order is quality-checked, securely paid and delivered with tracking — shop with confidence on TechPivo Market.
