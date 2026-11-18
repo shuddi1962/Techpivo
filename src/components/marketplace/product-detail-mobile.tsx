@@ -3,16 +3,15 @@
 import Link from "next/link"
 import { useEffect, useMemo, useRef, useState, useCallback } from "react"
 import {
-  ShoppingCart, Zap, Heart, X, ChevronLeft, ChevronRight, Share2,
+  ShoppingCart, Zap, X, ChevronLeft, ChevronRight,
   Truck, ShieldCheck, RotateCcw, Minus, Plus, Clock, Check, MapPin,
-  Star as StarIcon, RefreshCw, Copy, Link as LinkIcon, Play, Search,
-  Package, Store,
+  Star as StarIcon, RefreshCw, Copy, Link as LinkIcon, Play,
+  Package, Store, Sparkles, Settings,
 } from "lucide-react"
 import { addToCart } from "@/lib/marketplace-cart"
 import { openCartPopup, openCheckout } from "@/lib/marketplace-events"
 import { marketImage, cleanSupplierText } from "@/lib/marketplace-images"
 import { MarketPrice } from "./market-price"
-import { DeliveryPicker } from "./delivery-picker"
 import { useMarketCurrency, useFxRate, formatMarketPrice } from "@/lib/marketplace-pricing"
 import { useProductDiscount } from "./market-flags"
 import { useSaleEnd } from "./sale-countdown"
@@ -267,8 +266,6 @@ export function ProductDetailMobile({
       .catch(() => {})
   }, [p.id])
 
-  const detailEff = liveDetail || detail
-
   // Live reviews (realtime + focus refresh).
   useEffect(() => {
     let alive = true
@@ -307,6 +304,8 @@ export function ProductDetailMobile({
     () => (reviews.length ? reviews.reduce((s, r) => s + r.rating, 0) / reviews.length : 0),
     [reviews]
   )
+
+  const detailEff = liveDetail || detail
 
   const stockFor = (name: string, value: string): number | null => {
     const idx = attrs.findIndex((a) => a.name === name)
@@ -370,66 +369,8 @@ export function ProductDetailMobile({
 
   return (
     <div className="bg-[#F8FAFC] min-h-screen marketplace-body product-detail-mobile">
-      {/* ================= Mobile product header bar ================= */}
-      <div className="sticky top-0 z-40 bg-[#F8FAFC]/90 backdrop-blur-[6px] border-b border-[#E2E8F0] px-3 py-3">
-        <div className="flex items-center justify-between gap-2">
-          {/* Left: back to category */}
-          <Link
-            href={deptSlug ? `/marketplace/category/${deptSlug}` : "/marketplace"}
-            className="flex items-center gap-1.5 text-xs font-bold text-[#0F172A] hover:text-[#B45309] whitespace-nowrap shrink-0"
-          >
-            <ChevronLeft className="h-3.5 w-3.5 shrink-0" />
-            <span>Category</span>
-          </Link>
-
-          {/* Center: compact TechPivo logo */}
-          <Link href="/marketplace" className="flex items-center shrink-0 self-center" aria-label="TechPivo Market home">
-            <img src="/market-logo.svg" alt="TechPivo Market" className="h-6 w-auto" />
-          </Link>
-
-          {/* Right: search, wishlist, share */}
-          <div className="flex items-center gap-1 shrink-0">
-            <Link
-              href="/marketplace/shop"
-              aria-label="Search"
-              className="p-1.5 rounded-full hover:bg-[#F8FAFC] text-slate-500 transition-colors"
-            >
-              <Search className="h-4 w-4" />
-            </Link>
-            <button
-              onClick={() => setWished((w) => { const next = !w; toggleWish(p.id); return next })}
-              aria-label={wished ? "Remove from wishlist" : "Add to wishlist"}
-              aria-pressed={wished}
-              className={`p-1.5 rounded-full transition-colors ${wished ? "bg-[#FEF2F2] text-[#EF4444]" : "bg-white text-slate-500 border border-[#E2E8F0] hover:text-[#EF4444]"}`}
-            >
-              <Heart className={`h-4 w-4 ${wished ? "fill-current" : ""}`} />
-            </button>
-            <button
-              onClick={() => setShareOpen(true)}
-              aria-label="Share product"
-              className="p-1.5 rounded-full hover:bg-[#F8FAFC] text-slate-500 transition-colors"
-            >
-              <Share2 className="h-4 w-4" />
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* Compact breadcrumb */}
-      <nav aria-label="Breadcrumb" className="px-3 py-2 flex items-center gap-1 text-[10px] text-slate-500 flex-wrap">
-        <Link href="/marketplace" className="hover:text-[#0F172A]">Home</Link>
-        <span className="text-[#0F172A]/40">›</span>
-        {deptSlug ? (
-          <>
-            <Link href={`/marketplace/category/${deptSlug}`} className="hover:text-[#0F172A]">{deptName || "Category"}</Link>
-            <span className="text-[#0F172A]/40">›</span>
-          </>
-        ) : null}
-        <span className="text-[#0F172A] font-medium line-clamp-1 truncate max-w-[52vw]">{cleanSupplierText(p.product_name) || p.product_name}</span>
-      </nav>
-
       {/* ================= Gallery ================= */}
-      <section className="px-3 pt-1 pb-2">
+      <section className="px-0 pt-0 pb-2">
         <div className="relative">
           <div
             className="aspect-video bg-[#F1F5F9] rounded-3xl border border-[#E2E8F0] overflow-hidden relative"
@@ -498,14 +439,14 @@ export function ProductDetailMobile({
 
           {/* Thumbnail strip */}
           {gallery.length > 1 && (
-            <div className="mt-3 flex gap-2 overflow-x-auto pb-1 scrollbar-hide" role="group" aria-label="Image thumbnails">
+            <div className="mt-3 flex gap-2 overflow-x-auto pb-2 scrollbar-hide" role="group" aria-label="Image thumbnails">
               {gallery.map((g, i) => (
                 <button
                   key={i}
                   type="button"
                   onClick={() => setGalleryIndex(i)}
                   aria-pressed={galleryIndex === i}
-                  className={`shrink-0 w-14 h-14 rounded-2xl border-2 overflow-hidden bg-[#F8FAFC] transition-all ${galleryIndex === i ? "border-[#F59E0B] shadow-sm" : "border-[#E2E8F0] hover:border-slate-400"}`}
+                  className={`shrink-0 w-14 h-14 rounded-2xl border-2 overflow-hidden bg-[#F8FAFC] transition-all ${galleryIndex === i ? "border-[#FF6B00] shadow-sm" : "border-[#E2E8F0] hover:border-slate-400"}`}
                 >
                   {g.type === "video" ? (
                     <div className="w-full h-full bg-[#0F172A] flex items-center justify-center">
@@ -521,7 +462,7 @@ export function ProductDetailMobile({
           )}
 
           {/* Gallery action row: stock chip + sold */}
-          <div className="mt-3 flex items-center justify-between gap-2">
+          <div className="mt-3 flex items-center justify-between gap-2 px-3">
             <span className="flex items-center gap-1.5 text-xs font-bold text-[#0F172A]">
               <span className={`h-1.5 w-1.5 rounded-full ${inStock ? "bg-[#10B981]" : "bg-[#CBD5E1]"}`} />
               {inStock ? "In stock" : "Made to order"}
@@ -532,10 +473,21 @@ export function ProductDetailMobile({
       </section>
 
       {/* ================= Product info ================= */}
-      <section className="px-3 pb-2 space-y-3">
+      <section className="px-4 pb-2 space-y-4">
+        {/* Back to category (subtle, no header duplication) */}
+        {deptSlug && (
+          <Link
+            href={`/marketplace/category/${deptSlug}`}
+            className="inline-flex items-center gap-1 text-xs text-[#FF6B00] font-semibold hover:underline"
+          >
+            <ChevronLeft className="h-3 w-3" />
+            <span>Back to {deptName || "Category"}</span>
+          </Link>
+        )}
+
         <div className="flex items-center gap-1.5 text-[10px] text-slate-500">
           <span>SKU: <strong className="text-[#0F172A]">{neutralSku(p.id)}</strong></span>
-          {hasSupplier && <span className="h-3.5 w-px bg-[#CBD5E1] shrink-0" />}
+          {hasSupplier && <span className="h-3 w-px bg-[#CBD5E1] shrink-0" />}
           {hasSupplier && <span>Ships from supplier</span>}
         </div>
 
@@ -545,19 +497,19 @@ export function ProductDetailMobile({
 
         <div className="flex items-center gap-1.5 text-[11px]">
           <span className="font-bold text-[#0F172A]">{brandName}</span>
-          <span className="h-3.5 w-px bg-[#CBD5E1] shrink-0" />
-          <span className="text-slate-500">Marketplace seller</span>
+          <span className="h-3 w-px bg-[#CBD5E1] shrink-0" />
+          <span className="text-slate-500">TechPivo Marketplace seller</span>
         </div>
 
-        <div className="flex items-center gap-2 mt-1.5">
+        <div className="flex items-center gap-2 mt-2">
           <Stars value={avg} size={18} />
           <span className="text-sm font-semibold text-[#0F172A]">{avg.toFixed(1)}</span>
           <span className="text-slate-500">({reviews.length})</span>
           {reviews.length > 0 && <span className="text-[10px] bg-[#10B981]/10 text-[#10B981] px-2 py-0.5 rounded-full">Verified buyers</span>}
         </div>
 
-        <div className="flex items-baseline gap-2 mt-3">
-          <MarketPrice usd={price} className={`text-[28px] font-extrabold tabular-nums ${showSale ? "text-[#EF4444]" : "text-[#0F172A]"}`} />
+        <div className="flex items-baseline gap-2 mt-4">
+          <MarketPrice usd={price} className={`text-[30px] font-extrabold tabular-nums ${showSale ? "text-[#EF4444]" : "text-[#0F172A]"}`} />
           {oldPrice && showSale && (
             <MarketPrice usd={oldPrice} className="text-sm text-slate-400 line-through" />
           )}
@@ -567,15 +519,15 @@ export function ProductDetailMobile({
         </div>
 
         {saleEnd.trim() && (
-          <div className="mt-1.5 inline-flex items-center gap-1 rounded-full bg-[#0F172A] px-2.5 py-0.5">
+          <div className="mt-2 inline-flex items-center gap-1 rounded-full bg-[#0F172A] px-2.5 py-0.5">
             <Clock className="h-3 w-3 text-[#F59E0B]" />
-            <span className="text-[10px] text-white font-bold">Sale ends</span>
+            <span className="text-[10px] text-white font-bold">Sale ends {saleEnd}</span>
           </div>
         )}
 
         {/* Short description / highlights */}
         {(rewritten.short || detailEff.short) && (
-          <div className="mt-3 rounded-xl border border-[#F59E0B]/20 bg-[#FFFBEB]/40 px-3 py-2.5">
+          <div className="mt-4 rounded-2xl border border-[#FF6B00]/20 bg-[#FFF7ED]/50 px-3.5 py-3">
             <p className="text-sm text-slate-700 leading-relaxed">
               {rewritten.short || detailEff.short}
             </p>
@@ -584,9 +536,9 @@ export function ProductDetailMobile({
 
         {/* Variations */}
         {attrs.length > 0 && (
-          <section className="mt-4 rounded-2xl border border-[#E2E8F0] bg-white p-3">
-            <p className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-2.5">Choose an option</p>
-            <div className="space-y-2">
+          <section className="mt-2 rounded-2xl border border-[#E2E8F0] bg-white p-3.5">
+            <p className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-3">Choose an option</p>
+            <div className="space-y-2.5">
               {attrs.map((a) => {
                 const isColor = a.name.toLowerCase() === "color"
                 return (
@@ -607,7 +559,7 @@ export function ProductDetailMobile({
                               onClick={() => setPicked((m) => ({ ...m, [a.name]: v }))}
                               aria-pressed={on}
                               aria-disabled={disabled}
-                              className={`h-11 w-11 shrink-0 rounded-2xl overflow-hidden border-2 transition-all ${on ? "scale-105 border-[#DC2626] ring-1 ring-[#DC2626]" : disabled ? "border-[#E2E8F0] opacity-50 grayscale" : "border-[#E2E8F0] hover:border-slate-400"}`}
+                              className={`h-11 w-11 shrink-0 rounded-2xl overflow-hidden border-2 transition-all ${on ? "scale-105 border-[#FF6B00] ring-1 ring-[#FF6B00]" : disabled ? "border-[#E2E8F0] opacity-50 grayscale" : "border-[#E2E8F0] hover:border-slate-400"}`}
                             >
                               <img src={opt.image} alt={v} className="w-full h-full object-cover" loading="lazy" />
                               {on && <Check className="absolute -right-1 -bottom-1 h-4 w-4 fill-white text-[#10B981] bg-white rounded-full shadow" />}
@@ -624,7 +576,7 @@ export function ProductDetailMobile({
                               onClick={() => setPicked((m) => ({ ...m, [a.name]: v }))}
                               aria-pressed={on}
                               aria-disabled={disabled}
-                              className={`flex h-10 items-center gap-1.5 rounded-full border-2 px-2.5 py-1 transition-all ${on ? "border-[#DC2626] bg-[#FEF2F2]" : disabled ? "border-[#E2E8F0] opacity-50 grayscale" : "border-[#E2E8F0] hover:border-slate-400"}`}
+                              className={`flex h-10 items-center gap-1.5 rounded-full border-2 px-2.5 py-1 transition-all ${on ? "border-[#FF6B00] bg-[#FFF7ED]" : disabled ? "border-[#E2E8F0] opacity-50 grayscale" : "border-[#E2E8F0] hover:border-slate-400"}`}
                             >
                               <span className="h-5 w-5 rounded-full border border-black/10 shrink-0" style={{ background: hex || "#F1F5F9" }} />
                               <span className={`text-xs font-semibold ${disabled ? "text-slate-400" : "text-[#0F172A]"}`}>{v}</span>
@@ -639,7 +591,7 @@ export function ProductDetailMobile({
                             onClick={() => setPicked((m) => ({ ...m, [a.name]: v }))}
                             aria-pressed={on}
                             aria-disabled={disabled}
-                            className={`min-w-[48px] rounded-xl border px-3 py-1.5 text-xs font-bold transition-all ${on ? "border-[#DC2626] bg-[#DC2626] text-white" : disabled ? "border-[#E2E8F0] opacity-50 grayscale text-slate-400" : "border-[#CBD5E1] bg-white text-slate-600 hover:border-[#DC2626]"}`}
+                            className={`min-w-[48px] rounded-xl border px-3 py-1.5 text-xs font-bold transition-all ${on ? "border-[#FF6B00] bg-[#FF6B00] text-white" : disabled ? "border-[#E2E8F0] opacity-50 grayscale text-slate-400" : "border-[#CBD5E1] bg-white text-slate-600 hover:border-[#FF6B00]"}`}
                           >
                             {v}
                           </button>
@@ -659,31 +611,34 @@ export function ProductDetailMobile({
         )}
 
         {/* Delivery & seller */}
-        <section className="mt-4 rounded-2xl border border-[#E2E8F0] bg-white p-3.5">
-          <p className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-3">Delivery &amp; seller</p>
+        <section className="mt-2 rounded-2xl border border-[#E2E8F0] bg-white p-4">
+          <p className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-3.5 flex items-center gap-2">
+            <Truck className="h-3.5 w-3.5 text-[#FF6B00]" />
+            Delivery &amp; seller
+          </p>
           <div className="space-y-2.5">
-            <div className="flex items-start gap-2.5 text-sm">
+            <div className="flex items-start gap-3 text-sm">
               <MapPin className="h-4 w-4 shrink-0 text-[#B45309] mt-0.5" />
               <div>
                 <div className="font-semibold text-[#0F172A]">Sold by {brandName}</div>
                 <div className="text-[11px] text-slate-500">TechPivo Marketplace seller · trackable delivery</div>
               </div>
             </div>
-            <div className="flex items-start gap-2.5 text-sm">
+            <div className="flex items-start gap-3 text-sm">
               <Truck className="h-4 w-4 shrink-0 text-[#10B981] mt-0.5" />
               <div>
                 <div className="font-semibold text-[#0F172A]">Standard delivery</div>
                 <div className="text-[11px] text-slate-500">7–12 days, tracked worldwide</div>
               </div>
             </div>
-            <div className="flex items-start gap-2.5 text-sm">
+            <div className="flex items-start gap-3 text-sm">
               <ShieldCheck className="h-4 w-4 shrink-0 text-[#0F172A] mt-0.5" />
               <div>
                 <div className="font-semibold text-[#0F172A]">Secure checkout</div>
                 <div className="text-[11px] text-slate-500">Payments by Flutterwave · card, bank &amp; mobile money</div>
               </div>
             </div>
-            <div className="flex items-start gap-2.5 text-sm">
+            <div className="flex items-start gap-3 text-sm">
               <RotateCcw className="h-4 w-4 shrink-0 text-[#F59E0B] mt-0.5" />
               <div>
                 <div className="font-semibold text-[#0F172A]">30-day returns</div>
@@ -694,7 +649,7 @@ export function ProductDetailMobile({
         </section>
 
         {/* Quantity */}
-        <div className="mt-4">
+        <div className="mt-2">
           <label className="text-xs font-bold uppercase tracking-wider text-slate-500 block mb-1.5">Quantity</label>
           <div className="flex items-center gap-2">
             <button
@@ -720,11 +675,11 @@ export function ProductDetailMobile({
           )}
         </div>
 
-        <div className="pb-[95px] sm:pb-[105px]" />
+        <div className="pb-[100px]" />
       </section>
 
       {/* ================= Collapsible info sections ================= */}
-      <section className="px-3 space-y-2 pb-[130px]">
+      <section className="px-4 space-y-2 pb-[130px]">
         <Accordion
           key="desc"
           title="Product Description"
@@ -822,7 +777,7 @@ export function ProductDetailMobile({
             </div>
             <div className="flex items-start gap-2">
               <LinkIcon className="h-4 w-4 shrink-0 text-slate-400 mt-0.5" />
-              <Link href={deptSlug ? `/marketplace/category/${deptSlug}` : "/marketplace"} className="text-sm text-[#B45309] hover:underline">
+              <Link href={deptSlug ? `/marketplace/category/${deptSlug}` : "/marketplace"} className="text-sm text-[#FF6B00] hover:underline">
                 Browse store
               </Link>
             </div>
@@ -831,7 +786,7 @@ export function ProductDetailMobile({
       </section>
 
       {/* ================= Reviews ================= */}
-      <section className="px-3 space-y-3 pb-[130px]">
+      <section className="px-4 space-y-3 pb-[130px]">
         <div className="flex items-center justify-between mb-1">
           <h2 className="text-sm font-bold text-[#0F172A]">Customer reviews</h2>
           <span className="text-[11px] text-slate-500">{reviews.length} review{reviews.length === 1 ? "" : "s"}</span>
@@ -879,7 +834,7 @@ export function ProductDetailMobile({
             id="review-text"
             placeholder="What did you think of this product?"
             rows={2}
-            className="w-full border rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-[#F59E0B]"
+            className="w-full border rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-[#FF6B00]"
           />
           <div className="flex items-center gap-1.5 mt-2" role="radiogroup" aria-label="Your rating">
             {[1, 2, 3, 4, 5].map((n) => (
@@ -900,7 +855,7 @@ export function ProductDetailMobile({
           <button
             onClick={submitReviewMobile}
             disabled={rSending}
-            className="w-full bg-[#F59E0B] hover:bg-[#D97706] text-[#0F172A] text-xs font-bold py-2.5 rounded-xl disabled:opacity-50"
+            className="w-full bg-[#FF6B00] hover:bg-[#e86000] text-[#0F172A] text-xs font-bold py-2.5 rounded-xl disabled:opacity-50"
           >
             {rSending ? "Posting…" : "Post review"}
           </button>
@@ -909,11 +864,11 @@ export function ProductDetailMobile({
 
       {/* ================= Related products carousel ================= */}
       {related.length > 0 && (
-        <section className="px-3 space-y-2 pb-[130px]">
+        <section className="px-4 space-y-2 pb-[130px]">
           <div className="flex items-center justify-between mb-2">
             <h2 className="text-sm font-bold text-[#0F172A]">Similar products</h2>
             {deptSlug && (
-              <Link href={`/marketplace/category/${deptSlug}`} className="text-[11px] text-[#B45309] font-bold hover:underline">
+              <Link href={`/marketplace/category/${deptSlug}`} className="text-[11px] text-[#FF6B00] font-bold hover:underline">
                 Shop all →
               </Link>
             )}
@@ -942,10 +897,10 @@ export function ProductDetailMobile({
       )}
 
       {/* ================= Fixed purchase bar ================= */}
-      <div className="fixed bottom-0 left-0 right-0 z-50 border-t border-[#E2E8F0] bg-white px-3 py-3 [padding-bottom:env(safe-area-inset-bottom)] shadow-[0_-10px_30px_rgba(15,23,42,0.12)]">
+      <div className="fixed bottom-0 left-0 right-0 z-50 border-t border-[#E2E8F0] bg-white px-4 py-3 [padding-bottom:env(safe-area-inset-bottom)] shadow-[0_-10px_30px_rgba(15,23,42,0.12)]">
         <div className="max-w-[520px] mx-auto">
           <div className="flex items-baseline justify-between gap-3 mb-2.5">
-            <span className="text-[24px] font-extrabold tabular-nums text-[#0F172A]">
+            <span className="text-[26px] font-extrabold tabular-nums text-[#0F172A]">
               {formatMarketPrice(price, rate, currency)}
             </span>
             {!inStock && <span className="text-[11px] font-bold text-[#EF4444]">Unavailable</span>}
@@ -957,7 +912,7 @@ export function ProductDetailMobile({
               className={`w-full h-12 rounded-xl font-bold text-xs transition-all flex items-center justify-center gap-2 disabled:opacity-40 disabled:pointer-events-none ${
                 added
                   ? "bg-[#0F172A] text-white"
-                  : "bg-[#F59E0B] text-[#0F172A] hover:bg-[#D97706]"
+                  : "bg-[#FF6B00] text-[#0F172A] hover:bg-[#e86000]"
               }`}
             >
               {added ? (<><Check className="h-4 w-4" strokeWidth={3} /> <span>Added</span></>) : (<><ShoppingCart className="h-4 w-4" /> <span>Add to Cart</span></>)}
