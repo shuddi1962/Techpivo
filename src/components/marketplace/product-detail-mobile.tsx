@@ -425,7 +425,7 @@ export function ProductDetailMobile({
       {/* ================= Product info ================= */}
       <section className="px-4 space-y-3 pb-2">
         {/* Product title — clean, not bold */}
-        <h1 className="text-[16px] font-normal text-[#0F172A] leading-tight font-sans">
+        <h1 className="text-[14px] font-normal text-[#0F172A] leading-tight font-sans">
           {rewritten.title || p.product_name || "Product"}
         </h1>
 
@@ -684,49 +684,49 @@ export function ProductDetailMobile({
       </section>
 
       {/* ================= Reviews ================= */}
-      <section className="px-4 space-y-2.5 pb-[130px]">
+      <section className="px-4 space-y-2 pb-[100px]">
         <div className="flex items-center justify-between mb-1">
           <h2 className="text-sm font-medium text-[#0F172A]">Customer reviews</h2>
           <span className="text-[10px] text-slate-500">{reviews.length} review{reviews.length === 1 ? "" : "s"}</span>
         </div>
-        <div className="grid grid-cols-2 gap-3 mb-3">
-          <div className="rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] p-3">
-            <div className="flex items-baseline gap-1 mb-2">
-              <span className="text-2xl font-bold text-[#0F172A]">{avg.toFixed(1)}</span>
+        <div className="grid grid-cols-2 gap-2 mb-2">
+          <div className="rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] p-2">
+            <div className="flex items-baseline gap-1 mb-1">
+              <span className="text-xl font-bold text-[#0F172A]">{avg.toFixed(1)}</span>
               <span className="text-xs text-slate-500">/ 5</span>
             </div>
-            <Stars value={avg} size={18} />
+            <Stars value={avg} size={16} />
           </div>
-          <div className="rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] p-3 flex flex-col justify-center">
+          <div className="rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] p-2 flex flex-col justify-center">
             <div className="flex items-center justify-between text-xs text-slate-500">
               <span>5 ★</span>
               <span className="font-medium text-[#0F172A]">{reviews.length ? Math.round((reviews.filter((r) => r.rating === 5).length / reviews.length) * 100) : 0}%</span>
             </div>
-            <div className="flex items-center justify-between text-xs text-slate-500 mt-1">
+            <div className="flex items-center justify-between text-xs text-slate-500 mt-0.5">
               <span>4 ★</span>
               <span className="font-medium text-[#0F172A]">{reviews.length ? Math.round((reviews.filter((r) => r.rating === 4).length / reviews.length) * 100) : 0}%</span>
             </div>
           </div>
         </div>
         {reviews.length === 0 ? (
-          <p className="text-sm text-slate-500 text-center py-4">No reviews yet — be the first to share your thoughts.</p>
+          <p className="text-sm text-slate-500 text-center py-3">No reviews yet — be the first to share your thoughts.</p>
         ) : (
-          <div className="space-y-2">
+          <div className="space-y-1.5">
             {reviews.slice(0, 6).map((r) => (
               <div key={r.id} className="border border-[#E2E8F0] rounded-xl p-2">
-                <div className="flex items-center gap-1.5 mb-1">
+                <div className="flex items-center gap-1 mb-1">
                   <span className="text-xs font-medium text-[#0F172A]">{r.author_name}</span>
-                  <Stars value={r.rating} size={12} />
+                  <Stars value={r.rating} size={11} />
                   <span className="ml-auto text-[10px] text-slate-400">{new Date(r.created_at).toLocaleDateString()}</span>
                 </div>
                 {r.title && <p className="text-sm font-medium text-slate-700">{r.title}</p>}
-                {r.comment && <p className="text-sm text-slate-600 mt-1 leading-relaxed">{r.comment}</p>}
+                {r.comment && <p className="text-sm text-slate-600 mt-0.5 leading-relaxed">{r.comment}</p>}
               </div>
             ))}
           </div>
         )}
 
-        <div className="mt-3 border-t border-[#E2E8F0] pt-2.5 space-y-2">
+        <div className="mt-2 border-t border-[#E2E8F0] pt-2 space-y-2">
           <h3 className="text-[10px] font-medium text-slate-500 uppercase tracking-wider">Write a review</h3>
           <textarea
             id="review-text"
@@ -734,7 +734,7 @@ export function ProductDetailMobile({
             rows={2}
             className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#FF6B00]"
           />
-          <div className="flex items-center gap-1.5 mt-1.5" role="radiogroup" aria-label="Your rating">
+          <div className="flex items-center gap-1 mt-1" role="radiogroup" aria-label="Your rating">
             {[1, 2, 3, 4, 5].map((n) => (
               <button
                 key={n}
@@ -742,7 +742,7 @@ export function ProductDetailMobile({
                 onClick={() => setReviewRating(n)}
                 aria-label={`${n} star${n === 1 ? "" : "s"}`}
                 aria-pressed={reviewRating === n}
-                className={`h-5 w-5 ${n <= reviewRating ? "fill-[#F59E0B] text-[#F59E0B]" : "text-slate-300"}`}
+                className={`h-5 w-5 ${n <= reviewRating ? "fill-[#0F172A] text-[#0F172A]" : "text-slate-300"}`}
               >
                 <StarIcon />
               </button>
@@ -753,7 +753,7 @@ export function ProductDetailMobile({
           <button
             onClick={submitReviewMobile}
             disabled={rSending}
-            className="w-full bg-[#FF6B00] hover:bg-[#e86000] text-[#0F172A] text-xs font-medium py-2.5 rounded-lg disabled:opacity-50"
+            className="w-full bg-[#0F172A] hover:bg-[#0B0F19] text-white text-xs font-medium py-2.5 rounded-lg disabled:opacity-50"
           >
             {rSending ? "Posting…" : "Post review"}
           </button>
@@ -762,11 +762,11 @@ export function ProductDetailMobile({
 
       {/* ================= Related products carousel — slide by touch, no arrows ================= */}
       {related.length > 0 && (
-        <section className="px-4 space-y-1.5 pb-[130px]">
+        <section className="px-4 space-y-1 pb-[100px]">
           <div className="flex items-center justify-between mb-1">
             <h2 className="text-sm font-medium text-[#0F172A]">Similar products</h2>
             {deptSlug && (
-              <Link href={`/marketplace/category/${deptSlug}`} className="text-[10px] text-[#FF6B00] font-medium hover:underline">
+              <Link href={`/marketplace/category/${deptSlug}`} className="text-[10px] text-slate-500 font-medium hover:underline">
                 Shop all →
               </Link>
             )}
