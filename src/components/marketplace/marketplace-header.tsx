@@ -858,7 +858,9 @@ const [showBackToTop, setShowBackToTop] = useState(false)
         )}
             </div>
 
-            {/* Top-level navigation links — Home, Shop, Deals, etc. */}
+          {/* Top-level navigation links — Home, Shop, Deals, etc. */}
+          {/* Scrollable on tablet so links never overlap or clip at md widths */}
+          <div className="min-w-0 md:overflow-x-auto">
             {NAV.filter((item) => item.label !== "Flash Sale Specials").map((item, i) => (
               <Link
                 key={item.label}
@@ -870,6 +872,7 @@ const [showBackToTop, setShowBackToTop] = useState(false)
                 {item.label}
               </Link>
             ))}
+          </div>
           </div>
           {promoBanners?.specials_enabled !== false && (
             <Link
