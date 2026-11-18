@@ -147,7 +147,7 @@ function ProductDetailsTabs({
             role="tab"
             aria-selected={tab === t.id}
             onClick={() => setTab(t.id)}
-            className={`px-4 py-2.5 text-sm font-bold transition-colors ${tab === t.id ? "border-b-2 border-[#DC2626] text-[#0F172A]" : "text-slate-500 hover:text-[#0F172A]"}`}
+            className={`px-4 py-2.5 text-sm font-medium transition-colors ${tab === t.id ? "border-b-2 border-[#DC2626] text-[#0F172A]" : "text-slate-500 hover:text-[#0F172A]"}`}
           >
             {t.label}
           </button>
@@ -172,13 +172,13 @@ function ProductDetailsTabs({
           {specs.length > 0 && (
             <div className="overflow-hidden rounded-xl border border-[#E2E8F0]">
               <table className="w-full text-sm">
-                <caption className="bg-[#F8FAFC] px-3 py-2 text-left text-xs font-bold uppercase tracking-wider text-slate-500">
+                <caption className="bg-[#F8FAFC] px-3 py-2 text-left text-xs font-medium uppercase tracking-wider text-slate-500">
                   Specifications
                 </caption>
                 <tbody>
                   {specs.map((s) => (
                     <tr key={s.k} className="border-t border-[#E2E8F0]">
-                      <th className="w-32 bg-[#F8FAFC] px-3 py-2 text-left font-semibold text-slate-600">{s.k}</th>
+                      <th className="w-32 bg-[#F8FAFC] px-3 py-2 text-left font-medium text-slate-600">{s.k}</th>
                       <td className="px-3 py-2 text-slate-800">{s.v}</td>
                     </tr>
                   ))}
@@ -554,7 +554,7 @@ export function ProductDetail({
             {sold > 0 && <span><strong className="text-[#0F172A]">{sold}</strong> sold</span>}
             {hasSupplier && <span>Ships from: <strong className="text-[#0F172A]">China</strong></span>}
           </div>
-          <h1 className="text-lg sm:text-2xl font-extrabold text-[#0F172A] tracking-tight leading-tight">{rewritten.title}</h1>
+          <h1 className="text-lg sm:text-2xl font-medium text-[#222222] tracking-tight leading-tight">{rewritten.title}</h1>
           {rewritten.short && (
             <p className="mt-1 rounded-lg border border-[#F59E0B]/20 bg-[#FFFBEB]/50 px-3.5 py-2 text-sm text-slate-700 leading-relaxed">
               {rewritten.short}
@@ -719,7 +719,7 @@ export function ProductDetail({
             >
               {added ? <><Check className="h-4 w-4" strokeWidth={3} /> Added to bag</> : <><ShoppingCart className="h-4 w-4" /> Add to Bag</>}
             </button>
-            <button onClick={buyNow} className="flex-1 bg-[#0B0F19] hover:bg-black text-white text-sm font-bold py-3.5 rounded-xl transition-all active:scale-[0.99] flex items-center justify-center gap-2">
+            <button onClick={buyNow} className="flex-1 bg-[#DC2626] hover:bg-[#B91C1C] text-white text-sm font-bold py-3.5 rounded-xl transition-all active:scale-[0.99] flex items-center justify-center gap-2">
               <Zap className="h-4 w-4" /> Buy Now
             </button>
             <button
@@ -781,7 +781,7 @@ export function ProductDetail({
             <ShoppingCart className="h-4 w-4" />
             <span>Add to Bag</span>
           </button>
-          <button onClick={buyNow} className="flex flex-col items-center gap-0.5 rounded-lg bg-[#0B0F19] px-2 py-2 text-xs font-bold text-white shadow-md">
+          <button onClick={buyNow} className="flex flex-col items-center gap-0.5 rounded-lg bg-[#DC2626] px-2 py-2 text-xs font-bold text-white shadow-md">
             <Zap className="h-4 w-4" />
             <span>Buy Now</span>
           </button>
@@ -840,7 +840,7 @@ export function ProductDetail({
       />
 
       <section className="bg-white rounded-2xl border border-[#E2E8F0] p-4 sm:p-6">
-        <h2 className="text-lg font-bold text-[#0F172A]">Customer reviews</h2>
+          <h2 className="text-lg font-medium text-[#222222]">Customer reviews</h2>
         {reviews.length === 0 ? (
           <p className="text-sm text-slate-500 mt-2">No reviews yet — share the first one below.</p>
         ) : (
@@ -848,10 +848,10 @@ export function ProductDetail({
             {reviews.map((r) => (
               <div key={r.id} className="border border-[#E2E8F0] rounded-xl p-3">
                 <div className="flex items-center justify-between gap-2">
-                  <span className="text-sm font-bold text-[#0F172A]">{r.author_name}</span>
+                  <span className="text-sm font-medium text-[#222222]">{r.author_name}</span>
                   <Stars value={r.rating} size="h-3.5 w-3.5" />
                 </div>
-                {r.title && <p className="text-sm font-semibold text-slate-700 mt-1">{r.title}</p>}
+                {r.title && <p className="text-sm font-medium text-slate-700 mt-1">{r.title}</p>}
                 {r.comment && <p className="text-sm text-slate-600 mt-1">{r.comment}</p>}
                 <p className="text-[11px] text-slate-400 mt-1">{new Date(r.created_at).toLocaleDateString()}</p>
               </div>
@@ -859,7 +859,7 @@ export function ProductDetail({
           </div>
         )}
         <div className="mt-4 border-t border-[#E2E8F0] pt-4 space-y-2">
-          <h3 className="text-sm font-bold text-[#0F172A]">Write a review</h3>
+          <h3 className="text-sm font-medium text-[#222222]">Write a review</h3>
           <div className="flex flex-col sm:flex-row gap-2">
             <input value={rName} onChange={(e) => setRName(e.target.value)} placeholder="Your name (optional)" className="border rounded-lg px-3 py-2 text-sm flex-1 focus:outline-none focus:border-[#F59E0B]" maxLength={60} />
             <div className="flex items-center gap-1 border rounded-lg px-3 py-2" role="radiogroup" aria-label="Rating">
@@ -882,7 +882,7 @@ export function ProductDetail({
       {related.length > 0 && (
         <section className="bg-white rounded-2xl border border-[#E2E8F0] p-4 sm:p-6">
           <div className="flex items-center justify-between mb-3">
-            <h2 className="text-lg font-bold text-[#0F172A]">Similar products</h2>
+            <h2 className="text-lg font-medium text-[#222222]">Similar products</h2>
             {deptSlug && (
               <Link href={`/marketplace/category/${deptSlug}`} className="text-sm text-[#B45309] hover:text-[#D97706] font-semibold">
                 Shop all →
@@ -898,7 +898,7 @@ export function ProductDetail({
                     <img src={marketImage(r.product_image_url)} alt={r.product_name} loading="lazy" decoding="async" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
                   ) : null}
                 </div>
-                <h3 className="text-sm font-semibold text-[#0F172A] line-clamp-1">{r.product_name}</h3>
+                <h3 className="text-sm font-medium text-[#222222] line-clamp-1">{r.product_name}</h3>
                 <p className="text-base font-bold text-[#0F172A] mt-1"><MarketPrice usd={Number(r.sale_price ?? r.original_price ?? 0)} /></p>
               </Link>
             ))}

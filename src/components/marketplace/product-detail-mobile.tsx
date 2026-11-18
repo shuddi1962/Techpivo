@@ -425,7 +425,7 @@ export function ProductDetailMobile({
       {/* ================= Product info ================= */}
       <section className="px-4 space-y-3 pb-2">
         {/* Product title — clean, not bold */}
-        <h1 className="text-[14px] font-normal text-[#0F172A] leading-tight font-sans">
+        <h1 className="text-[20px] font-medium text-[#222222] leading-[1.4] font-sans">
           {rewritten.title || p.product_name || "Product"}
         </h1>
 
@@ -684,15 +684,15 @@ export function ProductDetailMobile({
       </section>
 
       {/* ================= Reviews ================= */}
-      <section className="px-4 space-y-2 pb-[100px]">
+      <section className="px-4 space-y-2 pb-2">
         <div className="flex items-center justify-between mb-1">
-          <h2 className="text-sm font-medium text-[#0F172A]">Customer reviews</h2>
+          <h2 className="text-sm font-medium text-[#222222]">Customer reviews</h2>
           <span className="text-[10px] text-slate-500">{reviews.length} review{reviews.length === 1 ? "" : "s"}</span>
         </div>
         <div className="grid grid-cols-2 gap-2 mb-2">
           <div className="rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] p-2">
             <div className="flex items-baseline gap-1 mb-1">
-              <span className="text-xl font-bold text-[#0F172A]">{avg.toFixed(1)}</span>
+              <span className="text-xl font-medium text-[#222222]">{avg.toFixed(1)}</span>
               <span className="text-xs text-slate-500">/ 5</span>
             </div>
             <Stars value={avg} size={16} />
@@ -715,7 +715,7 @@ export function ProductDetailMobile({
             {reviews.slice(0, 6).map((r) => (
               <div key={r.id} className="border border-[#E2E8F0] rounded-xl p-2">
                 <div className="flex items-center gap-1 mb-1">
-                  <span className="text-xs font-medium text-[#0F172A]">{r.author_name}</span>
+                  <span className="text-xs font-medium text-[#222222]">{r.author_name}</span>
                   <Stars value={r.rating} size={11} />
                   <span className="ml-auto text-[10px] text-slate-400">{new Date(r.created_at).toLocaleDateString()}</span>
                 </div>
@@ -753,7 +753,7 @@ export function ProductDetailMobile({
           <button
             onClick={submitReviewMobile}
             disabled={rSending}
-            className="w-full bg-[#0F172A] hover:bg-[#0B0F19] text-white text-xs font-medium py-2.5 rounded-lg disabled:opacity-50"
+            className="w-full bg-[#F59E0B] hover:bg-[#D97706] text-[#0F172A] text-xs font-medium py-2.5 rounded-lg disabled:opacity-50"
           >
             {rSending ? "Posting…" : "Post review"}
           </button>
@@ -762,9 +762,9 @@ export function ProductDetailMobile({
 
       {/* ================= Related products carousel — slide by touch, no arrows ================= */}
       {related.length > 0 && (
-        <section className="px-4 space-y-1 pb-[100px]">
+        <section className="px-4 space-y-1 pb-2">
           <div className="flex items-center justify-between mb-1">
-            <h2 className="text-sm font-medium text-[#0F172A]">Similar products</h2>
+            <h2 className="text-sm font-medium text-[#222222]">Similar products</h2>
             {deptSlug && (
               <Link href={`/marketplace/category/${deptSlug}`} className="text-[10px] text-slate-500 font-medium hover:underline">
                 Shop all →
@@ -786,7 +786,7 @@ export function ProductDetailMobile({
                     <div className="w-full h-full bg-[#F1F5F9] flex items-center justify-center text-[10px] text-slate-400">-</div>
                   )}
                 </div>
-                <h3 className="text-xs font-medium text-[#0F172A] line-clamp-2 leading-tight">{r.product_name}</h3>
+                <h3 className="text-xs font-medium text-[#222222] line-clamp-2 leading-tight">{r.product_name}</h3>
                 <p className="text-sm font-bold text-[#0F172A] mt-0.5"><MarketPrice usd={Number(r.sale_price ?? r.original_price ?? 0)} /></p>
               </Link>
             ))}

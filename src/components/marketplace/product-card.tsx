@@ -107,7 +107,7 @@ export function ProductCard({
         </div>
       </div>
       <div className="flex flex-1 flex-col gap-1 p-3">
-        <h3 className="truncate text-[13px] font-semibold leading-snug text-[#0F172A] transition-colors group-hover:text-[#B45309]">
+        <h3 className="truncate text-[15px] font-medium leading-snug text-[#222222] transition-colors group-hover:text-[#B45309]">
           {p.product_name}
         </h3>
         <div className="flex items-baseline gap-1.5">
