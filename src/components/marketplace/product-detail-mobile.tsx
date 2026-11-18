@@ -95,7 +95,7 @@ function Stars({ value, size = 14 }: { value: number; size?: number }) {
       {Array.from({ length: 5 }).map((_, i) => (
         <StarIcon
           key={i}
-          className={`h-[${size / 4}rem] w-[${size / 4}rem] ${i < Math.round(value) ? "fill-[#F59E0B] text-[#F59E0B]" : "text-[#CBD5E1]"}`}
+          className={`h-[${size / 4}rem] w-[${size / 4}rem] ${i < Math.round(value) ? "fill-[#0F172A] text-[#0F172A]" : "text-[#CBD5E1]"}`}
         />
       ))}
     </span>
@@ -375,20 +375,6 @@ export function ProductDetailMobile({
                 {gallery.length > 1 && (
                   <>
                     <button
-                      onClick={() => setGalleryIndex((i) => (i === 0 ? gallery.length - 1 : i - 1))}
-                      className="absolute left-2 top-1/2 -translate-y-1/2 z-30 w-8 h-8 rounded-full bg-white/90 text-[#0F172A] flex items-center justify-center shadow-md hover:scale-105 active:scale-95 transition-transform"
-                      aria-label="Previous image"
-                    >
-                      <ChevronLeft className="h-3.5 w-3.5" />
-                    </button>
-                    <button
-                      onClick={() => setGalleryIndex((i) => (i === gallery.length - 1 ? 0 : i + 1))}
-                      className="absolute right-2 top-1/2 -translate-y-1/2 z-30 w-8 h-8 rounded-full bg-white/90 text-[#0F172A] flex items-center justify-center shadow-md hover:scale-105 active:scale-95 transition-transform"
-                      aria-label="Next image"
-                    >
-                      <ChevronRight className="h-3.5 w-3.5" />
-                    </button>
-                    <button
                       onClick={() => setZoomOpen(true)}
                       className="absolute top-3 right-2 z-30 w-8 h-8 rounded-full bg-white/90 text-[#0F172A] flex items-center justify-center shadow-md hover:scale-105 active:scale-95 transition-transform"
                       aria-label="View full screen"
@@ -429,12 +415,8 @@ export function ProductDetailMobile({
             </div>
           )}
 
-          {/* Stock + sold */}
+          {/* Sold count only */}
           <div className="mt-2 flex items-center justify-between gap-2 px-4">
-            <span className="flex items-center gap-1 text-[10px] font-medium text-[#0F172A]">
-              <span className={`h-1.5 w-1.5 rounded-full ${inStock ? "bg-[#10B981]" : "bg-[#CBD5E1]"}`} />
-              {inStock ? "In stock" : "Made to order"}
-            </span>
             <span className="text-[10px] text-slate-500">{sold > 0 ? `${clipNumber(sold)} sold` : ""}</span>
           </div>
         </div>
@@ -442,8 +424,8 @@ export function ProductDetailMobile({
 
       {/* ================= Product info ================= */}
       <section className="px-4 space-y-3 pb-2">
-        {/* Product title — not bold */}
-        <h1 className="text-[16px] text-[#0F172A] leading-tight">
+        {/* Product title — clean, not bold */}
+        <h1 className="text-[16px] font-normal text-[#0F172A] leading-tight font-sans">
           {rewritten.title || p.product_name || "Product"}
         </h1>
 
@@ -482,7 +464,7 @@ export function ProductDetailMobile({
 
         {/* Short description / highlights */}
         {(rewritten.short || detailEff.short) && (
-          <div className="mt-3 rounded-xl border border-[#FF6B00]/15 bg-[#FFF7ED]/30 px-3 py-2">
+          <div className="mt-3 rounded-xl border border-[#E2E8F0] bg-white px-3 py-2">
             <p className="text-sm text-slate-700 leading-relaxed">
               {rewritten.short || detailEff.short}
             </p>
@@ -494,15 +476,22 @@ export function ProductDetailMobile({
           <section className="mt-2 rounded-xl border border-[#E2E8F0] bg-white p-3">
             <p className="text-[10px] font-medium text-slate-500 mb-2 uppercase tracking-wider">Choose an option</p>
             <select
-              value={Object.values(picked).join(" / ") || variants[0]?.label || ""}
+              value={selected?.label || variants[0]?.label || ""}
               onChange={(e) => {
                 const val = e.target.value
                 const variant = variants.find((v) => v.label === val)
                 if (variant) {
-                  setPicked({})
+                  // Map variant label parts to attribute names
+                  const attrNames = variants[0]?.label.split(/[/;|]+/).map((x) => x.trim()).filter(Boolean) || []
+                  const parts = val.split(/[/;|]+/).map((x) => x.trim()).filter(Boolean)
+                  const nextPicked: Record<string, string> = {}
+                  parts.forEach((part, i) => {
+                    if (attrNames[i]) nextPicked[attrNames[i]] = part
+                  })
+                  setPicked(nextPicked)
                 }
               }}
-              className="w-full rounded-lg border border-[#E2E8F0] bg-[#F8FAFC] px-3 py-2 text-sm text-[#0F172A] focus:outline-none focus:border-[#FF6B00] appearance-none cursor-pointer"
+              className="w-full rounded-lg border border-[#E2E8F0] bg-white px-3 py-2 text-sm text-[#0F172A] focus:outline-none focus:border-[#0F172A] appearance-none cursor-pointer"
             >
               {variants.map((v) => (
                 <option key={v.vid} value={v.label}>
@@ -545,11 +534,11 @@ export function ProductDetailMobile({
           )}
         </div>
 
-        <div className="pb-[100px]" />
+        <div className="pb-2" />
       </section>
 
       {/* ================= Upsell: Complete your purchase ================= */}
-      <section className="px-4 space-y-2 pb-2">
+      <section className="px-4 space-y-2 pb-1">
         <CompletePurchase
           productId={p.id}
           mainName={p.product_name}
