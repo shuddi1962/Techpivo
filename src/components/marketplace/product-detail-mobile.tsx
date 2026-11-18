@@ -275,27 +275,16 @@ export function ProductDetailMobile({
 
   const detailEff = liveDetail || detail
 
-  const stockFor = (name: string, value: string): number | null => {
-    const variant = variants.find((v) => {
-      const vp = v.label.split(/[/;|]+/).map((x) => x.trim()).filter(Boolean)
-      const sv = value.split(/[/;|]+/).map((x) => x.trim()).filter(Boolean)
-      return vp.length === sv.length && vp.every((part, i) => part === sv[i])
-    })
-    return variant?.stock ?? null
-  }
-
   const doAdd = useCallback(() => {
     const now = Date.now()
     if (now - lastAddRef.current < 400) return
     lastAddRef.current = now
     if (!inStock) return
-    const variantPick = variants.length > 0
-      ? variants.find((v) => {
-          const vp = v.label.split(/[/;|]+/).map((x) => x.trim()).filter(Boolean)
-          const sp = Object.values(picked)
-          return vp.length === sp.length && vp.every((part, i) => part === sp[i])
-        })
-      : null
+    const variantPick = variants.find((v) => {
+      const vp = v.label.split(/[/;|]+/).map((x) => x.trim()).filter(Boolean)
+      const sp = Object.values(picked)
+      return vp.length === sp.length && vp.every((part, i) => part === sp[i])
+    })
     addToCart(p.id, qty, variantPick ? { vid: variantPick.vid, label: variantPick.label, image: variantPick.image || null } : null)
     setAdded(true)
     setTimeout(() => setAdded(false), 1400)
@@ -304,13 +293,11 @@ export function ProductDetailMobile({
 
   const buyNow = useCallback(() => {
     if (!inStock) return
-    const variantPick = variants.length > 0
-      ? variants.find((v) => {
-          const vp = v.label.split(/[/;|]+/).map((x) => x.trim()).filter(Boolean)
-          const sp = Object.values(picked)
-          return vp.length === sp.length && vp.every((part, i) => part === sp[i])
-        })
-      : null
+    const variantPick = variants.find((v) => {
+      const vp = v.label.split(/[/;|]+/).map((x) => x.trim()).filter(Boolean)
+      const sp = Object.values(picked)
+      return vp.length === sp.length && vp.every((part, i) => part === sp[i])
+    })
     addToCart(p.id, qty, variantPick ? { vid: variantPick.vid, label: variantPick.label, image: variantPick.image || null } : null)
     openCheckout()
   }, [p.id, qty, variants, picked, inStock])
@@ -351,7 +338,7 @@ export function ProductDetailMobile({
   return (
     <div className="bg-[#F8FAFC] min-h-screen marketplace-body product-detail-mobile">
       {/* ================= Gallery ================= */}
-      <section className="px-0 pt-0 pb-2">
+      <section className="px-0 pt-0 pb-1">
         <div className="relative w-full">
           <div
             className="aspect-video bg-[#F1F5F9] border border-[#E2E8F0] overflow-hidden relative"
@@ -389,24 +376,24 @@ export function ProductDetailMobile({
                   <>
                     <button
                       onClick={() => setGalleryIndex((i) => (i === 0 ? gallery.length - 1 : i - 1))}
-                      className="absolute left-2 top-1/2 -translate-y-1/2 z-30 w-9 h-9 rounded-full bg-white/95 text-[#0F172A] flex items-center justify-center shadow-md hover:scale-105 active:scale-95 transition-transform"
+                      className="absolute left-2 top-1/2 -translate-y-1/2 z-30 w-8 h-8 rounded-full bg-white/90 text-[#0F172A] flex items-center justify-center shadow-md hover:scale-105 active:scale-95 transition-transform"
                       aria-label="Previous image"
                     >
-                      <ChevronLeft className="h-4 w-4" />
+                      <ChevronLeft className="h-3.5 w-3.5" />
                     </button>
                     <button
                       onClick={() => setGalleryIndex((i) => (i === gallery.length - 1 ? 0 : i + 1))}
-                      className="absolute right-2 top-1/2 -translate-y-1/2 z-30 w-9 h-9 rounded-full bg-white/95 text-[#0F172A] flex items-center justify-center shadow-md hover:scale-105 active:scale-95 transition-transform"
+                      className="absolute right-2 top-1/2 -translate-y-1/2 z-30 w-8 h-8 rounded-full bg-white/90 text-[#0F172A] flex items-center justify-center shadow-md hover:scale-105 active:scale-95 transition-transform"
                       aria-label="Next image"
                     >
-                      <ChevronRight className="h-4 w-4" />
+                      <ChevronRight className="h-3.5 w-3.5" />
                     </button>
                     <button
                       onClick={() => setZoomOpen(true)}
-                      className="absolute top-3 right-2 z-30 w-9 h-9 rounded-full bg-white/95 text-[#0F172A] flex items-center justify-center shadow-md hover:scale-105 active:scale-95 transition-transform"
+                      className="absolute top-3 right-2 z-30 w-8 h-8 rounded-full bg-white/90 text-[#0F172A] flex items-center justify-center shadow-md hover:scale-105 active:scale-95 transition-transform"
                       aria-label="View full screen"
                     >
-                      <RefreshCw className="h-4 w-4" />
+                      <RefreshCw className="h-3.5 w-3.5" />
                     </button>
                   </>
                 )}
@@ -418,9 +405,9 @@ export function ProductDetailMobile({
             )}
           </div>
 
-          {/* Thumbnail strip */}
+          {/* Thumbnail strip — slide by touch, no arrows */}
           {gallery.length > 1 && (
-            <div className="mt-3 flex gap-2 overflow-x-auto pb-2 scrollbar-hide" role="group" aria-label="Image thumbnails">
+            <div className="mt-2 flex gap-1.5 overflow-x-auto pb-1.5 scrollbar-hide" role="group" aria-label="Image thumbnails">
               {gallery.map((g, i) => (
                 <button
                   key={i}
@@ -431,7 +418,7 @@ export function ProductDetailMobile({
                 >
                   {g.type === "video" ? (
                     <div className="w-full h-full bg-[#0F172A] flex items-center justify-center">
-                      <Play className="h-3.5 w-3.5 text-white" />
+                      <Play className="h-3 w-3 text-white" />
                     </div>
                   ) : (
                     // eslint-disable-next-line @next/next/no-img-element
@@ -443,38 +430,41 @@ export function ProductDetailMobile({
           )}
 
           {/* Stock + sold */}
-          <div className="mt-3 flex items-center justify-between gap-2 px-4">
-            <span className="flex items-center gap-1 text-xs font-medium text-[#0F172A]">
+          <div className="mt-2 flex items-center justify-between gap-2 px-4">
+            <span className="flex items-center gap-1 text-[10px] font-medium text-[#0F172A]">
               <span className={`h-1.5 w-1.5 rounded-full ${inStock ? "bg-[#10B981]" : "bg-[#CBD5E1]"}`} />
               {inStock ? "In stock" : "Made to order"}
             </span>
-            <span className="text-xs text-slate-500">{sold > 0 ? `${clipNumber(sold)} sold` : ""}</span>
+            <span className="text-[10px] text-slate-500">{sold > 0 ? `${clipNumber(sold)} sold` : ""}</span>
           </div>
         </div>
       </section>
 
       {/* ================= Product info ================= */}
-      <section className="px-4 space-y-4 pb-2">
-        {/* SKU line (subtle) */}
-        <div className="flex items-center gap-1.5 text-[10px] text-slate-500">
+      <section className="px-4 space-y-3 pb-2">
+        {/* Product title — not bold */}
+        <h1 className="text-[16px] text-[#0F172A] leading-tight">
+          {rewritten.title || p.product_name || "Product"}
+        </h1>
+
+        {/* SKU + stock below title */}
+        <div className="flex items-center gap-2 text-[10px] text-slate-500">
           <span>SKU: <strong className="text-[#0F172A]">{neutralSku(p.id)}</strong></span>
           {hasSupplier && <span className="h-3 w-[1px] bg-[#CBD5E1] shrink-0" />}
           {hasSupplier && <span className="text-slate-400">Supplier item</span>}
+          {inStock && <span className="ml-auto text-[10px] font-medium text-[#10B981]">In stock</span>}
+          {!inStock && <span className="ml-auto text-[10px] font-medium text-[#EF4444]">Unavailable</span>}
         </div>
-
-        <h1 className="text-[16px] font-semibold text-[#0F172A] leading-tight">
-          {rewritten.title || p.product_name || "Product"}
-        </h1>
 
         <div className="flex items-center gap-2 mt-1">
           <Stars value={avg} size={14} />
           <span className="text-xs font-medium text-[#0F172A]">{avg.toFixed(1)}</span>
           <span className="text-[10px] text-slate-500">({reviews.length})</span>
-          {reviews.length > 0 && <span className="text-[9px] bg-[#10B981]/10 text-[#10B981] px-2 py-0.5 rounded-full">Verified buyers</span>}
+          {reviews.length > 0 && <span className="text-[9px] bg-[#10B981]/10 text-[#10B981] px-1.5 py-0.5 rounded-full">Verified buyers</span>}
         </div>
 
         <div className="flex items-baseline gap-2 mt-3">
-          <MarketPrice usd={price} className={`text-[24px] font-bold tabular-nums ${showSale ? "text-[#EF4444]" : "text-[#0F172A]"}`} />
+          <MarketPrice usd={price} className={`text-[22px] font-bold tabular-nums ${showSale ? "text-[#EF4444]" : "text-[#0F172A]"}`} />
           {oldPrice && showSale && (
             <MarketPrice usd={oldPrice} className="text-xs text-slate-400 line-through" />
           )}
@@ -492,7 +482,7 @@ export function ProductDetailMobile({
 
         {/* Short description / highlights */}
         {(rewritten.short || detailEff.short) && (
-          <div className="mt-3 rounded-2xl border border-[#FF6B00]/20 bg-[#FFF7ED]/40 px-3 py-2.5">
+          <div className="mt-3 rounded-xl border border-[#FF6B00]/15 bg-[#FFF7ED]/30 px-3 py-2">
             <p className="text-sm text-slate-700 leading-relaxed">
               {rewritten.short || detailEff.short}
             </p>
@@ -501,8 +491,8 @@ export function ProductDetailMobile({
 
         {/* Variations — dropdown select */}
         {variants.length > 0 && (
-          <section className="mt-2 rounded-2xl border border-[#E2E8F0] bg-white p-3.5">
-            <p className="text-[10px] font-medium uppercase tracking-wider text-slate-500 mb-3">Choose an option</p>
+          <section className="mt-2 rounded-xl border border-[#E2E8F0] bg-white p-3">
+            <p className="text-[10px] font-medium text-slate-500 mb-2 uppercase tracking-wider">Choose an option</p>
             <select
               value={Object.values(picked).join(" / ") || variants[0]?.label || ""}
               onChange={(e) => {
@@ -512,7 +502,7 @@ export function ProductDetailMobile({
                   setPicked({})
                 }
               }}
-              className="w-full rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] px-3 py-2.5 text-sm text-[#0F172A] focus:outline-none focus:border-[#FF6B00] appearance-none cursor-pointer"
+              className="w-full rounded-lg border border-[#E2E8F0] bg-[#F8FAFC] px-3 py-2 text-sm text-[#0F172A] focus:outline-none focus:border-[#FF6B00] appearance-none cursor-pointer"
             >
               {variants.map((v) => (
                 <option key={v.vid} value={v.label}>
@@ -521,7 +511,7 @@ export function ProductDetailMobile({
               ))}
             </select>
             {selected?.stock != null && (
-              <p className="text-[10px] mt-2 text-slate-500">
+              <p className="text-[10px] mt-1.5 text-slate-500">
                 {selected.stock > 0 ? `${selected.stock} available` : "Made to order"}
               </p>
             )}
@@ -530,24 +520,24 @@ export function ProductDetailMobile({
 
         {/* Quantity */}
         <div className="mt-2">
-          <label className="text-[10px] font-medium uppercase tracking-wider text-slate-500 block mb-1">Quantity</label>
-          <div className="flex items-center gap-2">
+          <label className="text-[10px] font-medium text-slate-500 block mb-1 uppercase tracking-wider">Quantity</label>
+          <div className="flex items-center gap-1.5">
             <button
               onClick={() => setQty((q) => Math.max(1, q - 1))}
               disabled={!inStock}
-              className="w-9 h-9 rounded-xl border border-[#CBD5E1] bg-white flex items-center justify-center text-[#0F172A] font-medium disabled:opacity-40 disabled:pointer-events-none"
+              className="w-8 h-8 rounded-lg border border-[#CBD5E1] bg-white flex items-center justify-center text-[#0F172A] font-medium disabled:opacity-40 disabled:pointer-events-none"
               aria-label="Decrease quantity"
             >
-              <Minus className="h-3.5 w-3.5" />
+              <Minus className="h-3 w-3" />
             </button>
-            <span className="w-8 text-center text-base font-bold tabular-nums text-[#0F172A]">{qty}</span>
+            <span className="w-7 text-center text-sm font-bold tabular-nums text-[#0F172A]">{qty}</span>
             <button
               onClick={() => setQty((q) => Math.min(99, q + 1))}
               disabled={!inStock || (selected?.stock != null && qty >= selected.stock)}
-              className="w-9 h-9 rounded-xl border border-[#CBD5E1] bg-white flex items-center justify-center text-[#0F172A] font-medium disabled:opacity-40 disabled:pointer-events-none"
+              className="w-8 h-8 rounded-lg border border-[#CBD5E1] bg-white flex items-center justify-center text-[#0F172A] font-medium disabled:opacity-40 disabled:pointer-events-none"
               aria-label="Increase quantity"
             >
-              <Plus className="h-3.5 w-3.5" />
+              <Plus className="h-3 w-3" />
             </button>
           </div>
           {!inStock && (
@@ -574,9 +564,9 @@ export function ProductDetailMobile({
         />
       </section>
 
-      {/* ================= Seller Information (moved up) ================= */}
+      {/* ================= Seller Information ================= */}
       <section className="px-4 space-y-2 pb-2">
-        <div className="rounded-2xl border border-[#E2E8F0] bg-white p-3.5">
+        <div className="rounded-xl border border-[#E2E8F0] bg-white p-3">
           <div className="flex items-start gap-2 text-sm">
             <StoreIcon className="h-4 w-4 shrink-0 text-slate-400 mt-0.5" />
             <div>
@@ -584,7 +574,7 @@ export function ProductDetailMobile({
               <div className="text-[10px] text-slate-500">TechPivo Marketplace seller</div>
             </div>
           </div>
-          <div className="flex items-start gap-2 mt-3">
+          <div className="flex items-start gap-2 mt-2">
             <LinkIcon className="h-4 w-4 shrink-0 text-slate-400 mt-0.5" />
             <Link href={deptSlug ? `/marketplace/category/${deptSlug}` : "/marketplace"} className="text-sm text-[#FF6B00] hover:underline">
               Browse store
@@ -593,24 +583,24 @@ export function ProductDetailMobile({
         </div>
       </section>
 
-      {/* ================= Delivery & seller ================= */}
+      {/* ================= Delivery & returns ================= */}
       <section className="px-4 space-y-2 pb-2">
-        <div className="rounded-2xl border border-[#E2E8F0] bg-white p-3.5">
-          <p className="text-[10px] font-medium uppercase tracking-wider text-slate-500 mb-3 flex items-center gap-2">
+        <div className="rounded-xl border border-[#E2E8F0] bg-white p-3">
+          <p className="text-[10px] font-medium text-slate-500 mb-2 flex items-center gap-1 uppercase tracking-wider">
             <Truck className="h-3.5 w-3.5 text-[#FF6B00]" />
             Delivery &amp; returns
           </p>
-          <div className="space-y-2">
-            <div className="flex items-start gap-2 text-sm">
-              <Clock className="h-3.5 w-3.5 shrink-0 text-[#B45309] mt-0.5" />
+          <div className="space-y-1.5">
+            <div className="flex items-start gap-1.5 text-sm">
+              <Clock className="h-3 w-3 shrink-0 text-[#B45309] mt-0.5" />
               <span className="text-slate-700">Standard delivery 7–12 days, tracked worldwide. Express 3–7 days.</span>
             </div>
-            <div className="flex items-start gap-2 text-sm">
-              <RotateCcw className="h-3.5 w-3.5 shrink-0 text-[#F59E0B] mt-0.5" />
+            <div className="flex items-start gap-1.5 text-sm">
+              <RotateCcw className="h-3 w-3 shrink-0 text-[#F59E0B] mt-0.5" />
               <span className="text-slate-700">30-day easy returns on eligible items. Start a return from your orders page.</span>
             </div>
-            <div className="flex items-start gap-2 text-sm">
-              <ShieldCheck className="h-3.5 w-3.5 shrink-0 text-[#10B981] mt-0.5" />
+            <div className="flex items-start gap-1.5 text-sm">
+              <ShieldCheck className="h-3 w-3 shrink-0 text-[#10B981] mt-0.5" />
               <span className="text-slate-700">Secure payments via Flutterwave — card, bank transfer and mobile money.</span>
             </div>
           </div>
@@ -618,7 +608,7 @@ export function ProductDetailMobile({
       </section>
 
       {/* ================= Collapsible info sections ================= */}
-      <section className="px-4 space-y-2 pb-[130px]">
+      <section className="px-4 space-y-1.5 pb-[130px]">
         <Accordion
           key="desc"
           title="Product Description"
@@ -687,16 +677,16 @@ export function ProductDetailMobile({
           open={isOpen("delivery")}
           onToggle={() => toggleSection("delivery")}
         >
-          <div className="grid gap-2">
-            <div className="flex items-start gap-2 text-sm">
+          <div className="grid gap-1.5">
+            <div className="flex items-start gap-1.5 text-sm">
               <Clock className="h-3.5 w-3.5 shrink-0 text-[#B45309] mt-0.5" />
               <span className="text-slate-700">Standard delivery 7–12 days, tracked worldwide. Express 3–7 days.</span>
             </div>
-            <div className="flex items-start gap-2 text-sm">
+            <div className="flex items-start gap-1.5 text-sm">
               <RotateCcw className="h-3.5 w-3.5 shrink-0 text-[#F59E0B] mt-0.5" />
               <span className="text-slate-700">30-day easy returns on eligible items. Start a return from your orders page.</span>
             </div>
-            <div className="flex items-start gap-2 text-sm">
+            <div className="flex items-start gap-1.5 text-sm">
               <ShieldCheck className="h-3.5 w-3.5 shrink-0 text-[#10B981] mt-0.5" />
               <span className="text-slate-700">Secure payments via Flutterwave — card, bank transfer and mobile money.</span>
             </div>
@@ -705,7 +695,7 @@ export function ProductDetailMobile({
       </section>
 
       {/* ================= Reviews ================= */}
-      <section className="px-4 space-y-3 pb-[130px]">
+      <section className="px-4 space-y-2.5 pb-[130px]">
         <div className="flex items-center justify-between mb-1">
           <h2 className="text-sm font-medium text-[#0F172A]">Customer reviews</h2>
           <span className="text-[10px] text-slate-500">{reviews.length} review{reviews.length === 1 ? "" : "s"}</span>
@@ -732,10 +722,10 @@ export function ProductDetailMobile({
         {reviews.length === 0 ? (
           <p className="text-sm text-slate-500 text-center py-4">No reviews yet — be the first to share your thoughts.</p>
         ) : (
-          <div className="space-y-2.5">
+          <div className="space-y-2">
             {reviews.slice(0, 6).map((r) => (
-              <div key={r.id} className="border border-[#E2E8F0] rounded-xl p-2.5">
-                <div className="flex items-center gap-2 mb-1">
+              <div key={r.id} className="border border-[#E2E8F0] rounded-xl p-2">
+                <div className="flex items-center gap-1.5 mb-1">
                   <span className="text-xs font-medium text-[#0F172A]">{r.author_name}</span>
                   <Stars value={r.rating} size={12} />
                   <span className="ml-auto text-[10px] text-slate-400">{new Date(r.created_at).toLocaleDateString()}</span>
@@ -747,15 +737,15 @@ export function ProductDetailMobile({
           </div>
         )}
 
-        <div className="mt-4 border-t border-[#E2E8F0] pt-3 space-y-2">
-          <h3 className="text-[10px] font-medium uppercase tracking-wider text-slate-500">Write a review</h3>
+        <div className="mt-3 border-t border-[#E2E8F0] pt-2.5 space-y-2">
+          <h3 className="text-[10px] font-medium text-slate-500 uppercase tracking-wider">Write a review</h3>
           <textarea
             id="review-text"
             placeholder="What did you think of this product?"
             rows={2}
-            className="w-full border rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-[#FF6B00]"
+            className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#FF6B00]"
           />
-          <div className="flex items-center gap-1.5 mt-2" role="radiogroup" aria-label="Your rating">
+          <div className="flex items-center gap-1.5 mt-1.5" role="radiogroup" aria-label="Your rating">
             {[1, 2, 3, 4, 5].map((n) => (
               <button
                 key={n}
@@ -774,17 +764,17 @@ export function ProductDetailMobile({
           <button
             onClick={submitReviewMobile}
             disabled={rSending}
-            className="w-full bg-[#FF6B00] hover:bg-[#e86000] text-[#0F172A] text-xs font-medium py-2.5 rounded-xl disabled:opacity-50"
+            className="w-full bg-[#FF6B00] hover:bg-[#e86000] text-[#0F172A] text-xs font-medium py-2.5 rounded-lg disabled:opacity-50"
           >
             {rSending ? "Posting…" : "Post review"}
           </button>
         </div>
       </section>
 
-      {/* ================= Related products carousel ================= */}
+      {/* ================= Related products carousel — slide by touch, no arrows ================= */}
       {related.length > 0 && (
-        <section className="px-4 space-y-2 pb-[130px]">
-          <div className="flex items-center justify-between mb-2">
+        <section className="px-4 space-y-1.5 pb-[130px]">
+          <div className="flex items-center justify-between mb-1">
             <h2 className="text-sm font-medium text-[#0F172A]">Similar products</h2>
             {deptSlug && (
               <Link href={`/marketplace/category/${deptSlug}`} className="text-[10px] text-[#FF6B00] font-medium hover:underline">
@@ -792,14 +782,14 @@ export function ProductDetailMobile({
               </Link>
             )}
           </div>
-          <div className="flex gap-3 overflow-x-auto pb-1 scrollbar-hide">
+          <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
             {related.map((r) => (
               <Link
                 key={r.id}
                 href={`/marketplace/product/${r.id}`}
-                className="shrink-0 w-[150px] group"
+                className="shrink-0 w-[148px] group"
               >
-                <div className="aspect-[4/5] bg-white rounded-2xl border border-[#E2E8F0] overflow-hidden mb-2 relative">
+                <div className="aspect-[4/5] bg-white rounded-xl border border-[#E2E8F0] overflow-hidden mb-2 relative">
                   {r.product_image_url ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img src={marketImage(r.product_image_url)} alt={r.product_name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" loading="lazy" />
@@ -819,29 +809,29 @@ export function ProductDetailMobile({
       <div className="fixed bottom-0 left-0 right-0 z-50 border-t border-[#E2E8F0] bg-white px-4 py-3 [padding-bottom:env(safe-area-inset-bottom)] shadow-[0_-10px_30px_rgba(15,23,42,0.12)]">
         <div className="max-w-[520px] mx-auto">
           <div className="flex items-baseline justify-between gap-3 mb-2.5">
-            <span className="text-[22px] font-bold tabular-nums text-[#0F172A]">
+            <span className="text-[20px] font-bold tabular-nums text-[#0F172A]">
               {formatMarketPrice(price, rate, currency)}
             </span>
             {!inStock && <span className="text-[10px] font-bold text-[#EF4444]">Unavailable</span>}
           </div>
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-2 gap-1.5">
             <button
               onClick={doAdd}
               disabled={!inStock || added}
-              className={`w-full h-11 rounded-xl font-medium text-xs transition-all flex items-center justify-center gap-2 disabled:opacity-40 disabled:pointer-events-none ${
+              className={`w-full h-10 rounded-lg font-medium text-[11px] transition-all flex items-center justify-center gap-1.5 disabled:opacity-40 disabled:pointer-events-none ${
                 added
                   ? "bg-[#0F172A] text-white"
                   : "bg-[#FF6B00] text-[#0F172A] hover:bg-[#e86000]"
               }`}
             >
-              {added ? (<><Check className="h-3.5 w-3.5" strokeWidth={3} /> <span>Added</span></>) : (<><ShoppingCart className="h-3.5 w-3.5" /> <span>Add to Cart</span></>)}
+              {added ? (<><Check className="h-3 w-3" strokeWidth={3} /> <span>Added</span></>) : (<><ShoppingCart className="h-3 w-3" /> <span>Add to Cart</span></>)}
             </button>
             <button
               onClick={buyNow}
               disabled={!inStock}
-              className="w-full h-11 rounded-xl border border-[#E2E8F0] bg-white font-medium text-xs transition-all flex items-center justify-center gap-2 text-[#0F172A] disabled:opacity-40 disabled:pointer-events-none"
+              className="w-full h-10 rounded-lg border border-[#E2E8F0] bg-white font-medium text-[11px] transition-all flex items-center justify-center gap-1.5 text-[#0F172A] disabled:opacity-40 disabled:pointer-events-none"
             >
-              <Zap className="h-3.5 w-3.5" /> <span>Buy Now</span>
+              <Zap className="h-3 w-3" /> <span>Buy Now</span>
             </button>
           </div>
           {!inStock && (
@@ -854,7 +844,7 @@ export function ProductDetailMobile({
         <ShareSheet url={shareUrl} title={rewritten.title || p.product_name} onClose={() => setShareOpen(false)} />
       )}
 
-      {/* Full-screen viewer */}
+      {/* Full-screen viewer — slide by touch, no arrows on the cards */}
       {zoomOpen && gallery.length > 0 && gallery[galleryIndex].type === "image" && (
         <div
           className="fixed inset-0 z-[100] bg-black flex flex-col items-center justify-center p-3"
@@ -866,10 +856,10 @@ export function ProductDetailMobile({
           <button
             type="button"
             onClick={() => setZoomOpen(false)}
-            className="absolute top-3 left-3 z-10 w-10 h-10 rounded-full bg-white/20 text-white flex items-center justify-center"
+            className="absolute top-3 left-3 z-10 w-9 h-9 rounded-full bg-white/20 text-white flex items-center justify-center"
             aria-label="Close"
           >
-            <X className="h-5 w-5" />
+            <X className="h-4 w-4" />
           </button>
           <div className="relative w-full max-w-full max-h-[80vh] flex items-center justify-center" {...viewerStart} {...viewerEnd}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -879,20 +869,6 @@ export function ProductDetailMobile({
               className="max-w-full max-h-[75vh] object-contain"
             />
           </div>
-          <button
-            onClick={() => setGalleryIndex((i) => (i === 0 ? gallery.length - 1 : i - 1))}
-            className="absolute left-3 top-1/2 -translate-y-1/2 z-20 w-10 h-10 rounded-full bg-white/20 text-white flex items-center justify-center"
-            aria-label="Previous"
-          >
-            <ChevronLeft className="h-5 w-5" />
-          </button>
-          <button
-            onClick={() => setGalleryIndex((i) => (i === gallery.length - 1 ? 0 : i + 1))}
-            className="absolute right-3 top-1/2 -translate-y-1/2 z-20 w-10 h-10 rounded-full bg-white/20 text-white flex items-center justify-center"
-            aria-label="Next"
-          >
-            <ChevronRight className="h-5 w-5" />
-          </button>
           <span className="mt-3 text-[11px] text-white/80">{galleryIndex + 1} / {gallery.length}</span>
         </div>
       )}
@@ -924,7 +900,7 @@ function LinkIcon({ className }: { className?: string }) {
 function Accordion({ children, title, icon, open, onToggle }: { children: React.ReactNode; title: string; icon: React.ReactNode; open: boolean; onToggle: () => void }) {
   return (
     <div className="rounded-xl border border-[#E2E8F0] bg-white overflow-hidden">
-      <button onClick={onToggle} className="w-full flex items-center justify-between gap-2 px-3 py-2.5 text-left transition-background hover:bg-[#F8FAFC]" aria-expanded={open}>
+      <button onClick={onToggle} className="w-full flex items-center justify-between gap-2 px-3 py-2 text-left transition-background hover:bg-[#F8FAFC]" aria-expanded={open}>
         <div className="flex items-center gap-2">{icon} <span className="text-sm font-medium text-[#0F172A]">{title}</span></div>
         <svg className={`w-4 h-4 shrink-0 transition-transform ${open ? "rotate-180" : ""}`} fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" /></svg>
       </button>
