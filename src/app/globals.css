@@ -128,8 +128,8 @@
 
 /* scroll-behavior removed to prevent unwanted nav scrolling */
 *, *::before, *::after { box-sizing: border-box; }
-html { overflow-x: clip; }
-body { overflow-x: clip; max-width: 100%; }
+html { overflow-x: clip; margin: 0; padding: 0; }
+body { overflow-x: clip; max-width: 100%; margin: 0; padding: 0; }
 body { position: relative; }
 
 @layer components {
@@ -248,7 +248,7 @@ body { position: relative; }
   header.sticky .max-w-\[140px\] { max-width: 110px; }
 
   /* Nav drawer departments — full width, no overflow */
-  nav[aria-label="Marketplace mobile"] { width: 100% !important; max-width: 100vw !important; }
+  nav[aria-label="Marketplace mobile"] { width: 100% !important; max-width: 100% !important; }
 
   /* Bottom mobile nav safe-area */
   nav.lg\:hidden.fixed.bottom-0 { padding-bottom: env(safe-area-inset-bottom); }
