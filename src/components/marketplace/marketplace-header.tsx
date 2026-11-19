@@ -908,7 +908,6 @@ const [showBackToTop, setShowBackToTop] = useState(false)
             <Link href="/marketplace" className="flex items-center gap-2" onClick={() => setOpen(false)} aria-label="TechPivo Market home">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src="/market-logo.svg" alt="TechPivo Market" className="h-9 w-auto" />
-              <span className="text-sm font-bold text-[#0F172A] tracking-tight">TechPivo Market</span>
             </Link>
             <button
               type="button"
@@ -920,8 +919,37 @@ const [showBackToTop, setShowBackToTop] = useState(false)
             </button>
           </div>
 
+          {/* Quick actions — order, wishlist, cart */}
+          <div className="px-4 py-3 space-y-1">
+            <div className="grid grid-cols-3 gap-2">
+              {[{
+                label: "Orders",
+                href: "/marketplace/track",
+                icon: Truck,
+              }, {
+                label: "Wishlist",
+                href: "/marketplace/wishlist",
+                icon: Heart,
+              }, {
+                label: "Cart",
+                href: "/marketplace/cart",
+                icon: ShoppingCart,
+              }].map((item) => (
+                <Link
+                  key={item.label}
+                  href={item.href}
+                  onClick={() => setOpen(false)}
+                  className="flex flex-col items-center gap-1 px-3 py-2.5 rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] text-[10px] font-medium text-slate-600 hover:bg-white hover:text-[#FF6B00] hover:border-[#FF6B00] transition-all duration-150"
+                >
+                  <item.icon className="h-5 w-5 shrink-0 text-slate-500 hover:text-[#FF6B00] transition-colors" />
+                  <span>{item.label}</span>
+                </Link>
+              ))}
+            </div>
+          </div>
+
           {/* Currency switcher */}
-          <div className="px-4 py-4 border-b border-[#E2E8F0] bg-[#F8FAFC]">
+          <div className="px-4 py-3 border-b border-[#E2E8F0] bg-[#F8FAFC]">
             <div className="flex items-center justify-between mb-2">
               <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Currency</span>
               <button
@@ -1025,71 +1053,6 @@ const [showBackToTop, setShowBackToTop] = useState(false)
             </div>
           </div>
 
-          {/* Departments */}
-          <div className="px-4">
-            <div className="flex items-center gap-2 px-3 py-2 mb-1 border-t border-[#E2E8F0]">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Departments</span>
-            </div>
-            <div className="px-2 space-y-0.5">
-              {departments.map((d) => {
-                const expanded = mobileExpanded === d.slug;
-                const Icon = resolveDeptIcon(d);
-                const isPrimary = menuBg === "#1453D6";
-                const btnBase = "w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-sm font-semibold text-left transition-colors";
-                const btnActive = isPrimary ? "text-[#1453D6] hover:bg-[#1453D6]/10 hover:text-[#0B3A9A]" : "text-[" + menuBg + "] hover:bg-[" + menuBg + "]/10 hover:text-[" + menuBgHover + "]";
-                const btnCls = btnBase + " " + btnActive;
-                const linkActive = isPrimary ? "text-[#1453D6] hover:bg-[#1453D6]/10 hover:text-[#0B3A9A]" : "text-[" + menuBg + "] hover:bg-[" + menuBg + "]/10 hover:text-[" + menuBgHover + "]";
-                const linkCls = "flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold text-left transition-colors " + linkActive;
-                return (
-                  <div key={d.slug}>
-                    <button
-                      type="button"
-                      onClick={() => setMobileExpanded(expanded ? "" : d.slug)}
-                      aria-expanded={expanded}
-                      className={btnCls}
-                    >
-                      {Icon && (
-                        <span className="flex items-center justify-center w-6 h-6 rounded-lg bg-[#F8FAFC] text-slate-500 shrink-0">
-                          <Icon size={14} />
-                        </span>
-                      )}
-                      {d.name}
-                      <ChevronDown
-                        className={"h-4 w-4 text-slate-400 transition-transform " + (expanded ? "rotate-180" : "")}
-                      />
-                    </button>
-                    {expanded && (
-                      <div className="pl-4 space-y-0.5 pt-1">
-                        <Link
-                          href={"/marketplace/category/" + d.slug}
-                          onClick={() => setOpen(false)}
-                          className={linkCls}
-                        >
-                          <span className="w-5 h-5 shrink-0 opacity-50">
-                            <Package size={12} />
-                          </span>
-                          All {d.name}
-                        </Link>
-                        {d.subs.map((s) => (
-                            <Link
-                              key={s.slug}
-                              href={"/marketplace/category/" + s.slug}
-                              onClick={() => setOpen(false)}
-                              className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs text-[#111827] hover:bg-[#FFF1F2] hover:text-[#FF3B30] text-left transition-colors"
-                            >
-                              <span className="w-5 h-5 shrink-0 opacity-40">
-                                <LayoutGrid size={12} />
-                              </span>
-                              {s.name}
-                            </Link>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          </div>
           <div className="pb-8" />
         </nav>
       </div>
@@ -1098,10 +1061,13 @@ const [showBackToTop, setShowBackToTop] = useState(false)
       {!hideBottomNav && (
         <MarketBottomNav
           onSearchToggle={() => {
+            router.push("/marketplace/shop?q=")
             setOpen(false)
-            setSuggestOpen(false)
           }}
-          onCategoryOpen={() => setCategoryNavOpen(true)}
+          onCategoryOpen={() => {
+            router.push("/marketplace/shop")
+            setOpen(false)
+          }}
         />
       )}
 

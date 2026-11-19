@@ -14,18 +14,17 @@ const BOTTOM_NAV_ITEMS: Array<{
   label: string
   icon: React.ElementType
   activeHref?: string
+  isAction?: boolean
 }> = [
   { id: "home", href: "/marketplace", label: "Home", icon: Home, activeHref: "/marketplace" },
-  { id: "categories", href: "/marketplace/shop", label: "Categories", icon: LayoutGrid, activeHref: "/marketplace/shop" },
-  { id: "search", href: "#", label: "Search", icon: Search },
+  { id: "categories", href: "/marketplace/shop", label: "Categories", icon: LayoutGrid, activeHref: "/marketplace/shop", isAction: true },
+  { id: "search", href: "/marketplace/shop?q=", label: "Search", icon: Search, isAction: true },
   { id: "compare", href: "/marketplace/compare", label: "Compare", icon: ArrowLeftRight },
   { id: "account", href: "/marketplace/account", label: "Account", icon: User },
 ]
 
 interface MarketBottomNavProps {
-  /** When true, the Search item opens/closes the mobile search panel. */
   onSearchToggle?: () => void
-  /** When set, clicking the Categories item opens this callback instead of navigating. */
   onCategoryOpen?: () => void
 }
 
@@ -33,11 +32,10 @@ export function MarketBottomNav({ onSearchToggle, onCategoryOpen }: MarketBottom
   const pathname = usePathname()
   const compareIds = useCompareIds()
   const cartLines = useMarketCart()
-  const liveCartCount = cartLines.reduce((s, l) => s + l.qty, 0)
   const [drawerOpen, setDrawerOpen] = useState(false)
 
   const isActive = (item: typeof BOTTOM_NAV_ITEMS[number]) => {
-    if (item.id === "search") return false
+    if (item.id === "search") return pathname.includes("/marketplace/shop") && pathname.includes("q=")
     if (item.activeHref) return pathname === item.activeHref
     return pathname.startsWith(item.href + "/") || pathname === item.href
   }
@@ -68,33 +66,57 @@ export function MarketBottomNav({ onSearchToggle, onCategoryOpen }: MarketBottom
               item.id === "compare"
                 ? compareIds.length
                 : item.id === "home"
-                  ? liveCartCount
+                  ? cartLines.reduce((s, l) => s + l.qty, 0)
                   : item.id === "account"
                     ? wishCount
                     : 0
             const selected = isActive(item)
             const isSearch = item.id === "search"
             const isCategory = item.id === "categories"
+            const isAction = item.isAction
+
+            if (isAction) {
+              return (
+                <button
+                  key={item.id}
+                  type="button"
+                  onClick={isSearch ? handleSearch : handleCategoryClick}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      if (isSearch) handleSearch(e as unknown as React.MouseEvent)
+                      if (isCategory) handleCategoryClick(e as unknown as React.MouseEvent)
+                    }
+                  }}
+                  role="button"
+                  aria-label={`${item.label}${selected ? ", active" : ""}${count > 0 ? `, ${count} items` : ""}`}
+                  aria-expanded={isSearch ? drawerOpen : undefined}
+                  aria-current={selected ? "page" : undefined}
+                  className={`flex flex-col items-center gap-1 px-3 py-2 text-[10px] font-medium transition-colors min-w-[52px] ${
+                    selected
+                      ? "text-[#FF6B00]"
+                      : "text-slate-500 hover:text-[#FF6B00]"
+                  }`}
+                >
+                  <item.icon
+                    className={`h-6 w-6 ${
+                      selected ? "text-[#FF6B00]" : "text-slate-400 hover:text-[#FF6B00]"
+                    }`}
+                  />
+                  <span className="leading-none">{item.label}</span>
+                  {count > 0 && (
+                    <span className="absolute top-1 right-1 bg-[#EF4444] text-[9px] font-bold text-white min-w-[16px] h-[16px] rounded-full flex items-center justify-center px-0.5 shadow-lg z-10">
+                      {Math.min(count, 9)}
+                    </span>
+                  )}
+                </button>
+              )
+            }
+
             return (
-              <button
+              <Link
                 key={item.id}
-                type="button"
-                onClick={
-                  isSearch
-                    ? handleSearch
-                    : isCategory
-                    ? handleCategoryClick
-                    : undefined
-                }
-                onKeyDown={(e) => {
-                  if (isSearch && e.key === "Enter") handleSearch(e as unknown as React.MouseEvent)
-                  if (isCategory && e.key === "Enter") handleCategoryClick(e as unknown as React.MouseEvent)
-                }}
-                role="button"
-                aria-label={`${item.label}${selected ? ", active" : ""}${count > 0 ? `, ${count} items` : ""}`}
-                aria-expanded={isSearch ? drawerOpen : undefined}
-                aria-current={selected ? "page" : undefined}
-                className={`flex flex-col items-center gap-1 px-3 py-2 text-[10px] font-semibold transition-colors min-w-[52px] ${
+                href={item.href}
+                className={`flex flex-col items-center gap-1 px-3 py-2 text-[10px] font-medium transition-colors min-w-[52px] ${
                   selected
                     ? "text-[#FF6B00]"
                     : "text-slate-500 hover:text-[#FF6B00]"
@@ -111,7 +133,7 @@ export function MarketBottomNav({ onSearchToggle, onCategoryOpen }: MarketBottom
                     {Math.min(count, 9)}
                   </span>
                 )}
-              </button>
+              </Link>
             )
           })}
         </div>
