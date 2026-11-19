@@ -10,14 +10,6 @@ import { StorePageShell } from "@/components/marketplace/store-shell"
 
 export const revalidate = 0
 
-export async function headers() {
-  return {
-    "Cache-Control": "no-cache, no-store, must-revalidate",
-    "Pragma": "no-cache",
-    "Expires": "0",
-  }
-}
-
 // The store mirrors CJ's own three-level tree: department -> subcategory ->
 // leaf. Every level has its own page. This catch-all route handles nested
 // URLs like /marketplace/category/electronics/mobile-phones that the single-

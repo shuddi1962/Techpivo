@@ -6,14 +6,6 @@ import { StorePageShell, CollectionHero } from "@/components/marketplace/store-s
 
 export const revalidate = 0
 
-export async function headers() {
-  return {
-    "Cache-Control": "no-cache, no-store, must-revalidate",
-    "Pragma": "no-cache",
-    "Expires": "0",
-  }
-}
-
 export const metadata: Metadata = {
   title: "Shop All Products — TechPivo Market",
   description: "Browse every product on TechPivo Market — filter by price, color, size, rating and more.",
