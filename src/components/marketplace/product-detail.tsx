@@ -519,7 +519,18 @@ export function ProductDetail({
                       </span>
                     ) : (
                       // eslint-disable-next-line @next/next/no-img-element
-                      <img src={g.src} alt="" loading="lazy" decoding="async" className="h-full w-full object-cover" />
+                      <img
+                        src={g.src}
+                        alt=""
+                        loading="lazy"
+                        decoding="async"
+                        className="h-full w-full object-cover"
+                        onError={(e) => {
+                          const t = e.currentTarget
+                          t.src = ""
+                          t.style.display = "none"
+                        }}
+                      />
                     )}
                   </button>
                 ))}
@@ -533,7 +544,18 @@ export function ProductDetail({
                 <video src={activeMedia.src} controls playsInline preload="metadata" className="w-full h-full object-cover" />
               ) : activeMedia.src ? (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img src={activeMedia.src} alt={p.product_name} loading="eager" decoding="async" className="w-full h-full object-cover" />
+                <img
+                  src={activeMedia.src}
+                  alt={p.product_name}
+                  loading="eager"
+                  decoding="async"
+                  className="w-full h-full object-cover"
+                  onError={(e) => {
+                    const t = e.currentTarget
+                    t.src = ""
+                    t.style.display = "none"
+                  }}
+                />
               ) : (
                 <div className="w-full h-full flex items-center justify-center text-slate-300 text-sm">No image</div>
               )}
@@ -620,7 +642,18 @@ export function ProductDetail({
                                 className={`relative h-12 w-12 overflow-hidden rounded-lg border-2 transition-all ${on ? "scale-105 border-[#DC2626]" : "border-[#E2E8F0] hover:border-slate-400"}`}
                               >
                                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                                <img src={opt.image} alt={v} loading="lazy" decoding="async" className="h-full w-full object-cover" />
+                                <img
+                                  src={opt.image}
+                                  alt={v}
+                                  loading="lazy"
+                                  decoding="async"
+                                  className="h-full w-full object-cover"
+                                  onError={(e) => {
+                                    const t = e.currentTarget
+                                    t.src = ""
+                                    t.style.display = "none"
+                                  }}
+                                />
                                 {on && (
                                   <span className="absolute inset-0 flex items-center justify-center bg-black/30">
                                     <Check className="h-4 w-4 text-white" />

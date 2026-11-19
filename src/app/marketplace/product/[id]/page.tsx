@@ -15,7 +15,7 @@ import { MarketMerchProvider } from "@/components/marketplace/market-flags"
 import { fetchMarketMerch } from "@/lib/marketplace-products"
 import { SITE_URL } from "@/lib/constants"
 
-export const revalidate = 0
+export const revalidate = 60
 
 // Product ids are uuid-typed in the DB — a non-uuid path segment can never
 // exist, so those requests get an honest 404 instead of a PostgREST cast 500.

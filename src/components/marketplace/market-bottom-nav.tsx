@@ -17,7 +17,7 @@ const BOTTOM_NAV_ITEMS: Array<{
   isAction?: boolean
 }> = [
   { id: "home", href: "/marketplace", label: "Home", icon: Home, activeHref: "/marketplace" },
-  { id: "categories", href: "/marketplace/shop", label: "Categories", icon: LayoutGrid, activeHref: "/marketplace/shop", isAction: true },
+  { id: "categories", href: "/marketplace", label: "Categories", icon: LayoutGrid, activeHref: "/marketplace", isAction: true },
   { id: "search", href: "/marketplace/shop?q=", label: "Search", icon: Search, isAction: true },
   { id: "compare", href: "/marketplace/compare", label: "Compare", icon: ArrowLeftRight },
   { id: "account", href: "/marketplace/account", label: "Account", icon: User },

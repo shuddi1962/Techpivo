@@ -3,6 +3,7 @@
 import Link from "next/link"
 import { useMemo, useState } from "react"
 import { Check, ChevronDown, RotateCcw, Search, SlidersHorizontal, Star } from "lucide-react"
+import { marketImage } from "@/lib/marketplace-images"
 import { priceOf, discountOf, type StoreProduct } from "@/lib/marketplace-catalog"
 import { brandsInCatalog, detectBrand } from "@/lib/marketplace-brands"
 import { MarketPrice } from "./market-price"
@@ -212,8 +213,18 @@ export function FilterSidebar({
                     >
                       <span className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-[#E2E8F0] bg-white">
                         {p.product_image_url ? (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img src={p.product_image_url} alt="" loading="lazy" decoding="async" className="h-full w-full object-cover" />
+                          <img
+                            src={marketImage(p.product_image_url)}
+                            alt=""
+                            loading="lazy"
+                            decoding="async"
+                            className="h-full w-full object-cover"
+                            onError={(e) => {
+                              const t = e.currentTarget
+                              t.src = ""
+                              t.style.display = "none"
+                            }}
+                          />
                         ) : (
                           <Search className="h-3.5 w-3.5 text-slate-300" />
                         )}

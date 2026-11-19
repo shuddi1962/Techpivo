@@ -365,6 +365,11 @@ export function ProductDetailMobile({
                     className="w-full h-full object-contain"
                     loading="eager"
                     decoding="async"
+                    onError={(e) => {
+                      const t = e.currentTarget
+                      t.src = ""
+                      t.style.display = "none"
+                    }}
                     onTouchStart={(e) => {
                       galleryTouchRef.current = e.touches[0].clientX
                       galleryStart(e)
@@ -422,7 +427,17 @@ export function ProductDetailMobile({
                     </div>
                   ) : (
                     // eslint-disable-next-line @next/next/no-img-element
-                    <img src={g.src} alt="" className="w-full h-full object-cover" loading="lazy" />
+                    <img
+                      src={g.src}
+                      alt=""
+                      className="w-full h-full object-cover"
+                      loading="lazy"
+                      onError={(e) => {
+                        const t = e.currentTarget
+                        t.src = ""
+                        t.style.display = "none"
+                      }}
+                    />
                   )}
                 </button>
               ))}
@@ -872,6 +887,11 @@ export function ProductDetailMobile({
               src={gallery[galleryIndex].src}
               alt={p.product_name}
               className="max-w-full max-h-[75vh] object-contain"
+              onError={(e) => {
+                const t = e.currentTarget
+                t.src = ""
+                t.style.display = "none"
+              }}
             />
           </div>
           <span className="mt-3 text-[11px] text-white/80">{galleryIndex + 1} / {gallery.length}</span>

@@ -333,8 +333,18 @@ export function MarketAccount() {
               >
                 <span className="block aspect-square overflow-hidden rounded-lg bg-white">
                   {r.product_image_url ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={r.product_image_url} alt={r.product_name} loading="lazy" decoding="async" className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105" />
+                    <img
+                      src={marketImage(r.product_image_url)}
+                      alt={r.product_name}
+                      loading="lazy"
+                      decoding="async"
+                      className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+                      onError={(e) => {
+                        const t = e.currentTarget
+                        t.src = ""
+                        t.style.display = "none"
+                      }}
+                    />
                   ) : null}
                 </span>
                 <span className="mt-2 block truncate text-[13px] font-semibold text-[#0F172A]">{r.product_name}</span>

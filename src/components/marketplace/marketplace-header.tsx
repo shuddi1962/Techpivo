@@ -1061,11 +1061,11 @@ const [showBackToTop, setShowBackToTop] = useState(false)
       {!hideBottomNav && (
         <MarketBottomNav
           onSearchToggle={() => {
-            router.push("/marketplace/shop?q=")
+            router.push("/marketplace?q=")
             setOpen(false)
           }}
           onCategoryOpen={() => {
-            router.push("/marketplace/shop")
+            setCategoryNavOpen(true)
             setOpen(false)
           }}
         />

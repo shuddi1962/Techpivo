@@ -52,6 +52,11 @@ export function ProductCard({
             loading="lazy"
             decoding="async"
             className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110"
+            onError={(e) => {
+              const t = e.currentTarget
+              t.src = ""
+              t.style.display = "none"
+            }}
           />
         ) : (
           <span className="flex h-full w-full items-center justify-center" aria-hidden>
