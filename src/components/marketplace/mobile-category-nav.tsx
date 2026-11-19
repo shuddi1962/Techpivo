@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
-import { LayoutGrid } from "lucide-react"
+import { LayoutGrid, Home, X } from "lucide-react"
 import { useMarketplaceTree } from "@/components/marketplace/market-category-store"
 import type { MarketDepartment, MarketSub } from "@/lib/marketplace-categories"
 import { bundledSubImage } from "@/lib/marketplace-category-db"
@@ -211,16 +211,23 @@ export function MobileCategoryNav({ onClose }: MobileCategoryNavProps) {
     <div className="fixed inset-0 z-[70] bg-white flex flex-col md:hidden">
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-[#E2E8F0] bg-white shrink-0">
+        <Link
+          href="/marketplace"
+          onClick={onClose}
+          className="flex h-9 w-9 items-center justify-center rounded-full hover:bg-[#F8FAFC] text-[#0F172A] transition-colors"
+          aria-label="Return to homepage"
+        >
+          <Home className="h-5 w-5" />
+        </Link>
+        <h2 className="text-lg font-bold text-[#0F172A]">Categories</h2>
         <button
           type="button"
           onClick={onClose}
           aria-label="Close categories"
           className="w-9 h-9 rounded-full flex items-center justify-center hover:bg-[#F8FAFC] text-[#0F172A]"
         >
-          <LayoutGrid className="h-5 w-5" />
+          <X className="h-5 w-5" />
         </button>
-        <h2 className="text-lg font-bold text-[#0F172A]">Categories</h2>
-        <div className="w-9 h-9" />
       </div>
 
       <div className="flex-1 overflow-hidden flex">

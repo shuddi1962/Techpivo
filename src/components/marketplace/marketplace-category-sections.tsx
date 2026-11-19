@@ -250,12 +250,6 @@ export function CategoryShoppingSection({
           <h2 className="text-lg font-bold text-[#0F172A] leading-tight">{dept.name}</h2>
         </div>
         <div className="flex items-center gap-2 overflow-x-auto pb-1" style={{ scrollbarWidth: "none" }}>
-          <Link
-            href={`/marketplace/category/${dept.slug}`}
-            className="shrink-0 rounded-full px-3 py-1.5 text-[12px] font-medium text-[#B45309] border border-[#FFE4D6] bg-[#FFF1F2] hover:bg-[#F59E0B]/10 transition-colors"
-          >
-            All {dept.name}
-          </Link>
           {subLinks.map((s) => (
             <button
               key={s.slug}
@@ -267,14 +261,6 @@ export function CategoryShoppingSection({
               {s.name}
             </button>
           ))}
-        </div>
-        <div className="flex items-center gap-2">
-          <Link
-            href={`/marketplace/category/${dept.slug}`}
-            className="text-sm font-semibold text-[#B45309] hover:underline"
-          >
-            Shop all {dept.name} →
-          </Link>
         </div>
       </div>
 

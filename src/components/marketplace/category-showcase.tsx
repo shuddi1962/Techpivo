@@ -193,12 +193,6 @@ export function CategoryShowcase({
           <h2 className="text-lg font-extrabold uppercase tracking-tight text-[#0F172A]">{title}</h2>
           <span className="mt-1 block h-1 w-12 rounded-full bg-[#F59E0B]" aria-hidden />
         </div>
-        <Link
-          href={`/marketplace/category/${deptSlug}`}
-          className="text-sm font-semibold text-[#B45309] hover:underline"
-        >
-          Shop all {title.toLowerCase()} →
-        </Link>
         <div className="flex items-center gap-2">
           <button
             type="button"

@@ -577,9 +577,13 @@ const [showBackToTop, setShowBackToTop] = useState(false)
               onClick={() => setOpen((v) => !v)}
               aria-label={open ? "Close menu" : "Open menu"}
               aria-expanded={open}
-              className="relative flex items-center justify-center rounded-full hover:bg-[#FF6B00]/10 transition-colors h-12 w-12 shrink-0 min-h-[48px] min-w-[48px] p-2"
+              className={`relative flex items-center justify-center rounded-full transition-all duration-200 active:scale-95 h-12 w-12 shrink-0 min-h-[48px] min-w-[48px] p-2 ${
+                open
+                  ? "bg-[#FF6B00] text-white ring-2 ring-[#FF6B00]/40 shadow-[0_0_0_1px_rgba(255,107,0,0.25)]"
+                  : "text-slate-600 hover:bg-[#FF6B00]/10 hover:text-[#FF6B00]"
+              }`}
             >
-              {open ? <X className="h-6 w-6 text-slate-600" /> : <Menu className="h-6 w-6 text-slate-600" />}
+              {open ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
             </button>
           </div>
           <div ref={searchBoxRef} className="hidden md:flex flex-1 max-w-2xl relative">
@@ -893,33 +897,48 @@ const [showBackToTop, setShowBackToTop] = useState(false)
       <div className="md:hidden">
         {open && (
           <div
-            className="fixed inset-0 z-[60] bg-[#0F172A]/55 backdrop-blur-md transition-opacity duration-300"
+            className="fixed inset-0 z-[60] bg-[#0F172A]/70 backdrop-blur-md transition-opacity duration-300"
             onClick={() => setOpen(false)}
             aria-hidden="true"
           />
         )}
         <nav
-          className={`fixed top-0 left-0 z-[60] h-full w-[92%] max-w-[380px] overflow-y-auto bg-white shadow-2xl transform transition-transform duration-300 ease-out ${open ? "translate-x-0 opacity-100" : "-translate-x-full opacity-0 pointer-events-none"}`}
+          className={`fixed top-0 left-0 z-[70] h-full w-[92%] max-w-[380px] overflow-y-auto bg-white shadow-2xl transform transition-transform duration-300 ease-out ${open ? "translate-x-0 opacity-100" : "-translate-x-full opacity-0 pointer-events-none"}`}
           aria-label="Marketplace mobile"
           style={{ touchAction: "pan-y" }}
         >
           {/* Drawer header — premium brand bar */}
           <div className="flex items-center justify-between px-4 py-4 border-b border-[#E2E8F0] bg-[#F8FAFC]">
-            <Link href="/marketplace" className="flex items-center gap-2" onClick={() => setOpen(false)} aria-label="TechPivo Market home">
+            <Link
+              href="/marketplace"
+              className="flex items-center gap-2"
+              onClick={() => setOpen(false)}
+              aria-label="TechPivo Market home"
+            >
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src="/market-logo.svg" alt="TechPivo Market" className="h-9 w-auto" />
+              <span className="text-base font-extrabold tracking-tight text-[#0F172A]">TechPivo Market</span>
             </Link>
             <button
               type="button"
               onClick={() => setOpen(false)}
-              className="p-2.5 rounded-full border border-[#E2E8F0] bg-white text-slate-600 hover:bg-[#E2E8F0] transition-colors h-11 w-11 min-h-[44px] min-w-[44px] flex items-center justify-center shadow-sm"
+              className="p-2.5 rounded-full border border-[#E2E8F0] bg-white text-slate-600 hover:bg-[#E2E8F0] transition-all duration-200 active:scale-90 h-11 w-11 min-h-[44px] min-w-[44px] flex items-center justify-center shadow-sm"
               aria-label="Close menu"
             >
               <X className="h-6 w-6" />
             </button>
           </div>
 
-          {/* Quick actions — order, wishlist, cart */}
+          {/* Quick return home chip */}
+          <div className="px-4 py-3">
+            <Link
+              href="/marketplace"
+              onClick={() => setOpen(false)}
+              className="flex items-center gap-2.5 rounded-xl border border-[#E2E8F0] bg-[#FFF1F2] px-3 py-2.5 text-sm font-bold text-[#B45309] hover:bg-[#FF6B00]/10 hover:text-[#e86000] transition-all duration-150"
+            >
+              <Home className="h-5 w-5" /> Return to Homepage
+            </Link>
+          </div>
           <div className="px-4 py-3 space-y-1">
             <div className="grid grid-cols-3 gap-2">
               {[{

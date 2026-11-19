@@ -5,6 +5,13 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Instant tap response — remove the 300ms mobile tap delay on every
+   interactive element so buttons, links, cards, tabs and products feel snappy. */
+button, a, [role="button"], [role="link"], [role="tab"], .product-card,
+.CollectionItem, [data-slot="button"], .cursor-pointer, input, select, textarea {
+  touch-action: manipulation;
+}
+
 @layer base {
   :root {
     --bg: #F8FAFC;

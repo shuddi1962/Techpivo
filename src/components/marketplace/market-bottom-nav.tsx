@@ -6,7 +6,6 @@ import { useEffect, useState } from "react"
 import { Home, LayoutGrid, Search, ArrowLeftRight, User, ShoppingCart, Heart } from "lucide-react"
 import { useMarketCart } from "@/lib/marketplace-cart"
 import { useCompareIds } from "@/lib/marketplace-compare"
-import { readWishCount } from "@/lib/marketplace-wish"
 
 const BOTTOM_NAV_ITEMS: Array<{
   id: string
@@ -17,7 +16,7 @@ const BOTTOM_NAV_ITEMS: Array<{
   isAction?: boolean
 }> = [
   { id: "home", href: "/marketplace", label: "Home", icon: Home, activeHref: "/marketplace" },
-  { id: "categories", href: "/marketplace", label: "Categories", icon: LayoutGrid, activeHref: "/marketplace", isAction: true },
+  { id: "categories", href: "/marketplace", label: "Categories", icon: LayoutGrid, isAction: true },
   { id: "search", href: "/marketplace/shop?q=", label: "Search", icon: Search, isAction: true },
   { id: "compare", href: "/marketplace/compare", label: "Compare", icon: ArrowLeftRight },
   { id: "account", href: "/marketplace/account", label: "Account", icon: User },
@@ -35,9 +34,12 @@ export function MarketBottomNav({ onSearchToggle, onCategoryOpen }: MarketBottom
   const [drawerOpen, setDrawerOpen] = useState(false)
 
   const isActive = (item: typeof BOTTOM_NAV_ITEMS[number]) => {
-    if (item.id === "search") return pathname.includes("/marketplace/shop") && pathname.includes("q=")
+    if (item.id === "search") return isSearchActive
+    // Categories: only active on the exact marketplace homepage, not on
+    // category detail pages (those are their own section).
+    if (item.id === "categories") return pathname === item.activeHref
     if (item.activeHref) return pathname === item.activeHref
-    return pathname.startsWith(item.href + "/") || pathname === item.href
+    return pathname === item.href
   }
 
   const handleSearch = (e: React.MouseEvent) => {
@@ -52,7 +54,7 @@ export function MarketBottomNav({ onSearchToggle, onCategoryOpen }: MarketBottom
     setDrawerOpen(false)
   }
 
-  const wishCount = readWishCount()
+  const isSearchActive = pathname.includes("/marketplace") && pathname.includes("q=")
 
   return (
     <>
@@ -67,9 +69,7 @@ export function MarketBottomNav({ onSearchToggle, onCategoryOpen }: MarketBottom
                 ? compareIds.length
                 : item.id === "home"
                   ? cartLines.reduce((s, l) => s + l.qty, 0)
-                  : item.id === "account"
-                    ? wishCount
-                    : 0
+                  : 0
             const selected = isActive(item)
             const isSearch = item.id === "search"
             const isCategory = item.id === "categories"

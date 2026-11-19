@@ -106,83 +106,90 @@ export default async function MarketplaceCategoryCatchAllPage({ params }: { para
             : [{ label: title }]
       }
     >
-      {uploadedBanner ? (
-      <section className="overflow-hidden rounded-2xl border border-[#E2E8F0] bg-white shadow-sm">
-        {(() => {
-          const dest = linkOf(banners, uploadedBanner)
-          const img = (
-            <img src={uploadedBanner} alt={title} loading="eager" decoding="async" className="block h-auto w-full" />
-          )
-          return dest ? (
-            <Link href={dest} aria-label={title} className="block">{img}</Link>
-          ) : img
-        })()}
-        <div className="p-6 sm:p-8 text-white" style={{ background: "linear-gradient(120deg, #23272E 0%, #14171C 100%)" }}>
-          <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-[#F59E0B]">
-            {found.kind === "sub" ? found.dept.name : "Department"}
-          </p>
-          <h1 className="mt-1 text-2xl font-extrabold tracking-tight sm:text-3xl">{title}</h1>
-          <p className="mt-1 text-sm text-white/80">
-            Quality-checked, securely paid, delivered with tracking.
-          </p>
-          {found.kind === "dept" && (
-            <div className="flex flex-wrap gap-1.5 pt-2">
-              {found.dept.subs.map((s) => (
-                <Link
-                  key={s.slug}
-                  href={`/marketplace/category/${s.slug}`}
-                  className="rounded-full border border-white/25 bg-white/10 px-3 py-1 text-xs font-semibold text-white backdrop-blur-sm transition-colors hover:bg-white hover:text-[#0F172A]"
-                >
-                  {s.name}
-                </Link>
-              ))}
-            </div>
-          )}
-        </div>
-      </section>
-      ) : (
-      <section className="relative overflow-hidden rounded-2xl p-6 sm:p-8 text-white" style={{ background: "linear-gradient(120deg, #23272E 0%, #14171C 100%)" }}>
-        <div className="flex flex-col gap-6 md:flex-row md:items-center">
-          <div className="min-w-0 flex-1 space-y-2">
-            <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-[#F59E0B]">
-              {found.kind === "sub" ? found.dept.name : "Department"}
-            </p>
-            <h1 className="text-2xl font-extrabold tracking-tight sm:text-3xl drop-shadow-md">{title}</h1>
-            <p className="text-sm text-white/80">
-              Quality-checked, securely paid, delivered with tracking.
-            </p>
-            {found.kind === "dept" && (
-              <div className="flex flex-wrap gap-1.5 pt-1">
-                {found.dept.subs.map((s) => (
-                  <Link
-                    key={s.slug}
-                    href={`/marketplace/category/${s.slug}`}
-                    className="rounded-full border border-white/25 bg-white/10 px-3 py-1 text-xs font-semibold text-white backdrop-blur-sm transition-colors hover:bg-white hover:text-[#0F172A]"
-                  >
-                    {s.name}
-                  </Link>
-                ))}
+      {/* category hero — clean modern band with department name + subcategory chips */}
+      <section className="relative overflow-hidden rounded-3xl border border-[#E2E8F0] bg-white shadow-sm">
+        {uploadedBanner ? (
+          <>
+            {(() => {
+              const dest = linkOf(banners, uploadedBanner)
+              const img = (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={uploadedBanner} alt={title} loading="eager" decoding="async" className="block h-auto w-full" />
+              )
+              return dest ? (
+                <Link href={dest} aria-label={title} className="block">{img}</Link>
+              ) : img
+            })()}
+            <div className="absolute inset-0 bg-gradient-to-t from-[#0F172A]/95 via-[#0F172A]/40 to-transparent" />
+            <div className="relative z-20 p-4 sm:p-6">
+              <div className="mb-3 flex flex-wrap gap-1">
+                {found.kind === "dept" && (
+                  <div className="flex flex-wrap gap-1">
+                    {found.dept.subs.map((s) => (
+                      <Link
+                        key={s.slug}
+                        href={`/marketplace/category/${s.slug}`}
+                        className="rounded-full border border-[#E2E8F0] bg-[#F8FAFC] px-2.5 py-0.5 text-xs font-semibold text-slate-700 backdrop-blur-sm transition-colors hover:bg-white hover:text-[#FF6B00] hover:border-[#FF6B00]"
+                      >
+                        {s.name}
+                      </Link>
+                    ))}
+                  </div>
+                )}
               </div>
-            )}
-          </div>
-          {heroShots.length > 0 && (
-            <div className="flex shrink-0 gap-2.5" aria-hidden={false}>
-              {heroShots.map((p) => (
-                <Link
-                  key={p.id}
-                  href={`/marketplace/product/${p.id}`}
-                  title={p.name}
-                  aria-label={`View ${p.name}`}
-                  className="block h-24 w-24 overflow-hidden rounded-xl border border-white/20 bg-white/5 transition-transform hover:scale-105 sm:h-32 sm:w-32"
-                >
-                  <img src={p.url} alt="" loading="eager" decoding="async" className="h-full w-full object-cover" />
-                </Link>
-              ))}
+              <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#FF6B00]">
+                {found.kind === "sub" ? found.dept.name : "Department"}
+              </p>
+              <h1 className="mt-0.5 text-xl font-extrabold tracking-tight text-white sm:text-2xl drop-shadow-lg">{title}</h1>
+              <p className="mt-0.5 text-sm text-white/90">
+                Quality-checked, securely paid, delivered with tracking.
+              </p>
             </div>
-          )}
-        </div>
+          </>
+        ) : (
+          <div className="p-4 sm:p-6" style={{ background: "linear-gradient(135deg, #0F172A 0%, #1e293b 60%, #334155 100%)" }}>
+            <div className="flex flex-col gap-4 md:flex-row md:items-center">
+              <div className="min-w-0 flex-1 space-y-1">
+                <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#FF6B00]">
+                  {found.kind === "sub" ? found.dept.name : "Department"}
+                </p>
+                <h1 className="mt-0 text-xl font-extrabold tracking-tight text-white sm:text-2xl drop-shadow-lg">{title}</h1>
+                <p className="mt-0.5 text-sm text-white/90">
+                  Quality-checked, securely paid, delivered with tracking.
+                </p>
+                {found.kind === "dept" && (
+                  <div className="flex flex-wrap gap-1 pt-1">
+                    {found.dept.subs.map((s) => (
+                      <Link
+                        key={s.slug}
+                        href={`/marketplace/category/${s.slug}`}
+                        className="rounded-full border border-[#E2E8F0] bg-[#F8FAFC] px-2.5 py-0.5 text-xs font-semibold text-slate-700 backdrop-blur-sm transition-colors hover:bg-white hover:text-[#FF6B00] hover:border-[#FF6B00]"
+                      >
+                        {s.name}
+                      </Link>
+                    ))}
+                  </div>
+                )}
+              </div>
+              {heroShots.length > 0 && (
+                <div className="flex shrink-0 gap-2" aria-hidden={false}>
+                  {heroShots.map((p) => (
+                    <Link
+                      key={p.id}
+                      href={`/marketplace/product/${p.id}`}
+                      title={p.name}
+                      aria-label={`View ${p.name}`}
+                      className="block h-20 w-20 overflow-hidden rounded-xl border border-white/20 bg-white/5 transition-transform hover:scale-105 sm:h-24 sm:w-24"
+                    >
+                      <img src={p.url} alt="" loading="eager" decoding="async" className="h-full w-full object-cover" />
+                    </Link>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
       </section>
-      )}
 
       <ProductListing products={products} initialMerch={merchState} />
     </StorePageShell>
