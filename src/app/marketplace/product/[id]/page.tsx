@@ -15,7 +15,15 @@ import { MarketMerchProvider } from "@/components/marketplace/market-flags"
 import { fetchMarketMerch } from "@/lib/marketplace-products"
 import { SITE_URL } from "@/lib/constants"
 
-export const revalidate = 60
+export const revalidate = 0
+
+export async function headers() {
+  return {
+    "Cache-Control": "no-cache, no-store, must-revalidate",
+    "Pragma": "no-cache",
+    "Expires": "0",
+  }
+}
 
 // Product ids are uuid-typed in the DB — a non-uuid path segment can never
 // exist, so those requests get an honest 404 instead of a PostgREST cast 500.
@@ -150,9 +158,14 @@ export default async function MarketplaceProductPage({ params }: { params: { id:
   let sold = 0
   try {
     const soldRes = (await fetchWithTimeout(
-      supabase.from("marketplace_orders").select("items").in("status", ["paid", "fulfilled", "delivered"]).limit(500),
+      supabase
+        .from("marketplace_orders")
+        .select("id, items, created_at")
+        .in("status", ["paid", "fulfilled", "delivered"])
+        .order("created_at", { ascending: false })
+        .limit(100),
       8000
-    )) as { data: Array<{ items: Array<{ id?: string; qty?: number }> }> | null } | null
+    )) as { data: Array<{ id: string; items: Array<{ id?: string; qty?: number }>; created_at: string }> | null } | null
     for (const o of soldRes?.data || []) {
       for (const it of Array.isArray(o.items) ? o.items : []) {
         if (it?.id === p.id) sold += Math.max(0, Math.floor(Number(it.qty) || 0))

@@ -8,7 +8,15 @@ import { fetchStoreProducts, fetchMarketBanners, fetchMarketMerch } from "@/lib/
 import { ProductListing } from "@/components/marketplace/product-listing"
 import { StorePageShell } from "@/components/marketplace/store-shell"
 
-export const revalidate = 60
+export const revalidate = 0
+
+export async function headers() {
+  return {
+    "Cache-Control": "no-cache, no-store, must-revalidate",
+    "Pragma": "no-cache",
+    "Expires": "0",
+  }
+}
 
 // The store mirrors CJ's own three-level tree: department -> subcategory ->
 // leaf. Every level has its own page.

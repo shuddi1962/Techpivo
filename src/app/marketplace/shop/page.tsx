@@ -4,7 +4,15 @@ import { pageBannerOf } from "@/lib/marketplace-banners"
 import { ProductListing } from "@/components/marketplace/product-listing"
 import { StorePageShell, CollectionHero } from "@/components/marketplace/store-shell"
 
-export const revalidate = 60
+export const revalidate = 0
+
+export async function headers() {
+  return {
+    "Cache-Control": "no-cache, no-store, must-revalidate",
+    "Pragma": "no-cache",
+    "Expires": "0",
+  }
+}
 
 export const metadata: Metadata = {
   title: "Shop All Products — TechPivo Market",

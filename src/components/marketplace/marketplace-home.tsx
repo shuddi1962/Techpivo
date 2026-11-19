@@ -457,7 +457,7 @@ export function MarketplaceHome() {
           .neq("product_image_url", "")
           .order("is_featured", { ascending: false })
           .order("id", { ascending: true })
-          .limit(1600),
+          .limit(100),
         10000
       ).then((result) => {
         const data = result?.data

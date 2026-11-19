@@ -5,6 +5,16 @@ import { fetchMarketMerch } from "@/lib/marketplace-products"
 import { MarketplaceHeader } from "@/components/marketplace/marketplace-header"
 import { MobileHomeHeader } from "@/components/marketplace/mobile-home-header"
 
+export const revalidate = 0
+
+export async function headers() {
+  return {
+    "Cache-Control": "no-cache, no-store, must-revalidate",
+    "Pragma": "no-cache",
+    "Expires": "0",
+  }
+}
+
 export const metadata: Metadata = {
   title: "TechPivo Market — Curated Tech Products & Deals",
   description:
