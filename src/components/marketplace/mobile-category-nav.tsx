@@ -309,9 +309,20 @@ export function MobileCategoryNav({ onClose }: MobileCategoryNavProps) {
               ) : (
                 <div className="grid grid-cols-3 gap-2.5">
                   {subsForDept.map((sub) => {
-                    const img = activeSubImages.get(sub.slug)
+                    const subImg = activeSubImages.get(sub.slug)
+                    // Fall back to the parent department's rotated product photo so a
+                    // subcategory tile never shows a blank letter chip when the dept
+                    // already has real catalogue imagery.
+                    const deptImgs = deptImages.get(selectedDept?.slug ?? "")
+                    const deptIdx = deptRotation.get(selectedDept?.slug ?? "") ?? 0
+                    const deptImg =
+                      deptImgs && deptImgs.length > 0
+                        ? deptImgs[Math.max(0, Math.min(deptIdx, deptImgs.length - 1))]
+                        : null
+                    const img = subImg || deptImg
                     const hasRotating =
-                      (subImages.get(sub.slug)?.length ?? 0) > 1
+                      (subImages.get(sub.slug)?.length ?? 0) > 1 ||
+                      (deptImgs?.length ?? 0) > 1
                     return (
                       <Link
                         key={sub.slug}

@@ -909,16 +909,11 @@ const [showBackToTop, setShowBackToTop] = useState(false)
         >
           {/* Drawer header — premium brand bar */}
           <div className="flex items-center justify-between px-4 py-4 border-b border-[#E2E8F0] bg-[#F8FAFC]">
-            <Link
-              href="/marketplace"
-              className="flex items-center gap-2"
-              onClick={() => setOpen(false)}
-              aria-label="TechPivo Market home"
-            >
+            <div className="flex items-center gap-2">
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="/market-logo.svg" alt="TechPivo Market" className="h-9 w-auto" />
-              <span className="text-base font-extrabold tracking-tight text-[#0F172A]">TechPivo Market</span>
-            </Link>
+              <img src="/market-logo.svg" alt="TechPivo Market" className="h-8 w-auto" />
+              <span className="text-sm font-bold tracking-tight text-[#0F172A]">Market</span>
+            </div>
             <button
               type="button"
               onClick={() => setOpen(false)}
@@ -927,17 +922,6 @@ const [showBackToTop, setShowBackToTop] = useState(false)
             >
               <X className="h-6 w-6" />
             </button>
-          </div>
-
-          {/* Quick return home chip */}
-          <div className="px-4 py-3">
-            <Link
-              href="/marketplace"
-              onClick={() => setOpen(false)}
-              className="flex items-center gap-2.5 rounded-xl border border-[#E2E8F0] bg-[#FFF1F2] px-3 py-2.5 text-sm font-bold text-[#B45309] hover:bg-[#FF6B00]/10 hover:text-[#e86000] transition-all duration-150"
-            >
-              <Home className="h-5 w-5" /> Return to Homepage
-            </Link>
           </div>
           <div className="px-4 py-3 space-y-1">
             <div className="grid grid-cols-3 gap-2">

@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { usePathname } from "next/navigation"
+import { usePathname, useRouter } from "next/navigation"
 import { useEffect, useState } from "react"
 import { Home, LayoutGrid, Search, ArrowLeftRight, User, ShoppingCart, Heart } from "lucide-react"
 import { useMarketCart } from "@/lib/marketplace-cart"
@@ -29,6 +29,7 @@ interface MarketBottomNavProps {
 
 export function MarketBottomNav({ onSearchToggle, onCategoryOpen }: MarketBottomNavProps) {
   const pathname = usePathname()
+  const router = useRouter()
   const compareIds = useCompareIds()
   const cartLines = useMarketCart()
   const [drawerOpen, setDrawerOpen] = useState(false)
@@ -44,7 +45,7 @@ export function MarketBottomNav({ onSearchToggle, onCategoryOpen }: MarketBottom
 
   const handleSearch = (e: React.MouseEvent) => {
     e.preventDefault()
-    onSearchToggle?.()
+    router.push("/marketplace/shop")
     setDrawerOpen(false)
   }
 
