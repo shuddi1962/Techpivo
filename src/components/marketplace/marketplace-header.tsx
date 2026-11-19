@@ -909,11 +909,8 @@ const [showBackToTop, setShowBackToTop] = useState(false)
         >
           {/* Drawer header — premium brand bar */}
           <div className="flex items-center justify-between px-4 py-4 border-b border-[#E2E8F0] bg-[#F8FAFC]">
-            <div className="flex items-center gap-2">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="/market-logo.svg" alt="TechPivo Market" className="h-8 w-auto" />
-              <span className="text-sm font-bold tracking-tight text-[#0F172A]">Market</span>
-            </div>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/market-logo.svg" alt="TechPivo Market" className="h-8 w-auto" />
             <button
               type="button"
               onClick={() => setOpen(false)}

@@ -137,7 +137,7 @@ export default async function MarketplaceCategoryPage({ params }: { params: { sl
               <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#FF6B00]">
                 {found.kind === "sub" ? found.dept.name : "Department"}
               </p>
-              <h1 className="mt-0.5 text-xl font-extrabold tracking-tight text-white sm:text-2xl drop-shadow-lg">{title}</h1>
+              <h1 className="mt-0.5 text-2xl font-extrabold tracking-tight text-white sm:text-3xl drop-shadow-lg">{title}</h1>
               <p className="mt-0.5 text-sm text-white/90">
                 Quality-checked, securely paid, delivered with tracking.
               </p>
@@ -150,7 +150,7 @@ export default async function MarketplaceCategoryPage({ params }: { params: { sl
                 <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#FF6B00]">
                   {found.kind === "sub" ? found.dept.name : "Department"}
                 </p>
-                <h1 className="mt-0 text-xl font-extrabold tracking-tight text-white sm:text-2xl drop-shadow-lg">{title}</h1>
+                <h1 className="mt-0 text-2xl font-extrabold tracking-tight text-white sm:text-3xl drop-shadow-lg">{title}</h1>
                 <p className="mt-0.5 text-sm text-white/90">
                   Quality-checked, securely paid, delivered with tracking.
                 </p>
@@ -168,22 +168,24 @@ export default async function MarketplaceCategoryPage({ params }: { params: { sl
                   </div>
                 )}
               </div>
-              {heroShots.length > 0 && (
-                <div className="flex shrink-0 gap-2" aria-hidden={false}>
-                  {heroShots.map((p) => (
-                    <Link
-                      key={p.id}
-                      href={`/marketplace/product/${p.id}`}
-                      title={p.name}
-                      aria-label={`View ${p.name}`}
-                      className="block h-20 w-20 overflow-hidden rounded-xl border border-white/20 bg-white/5 transition-transform hover:scale-105 sm:h-24 sm:w-24"
-                    >
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={p.url} alt="" loading="eager" decoding="async" className="h-full w-full object-cover" />
-                    </Link>
-                  ))}
+              {heroShots.length > 0 ? (
+                <div className="mt-4 sm:mt-0 md:flex-1 shrink-0">
+                  <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 md:grid-cols-2">
+                    {heroShots.map((p) => (
+                      <Link
+                        key={p.id}
+                        href={`/marketplace/product/${p.id}`}
+                        title={p.name}
+                        aria-label={`View ${p.name}`}
+                        className="block aspect-square overflow-hidden rounded-xl border border-white/20 bg-white/5 transition-transform hover:scale-105"
+                      >
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={p.url} alt="" loading="eager" decoding="async" className="h-full w-full object-cover" />
+                      </Link>
+                    ))}
+                  </div>
                 </div>
-              )}
+              ) : null}
             </div>
           </div>
         )}
