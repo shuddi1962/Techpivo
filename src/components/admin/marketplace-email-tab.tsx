@@ -258,7 +258,7 @@ export function MarketplaceEmailTab() {
                       <span className="text-[10px] uppercase tracking-wider">{t.event_type}</span>
                     </td>
                     <td className="px-4 py-3">
-                      <span className="text-slate-900 truncate max-w-[260px] block">"{t.subject}"</span>
+                      <span className="text-slate-900 truncate max-w-[260px] block">&quot;{t.subject}&quot;</span>
                     </td>
                     <td className="px-4 py-3 text-center">
                       <MarketBadge tone={t.is_active ? "emerald" : "neutral"}>
