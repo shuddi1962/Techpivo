@@ -1821,7 +1821,7 @@ export async function POST(request: NextRequest) {
       const endBatch = Math.min(startBatch + batchSize, totalCategories)
       const chunk = allCategories.slice(startBatch, endBatch)
 
-      const results: Array<{ slug: string; name: string; depth: number; existing: number; imported: number; skipped: number; error?: string }> = []
+      const results: Array<{ slug: string; name: string; depth: number; existing: number; cjFound: number; imported: number; skipped: number; error?: string }> = []
       let totalImported = 0
 
       for (const cat of chunk) {
@@ -1856,12 +1856,12 @@ export async function POST(request: NextRequest) {
           })).filter((c) => c.pid)
         } catch (e) {
           const msg = e instanceof Error ? e.message : String(e)
-          results.push({ slug: cat.slug, name: cat.name, depth: cat.depth, existing, imported: 0, skipped: 0, error: msg })
+          results.push({ slug: cat.slug, name: cat.name, depth: cat.depth, existing, cjFound: 0, imported: 0, skipped: 0, error: msg })
           continue
         }
 
         if (cjList.length === 0) {
-          results.push({ slug: cat.slug, name: cat.name, depth: cat.depth, existing, imported: 0, skipped: 0 })
+          results.push({ slug: cat.slug, name: cat.name, depth: cat.depth, existing, cjFound: 0, imported: 0, skipped: 0 })
           continue
         }
 
@@ -1885,7 +1885,7 @@ export async function POST(request: NextRequest) {
         const fresh = cjList.filter((c) => !existingPids.has(c.pid) && !existingSkus.has(c.sku))
 
         if (fresh.length === 0) {
-          results.push({ slug: cat.slug, name: cat.name, depth: cat.depth, existing, imported: 0, skipped: cjList.length })
+          results.push({ slug: cat.slug, name: cat.name, depth: cat.depth, existing, cjFound: cjList.length, imported: 0, skipped: cjList.length })
           continue
         }
 
@@ -1930,7 +1930,7 @@ export async function POST(request: NextRequest) {
           })
         )
         if (rows.length === 0) {
-          results.push({ slug: cat.slug, name: cat.name, depth: cat.depth, existing: 0, imported: 0, skipped: fresh.length })
+          results.push({ slug: cat.slug, name: cat.name, depth: cat.depth, existing: 0, cjFound: cjList.length, imported: 0, skipped: fresh.length })
           continue
         }
 
@@ -1939,7 +1939,7 @@ export async function POST(request: NextRequest) {
         const imported = data?.length ?? 0
         totalImported += imported
 
-        results.push({ slug: cat.slug, name: cat.name, depth: cat.depth, existing: 0, imported, skipped: fresh.length - imported })
+        results.push({ slug: cat.slug, name: cat.name, depth: cat.depth, existing: 0, cjFound: cjList.length, imported, skipped: fresh.length - imported })
       }
 
       const hasMore = endBatch < totalCategories
