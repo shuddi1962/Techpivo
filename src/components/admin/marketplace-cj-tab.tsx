@@ -86,7 +86,7 @@ export function MarketplaceCjTab({ onImported }: { onImported?: () => void }) {
   const [noticeTone, setNoticeTone] = useState<"success" | "warn" | "info">("info")
   const [importing, setImporting] = useState(false)
   const [top, setTop] = useState<TopSeller[]>([])
-  const [busy, setBusy] = useState<"" | "variants" | "push" | "populate">("")
+  const [busy, setBusy] = useState<"" | "variants" | "push" | "populate" | "autoimport">("")
   const [cjState, setCjState] = useState<CjState | null>(null)
   const [sync, setSync] = useState<SyncState | null>(null)
   /** pids of results that are ALREADY live in our store. */
@@ -364,6 +364,36 @@ export function MarketplaceCjTab({ onImported }: { onImported?: () => void }) {
     }
   }
 
+  const autoImportAll = async () => {
+    setBusy("autoimport")
+    setNotice("")
+    try {
+      const r = await fetch("/admin/marketplace/api", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "cj-auto-import", limit: 100 }),
+      }).then((x) => x.json())
+      if (r?.error) {
+        setNoticeTone("warn")
+        setNotice(r.error)
+      } else {
+        setNoticeTone("success")
+        setNotice(
+          `Auto-import: ${r?.totalImported ?? 0} product(s) added across ${r?.totalBatches ?? 0} category/categories.` +
+            (r?.categories?.length ? ` — ${r.categories.filter((c: any) => c.imported > 0).map((c: any) => `${c.name}: ${c.imported}`).join("; ")}` : "")
+        )
+      }
+      onImported?.()
+      void loadTop(categorySlug, subcategorySlug)
+      void loadHistory()
+    } catch {
+      setNoticeTone("warn")
+      setNotice("Could not auto-import from CJ.")
+    } finally {
+      setBusy("")
+    }
+  }
+
   const saveKey = async () => {
     if (!apiKey.trim()) return
     setSavingKey(true)
@@ -557,6 +587,9 @@ export function MarketplaceCjTab({ onImported }: { onImported?: () => void }) {
           </button>
           <button onClick={populateEmptyCategories} disabled={busy === "populate"} className={marketBtnDarkCls}>
             {busy === "populate" ? "Importing all categories…" : "Bulk import all categories (100+ each)"}
+          </button>
+          <button onClick={autoImportAll} disabled={busy === "autoimport"} className={marketBtnDarkCls}>
+            {busy === "autoimport" ? "Auto-importing…" : "Auto-import ALL categories (everything CJ has)"}
           </button>
           <button onClick={loadCjState} disabled={!!busy} className={marketBtnGhostCls}>
             <RefreshCw className="h-4 w-4" /> Refresh CJ state
