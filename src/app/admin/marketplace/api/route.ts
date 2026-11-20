@@ -355,6 +355,27 @@ export async function GET(request: NextRequest) {
       const { parseMarketCoupons } = await import("@/lib/marketplace-coupons")
       return NextResponse.json({ coupons: parseMarketCoupons((data as { value?: unknown } | null)?.value) })
     }
+    // ── Email: list templates ──────────────────────────────────────────────
+    if (section === "email-templates") {
+      const { data, error } = await supabase
+        .from("marketplace_email_templates")
+        .select("id,name,event_type,subject,is_active,created_at,updated_at")
+        .order("event_type", { ascending: true })
+        .order("name", { ascending: true })
+      if (error) throw error
+      return NextResponse.json({ templates: data || [] })
+    }
+    // ── Email: list send logs ──────────────────────────────────────────────
+    if (section === "email-logs") {
+      const limit = Math.min(500, Math.max(1, Number(url.searchParams.get("limit")) || 100))
+      const { data, error } = await supabase
+        .from("marketplace_email_logs")
+        .select("id,template_id,recipient_email,event_type,status,provider_message_id,error,created_at")
+        .order("created_at", { ascending: false })
+        .limit(limit)
+      if (error) throw error
+      return NextResponse.json({ logs: data || [] })
+    }
     if (section === "popup-stats") {
       const { summarizePopupStats } = await import("@/lib/marketplace-banners")
       const since = new Date(Date.now() - 30 * 86400000).toISOString()
@@ -371,6 +392,72 @@ export async function GET(request: NextRequest) {
       const { data } = await supabase.from("site_settings").select("value").eq("key", "marketplace_store").maybeSingle()
       const { sanitizeStore } = await import("@/lib/marketplace-store")
       return NextResponse.json({ store: sanitizeStore((data as { value?: unknown } | null)?.value) })
+    }
+    // ── CJ import history ────────────────────────────────────────────────
+    if (section === "cj-import-history") {
+      const limit = Math.min(500, Math.max(1, Number(url.searchParams.get("limit")) || 50))
+      const status = url.searchParams.get("status") || undefined
+      let q = supabase
+        .from("marketplace_cj_import_batches")
+        .select("id,imported_by,category_slug,subcategory_slug,requested,imported,skipped,variants_filled,pushed_to_cj,deferred,status,error_message,created_at")
+        .order("created_at", { ascending: false })
+        .limit(limit)
+      if (status) q = q.eq("status", status)
+      const { data, error } = await q
+      if (error) throw error
+      // Fetch items for each batch (only the failed/deferred ones for brevity)
+      const batches = (data || []) as Array<{ id: string; created_at: string; [key: string]: unknown }>
+      const batchIds = batches.map((b) => b.id)
+      let itemsByBatch: Record<string, Array<{ id: string; cj_pid: string; product_name: string; status: string; cj_vid: string | null }>> = {}
+      if (batchIds.length > 0) {
+        const { data: items } = await supabase
+          .from("marketplace_cj_import_items")
+          .select("id,batch_id,cj_pid,product_name,status,cj_vid")
+          .in("batch_id", batchIds)
+          .order("created_at", { ascending: true })
+        for (const it of (items || []) as Array<{ batch_id: string; cj_pid: string; product_name: string; status: string; cj_vid: string | null }>) {
+          if (!itemsByBatch[it.batch_id]) itemsByBatch[it.batch_id] = []
+          itemsByBatch[it.batch_id].push(it)
+        }
+      }
+      return NextResponse.json({
+        batches: batches.map((b) => ({
+          ...b,
+          items: itemsByBatch[b.id] || [],
+          itemCount: (itemsByBatch[b.id] || []).length,
+          failedCount: (itemsByBatch[b.id] || []).filter((i) => i.status !== "imported").length,
+        })),
+      })
+    }
+    // ── Earnings & profit: daily aggregation by category ───────────────────
+    if (section === "earnings") {
+      const from = url.searchParams.get("from") || undefined
+      const to = url.searchParams.get("to") || undefined
+      const category = url.searchParams.get("category") || undefined
+      let q = supabase
+        .from("marketplace_earnings_daily")
+        .select("date,category_slug,gross_revenue_usd,total_discounts_usd,supplier_cost_usd,shipping_charged_usd,shipping_cost_usd,gateway_fees_usd,refunds_usd,platform_commission_usd,seller_earnings_usd,net_profit_usd,orders_count,units_sold")
+        .order("date", { ascending: false })
+        .limit(300)
+      if (from) q = q.gte("date", from)
+      if (to) q = q.lte("date", to)
+      if (category) q = q.eq("category_slug", category)
+      const { data, error } = await q
+      if (error) throw error
+      return NextResponse.json({ earnings: data || [] })
+    }
+    // ── Seller commissions ─────────────────────────────────────────────────
+    if (section === "seller-commissions") {
+      const seller = url.searchParams.get("seller_id") || undefined
+      let q = supabase
+        .from("marketplace_seller_commissions")
+        .select("id,seller_id,category_slug,subcategory_slug,commission_percent,min_commission_usd,created_at,updated_at")
+        .order("created_at", { ascending: false })
+        .limit(500)
+      if (seller) q = q.eq("seller_id", seller)
+      const { data, error } = await q
+      if (error) throw error
+      return NextResponse.json({ commissions: data || [] })
     }
     if (section === "recommendations") {
       // Admin-curated "Complete Your Purchase" overrides (migration 094).
@@ -628,6 +715,24 @@ export async function GET(request: NextRequest) {
       const val = (data as { value?: unknown } | null)?.value
       return NextResponse.json({ success: true, seasonalSales: val && typeof val === "object" ? val : { campaigns: [] } })
     }
+    // ── Profit & pricing: category profit settings ───────────────────────
+    if (section === "profit-categories") {
+      const { data } = await supabase
+        .from("marketplace_categories")
+        .select("slug,name,depth,parent_slug,profit_margin_percent,min_profit_usd,pricing_rule")
+        .order("depth", { ascending: true })
+        .order("sort", { ascending: true })
+      return NextResponse.json({ categories: data || [] })
+    }
+    // ── Profit & pricing: product profit overrides ───────────────────────
+    if (section === "profit-products") {
+      const { data } = await supabase
+        .from("affiliate_products")
+        .select("id,product_name,product_image_url,cost_usd,shipping_cost_usd,sale_price,original_price,profit_margin_percent,profit_override_usd,pricing_rule,category_slug")
+        .order("product_name", { ascending: true })
+        .limit(500)
+      return NextResponse.json({ products: data || [] })
+    }
     if (section === "market-settings") {
       const { data: cur } = await supabase.from("site_settings").select("value").eq("key", "marketplace_currency_settings").maybeSingle()
       const { data: ship } = await supabase.from("site_settings").select("value").eq("key", "marketplace_shipping_settings").maybeSingle()
@@ -645,6 +750,40 @@ export async function GET(request: NextRequest) {
           freightMarkup: 1.35,
         },
       })
+    }
+    // ── Shipping & Delivery: list zones ────────────────────────────────────
+    if (section === "shipping-zones") {
+      const { data, error } = await supabase
+        .from("marketplace_shipping_zones")
+        .select("id,name,countries,is_active,created_at")
+        .order("created_at", { ascending: false })
+      if (error) throw error
+      return NextResponse.json({ zones: data || [] })
+    }
+    // ── Shipping & Delivery: list rates (optionally filtered by zone) ──────
+    if (section === "shipping-rates") {
+      const zoneId = url.searchParams.get("zone_id") || undefined
+      let q = supabase
+        .from("marketplace_shipping_rates")
+        .select("id,zone_id,method_name,method_type,fee_usd,min_order_usd,eta,is_active,sort_order,created_at")
+        .order("zone_id", { ascending: true })
+        .order("sort_order", { ascending: true })
+      if (zoneId) q = q.eq("zone_id", zoneId)
+      const { data, error } = await q
+      if (error) throw error
+      return NextResponse.json({ rates: data || [] })
+    }
+    // ── Currency: list exchange rates (USD base) ───────────────────────────
+    if (section === "exchange-rates") {
+      const quote = url.searchParams.get("quote") || undefined
+      let q = supabase
+        .from("marketplace_exchange_rates")
+        .select("base_currency,quote_currency,rate,fetched_at,provider")
+        .order("quote_currency", { ascending: true })
+      if (quote) q = q.eq("quote_currency", quote)
+      const { data, error } = await q
+      if (error) throw error
+      return NextResponse.json({ rates: data || [] })
     }
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : "Failed to load marketplace"
@@ -955,7 +1094,171 @@ export async function POST(request: NextRequest) {
         .upsert({ key: "marketplace_coupons", value: coupons as unknown as never }, { onConflict: "key" })
       if (error) throw error
       revalidateStore()
-      return NextResponse.json({ success: true, coupons })
+      return NextResponse.json({ success: true, merch: parseMarketMerch(next), updated: productIds.length })
+    }
+    // ── Email: save a template ─────────────────────────────────────────────
+    if (body.action === "email-templates-save") {
+      const id = String(body.id || "")
+      const name = String(body.name || "").trim().slice(0, 100)
+      const eventType = String(body.event_type || "").trim().slice(0, 60)
+      const subject = String(body.subject || "").trim().slice(0, 200)
+      const htmlContent = String(body.html_content || "")
+      const isActive = typeof body.is_active === "boolean" ? body.is_active : true
+      if (!name || !eventType || !subject) {
+        return NextResponse.json({ error: "Name, event type and subject are required." }, { status: 400 })
+      }
+      const patch = { name, event_type: eventType, subject, html_content: htmlContent, is_active }
+      let res
+      if (id) {
+        res = await supabase.from("marketplace_email_templates").update(patch).eq("id", id).select().single()
+      } else {
+        res = await supabase.from("marketplace_email_templates").insert(patch).select().single()
+      }
+      if (res.error) throw res.error
+      revalidateStore()
+      return NextResponse.json({ success: true, template: res.data })
+    }
+    // ── Email: delete a template ───────────────────────────────────────────
+    if (body.action === "email-templates-delete") {
+      const id = String(body.id || "")
+      if (!id) return NextResponse.json({ error: "Template id required." }, { status: 400 })
+      const { error } = await supabase.from("marketplace_email_templates").delete().eq("id", id)
+      if (error) throw error
+      revalidateStore()
+      return NextResponse.json({ success: true })
+    }
+    // ── Seller commissions: save a commission rule ─────────────────────────
+    if (body.action === "seller-commissions-save") {
+      const id = String(body.id || "")
+      const sellerId = String(body.seller_id || "")
+      const categorySlug = String(body.category_slug || "").slice(0, 90) || null
+      const subcategorySlug = String(body.subcategory_slug || "").slice(0, 90) || null
+      const commissionPercent = Number(body.commission_percent)
+      const minCommissionUsd = Number(body.min_commission_usd)
+      if (!sellerId) return NextResponse.json({ error: "Seller id required." }, { status: 400 })
+      if (!Number.isFinite(commissionPercent) || commissionPercent < 0 || commissionPercent > 100) {
+        return NextResponse.json({ error: "Commission must be 0–100." }, { status: 400 })
+      }
+      if (!Number.isFinite(minCommissionUsd) || minCommissionUsd < 0) {
+        return NextResponse.json({ error: "Min commission must be ≥ 0." }, { status: 400 })
+      }
+      const patch = { seller_id: sellerId, category_slug: categorySlug, subcategory_slug: subcategorySlug, commission_percent: commissionPercent, min_commission_usd: minCommissionUsd }
+      let res
+      if (id) {
+        res = await supabase.from("marketplace_seller_commissions").update(patch).eq("id", id).select().single()
+      } else {
+        res = await supabase.from("marketplace_seller_commissions").insert(patch).select().single()
+      }
+      if (res.error) throw res.error
+      revalidateStore()
+      return NextResponse.json({ success: true, commission: res.data })
+    }
+    // ── Seller commissions: delete a rule ──────────────────────────────────
+    if (body.action === "seller-commissions-delete") {
+      const id = String(body.id || "")
+      if (!id) return NextResponse.json({ error: "Commission id required." }, { status: 400 })
+      const { error } = await supabase.from("marketplace_seller_commissions").delete().eq("id", id)
+      if (error) throw error
+      revalidateStore()
+      return NextResponse.json({ success: true })
+    }
+    // ── Shipping & Delivery: save a zone ───────────────────────────────────
+    if (body.action === "shipping-zones-save") {
+      const id = String(body.id || "")
+      const name = String(body.name || "").trim().slice(0, 80)
+      const countries = Array.isArray(body.countries) ? body.countries.filter((c) => typeof c === "string").map(String).slice(0, 200) : []
+      const isActive = typeof body.is_active === "boolean" ? body.is_active : true
+      if (!name) return NextResponse.json({ error: "Zone name required." }, { status: 400 })
+      if (countries.length === 0) return NextResponse.json({ error: "Pick at least one country." }, { status: 400 })
+      const patch = { name, countries, is_active }
+      let res
+      if (id) {
+        res = await supabase.from("marketplace_shipping_zones").update(patch).eq("id", id).select().single()
+      } else {
+        res = await supabase.from("marketplace_shipping_zones").insert(patch).select().single()
+      }
+      if (res.error) throw res.error
+      revalidateStore()
+      return NextResponse.json({ success: true, zone: res.data })
+    }
+    // ── Shipping & Delivery: delete a zone (and its rates) ─────────────────
+    if (body.action === "shipping-zones-delete") {
+      const id = String(body.id || "")
+      if (!id) return NextResponse.json({ error: "Zone id required." }, { status: 400 })
+      const { error } = await supabase.from("marketplace_shipping_zones").delete().eq("id", id)
+      if (error) throw error
+      revalidateStore()
+      return NextResponse.json({ success: true })
+    }
+    // ── Shipping & Delivery: save a rate ───────────────────────────────────
+    if (body.action === "shipping-rates-save") {
+      const id = String(body.id || "")
+      const zoneId = String(body.zone_id || "")
+      const methodName = String(body.method_name || "").trim().slice(0, 80)
+      const methodType = String(body.method_type || "standard")
+      const feeUsd = Number(body.fee_usd)
+      const minOrderUsd = Number(body.min_order_usd)
+      const eta = String(body.eta || "").trim().slice(0, 40)
+      const isActive = typeof body.is_active === "boolean" ? body.is_active : true
+      const sortOrder = Number(body.sort_order) || 0
+      if (!zoneId) return NextResponse.json({ error: "Zone required." }, { status: 400 })
+      if (!methodName) return NextResponse.json({ error: "Method name required." }, { status: 400 })
+      if (!["standard", "express", "free", "supplier"].includes(methodType)) {
+        return NextResponse.json({ error: "Invalid method type." }, { status: 400 })
+      }
+      if (!Number.isFinite(feeUsd) || feeUsd < 0) return NextResponse.json({ error: "Fee must be ≥ 0." }, { status: 400 })
+      if (!Number.isFinite(minOrderUsd) || minOrderUsd < 0) return NextResponse.json({ error: "Min order must be ≥ 0." }, { status: 400 })
+      const patch = { zone_id: zoneId, method_name: methodName, method_type: methodType, fee_usd: feeUsd, min_order_usd: minOrderUsd, eta, is_active, sort_order: sortOrder }
+      let res
+      if (id) {
+        res = await supabase.from("marketplace_shipping_rates").update(patch).eq("id", id).select().single()
+      } else {
+        res = await supabase.from("marketplace_shipping_rates").insert(patch).select().single()
+      }
+      if (res.error) throw res.error
+      revalidateStore()
+      return NextResponse.json({ success: true, rate: res.data })
+    }
+    // ── Shipping & Delivery: delete a rate ─────────────────────────────────
+    if (body.action === "shipping-rates-delete") {
+      const id = String(body.id || "")
+      if (!id) return NextResponse.json({ error: "Rate id required." }, { status: 400 })
+      const { error } = await supabase.from("marketplace_shipping_rates").delete().eq("id", id)
+      if (error) throw error
+      revalidateStore()
+      return NextResponse.json({ success: true })
+    }
+    // ── Currency: save an exchange rate ────────────────────────────────────
+    if (body.action === "exchange-rates-save") {
+      const base = String(body.base_currency || "USD").toUpperCase().slice(0, 3)
+      const quote = String(body.quote_currency || "").toUpperCase().slice(0, 3)
+      const rate = Number(body.rate)
+      const provider = String(body.provider || "manual").slice(0, 40)
+      if (!quote) return NextResponse.json({ error: "Quote currency required." }, { status: 400 })
+      if (!Number.isFinite(rate) || rate <= 0) return NextResponse.json({ error: "Rate must be > 0." }, { status: 400 })
+      const { error } = await supabase
+        .from("marketplace_exchange_rates")
+        .upsert(
+          { base_currency: base, quote_currency: quote, rate, provider, fetched_at: new Date().toISOString() },
+          { onConflict: "base_currency,quote_currency" }
+        )
+      if (error) throw error
+      revalidateStore()
+      return NextResponse.json({ success: true, base, quote, rate, provider })
+    }
+    // ── Currency: delete an exchange rate ──────────────────────────────────
+    if (body.action === "exchange-rates-delete") {
+      const base = String(body.base_currency || "USD").toUpperCase().slice(0, 3)
+      const quote = String(body.quote_currency || "").toUpperCase().slice(0, 3)
+      if (!quote) return NextResponse.json({ error: "Quote currency required." }, { status: 400 })
+      const { error } = await supabase
+        .from("marketplace_exchange_rates")
+        .delete()
+        .eq("base_currency", base)
+        .eq("quote_currency", quote)
+      if (error) throw error
+      revalidateStore()
+      return NextResponse.json({ success: true })
     }
     // Curated "Complete Your Purchase" overrides (migration 094 tables).
     if (body.action === "recommend-add") {
@@ -1014,6 +1317,58 @@ export async function POST(request: NextRequest) {
       if (error) throw error
       revalidateStore()
       return NextResponse.json({ success: true, store })
+    }
+    // ── Profit & pricing: save category profit settings ──────────────────
+    if (body.action === "profit-categories-save") {
+      const slug = String(body.slug || "")
+      if (!slug || slug.length > 90) return NextResponse.json({ error: "Valid category slug required." }, { status: 400 })
+      const margin = Number(body.profit_margin_percent)
+      const minProfit = Number(body.min_profit_usd)
+      const rule = String(body.pricing_rule || "category")
+      if (!Number.isFinite(margin) || margin < 0 || margin > 100) {
+        return NextResponse.json({ error: "Margin must be 0–100." }, { status: 400 })
+      }
+      if (!Number.isFinite(minProfit) || minProfit < 0) {
+        return NextResponse.json({ error: "Minimum profit must be ≥ 0." }, { status: 400 })
+      }
+      const { data, error } = await supabase
+        .from("marketplace_categories")
+        .update({ profit_margin_percent: margin, min_profit_usd: minProfit, pricing_rule: rule })
+        .eq("slug", slug)
+        .select("slug,name,profit_margin_percent,min_profit_usd,pricing_rule")
+        .single()
+      if (error) throw error
+      revalidateStore()
+      return NextResponse.json({ success: true, row: data })
+    }
+    // ── Profit & pricing: save product profit overrides ──────────────────
+    if (body.action === "profit-products-save") {
+      const id = String(body.id || "")
+      if (!/^[0-9a-f-]{36}$/i.test(id)) return NextResponse.json({ error: "Valid product id required." }, { status: 400 })
+      const cost = Number(body.cost_usd)
+      const ship = Number(body.shipping_cost_usd)
+      const sale = Number(body.sale_price)
+      const margin = ruleMargin(body.profit_margin_percent)
+      const override = ruleOverride(body.profit_override_usd)
+      const rule = String(body.pricing_rule || "category")
+      if (!Number.isFinite(cost) || cost < 0) return NextResponse.json({ error: "Cost must be ≥ 0." }, { status: 400 })
+      if (!Number.isFinite(ship) || ship < 0) return NextResponse.json({ error: "Shipping cost must be ≥ 0." }, { status: 400 })
+      if (!Number.isFinite(sale) || sale < 0) return NextResponse.json({ error: "Sale price must be ≥ 0." }, { status: 400 })
+      if (rule === "override" && (margin == null || !Number.isFinite(margin) || margin < 0 || margin > 100)) {
+        return NextResponse.json({ error: "Override margin must be 0–100." }, { status: 400 })
+      }
+      if (rule === "override" && (override == null || !Number.isFinite(override) || override < 0)) {
+        return NextResponse.json({ error: "Override profit must be ≥ 0." }, { status: 400 })
+      }
+      const { data, error } = await supabase
+        .from("affiliate_products")
+        .update({ cost_usd: cost, shipping_cost_usd: ship, sale_price: sale, profit_margin_percent: margin, profit_override_usd: override, pricing_rule: rule })
+        .eq("id", id)
+        .select("id,product_name,cost_usd,shipping_cost_usd,sale_price,profit_margin_percent,profit_override_usd,pricing_rule")
+        .single()
+      if (error) throw error
+      revalidateStore()
+      return NextResponse.json({ success: true, product: data })
     }
     // ── Category tree CRUD (Admin → Marketplace → Categories) ───────────
     if (body.action === "category-sync") {
@@ -1462,6 +1817,60 @@ export async function POST(request: NextRequest) {
       const { data, error } = await supabase.from("affiliate_products").insert(rows).select("id")
       if (error) throw error
       revalidateStore()
+
+      // ── Record import history (batch + items) ──────────────────────────
+      let batchId: string | null = null
+      try {
+        const batchRes = await supabase
+          .from("marketplace_cj_import_batches")
+          .insert({
+            imported_by: auth.user.id,
+            category_slug: body.categorySlug || null,
+            subcategory_slug: body.subcategorySlug || null,
+            requested: clean.length,
+            imported: data?.length ?? 0,
+            skipped: duplicates.length,
+            variants_filled: withVid.size,
+            pushed_to_cj: pushed.length,
+            deferred: freshItems.length - hydrate.length,
+            status: data?.length ? "completed" : "failed",
+            error_message: null,
+          })
+          .select("id")
+          .single()
+        batchId = batchRes.data?.id ?? null
+      } catch {
+        // history is best-effort — the import already succeeded
+      }
+      if (batchId && data) {
+        const itemRows = rows.map((r, i) => ({
+          batch_id: batchId,
+          cj_pid: freshItems[i]?.pid ?? r.cj_pid || "",
+          cj_sku: freshItems[i]?.sku ?? r.cj_sku || null,
+          product_name: freshItems[i]?.productNameEn ?? r.product_name,
+          product_image_url: freshItems[i]?.productImage ?? r.product_image_url || null,
+          sell_price_usd: freshItems[i]?.sellPrice ?? null,
+          category_slug: r.category_slug || null,
+          subcategory_slug: r.subcategory_slug || null,
+          cj_vid: r.cj_vid || null,
+          status: "imported",
+        }))
+        await supabase.from("marketplace_cj_import_items").insert(itemRows)
+      }
+      // ── duplicates deferred rows (best-effort history) ─────────────────
+      if (batchId && duplicates.length > 0) {
+        await supabase
+          .from("marketplace_cj_import_items")
+          .insert(
+            duplicates.map((d) => ({
+              batch_id: batchId,
+              cj_pid: d.pid,
+              product_name: d.existingName || d.name,
+              status: "duplicate_skipped",
+            }))
+          )
+      }
+
       return NextResponse.json({
         imported: data?.length ?? 0,
         skipped: duplicates.length,
@@ -1469,9 +1878,6 @@ export async function POST(request: NextRequest) {
         variants: withVid.size,
         pushed: pushed.length,
         pushFailed: pushFailed.length,
-        // Products beyond the CJ budget of this request — they still import,
-        // they just need the "Fill missing variants" / "Push products to CJ"
-        // buttons (which resume where this stopped).
         deferred: freshItems.length - hydrate.length,
       })
     }
@@ -1602,6 +2008,155 @@ export async function POST(request: NextRequest) {
         pushedTotal,
       })
     }
+    // ── Retry a failed / partial CJ import batch ─────────────────────────
+    if (body.action === "cj-retry-import") {
+      const batchId = String(body.batch_id || "")
+      if (!/^[0-9a-f-]{36}$/i.test(batchId)) {
+        return NextResponse.json({ error: "Valid batch id required." }, { status: 400 })
+      }
+      const { data: batch } = await supabase
+        .from("marketplace_cj_import_batches")
+        .select("*")
+        .eq("id", batchId)
+        .maybeSingle()
+      if (!batch) return NextResponse.json({ error: "Import batch not found." }, { status: 404 })
+      const items = await supabase
+        .from("marketplace_cj_import_items")
+        .select("*")
+        .eq("batch_id", batchId)
+        .neq("status", "imported")
+        .order("created_at", { ascending: true })
+        .limit(200)
+      const retryItems = (items.data || []) as Array<{
+        cj_pid: string
+        cj_sku: string | null
+        product_name: string
+        product_image_url: string | null
+        sell_price_usd: number | null
+        category_slug: string | null
+        subcategory_slug: string | null
+        cj_vid: string | null
+        status: string
+      }>
+      if (retryItems.length === 0) {
+        return NextResponse.json({ error: "Nothing to retry in this batch." }, { status: 400 })
+      }
+      // Convert to the shape the import flow expects
+      const clean = retryItems.map((it) => ({
+        pid: it.cj_pid,
+        productNameEn: it.product_name,
+        productImage: it.product_image_url || "",
+        sellPrice: Number(it.sell_price_usd) || 0,
+        categoryFirstName: "",
+        categorySecondName: "",
+        sku: it.cj_sku || "",
+      }))
+      // Call the same import path by re-using the cj-import action logic
+      // inline: duplicate guard + insert + history record
+      const pids = clean.map((c) => c.pid).filter(Boolean)
+      const skus = clean.map((c) => c.sku).filter(Boolean)
+      const names = clean.map((c) => c.productNameEn).filter(Boolean)
+      const dupByPid = new Map<string, { id: string; name: string; live: boolean }>()
+      const { data: dupPidRows } = await supabase
+        .from("affiliate_products")
+        .select("id,cj_pid,product_name,is_active")
+        .in("cj_pid", pids.slice(0, 200))
+      for (const r of (dupPidRows || []) as Array<{ id: string; cj_pid: string | null; product_name: string; is_active: boolean }>) {
+        if (r.cj_pid) dupByPid.set(r.cj_pid, { id: r.id, name: r.product_name, live: r.is_active !== false })
+      }
+      if (skus.length > 0) {
+        const { data: dupSkuRows } = await supabase
+          .from("affiliate_products")
+          .select("id,cj_sku,product_name,is_active")
+          .in("cj_sku", skus.slice(0, 200))
+        for (const r of (dupSkuRows || []) as Array<{ id: string; cj_sku: string | null; product_name: string; is_active: boolean }>) {
+          if (!r.cj_sku) continue
+          const pid = clean.find((c) => c.sku === r.cj_sku)?.pid
+          if (pid && !dupByPid.has(pid)) dupByPid.set(pid, { id: r.id, name: r.product_name, live: r.is_active !== false })
+        }
+      }
+      const duplicates = clean.filter((c) => dupByPid.has(c.pid))
+      const freshItems = clean.filter((c) => !dupByPid.has(c.pid))
+      if (freshItems.length === 0) {
+        return NextResponse.json({ imported: 0, skipped: duplicates.length, duplicates, message: "All items already exist in the store." })
+      }
+      const { cjGetProductDetail, cjAddToMyProduct } = await import("@/lib/cj")
+      const withVid = new Map<string, string>()
+      const skuByPid = new Map<string, string>()
+      const pushed: string[] = []
+      for (const cj of freshItems.slice(0, 12)) {
+        try {
+          const product = await cjGetProductDetail(cj.pid)
+          const priced = (product.variants || [])
+            .map((v) => ({ vid: String(v.vid || ""), price: Number(v.variantSellPrice) || 0 }))
+            .filter((v) => v.vid)
+            .sort((a, b) => a.price - b.price)
+          if (priced.length > 0) withVid.set(cj.pid, priced[0].vid)
+          if (product.sku) skuByPid.set(cj.pid, product.sku)
+        } catch {}
+        try {
+          const r = await cjAddToMyProduct(cj.pid)
+          if (r.ok) pushed.push(cj.pid)
+        } catch {}
+        await new Promise((r) => setTimeout(r, 200))
+      }
+      const rows = freshItems.map((cj) =>
+        mapCjToAffiliate(cj, {
+          categorySlug: cj.categorySlug || batch.category_slug || null,
+          subcategorySlug: cj.subcategorySlug || batch.subcategory_slug || null,
+          cjVid: withVid.get(cj.pid) || null,
+          cjSku: skuByPid.get(cj.pid) || cj.sku || null,
+        })
+      )
+      const { data, error } = await supabase.from("affiliate_products").insert(rows).select("id")
+      if (error) throw error
+      revalidateStore()
+      // Record retry as a new batch linked to the original
+      const { data: newBatch } = await supabase
+        .from("marketplace_cj_import_batches")
+        .insert({
+          imported_by: auth.user.id,
+          category_slug: batch.category_slug,
+          subcategory_slug: batch.subcategory_slug,
+          requested: retryItems.length,
+          imported: data?.length ?? 0,
+          skipped: duplicates.length,
+          variants_filled: withVid.size,
+          pushed_to_cj: pushed.length,
+          deferred: freshItems.length - Math.min(freshItems.length, 12),
+          status: data?.length ? "completed" : "failed",
+          error_message: null,
+        })
+        .select("id")
+        .single()
+      if (newBatch && data) {
+        await supabase
+          .from("marketplace_cj_import_items")
+          .insert(
+            rows.map((r, i) => ({
+              batch_id: newBatch.id,
+              cj_pid: freshItems[i]?.pid ?? r.cj_pid || "",
+              cj_sku: freshItems[i]?.sku ?? r.cj_sku || null,
+              product_name: freshItems[i]?.productNameEn ?? r.product_name,
+              product_image_url: freshItems[i]?.productImage ?? r.product_image_url || null,
+              sell_price_usd: freshItems[i]?.sellPrice ?? null,
+              category_slug: r.category_slug || null,
+              subcategory_slug: r.subcategory_slug || null,
+              cj_vid: r.cj_vid || null,
+              status: "imported",
+            }))
+          )
+      }
+      return NextResponse.json({
+        imported: data?.length ?? 0,
+        skipped: duplicates.length,
+        duplicates,
+        variants: withVid.size,
+        pushed: pushed.length,
+        deferred: freshItems.length - Math.min(freshItems.length, 12),
+        retriedFrom: batchId,
+      })
+    }
     // The products CJ knows as ours, and the orders CJ has for us.
     if (body.action === "cj-my-products") {
       const { cjGetMyProducts, cjListOrders } = await import("@/lib/cj")
@@ -1703,4 +2258,16 @@ export async function PUT(request: NextRequest) {
     const msg = e instanceof Error ? e.message : "Failed to update page"
     return NextResponse.json({ error: msg }, { status: 500 })
   }
+}
+
+// ── Profit & pricing helper: parse an optional margin percent ─────────────
+function ruleMargin(v: unknown): number | null {
+  const n = Number(v)
+  return Number.isFinite(n) && n >= 0 && n <= 100 ? n : null
+}
+
+// ── Profit & pricing helper: parse an optional override profit (USD) ────────
+function ruleOverride(v: unknown): number | null {
+  const n = Number(v)
+  return Number.isFinite(n) && n >= 0 ? n : null
 }

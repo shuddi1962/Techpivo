@@ -1,7 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useState } from "react"
-import { CheckCircle2, Download, KeyRound, Plug, RefreshCw, Search, XCircle, TrendingUp, Flame, ChevronDown } from "lucide-react"
+import { CheckCircle2, Download, KeyRound, Plug, RefreshCw, Search, XCircle, TrendingUp, Flame, ChevronDown, History, AlertTriangle } from "lucide-react"
 import { MARKET_DEPARTMENTS, type MarketDepartment } from "@/lib/marketplace-categories"
 import {
   marketBtnDarkCls,
@@ -85,11 +85,31 @@ export function MarketplaceCjTab({ onImported }: { onImported?: () => void }) {
   const [noticeTone, setNoticeTone] = useState<"success" | "warn" | "info">("info")
   const [importing, setImporting] = useState(false)
   const [top, setTop] = useState<TopSeller[]>([])
-  const [busy, setBusy] = useState<"" | "variants" | "push">("")
+  const [busy, setBusy] = useState<"" | "variants" | "push" | "populate">("")
   const [cjState, setCjState] = useState<CjState | null>(null)
   const [sync, setSync] = useState<SyncState | null>(null)
   /** pids of results that are ALREADY live in our store. */
   const [existing, setExisting] = useState<string[]>([])
+  // Import history
+  const [importBatches, setImportBatches] = useState<Array<{
+    id: string
+    category_slug: string | null
+    subcategory_slug: string | null
+    requested: number
+    imported: number
+    skipped: number
+    variants_filled: number
+    pushed_to_cj: number
+    deferred: number
+    status: string
+    error_message: string | null
+    created_at: string
+    items: Array<{ id: string; cj_pid: string; product_name: string; status: string; cj_vid: string | null }>
+    itemCount: number
+    failedCount: number
+  }>>([])
+  const [historyLoading, setHistoryLoading] = useState(false)
+  const [retryingBatch, setRetryingBatch] = useState<string | null>(null)
 
   const loadStatus = useCallback(async () => {
     const r = await fetch("/admin/marketplace/api?section=cj-status").then((x) => x.json()).catch(() => null)
@@ -135,7 +155,8 @@ export function MarketplaceCjTab({ onImported }: { onImported?: () => void }) {
     loadStatus()
     void loadTop(categorySlug, subcategorySlug)
     void loadCjState()
-  }, [loadStatus, loadTop, categorySlug, subcategorySlug])
+    void loadHistory()
+  }, [loadStatus, loadTop, categorySlug, subcategorySlug, loadHistory])
 
   const dept = depts.find((d) => d.slug === categorySlug) ?? depts[0] ?? MARKET_DEPARTMENTS[0]
 
@@ -278,6 +299,35 @@ export function MarketplaceCjTab({ onImported }: { onImported?: () => void }) {
     }
   }
 
+  const populateEmptyCategories = async () => {
+    setBusy("populate")
+    setNotice("")
+    try {
+      const r = await fetch("/admin/marketplace/api", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "populate-categories", limit: 12 }),
+      }).then((x) => x.json())
+      if (r?.error) {
+        setNoticeTone("warn")
+        setNotice(r.error)
+      } else {
+        setNoticeTone("success")
+        setNotice(
+          `Populated ${r?.totalImported ?? 0} product(s) into ${r?.categories?.filter((c: any) => c.imported > 0).length ?? 0} empty category/categories.` +
+            (r?.categories?.length ? ` — ${r.categories.map((c: any) => `${c.name}: ${c.imported} imported`).join("; ")}` : "")
+        )
+      }
+      onImported?.()
+      void loadTop(categorySlug, subcategorySlug)
+    } catch {
+      setNoticeTone("warn")
+      setNotice("Could not populate empty categories.")
+    } finally {
+      setBusy("")
+    }
+  }
+
   const saveKey = async () => {
     if (!apiKey.trim()) return
     setSavingKey(true)
@@ -347,6 +397,56 @@ export function MarketplaceCjTab({ onImported }: { onImported?: () => void }) {
       }
     } finally {
       setImporting(false)
+    }
+  }
+
+  // ── Import history ─────────────────────────────────────────────────────
+  const loadHistory = async () => {
+    setHistoryLoading(true)
+    try {
+      const res = await fetch("/admin/marketplace/api?section=cj-import-history&limit=50", { cache: "no-store" })
+      const r = await res.json()
+      if (!res.ok || r?.error) {
+        setNoticeTone("warn")
+        setNotice(r?.error || "Could not load import history.")
+        return
+      }
+      setImportBatches(Array.isArray(r?.batches) ? r.batches : [])
+    } catch {
+      setNoticeTone("warn")
+      setNotice("Could not load import history.")
+    } finally {
+      setHistoryLoading(false)
+    }
+  }
+
+  const retryBatch = async (batchId: string) => {
+    setRetryingBatch(batchId)
+    setNotice("")
+    try {
+      const r = await fetch("/admin/marketplace/api", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "cj-retry-import", batch_id: batchId }),
+      }).then((x) => x.json())
+      if (r?.error) {
+        setNoticeTone("warn")
+        setNotice(r.error)
+      } else {
+        setNoticeTone("success")
+        setNotice(
+          `Retried import: ${r.imported} imported${r.skipped ? ` · ${r.skipped} already in store` : ""}` +
+            (r.deferred ? ` · ${r.deferred} still need a variant` : "")
+        )
+        await loadHistory()
+        onImported?.()
+        void loadTop(categorySlug, subcategorySlug)
+      }
+    } catch {
+      setNoticeTone("warn")
+      setNotice("Retry failed — try again.")
+    } finally {
+      setRetryingBatch(null)
     }
   }
 
@@ -438,6 +538,9 @@ export function MarketplaceCjTab({ onImported }: { onImported?: () => void }) {
           </button>
           <button onClick={pushMyProducts} disabled={!!busy} className={marketBtnDarkCls}>
             {busy === "push" ? "Pushing to CJ..." : "Push products to CJ now"}
+          </button>
+          <button onClick={populateEmptyCategories} disabled={busy === "populate"} className={marketBtnDarkCls}>
+            {busy === "populate" ? "Populating..." : "Fill empty categories from CJ"}
           </button>
           <button onClick={loadCjState} disabled={!!busy} className={marketBtnGhostCls}>
             <RefreshCw className="h-4 w-4" /> Refresh CJ state
@@ -673,6 +776,116 @@ export function MarketplaceCjTab({ onImported }: { onImported?: () => void }) {
               ) : undefined
             }
           />
+        )}
+      </div>
+
+      {/* import history */}
+      <div className={marketCardCls + " p-4 sm:p-5 mb-3"}>
+        <MarketCardHead
+          title="Import history"
+          desc="Every CJ bulk import batch — what came in, what was skipped, what still needs a variant"
+          icon={History}
+        />
+        <div className="mb-2 flex items-center justify-between">
+          <button
+            onClick={loadHistory}
+            disabled={historyLoading}
+            className={marketBtnGhostCls}
+          >
+            {historyLoading ? <RefreshCw className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+          </button>
+          <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
+            {importBatches.length} batch{importBatches.length === 1 ? "" : "s"}
+          </span>
+        </div>
+        {importBatches.length === 0 ? (
+          <div className="rounded-xl border border-slate-200 bg-slate-50 p-6 text-center">
+            <History className="h-8 w-8 mx-auto text-slate-300 mb-2" />
+            <p className="text-sm text-slate-500">No imports yet. Search the catalog above and import your first products.</p>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="text-left border-b border-slate-200 bg-slate-50/60">
+                  <th className="pb-2 font-semibold text-slate-500">Batch / date</th>
+                  <th className="pb-2 font-semibold text-slate-500 w-16">Requested</th>
+                  <th className="pb-2 font-semibold text-slate-500 w-16">Imported</th>
+                  <th className="pb-2 font-semibold text-slate-500 w-16">Skipped</th>
+                  <th className="pb-2 font-semibold text-slate-500 w-20">Variants</th>
+                  <th className="pb-2 font-semibold text-slate-500 w-16">Pushed to CJ</th>
+                  <th className="pb-2 font-semibold text-slate-500 w-16">Status</th>
+                  <th className="pb-2 font-semibold text-slate-500 w-20">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {importBatches.map((b) => (
+                  <tr key={b.id} className="hover:bg-slate-50/40">
+                    <td className="py-3">
+                      <div className="text-sm font-semibold text-slate-900">
+                        {b.category_slug || "uncategorized"}{b.subcategory_slug ? ` / ${b.subcategory_slug}` : ""}
+                      </div>
+                      <div className="text-xs text-slate-500">
+                        {new Date(b.created_at).toLocaleString()} · {b.itemCount} item(s)
+                      </div>
+                      {b.failedCount > 0 && (
+                        <div className="mt-1 flex items-center gap-1 text-red-600">
+                          <AlertTriangle className="h-3 w-3" />
+                          <span className="text-xs font-medium">{b.failedCount} item(s) need attention</span>
+                        </div>
+                      )}
+                    </td>
+                    <td className="py-3 text-sm text-slate-900">{b.requested}</td>
+                    <td className="py-3 text-sm text-slate-900">{b.imported}</td>
+                    <td className="py-3 text-sm text-slate-900">{b.skipped}</td>
+                    <td className="py-3 text-sm text-slate-900">{b.variants_filled}</td>
+                    <td className="py-3 text-sm text-slate-900">{b.pushed_to_cj}</td>
+                    <td className="py-3">
+                      <MarketBadge
+                        tone={b.status === "completed" ? "emerald" : b.status === "partial" ? "amber" : "red"}
+                      >
+                        {b.status}
+                      </MarketBadge>
+                      {b.error_message && (
+                        <div className="mt-1 text-xs text-red-600 truncate max-w-xs" title={b.error_message}>
+                          {b.error_message}
+                        </div>
+                      )}
+                    </td>
+                    <td className="py-3">
+                      {b.failedCount > 0 && b.status !== "completed" ? (
+                        <button
+                          onClick={() => retryBatch(b.id)}
+                          disabled={retryingBatch === b.id}
+                          className="flex items-center gap-1 text-xs font-semibold text-amber-700 hover:text-amber-900"
+                        >
+                          {retryingBatch === b.id ? <RefreshCw className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />}
+                          Retry
+                        </button>
+                      ) : (
+                        <span className="text-xs text-slate-400">All done</span>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+        {importBatches.some((b) => b.failedCount > 0 && b.status !== "completed") && (
+          <div className="mt-3 rounded-xl border border-amber-100 bg-amber-50 p-3">
+            <div className="flex items-start gap-2">
+              <AlertTriangle className="h-4 w-4 text-amber-600 mt-0.5" />
+              <div>
+                <p className="text-sm font-semibold text-amber-800">
+                  Some batches have items that still need a supplier variant.
+                </p>
+                <p className="text-xs text-amber-700 mt-1">
+                  Use "Fill missing variants" in the sync card above to resolve them, or retry individual batches below.
+                </p>
+              </div>
+            </div>
+          </div>
         )}
       </div>
     </div>
