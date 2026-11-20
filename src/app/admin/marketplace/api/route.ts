@@ -1787,7 +1787,16 @@ export async function POST(request: NextRequest) {
     if (body.action === "cj-auto-import") {
       const { fetchMarketplaceTree } = await import("@/lib/marketplace-category-db")
       const { clearMarketplaceTreeCache } = await import("@/lib/marketplace-category-db")
-      const { cjSearchProducts, cjGetProductDetail, mapCjToAffiliate } = await import("@/lib/cj")
+      const { cjStatus, cjSearchProducts, cjGetProductDetail, mapCjToAffiliate } = await import("@/lib/cj")
+
+      // Fail fast with a clear message if the CJ key isn't configured or can't
+      // authenticate — otherwise every category just returns 0 with no explanation.
+      const status = await cjStatus()
+      if (!status.connected) {
+        return NextResponse.json({
+          error: `CJ not connected: ${status.message}. Save your CJ API key in Admin → Marketplace → CJ Import first.`,
+        }, { status: 400 })
+      }
 
       const limitPerCat = Math.min(Math.max(Number(body.limit) || 100, 1), 200)
       const batchSize = Math.min(Math.max(Number(body.batchSize) || 5, 1), 20)
@@ -1812,7 +1821,7 @@ export async function POST(request: NextRequest) {
       const endBatch = Math.min(startBatch + batchSize, totalCategories)
       const chunk = allCategories.slice(startBatch, endBatch)
 
-      const results: Array<{ slug: string; name: string; depth: number; existing: number; imported: number; skipped: number }> = []
+      const results: Array<{ slug: string; name: string; depth: number; existing: number; imported: number; skipped: number; error?: string }> = []
       let totalImported = 0
 
       for (const cat of chunk) {
@@ -1845,8 +1854,9 @@ export async function POST(request: NextRequest) {
             categorySecondName: String(p.categorySecondName || ""),
             sku: String(p.sku || ""),
           })).filter((c) => c.pid)
-        } catch {
-          results.push({ slug: cat.slug, name: cat.name, depth: cat.depth, existing, imported: 0, skipped: 0 })
+        } catch (e) {
+          const msg = e instanceof Error ? e.message : String(e)
+          results.push({ slug: cat.slug, name: cat.name, depth: cat.depth, existing, imported: 0, skipped: 0, error: msg })
           continue
         }
 
@@ -1935,17 +1945,22 @@ export async function POST(request: NextRequest) {
       const hasMore = endBatch < totalCategories
       if (hasMore) clearMarketplaceTreeCache()
       revalidateStore()
+      const errors = results.filter((r) => r.error)
       return NextResponse.json({
         success: true,
         totalImported,
         processedCategories: chunk.length,
         totalCategories,
+        errorCount: errors.length,
+        errors: errors.slice(0, 5).map((e) => ({ category: e.name, error: e.error })),
         hasMore,
         nextBatch: hasMore ? endBatch : null,
         categories: results,
         message: hasMore
           ? `Auto-import batch: ${totalImported} product(s) added across ${chunk.length} categories (${startBatch + 1}–${endBatch} of ${totalCategories}). Run again to continue.`
-          : `Auto-import complete: ${totalImported} product(s) across ${totalCategories} category/categories.`,
+          : errors.length > 0
+            ? `Auto-import complete with warnings: ${totalImported} product(s) across ${totalCategories} categories. ${errors.length} category/categories had errors — see details.`
+            : `Auto-import complete: ${totalImported} product(s) across ${totalCategories} category/categories.`,
       })
     }
     if (body.action === "cj-import") {
