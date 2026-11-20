@@ -19,6 +19,7 @@ import {
   Trash2,
   User,
   X,
+  Zap,
 } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
 import { marketImage } from "@/lib/marketplace-images"
@@ -169,6 +170,18 @@ export function MarketplaceSeasonalSalesTab(): JSX.Element | null {
   const [editingProduct, setEditingProduct] = useState<SeasonalProductForm | null>(null)
   const fileRef = useRef<HTMLInputElement>(null)
 
+  // Black Friday automatic discount selection (generated from live catalogue).
+  const [bfPlan, setBfPlan] = useState<{ totalCandidates: number; suggested: Array<{
+    product_id: string; product_name: string; product_image_url: string | null;
+    original_price: number; suggested_discount_pct: number; promotional_price: number;
+    supplier_cost: number; shipping_cost: number; remaining_margin_pct: number;
+    remaining_profit_usd: number; meets_min_profit: boolean; reason: string;
+    category_slug: string | null;
+  }>; campaignStart: string; campaignEnd: string; generatedAt: string } | null>(null)
+  const [bfGenerating, setBfGenerating] = useState(false)
+  const [bfApproving, setBfApproving] = useState(false)
+  const [showBfPlan, setShowBfPlan] = useState(false)
+
   const configFor = (c: SeasonalCampaignForm) => ({
     ...c,
     products: c.products.map((p) => ({
@@ -297,6 +310,114 @@ export function MarketplaceSeasonalSalesTab(): JSX.Element | null {
 
   const newCampaign = () => {
     setEditing({ ...INITIAL_CAMPAIGN, id: `campaign_${Date.now()}` })
+    setMode("editor")
+    setNotice("")
+  }
+
+  // ── Black Friday 2026 preset (Africa/Lagos, UTC+1) ─────────────────────
+  // Campaign period: November 19–30, 2026 · Black Friday: November 27
+  // · Cyber Monday: November 30 · End: Nov 30 23:59 WAT (22:59 UTC).
+  const BF_START = "2026-11-19T00:00:00+01:00"
+  const BF_END = "2026-11-30T23:59:00+01:00"
+  const newBlackFridayCampaign = () => {
+    setEditing({
+      ...INITIAL_CAMPAIGN,
+      id: `campaign_bf_${Date.now()}`,
+      name: "Black Friday 2026",
+      heading: "Black Friday 2026.",
+      subtitle: "November 19 – 30 · TechPivo Market",
+      description:
+        "Biggest sale of the year. Up to 30% off across electronics, accessories, gadgets and more. Deals end November 30 at 11:59 PM Lagos time.",
+      status: "draft",
+      startAt: BF_START,
+      endAt: BF_END,
+      timezone: "Africa/Lagos",
+      countdownEnabled: true,
+      countdownStyle: "boxes",
+      accentColor: "#EF4444",
+      products: [],
+      settings: { ...INITIAL_SETTINGS, sectionHeading: "Black Friday Deals.", sectionSubtitle: "November 19 – 30" },
+    })
+      setMode("editor")
+      setNotice("")
+  }
+
+  // ── Black Friday automatic discount selection ──────────────────────────
+  // Analyses live catalogue and proposes products + discounts that preserve
+  // the configured minimum profit. The admin previews, edits and approves.
+  const generateBfPlan = async () => {
+    setBfGenerating(true)
+    setShowBfPlan(false)
+    setNotice("")
+    try {
+      const res = await fetch("/api/marketplace/black-friday", { cache: "no-store" })
+      const data = await res.json().catch(() => null)
+      if (!res.ok || !data?.plan) throw new Error(data?.error || "Could not generate Black Friday plan.")
+      setBfPlan(data.plan)
+      setShowBfPlan(true)
+      setNotice(`Plan generated — ${data.plan.suggested.length} of ${data.plan.totalCandidates} eligible products.`)
+    } catch (err) {
+      setNotice(err instanceof Error ? err.message : "Plan generation failed.")
+    } finally {
+      setBfGenerating(false)
+    }
+  }
+
+  const approveBfPlan = async () => {
+    if (!bfPlan) return
+    setBfApproving(true)
+    setNotice("")
+    try {
+      const campaigns = bfPlan.suggested.map((p) => ({
+        product_id: p.product_id,
+        product_name: p.product_name,
+        product_image_url: p.product_image_url || "",
+        original_price: p.original_price,
+        promotional_price: p.promotional_price,
+        suggested_discount_pct: p.suggested_discount_pct,
+        discount_pct: p.suggested_discount_pct,
+        margin_pct: p.remaining_margin_pct,
+        profit_usd: p.remaining_profit_usd,
+      }))
+      const res = await fetch("/api/marketplace/black-friday", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ campaigns, name: "Black Friday 2026", startAt: bfPlan.campaignStart, endAt: bfPlan.campaignEnd }),
+      })
+      const data = await res.json().catch(() => null)
+      if (!res.ok) throw new Error(data?.error || "Could not publish Black Friday campaign.")
+      setNotice("Black Friday campaign published — live on the storefront.")
+      setBfPlan(null)
+      setShowBfPlan(false)
+      setBfApproving(false)
+    } catch (err) {
+      setBfApproving(false)
+      setNotice(err instanceof Error ? err.message : "Publishing failed.")
+    }
+  }
+
+  // ── Cyber Monday 2026 preset ───────────────────────────────────────────
+  const CM_START = "2026-11-30T00:00:00+01:00"
+  const CM_END = "2026-11-30T23:59:00+01:00"
+  const newCyberMondayCampaign = () => {
+    setEditing({
+      ...INITIAL_CAMPAIGN,
+      id: `campaign_cm_${Date.now()}`,
+      name: "Cyber Monday 2026",
+      heading: "Cyber Monday 2026.",
+      subtitle: "November 30 · Last Chance",
+      description:
+        "Final day of Black Friday week. Last-chance deals on tech gear, accessories and gadgets. Ends November 30 at 11:59 PM Lagos time.",
+      status: "draft",
+      startAt: CM_START,
+      endAt: CM_END,
+      timezone: "Africa/Lagos",
+      countdownEnabled: true,
+      countdownStyle: "boxes",
+      accentColor: "#10B981",
+      products: [],
+      settings: { ...INITIAL_SETTINGS, sectionHeading: "Cyber Monday.", sectionSubtitle: "Last chance — November 30" },
+    })
     setMode("editor")
     setNotice("")
   }
@@ -453,6 +574,22 @@ export function MarketplaceSeasonalSalesTab(): JSX.Element | null {
               </button>
               <button
                 type="button"
+                onClick={newBlackFridayCampaign}
+                disabled={saving}
+                className="ml-2 bg-[#EF4444] hover:bg-[#B91C1C] text-[#0F172A] text-sm font-bold py-2 px-4 rounded-lg transition-all active:scale-[0.99] flex items-center gap-1"
+              >
+                <Clock className="h-3.5 w-3.5" /> Black Friday 2026
+              </button>
+              <button
+                type="button"
+                onClick={newCyberMondayCampaign}
+                disabled={saving}
+                className="ml-2 bg-[#10B981] hover:bg-[#059669] text-white text-sm font-bold py-2 px-4 rounded-lg transition-all active:scale-[0.99] flex items-center gap-1"
+              >
+                <Zap className="h-3.5 w-3.5" /> Cyber Monday
+              </button>
+              <button
+                type="button"
                 onClick={save}
                 disabled={saving || campaigns.length === 0}
                 className={marketBtnDarkCls}
@@ -468,6 +605,138 @@ export function MarketplaceSeasonalSalesTab(): JSX.Element | null {
             <X className="h-3.5 w-3.5 shrink-0" /> {notice}
           </div>
         )}
+        {/* ── Black Friday automatic discount selection ────────────────── */}
+        <div className={marketCardCls + " mb-3 p-4 sm:p-5"}>
+          <div className="flex items-center justify-between mb-3">
+            <div>
+              <h3 className="font-bold text-slate-900 text-sm mb-1">Black Friday automatic discount selection</h3>
+              <p className="text-xs text-slate-500">
+                Analyses your live catalogue and proposes products + discounts that preserve the configured minimum profit.{" "}
+                Nov 19–30 · Africa/Lagos. Nothing is published until you approve.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={generateBfPlan}
+              disabled={bfGenerating || bfPlan != null}
+              className="bg-[#EF4444] hover:bg-[#B91C1C] text-[#0F172A] text-xs font-bold py-2 px-4 rounded-lg disabled:opacity-60 flex items-center gap-1"
+            >
+              {bfGenerating ? (
+                <><RefreshCcw className="h-3.5 w-3.5 animate-spin" /> Generating…</>
+              ) : bfPlan ? (
+                <><Clock className="h-3.5 w-3.5" /> Regenerate</>
+              ) : (
+                <><Clock className="h-3.5 w-3.5" /> Generate plan</>
+              )}
+            </button>
+          </div>
+          {bfPlan && (
+            <>
+              <div className="grid gap-3 sm:grid-cols-4 mb-3">
+              <div className="px-3 py-2 rounded-lg bg-[#F8FAFC] border border-[#E2E8F0]">
+                <span className="block text-[10px] text-slate-400 uppercase tracking-wider">Eligible products</span>
+                <span className="block text-slate-700 font-medium">{bfPlan.totalCandidates}</span>
+              </div>
+              <div className="px-3 py-2 rounded-lg bg-[#F8FAFC] border border-[#E2E8F0]">
+                <span className="block text-[10px] text-slate-400 uppercase tracking-wider">Suggested deals</span>
+                <span className="block text-slate-700 font-medium">{bfPlan.suggested.length}</span>
+              </div>
+              <div className="px-3 py-2 rounded-lg bg-[#F8FAFC] border border-[#E2E8F0]">
+                <span className="block text-[10px] text-slate-400 uppercase tracking-wider">Campaign</span>
+                <span className="block text-slate-700 font-medium">Nov 19–30 2026</span>
+              </div>
+              <div className="px-3 py-2 rounded-lg bg-[#F8FAFC] border border-[#E2E8F0]">
+                <span className="block text-[10px] text-slate-400 uppercase tracking-wider">Generated</span>
+                <span className="block text-slate-700 font-medium text-[11px]">{new Date(bfPlan.generatedAt).toLocaleString()}</span>
+              </div>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-[#E2E8F0]">
+                    <th className={cn(marketThCls, "pb-3")}>Product</th>
+                    <th className={cn(marketThCls, "text-right", "pb-3")}>Original</th>
+                    <th className={cn(marketThCls, "text-right", "pb-3")}>Promo</th>
+                    <th className={cn(marketThCls, "text-center", "pb-3")}>Discount</th>
+                    <th className={cn(marketThCls, "text-right", "pb-3")}>Margin after</th>
+                    <th className={cn(marketThCls, "text-center", "pb-3")}>Min profit OK</th>
+                    <th className={cn(marketThCls, "text-right", "pb-3")}>Profit</th>
+                    <th className={cn(marketThCls, "pb-3")}>Action</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {bfPlan.suggested.map((p) => (
+                    <tr key={p.product_id} className="hover:bg-slate-50/60 group">
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-2.5">
+                          {p.product_image_url ? (
+                            <img src={marketImage(p.product_image_url)} alt="" className="h-8 w-8 shrink-0 rounded-md border border-slate-200 object-cover" />
+                          ) : (
+                            <span className="h-8 w-8 shrink-0 rounded-md bg-slate-100 flex items-center justify-center text-[10px] text-slate-400">?</span>
+                          )}
+                          <div className="min-w-0">
+                            <div className="text-xs font-medium text-[#0F172A] truncate">{p.product_name}</div>
+                            <div className="text-[10px] text-slate-400 truncate">{p.category_slug || "uncategorized"}</div>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 tabular-nums text-right text-slate-500">${p.original_price.toFixed(2)}</td>
+                      <td className="px-4 py-3 tabular-nums text-right text-[#EF4444] font-bold">${p.promotional_price.toFixed(2)}</td>
+                      <td className="px-4 py-3 tabular-nums text-center text-[#DC2626] font-bold">-{p.suggested_discount_pct}%</td>
+                      <td className="px-4 py-3 tabular-nums text-right text-slate-600">{p.remaining_margin_pct.toFixed(1)}%</td>
+                      <td className="px-4 py-3 text-center">
+                        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold ${
+                          p.meets_min_profit ? "bg-emerald-50 text-emerald-700" : "bg-red-50 text-red-700"
+                        }`}>
+                          {p.meets_min_profit ? "OK" : "LOW"}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 tabular-nums text-right text-slate-600">+${p.remaining_profit_usd.toFixed(2)}</td>
+                      <td className="px-4 py-3">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const next = JSON.parse(JSON.stringify(editing || { ...INITIAL_CAMPAIGN, id: `campaign_bf_${Date.now()}`, products: [] })) as SeasonalCampaignForm
+                            const existing = next.products.find((x) => x.productId === p.product_id)
+                            if (!existing) {
+                              next.products.push({
+                                productId: p.product_id,
+                                name: p.product_name,
+                                image: p.product_image_url || "",
+                                originalPrice: p.original_price,
+                                promotionalPrice: p.promotional_price,
+                                badge: p.suggested_discount_pct >= 20 ? "CLEARANCE" : p.suggested_discount_pct >= 15 ? "FLASH SALE" : "SPECIAL OFFER",
+                                badgeText: `-${p.suggested_discount_pct}%`,
+                                badgeColor: p.suggested_discount_pct >= 20 ? "#DC2626" : p.suggested_discount_pct >= 15 ? "#F59E0B" : "#EF4444",
+                                priority: next.products.length + 1,
+                                enabled: true,
+                                startAt: bfPlan.campaignStart,
+                                endAt: bfPlan.campaignEnd,
+                              })
+                              setEditing(next)
+                              setMode("editor")
+                              setNotice(`Added “${p.product_name}” to the editor. Edit then Save Campaign to publish.`)
+                            } else {
+                              setMode("editor")
+                              setNotice("Already in the editor.")
+                            }
+                          }}
+                          className="text-xs font-bold text-amber-600 hover:underline"
+                        >
+                          Add to editor
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            </>
+          )}
+          {!bfPlan && !bfGenerating && (
+            <p className="text-center py-4 text-sm text-slate-500">No Black Friday plan yet. Generate one from your live catalogue.</p>
+          )}
+        </div>
         <div className={marketCardCls}>
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">

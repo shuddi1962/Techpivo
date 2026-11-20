@@ -5,8 +5,8 @@ import { Suspense } from "react"
 import { useSearchParams } from "next/navigation"
 import {
   Package, ReceiptText, MessageSquare, BadgePercent, LayoutGrid,
-  ImagePlus, Plug, TrendingUp, CreditCard, Globe, ArrowLeft,
-  ExternalLink, LayoutDashboard, Store, Rss, Clock, Phone, type LucideIcon,
+  ImagePlus, Plug, TrendingUp, DollarSign, RefreshCw, CreditCard, Globe, ArrowLeft,
+  ExternalLink, LayoutDashboard, Store, Rss, Clock, Phone, Truck, type LucideIcon,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 
@@ -37,6 +37,13 @@ export const MARKET_SECTIONS: MarketSection[] = [
   { id: "banners", label: "Banners & promos", desc: "Hero, promo bar, flash sale", icon: ImagePlus, group: "Marketing" },
   { id: "upsells", label: "Upsells", desc: "Complete-your-purchase", icon: TrendingUp, group: "Marketing" },
   { id: "categories", label: "Categories", desc: "Departments & mapping", icon: LayoutGrid, group: "Marketing" },
+  { id: "inventory", label: "Inventory", desc: "Warehouse stock & restocking", icon: Truck, group: "Sell" },
+  { id: "profit", label: "Pricing & Profit", desc: "Category margins & product overrides", icon: DollarSign, group: "Setup" },
+  { id: "currency", label: "Currency", desc: "Exchange rates & display currencies", icon: RefreshCw, group: "Setup" },
+  { id: "earnings", label: "Earnings & Profit", desc: "Daily category-level earnings", icon: DollarSign, group: "Setup" },
+  { id: "commissions", label: "Seller Commissions", desc: "Per-seller commission rules", icon: CreditCard, group: "Setup" },
+  { id: "email", label: "Email", desc: "Templates & send logs", icon: MessageSquare, group: "Setup" },
+  { id: "shipping", label: "Shipping & Delivery", desc: "Zones, rates & free-ship thresholds", icon: Truck, group: "Setup" },
   { id: "payments", label: "Payments", desc: "Gateway keys & mode", icon: CreditCard, group: "Setup" },
   { id: "visibility", label: "Visibility", desc: "Storefront publish switch", icon: Globe, group: "Setup" },
   { id: "feed", label: "Google Feed", desc: "Merchant Center product feed", icon: Rss, group: "Setup" },

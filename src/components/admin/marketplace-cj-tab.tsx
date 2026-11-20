@@ -151,6 +151,26 @@ export function MarketplaceCjTab({ onImported }: { onImported?: () => void }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
+  // ── Import history ─────────────────────────────────────────────────────
+  const loadHistory = async () => {
+    setHistoryLoading(true)
+    try {
+      const res = await fetch("/admin/marketplace/api?section=cj-import-history&limit=50", { cache: "no-store" })
+      const r = await res.json()
+      if (!res.ok || r?.error) {
+        setNoticeTone("warn")
+        setNotice(r?.error || "Could not load import history.")
+        return
+      }
+      setImportBatches(Array.isArray(r?.batches) ? r.batches : [])
+    } catch {
+      setNoticeTone("warn")
+      setNotice("Could not load import history.")
+    } finally {
+      setHistoryLoading(false)
+    }
+  }
+
   useEffect(() => {
     loadStatus()
     void loadTop(categorySlug, subcategorySlug)
@@ -396,27 +416,7 @@ export function MarketplaceCjTab({ onImported }: { onImported?: () => void }) {
         setNotice(r?.error || "Import failed.")
       }
     } finally {
-      setImporting(false)
-    }
-  }
-
-  // ── Import history ─────────────────────────────────────────────────────
-  const loadHistory = async () => {
-    setHistoryLoading(true)
-    try {
-      const res = await fetch("/admin/marketplace/api?section=cj-import-history&limit=50", { cache: "no-store" })
-      const r = await res.json()
-      if (!res.ok || r?.error) {
-        setNoticeTone("warn")
-        setNotice(r?.error || "Could not load import history.")
-        return
-      }
-      setImportBatches(Array.isArray(r?.batches) ? r.batches : [])
-    } catch {
-      setNoticeTone("warn")
-      setNotice("Could not load import history.")
-    } finally {
-      setHistoryLoading(false)
+      setRetryingBatch(null)
     }
   }
 
@@ -881,7 +881,7 @@ export function MarketplaceCjTab({ onImported }: { onImported?: () => void }) {
                   Some batches have items that still need a supplier variant.
                 </p>
                 <p className="text-xs text-amber-700 mt-1">
-                  Use "Fill missing variants" in the sync card above to resolve them, or retry individual batches below.
+                  Use &quot;Fill missing variants&quot; in the sync card above to resolve them, or retry individual batches below.
                 </p>
               </div>
             </div>

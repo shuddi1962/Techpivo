@@ -415,7 +415,7 @@ export async function GET(request: NextRequest) {
           .select("id,batch_id,cj_pid,product_name,status,cj_vid")
           .in("batch_id", batchIds)
           .order("created_at", { ascending: true })
-        for (const it of (items || []) as Array<{ batch_id: string; cj_pid: string; product_name: string; status: string; cj_vid: string | null }>) {
+        for (const it of (items || []) as Array<{ id: string; batch_id: string; cj_pid: string; product_name: string; status: string; cj_vid: string | null }>) {
           if (!itemsByBatch[it.batch_id]) itemsByBatch[it.batch_id] = []
           itemsByBatch[it.batch_id].push(it)
         }
@@ -1094,7 +1094,7 @@ export async function POST(request: NextRequest) {
         .upsert({ key: "marketplace_coupons", value: coupons as unknown as never }, { onConflict: "key" })
       if (error) throw error
       revalidateStore()
-      return NextResponse.json({ success: true, merch: parseMarketMerch(next), updated: productIds.length })
+      return NextResponse.json({ success: true, coupons, updated: coupons.length })
     }
     // ── Email: save a template ─────────────────────────────────────────────
     if (body.action === "email-templates-save") {
@@ -1107,7 +1107,7 @@ export async function POST(request: NextRequest) {
       if (!name || !eventType || !subject) {
         return NextResponse.json({ error: "Name, event type and subject are required." }, { status: 400 })
       }
-      const patch = { name, event_type: eventType, subject, html_content: htmlContent, is_active }
+      const patch = { name, event_type: eventType, subject, html_content: htmlContent, is_active: isActive }
       let res
       if (id) {
         res = await supabase.from("marketplace_email_templates").update(patch).eq("id", id).select().single()
@@ -1166,11 +1166,11 @@ export async function POST(request: NextRequest) {
     if (body.action === "shipping-zones-save") {
       const id = String(body.id || "")
       const name = String(body.name || "").trim().slice(0, 80)
-      const countries = Array.isArray(body.countries) ? body.countries.filter((c) => typeof c === "string").map(String).slice(0, 200) : []
+      const countries = Array.isArray(body.countries) ? body.countries.filter((c: unknown) => typeof c === "string").map(String).slice(0, 200) : []
       const isActive = typeof body.is_active === "boolean" ? body.is_active : true
       if (!name) return NextResponse.json({ error: "Zone name required." }, { status: 400 })
       if (countries.length === 0) return NextResponse.json({ error: "Pick at least one country." }, { status: 400 })
-      const patch = { name, countries, is_active }
+      const patch = { name, countries, is_active: isActive }
       let res
       if (id) {
         res = await supabase.from("marketplace_shipping_zones").update(patch).eq("id", id).select().single()
@@ -1208,7 +1208,7 @@ export async function POST(request: NextRequest) {
       }
       if (!Number.isFinite(feeUsd) || feeUsd < 0) return NextResponse.json({ error: "Fee must be ≥ 0." }, { status: 400 })
       if (!Number.isFinite(minOrderUsd) || minOrderUsd < 0) return NextResponse.json({ error: "Min order must be ≥ 0." }, { status: 400 })
-      const patch = { zone_id: zoneId, method_name: methodName, method_type: methodType, fee_usd: feeUsd, min_order_usd: minOrderUsd, eta, is_active, sort_order: sortOrder }
+      const patch = { zone_id: zoneId, method_name: methodName, method_type: methodType, fee_usd: feeUsd, min_order_usd: minOrderUsd, eta, is_active: isActive, sort_order: sortOrder }
       let res
       if (id) {
         res = await supabase.from("marketplace_shipping_rates").update(patch).eq("id", id).select().single()
@@ -2102,8 +2102,8 @@ export async function POST(request: NextRequest) {
       }
       const rows = freshItems.map((cj) =>
         mapCjToAffiliate(cj, {
-          categorySlug: cj.categorySlug || batch.category_slug || null,
-          subcategorySlug: cj.subcategorySlug || batch.subcategory_slug || null,
+          categorySlug: batch.category_slug || null,
+          subcategorySlug: batch.subcategory_slug || null,
           cjVid: withVid.get(cj.pid) || null,
           cjSku: skuByPid.get(cj.pid) || cj.sku || null,
         })

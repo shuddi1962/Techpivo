@@ -5,6 +5,8 @@ import { useSearchParams } from "next/navigation"
 import { MarketplaceCategoriesTab } from "@/components/admin/marketplace-categories-tab"
 import { MarketplaceBannersTab } from "@/components/admin/marketplace-banners-tab"
 import { MarketplaceCjTab } from "@/components/admin/marketplace-cj-tab"
+import { MarketplaceProfitTab } from "@/components/admin/marketplace-profit-tab"
+import { MarketplaceInventoryTab } from "@/components/admin/marketplace-inventory-tab"
 import { MarketplaceUpsellsTab } from "@/components/admin/marketplace-upsells-tab"
 import { MarketplaceOrdersTab } from "@/components/admin/marketplace-orders-tab"
 import { MarketplacePaymentsTab } from "@/components/admin/marketplace-payments-tab"
@@ -16,6 +18,11 @@ import { MarketplaceProductsTab } from "@/components/admin/marketplace-products-
 import { MarketplaceVisibilityTab } from "@/components/admin/marketplace-visibility-tab"
 import { MarketplaceFeedTab } from "@/components/admin/marketplace-feed-tab"
 import { MarketplaceMobileSettingsTab } from "@/components/admin/marketplace-mobile-settings-tab"
+import { MarketplaceCurrencyTab } from "@/components/admin/marketplace-currency-tab"
+import { MarketplaceEarningsTab } from "@/components/admin/marketplace-earnings-tab"
+import { MarketplaceCommissionsTab } from "@/components/admin/marketplace-commissions-tab"
+import { MarketplaceEmailTab } from "@/components/admin/marketplace-email-tab"
+import { MarketplaceShippingTab } from "@/components/admin/marketplace-shipping-tab"
 import { isMarketSection, MarketplaceSectionPills } from "@/components/admin/marketplace-nav"
 
 // Section switching lives in the global admin sidebar (which shows the
@@ -66,7 +73,11 @@ function AdminMarketplacePageInner() {
 
         {tab === "categories" && <MarketplaceCategoriesTab />}
 
+        {tab === "inventory" && <MarketplaceInventoryTab />}
+
         {tab === "cj" && <MarketplaceCjTab />}
+
+        {tab === "profit" && <MarketplaceProfitTab />}
 
         {tab === "payments" && <MarketplacePaymentsTab />}
 
@@ -75,6 +86,16 @@ function AdminMarketplacePageInner() {
         {tab === "feed" && <MarketplaceFeedTab />}
 
         {tab === "mobile-settings" && <MarketplaceMobileSettingsTab />}
+
+        {tab === "shipping" && <MarketplaceShippingTab />}
+
+        {tab === "currency" && <MarketplaceCurrencyTab />}
+
+        {tab === "earnings" && <MarketplaceEarningsTab />}
+
+        {tab === "commissions" && <MarketplaceCommissionsTab />}
+
+        {tab === "email" && <MarketplaceEmailTab />}
       </div>
     </div>
   )
