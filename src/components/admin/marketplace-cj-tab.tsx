@@ -18,6 +18,7 @@ import {
   MarketSegmented,
 } from "@/components/admin/marketplace-ui"
 import { cn } from "@/lib/utils"
+import { createClient } from "@/lib/supabase/client"
 
 interface CjItem {
   pid: string
@@ -176,6 +177,21 @@ export function MarketplaceCjTab({ onImported }: { onImported?: () => void }) {
     void loadTop(categorySlug, subcategorySlug)
     void loadCjState()
     void loadHistory()
+    // Realtime: refresh when products/import batches change.
+    const supabase = createClient()
+    const ch = supabase
+      .channel(`admin_market_cj_${Date.now()}_${Math.random().toString(36).slice(2)}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "affiliate_products" }, () => {
+        void loadCjState()
+      })
+      .on("postgres_changes", { event: "*", schema: "public", table: "marketplace_cj_import_batches" }, () => {
+        void loadHistory()
+      })
+      .subscribe()
+    return () => {
+      supabase.removeChannel(ch)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loadStatus, loadTop, categorySlug, subcategorySlug, loadHistory])
 
   const dept = depts.find((d) => d.slug === categorySlug) ?? depts[0] ?? MARKET_DEPARTMENTS[0]
@@ -326,7 +342,7 @@ export function MarketplaceCjTab({ onImported }: { onImported?: () => void }) {
       const r = await fetch("/admin/marketplace/api", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "populate-categories", limit: 12 }),
+        body: JSON.stringify({ action: "populate-categories", minProducts: 100, limit: 50 }),
       }).then((x) => x.json())
       if (r?.error) {
         setNoticeTone("warn")
@@ -334,15 +350,15 @@ export function MarketplaceCjTab({ onImported }: { onImported?: () => void }) {
       } else {
         setNoticeTone("success")
         setNotice(
-          `Populated ${r?.totalImported ?? 0} product(s) into ${r?.categories?.filter((c: any) => c.imported > 0).length ?? 0} empty category/categories.` +
-            (r?.categories?.length ? ` — ${r.categories.map((c: any) => `${c.name}: ${c.imported} imported`).join("; ")}` : "")
+          `Bulk import: ${r?.totalImported ?? 0} product(s) added across ${r?.categories?.filter((c: any) => c.imported > 0).length ?? 0} categories (target 100+ each).` +
+            (r?.categories?.length ? ` — ${r.categories.filter((c: any) => c.imported > 0).map((c: any) => `${c.name}: ${c.imported}`).join("; ")}` : "")
         )
       }
       onImported?.()
       void loadTop(categorySlug, subcategorySlug)
     } catch {
       setNoticeTone("warn")
-      setNotice("Could not populate empty categories.")
+      setNotice("Could not bulk import categories.")
     } finally {
       setBusy("")
     }
@@ -540,7 +556,7 @@ export function MarketplaceCjTab({ onImported }: { onImported?: () => void }) {
             {busy === "push" ? "Pushing to CJ..." : "Push products to CJ now"}
           </button>
           <button onClick={populateEmptyCategories} disabled={busy === "populate"} className={marketBtnDarkCls}>
-            {busy === "populate" ? "Populating..." : "Fill empty categories from CJ"}
+            {busy === "populate" ? "Importing all categories…" : "Bulk import all categories (100+ each)"}
           </button>
           <button onClick={loadCjState} disabled={!!busy} className={marketBtnGhostCls}>
             <RefreshCw className="h-4 w-4" /> Refresh CJ state

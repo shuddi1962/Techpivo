@@ -355,6 +355,16 @@ export async function GET(request: NextRequest) {
       const { parseMarketCoupons } = await import("@/lib/marketplace-coupons")
       return NextResponse.json({ coupons: parseMarketCoupons((data as { value?: unknown } | null)?.value) })
     }
+    // ── Promotions (coupons + bundles + flash + Black Friday) ────────────────
+    if (section === "promotions") {
+      const { data } = await supabase
+        .from("marketplace_promotions")
+        .select("*")
+        .order("created_at", { ascending: false })
+        .limit(500)
+      if (data == null) throw new Error("Promotions table not ready")
+      return NextResponse.json({ promotions: data })
+    }
     // ── Email: list templates ──────────────────────────────────────────────
     if (section === "email-templates") {
       const { data, error } = await supabase
@@ -1096,6 +1106,71 @@ export async function POST(request: NextRequest) {
       revalidateStore()
       return NextResponse.json({ success: true, coupons, updated: coupons.length })
     }
+    // ── Promotions: save a coupon or bundle discount ─────────────────────────
+    if (body.action === "promotions-save") {
+      const id = String(body.id || "")
+      const name = String(body.name || "").trim().slice(0, 120)
+      const type = body.type ? String(body.type) : "coupon"
+      if (!["coupon", "bundle", "flash_sale", "storewide", "category"].includes(type)) {
+        return NextResponse.json({ error: "Invalid promotion type." }, { status: 400 })
+      }
+      const discountType = String(body.discount_type || "percent")
+      if (!["percent", "fixed"].includes(discountType)) {
+        return NextResponse.json({ error: "Invalid discount type." }, { status: 400 })
+      }
+      const discountValue = Number(body.discount_value)
+      const minOrderUsd = Number(body.min_order_usd || 0)
+      const maxDiscountUsd = body.max_discount_usd != null ? Number(body.max_discount_usd) : null
+      const maxUses = Number(body.max_uses || 0)
+      const code = String(body.code || "").trim().toUpperCase() || null
+      const fundingSource = body.funding_source ? String(body.funding_source) : "techpivo"
+      if (!["techpivo", "seller", "shared"].includes(fundingSource)) {
+        return NextResponse.json({ error: "Invalid funding source." }, { status: 400 })
+      }
+      const minProfitUsd = Number(body.min_profit_usd || 0)
+      const products = Array.isArray(body.products) ? body.products : []
+      const startsAt = body.starts_at ? String(body.starts_at) : null
+      const endsAt = body.ends_at ? String(body.ends_at) : null
+      const isActive = typeof body.is_active === "boolean" ? body.is_active : true
+
+      if (!name) return NextResponse.json({ error: "Promotion name required." }, { status: 400 })
+      if (type === "coupon" && (!code || !/^[A-Z0-9-]{2,24}$/.test(code))) {
+        return NextResponse.json({ error: "Coupon code needs 2–24 letters/numbers/dashes." }, { status: 400 })
+      }
+      if (!Number.isFinite(discountValue) || discountValue < 0) {
+        return NextResponse.json({ error: "Discount value must be ≥ 0." }, { status: 400 })
+      }
+      if (type === "bundle" && products.length < 2) {
+        return NextResponse.json({ error: "Bundles need at least 2 products." }, { status: 400 })
+      }
+
+      const patch = {
+        name,
+        type,
+        discount_type: discountType,
+        discount_value: discountValue,
+        min_order_usd: minOrderUsd,
+        max_discount_usd: maxDiscountUsd,
+        max_uses: maxUses || null,
+        code: type === "coupon" ? code : null,
+        funding_source: fundingSource,
+        min_profit_usd: minProfitUsd,
+        starts_at: startsAt,
+        ends_at: endsAt,
+        is_active: isActive,
+        products: products.length > 0 ? products : null,
+      }
+
+      let res
+      if (id) {
+        res = await supabase.from("marketplace_promotions").update(patch).eq("id", id).select().single()
+      } else {
+        res = await supabase.from("marketplace_promotions").insert(patch).select().single()
+      }
+      if (res.error) throw res.error
+      revalidateStore()
+      return NextResponse.json({ success: true, promotion: res.data })
+    }
     // ── Email: save a template ─────────────────────────────────────────────
     if (body.action === "email-templates-save") {
       const id = String(body.id || "")
@@ -1413,6 +1488,9 @@ export async function POST(request: NextRequest) {
           depth: depthOfLevel(level),
           icon: body.icon ? String(body.icon).slice(0, 40) : null,
           image_url: body.image ? String(body.image).slice(0, 400) : null,
+          description: body.description ? String(body.description).slice(0, 2000) : null,
+          meta_title: body.meta_title ? String(body.meta_title).slice(0, 160) : null,
+          meta_description: body.meta_description ? String(body.meta_description).slice(0, 320) : null,
           sort,
           is_active: true,
         })
@@ -1441,6 +1519,10 @@ export async function POST(request: NextRequest) {
       if (typeof body.sort === "number" && Number.isFinite(body.sort)) patch.sort = Math.round(body.sort)
       if (typeof body.icon === "string") patch.icon = body.icon.slice(0, 40) || null
       if (typeof body.image === "string") patch.image_url = body.image.slice(0, 400) || null
+      if (typeof body.description === "string") patch.description = body.description.slice(0, 2000) || null
+      if (typeof body.meta_title === "string") patch.meta_title = body.meta_title.slice(0, 160) || null
+      if (typeof body.meta_description === "string")
+        patch.meta_description = body.meta_description.slice(0, 320) || null
       if (Object.keys(patch).length === 0) return NextResponse.json({ error: "Nothing to update." }, { status: 400 })
       const nextSlug = typeof patch.slug === "string" ? patch.slug : null
       // A rename must carry the children with it: the parent_slug FK is not
@@ -1525,17 +1607,19 @@ export async function POST(request: NextRequest) {
       revalidateStore()
       return NextResponse.json({ success: true })
     }
-    // Populate empty categories — for every department/subcategory/leaf with
-    // zero products, search CJ and import a batch of qualified products so no
-    // category on the storefront is ever empty.
+    // Bulk-import products across ALL categories and subcategories so every
+    // department on the storefront has a rich catalogue. Targets categories
+    // below a product threshold and imports up to 100 qualified products per
+    // category (default 50). Handles duplicates, variants and rate limits.
     if (body.action === "populate-categories") {
       const { fetchMarketplaceTree } = await import("@/lib/marketplace-category-db")
       const { cjSearchProducts, cjGetProductDetail, mapCjToAffiliate } = await import("@/lib/cj")
-      const { codeTreeRows, clearMarketplaceTreeCache } = await import("@/lib/marketplace-category-db")
+      const { clearMarketplaceTreeCache } = await import("@/lib/marketplace-category-db")
       const { MARKET_DEPARTMENTS } = await import("@/lib/marketplace-categories")
 
       const targetSlug = body.category_slug ? String(body.category_slug).slice(0, 90) : null
-      const limitPerCat = Math.min(Math.max(Number(body.limit) || 12, 1), 40)
+      const minProducts = Math.max(Number(body.minProducts) || 100, 0)
+      const limitPerCat = Math.min(Math.max(Number(body.limit) || 50, 1), 200)
 
       const departments = await fetchMarketplaceTree()
       const allCategories: Array<{ slug: string; name: string; depth: number; parent: string | null }> = []
@@ -1567,19 +1651,20 @@ export async function POST(request: NextRequest) {
             .or(`category_slug.eq.${cat.slug},subcategory_slug.eq.${cat.slug}`),
         ])
         const existing = existingCount ?? 0
-        if (existing > 0) {
+
+        if (existing >= minProducts) {
           results.push({ slug: cat.slug, name: cat.name, existing, imported: 0, skipped: 0 })
           continue
         }
 
-        // Search CJ for products in this category
+        // Need more products — search CJ for this category
         let cjList: Array<{ pid: string; productNameEn: string; productImage: string; sellPrice: number; categoryFirstName: string; categorySecondName: string; sku: string }> = []
         try {
           const keyName = cat.depth === 0 ? cat.name : cat.depth === 1 ? `${departments.find((d) => d.subs.some((s) => s.slug === cat.parent))?.name} > ${cat.name}` : cat.name
           const searchRes = await cjSearchProducts({
             keyWord: cat.name,
             page: 1,
-            size: limitPerCat,
+            size: Math.min(minProducts - existing + limitPerCat, 200),
             sort: "match",
           })
           cjList = (searchRes.list || []).map((p) => ({
@@ -1592,7 +1677,6 @@ export async function POST(request: NextRequest) {
             sku: String(p.sku || ""),
           })).filter((c) => c.pid)
         } catch {
-          // CJ unreachable — skip this category
           results.push({ slug: cat.slug, name: cat.name, existing: 0, imported: 0, skipped: 0 })
           continue
         }
@@ -1602,24 +1686,34 @@ export async function POST(request: NextRequest) {
           continue
         }
 
-        // Duplicate guard
+        // Duplicate guard — match on CJ pid and supplier SKU
         const pids = cjList.map((c) => c.pid)
-        const { data: dupRows } = await supabase
+        const skus = cjList.map((c) => c.sku).filter(Boolean)
+        const { data: dupPidRows } = await supabase
           .from("affiliate_products")
           .select("cj_pid")
-          .in("cj_pid", pids.slice(0, 200))
-        const existingPids = new Set((dupRows || []).map((r) => r.cj_pid).filter(Boolean))
-        const fresh = cjList.filter((c) => !existingPids.has(c.pid))
+          .in("cj_pid", pids.slice(0, 500))
+        const existingPids = new Set((dupPidRows || []).map((r) => r.cj_pid).filter(Boolean))
+        const existingSkus = new Set<string>()
+        if (skus.length > 0) {
+          const { data: dupSkuRows } = await supabase
+            .from("affiliate_products")
+            .select("cj_sku")
+            .in("cj_sku", skus.slice(0, 500))
+          skus.forEach((s) => existingSkus.add(s))
+          ;(dupSkuRows || []).forEach((r) => { if (r.cj_sku) existingSkus.add(r.cj_sku) })
+        }
+        const fresh = cjList.filter((c) => !existingPids.has(c.pid) && !existingSkus.has(c.sku))
 
         if (fresh.length === 0) {
-          results.push({ slug: cat.slug, name: cat.name, existing: 0, imported: 0, skipped: cjList.length })
+          results.push({ slug: cat.slug, name: cat.name, existing: existing, imported: 0, skipped: cjList.length })
           continue
         }
 
-        // Hydrate variants (best effort)
+        // Hydrate variants (best effort) — capped to keep runtime bounded
         const withVid = new Map<string, string>()
         const skuByPid = new Map<string, string>()
-        for (const cj of fresh.slice(0, 8)) {
+        for (const cj of fresh.slice(0, 12)) {
           try {
             const product = await cjGetProductDetail(cj.pid)
             const priced = (product.variants || [])
@@ -1634,12 +1728,11 @@ export async function POST(request: NextRequest) {
           await new Promise((r) => setTimeout(r, 150))
         }
 
-        // Map category slugs
+        // Map category slugs (depth-aware)
         let categorySlug: string | null = cat.slug
         let subcategorySlug: string | null = null
         if (cat.depth === 1) {
           subcategorySlug = cat.slug
-          // Find parent dept slug
           const parentDept = departments.find((d) => d.subs.some((s) => s.slug === cat.slug))
           categorySlug = parentDept?.slug || null
         } else if (cat.depth === 2) {
@@ -1676,7 +1769,7 @@ export async function POST(request: NextRequest) {
         success: true,
         totalImported,
         categories: results,
-        message: `Populated ${results.filter((r) => r.imported > 0).length} empty category/categories with ${totalImported} products.`,
+        message: `Populated ${results.filter((r) => r.imported > 0).length} category/categories with ${totalImported} products (min ${minProducts} each).`,
       })
     }
     if (body.action === "cj-import") {

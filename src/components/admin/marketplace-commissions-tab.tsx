@@ -19,6 +19,7 @@ import {
   MarketTableShell,
 } from "@/components/admin/marketplace-ui"
 import { cn } from "@/lib/utils"
+import { createClient } from "@/lib/supabase/client"
 
 interface Commission {
   id: string
@@ -76,6 +77,19 @@ export function MarketplaceCommissionsTab() {
 
   useEffect(() => {
     load()
+  }, [load])
+
+  // Realtime: refresh commission rules when they change.
+  useEffect(() => {
+    const supabase = createClient()
+    const ch = supabase
+      .channel(`admin_market_commissions_${Date.now()}_${Math.random().toString(36).slice(2)}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "marketplace_seller_commissions" }, () => load())
+      .subscribe()
+    return () => {
+      supabase.removeChannel(ch)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [load])
 
   const sellers = Array.from(new Set(commissions.map((c) => c.seller_id))).sort()

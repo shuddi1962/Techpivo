@@ -19,6 +19,7 @@ import {
   MarketTableShell,
 } from "@/components/admin/marketplace-ui"
 import { cn } from "@/lib/utils"
+import { createClient } from "@/lib/supabase/client"
 
 interface EmailTemplate {
   id: string
@@ -87,6 +88,20 @@ export function MarketplaceEmailTab() {
 
   useEffect(() => {
     load()
+  }, [load])
+
+  // Realtime: refresh when templates/logs change (retry, resend).
+  useEffect(() => {
+    const supabase = createClient()
+    const ch = supabase
+      .channel(`admin_market_email_${Date.now()}_${Math.random().toString(36).slice(2)}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "marketplace_email_templates" }, () => load())
+      .on("postgres_changes", { event: "*", schema: "public", table: "marketplace_email_logs" }, () => load())
+      .subscribe()
+    return () => {
+      supabase.removeChannel(ch)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [load])
 
   const totalTemplates = templates.length

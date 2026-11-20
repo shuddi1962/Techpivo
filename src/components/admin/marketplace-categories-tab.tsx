@@ -39,12 +39,27 @@ interface Row {
   image_url: string | null
   sort: number
   is_active: boolean
+  /** Optional category description rendered on the storefront category page. */
+  description: string | null
+  /** Optional SEO title for the category page. */
+  meta_title: string | null
+  /** Optional SEO meta description for the category page. */
+  meta_description: string | null
 }
 
 type Level = "dept" | "sub" | "leaf"
 const levelOf = (depth: number): Level => (depth === 0 ? "dept" : depth === 1 ? "sub" : "leaf")
 
-type Draft = { slug: string | null; name: string; newSlug: string; level: Level; parent_slug: string }
+type Draft = {
+  slug: string | null
+  name: string
+  newSlug: string
+  level: Level
+  parent_slug: string
+  description: string
+  meta_title: string
+  meta_description: string
+}
 
 export function MarketplaceCategoriesTab() {
   const [rows, setRows] = useState<Row[]>([])
@@ -129,7 +144,14 @@ export function MarketplaceCategoriesTab() {
     setBusy(true)
     try {
       if (draft.slug) {
-        await post("category-update", { slug: draft.slug, name: draft.name.trim(), new_slug: draft.newSlug.trim() })
+        await post("category-update", {
+          slug: draft.slug,
+          name: draft.name.trim(),
+          new_slug: draft.newSlug.trim(),
+          description: draft.description.trim(),
+          meta_title: draft.meta_title.trim(),
+          meta_description: draft.meta_description.trim(),
+        })
         flash("Category updated — live on the storefront")
       } else {
         await post("category-add", {
@@ -137,6 +159,9 @@ export function MarketplaceCategoriesTab() {
           slug: draft.newSlug.trim(),
           level: draft.level,
           parent_slug: draft.parent_slug,
+          description: draft.description.trim(),
+          meta_title: draft.meta_title.trim(),
+          meta_description: draft.meta_description.trim(),
         })
         flash("Category added — live on the storefront")
       }
@@ -211,7 +236,18 @@ export function MarketplaceCategoriesTab() {
               <RefreshCw className="h-4 w-4" /> Refresh
             </button>
             <button
-              onClick={() => setDraft({ slug: null, name: "", newSlug: "", level: "dept", parent_slug: "" })}
+              onClick={() =>
+                setDraft({
+                  slug: null,
+                  name: "",
+                  newSlug: "",
+                  level: "dept",
+                  parent_slug: "",
+                  description: "",
+                  meta_title: "",
+                  meta_description: "",
+                })
+              }
               className={marketBtnPrimaryCls}
             >
               <Plus className="h-4 w-4" /> Add department
@@ -256,7 +292,18 @@ export function MarketplaceCategoriesTab() {
           desc="Add your first department — it becomes a top-level menu on the storefront immediately."
           action={
             <button
-              onClick={() => setDraft({ slug: null, name: "", newSlug: "", level: "dept", parent_slug: "" })}
+              onClick={() =>
+                setDraft({
+                  slug: null,
+                  name: "",
+                  newSlug: "",
+                  level: "dept",
+                  parent_slug: "",
+                  description: "",
+                  meta_title: "",
+                  meta_description: "",
+                })
+              }
               className={marketBtnPrimaryCls}
             >
               <Plus className="h-4 w-4" /> Add department
@@ -297,13 +344,13 @@ export function MarketplaceCategoriesTab() {
                   </button>
                   {deptRow && (
                     <div className="flex shrink-0 items-center gap-0.5">
-                      <button title="Rename" aria-label={`Rename ${d.name}`} onClick={() => setDraft({ slug: deptRow.slug, name: deptRow.name, newSlug: deptRow.slug, level: "dept", parent_slug: "" })} className="rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-600">
+                      <button title="Rename" aria-label={`Rename ${d.name}`} onClick={() => setDraft({ slug: deptRow.slug, name: deptRow.name, newSlug: deptRow.slug, level: "dept", parent_slug: "", description: deptRow.description ?? "", meta_title: deptRow.meta_title ?? "", meta_description: deptRow.meta_description ?? "" })} className="rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-600">
                         <Pencil className="h-4 w-4" />
                       </button>
                       <button title={deptRow.is_active ? "Hide from store" : "Publish to store"} aria-label={`Toggle ${d.name}`} onClick={() => toggleActive(deptRow)} className="rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-600">
                         {deptRow.is_active ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
                       </button>
-                      <button title="Add subcategory" aria-label={`Add subcategory to ${d.name}`} onClick={() => setDraft({ slug: null, name: "", newSlug: "", level: "sub", parent_slug: d.slug })} className="rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-600">
+                      <button title="Add subcategory" aria-label={`Add subcategory to ${d.name}`} onClick={() => setDraft({ slug: null, name: "", newSlug: "", level: "sub", parent_slug: d.slug, description: "", meta_title: "", meta_description: "" })} className="rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-600">
                         <Plus className="h-4 w-4" />
                       </button>
                       <button title="Delete" aria-label={`Delete ${d.name}`} onClick={() => remove(deptRow)} className="rounded-lg p-2 text-slate-400 hover:bg-red-50 hover:text-red-500">
@@ -328,13 +375,13 @@ export function MarketplaceCategoriesTab() {
                             </div>
                             {subRow && (
                               <div className="flex shrink-0 items-center gap-0.5">
-                                <button title="Rename" aria-label={`Rename ${s.name}`} onClick={() => setDraft({ slug: subRow.slug, name: subRow.name, newSlug: subRow.slug, level: "sub", parent_slug: d.slug })} className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600">
+                                <button title="Rename" aria-label={`Rename ${s.name}`} onClick={() => setDraft({ slug: subRow.slug, name: subRow.name, newSlug: subRow.slug, level: "sub", parent_slug: d.slug, description: subRow.description ?? "", meta_title: subRow.meta_title ?? "", meta_description: subRow.meta_description ?? "" })} className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600">
                                   <Pencil className="h-3.5 w-3.5" />
                                 </button>
                                 <button title={subRow.is_active ? "Hide" : "Publish"} aria-label={`Toggle ${s.name}`} onClick={() => toggleActive(subRow)} className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600">
                                   {subRow.is_active ? <Eye className="h-3.5 w-3.5" /> : <EyeOff className="h-3.5 w-3.5" />}
                                 </button>
-                                <button title="Add leaf" aria-label={`Add leaf to ${s.name}`} onClick={() => setDraft({ slug: null, name: "", newSlug: "", level: "leaf", parent_slug: s.slug })} className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600">
+                                <button title="Add leaf" aria-label={`Add leaf to ${s.name}`} onClick={() => setDraft({ slug: null, name: "", newSlug: "", level: "leaf", parent_slug: s.slug, description: "", meta_title: "", meta_description: "" })} className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600">
                                   <Plus className="h-3.5 w-3.5" />
                                 </button>
                                 <button title="Delete" aria-label={`Delete ${s.name}`} onClick={() => remove(subRow)} className="rounded-lg p-1.5 text-slate-400 hover:bg-red-50 hover:text-red-500">
@@ -439,6 +486,32 @@ export function MarketplaceCategoriesTab() {
                 />
               </MarketField>
             )}
+            <MarketField label="Description" hint="Shown on the storefront category page.">
+              <textarea
+                value={draft.description}
+                onChange={(e) => setDraft({ ...draft, description: e.target.value })}
+                className={marketInputCls + " font-mono"}
+                rows={2}
+                placeholder="Short category description for shoppers…"
+              />
+            </MarketField>
+            <MarketField label="SEO Title" hint="Browser tab + search result title.">
+              <input
+                value={draft.meta_title}
+                onChange={(e) => setDraft({ ...draft, meta_title: e.target.value })}
+                className={marketInputCls + " font-mono"}
+                placeholder="Camera Gear — TechPivo Market"
+              />
+            </MarketField>
+            <MarketField label="SEO Description" hint="Search result snippet (150-160 chars).">
+              <textarea
+                value={draft.meta_description}
+                onChange={(e) => setDraft({ ...draft, meta_description: e.target.value })}
+                className={marketInputCls + " font-mono"}
+                rows={2}
+                placeholder="Shop cameras, lenses and accessories…"
+              />
+            </MarketField>
           </div>
         )}
       </MarketModal>

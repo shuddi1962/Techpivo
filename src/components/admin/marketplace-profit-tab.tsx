@@ -21,6 +21,7 @@ import {
   MarketTableShell,
 } from "@/components/admin/marketplace-ui"
 import { cn } from "@/lib/utils"
+import { createClient } from "@/lib/supabase/client"
 
 interface CategoryProfit {
   slug: string
@@ -110,6 +111,20 @@ export function MarketplaceProfitTab() {
 
   useEffect(() => {
     load()
+  }, [load])
+
+  // Realtime: refresh pricing when products/categories change.
+  useEffect(() => {
+    const supabase = createClient()
+    const ch = supabase
+      .channel(`admin_market_profit_${Date.now()}_${Math.random().toString(36).slice(2)}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "affiliate_products" }, () => load())
+      .on("postgres_changes", { event: "*", schema: "public", table: "marketplace_categories" }, () => load())
+      .subscribe()
+    return () => {
+      supabase.removeChannel(ch)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [load])
 
   const cats = state?.categories ?? []

@@ -19,6 +19,7 @@ import {
   MarketTableShell,
 } from "@/components/admin/marketplace-ui"
 import { cn } from "@/lib/utils"
+import { createClient } from "@/lib/supabase/client"
 
 const MARKET_CURRENCIES = [
   "USD", "NGN", "EUR", "GBP", "GHS", "KES", "ZAR", "CAD", "AUD", "INR", "JPY", "AED",
@@ -93,6 +94,20 @@ export function MarketplaceCurrencyTab() {
 
   useEffect(() => {
     load()
+  }, [load])
+
+  // Realtime: refresh when exchange rates or currency settings change.
+  useEffect(() => {
+    const supabase = createClient()
+    const ch = supabase
+      .channel(`admin_market_currency_${Date.now()}_${Math.random().toString(36).slice(2)}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "marketplace_exchange_rates" }, () => load())
+      .on("postgres_changes", { event: "*", schema: "public", table: "site_settings" }, () => load())
+      .subscribe()
+    return () => {
+      supabase.removeChannel(ch)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [load])
 
   const rateByQuote = new Map(rates.map((r) => [r.quote_currency, r]))

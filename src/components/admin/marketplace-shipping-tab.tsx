@@ -19,6 +19,7 @@ import {
   MarketTableShell,
 } from "@/components/admin/marketplace-ui"
 import { cn } from "@/lib/utils"
+import { createClient } from "@/lib/supabase/client"
 
 interface ShippingZone {
   id: string
@@ -123,6 +124,21 @@ export function MarketplaceShippingTab() {
 
   useEffect(() => {
     load()
+  }, [load])
+
+  // Realtime: refresh shipping when zones/rates/settings change.
+  useEffect(() => {
+    const supabase = createClient()
+    const ch = supabase
+      .channel(`admin_market_shipping_${Date.now()}_${Math.random().toString(36).slice(2)}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "marketplace_shipping_zones" }, () => load())
+      .on("postgres_changes", { event: "*", schema: "public", table: "marketplace_shipping_rates" }, () => load())
+      .on("postgres_changes", { event: "*", schema: "public", table: "site_settings" }, () => load())
+      .subscribe()
+    return () => {
+      supabase.removeChannel(ch)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [load])
 
   const zonesById = new Map(zones.map((z) => [z.id, z]))

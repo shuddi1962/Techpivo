@@ -26,6 +26,12 @@ export interface MarketCategoryRow {
   cj_category_id: string | null
   is_active: boolean
   sort: number
+  /** Optional category description rendered on the storefront category page. */
+  description: string | null
+  /** Optional SEO title for the category page. */
+  meta_title: string | null
+  /** Optional SEO meta description for the category page. */
+  meta_description: string | null
 }
 
 export const levelOfDepth = (depth: number): MarketCategoryLevel =>
@@ -47,7 +53,9 @@ export async function fetchMarketplaceCategoryRows(includeInactive = false): Pro
     const supabase = createClient()
     let q = supabase
       .from("marketplace_categories")
-      .select("slug,name,parent_slug,depth,icon,image_url,cj_category_id,is_active,sort")
+      .select(
+        "slug,name,parent_slug,depth,icon,image_url,cj_category_id,is_active,sort,description,meta_title,meta_description"
+      )
       .order("sort", { ascending: true })
       .limit(2000)
     if (!includeInactive) q = q.eq("is_active", true)
@@ -97,11 +105,23 @@ export function buildMarketplaceTree(rows: MarketCategoryRow[]): MarketDepartmen
     slug: d.slug,
     icon: d.icon || "",
     image: d.image_url || "",
+    description: d.description ?? null,
+    meta_title: d.meta_title ?? null,
+    meta_description: d.meta_description ?? null,
     subs: subsOf(d.slug).map((s) => ({
       name: s.name,
       slug: s.slug,
       image: s.image_url || bundledSubImage.get(s.slug) || "",
-      items: leavesOf(s.slug).map((l) => ({ name: l.name, slug: l.slug })),
+      description: s.description ?? null,
+      meta_title: s.meta_title ?? null,
+      meta_description: s.meta_description ?? null,
+      items: leavesOf(s.slug).map((l) => ({
+        name: l.name,
+        slug: l.slug,
+        description: l.description ?? null,
+        meta_title: l.meta_title ?? null,
+        meta_description: l.meta_description ?? null,
+      })),
     })),
   }))
 }
@@ -124,7 +144,7 @@ export async function fetchMarketplaceTree(): Promise<MarketDepartment[]> {
 export function codeTreeRows(): Array<Omit<MarketCategoryRow, "cj_category_id">> {
   const rows: Array<Omit<MarketCategoryRow, "cj_category_id">> = []
   let sort = 0
-  for (const d of MARKET_DEPARTMENTS) {
+    for (const d of MARKET_DEPARTMENTS) {
     rows.push({
       slug: d.slug,
       name: d.name,
@@ -134,6 +154,9 @@ export function codeTreeRows(): Array<Omit<MarketCategoryRow, "cj_category_id">>
       image_url: d.image,
       is_active: true,
       sort: sort++,
+      description: d.description ?? null,
+      meta_title: d.meta_title ?? null,
+      meta_description: d.meta_description ?? null,
     })
     for (const s of d.subs || []) {
       rows.push({
@@ -145,6 +168,9 @@ export function codeTreeRows(): Array<Omit<MarketCategoryRow, "cj_category_id">>
         image_url: null,
         is_active: true,
         sort: sort++,
+        description: s.description ?? null,
+        meta_title: s.meta_title ?? null,
+        meta_description: s.meta_description ?? null,
       })
       for (const item of s.items) {
         rows.push({
@@ -156,6 +182,9 @@ export function codeTreeRows(): Array<Omit<MarketCategoryRow, "cj_category_id">>
           image_url: null,
           is_active: true,
           sort: sort++,
+          description: item.description ?? null,
+          meta_title: item.meta_title ?? null,
+          meta_description: item.meta_description ?? null,
         })
       }
     }

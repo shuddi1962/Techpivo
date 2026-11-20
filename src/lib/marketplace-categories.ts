@@ -5,6 +5,12 @@
 export interface MarketLeaf {
   name: string
   slug: string
+  /** Optional category description rendered on the storefront leaf page. */
+  description?: string | null
+  /** Optional SEO title for the leaf page. */
+  meta_title?: string | null
+  /** Optional SEO meta description for the leaf page. */
+  meta_description?: string | null
 }
 
 export interface MarketSub {
@@ -12,6 +18,12 @@ export interface MarketSub {
   slug: string
   image?: string
   items: MarketLeaf[]
+  /** Optional subcategory description. */
+  description?: string | null
+  /** Optional SEO title for the subcategory page. */
+  meta_title?: string | null
+  /** Optional SEO meta description for the subcategory page. */
+  meta_description?: string | null
 }
 
 export interface MarketDepartment {
@@ -23,6 +35,12 @@ export interface MarketDepartment {
   banner_image?: string
   banner_headline?: string
   banner_description?: string
+  /** Optional department description. */
+  description?: string | null
+  /** Optional SEO title for the department page. */
+  meta_title?: string | null
+  /** Optional SEO meta description for the department page. */
+  meta_description?: string | null
 }
 
 export const slugify = (s: string) =>

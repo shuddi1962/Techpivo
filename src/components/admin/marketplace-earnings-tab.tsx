@@ -19,6 +19,7 @@ import {
   MarketTableShell,
 } from "@/components/admin/marketplace-ui"
 import { cn } from "@/lib/utils"
+import { createClient } from "@/lib/supabase/client"
 
 interface EarningRow {
   date: string
@@ -80,6 +81,19 @@ export function MarketplaceEarningsTab() {
 
   useEffect(() => {
     load()
+  }, [load])
+
+  // Realtime: refresh earnings when the daily table is written to.
+  useEffect(() => {
+    const supabase = createClient()
+    const ch = supabase
+      .channel(`admin_market_earnings_${Date.now()}_${Math.random().toString(36).slice(2)}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "marketplace_earnings_daily" }, () => load())
+      .subscribe()
+    return () => {
+      supabase.removeChannel(ch)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [load])
 
   // Aggregates across the visible window
