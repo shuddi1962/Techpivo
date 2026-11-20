@@ -1845,10 +1845,10 @@ export async function POST(request: NextRequest) {
       if (batchId && data) {
         const itemRows = rows.map((r, i) => ({
           batch_id: batchId,
-          cj_pid: freshItems[i]?.pid ?? r.cj_pid || "",
-          cj_sku: freshItems[i]?.sku ?? r.cj_sku || null,
+          cj_pid: (freshItems[i]?.pid ?? r.cj_pid) || "",
+          cj_sku: (freshItems[i]?.sku ?? r.cj_sku) || null,
           product_name: freshItems[i]?.productNameEn ?? r.product_name,
-          product_image_url: freshItems[i]?.productImage ?? r.product_image_url || null,
+          product_image_url: (freshItems[i]?.productImage ?? r.product_image_url) || null,
           sell_price_usd: freshItems[i]?.sellPrice ?? null,
           category_slug: r.category_slug || null,
           subcategory_slug: r.subcategory_slug || null,
@@ -2135,10 +2135,10 @@ export async function POST(request: NextRequest) {
           .insert(
             rows.map((r, i) => ({
               batch_id: newBatch.id,
-              cj_pid: freshItems[i]?.pid ?? r.cj_pid || "",
-              cj_sku: freshItems[i]?.sku ?? r.cj_sku || null,
+              cj_pid: (freshItems[i]?.pid ?? r.cj_pid) || "",
+              cj_sku: (freshItems[i]?.sku ?? r.cj_sku) || null,
               product_name: freshItems[i]?.productNameEn ?? r.product_name,
-              product_image_url: freshItems[i]?.productImage ?? r.product_image_url || null,
+              product_image_url: (freshItems[i]?.productImage ?? r.product_image_url) || null,
               sell_price_usd: freshItems[i]?.sellPrice ?? null,
               category_slug: r.category_slug || null,
               subcategory_slug: r.subcategory_slug || null,
