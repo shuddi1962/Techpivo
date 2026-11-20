@@ -1780,17 +1780,19 @@ export async function POST(request: NextRequest) {
         message: `Populated ${results.filter((r) => r.imported > 0).length} category/categories with ${totalImported} products (min ${minProducts} each).`,
       })
     }
-    // ── CJ auto-import: import as many CJ products as exist for EVERY
-    //    department, subcategory and leaf category — automatically. This is
-    //    the "import everything CJ has" button. It walks the live admin
-    //    category tree and, for each node, searches CJ by that category name
-    //    and inserts every fresh product (deduped by CJ pid + SKU).
+    // ── CJ auto-import (batched): import as many CJ products as exist for
+    //    EVERY department, subcategory and leaf category. Because Vercel
+    //    serverless functions have a 60s ceiling, categories are processed in
+    //    chunks (batch/batchSize). Call repeatedly until hasMore is false.
     if (body.action === "cj-auto-import") {
       const { fetchMarketplaceTree } = await import("@/lib/marketplace-category-db")
       const { clearMarketplaceTreeCache } = await import("@/lib/marketplace-category-db")
-      const { cjSearchProducts, cjGetProductDetail, cjAddToMyProduct, mapCjToAffiliate } = await import("@/lib/cj")
+      const { cjSearchProducts, cjGetProductDetail, mapCjToAffiliate } = await import("@/lib/cj")
 
       const limitPerCat = Math.min(Math.max(Number(body.limit) || 100, 1), 200)
+      const batchSize = Math.min(Math.max(Number(body.batchSize) || 5, 1), 20)
+      const startBatch = Math.max(Number(body.batch) || 0, 0)
+
       const departments = await fetchMarketplaceTree()
       const allCategories: Array<{ slug: string; name: string; depth: number; parent: string | null }> = []
       const walk = (deps: MarketDepartment[], parent: string | null) => {
@@ -1806,11 +1808,14 @@ export async function POST(request: NextRequest) {
       }
       walk(departments, null)
 
+      const totalCategories = allCategories.length
+      const endBatch = Math.min(startBatch + batchSize, totalCategories)
+      const chunk = allCategories.slice(startBatch, endBatch)
+
       const results: Array<{ slug: string; name: string; depth: number; existing: number; imported: number; skipped: number }> = []
       let totalImported = 0
-      let totalBatches = 0
 
-      for (const cat of allCategories) {
+      for (const cat of chunk) {
         // Count existing products for this category
         const [{ count: existingCount }] = await Promise.all([
           supabase
@@ -1924,58 +1929,23 @@ export async function POST(request: NextRequest) {
         const imported = data?.length ?? 0
         totalImported += imported
 
-        // Record an import-history batch for this category
-        let batchId: string | null = null
-        try {
-          const batchRes = await supabase
-            .from("marketplace_cj_import_batches")
-            .insert({
-              imported_by: auth.user.id,
-              category_slug: categorySlug,
-              subcategory_slug: subcategorySlug,
-              requested: fresh.length,
-              imported,
-              skipped: fresh.length - imported,
-              variants_filled: withVid.size,
-              pushed_to_cj: 0,
-              deferred: fresh.length - Math.min(fresh.length, 12),
-              status: imported ? "completed" : "failed",
-              error_message: null,
-            })
-            .select("id")
-            .single()
-          batchId = batchRes.data?.id ?? null
-        } catch {
-          // history is best-effort
-        }
-        if (batchId && data) {
-          const itemRows = rows.map((r, i) => ({
-            batch_id: batchId,
-            cj_pid: (fresh[i]?.pid ?? r.cj_pid) || "",
-            cj_sku: (fresh[i]?.sku ?? r.cj_sku) || null,
-            product_name: fresh[i]?.productNameEn ?? r.product_name,
-            product_image_url: (fresh[i]?.productImage ?? r.product_image_url) || null,
-            sell_price_usd: fresh[i]?.sellPrice ?? null,
-            category_slug: r.category_slug || null,
-            subcategory_slug: r.subcategory_slug || null,
-            cj_vid: r.cj_vid || null,
-            status: "imported",
-          }))
-          await supabase.from("marketplace_cj_import_items").insert(itemRows)
-        }
-        totalBatches += 1
-
         results.push({ slug: cat.slug, name: cat.name, depth: cat.depth, existing: 0, imported, skipped: fresh.length - imported })
       }
 
-      clearMarketplaceTreeCache()
+      const hasMore = endBatch < totalCategories
+      if (hasMore) clearMarketplaceTreeCache()
       revalidateStore()
       return NextResponse.json({
         success: true,
         totalImported,
-        totalBatches,
+        processedCategories: chunk.length,
+        totalCategories,
+        hasMore,
+        nextBatch: hasMore ? endBatch : null,
         categories: results,
-        message: `Auto-imported ${totalImported} product(s) across ${results.filter((r) => r.imported > 0).length} of ${allCategories.length} category/categories.`,
+        message: hasMore
+          ? `Auto-import batch: ${totalImported} product(s) added across ${chunk.length} categories (${startBatch + 1}–${endBatch} of ${totalCategories}). Run again to continue.`
+          : `Auto-import complete: ${totalImported} product(s) across ${totalCategories} category/categories.`,
       })
     }
     if (body.action === "cj-import") {

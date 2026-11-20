@@ -153,11 +153,11 @@ export function MarketplaceCjTab({ onImported }: { onImported?: () => void }) {
   }, [])
 
   // ── Import history ─────────────────────────────────────────────────────
-  const loadHistory = async () => {
+  const loadHistory = useCallback(async () => {
     setHistoryLoading(true)
     try {
       const res = await fetch("/admin/marketplace/api?section=cj-import-history&limit=50", { cache: "no-store" })
-      const r = await res.json()
+      const r = await res.json().catch(() => null)
       if (!res.ok || r?.error) {
         setNoticeTone("warn")
         setNotice(r?.error || "Could not load import history.")
@@ -170,7 +170,7 @@ export function MarketplaceCjTab({ onImported }: { onImported?: () => void }) {
     } finally {
       setHistoryLoading(false)
     }
-  }
+  }, [])
 
   useEffect(() => {
     loadStatus()
@@ -368,21 +368,34 @@ export function MarketplaceCjTab({ onImported }: { onImported?: () => void }) {
     setBusy("autoimport")
     setNotice("")
     try {
-      const r = await fetch("/admin/marketplace/api", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "cj-auto-import", limit: 100 }),
-      }).then((x) => x.json())
-      if (r?.error) {
-        setNoticeTone("warn")
-        setNotice(r.error)
-      } else {
-        setNoticeTone("success")
-        setNotice(
-          `Auto-import: ${r?.totalImported ?? 0} product(s) added across ${r?.totalBatches ?? 0} category/categories.` +
-            (r?.categories?.length ? ` — ${r.categories.filter((c: any) => c.imported > 0).map((c: any) => `${c.name}: ${c.imported}`).join("; ")}` : "")
-        )
+      let batch = 0
+      let hasMore = true
+      let grandTotal = 0
+      let grandCategories = 0
+      while (hasMore) {
+        const r = await fetch("/admin/marketplace/api", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ action: "cj-auto-import", batch, batchSize: 5, limit: 100 }),
+        }).then((x) => x.json())
+        if (r?.error) {
+          setNoticeTone("warn")
+          setNotice(r.error)
+          break
+        }
+        grandTotal += Number(r?.totalImported || 0)
+        grandCategories += Number(r?.processedCategories || 0)
+        hasMore = !!r?.hasMore
+        batch = Number(r?.nextBatch ?? batch + 1)
+        if (hasMore) {
+          // small delay between batches to respect CJ rate limits
+          await new Promise((r) => setTimeout(r, 800))
+        }
       }
+      setNoticeTone("success")
+      setNotice(
+        `Auto-import complete: ${grandTotal} product(s) added across ${grandCategories} categories (every department, subcategory and leaf processed).`
+      )
       onImported?.()
       void loadTop(categorySlug, subcategorySlug)
       void loadHistory()
