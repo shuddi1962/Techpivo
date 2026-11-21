@@ -10,7 +10,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/admin"
 import { isCronAuthorized } from "@/lib/cron-auth"
-import { fillMissingVariants, syncCatalogueToCj, syncOrderStatuses } from "@/lib/marketplace-cj-sync"
+import { fillMissingVariants, syncCatalogueToCj, syncOrderStatuses, verifyActiveProducts } from "@/lib/marketplace-cj-sync"
 
 export const dynamic = "force-dynamic"
 // CJ allows ~1 request/second, so a run is a series of small batches.
@@ -31,7 +31,12 @@ async function run() {
   const variants = await fillMissingVariants(supabase, { limit: 12, deadline })
   report.variants = variants
 
-  // 3. Push the catalogue into CJ "My Products".
+  // 3. Products that were importable once but the supplier may have delisted
+  //    since — re-verify so we never sell something we cannot fulfill.
+  const verified = await verifyActiveProducts(supabase, { limit: 6, deadline })
+  report.verified = verified
+
+  // 4. Push the catalogue into CJ "My Products".
   const catalogue = await syncCatalogueToCj(supabase, { limit: 12, deadline })
   report.catalogue = catalogue
 

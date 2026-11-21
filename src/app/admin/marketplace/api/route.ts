@@ -2052,34 +2052,53 @@ export async function POST(request: NextRequest) {
       const hydrate = freshItems.slice(0, CJ_BUDGET)
       const withVid = new Map<string, string>()
       const skuByPid = new Map<string, string>()
+      const unavailablePids = new Set<string>()
       const pushed: string[] = []
       const pushFailed: string[] = []
       for (const cj of hydrate) {
+        let product: Awaited<ReturnType<typeof cjGetProductDetail>> | null = null
         try {
-          const product = await cjGetProductDetail(cj.pid)
+          product = await cjGetProductDetail(cj.pid)
+        } catch (err) {
+          const msg = err instanceof Error ? err.message : String(err)
+          // CJ reports "removed from shelves" (code 1602002) — the supplier
+          // delisted the product. Never import something we can never fulfill.
+          if (/removed from shelves|1602002/i.test(msg)) {
+            unavailablePids.add(cj.pid)
+          }
+        }
+        if (product) {
           const priced = (product.variants || [])
             .map((v) => ({ vid: String(v.vid || ""), price: Number(v.variantSellPrice) || 0 }))
             .filter((v) => v.vid)
             .sort((a, b) => a.price - b.price)
-          if (priced.length > 0) withVid.set(cj.pid, priced[0].vid)
-          if (product.sku) skuByPid.set(cj.pid, product.sku)
-        } catch {
-          // variant lookup is best effort — the product still imports
+          if (priced.length > 0) {
+            withVid.set(cj.pid, priced[0].vid)
+            if (product.sku) skuByPid.set(cj.pid, product.sku)
+          } else {
+            // Listed on CJ but no fulfillable variant — treat as unavailable.
+            unavailablePids.add(cj.pid)
+          }
         }
-        // Push into CJ "My Products" (idempotent). 100002 means CJ does not
-        // know that pid any more — the product still imports locally.
-        try {
-          const r = await cjAddToMyProduct(cj.pid)
-          if (r.ok) pushed.push(cj.pid)
-          else pushFailed.push(cj.pid)
-        } catch {
-          pushFailed.push(cj.pid)
+        // Only push products CJ still knows about — no point adding a
+        // delisted pid to "My Products".
+        if (!unavailablePids.has(cj.pid)) {
+          try {
+            const r = await cjAddToMyProduct(cj.pid)
+            if (r.ok) pushed.push(cj.pid)
+            else pushFailed.push(cj.pid)
+          } catch {
+            pushFailed.push(cj.pid)
+          }
         }
         // CJ rate-limits; give the supplier API a moment between products.
         if (hydrate.length > 1) await new Promise((r) => setTimeout(r, 200))
       }
 
-      const rows = freshItems.map((cj) =>
+      // Never import products CJ has delisted or that carry no variants.
+      const importableItems = freshItems.filter((cj) => !unavailablePids.has(cj.pid))
+      const unavailableCount = hydrate.filter((cj) => unavailablePids.has(cj.pid)).length
+      const rows = importableItems.map((cj) =>
         mapCjToAffiliate(cj, {
           categorySlug: body.categorySlug || null,
           subcategorySlug: body.subcategorySlug || null,
@@ -2091,6 +2110,7 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({
           imported: 0,
           skipped: clean.length,
+          unavailable: unavailableCount,
           duplicates,
           variants: 0,
           pushed: 0,
@@ -2127,18 +2147,21 @@ export async function POST(request: NextRequest) {
         // history is best-effort — the import already succeeded
       }
       if (batchId && data) {
-        const itemRows = rows.map((r, i) => ({
-          batch_id: batchId,
-          cj_pid: (freshItems[i]?.pid ?? r.cj_pid) || "",
-          cj_sku: (freshItems[i]?.sku ?? r.cj_sku) || null,
-          product_name: freshItems[i]?.productNameEn ?? r.product_name,
-          product_image_url: (freshItems[i]?.productImage ?? r.product_image_url) || null,
-          sell_price_usd: freshItems[i]?.sellPrice ?? null,
-          category_slug: r.category_slug || null,
-          subcategory_slug: r.subcategory_slug || null,
-          cj_vid: r.cj_vid || null,
-          status: "imported",
-        }))
+        const itemRows = rows.map((r, i) => {
+          const src = importableItems[i]
+          return {
+            batch_id: batchId,
+            cj_pid: (src?.pid ?? r.cj_pid) || "",
+            cj_sku: (src?.sku ?? r.cj_sku) || null,
+            product_name: src?.productNameEn ?? r.product_name,
+            product_image_url: (src?.productImage ?? r.product_image_url) || null,
+            sell_price_usd: src?.sellPrice ?? null,
+            category_slug: r.category_slug || null,
+            subcategory_slug: r.subcategory_slug || null,
+            cj_vid: r.cj_vid || null,
+            status: "imported",
+          }
+        })
         await supabase.from("marketplace_cj_import_items").insert(itemRows)
       }
       // ── duplicates deferred rows (best-effort history) ─────────────────

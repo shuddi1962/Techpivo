@@ -157,6 +157,10 @@ export async function fillMissingVariants(
       const product = await cjGetProductDetail(p.cj_pid)
       const vid = pickDefaultVariant(product.variants)
       if (!vid) {
+        // CJ lists the product but with no fulfillable variant — it has been
+        // delisted. Remove it from the storefront so it can never enter an
+        // order we cannot fill, and stop retrying it on every sync.
+        await supabase.from("affiliate_products").update({ is_active: false }).eq("id", p.id)
         failed++
         continue
       }
@@ -197,6 +201,56 @@ export async function fillMissingVariants(
     await sleep(1100)
   }
   return { filled, failed, remaining: Math.max(0, list.length - limit) }
+}
+
+/**
+ * Re-verify a batch of already-imported active products against CJ so
+ * products the supplier delisted after import are removed from the
+ * storefront even though they already carry a variant. Bounded per call so a
+ * single cron run never burns too many CJ points; cycles oldest-imported
+ * first via created_at so the whole catalogue is eventually re-checked.
+ */
+export async function verifyActiveProducts(
+  supabase: SupabaseClient,
+  opts?: { limit?: number; deadline?: number }
+): Promise<{ checked: number; removed: number; remaining: number }> {
+  const limit = Math.min(opts?.limit ?? 6, 20)
+  const deadlineMs = opts?.deadline ?? Date.now() + 40_000
+
+  const { data } = await supabase
+    .from("affiliate_products")
+    .select("id,cj_pid")
+    .not("cj_pid", "is", null)
+    .eq("is_active", true)
+    .not("cj_vid", "is", null)
+    .order("created_at", { ascending: true })
+    .limit(limit)
+  const list = (data || []) as Array<{ id: string; cj_pid: string }>
+  let checked = 0
+  let removed = 0
+  for (const p of list) {
+    if (Date.now() > deadlineMs) break
+    try {
+      const product = await cjGetProductDetail(p.cj_pid)
+      const vid = pickDefaultVariant(product.variants)
+      if (!vid) {
+        // Delisted since import — no variants left on CJ.
+        await supabase.from("affiliate_products").update({ is_active: false }).eq("id", p.id)
+        removed++
+      }
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err)
+      if (/removed from shelves|1602002/i.test(msg)) {
+        await supabase.from("affiliate_products").update({ is_active: false }).eq("id", p.id)
+        removed++
+      }
+      // Any other error is transient — leave the product active and try again
+      // on the next run.
+    }
+    checked++
+    await sleep(800)
+  }
+  return { checked, removed, remaining: Math.max(0, list.length - checked) }
 }
 
 /**
