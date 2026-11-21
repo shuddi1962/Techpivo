@@ -112,7 +112,7 @@ export function PopupAd() {
   }
 
   return (
-    <div key={campaign.id} className="fixed bottom-4 right-4 z-[60] w-[300px] max-w-[calc(100vw-2rem)] overflow-hidden rounded-xl border border-border bg-card shadow-2xl animate-[fadeIn_0.3s_ease-in]">
+    <div key={campaign.id} className="fixed bottom-4 right-4 z-[60] w-[300px] max-w-[calc(100%-1rem)] overflow-hidden rounded-xl border border-border bg-card shadow-2xl animate-[fadeIn_0.3s_ease-in]">
       <button
         onClick={dismiss}
         aria-label="Dismiss advertisement"

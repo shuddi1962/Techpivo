@@ -689,14 +689,14 @@ const [showBackToTop, setShowBackToTop] = useState(false)
               </button>
         {deptOpen && (
           <div
-            className="absolute top-full left-0 border-t-2 rounded-b-2xl shadow-2xl z-50 flex animate-slide-down"
+            className="absolute top-full left-0 right-0 border-t-2 rounded-b-2xl shadow-2xl z-50 flex animate-slide-down mx-auto max-w-[1120px]"
             onMouseEnter={() => {
               setDeptOpen(true)
               if (!openDept && firstDeptSlug) setOpenDept(firstDeptSlug)
             }}
-            style={{ width: "1120px", borderTopColor: menuBg }}
+            style={{ borderTopColor: menuBg }}
           >
-            <div className="w-full max-w-[calc(100vw-2rem)]">
+            <div className="w-full px-4 sm:px-6 lg:px-8">
               <div className="border border-t-0 border-[#E2E8F0] bg-white p-6 lg:p-8 max-h-[86vh] overflow-y-auto">
                 <div className="flex flex-col lg:flex-row h-full gap-0">
                   {/* Left: departments */}
@@ -1186,7 +1186,7 @@ export function MarketplaceFooter() {
             <p className="text-sm leading-relaxed text-slate-300">Curated tech products, reviewed by the TechPivo editorial team. Every purchase supports independent tech journalism.</p>
             {store.contact_visible !== false && (
             <div className="space-y-2 text-sm text-slate-300">
-              <div className="flex items-start gap-2"><MapPin className="mt-0.5 h-4 w-4 shrink-0 text-[#1668DC]" /><span className="max-w-[calc(100vw-3rem)] truncate">{store.address}</span></div>
+              <div className="flex items-start gap-2"><MapPin className="mt-0.5 h-4 w-4 shrink-0 text-[#1668DC]" /><span className="max-w-full truncate text-white">{store.address}</span></div>
               <div className="flex items-center gap-2"><Phone className="h-4 w-4 shrink-0 text-[#1668DC]" /><span>{store.phone}</span></div>
               <div className="flex items-center gap-2"><Mail className="h-4 w-4 shrink-0 text-[#1668DC]" /><span>{store.email}</span></div>
             </div>
