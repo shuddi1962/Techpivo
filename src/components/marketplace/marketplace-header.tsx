@@ -689,7 +689,7 @@ const [showBackToTop, setShowBackToTop] = useState(false)
               </button>
         {deptOpen && (
           <div
-            className="absolute top-full left-0 right-0 border-t-2 rounded-b-2xl shadow-2xl z-50 flex animate-slide-down mx-auto max-w-[1120px]"
+            className="absolute top-full left-1/2 -translate-x-1/2 border-t-2 rounded-b-2xl shadow-2xl z-50 flex animate-slide-down max-w-[1120px] w-full"
             onMouseEnter={() => {
               setDeptOpen(true)
               if (!openDept && firstDeptSlug) setOpenDept(firstDeptSlug)
@@ -1155,20 +1155,20 @@ export function MarketplaceFooter() {
     }
   }
   return (
-    <footer className="mt-12 w-full overflow-x-hidden">
+    <footer className="mt-12 w-full overflow-x-hidden bg-[#0F172A]">
       {/* perks strip — full width */}
-      <div className="w-full border-y border-[#E2E8F0] bg-white">
-        <div className="mx-auto grid w-full max-w-[1440px] grid-cols-1 gap-5 px-3 py-6 sm:grid-cols-2 sm:px-6 lg:grid-cols-4 lg:px-10">
+      <div className="w-full border-y border-white/10 bg-[#0F172A]/40">
+        <div className="mx-auto grid w-full max-w-[1440px] grid-cols-1 gap-6 px-3 py-6 sm:gap-8 sm:px-6 md:grid-cols-2 lg:grid-cols-4 lg:px-10">
           {PERKS.map((p) => (
-              <div key={p.title} className="flex items-center gap-3">
-                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border border-[#EF4444] bg-white text-[#EF4444]">
-                  <p.icon className="h-6 w-6" />
-                </div>
-                <div>
-                  <h4 className="text-sm font-bold text-[#0F172A]">{p.title}</h4>
-                  <p className="text-[11px] text-[#0F172A]">{p.copy}</p>
-                </div>
+            <div key={p.title} className="flex items-center gap-3">
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border border-[#EF4444] bg-[#0F172A]/30 text-[#EF4444]">
+                <p.icon className="h-6 w-6" />
               </div>
+              <div>
+                <h4 className="text-sm font-bold text-white">{p.title}</h4>
+                <p className="text-[11px] text-white/70">{p.copy}</p>
+              </div>
+            </div>
           ))}
         </div>
       </div>
@@ -1183,38 +1183,38 @@ export function MarketplaceFooter() {
             <img src="/market-logo.svg" alt="TechPivo Market" className="h-9 w-auto" />
             </span>
           </div>
-            <p className="text-sm leading-relaxed text-slate-300">Curated tech products, reviewed by the TechPivo editorial team. Every purchase supports independent tech journalism.</p>
+            <p className="text-sm leading-relaxed text-white/90">Curated tech products, reviewed by the TechPivo editorial team. Every purchase supports independent tech journalism.</p>
             {store.contact_visible !== false && (
-            <div className="space-y-2 text-sm text-slate-300">
+            <div className="space-y-2 text-sm text-white/80">
               <div className="flex items-start gap-2"><MapPin className="mt-0.5 h-4 w-4 shrink-0 text-[#1668DC]" /><span className="max-w-full truncate text-white">{store.address}</span></div>
-              <div className="flex items-center gap-2"><Phone className="h-4 w-4 shrink-0 text-[#1668DC]" /><span>{store.phone}</span></div>
-              <div className="flex items-center gap-2"><Mail className="h-4 w-4 shrink-0 text-[#1668DC]" /><span>{store.email}</span></div>
+              <div className="flex items-center gap-2"><Phone className="h-4 w-4 shrink-0 text-[#1668DC]" /><span className="truncate text-white">{store.phone}</span></div>
+              <div className="flex items-center gap-2"><Mail className="h-4 w-4 shrink-0 text-[#1668DC]" /><span className="truncate text-white">{store.email}</span></div>
             </div>
             )}
           </div>
           {/* Column 2: Shop departments — always visible */}
           <div className="space-y-4 lg:col-span-1">
             <h5 className="mb-3 text-sm font-bold uppercase tracking-wider text-white">Shop</h5>
-            <ul className="grid grid-cols-1 gap-2 text-sm text-slate-300">
+            <ul className="grid grid-cols-1 gap-2 text-sm text-white/90">
               {departments.map((d) => (
-                <li key={d.slug}><Link className="transition-colors hover:text-[#1668DC]" href={"/marketplace/category/" + d.slug}>{d.name}</Link></li>
+                <li key={d.slug}><Link className="transition-colors hover:text-white" href={"/marketplace/category/" + d.slug}>{d.name}</Link></li>
               ))}
             </ul>
           </div>
           {/* Column 3: Customer service — always visible */}
           <div className="space-y-4 lg:col-span-1">
             <h5 className="mb-3 text-sm font-bold uppercase tracking-wider text-white">Customer Service</h5>
-            <ul className="grid grid-cols-1 gap-2 text-sm text-slate-300">
-              <li><Link className="transition-colors hover:text-[#1668DC]" href="/marketplace/help">Help Center</Link></li>
-              <li><Link className="transition-colors hover:text-[#1668DC]" href="/marketplace/faq">FAQ</Link></li>
-              <li><Link className="transition-colors hover:text-[#1668DC]" href="/marketplace/track">Order Tracking</Link></li>
-              <li><Link className="transition-colors hover:text-[#1668DC]" href="/marketplace/cart">Your Cart</Link></li>
-              <li><Link className="transition-colors hover:text-[#1668DC]" href="/marketplace/wishlist">Your Wishlist</Link></li>
-              <li><Link className="transition-colors hover:text-[#1668DC]" href="/marketplace/compare">Compare Products</Link></li>
-              <li><Link className="transition-colors hover:text-[#1668DC]" href="/marketplace/faq">Returns & Warranty</Link></li>
-              <li><Link className="transition-colors hover:text-[#1668DC]" href="/privacy-policy">Privacy Policy</Link></li>
-              <li><Link className="transition-colors hover:text-[#1668DC]" href="/terms-of-use">Terms of Use</Link></li>
-              <li><a className="transition-colors hover:text-[#1668DC]" href="https://techpivo.com/" target="_blank" rel="noopener">Blog</a></li>
+            <ul className="grid grid-cols-1 gap-2 text-sm text-white/90">
+              <li><Link className="transition-colors hover:text-white" href="/marketplace/help">Help Center</Link></li>
+              <li><Link className="transition-colors hover:text-white" href="/marketplace/faq">FAQ</Link></li>
+              <li><Link className="transition-colors hover:text-white" href="/marketplace/track">Order Tracking</Link></li>
+              <li><Link className="transition-colors hover:text-white" href="/marketplace/cart">Your Cart</Link></li>
+              <li><Link className="transition-colors hover:text-white" href="/marketplace/wishlist">Your Wishlist</Link></li>
+              <li><Link className="transition-colors hover:text-white" href="/marketplace/compare">Compare Products</Link></li>
+              <li><Link className="transition-colors hover:text-white" href="/marketplace/faq">Returns & Warranty</Link></li>
+              <li><Link className="transition-colors hover:text-white" href="/privacy-policy">Privacy Policy</Link></li>
+              <li><Link className="transition-colors hover:text-white" href="/terms-of-use">Terms of Use</Link></li>
+              <li><a className="transition-colors hover:text-white" href="https://techpivo.com/" target="_blank" rel="noopener">Blog</a></li>
             </ul>
           </div>
           {/* Column 4: Newsletter — premium */}
@@ -1223,12 +1223,12 @@ export function MarketplaceFooter() {
             <p className="mb-3 text-sm text-white/90">Weekly tech drops and member coupons.</p>
             <form className="space-y-2" onSubmit={subscribe}>
               <div className="relative">
-                <input value={email} onChange={(e) => setEmail(e.target.value)} className="w-full rounded-lg border border-white/15 bg-white/10 px-4 py-3 text-sm text-white placeholder:text-slate-400 focus:border-[#1668DC] focus:outline-none focus:ring-1 focus:ring-[#1668DC]" placeholder="Your email" type="email" aria-label="Email" />
+                <input value={email} onChange={(e) => setEmail(e.target.value)} className="w-full rounded-lg border border-white/20 bg-white/10 px-4 py-3 text-sm text-white placeholder:text-white/50 focus:border-[#1668DC] focus:outline-none focus:ring-1 focus:ring-[#1668DC]" placeholder="Your email" type="email" aria-label="Email" />
                 <button className="absolute right-1 top-1 rounded-lg bg-[#EF4444] px-4 py-2.5 text-sm font-bold text-white transition-colors hover:bg-[#DC2626] disabled:opacity-60" type="submit" disabled={subBusy}>
                   {subBusy ? "Subscribing..." : "Subscribe"}
                 </button>
               </div>
-              {subMsg && <p className="text-sm text-slate-300">{subMsg}</p>}
+              {subMsg && <p className="text-sm text-white/70">{subMsg}</p>}
             </form>
           </div>
         </div>
@@ -1236,8 +1236,8 @@ export function MarketplaceFooter() {
       {/* bottom bar — full width (desktop only; hidden on mobile to avoid extra space above search bar) */}
       <div className="hidden md:block w-full text-white" style={{ background: MARKETPLACE_BRAND.navyDeep }}>
         <div className="mx-auto flex w-full max-w-[1440px] flex-col items-center justify-between gap-3 px-3 py-5 text-sm sm:flex-row sm:px-6 sm:text-base lg:px-10">
-          <p className="text-sm text-slate-400">© {new Date().getFullYear()} TechPivo Market. All rights reserved.</p>
-          <p className="text-sm leading-relaxed text-slate-500 text-center sm:text-left">Quality-checked products · secure payment · tracked delivery on every order.</p>
+          <p className="text-sm text-white/70">© {new Date().getFullYear()} TechPivo Market. All rights reserved.</p>
+          <p className="text-sm leading-relaxed text-white/60 text-center sm:text-left">Quality-checked products · secure payment · tracked delivery on every order.</p>
         </div>
       </div>
     </footer>
