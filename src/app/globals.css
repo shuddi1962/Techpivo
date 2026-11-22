@@ -135,24 +135,20 @@ button, a, [role="button"], [role="link"], [role="tab"], .product-card,
 
 /* scroll-behavior removed to prevent unwanted nav scrolling */
 *, *::before, *::after { box-sizing: border-box; }
-html { overflow-x: hidden; overflow-y: auto; margin: 0; padding: 0; }
-body { overflow-x: hidden; overflow-y: auto; max-width: 100%; margin: 0; padding: 0; }
+html { overflow-x: clip; margin: 0; padding: 0; }
+body { overflow-x: clip; max-width: 100%; margin: 0; padding: 0; }
 body { position: relative; }
 
 /* Marketplace: prevent horizontal overflow on all screen sizes */
-.marketplace-body { overflow-x: hidden; }
+.marketplace-body { overflow-x: clip; }
 
-/* Remove the right-edge scrollbar / border line artifact while keeping
-   scrolling functional. overflow-x: clip implicitly forces overflow-y: auto
-   which reserves a scrollbar gutter strip at the right edge (showing body
-   background against footer bg). Use overflow-x: hidden + explicit
-   overflow-y: auto, hide scrollbars, and disable gutter reservation. */
-html::-webkit-scrollbar,
-body::-webkit-scrollbar,
-.marketplace-body::-webkit-scrollbar {
-  display: none !important;
-  width: 0 !important;
-  height: 0 !important;
+/* Prevent scrollbar gutter reservation so no reserved strip appears at the
+   right edge when content overflows vertically. The scrollbar itself still
+   appears when needed (that's expected browser behavior). */
+html,
+body,
+.marketplace-body {
+  scrollbar-gutter: none !important;
 }
 html,
 body,
@@ -283,8 +279,8 @@ body,
   /* Bottom mobile nav safe-area */
   nav.lg\:hidden.fixed.bottom-0 { padding-bottom: env(safe-area-inset-bottom); }
 
-  /* Store shell main — full width, no side overflow */
-  .marketplace-body, main.mx-auto { overflow-x: clip; }
+  /* Store shell main — full width, no overflow-x */
+  .marketplace-body { overflow-x: clip; }
 
   /* Breadcrumb wraps cleanly */
   nav[aria-label="Breadcrumb"] { gap: 0.5rem; font-size: 10px; }
