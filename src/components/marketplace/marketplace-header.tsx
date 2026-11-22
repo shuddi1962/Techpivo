@@ -1155,10 +1155,10 @@ export function MarketplaceFooter() {
     }
   }
   return (
-    <footer className="mt-12 w-full overflow-x-hidden bg-[#0F172A]">
+    <footer className="mt-12 w-full overflow-x-hidden overflow-x-clip bg-[#0F172A]">
       {/* perks strip — full width */}
       <div className="w-full border-y border-white/10 bg-[#0F172A]/40">
-        <div className="mx-auto grid w-full max-w-[1440px] grid-cols-1 gap-6 px-3 py-6 sm:gap-8 sm:px-6 md:grid-cols-2 lg:grid-cols-4 lg:px-10">
+        <div className="mx-auto grid w-full max-w-[1440px] grid-cols-1 gap-6 px-3 py-6 sm:gap-8 sm:px-6 md:grid-cols-2 lg:grid-cols-4 lg:px-10 overflow-x-clip">
           {PERKS.map((p) => (
             <div key={p.title} className="flex items-center gap-3">
               <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border border-[#EF4444] bg-[#0F172A]/30 text-[#EF4444]">
@@ -1174,7 +1174,7 @@ export function MarketplaceFooter() {
       </div>
       {/* main footer — formal charcoal */}
       <div className="w-full text-white" style={{ background: "linear-gradient(180deg, " + MARKETPLACE_BRAND.navy + " 0%, " + MARKETPLACE_BRAND.navyDeep + " 100%)" }}>
-        <div className="mx-auto w-full max-w-[1440px] grid grid-cols-1 gap-8 px-3 py-8 sm:px-6 md:grid-cols-2 lg:grid-cols-4 lg:px-10">
+        <div className="mx-auto w-full max-w-[1440px] grid grid-cols-1 gap-8 px-3 py-8 sm:px-6 md:grid-cols-2 lg:grid-cols-4 lg:px-10 overflow-x-clip">
           {/* Column 1: Logo + description + contact */}
           <div className="space-y-4 lg:col-span-1">
           <div className="flex items-center gap-2">

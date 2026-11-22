@@ -135,12 +135,12 @@ button, a, [role="button"], [role="link"], [role="tab"], .product-card,
 
 /* scroll-behavior removed to prevent unwanted nav scrolling */
 *, *::before, *::after { box-sizing: border-box; }
-html { overflow-x: hidden; margin: 0; padding: 0; }
-body { overflow-x: hidden; max-width: 100%; margin: 0; padding: 0; }
+html { overflow-x: clip; margin: 0; padding: 0; }
+body { overflow-x: clip; max-width: 100%; margin: 0; padding: 0; }
 body { position: relative; }
 
 /* Marketplace: prevent horizontal overflow on all screen sizes */
-.marketplace-body { overflow-x: hidden; }
+.marketplace-body { overflow-x: clip; }
 
 @layer components {
   .prose-custom {
@@ -264,7 +264,7 @@ body { position: relative; }
   nav.lg\:hidden.fixed.bottom-0 { padding-bottom: env(safe-area-inset-bottom); }
 
   /* Store shell main — full width, no side overflow */
-  .marketplace-body, main.mx-auto { overflow-x: hidden; }
+  .marketplace-body, main.mx-auto { overflow-x: clip; }
 
   /* Breadcrumb wraps cleanly */
   nav[aria-label="Breadcrumb"] { gap: 0.5rem; font-size: 10px; }
@@ -1751,7 +1751,6 @@ body { position: relative; }
     top: 0; left: 0; bottom: 0;
     width: min(320px, 85vw);
     background: var(--card);
-    border-right: 1px solid var(--border);
     overflow-y: auto;
     animation: slideInLeft .25s ease-out;
     display: flex;
@@ -2005,8 +2004,8 @@ body { position: relative; }
 
 /* ── Base mobile: prevent horizontal overflow ── */
 @media (max-width: 1023px) {
-  html { overflow-x: hidden; }
-  body { overflow-x: hidden; }
+  html { overflow-x: clip; }
+  body { overflow-x: clip; }
   * { word-wrap: break-word; overflow-wrap: break-word; }
   h1, h2, h3, h4, h5, h6 { overflow-wrap: break-word; }
   pre, code { overflow-wrap: break-word; word-break: break-all; }
@@ -2068,7 +2067,6 @@ body { position: relative; }
     width: min(300px, 88vw);
     max-width: 88vw;
     background: var(--card);
-    border-right: 1px solid var(--border);
     overflow-y: auto;
     animation: slideInLeft .25s ease-out;
     display: flex;
