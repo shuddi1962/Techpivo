@@ -465,7 +465,7 @@ export function SeasonalSalesSection() {
   }
 
   return (
-    <section aria-label="Seasonal Sales" className="w-full bg-white py-6 sm:py-8 lg:py-12 overflow-x-clip">
+    <section aria-label="Seasonal Sales" className="w-full bg-white py-6 sm:py-8 lg:py-12 overflow-x-hidden">
       <div className="mx-auto w-full max-w-[1440px] px-3 sm:px-6 lg:px-10">
         {/* Mobile: countdown + products stacked compactly (time not separate from products).
             Desktop: side-by-side layout unchanged. */}
