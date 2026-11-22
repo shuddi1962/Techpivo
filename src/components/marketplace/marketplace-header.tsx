@@ -689,7 +689,7 @@ const [showBackToTop, setShowBackToTop] = useState(false)
               </button>
         {deptOpen && (
           <div
-            className="marketplace-mega-dropdown absolute top-full left-1/2 -translate-x-1/2 border-t-2 rounded-b-2xl shadow-2xl z-50 flex animate-slide-down min-w-[600px] max-w-[1120px] w-full"
+            className="marketplace-mega-dropdown absolute top-full left-1/2 -translate-x-1/2 border-t-2 rounded-b-2xl shadow-2xl z-50 flex animate-slide-down min-w-[700px] max-w-[1280px] w-full"
             onMouseEnter={() => {
               setDeptOpen(true)
               if (!openDept && firstDeptSlug) setOpenDept(firstDeptSlug)
@@ -700,7 +700,7 @@ const [showBackToTop, setShowBackToTop] = useState(false)
               <div className="border border-t-0 border-[#E2E8F0] bg-white p-6 lg:p-8 max-h-[86vh] overflow-y-auto">
                 <div className="flex flex-col lg:flex-row h-full gap-0">
                   {/* Left: departments */}
-                  <div className="w-[240px] border-r border-[#E2E8F0] flex flex-col shrink-0">
+                  <div className="min-w-[200px] max-w-[280px] border-r border-[#E2E8F0] flex flex-col shrink-0">
                     <div className="flex items-center justify-between px-4 py-3 border-b border-[#E2E8F0]">
                       <div className="flex items-center gap-2">
                         <LayoutGrid
@@ -770,7 +770,7 @@ const [showBackToTop, setShowBackToTop] = useState(false)
                     </div>
                   </div>
                   {/* Right: all sub-categories + items of the hovered department — single level, no drill-down */}
-                  <div className="flex-1 flex flex-col min-w-0">
+                  <div className="flex-1 flex flex-col">
                     {openDept ? (
                       (() => {
                         const dNode = departments.find((d) => d.slug === openDept)
