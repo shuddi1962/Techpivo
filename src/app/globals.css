@@ -139,6 +139,9 @@ html { overflow-x: clip; margin: 0; padding: 0; }
 body { overflow-x: clip; max-width: 100%; margin: 0; padding: 0; }
 body { position: relative; }
 
+/* Marketplace: prevent horizontal overflow on all screen sizes */
+.marketplace-body { overflow-x: hidden; }
+
 @layer components {
   .prose-custom {
     @apply prose prose-lg max-w-none prose-headings:font-bold prose-a:text-brand-amber prose-a:no-underline hover:prose-a:underline prose-pre:bg-brand-navy prose-pre:text-white prose-code:text-brand-amber;
@@ -281,6 +284,16 @@ body { position: relative; }
     right: 1rem !important;
   }
   .grid.grid-cols-2.sm\:grid-cols-3 { grid-template-columns: repeat(3, 1fr) !important; }
+}
+
+/* Desktop — constrain mega dropdown to viewport width so it never clips */
+@media (min-width: 1024px) {
+  .marketplace-header .absolute.top-full.left-0 {
+    width: min(1120px, 100%) !important;
+    left: 50% !important;
+    transform: translatex(-50%) !important;
+    right: auto !important;
+  }
 }
 
 /* Product detail mobile — image buttons never overflow */

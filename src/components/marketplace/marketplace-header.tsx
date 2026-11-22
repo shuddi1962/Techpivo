@@ -540,7 +540,7 @@ const [showBackToTop, setShowBackToTop] = useState(false)
       </div>
 
       {/* sticky main header — logo/search/menu stay visible while scrolling */}
-      <header className="sticky top-0 z-50 w-full bg-white shadow-[0_2px_12px_rgba(0,0,0,0.08)]" style={{ marginBottom: 0 }}>
+      <header className="sticky top-0 z-50 w-full bg-white shadow-[0_2px_12px_rgba(0,0,0,0.08)] overflow-x-hidden" style={{ marginBottom: 0 }}>
       {/* main bar — full width */}
       <div className="w-full bg-white">
         <div className="mx-auto w-full max-w-[1440px] px-3 sm:px-6 lg:px-10 flex items-center justify-between gap-2 h-14 sm:h-16 md:h-20 relative">
@@ -671,10 +671,10 @@ const [showBackToTop, setShowBackToTop] = useState(false)
         <div className="mx-auto w-full max-w-[1440px] px-3 sm:px-6 lg:px-10 hidden md:flex items-center justify-between h-14 gap-3">
           <div className="flex items-center gap-3 min-w-0 flex-1">
             <div
-          ref={deptWrapRef}
-          onMouseEnter={() => setDeptOpen(true)}
-          onMouseLeave={() => setDeptOpen(false)}
-          className="relative shrink-0"
+              ref={deptWrapRef}
+              onMouseEnter={() => setDeptOpen(true)}
+              onMouseLeave={() => setDeptOpen(false)}
+              className="relative shrink-0"
             >
               <button
                 onClick={() => {
@@ -689,7 +689,7 @@ const [showBackToTop, setShowBackToTop] = useState(false)
               </button>
         {deptOpen && (
           <div
-            className="absolute top-full left-1/2 -translate-x-1/2 border-t-2 rounded-b-2xl shadow-2xl z-50 flex animate-slide-down max-w-[1120px] w-full"
+            className="absolute top-full left-1/2 -translate-x-1/2 border-t-2 rounded-b-2xl shadow-2xl z-50 flex animate-slide-down min-w-[600px] max-w-[1120px] w-full"
             onMouseEnter={() => {
               setDeptOpen(true)
               if (!openDept && firstDeptSlug) setOpenDept(firstDeptSlug)
@@ -700,7 +700,7 @@ const [showBackToTop, setShowBackToTop] = useState(false)
               <div className="border border-t-0 border-[#E2E8F0] bg-white p-6 lg:p-8 max-h-[86vh] overflow-y-auto">
                 <div className="flex flex-col lg:flex-row h-full gap-0">
                   {/* Left: departments */}
-                  <div className="w-[280px] border-r border-[#E2E8F0] flex flex-col shrink-0">
+                  <div className="w-[240px] border-r border-[#E2E8F0] flex flex-col shrink-0">
                     <div className="flex items-center justify-between px-4 py-3 border-b border-[#E2E8F0]">
                       <div className="flex items-center gap-2">
                         <LayoutGrid
