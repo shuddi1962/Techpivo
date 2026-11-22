@@ -135,30 +135,31 @@ button, a, [role="button"], [role="link"], [role="tab"], .product-card,
 
 /* scroll-behavior removed to prevent unwanted nav scrolling */
 *, *::before, *::after { box-sizing: border-box; }
-html { overflow-x: clip; margin: 0; padding: 0; }
-body { overflow-x: clip; max-width: 100%; margin: 0; padding: 0; }
+html { overflow-x: hidden; overflow-y: auto; margin: 0; padding: 0; }
+body { overflow-x: hidden; overflow-y: auto; max-width: 100%; margin: 0; padding: 0; }
 body { position: relative; }
 
 /* Marketplace: prevent horizontal overflow on all screen sizes */
-.marketplace-body { overflow-x: clip; }
+.marketplace-body { overflow-x: hidden; }
 
 /* Remove the right-edge scrollbar / border line artifact while keeping
-   scrolling functional (invisible scrollbar indicator). The viewport
-   scrollbar appears whenever document content exceeds the viewport
-   height, which shows as a vertical line on the right edge. */
+   scrolling functional. overflow-x: clip implicitly forces overflow-y: auto
+   which reserves a scrollbar gutter strip at the right edge (showing body
+   background against footer bg). Use overflow-x: hidden + explicit
+   overflow-y: auto, hide scrollbars, and disable gutter reservation. */
 html::-webkit-scrollbar,
 body::-webkit-scrollbar,
 .marketplace-body::-webkit-scrollbar {
-  display: none;
-  width: 0;
-  height: 0;
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
 }
 html,
 body,
 .marketplace-body {
-  scrollbar-width: none;      /* Firefox */
-  -ms-overflow-style: none;   /* IE/Edge */
-  scrollbar-gutter: none;     /* don't reserve scrollbar gutter space (thin right-edge line) */
+  scrollbar-width: none !important;      /* Firefox */
+  -ms-overflow-style: none !important;   /* IE/Edge */
+  scrollbar-gutter: none !important;     /* don't reserve scrollbar gutter space (thin right-edge line) */
 }
 
 @layer components {
