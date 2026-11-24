@@ -45,7 +45,7 @@ export function MobileHomeHeader({
 
   return (
     <div className={cn("w-full bg-white mt-0 mb-0 pt-0 pb-0", className)} style={{ marginTop: 0, marginBottom: 0, paddingTop: 0, paddingBottom: 0 }}>
-      <div className="relative w-full rounded-xl overflow-hidden border border-[#CBD5E1] bg-[#F8FAFC]">
+      <div className="relative w-full rounded-xl overflow-hidden overflow-x-hidden border border-[#CBD5E1] bg-[#F8FAFC]">
         <form className="relative flex w-full h-11 m-0" onSubmit={submit} role="search">
           <input
             value={query}

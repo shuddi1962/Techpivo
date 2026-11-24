@@ -731,7 +731,7 @@ const [showBackToTop, setShowBackToTop] = useState(false)
                               key={d.slug}
                               onMouseEnter={() => { setDeptOpen(true); setOpenDept(d.slug) }}
                             className={
-                              "flex items-center gap-3 px-4 py-2.5 cursor-pointer transition-all duration-150" +
+                              "flex items-center gap-3 px-4 py-2.5 min-w-0 cursor-pointer transition-all duration-150" +
                               (isActive
                                 ? " text-[" + menuText + "] bg-[" + menuBg + "] border border-[" + menuBg + "]/50 rounded-xl"
                                 : " text-slate-700 border border-transparent rounded-xl")
@@ -1155,10 +1155,10 @@ export function MarketplaceFooter() {
     }
   }
   return (
-    <footer className="mt-12 w-full overflow-x-hidden overflow-x-clip bg-[#0F172A]">
+    <footer className="mt-12 w-full overflow-x-hidden bg-[#0F172A]">
       {/* perks strip — full width */}
-      <div className="w-full border-y border-white/10 bg-[#0F172A]/40">
-        <div className="mx-auto grid w-full max-w-[1440px] grid-cols-1 gap-6 px-3 py-6 sm:gap-8 sm:px-6 md:grid-cols-2 lg:grid-cols-4 lg:px-10 overflow-x-clip">
+      <div className="w-full border-y border-white/10 bg-[#0F172A]/40 overflow-x-hidden">
+        <div className="mx-auto grid w-full max-w-[1440px] grid-cols-1 gap-6 px-3 py-6 sm:gap-8 sm:px-6 md:grid-cols-2 lg:grid-cols-4 lg:px-10 overflow-x-hidden">
           {PERKS.map((p) => (
             <div key={p.title} className="flex items-center gap-3">
               <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border border-[#EF4444] bg-[#0F172A]/30 text-[#EF4444]">
@@ -1174,7 +1174,7 @@ export function MarketplaceFooter() {
       </div>
       {/* main footer — formal charcoal */}
       <div className="w-full text-white" style={{ background: "linear-gradient(180deg, " + MARKETPLACE_BRAND.navy + " 0%, " + MARKETPLACE_BRAND.navyDeep + " 100%)" }}>
-        <div className="mx-auto w-full max-w-[1440px] grid grid-cols-1 gap-8 px-3 py-8 sm:px-6 md:grid-cols-2 lg:grid-cols-4 lg:px-10 overflow-x-clip">
+        <div className="mx-auto w-full max-w-[1440px] grid grid-cols-1 gap-8 px-3 py-8 sm:px-6 md:grid-cols-2 lg:grid-cols-4 lg:px-10 overflow-x-hidden">
           {/* Column 1: Logo + description + contact */}
           <div className="space-y-4 lg:col-span-1">
           <div className="flex items-center gap-2">
@@ -1234,8 +1234,8 @@ export function MarketplaceFooter() {
         </div>
       </div>
       {/* bottom bar — full width (desktop only; hidden on mobile to avoid extra space above search bar) */}
-      <div className="hidden md:block w-full text-white" style={{ background: MARKETPLACE_BRAND.navyDeep }}>
-        <div className="mx-auto flex w-full max-w-[1440px] flex-col items-center justify-between gap-3 px-3 py-5 text-sm sm:flex-row sm:px-6 sm:text-base lg:px-10">
+      <div className="hidden md:block w-full text-white overflow-x-hidden" style={{ background: MARKETPLACE_BRAND.navyDeep }}>
+        <div className="mx-auto flex w-full max-w-[1440px] flex-col items-center justify-between gap-3 px-3 py-5 text-sm sm:flex-row sm:px-6 sm:text-base lg:px-10 overflow-x-hidden">
           <p className="text-sm text-white/70">© {new Date().getFullYear()} TechPivo Market. All rights reserved.</p>
           <p className="text-sm leading-relaxed text-white/60 text-center sm:text-left">Quality-checked products · secure payment · tracked delivery on every order.</p>
         </div>

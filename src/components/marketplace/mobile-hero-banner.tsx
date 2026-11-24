@@ -142,7 +142,7 @@ export function MobileHeroBanner({ className }: { className?: string }) {
 
   return (
     <section
-      className={cn("w-full overflow-hidden overflow-x-clip md:hidden bg-[#F8FAFC] aspect-[2.4/1]", className)}
+      className={cn("w-full overflow-hidden overflow-x-hidden md:hidden bg-[#F8FAFC] aspect-[2.4/1]", className)}
       style={{ width: "100%" }}
     >
       <div

@@ -140,22 +140,16 @@ body { overflow-x: clip; max-width: 100%; margin: 0; padding: 0; }
 body { position: relative; }
 
 /* Marketplace: prevent horizontal overflow on all screen sizes */
-.marketplace-body { overflow-x: clip; }
+.marketplace-body { overflow-x: hidden; }
 
-/* Prevent scrollbar gutter reservation so no reserved strip appears at the
-   right edge when content overflows vertically. The scrollbar itself still
-   appears when needed (that's expected browser behavior). */
-html,
-body,
-.marketplace-body {
-  scrollbar-gutter: none !important;
-}
+/* Hide scrollbars in Firefox/IE so no reserved gutter strip appears at the
+   right edge. Chrome/overlay scrollbars do not reserve gutter space by
+   default, so full-width marketplace containers reach the viewport edge. */
 html,
 body,
 .marketplace-body {
   scrollbar-width: none !important;      /* Firefox */
   -ms-overflow-style: none !important;   /* IE/Edge */
-  scrollbar-gutter: none !important;     /* don't reserve scrollbar gutter space (thin right-edge line) */
 }
 
 @layer components {
@@ -280,7 +274,7 @@ body,
   nav.lg\:hidden.fixed.bottom-0 { padding-bottom: env(safe-area-inset-bottom); }
 
   /* Store shell main — full width, no overflow-x */
-  .marketplace-body { overflow-x: clip; }
+.marketplace-body { overflow-x: hidden; }
 
   /* Breadcrumb wraps cleanly */
   nav[aria-label="Breadcrumb"] { gap: 0.5rem; font-size: 10px; }

@@ -857,7 +857,7 @@ export function MarketplaceHome() {
   })
 
   return (
-    <div className="w-full bg-[#F8FAFC] min-h-screen overflow-x-clip marketplace-body">
+    <div className="w-full bg-[#F8FAFC] min-h-screen overflow-x-hidden marketplace-body">
 
       {/* Mobile hero banner — mobile only, full-bleed and flush against the
           header (no gap, no side inset). MobileHeroBanner renders a single
