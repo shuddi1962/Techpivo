@@ -6,7 +6,7 @@ import { fetchStoreProducts, fetchMarketBanners } from "@/lib/marketplace-produc
 import { pageBannerOf } from "@/lib/marketplace-banners"
 import { StorePageShell, CollectionHero } from "@/components/marketplace/store-shell"
 
-export const revalidate = 60
+export const dynamic = "force-dynamic"
 
 export const metadata: Metadata = {
   title: "Top Stores — TechPivo Market",

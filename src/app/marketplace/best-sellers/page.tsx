@@ -5,7 +5,7 @@ import { isBestsellerPick } from "@/lib/marketplace-merch"
 import { ProductListing } from "@/components/marketplace/product-listing"
 import { StorePageShell, CollectionHero } from "@/components/marketplace/store-shell"
 
-export const revalidate = 60
+export const dynamic = "force-dynamic"
 
 export const metadata: Metadata = {
   title: "Best Sellers — TechPivo Market",
