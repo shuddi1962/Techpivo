@@ -1,7 +1,6 @@
 import type { Metadata, Viewport } from "next"
 import Script from "next/script"
 import dynamic from "next/dynamic"
-import { DM_Sans, Syne } from "next/font/google"
 import { ThemeProvider } from "@/components/theme-provider"
 import { DeferredPostHog } from "@/components/deferred-posthog"
 import { LayoutWrapper } from "@/components/layout/layout-wrapper"
@@ -13,20 +12,7 @@ import "./globals.css"
 
 // Self-hosted fonts (no render-blocking Google Fonts @import / stylesheet).
 // display:swap keeps text visible during load (fixes "Render-blocking requests").
-const dmSans = DM_Sans({
-  subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
-  display: "swap",
-  variable: "--font-dm-sans",
-  preload: true,
-})
-const syne = Syne({
-  subsets: ["latin"],
-  weight: ["600", "700", "800"],
-  display: "swap",
-  variable: "--font-syne",
-  preload: false,
-})
+// Font variables are defined in globals.css :root (--font-dm-sans, --font-syne).
 
 // Deferred client-only widgets: excluded from the initial bundle so the
 // homepage LCP path ships less JS (fixes "Reduce unused JavaScript" / TBT).
@@ -104,7 +90,7 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" suppressHydrationWarning className={`${dmSans.variable} ${syne.variable}`}>
+    <html lang="en" suppressHydrationWarning>
       <head>
         <meta name="apple-mobile-web-app-title" content={SITE_NAME} />
         <meta name="apple-mobile-web-app-capable" content="yes" />

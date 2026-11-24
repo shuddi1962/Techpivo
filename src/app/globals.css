@@ -1,5 +1,6 @@
-/* Fonts are self-hosted via next/font in layout.tsx (DM Sans + Syne, display:swap).
-   flag-icons CSS is imported lazily in src/app/admin/country-data.tsx (admin-only). */
+/* Font variables (--font-dm-sans, --font-syne) defined in :root below;
+   next/font/google import removed from layout.tsx to avoid build-time
+   Google Fonts fetch that fails on restricted build networks. */
 
 @tailwind base;
 @tailwind components;
