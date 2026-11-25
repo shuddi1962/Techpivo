@@ -11,3 +11,5 @@ supabase/.temp
 .env*.local
 .vercel
 *.log
+.opennext
+.wrangler

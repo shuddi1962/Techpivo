@@ -13,14 +13,22 @@ compatibility_flags = ["nodejs_compat"]
 
 # Pages build settings — @cloudflare/next-on-pages transforms .next/ into
 # Cloudflare Pages-compatible output (_routes.json + edge functions).
+# NODE_OPTIONS raises the Node heap limit. Kept at 2048MB so the build fits
+# within Cloudflare Pages free-tier build worker memory (4096MB OOMs).
 [build]
-command = "next build && npx next-on-pages"
+command = "NODE_OPTIONS=\"--max-old-space-size=2048\" next build && npx next-on-pages"
 functions = ".next"
 
 # Environment variables (set in Cloudflare Dashboard, not committed):
 #   NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY,
 #   SUPABASE_SERVICE_ROLE_KEY, NEXT_PUBLIC_SITE_URL,
 #   FLUTTERWAVE_SECRET_KEY, CJ_API_KEY, RESEND_API_KEY, etc.
+#   R2 (media storage via images.techpivo.com):
+#     R2_ENDPOINT         https://<account-id>.r2.cloudflarestorage.com
+#     R2_ACCESS_KEY_ID    R2 API token access key
+#     R2_SECRET_ACCESS_KEY R2 API token secret key (SECRET)
+#     R2_BUCKET           techpivo-media
+#     R2_PUBLIC_URL       https://images.techpivo.com
 
 [env.production]
 # Production-specific vars can go here

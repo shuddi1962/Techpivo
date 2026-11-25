@@ -2,8 +2,16 @@ export const SITE_NAME = "Techpivo"
 export const SITE_TAGLINE = "Tech News, Tutorials & AI-Powered Insights"
 export const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://techpivo.com"
 
+export const MAIN_DOMAIN = "techpivo.com"
+export const MARKETPLACE_DOMAIN = "shop.techpivo.com"
+export const IMAGE_DOMAIN = "images.techpivo.com"
+export const MARKETPLACE_URL = `https://${MARKETPLACE_DOMAIN}`
+export const IMAGE_URL = `https://${IMAGE_DOMAIN}`
+
 export const CANONICAL_DOMAIN = "techpivo.com"
 export const SITE_LOGO = "Techpivo"
+export const COOKIE_DOMAIN = `.techpivo.com`
+export const AUTH_COOKIE_PREFIX = "sb-"
 export const PRIMARY_COLOR = "#0F172A"
 export const ACCENT_COLOR = "#F59E0B"
 export const HIGHLIGHT_COLOR = "#F59E0B"

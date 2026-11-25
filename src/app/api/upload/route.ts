@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from "next/server"
-import { createClient } from "@/lib/supabase/admin"
 import { createClient as createSessionClient } from "@/lib/supabase/server"
 import { checkRateLimit, clientIp, RATE_LIMITS } from "@/lib/rate-limiter"
 import { isSameOrigin } from "@/lib/csrf"
 import { auditLog } from "@/lib/audit-log"
+import { r2Upload } from "@/lib/r2"
 
 const ALLOWED_MIME = new Set([
   "image/jpeg",
@@ -24,12 +24,10 @@ function matchesMagicBytes(buffer: Buffer, mime: string): boolean {
     case "image/png":
       return buffer.subarray(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]))
     case "image/gif":
-      return buffer.subarray(0, 6).equals(Buffer.from([0x47, 0x49, 0x46, 0x38])) // GIF8
+      return buffer.subarray(0, 6).equals(Buffer.from([0x47, 0x49, 0x46, 0x38]))
     case "image/webp":
-      // RIFF....WEBP
       return buffer.subarray(0, 4).equals(Buffer.from("RIFF")) && buffer.subarray(8, 12).equals(Buffer.from("WEBP"))
     case "image/avif":
-      // ....ftypavif / ftypavis
       return buffer.subarray(4, 12).toString("latin1").includes("ftyp")
     default:
       return false
@@ -46,7 +44,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Too many uploads. Try again later." }, { status: 429 })
   }
 
-  // Any signed-in user may upload (avatars, forum covers, ad creatives, editor media)
   const session = await createSessionClient()
   const { data: { user } } = await session.auth.getUser()
   if (!user) {
@@ -73,25 +70,13 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "File content does not match its declared type" }, { status: 400 })
     }
 
-    const supabase = createClient()
     const ext =
       mime === "image/jpeg" ? "jpg" : mime === "image/png" ? "png" : mime === "image/gif" ? "gif" : mime === "image/webp" ? "webp" : "avif"
     const fileName = `uploads/${user.id}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`
 
-    const { error } = await supabase.storage
-      .from("media")
-      .upload(fileName, buffer, {
-        contentType: mime,
-        cacheControl: "3600",
-        upsert: false,
-      })
+    const publicUrl = await r2Upload({ key: fileName, body: buffer, contentType: mime })
 
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 })
-    }
-
-    const { data: { publicUrl } } = supabase.storage.from("media").getPublicUrl(fileName)
-
+    const supabase = createSessionClient()
     await supabase.from("media_files").insert({
       name: file.name,
       path: fileName,
@@ -100,7 +85,13 @@ export async function POST(req: NextRequest) {
       size: file.size,
     })
 
-    void auditLog({ user_id: user.id, action: "file_upload", entity_type: "media", details: { name: file.name, path: fileName, size: file.size, mime }, ip_address: ip })
+    await auditLog({
+      user_id: user.id,
+      action: "file_upload",
+      entity_type: "media",
+      details: { name: file.name, path: fileName, size: file.size, mime },
+      ip_address: ip,
+    })
 
     return NextResponse.json({ url: publicUrl })
   } catch (error) {

@@ -1,8 +1,9 @@
-// Media helpers — store remote images into the `media` bucket and track them
+// Media helpers — store remote images into Cloudflare R2 bucket
+// `techpivo-media` (served via https://images.techpivo.com) and track them
 // in media_files (the Media Library's realtime source of truth).
-import { createClient } from "@/lib/supabase/admin"
+import { createClient as createSessionClient } from "@/lib/supabase/server"
+import { r2Upload } from "@/lib/r2"
 
-const BUCKET = "media"
 const UA = "Mozilla/5.0 (Techpivo Media)"
 
 function extensionOf(remoteUrl: string): string {
@@ -29,7 +30,6 @@ export async function storeRemoteImage(
   prefix: string = "featured",
 ): Promise<string | null> {
   try {
-    const supabase = createClient()
     const res = await fetch(remoteUrl, {
       headers: { "User-Agent": UA },
       redirect: "follow",
@@ -43,15 +43,9 @@ export async function storeRemoteImage(
     const ext = extensionOf(remoteUrl)
     const contentType = res.headers.get("content-type") || `image/${ext === "jpg" ? "jpeg" : ext}`
 
-    const { error: upErr } = await supabase.storage.from(BUCKET).upload(path, bytes, {
-      contentType,
-      cacheControl: "3600",
-      upsert: false,
-    })
-    if (upErr) return null
+    const publicUrl = await r2Upload({ key: path, body: bytes, contentType })
 
-    const { data: { publicUrl } } = supabase.storage.from(BUCKET).getPublicUrl(path)
-
+    const supabase = createSessionClient()
     await supabase.from("media_files").insert({
       name: path.split("/").pop(),
       path,
