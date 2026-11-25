@@ -1,0 +1,38 @@
+# TechPivo — Cloudflare Pages configuration
+#
+# Deploy: npx wrangler pages deploy .next --project-name techpivo --commit-dirty
+#
+# Custom domains (configure in Cloudflare Dashboard):
+#   techpivo.com → Pages project
+#   shop.techpivo.com → Pages project (same project, host-based routing via middleware)
+#   images.techpivo.com → R2 bucket techpivo-media (separate)
+
+name = "techpivo"
+compatibility_date = "2026-11-24"
+compatibility_flags = ["nodejs_compat"]
+
+# Pages build settings — @cloudflare/next-on-pages transforms .next/ into
+# Cloudflare Pages-compatible output (_routes.json + edge functions).
+[build]
+command = "next build && npx next-on-pages"
+functions = ".next"
+
+# Environment variables (set in Cloudflare Dashboard, not committed):
+#   NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY,
+#   SUPABASE_SERVICE_ROLE_KEY, NEXT_PUBLIC_SITE_URL,
+#   FLUTTERWAVE_SECRET_KEY, CJ_API_KEY, RESEND_API_KEY, etc.
+
+[env.production]
+# Production-specific vars can go here
+
+[env.preview]
+# Preview-specific vars
+
+[[env.production.vars]]
+# Non-secret config
+NEXT_PUBLIC_SITE_URL = "https://techpivo.com"
+MARKETPLACE_DOMAIN = "shop.techpivo.com"
+IMAGE_DOMAIN = "images.techpivo.com"
+COOKIE_DOMAIN = ".techpivo.com"
+
+# Build triggered: 2026-11-25 cloudflare pages redeploy
