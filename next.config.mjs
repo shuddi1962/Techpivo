@@ -70,6 +70,11 @@ const nextConfig = {
   // Disable Google Fonts optimization — fails on restricted build networks
   // (Cloudflare Pages). Fonts are self-hosted via CSS variables in globals.css.
   optimizeFonts: false,
+  // Skip type-checking during Cloudflare Pages build (verified locally via tsc)
+  // to stay within free-tier build-worker memory.
+  typescript: {
+    ignoreBuildErrors: true,
+  },
   async headers() {
     const securityHeaders = [
       { key: 'Strict-Transport-Security', value: 'max-age=63072000; includeSubDomains; preload' },

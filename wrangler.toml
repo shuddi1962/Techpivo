@@ -16,7 +16,7 @@ compatibility_flags = ["nodejs_compat"]
 # NODE_OPTIONS raises the Node heap limit. Kept at 2048MB so the build fits
 # within Cloudflare Pages free-tier build worker memory (4096MB OOMs).
 [build]
-command = "NODE_OPTIONS=\"--max-old-space-size=2048\" next build && npx next-on-pages"
+command = "NODE_OPTIONS=\"--max-old-space-size=2048\" next build --no-lint && npx next-on-pages"
 functions = ".next"
 
 # Environment variables (set in Cloudflare Dashboard, not committed):
