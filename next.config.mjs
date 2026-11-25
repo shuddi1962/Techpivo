@@ -16,6 +16,7 @@ const nextConfig = {
     unoptimized: true,
     dangerouslyAllowSVG: true,
     remotePatterns: [
+      { protocol: 'https', hostname: 'images.techpivo.com' },
       { protocol: 'https', hostname: '**.theverge.com' },
       { protocol: 'https', hostname: '**.techcrunch.com' },
       { protocol: 'https', hostname: '**.wired.com' },
@@ -66,6 +67,9 @@ const nextConfig = {
       { protocol: 'https', hostname: '**' },
     ],
   },
+  // Disable Google Fonts optimization — fails on restricted build networks
+  // (Cloudflare Pages). Fonts are self-hosted via CSS variables in globals.css.
+  optimizeFonts: false,
   async headers() {
     const securityHeaders = [
       { key: 'Strict-Transport-Security', value: 'max-age=63072000; includeSubDomains; preload' },
