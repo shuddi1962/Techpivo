@@ -6,11 +6,12 @@ function generateCode() {
   return crypto.randomBytes(8).toString("hex")
 }
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
-  { auth: { persistSession: false } },
-)
+function getSupabase() {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY
+  if (!url || !key) return null
+  return createClient(url, key, { auth: { persistSession: false } })
+}
 
 export async function POST(req: Request) {
   try {
@@ -34,18 +35,20 @@ export async function POST(req: Request) {
     }
 
     const confirmationCode = generateCode()
-
-    await supabase.from("data_deletion_requests").insert({
-      facebook_user_id: facebookUserId,
-      provider: "facebook",
-      status: "pending",
-      confirmation_code: confirmationCode,
-      ip_address: req.headers.get("x-forwarded-for") || req.headers.get("x-real-ip") || null,
-      metadata: {
-        signed_request_received: !!signedRequest,
-        user_agent: req.headers.get("user-agent"),
-      },
-    })
+    const supabase = getSupabase()
+    if (supabase) {
+      await supabase.from("data_deletion_requests").insert({
+        facebook_user_id: facebookUserId,
+        provider: "facebook",
+        status: "pending",
+        confirmation_code: confirmationCode,
+        ip_address: req.headers.get("x-forwarded-for") || req.headers.get("x-real-ip") || null,
+        metadata: {
+          signed_request_received: !!signedRequest,
+          user_agent: req.headers.get("user-agent"),
+        },
+      })
+    }
 
     return NextResponse.json({
       url: `https://techpivo.com/data-deletion/status?code=${confirmationCode}`,
@@ -80,18 +83,20 @@ export async function GET(req: Request) {
   }
 
   const confirmationCode = generateCode()
-
-  await supabase.from("data_deletion_requests").insert({
-    facebook_user_id: facebookUserId,
-    provider: "facebook",
-    status: "pending",
-    confirmation_code: confirmationCode,
-    ip_address: req.headers.get("x-forwarded-for") || req.headers.get("x-real-ip") || null,
-    metadata: {
-      signed_request_received: !!signedRequest,
-      method: "GET",
-    },
-  })
+  const supabase = getSupabase()
+  if (supabase) {
+    await supabase.from("data_deletion_requests").insert({
+      facebook_user_id: facebookUserId,
+      provider: "facebook",
+      status: "pending",
+      confirmation_code: confirmationCode,
+      ip_address: req.headers.get("x-forwarded-for") || req.headers.get("x-real-ip") || null,
+      metadata: {
+        signed_request_received: !!signedRequest,
+        method: "GET",
+      },
+    })
+  }
 
   return NextResponse.json({
     url: `https://techpivo.com/data-deletion/status?code=${confirmationCode}`,
