@@ -1,10 +1,11 @@
 import { createServerClient } from "@supabase/ssr"
 import { cookies } from "next/headers"
+import { createDisabledClient } from "./disabled-client"
 
 export function createClient() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL
   const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-  if (!url || !key) throw new Error("Missing Supabase environment variables")
+  if (!url || !key) return createDisabledClient()
   const cookieStore = cookies()
   return createServerClient(
     url,
@@ -42,7 +43,7 @@ export function createClient() {
 export function createPublicClient() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL
   const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-  if (!url || !key) throw new Error("Missing Supabase environment variables")
+  if (!url || !key) return createDisabledClient()
   return createServerClient(url, key, {
     cookies: {
       getAll() {
