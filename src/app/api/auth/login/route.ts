@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
-import { createServerClient } from "@supabase/ssr"
+import { createServerClientSafe } from "@/lib/supabase/server"
 import { checkRateLimit, resetRateLimit } from "@/lib/rate-limiter"
 import { isSameOrigin } from "@/lib/csrf"
 import { auditLog } from "@/lib/audit-log"
@@ -34,18 +34,12 @@ export async function POST(request: NextRequest) {
 
   const response = NextResponse.json({ success: true })
 
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        getAll() { return request.cookies.getAll() },
-        setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value, options }) => response.cookies.set(name, value, options))
-        },
-      },
-    }
-  )
+  const supabase = createServerClientSafe({
+    getAll() { return request.cookies.getAll() },
+    setAll(cookiesToSet) {
+      cookiesToSet.forEach(({ name, value, options }) => response.cookies.set(name, value, options))
+    },
+  })
 
   const { data, error } = await supabase.auth.signInWithPassword({ email, password })
   if (error) {

@@ -1,4 +1,4 @@
-import { createServerClient } from "@supabase/ssr"
+import { createServerClientSafe } from "@/lib/supabase/server"
 import { NextResponse, type NextRequest } from "next/server"
 import { MARKETPLACE_DOMAIN, MAIN_DOMAIN, COOKIE_DOMAIN } from "@/lib/constants"
 
@@ -125,28 +125,22 @@ export async function middleware(request: NextRequest) {
     return response
   }
 
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        getAll() {
-          return request.cookies.getAll()
-        },
-        setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value, options }) => {
-            // Scope Supabase auth cookies to .techpivo.com so sessions are
-            // shared across techpivo.com and shop.techpivo.com.
-            const cookieOptions: Record<string, unknown> = { ...options }
-            if (!cookieOptions.domain) {
-              cookieOptions.domain = COOKIE_DOMAIN
-            }
-            response.cookies.set(name, value, cookieOptions)
-          })
-        },
-      },
-    }
-  )
+  const supabase = createServerClientSafe({
+    getAll() {
+      return request.cookies.getAll()
+    },
+    setAll(cookiesToSet) {
+      cookiesToSet.forEach(({ name, value, options }) => {
+        // Scope Supabase auth cookies to .techpivo.com so sessions are
+        // shared across techpivo.com and shop.techpivo.com.
+        const cookieOptions: Record<string, unknown> = { ...options }
+        if (!cookieOptions.domain) {
+          cookieOptions.domain = COOKIE_DOMAIN
+        }
+        response.cookies.set(name, value, cookieOptions)
+      })
+    },
+  })
 
   let user: { id: string } | null = null
   try {

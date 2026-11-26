@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
-import { createServerClient } from "@supabase/ssr"
+import { createServerClientSafe } from "@/lib/supabase/server"
 import { SITE_URL } from "@/lib/constants"
 import { sendBrandedEmail } from "@/lib/email"
 import { isSameOrigin } from "@/lib/csrf"
@@ -48,16 +48,10 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "This password has appeared in a data breach. Please choose a stronger one." }, { status: 400 })
   }
 
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        getAll() { return request.cookies.getAll() },
-        setAll() {},
-      },
-    }
-  )
+  const supabase = createServerClientSafe({
+    getAll() { return request.cookies.getAll() },
+    setAll() {},
+  })
 
   const { data, error: signUpError } = await supabase.auth.signUp({
     email: normalizedEmail,

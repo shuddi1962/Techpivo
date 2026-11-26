@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createServerClient } from '@supabase/ssr'
+import { createServerClientSafe } from '@/lib/supabase/server'
 import { cookies } from 'next/headers'
 import { SITE_URL } from "@/lib/constants"
 
@@ -161,11 +161,7 @@ async function fetchAnalyticsEvents(supabase: any, days: number) {
 
 export async function GET(req: NextRequest) {
   const cookieStore = cookies()
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    { cookies: { get: (name: string) => cookieStore.get(name)?.value } }
-  )
+  const supabase = createServerClientSafe({ get: (name: string) => cookieStore.get(name)?.value })
 
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) {

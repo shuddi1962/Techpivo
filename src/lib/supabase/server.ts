@@ -55,3 +55,16 @@ export function createPublicClient() {
     },
   })
 }
+
+/**
+ * Like createServerClient, but returns a disabled no-op client when Supabase
+ * env vars are missing (e.g. during `next build` on Cloudflare/Vercel without
+ * the vars set). Accepts the same cookie config object as createServerClient
+ * so route handlers and middleware can pass request/response cookies.
+ */
+export function createServerClientSafe(cookieConfig: Record<string, unknown>) {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+  if (!url || !key) return createDisabledClient()
+  return createServerClient(url, key, { cookies: cookieConfig })
+}

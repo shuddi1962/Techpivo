@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
-import { createServerClient } from "@supabase/ssr"
+import { createServerClientSafe } from "@/lib/supabase/server"
 import type { EmailOtpType } from "@supabase/supabase-js"
 
 export async function GET(request: NextRequest) {
@@ -14,18 +14,12 @@ export async function GET(request: NextRequest) {
   const next = hasExplicitNext ? requestedNext : "/account/activity"
 
   const response = NextResponse.redirect(`${origin}${next}`)
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        getAll() { return request.cookies.getAll() },
-        setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value, options }) => response.cookies.set(name, value, options))
-        },
-      },
-    }
-  )
+  const supabase = createServerClientSafe({
+    getAll() { return request.cookies.getAll() },
+    setAll(cookiesToSet) {
+      cookiesToSet.forEach(({ name, value, options }) => response.cookies.set(name, value, options))
+    },
+  })
 
   if (code) {
     const { data, error } = await supabase.auth.exchangeCodeForSession(code)
