@@ -8,10 +8,19 @@
  * any module, including pages and route handlers.
  */
 class DisabledQueryBuilder {
+  private result: any = { data: null, error: null }
+
+  private self(): this {
+    return this
+  }
+
   select(..._args: any[]) {
     return this
   }
   insert(..._args: any[]) {
+    return this
+  }
+  upsert(..._args: any[]) {
     return this
   }
   update(..._args: any[]) {
@@ -26,10 +35,49 @@ class DisabledQueryBuilder {
   neq(..._args: any[]) {
     return this
   }
+  gt(..._args: any[]) {
+    return this
+  }
+  lt(..._args: any[]) {
+    return this
+  }
+  gte(..._args: any[]) {
+    return this
+  }
+  lte(..._args: any[]) {
+    return this
+  }
   like(..._args: any[]) {
     return this
   }
   ilike(..._args: any[]) {
+    return this
+  }
+  is(..._args: any[]) {
+    return this
+  }
+  in(..._args: any[]) {
+    return this
+  }
+  contains(..._args: any[]) {
+    return this
+  }
+  containedBy(..._args: any[]) {
+    return this
+  }
+  range(..._args: any[]) {
+    return this
+  }
+  textSearch(..._args: any[]) {
+    return this
+  }
+  filter(..._args: any[]) {
+    return this
+  }
+  or(..._args: any[]) {
+    return this
+  }
+  not(..._args: any[]) {
     return this
   }
   order(..._args: any[]) {
@@ -38,17 +86,17 @@ class DisabledQueryBuilder {
   limit(..._args: any[]) {
     return this
   }
-  range(..._args: any[]) {
+  offset(..._args: any[]) {
     return this
   }
   single() {
-    return Promise.resolve({ data: null, error: null })
+    return Promise.resolve(this.result)
   }
   maybeSingle() {
-    return Promise.resolve({ data: null, error: null })
+    return Promise.resolve(this.result)
   }
-  async then(resolve: (val: any) => void) {
-    resolve({ data: null, error: null })
+  then(resolve: (val: any) => void) {
+    resolve(this.result)
   }
 }
 
@@ -56,24 +104,57 @@ class DisabledAuth {
   async getUser() {
     return { data: { user: null }, error: null }
   }
+  async getSession() {
+    return { data: { session: null }, error: null }
+  }
+}
+
+class DisabledRealtime {
+  channel(..._args: any[]) {
+    return {
+      subscribe: () => ({ unsubscribe: () => {} }),
+      remove: () => {},
+      on: () => ({}),
+      send: () => {},
+    }
+  }
+  removeChannel() {}
+  removeAllChannels() {}
+}
+
+class DisabledStorage {
+  from(..._args: any[]) {
+    return {
+      upload: async () => ({ data: null, error: null }),
+      download: async () => ({ data: null, error: null }),
+      remove: async () => ({ data: null, error: null }),
+      createSignedUrl: async () => ({ data: { signedUrl: '' }, error: null }),
+      getPublicUrl: () => ({ data: { publicUrl: '' } }),
+      list: async () => ({ data: null, error: null }),
+    }
+  }
 }
 
 class DisabledClient {
   from(..._args: any[]) {
     return new DisabledQueryBuilder()
   }
-  auth = new DisabledAuth()
-  async rpc(..._args: any[]) {
-    return { data: null, error: null }
+  rpc(..._args: any[]) {
+    return Promise.resolve({ data: null, error: null })
   }
+  auth = new DisabledAuth()
+  storage = new DisabledStorage()
+  realtime = new DisabledRealtime()
   channel(..._args: any[]) {
     return {
       subscribe: () => ({ unsubscribe: () => {} }),
       remove: () => {},
       on: () => ({}),
+      send: () => {},
     }
   }
   removeChannel() {}
+  removeAllChannels() {}
 }
 
 export function createDisabledClient() {
