@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
-const DOH_URL = "https://cloudflare-dns.com/dns-query";
+const DOH_URL = "https://dns.google/dns-query";
 
 const DNS_TYPES: Record<string, number> = {
   A: 1,

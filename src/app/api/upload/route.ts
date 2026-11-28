@@ -3,7 +3,7 @@ import { createClient as createSessionClient } from "@/lib/supabase/server"
 import { checkRateLimit, clientIp, RATE_LIMITS } from "@/lib/rate-limiter"
 import { isSameOrigin } from "@/lib/csrf"
 import { auditLog } from "@/lib/audit-log"
-import { r2Upload } from "@/lib/r2"
+import { blobUpload } from "@/lib/blob"
 
 const ALLOWED_MIME = new Set([
   "image/jpeg",
@@ -74,7 +74,7 @@ export async function POST(req: NextRequest) {
       mime === "image/jpeg" ? "jpg" : mime === "image/png" ? "png" : mime === "image/gif" ? "gif" : mime === "image/webp" ? "webp" : "avif"
     const fileName = `uploads/${user.id}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`
 
-    const publicUrl = await r2Upload({ key: fileName, body: buffer, contentType: mime })
+    const publicUrl = await blobUpload({ key: fileName, body: buffer, contentType: mime })
 
     const supabase = createSessionClient()
     await supabase.from("media_files").insert({

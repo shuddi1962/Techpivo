@@ -1,8 +1,8 @@
-// Media helpers — store remote images into Cloudflare R2 bucket
-// `techpivo-media` (served via https://images.techpivo.com) and track them
+// Media helpers — store remote images into Vercel Blob
+// (served via https://images.techpivo.com) and track them
 // in media_files (the Media Library's realtime source of truth).
 import { createClient as createSessionClient } from "@/lib/supabase/server"
-import { r2Upload } from "@/lib/r2"
+import { blobUpload } from "@/lib/blob"
 
 const UA = "Mozilla/5.0 (Techpivo Media)"
 
@@ -43,7 +43,7 @@ export async function storeRemoteImage(
     const ext = extensionOf(remoteUrl)
     const contentType = res.headers.get("content-type") || `image/${ext === "jpg" ? "jpeg" : ext}`
 
-    const publicUrl = await r2Upload({ key: path, body: bytes, contentType })
+    const publicUrl = await blobUpload({ key: path, body: bytes, contentType })
 
     const supabase = createSessionClient()
     await supabase.from("media_files").insert({
