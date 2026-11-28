@@ -123,6 +123,25 @@ CREATE TABLE IF NOT EXISTS newsletter_automations (
 
 COMMENT ON TABLE newsletter_automations IS 'Automated newsletter workflows triggered by subscriber events';
 
+-- ===================== AFFILIATE LINKS =====================
+
+CREATE TABLE IF NOT EXISTS affiliate_links (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  url TEXT NOT NULL,
+  short_code TEXT UNIQUE NOT NULL,
+  title TEXT DEFAULT '',
+  description TEXT DEFAULT '',
+  affiliate_id TEXT,
+  program_id UUID REFERENCES affiliate_programs(id) ON DELETE SET NULL,
+  clicks INTEGER DEFAULT 0,
+  conversions INTEGER DEFAULT 0,
+  status TEXT DEFAULT 'active' CHECK (status IN ('active','paused','archived')),
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+COMMENT ON TABLE affiliate_links IS 'Affiliate tracking links with click and conversion counts';
+
 -- ===================== AFFILIATE RULES =====================
 
 CREATE TABLE IF NOT EXISTS affiliate_rules (

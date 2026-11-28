@@ -33,11 +33,11 @@ END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- Award XP to user
-CREATE OR REPLACE FUNCTION award_xp(target_user_id UUID, xp_amount INT, action_name TEXT, desc TEXT DEFAULT NULL)
+CREATE OR REPLACE FUNCTION award_xp(target_user_id UUID, xp_amount INT, action_name TEXT, desc_text TEXT DEFAULT NULL)
 RETURNS VOID AS $$
 BEGIN
   UPDATE user_profiles SET xp = xp + xp_amount WHERE id = target_user_id;
-  INSERT INTO user_xp_log (user_id, action, xp_amount, description) VALUES (target_user_id, action_name, xp_amount, desc);
+  INSERT INTO user_xp_log (user_id, action, xp_amount, description) VALUES (target_user_id, action_name, xp_amount, desc_text);
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 

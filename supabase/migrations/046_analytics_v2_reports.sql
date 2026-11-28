@@ -34,4 +34,12 @@ CREATE POLICY "Admins manage report_schedules" ON report_schedules
 ALTER PUBLICATION supabase_realtime ADD TABLE report_schedules;
 
 -- 3) Ad campaign daily stats realtime (Revenue tab live transactions)
-ALTER PUBLICATION supabase_realtime ADD TABLE IF NOT EXISTS ad_campaign_daily_stats;
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_publication_tables
+    WHERE pubname = 'supabase_realtime' AND tablename = 'ad_campaign_daily_stats'
+  ) THEN
+    EXECUTE 'ALTER PUBLICATION supabase_realtime ADD TABLE ad_campaign_daily_stats';
+  END IF;
+END $$;

@@ -51,6 +51,11 @@ function runSql(sql) {
   });
 }
 
+function isAlreadyExistsError(body) {
+  const msg = typeof body === "string" ? body : JSON.stringify(body);
+  return msg.includes("42710") || msg.includes("already exists");
+}
+
 async function main() {
   const files = getMigrationFiles();
   console.log(`Found ${files.length} migration files\n`);
@@ -68,6 +73,10 @@ async function main() {
         console.log(`  OK   ${file}`);
         successCount++;
         results.push({ file, status: "ok", error: null });
+      } else if (isAlreadyExistsError(result.body)) {
+        console.log(`  SKIP ${file} (already exists)`);
+        successCount++;
+        results.push({ file, status: "skipped", error: null });
       } else {
         const errMsg = typeof result.body === "string" ? result.body : JSON.stringify(result.body);
         console.log(`  FAIL ${file} (${result.status}): ${errMsg.slice(0, 120)}`);
